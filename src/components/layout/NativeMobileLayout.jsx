@@ -186,10 +186,11 @@ export default function NativeMobileLayout({ children }) {
             ? 'bg-white/80 backdrop-blur-2xl shadow-xl shadow-slate-200/20 border-b border-white/40' 
             : 'bg-transparent'
         }`}
+        style={{ paddingTop: 'max(24px, env(safe-area-inset-top, 24px))' }}
       >
         <div className="flex items-center justify-between h-16 px-6">
           <div className="flex items-center gap-4">
-            {location.pathname !== '/' ? (
+            {!['/', '/admin/dashboard', '/doctor/dashboard', '/patients', '/appointments', '/payments'].includes(location.pathname) ? (
               <motion.button 
                 whileTap={{ scale: 0.9 }}
                 onClick={() => navigate(-1)}
@@ -250,7 +251,10 @@ export default function NativeMobileLayout({ children }) {
       />
 
       {/* Main Content with Page Transitions */}
-      <main ref={contentRef} className="pt-16">
+      <main 
+        ref={contentRef} 
+        style={{ paddingTop: 'calc(4rem + max(24px, env(safe-area-inset-top, 24px)))' }}
+      >
         <div className="px-5 mt-4">
           <SubscriptionBanner />
         </div>
@@ -414,7 +418,10 @@ export default function NativeMobileLayout({ children }) {
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
               className="absolute right-0 top-0 bottom-0 w-[85%] bg-white shadow-2xl flex flex-col rounded-l-[2rem] overflow-hidden"
             >
-              <div className="p-5 border-b flex items-center justify-between bg-slate-50/50">
+              <div 
+                className="px-5 pb-5 border-b flex items-center justify-between bg-slate-50/50"
+                style={{ paddingTop: 'calc(1.25rem + env(safe-area-inset-top, 0px))' }}
+              >
                 <div />
                 <button 
                   onClick={() => setShowMenu(false)}

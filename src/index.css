@@ -218,6 +218,18 @@ table,
   height: env(safe-area-inset-bottom, 0px);
 }
 
+.sticky-profile-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+@media (max-width: 1023px) {
+  .sticky-profile-header {
+    top: calc(4rem + max(24px, env(safe-area-inset-top, 24px)));
+  }
+}
+
 /* Touch-friendly buttons on mobile */
 @media (max-width: 768px) {
   button, 

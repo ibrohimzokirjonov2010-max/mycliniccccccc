@@ -2308,7 +2308,7 @@ export default function PatientProfile() {
       <div className="print:hidden">
 
       {/* ══ BCLINIC HEADER ══ */}
-      <div className="bg-white border-b border-[#e8eaed] sticky top-0 z-30 shadow-sm">
+      <div className="bg-white border-b border-[#e8eaed] sticky-profile-header shadow-sm">
         {/* Warning Alerts Banner */}
         {medicalAlerts && medicalAlerts.length > 0 && (
           <div className="bg-rose-50/90 backdrop-blur-sm border-b border-rose-100/60 px-4 py-2 flex flex-wrap items-center gap-3">

@@ -57,7 +57,10 @@ export default function NotificationPanel({ isOpen, onClose }) {
             className="fixed right-0 top-0 bottom-0 w-full max-w-[360px] bg-slate-50 shadow-2xl z-[70] flex flex-col"
           >
             {/* Header */}
-            <div className="bg-white p-5 border-b sticky top-0 flex items-center justify-between">
+            <div 
+              className="bg-white px-5 pb-5 border-b sticky top-0 flex items-center justify-between"
+              style={{ paddingTop: 'calc(1.25rem + env(safe-area-inset-top, 0px))' }}
+            >
               <div>
                 <h2 className="text-xl font-black text-slate-900 tracking-tight">Bildirishnomalar</h2>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Xabarlar tarixi</p>

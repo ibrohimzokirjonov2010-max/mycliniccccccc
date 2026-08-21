@@ -1196,9 +1196,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="!p-0 w-[calc(100%-24px)] sm:w-[94vw] md:w-[90vw] max-w-4xl h-[92dvh] sm:h-[90dvh] md:h-[94dvh] md:max-h-[94dvh] flex flex-col overflow-hidden rounded-[2.5rem] sm:rounded-2xl border-0 shadow-2xl gap-0 !top-[3dvh] !translate-y-0">
+      <DialogContent className="!p-0 w-full sm:w-[94vw] md:w-[90vw] max-w-4xl h-[100dvh] sm:h-[90dvh] md:h-[94dvh] md:max-h-[94dvh] flex flex-col overflow-hidden rounded-none sm:rounded-2xl border-0 shadow-2xl gap-0 !top-0 sm:!top-[5dvh] !translate-y-0">
 
-        <div className="flex-shrink-0 p-4 sm:p-5 lg:p-6 pb-2 sm:pb-3 border-b bg-white relative z-10 shadow-sm no-print">
+        <div 
+          className="flex-shrink-0 px-4 pb-2 sm:px-5 sm:pb-3 lg:p-6 border-b bg-white relative z-10 shadow-sm no-print"
+          style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top, 0px))' }}
+        >
           <DialogHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-3">
               <button 
@@ -1970,7 +1973,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   </div>
 
                   {/* Bottom Sticky Bar */}
-                  <div className="p-4 border-t border-slate-150 bg-white flex flex-col gap-3 shrink-0 shadow-lg sticky bottom-0 z-50">
+                  <div 
+                    className="p-4 border-t border-slate-150 bg-white flex flex-col gap-3 shrink-0 shadow-lg sticky bottom-0 z-50"
+                    style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+                  >
                     {/* Chegirma tanlash (Mobile) */}
                     <div className="flex items-center gap-1.5 flex-wrap px-1 pb-2 border-b border-slate-100">
                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider mr-1">Chegirma:</span>
