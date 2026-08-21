@@ -1,0 +1,188 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/note.schema.json",
+  "title": "Note",
+  "description": "Patient notes and clinical observations schema",
+  "type": "object",
+  "properties": {
+    "patient_id": {
+      "type": "string",
+      "title": "Patient ID",
+      "description": "Unique identifier of the patient"
+    },
+    "appointment_id": {
+      "type": "string",
+      "title": "Appointment ID",
+      "description": "Related appointment ID if note is tied to a visit"
+    },
+    "content": {
+      "type": "string",
+      "title": "Content",
+      "description": "Main note content/text",
+      "minLength": 1,
+      "maxLength": 10000
+    },
+    "type": {
+      "type": "string",
+      "title": "Type",
+      "description": "Category of the note",
+      "enum": [
+        "General",
+        "Treatment",
+        "Follow-up",
+        "Medical History",
+        "Allergy",
+        "Medication",
+        "Complaint",
+        "Diagnosis",
+        "Plan",
+        "Progress",
+        "Referral",
+        "Lab Results",
+        "Imaging",
+        "Consent",
+        "Billing",
+        "Administrative"
+      ],
+      "default": "General"
+    },
+    "priority": {
+      "type": "string",
+      "title": "Priority",
+      "description": "Importance level of the note",
+      "enum": ["Low", "Normal", "High", "Critical"],
+      "default": "Normal"
+    },
+    "is_pinned": {
+      "type": "boolean",
+      "title": "Is Pinned",
+      "description": "Whether note should be displayed prominently",
+      "default": false
+    },
+    "is_confidential": {
+      "type": "boolean",
+      "title": "Is Confidential",
+      "description": "Whether note contains sensitive information",
+      "default": false
+    },
+    "tags": {
+      "type": "array",
+      "title": "Tags",
+      "description": "Tags for categorization and search",
+      "items": {
+        "type": "string",
+        "maxLength": 50
+      }
+    },
+    "related_tooth_numbers": {
+      "type": "array",
+      "title": "Related Tooth Numbers",
+      "description": "FDI tooth numbers related to this note",
+      "items": {
+        "type": "number",
+        "minimum": 11,
+        "maximum": 48
+      }
+    },
+    "attachments": {
+      "type": "array",
+      "title": "Attachments",
+      "description": "Attached files or images",
+      "items": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "Name of the file",
+            "maxLength": 255
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to the file"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["image", "document", "pdf", "audio", "video", "other"],
+            "description": "Type of attachment"
+          },
+          "size": {
+            "type": "number",
+            "description": "File size in bytes",
+            "minimum": 0
+          }
+        },
+        "required": ["filename", "url"]
+      }
+    },
+    "reminder_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Reminder Date",
+      "description": "Date to review or follow up on this note"
+    },
+    "created_by": {
+      "type": "string",
+      "title": "Created By",
+      "description": "User who created the note",
+      "maxLength": 100
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At",
+      "description": "Note creation timestamp"
+    },
+    "updated_by": {
+      "type": "string",
+      "title": "Updated By",
+      "description": "User who last updated the note",
+      "maxLength": 100
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At",
+      "description": "Last update timestamp"
+    },
+    "version": {
+      "type": "number",
+      "title": "Version",
+      "description": "Version number for tracking edits",
+      "default": 1,
+      "minimum": 1
+    },
+    "edit_history": {
+      "type": "array",
+      "title": "Edit History",
+      "description": "History of note modifications",
+      "items": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "description": "Version number"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Edit timestamp"
+          },
+          "user": {
+            "type": "string",
+            "description": "User who made the edit",
+            "maxLength": 100
+          },
+          "changes": {
+            "type": "string",
+            "description": "Summary of changes made",
+            "maxLength": 500
+          }
+        },
+        "required": ["version", "date", "user"]
+      }
+    }
+  },
+  "required": ["patient_id", "content"],
+  "additionalProperties": false
+}

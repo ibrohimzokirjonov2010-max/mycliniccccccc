@@ -1,0 +1,295 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Premium Custom Classes ──────────────────────────────────────────────── */
+@layer components {
+  /* Glassmorphism panel - used across Dashboard, Patients, Payments etc. */
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 20px 50px -10px rgba(15, 23, 42, 0.07), 0 0 0 1px rgba(255,255,255,0.4) inset;
+  }
+
+  /* Premium card - white surface with depth shadow */
+  .premium-card {
+    background: #ffffff;
+    border-radius: 2rem;
+    box-shadow: 0 10px 40px -8px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(241, 245, 249, 1);
+    border: 1px solid rgba(241, 245, 249, 1);
+  }
+
+  /* Hide scrollbar but keep scroll functionality */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Professional teeth-slider scrollbar (Gildira) */
+.teeth-slider::-webkit-scrollbar {
+  height: 14px; /* Yanada qalinroq va ko'zga tashlanadigan */
+}
+.teeth-slider::-webkit-scrollbar-track {
+  background: #f8fafc; 
+  border-radius: 20px;
+  margin: 0 4px;
+}
+.teeth-slider::-webkit-scrollbar-thumb {
+  background: linear-gradient(to right, #3b82f6, #2563eb); 
+  border-radius: 20px;
+  border: 3px solid #f8fafc;
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.3);
+}
+.teeth-slider {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 16px !important; /* Slider uchun maxsus joy */
+  overflow-x: auto !important;
+}
+
+/* Slider ichidagi diagrammani majburiy kengaytirish */
+.teeth-slider > div {
+  min-width: 850px !important; 
+}
+
+/* Premium Gradient Title Utility */
+.premium-title {
+  @apply font-black tracking-tight bg-gradient-to-r from-blue-600 via-[#1499AD] to-[#0E7A8A] bg-clip-text text-transparent;
+}
+
+.premium-bg-gradient {
+  @apply bg-gradient-to-r from-blue-600 via-[#1499AD] to-[#0E7A8A];
+}
+
+@layer base {
+  :root {
+    --font-inter: 'Inter', sans-serif;
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 188 79% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 188 79% 95%;
+    --accent-foreground: 188 79% 30%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 188 79% 38%;
+    --chart-1: 188 79% 38%;
+    --chart-2: 217 91% 60%;
+    --chart-3: 168 64% 51%;
+    --chart-4: 43 96% 56%;
+    --chart-5: 22 90% 50%;
+    --radius: 1rem;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 188 79% 38%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 188 79% 38%;
+  }
+
+  .dark {
+    --background: 220 20% 8%;
+    --foreground: 0 0% 98%;
+    --card: 220 20% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 220 20% 12%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 168 64% 51%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 20%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 220 14% 18%;
+    --muted-foreground: 215 16% 57%;
+    --accent: 168 64% 15%;
+    --accent-foreground: 168 64% 70%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 14% 20%;
+    --input: 220 14% 20%;
+    --ring: 168 64% 51%;
+    --chart-1: 168 64% 51%;
+    --chart-2: 217 91% 60%;
+    --chart-3: 271 81% 56%;
+    --chart-4: 43 96% 56%;
+    --chart-5: 0 84% 60%;
+    --sidebar-background: 220 20% 6%;
+    --sidebar-foreground: 210 20% 88%;
+    --sidebar-primary: 168 64% 51%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 18% 12%;
+    --sidebar-accent-foreground: 210 20% 88%;
+    --sidebar-border: 220 18% 14%;
+    --sidebar-ring: 168 64% 51%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-inter;
+    /* Scroll rendering tezlashtirish */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeSpeed;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PERFORMANCE OPTIMIZATIONS — Qotib qolishni oldini olish
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Scroll container lar uchun GPU acceleration */
+[class*="overflow-y-auto"],
+[class*="overflow-x-auto"],
+[class*="overflow-auto"] {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Katta ro'yxatlar uchun contain — browser qayta hisoblashni kamaytiradi */
+table,
+[class*="space-y"],
+[class*="grid"] {
+  contain: layout style;
+}
+
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+
+/* Smooth transitions */
+.page-transition {
+  animation: fadeIn 0.3s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Mobile optimizations */
+@supports (padding: max(0px)) {
+  .safe-area-pb {
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+  .safe-area-pt {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+  .pb-safe-offset-4 {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  }
+}
+
+.h-safe-area-inset-bottom {
+  height: env(safe-area-inset-bottom, 0px);
+}
+
+/* Touch-friendly buttons on mobile */
+@media (max-width: 768px) {
+  button, 
+  [role="button"],
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Larger touch targets */
+  .touch-target {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  
+  /* Prevent text selection on UI elements */
+  nav, 
+  .no-select {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Disable callout on iOS */
+  * {
+    -webkit-touch-callout: none;
+  }
+}
+
+/* PWA standalone mode optimizations */
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GLOBAL FONT SIZE NORMALIZATION — 11px minimum
+   Saytdagi barcha kichik matnlar bir xil 11px bo'ladi
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Tailwind standard utility classes */
+.text-xs {
+  font-size: 11px !important;
+  line-height: 1.5 !important;
+}
+
+/* Override arbitrary Tailwind sizes via generated class names */
+/* These are the actual class names Tailwind JIT generates */
+.text-\[8px\] {
+  font-size: 11px !important;
+  line-height: 1.5 !important;
+}
+
+.text-\[9px\] {
+  font-size: 11px !important;
+  line-height: 1.5 !important;
+}
+
+.text-\[10px\] {
+  font-size: 11px !important;
+  line-height: 1.5 !important;
+}
+
+.text-\[11px\] {
+  font-size: 11px !important;
+  line-height: 1.5 !important;
+}

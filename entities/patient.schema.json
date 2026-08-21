@@ -1,0 +1,317 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/patient.schema.json",
+  "title": "Patient",
+  "description": "Dental clinic patient management schema",
+  "type": "object",
+  "properties": {
+    "patient_id": {
+      "type": "string",
+      "title": "Patient ID",
+      "description": "Unique patient identifier"
+    },
+    "full_name": {
+      "type": "string",
+      "title": "Full Name",
+      "description": "Patient's full name",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "first_name": {
+      "type": "string",
+      "title": "First Name",
+      "description": "Patient's first name",
+      "maxLength": 100
+    },
+    "last_name": {
+      "type": "string",
+      "title": "Last Name",
+      "description": "Patient's last name",
+      "maxLength": 100
+    },
+    "phone": {
+      "type": "string",
+      "title": "Phone",
+      "description": "Primary contact phone number",
+      "pattern": "^[+]?[0-9\\s\\-\\(\\)]{7,20}$"
+    },
+    "phone_secondary": {
+      "type": "string",
+      "title": "Secondary Phone",
+      "description": "Alternative phone number",
+      "pattern": "^[+]?[0-9\\s\\-\\(\\)]{7,20}$"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "title": "Email",
+      "description": "Email address",
+      "maxLength": 255
+    },
+    "birth_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Birth Date",
+      "description": "Date of birth (YYYY-MM-DD)"
+    },
+    "age": {
+      "type": "number",
+      "title": "Age",
+      "description": "Calculated age in years",
+      "minimum": 0,
+      "maximum": 150
+    },
+    "gender": {
+      "type": "string",
+      "title": "Gender",
+      "description": "Patient's gender",
+      "enum": ["Male", "Female", "Other"]
+    },
+    "address": {
+      "type": "string",
+      "title": "Address",
+      "description": "Full residential address",
+      "maxLength": 500
+    },
+    "city": {
+      "type": "string",
+      "title": "City",
+      "description": "City of residence",
+      "maxLength": 100
+    },
+    "region": {
+      "type": "string",
+      "title": "Region",
+      "description": "State/Province/Region",
+      "maxLength": 100
+    },
+    "passport_number": {
+      "type": "string",
+      "title": "Passport Number",
+      "description": "National ID or passport number",
+      "maxLength": 50
+    },
+    "emergency_contact": {
+      "type": "object",
+      "title": "Emergency Contact",
+      "description": "Emergency contact person information",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Contact person's name",
+          "maxLength": 255
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact person's phone",
+          "pattern": "^[+]?[0-9\\s\\-\\(\\)]{7,20}$"
+        },
+        "relationship": {
+          "type": "string",
+          "description": "Relationship to patient",
+          "maxLength": 50
+        }
+      },
+      "required": ["name", "phone"]
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "description": "Patient status in the clinic",
+      "enum": [
+        "Active",
+        "New",
+        "In Treatment",
+        "Waiting",
+        "Completed",
+        "Inactive",
+        "Archived"
+      ],
+      "default": "New"
+    },
+    "blood_type": {
+      "type": "string",
+      "title": "Blood Type",
+      "description": "Blood group",
+      "enum": ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"]
+    },
+    "allergies": {
+      "type": "array",
+      "title": "Allergies",
+      "description": "Known allergies",
+      "items": {
+        "type": "string",
+        "maxLength": 200
+      }
+    },
+    "medical_conditions": {
+      "type": "array",
+      "title": "Medical Conditions",
+      "description": "Chronic medical conditions",
+      "items": {
+        "type": "string",
+        "maxLength": 200
+      }
+    },
+    "medications": {
+      "type": "array",
+      "title": "Current Medications",
+      "description": "Currently taking medications",
+      "items": {
+        "type": "string",
+        "maxLength": 200
+      }
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes",
+      "description": "General patient notes",
+      "maxLength": 5000
+    },
+    "referral_source": {
+      "type": "string",
+      "title": "Referral Source",
+      "description": "How patient found the clinic",
+      "maxLength": 255
+    },
+    "referring_doctor": {
+      "type": "string",
+      "title": "Referring Doctor",
+      "description": "Doctor who referred the patient",
+      "maxLength": 255
+    },
+    "first_visit": {
+      "type": "string",
+      "format": "date",
+      "title": "First Visit",
+      "description": "Date of first visit"
+    },
+    "last_visit": {
+      "type": "string",
+      "format": "date",
+      "title": "Last Visit",
+      "description": "Date of most recent visit"
+    },
+    "next_appointment": {
+      "type": "string",
+      "format": "date",
+      "title": "Next Appointment",
+      "description": "Scheduled next appointment date"
+    },
+    "total_visits": {
+      "type": "number",
+      "title": "Total Visits",
+      "description": "Total number of visits",
+      "default": 0,
+      "minimum": 0
+    },
+    "total_paid": {
+      "type": "number",
+      "title": "Total Paid",
+      "description": "Total amount paid by patient",
+      "default": 0,
+      "minimum": 0
+    },
+    "total_debt": {
+      "type": "number",
+      "title": "Total Debt",
+      "description": "Outstanding balance",
+      "default": 0,
+      "minimum": 0
+    },
+    "discount_percent": {
+      "type": "number",
+      "title": "Discount %",
+      "description": "Permanent discount percentage",
+      "default": 0,
+      "minimum": 0,
+      "maximum": 100
+    },
+    "photo_url": {
+      "type": "string",
+      "format": "uri",
+      "title": "Photo URL",
+      "description": "URL to patient photo"
+    },
+    "documents": {
+      "type": "array",
+      "title": "Documents",
+      "description": "Patient documents (consent forms, X-rays, etc.)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Document name",
+            "maxLength": 255
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Document URL"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["consent", "xray", "photo", "lab", "insurance", "other"],
+            "description": "Document type"
+          },
+          "uploaded_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Upload timestamp"
+          }
+        },
+        "required": ["name", "url"]
+      }
+    },
+    "is_vip": {
+      "type": "boolean",
+      "title": "VIP Patient",
+      "description": "Whether patient has VIP status",
+      "default": false
+    },
+    "communication_preferences": {
+      "type": "object",
+      "title": "Communication Preferences",
+      "description": "Preferred communication methods",
+      "properties": {
+        "sms": {
+          "type": "boolean",
+          "default": true
+        },
+        "email": {
+          "type": "boolean",
+          "default": false
+        },
+        "telegram": {
+          "type": "boolean",
+          "default": false
+        },
+        "whatsapp": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At",
+      "description": "Record creation timestamp"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At",
+      "description": "Last update timestamp"
+    },
+    "created_by": {
+      "type": "string",
+      "title": "Created By",
+      "description": "User who registered the patient",
+      "maxLength": 100
+    }
+  },
+  "required": ["full_name", "phone"],
+  "additionalProperties": false
+}

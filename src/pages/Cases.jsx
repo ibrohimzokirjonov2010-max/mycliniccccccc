@@ -1,0 +1,978 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Camera, Plus, Search, Filter, Image as ImageIcon, Sparkles, X, ChevronRight, ChevronLeft, Pen, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { base44 } from '@/api/base44Client';
+import { db } from '@/api/supabaseClient';
+import { toast } from 'sonner';
+
+// Mock Data for Initial State
+const MOCK_CASES = [
+  {
+    id: 1,
+    doctor: "Dr. Shahobiddin",
+    patientname: "M. Aziza",
+    date: "2026-05-20",
+    tags: ["Implant", "Estetika"],
+    images: {
+      before: "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&q=80&w=400",
+      after: "https://images.unsplash.com/photo-1598256989800-fea5ce5146f2?auto=format&fit=crop&q=80&w=400"
+    },
+    description: "21, 22-tishlarga zirkon qoplamalar va implant o'rnatildi."
+  },
+  {
+    id: 2,
+    doctor: "Dr. Shahobiddin",
+    patientname: "K. Sardor",
+    date: "2026-05-21",
+    tags: ["Breket", "Ortodontiya"],
+    images: {
+      before: "https://images.unsplash.com/photo-1598256989800-fea5ce5146f2?auto=format&fit=crop&q=80&w=400", // Just placeholders
+      after: "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&q=80&w=400"
+    },
+    description: "6 oylik natija. Tishlar qatori to'g'irlandi."
+  },
+  {
+    id: 3,
+    doctor: "Dr. Shahobiddin",
+    patientname: "O. Jamila",
+    date: "2026-05-22",
+    tags: ["Restavratsiya", "Karies"],
+    images: {
+      before: "https://images.unsplash.com/photo-1445543949571-ffc3e0e2f55e?auto=format&fit=crop&q=80&w=400",
+      after: "https://images.unsplash.com/photo-1527613426441-4da17471b66d?auto=format&fit=crop&q=80&w=400"
+    },
+    description: "Frontal tishlarni kompozit material bilan tiklash."
+  }
+];
+
+export default function Cases() {
+  const [cases, setCases] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const clinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTag, setActiveTag] = useState("Barchasi");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCase, setSelectedCase] = useState(null);
+  const [dbPatients, setDbPatients] = useState([]);
+  const [dbDoctors, setDbDoctors] = useState([]);
+  const [customTags, setCustomTags] = useState([]);
+  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
+
+  useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
+      try {
+        // Individual fetches to be more robust if a table is missing
+        const [pts, docs] = await Promise.all([
+          base44.entities.Patient.list('full_name', 500).catch(() => []),
+          base44.entities.User.list('name', 50).catch(() => [])
+        ]);
+        setDbPatients(pts || []);
+        setDbDoctors((docs || []).filter(u => u.role === 'doctor' || u.role === 'admin'));
+
+        // Fetch Cases
+        try {
+          const dbCases = await base44.entities.Case.list();
+          setCases(dbCases || []);
+        } catch (e) {
+          console.warn("Cases fetch error:", e);
+          setCases(MOCK_CASES);
+        }
+
+        // Fetch Categories
+        try {
+          const catData = await base44.entities.CaseCategory.list();
+          if (catData) {
+            setCustomTags(catData.map(c => c.name));
+          }
+        } catch (e) {
+          console.warn("Categories fetch error:", e);
+        }
+
+      } catch (err) {
+        console.error("Umumiy yuklashda xatolik:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, [clinicId]);
+
+  const ALL_TAGS = ["Barchasi", ...new Set([...cases.flatMap(c => c.tags), ...customTags])];
+
+  const handleAddTag = async (tagName) => {
+    if (!tagName || !tagName.trim()) return;
+    const trimmed = tagName.trim();
+    
+    if (ALL_TAGS.includes(trimmed)) {
+      toast.error("Ushbu kategoriya allaqachon mavjud");
+      return;
+    }
+
+    try {
+      const saved = await base44.entities.CaseCategory.create({
+        name: trimmed
+      });
+
+      if (saved) {
+        setCustomTags([...customTags, trimmed]);
+        setActiveTag(trimmed);
+        setIsTagModalOpen(false);
+        toast.success(`"${trimmed}" kategoriyasi doimiy saqlandi`);
+      }
+    } catch (e) {
+      console.warn("Bazaga saqlab bo'mladi (jadval yaratilmagan bo'lishi mumkin), vaqtinchalik saqlanadi:", e.message);
+      setCustomTags([...customTags, trimmed]);
+      setActiveTag(trimmed);
+      setIsTagModalOpen(false);
+    }
+  };
+
+  // Filter cases logic
+  const filteredCases = cases.filter(c => {
+    const name = c.patientname || c.patient_name || c.patientName || "";
+    const tags = c.tags || [];
+    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          tags.join("").toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesTag = activeTag === "Barchasi" || tags.includes(activeTag);
+    return matchesSearch && matchesTag;
+  });
+
+  return (
+    <div className="min-h-screen bg-slate-50/50 text-slate-900 p-8 relative overflow-hidden">
+      {/* Background decorations */}
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#1499AD]/10 rounded-full blur-[120px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none translate-y-1/3 -translate-x-1/3" />
+
+      <div className="max-w-7xl mx-auto relative z-10">
+        
+        {/* HEADER SECTION */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+          <div>
+            <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
+              Klinik <span className="text-[#1499AD]">Keyslar</span>
+            </h1>
+            <p className="text-slate-500 mt-2 font-bold text-sm uppercase tracking-widest opacity-60">Bemorlarning oldin va keyingi davolash natijalari</p>
+          </div>
+
+          <Button 
+            onClick={() => setIsModalOpen(true)}
+            size="lg" 
+            className="bg-gradient-to-r from-[#1499AD] to-[#0E7A8A] hover:from-[#1acced] hover:to-[#1499AD] text-white shadow-xl shadow-[#1499AD]/20 rounded-2xl h-14 px-8 text-sm uppercase tracking-widest font-black"
+          >
+            <Camera className="w-5 h-5 mr-3" />
+            Yangi Keys Qo'shish
+          </Button>
+        </div>
+
+        {/* FILTERS & SEARCH */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10">
+          <div className="lg:col-span-3">
+            <div className="flex bg-white border border-slate-200 rounded-3xl p-1.5 overflow-x-auto no-scrollbar gap-1.5 shadow-sm shadow-slate-200/50">
+              {ALL_TAGS.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => setActiveTag(tag)}
+                  className={`px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all duration-500 ${
+                    activeTag === tag 
+                      ? 'bg-[#1499AD] text-white shadow-xl shadow-[#1499AD]/20' 
+                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
+              <button
+                onClick={() => setIsTagModalOpen(true)}
+                className="px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap border-2 border-dashed border-[#1499AD]/30 text-[#1499AD] hover:bg-[#1499AD]/5 transition-all flex items-center gap-2 ml-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Yangi Kategoriya</span>
+              </button>
+            </div>
+          </div>
+          <div className="lg:col-span-1 relative">
+            <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-300" />
+            </div>
+            <Input 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Keys qidirish..." 
+              className="w-full h-[60px] bg-white border-slate-200 pl-14 rounded-3xl text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-[#1499AD]/10 focus:border-[#1499AD] shadow-sm shadow-slate-200/50"
+            />
+          </div>
+        </div>
+
+        {/* MASONRY GRID OF CASES */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4 bg-white/5 rounded-[2.5rem] border border-white/5 border-dashed">
+             <div className="w-12 h-12 border-4 border-[#1499AD]/20 border-t-[#1499AD] rounded-full animate-spin" />
+             <p className="text-slate-400 font-bold uppercase tracking-tight text-[10px]">Ma'lumotlar bazadan yuklanmoqda...</p>
+          </div>
+        ) : (
+          <>
+            <div className="columns-1 md:columns-2 lg:columns-3 lg:gap-6 gap-4 space-y-4 lg:space-y-6">
+              <AnimatePresence>
+                {filteredCases.map((c, i) => (
+                  <motion.div 
+                    key={c.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.4, delay: i * 0.1 }}
+                    className="break-inside-avoid"
+                  >
+                    <CaseCard data={c} onClick={() => setSelectedCase(c)} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+
+            {filteredCases.length === 0 && (
+              <div className="py-32 flex flex-col items-center justify-center text-slate-500 bg-white/5 rounded-[3rem] border border-white/5 border-dashed">
+                <ImageIcon className="w-16 h-16 mb-4 opacity-50" />
+                <p className="text-lg font-bold">Hech qanday keys topilmadi</p>
+                <p className="text-sm mt-1">Boshqa so'z bilan qidirib ko'ring yoki yangi qo'shing</p>
+              </div>
+            )}
+          </>
+        )}
+
+      </div>
+
+      {/* BEFORE / AFTER SLIDER MODAL */}
+      <AnimatePresence>
+         {selectedCase && (
+           <CaseDetailModal data={selectedCase} onClose={() => setSelectedCase(null)} />
+         )}
+      </AnimatePresence>
+
+      <CaseUploadModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        existingTags={ALL_TAGS.filter(t => t !== "Barchasi")}
+        patients={dbPatients}
+        doctors={dbDoctors.map(d => d.name || d.full_name)}
+        onSave={async (newCase) => {
+          const loadingToast = toast.loading("Rasmlar serverga yuklanmoqda...");
+          try {
+             // 1. Upload images to Supabase Storage if they are base64
+             let finalImages = { ...newCase.images };
+             const timestamp = Date.now();
+             const patientSlug = (newCase.patientname || 'case').replace(/\s+/g, '_').toLowerCase();
+             
+             try {
+               // Upload BEFORE image
+               if (newCase.images.before && newCase.images.before.startsWith('data:')) {
+                 const beforeUrl = await db.storage.uploadFile(
+                   'cases', 
+                   `${clinicId}/${patientSlug}_${timestamp}_before.jpg`, 
+                   newCase.images.before
+                 );
+                 finalImages.before = beforeUrl;
+               }
+
+               // Upload AFTER image
+               if (newCase.images.after && newCase.images.after.startsWith('data:')) {
+                 const afterUrl = await db.storage.uploadFile(
+                   'cases', 
+                   `${clinicId}/${patientSlug}_${timestamp}_after.jpg`, 
+                   newCase.images.after
+                 );
+                 finalImages.after = afterUrl;
+               }
+               toast.loading("Ma'lumotlar bazaga yozilmoqda...", { id: loadingToast });
+             } catch (storageErr) {
+               console.warn("Storage upload failed, falling back to base64:", storageErr);
+               // We continue with original base64 images if storage upload fails
+               // this ensures the app works even if the user hasn't set up buckets yet
+             }
+
+             // 2. Save the case record with image URLs
+             const caseToSave = {
+                ...newCase,
+                images: finalImages,
+                clinic_id: clinicId
+             };
+
+             const saved = await base44.entities.Case.create(caseToSave);
+             
+             if (saved) {
+                const enriched = {
+                  ...saved,
+                  images: saved.images || finalImages
+                };
+                setCases(prev => [enriched, ...prev]);
+                toast.success("Keys professional darajada saqlandi!", { id: loadingToast });
+                setIsModalOpen(false);
+             } else {
+                toast.error("Saqlashda noma'lum xatolik", { id: loadingToast });
+             }
+          } catch (e) {
+             console.error("Save error:", e);
+             toast.error(e.message || "Xatolik yuz berdi", { id: loadingToast });
+          }
+        }} 
+      />
+
+      <AddTagModal 
+        isOpen={isTagModalOpen} 
+        onClose={() => setIsTagModalOpen(false)} 
+        onAdd={handleAddTag} 
+      />
+
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                         CUSTOM ADD TAG MODAL                               */
+/* -------------------------------------------------------------------------- */
+function AddTagModal({ isOpen, onClose, onAdd }) {
+  const [tagName, setTagName] = useState("");
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="w-full max-w-md bg-white p-10 rounded-[2.5rem] shadow-2xl relative"
+      >
+        <button onClick={onClose} className="absolute top-8 right-8 text-slate-300 hover:text-slate-900">
+          <X className="w-6 h-6" />
+        </button>
+
+        <div className="mb-8 overflow-hidden inline-flex p-3 bg-[#1499AD]/10 rounded-2xl">
+          <Sparkles className="w-6 h-6 text-[#1499AD]" />
+        </div>
+        
+        <h3 className="text-2xl font-black text-slate-900 mb-2">Yangi Kategoriya</h3>
+        <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mb-8">Keyslarni guruhlash uchun nom kiriting</p>
+
+        <div className="space-y-6">
+          <Input 
+             autoFocus
+             value={tagName}
+             onChange={e => setTagName(e.target.value)}
+             onKeyDown={e => e.key === 'Enter' && onAdd(tagName)}
+             placeholder="Masalan: Implantatsiya..."
+             className="h-16 rounded-2xl bg-slate-50 border-slate-100 text-lg px-6 focus:ring-2 focus:ring-[#1499AD]/10"
+          />
+          
+          <div className="flex gap-3 pt-2">
+            <Button variant="ghost" onClick={onClose} className="flex-1 h-14 rounded-xl font-black text-xs text-slate-400 uppercase tracking-widest">Bekor</Button>
+            <Button onClick={() => onAdd(tagName)} className="flex-1 h-14 rounded-xl bg-[#1499AD] hover:bg-[#0E7A8A] font-black text-xs text-white uppercase tracking-widest shadow-lg shadow-[#1499AD]/20">Qo'shish</Button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                 CASE CARD                                  */
+/* -------------------------------------------------------------------------- */
+function CaseCard({ data, onClick }) {
+  // We show only the "After" image as a cover, with a hint for 'Before & After'
+  return (
+    <div 
+      onClick={onClick}
+      className="group relative bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden cursor-pointer hover:border-[#1499AD]/30 transition-all duration-700 hover:shadow-2xl hover:shadow-[#1499AD]/10 hover:-translate-y-1"
+    >
+      <div className="relative w-full overflow-hidden aspect-[4/5]">
+        <img 
+          src={data.images?.after || data.image_after || "/placeholder-dentist.jpg"} 
+          alt="Natija" 
+          className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+        />
+        
+        {/* Floating Badge */}
+        <div className="absolute top-5 right-5 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 border border-white">
+          <Sparkles className="w-4 h-4 text-[#1499AD]" />
+          <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Natija</span>
+        </div>
+        
+        {/* Overlay gradient for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent" />
+      </div>
+
+      <div className="absolute bottom-0 left-0 right-0 p-8">
+        <div className="flex flex-wrap gap-2 mb-4">
+          {data.tags.map(tag => (
+            <span key={tag} className="px-3 py-1.5 bg-white/20 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider rounded-lg border border-white/10">
+              {tag}
+            </span>
+          ))}
+        </div>
+        <h3 className="text-white font-black text-2xl leading-tight mb-2 tracking-tight">{data.patientname || data.patient_name || data.patientName}</h3>
+        <p className="text-white/70 text-xs font-bold line-clamp-2 uppercase tracking-wide leading-relaxed">{data.description}</p>
+        <div className="mt-6 pt-6 border-t border-white/10 flex items-center justify-between text-[10px] text-white/50 font-black uppercase tracking-[0.2em]">
+            <span>{data.doctor}</span>
+            <span className="bg-white/10 px-3 py-1 rounded-full">{data.date}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+/* -------------------------------------------------------------------------- */
+/*                             BEFORE / AFTER MODAL                           */
+/* -------------------------------------------------------------------------- */
+function CaseDetailModal({ data, onClose }) {
+  const [sliderPos, setSliderPos] = useState(50);
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [color, setColor] = useState('#1499AD');
+  
+  const canvasRef = useRef(null);
+  const isDrawing = useRef(false);
+  const lastPos = useRef({ x: 0, y: 0 });
+
+  // Update canvas internal resolution to match container size
+  useEffect(() => {
+    const handleResize = () => {
+      if (canvasRef.current) {
+        const parent = canvasRef.current.parentElement;
+        const width = parent.clientWidth;
+        const height = parent.clientHeight;
+        
+        // Save old drawing if any
+        const ctx = canvasRef.current.getContext('2d');
+        const imgData = ctx.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
+        
+        canvasRef.current.width = width;
+        canvasRef.current.height = height;
+        
+        if(imgData.width > 0) ctx.putImageData(imgData, 0, 0); // basic restoration
+      }
+    };
+    
+    // Initial size
+    setTimeout(handleResize, 100);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const getPos = (e) => {
+     const rect = canvasRef.current.getBoundingClientRect();
+     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+     return {
+       x: clientX - rect.left,
+       y: clientY - rect.top
+     };
+  };
+
+  const startDrawing = (e) => {
+    if (!isDrawingMode) return;
+    isDrawing.current = true;
+    lastPos.current = getPos(e);
+  };
+
+  const draw = (e) => {
+    if (!isDrawingMode || !isDrawing.current) return;
+    e.preventDefault(); // prevent scrolling
+    const ctx = canvasRef.current.getContext('2d');
+    const pos = getPos(e);
+    
+    ctx.beginPath();
+    ctx.moveTo(lastPos.current.x, lastPos.current.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    
+    lastPos.current = pos;
+  };
+
+  const stopDrawing = () => {
+    isDrawing.current = false;
+  };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const handleSliderMove = (e) => {
+    if (isDrawingMode) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+    const percentage = (x / rect.width) * 100;
+    setSliderPos(percentage);
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 overflow-y-auto bg-white/95 backdrop-blur-3xl"
+    >
+      {/* HEADER TOOLS - Sticky for better mobile UX */}
+      <div className="sticky top-0 right-0 left-0 flex items-center justify-end gap-3 p-4 lg:p-8 z-[60] bg-white/50 backdrop-blur-sm pointer-events-none">
+        
+        {/* Drawing Tools */}
+        <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 p-1.5 rounded-2xl shadow-xl pointer-events-auto">
+          <button 
+            onClick={() => setIsDrawingMode(!isDrawingMode)}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${isDrawingMode ? 'bg-[#1499AD] text-white shadow-[0_0_15px_rgba(20,153,173,0.5)]' : 'text-slate-400 hover:text-white hover:bg-slate-200'}`}
+          >
+            <Pen className="w-4 h-4" />
+          </button>
+          
+          {isDrawingMode && (
+             <div className="flex items-center gap-1.5 px-2 border-l border-slate-300">
+               {['#ef4444', '#eab308', '#22c55e', '#1499AD', '#000000'].map(c => (
+                 <button 
+                    key={c} 
+                    onClick={() => setColor(c)}
+                    className={`w-5 h-5 rounded-full border-2 ${color === c ? 'border-slate-900 scale-110' : 'border-white'}`}
+                    style={{ backgroundColor: c }}
+                 />
+               ))}
+               <button onClick={clearCanvas} className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-rose-500">
+                 <Trash2 className="w-4 h-4" />
+               </button>
+             </div>
+          )}
+        </div>
+
+        <button 
+          onClick={onClose}
+          className="w-10 h-10 bg-slate-200 text-slate-600 rounded-2xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-colors pointer-events-auto shadow-sm"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="w-full min-h-full flex flex-col xl:flex-row gap-6 p-4 lg:p-8 max-w-[1600px] mx-auto pb-20">
+        
+        {/* BIG SLIDER CONTAINER */}
+        <div className="w-full xl:w-[75%] h-[50vh] sm:h-[60vh] xl:h-[85vh] relative rounded-[2rem] overflow-hidden bg-[#0C1222] border border-white/10 shadow-2xl flex-shrink-0"
+             onMouseMove={handleSliderMove}
+             onTouchMove={handleSliderMove}
+        >
+          {/* AFTER */}
+          <div className="absolute inset-0 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${data.images?.after || data.image_after})` }} />
+          
+          {/* BEFORE */}
+          <div 
+             className="absolute inset-0 bg-contain bg-center bg-no-repeat" 
+             style={{ 
+               backgroundImage: `url(${data.images?.before || data.image_before || data.images?.after || data.image_after})`,
+               clipPath: `inset(0 ${100 - sliderPos}% 0 0)`
+             }} 
+          />
+
+          {/* SLIDER HANDLE */}
+          {!isDrawingMode && (
+            <div 
+              className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_15px_rgba(0,0,0,0.8)] cursor-col-resize flex items-center justify-center -translate-x-[50%]"
+              style={{ left: `${sliderPos}%` }}
+            >
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-2xl text-[#0C1222] border-4 border-[#0C1222]">
+                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 ml-1" />
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 -ml-1" />
+              </div>
+            </div>
+          )}
+
+          {/* CANVAS FOR DRAWING OVERLAY */}
+          <canvas
+             ref={canvasRef}
+             className={`absolute inset-0 z-10 w-full h-full ${isDrawingMode ? 'cursor-crosshair' : 'pointer-events-none'}`}
+             onMouseDown={startDrawing}
+             onMouseMove={draw}
+             onMouseUp={stopDrawing}
+             onMouseLeave={stopDrawing}
+             onTouchStart={startDrawing}
+             onTouchMove={draw}
+             onTouchEnd={stopDrawing}
+          />
+
+          {/* LABELS */}
+          <div className="absolute top-4 left-4 sm:top-6 sm:left-6 group/label pointer-events-none">
+            <motion.div 
+               initial={{ x: -20, opacity: 0 }}
+               animate={{ x: 0, opacity: 1 }}
+               className="bg-black/80 backdrop-blur-md px-4 py-2 rounded-xl text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] border border-white/10 shadow-2xl"
+            >
+              Oldin <span className="text-[8px] opacity-40 ml-1 font-bold">Holat</span>
+            </motion.div>
+          </div>
+          
+          <div className="absolute top-4 right-4 sm:top-6 sm:right-6 group/label pointer-events-none">
+            <motion.div 
+               initial={{ x: 20, opacity: 0 }}
+               animate={{ x: 0, opacity: 1 }}
+               className="bg-[#1499AD] backdrop-blur-md px-4 py-2 rounded-xl text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] shadow-xl shadow-[#1499AD]/40"
+            >
+              Keyin <span className="text-[8px] text-white/50 ml-1 font-bold">Natija</span>
+            </motion.div>
+          </div>
+          
+          {isDrawingMode && (
+            <motion.div 
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-xl px-8 py-3.5 rounded-2xl border border-white/10 text-white text-[11px] font-black uppercase tracking-widest shadow-2xl pointer-events-none flex items-center gap-3"
+            >
+              <Pen className="w-4 h-4 text-[#1499AD]" />
+              Bemoringizga klinik holatni tushuntiring
+            </motion.div>
+          )}
+        </div>
+
+        {/* INFO PANEL */}
+        <div className="w-full xl:w-[25%] bg-[#1A2235] p-6 sm:p-8 rounded-[2rem] border border-white/10 relative shadow-2xl min-h-fit">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#1499AD]/10 blur-[80px] rounded-full pointer-events-none" />
+          
+          <h2 className="text-2xl sm:text-3xl font-black text-white relative z-10 mb-2">{data.patientname || data.patient_name || data.patientName}</h2>
+          <div className="inline-block bg-[#1499AD]/20 border border-[#1499AD]/30 text-[#1499AD] font-black text-[10px] tracking-widest uppercase px-3 py-1.5 rounded-lg mb-6 sm:mb-8">
+             {data.date}
+          </div>
+          
+          <div className="space-y-6 sm:space-y-8 relative z-10">
+            <div>
+              <h4 className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2">
+                 <Sparkles className="w-3 h-3" /> Davolovchi Shifokor
+              </h4>
+              <div className="flex items-center gap-3 bg-white/5 p-4 rounded-2xl border border-white/5">
+                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center font-black text-lg shadow-lg">
+                   {(data.doctor || "D")[0]}
+                 </div>
+                 <span className="text-white font-bold text-base sm:text-lg">{data.doctor}</span>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3">Teglar (Kategoriyalar)</h4>
+              <div className="flex flex-wrap gap-2">
+                {(data.tags || []).map(tag => (
+                  <span key={tag} className="px-3 py-2 bg-[#0C1222] border border-white/10 text-white text-[10px] font-black uppercase tracking-wider rounded-xl shadow-inner">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="pb-4">
+              <h4 className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3">Tavsif va Izoh</h4>
+              <p className="text-slate-300 text-sm sm:text-base leading-relaxed bg-white/5 p-4 sm:p-5 rounded-2xl border border-white/5 whitespace-pre-wrap">
+                {data.description || "Izoh kiritilmagan."}
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </motion.div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/*                          IMAGE COMPRESSION UTILITY                         */
+/* -------------------------------------------------------------------------- */
+const compressImage = (base64Str, maxWidth = 1200, quality = 0.7) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > maxWidth) {
+          height *= maxWidth / width;
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxWidth) {
+          width *= maxWidth / height;
+          height = maxWidth;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(base64Str);
+  });
+};
+
+/* -------------------------------------------------------------------------- */
+/*                          UPLOAD/ADD NEW CASE MODAL                         */
+/* -------------------------------------------------------------------------- */
+function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients = [], doctors = [] }) {
+  const [beforeImg, setBeforeImg] = useState(null);
+  const [afterImg, setAfterImg] = useState(null);
+  const [description, setDescription] = useState("");
+ 
+  const [selectedDoctor, setSelectedDoctor] = useState("");
+  const [patientSearch, setPatientSearch] = useState("");
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+ 
+  const [selectedTags, setSelectedTags] = useState([]);
+ 
+  useEffect(() => {
+    if(doctors.length > 0 && !selectedDoctor) setSelectedDoctor(doctors[0]);
+  }, [doctors, selectedDoctor]);
+ 
+  if (!isOpen) return null;
+ 
+  const handleImageUpload = async (e, type) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const compressed = await compressImage(reader.result);
+        if (type === 'before') setBeforeImg(compressed);
+        else setAfterImg(compressed);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+ 
+  const handleSave = (e) => {
+    if (e) e.preventDefault();
+    if(!selectedPatient) {
+      toast.error("Iltimos bemorni tanlang");
+      return;
+    }
+    if(!afterImg) {
+      toast.error("Kamida 'Keyin' rasmini yuklang");
+      return;
+    }
+    
+    // UI expects images.before and images.after
+    const caseData = {
+      doctor: selectedDoctor || "Noma'lum",
+      patientname: selectedPatient.full_name || selectedPatient.name,
+      patient_id: selectedPatient.id,
+      date: new Date().toISOString().split('T')[0],
+      tags: selectedTags.length > 0 ? selectedTags : ["Yangi"],
+      images: {
+        before: beforeImg || afterImg, 
+        after: afterImg
+      },
+      description
+    };
+
+    onSave(caseData);
+    
+    setBeforeImg(null);
+    setAfterImg(null);
+    setSelectedPatient(null);
+    setPatientSearch("");
+    setSelectedTags([]);
+    setDescription("");
+  };
+ 
+  const toggleTag = (tag) => {
+    if (selectedTags.includes(tag)) {
+       setSelectedTags(selectedTags.filter(t => t !== tag));
+    } else {
+       setSelectedTags([...selectedTags, tag]);
+    }
+  };
+ 
+  const filteredPatients = patients.filter(p => {
+    const nameStr = (p.full_name || p.name || '').toLowerCase();
+    const phoneStr = p.phone || '';
+    const searchStr = patientSearch.toLowerCase();
+    return nameStr.includes(searchStr) || phoneStr.includes(searchStr);
+  }).slice(0, 15);
+ 
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-8 bg-slate-900/60 backdrop-blur-md">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 30 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 30 }}
+        className="w-full max-w-4xl bg-white p-12 rounded-[3.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.2)] relative max-h-[90vh] overflow-y-auto no-scrollbar border border-slate-100"
+      >
+        <button onClick={onClose} className="absolute top-10 right-10 w-12 h-12 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-slate-900 rounded-full transition-all">
+          <X className="w-6 h-6" />
+        </button>
+ 
+        <div className="mb-12">
+          <h2 className="text-4xl font-black text-slate-900 mb-3 tracking-tight">Yangi <span className="text-[#1499AD]">Keys</span> Qo'shish</h2>
+          <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">Davolash natijalari portfoliosi</p>
+        </div>
+ 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+           {/* BEFORE IMAGE UPLOAD */}
+           <label className="h-64 rounded-[2.5rem] border-2 border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center hover:border-[#1499AD] transition-all cursor-pointer group relative overflow-hidden">
+             <input type="file" accept="image/*" className="hidden" capture="environment" onChange={(e) => handleImageUpload(e, 'before')} />
+             {beforeImg ? (
+                <img src={beforeImg} alt="Before" className="w-full h-full object-cover" />
+             ) : (
+               <div className="text-center p-6">
+                 <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-slate-200 mx-auto mb-4 shadow-sm group-hover:text-[#1499AD] transition-colors">
+                    <ImageIcon className="w-8 h-8" />
+                 </div>
+                 <span className="text-slate-400 font-black text-xs uppercase tracking-widest block">"Oldin" holati</span>
+               </div>
+             )}
+           </label>
+ 
+           {/* AFTER IMAGE UPLOAD */}
+           <label className="h-64 rounded-[2.5rem] border-2 border-dashed border-emerald-200 bg-emerald-50/20 flex flex-col items-center justify-center hover:border-emerald-500 transition-all cursor-pointer group relative overflow-hidden">
+             <input type="file" accept="image/*" className="hidden" capture="environment" onChange={(e) => handleImageUpload(e, 'after')} />
+             {afterImg ? (
+                <img src={afterImg} alt="After" className="w-full h-full object-cover" />
+             ) : (
+               <div className="text-center p-6">
+                 <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-emerald-300 mx-auto mb-4 shadow-sm group-hover:text-emerald-500 transition-colors">
+                    <Sparkles className="w-8 h-8" />
+                 </div>
+                 <span className="text-emerald-500 font-black text-xs uppercase tracking-widest block">"Keyin" holati</span>
+               </div>
+             )}
+           </label>
+        </div>
+ 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+          <div className="space-y-8">
+            {/* Shifokor */}
+            <div>
+               <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1 mb-4 block">Davolovchi Shifokor</label>
+               <div className="flex flex-wrap gap-2">
+                 {doctors.map(doc => (
+                   <button 
+                     key={doc}
+                     type="button"
+                     onClick={() => setSelectedDoctor(doc)}
+                     className={`px-6 py-3 rounded-2xl text-[11px] font-black whitespace-nowrap transition-all border ${selectedDoctor === doc ? 'bg-slate-900 border-slate-900 text-white shadow-xl' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600'}`}
+                   >
+                     {doc}
+                   </button>
+                 ))}
+               </div>
+            </div>
+ 
+            {/* Bemor qidiruv */}
+            <div className="relative">
+               <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1 mb-4 block">Bemorni tanlash</label>
+               
+               {selectedPatient ? (
+                  <div className="flex items-center justify-between bg-slate-50 border border-slate-200 p-6 rounded-[2rem]">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-[#1499AD] text-white rounded-2xl flex items-center justify-center font-black text-lg shadow-lg">
+                        {(selectedPatient.full_name || selectedPatient.name)[0]}
+                      </div>
+                      <div>
+                        <div className="text-slate-900 font-black text-base">{selectedPatient.full_name || selectedPatient.name}</div>
+                        <div className="text-slate-400 text-xs font-bold mt-1 tracking-widest uppercase">{selectedPatient.phone || "—"}</div>
+                      </div>
+                    </div>
+                    <button onClick={() => setSelectedPatient(null)} className="text-slate-300 hover:text-rose-500 transition-colors p-3 bg-white rounded-xl shadow-sm">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+               ) : (
+                  <div className="relative">
+                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
+                    <Input 
+                      value={patientSearch}
+                      onChange={e => {
+                        setPatientSearch(e.target.value);
+                        setShowPatientDropdown(true);
+                      }}
+                      onFocus={() => setShowPatientDropdown(true)}
+                      placeholder="Bemorning ismi yoki raqami..." 
+                      className="bg-slate-50 border-slate-100 text-slate-900 placeholder:text-slate-300 h-16 pl-16 rounded-[2rem] focus:ring-2 focus:ring-[#1499AD]/10 focus:border-[#1499AD] text-base" 
+                    />
+                    
+                    {showPatientDropdown && (
+                      <div className="absolute top-full left-0 right-0 mt-4 bg-white border border-slate-100 rounded-[2.5rem] shadow-2xl max-h-60 overflow-y-auto no-scrollbar z-20">
+                        {filteredPatients.length > 0 ? (
+                          filteredPatients.map(p => (
+                            <div 
+                              key={p.id} 
+                              onClick={() => {
+                                setSelectedPatient(p);
+                                setShowPatientDropdown(false);
+                              }}
+                              className="p-6 border-b border-slate-50 hover:bg-slate-50 cursor-pointer flex justify-between items-center transition-colors"
+                            >
+                              <span className="text-slate-900 text-sm font-black">{p.full_name || p.name}</span>
+                              <span className="text-slate-400 text-[10px] font-black uppercase tracking-widest">{p.phone || "—"}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-8 text-slate-400 text-sm text-center font-bold">Bemor topilmadi...</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+               )}
+            </div>
+          </div>
+ 
+          <div className="space-y-8">
+            {/* Kategoriyalar (Tags) */}
+            <div>
+               <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1 mb-4 block">Kategoriya / Teglar</label>
+               <div className="flex flex-wrap gap-2">
+                 {existingTags.map(tag => (
+                   <button
+                     key={tag}
+                     type="button"
+                     onClick={() => toggleTag(tag)}
+                     className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all border ${selectedTags.includes(tag) ? 'bg-[#1499AD] border-[#1499AD] text-white shadow-xl' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                   >
+                     {tag}
+                   </button>
+                 ))}
+                 <button
+                   type="button"
+                   onClick={() => {
+                     const n = window.prompt("Yangi kategoriya:");
+                     if(n && n.trim()) {
+                       toggleTag(n.trim());
+                     }
+                   }}
+                   className="px-4 py-3 rounded-2xl text-[10px] font-black border-2 border-dashed border-slate-200 text-slate-300 hover:border-[#1499AD] hover:text-[#1499AD] transition-all"
+                 >
+                   <Plus className="w-4 h-4" />
+                 </button>
+               </div>
+            </div>
+ 
+            <div>
+              <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1 mb-4 block">Batafsil Izoh (ixtiyoriy)</label>
+              <textarea 
+                value={description} 
+                onChange={e => setDescription(e.target.value)} 
+                placeholder="Davolash jarayoni haqida qisqacha izoh..." 
+                className="w-full bg-slate-50 border border-slate-100 text-slate-900 placeholder:text-slate-300 p-6 rounded-[2.5rem] focus:ring-2 focus:ring-[#1499AD]/10 focus:border-[#1499AD] outline-none min-h-[160px] text-sm leading-relaxed" 
+              />
+            </div>
+          </div>
+        </div>
+ 
+        <div className="flex items-center justify-end gap-4 mt-12 pt-8 border-t border-slate-100">
+          <Button type="button" variant="ghost" onClick={onClose} className="text-slate-400 hover:text-slate-900 hover:bg-slate-50 h-14 px-10 rounded-2xl font-black text-xs uppercase tracking-widest">BEKOR QILISH</Button>
+          <Button type="button" onClick={handleSave} className="bg-[#1499AD] hover:bg-[#0E7A8A] text-white h-14 px-12 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-[#1499AD]/30">KEYS SAQLASH</Button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}

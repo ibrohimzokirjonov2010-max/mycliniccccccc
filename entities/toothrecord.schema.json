@@ -1,0 +1,314 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/toothrecord.schema.json",
+  "title": "ToothRecord",
+  "description": "Individual tooth medical record and treatment history schema",
+  "type": "object",
+  "properties": {
+    "record_id": {
+      "type": "string",
+      "title": "Record ID",
+      "description": "Unique tooth record identifier"
+    },
+    "patient_id": {
+      "type": "string",
+      "title": "Patient ID",
+      "description": "Unique identifier of the patient"
+    },
+    "tooth_number": {
+      "type": "number",
+      "title": "Tooth Number",
+      "description": "FDI tooth numbering system (11-48)",
+      "minimum": 11,
+      "maximum": 48
+    },
+    "tooth_name": {
+      "type": "string",
+      "title": "Tooth Name",
+      "description": "Anatomical name of the tooth",
+      "maxLength": 100
+    },
+    "quadrant": {
+      "type": "number",
+      "title": "Quadrant",
+      "description": "Dental quadrant (1-4)",
+      "minimum": 1,
+      "maximum": 4
+    },
+    "tooth_type": {
+      "type": "string",
+      "title": "Tooth Type",
+      "description": "Type of tooth",
+      "enum": ["Incisor", "Canine", "Premolar", "Molar", "Wisdom"]
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "description": "Current visual/physical status of the tooth",
+      "enum": [
+        "Sog'lom",
+        "Karies",
+        "Davolangan",
+        "Jarayonda",
+        "Olib tashlangan",
+        "Implant",
+        "Crown",
+        "Bridge",
+        "Veneer",
+        "Filling",
+        "Root Canal Treated",
+        "Missing",
+        "Fractured",
+        "Mobility"
+      ],
+      "default": "Sog'lom"
+    },
+    "diagnosis": {
+      "type": "string",
+      "title": "Diagnosis",
+      "description": "Medical diagnosis of the tooth condition",
+      "enum": [
+        "Sog'lom",
+        "Karies",
+        "Pulpit",
+        "Periodontit",
+        "Olib tashlangan",
+        "Gingivit",
+        "Abrasion",
+        "Erosion",
+        "Hypersensitivity",
+        "Cracked Tooth",
+        "Root Resorption",
+        "Periapical Lesion",
+        "Cyst",
+        "Tumor"
+      ]
+    },
+    "diagnosis_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Diagnosis Date",
+      "description": "Date when current diagnosis was made"
+    },
+    "diagnosed_by": {
+      "type": "string",
+      "title": "Diagnosed By",
+      "description": "Doctor who made the diagnosis",
+      "maxLength": 100
+    },
+    "surface_affected": {
+      "type": "array",
+      "title": "Surface Affected",
+      "description": "Tooth surfaces affected by condition",
+      "items": {
+        "type": "string",
+        "enum": ["Mesial", "Distal", "Buccal", "Lingual", "Occlusal", "Incisal", "Cervical"]
+      }
+    },
+    "severity": {
+      "type": "string",
+      "title": "Severity",
+      "description": "Severity level of the condition",
+      "enum": ["Mild", "Moderate", "Severe", "Critical"]
+    },
+    "treatments": {
+      "type": "array",
+      "title": "Treatments",
+      "description": "Treatment history for this tooth",
+      "items": {
+        "type": "object",
+        "properties": {
+          "treatment_id": {
+            "type": "string",
+            "description": "Unique treatment identifier"
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of treatment performed",
+            "enum": [
+              "Examination",
+              "Cleaning",
+              "Filling",
+              "Root Canal",
+              "Extraction",
+              "Implant Placement",
+              "Crown Placement",
+              "Bridge Work",
+              "Veneer Placement",
+              "Periodontal Treatment",
+              "Restoration",
+              "Other"
+            ],
+            "maxLength": 100
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Treatment date"
+          },
+          "doctor": {
+            "type": "string",
+            "description": "Doctor who performed treatment",
+            "maxLength": 100
+          },
+          "assistant": {
+            "type": "string",
+            "description": "Assistant who helped",
+            "maxLength": 100
+          },
+          "materials_used": {
+            "type": "array",
+            "description": "Materials used in treatment",
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          "cost": {
+            "type": "number",
+            "description": "Treatment cost",
+            "minimum": 0
+          },
+          "notes": {
+            "type": "string",
+            "description": "Treatment notes",
+            "maxLength": 1000
+          },
+          "follow_up_required": {
+            "type": "boolean",
+            "description": "Whether follow-up is needed",
+            "default": false
+          },
+          "follow_up_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Scheduled follow-up date"
+          },
+          "outcome": {
+            "type": "string",
+            "description": "Treatment outcome",
+            "enum": ["Successful", "Partial", "Failed", "Ongoing", "Pending"],
+            "default": "Successful"
+          }
+        },
+        "required": ["type", "date", "doctor"]
+      }
+    },
+    "restorations": {
+      "type": "array",
+      "title": "Restorations",
+      "description": "Current restorations on this tooth",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["Filling", "Crown", "Veneer", "Inlay", "Onlay", "Bridge"],
+            "description": "Type of restoration"
+          },
+          "material": {
+            "type": "string",
+            "description": "Restoration material",
+            "maxLength": 100
+          },
+          "date_placed": {
+            "type": "string",
+            "format": "date",
+            "description": "When restoration was placed"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["Good", "Fair", "Poor", "Needs Replacement"],
+            "description": "Current condition of restoration"
+          }
+        },
+        "required": ["type", "material", "date_placed"]
+      }
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes",
+      "description": "General notes about this tooth",
+      "maxLength": 2000
+    },
+    "doctor": {
+      "type": "string",
+      "title": "Primary Doctor",
+      "description": "Primary dentist responsible for this tooth",
+      "maxLength": 100
+    },
+    "xray_urls": {
+      "type": "array",
+      "title": "X-Ray Images",
+      "description": "URLs to X-ray images of this tooth",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    },
+    "photos": {
+      "type": "array",
+      "title": "Photos",
+      "description": "Clinical photos of this tooth",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Photo URL"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Photo date"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["Before", "During", "After", "Follow-up"],
+            "description": "Type of photo"
+          }
+        },
+        "required": ["url", "date"]
+      }
+    },
+    "treatment_plan_id": {
+      "type": "string",
+      "title": "Treatment Plan ID",
+      "description": "ID of associated treatment plan"
+    },
+    "priority": {
+      "type": "string",
+      "title": "Priority",
+      "description": "Treatment priority for this tooth",
+      "enum": ["Low", "Normal", "High", "Urgent"],
+      "default": "Normal"
+    },
+    "next_appointment_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Next Appointment Date",
+      "description": "Scheduled next appointment for this tooth"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At",
+      "description": "Record creation timestamp"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At",
+      "description": "Last update timestamp"
+    },
+    "updated_by": {
+      "type": "string",
+      "title": "Updated By",
+      "description": "User who last updated the record",
+      "maxLength": 100
+    }
+  },
+  "required": ["patient_id", "tooth_number"],
+  "additionalProperties": false
+}

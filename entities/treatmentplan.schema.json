@@ -1,0 +1,379 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/treatmentplan.schema.json",
+  "title": "TreatmentPlan",
+  "description": "Comprehensive dental treatment planning and management schema",
+  "type": "object",
+  "properties": {
+    "plan_id": {
+      "type": "string",
+      "title": "Plan ID",
+      "description": "Unique treatment plan identifier"
+    },
+    "name": {
+      "type": "string",
+      "title": "Plan Name",
+      "description": "Name/title of the treatment plan",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "patient_id": {
+      "type": "string",
+      "title": "Patient ID",
+      "description": "Unique identifier of the patient"
+    },
+    "patient_name": {
+      "type": "string",
+      "title": "Patient Name",
+      "description": "Full name of the patient",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "description": "Current status of the treatment plan",
+      "enum": [
+        "Draft",
+        "Proposed",
+        "Planned",
+        "Approved",
+        "In Progress",
+        "On Hold",
+        "Completed",
+        "Cancelled",
+        "Rejected"
+      ],
+      "default": "Draft"
+    },
+    "priority": {
+      "type": "string",
+      "title": "Priority",
+      "description": "Urgency level of the treatment plan",
+      "enum": ["Low", "Medium", "High", "Urgent"],
+      "default": "Medium"
+    },
+    "tooth_numbers": {
+      "type": "array",
+      "title": "Tooth Numbers",
+      "description": "FDI tooth numbers involved in this plan",
+      "items": {
+        "type": "number",
+        "minimum": 11,
+        "maximum": 48
+      }
+    },
+    "primary_diagnosis": {
+      "type": "string",
+      "title": "Primary Diagnosis",
+      "description": "Main diagnosis requiring treatment",
+      "maxLength": 500
+    },
+    "treatment_objectives": {
+      "type": "array",
+      "title": "Treatment Objectives",
+      "description": "Goals of the treatment plan",
+      "items": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "services": {
+      "type": "array",
+      "title": "Services",
+      "description": "Planned services and procedures",
+      "items": {
+        "type": "object",
+        "properties": {
+          "service_id": {
+            "type": "string",
+            "description": "Service identifier"
+          },
+          "service_name": {
+            "type": "string",
+            "description": "Name of the service",
+            "maxLength": 255
+          },
+          "tooth_number": {
+            "type": "number",
+            "description": "Specific tooth for this service",
+            "minimum": 11,
+            "maximum": 48
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description of the service",
+            "maxLength": 1000
+          },
+          "price": {
+            "type": "number",
+            "description": "Service price",
+            "minimum": 0
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Number of units",
+            "default": 1,
+            "minimum": 1
+          },
+          "discount_percent": {
+            "type": "number",
+            "description": "Discount percentage for this service",
+            "default": 0,
+            "minimum": 0,
+            "maximum": 100
+          },
+          "final_price": {
+            "type": "number",
+            "description": "Price after discount",
+            "minimum": 0
+          },
+          "duration_minutes": {
+            "type": "number",
+            "description": "Estimated duration in minutes",
+            "minimum": 5
+          },
+          "sequence_order": {
+            "type": "number",
+            "description": "Order in which service should be performed",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "description": "Status of this service",
+            "enum": ["Pending", "Scheduled", "In Progress", "Completed", "Cancelled"],
+            "default": "Pending"
+          },
+          "scheduled_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Scheduled appointment date"
+          },
+          "appointment_id": {
+            "type": "string",
+            "description": "Associated appointment ID"
+          },
+          "doctor_assigned": {
+            "type": "string",
+            "description": "Doctor assigned to perform this service",
+            "maxLength": 100
+          },
+          "notes": {
+            "type": "string",
+            "description": "Service-specific notes",
+            "maxLength": 1000
+          }
+        },
+        "required": ["service_name", "price"]
+      }
+    },
+    "total_price": {
+      "type": "number",
+      "title": "Total Price",
+      "description": "Total planned cost",
+      "default": 0,
+      "minimum": 0
+    },
+    "total_discount": {
+      "type": "number",
+      "title": "Total Discount",
+      "description": "Total discount amount",
+      "default": 0,
+      "minimum": 0
+    },
+    "final_price": {
+      "type": "number",
+      "title": "Final Price",
+      "description": "Total after discounts",
+      "default": 0,
+      "minimum": 0
+    },
+    "amount_paid": {
+      "type": "number",
+      "title": "Amount Paid",
+      "description": "Total amount already paid",
+      "default": 0,
+      "minimum": 0
+    },
+    "balance_due": {
+      "type": "number",
+      "title": "Balance Due",
+      "description": "Remaining balance to be paid",
+      "default": 0
+    },
+    "payment_plan": {
+      "type": "object",
+      "title": "Payment Plan",
+      "description": "Payment installment plan",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "installments": {
+          "type": "number",
+          "description": "Number of installments",
+          "minimum": 1
+        },
+        "installment_amount": {
+          "type": "number",
+          "description": "Amount per installment",
+          "minimum": 0
+        },
+        "first_payment_date": {
+          "type": "string",
+          "format": "date",
+          "description": "First payment due date"
+        },
+        "frequency": {
+          "type": "string",
+          "enum": ["Weekly", "Bi-weekly", "Monthly"],
+          "default": "Monthly"
+        }
+      }
+    },
+    "materials_used": {
+      "type": "array",
+      "title": "Materials Used",
+      "description": "Materials required for this treatment plan",
+      "items": {
+        "type": "object",
+        "properties": {
+          "material_id": {
+            "type": "string",
+            "description": "Inventory material ID"
+          },
+          "material_name": {
+            "type": "string",
+            "description": "Name of the material",
+            "maxLength": 255
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quantity needed",
+            "minimum": 0
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit of measurement",
+            "maxLength": 50
+          },
+          "cost_per_unit": {
+            "type": "number",
+            "description": "Cost per unit",
+            "minimum": 0
+          },
+          "total_cost": {
+            "type": "number",
+            "description": "Total material cost",
+            "minimum": 0
+          },
+          "reserved": {
+            "type": "boolean",
+            "description": "Whether material is reserved from inventory",
+            "default": false
+          }
+        },
+        "required": ["material_name", "quantity"]
+      }
+    },
+    "estimated_duration_total": {
+      "type": "number",
+      "title": "Estimated Duration Total (min)",
+      "description": "Total estimated time for all services",
+      "minimum": 0
+    },
+    "proposed_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Proposed Date",
+      "description": "Date when plan was proposed to patient"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Start Date",
+      "description": "Planned or actual start date"
+    },
+    "estimated_completion_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Estimated Completion Date",
+      "description": "Expected completion date"
+    },
+    "actual_completion_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Actual Completion Date",
+      "description": "Actual date of completion"
+    },
+    "valid_until": {
+      "type": "string",
+      "format": "date",
+      "title": "Valid Until",
+      "description": "Quote validity expiration date"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes",
+      "description": "General notes about the treatment plan",
+      "maxLength": 5000
+    },
+    "patient_consent_obtained": {
+      "type": "boolean",
+      "title": "Patient Consent Obtained",
+      "description": "Whether patient has given consent",
+      "default": false
+    },
+    "consent_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Consent Date",
+      "description": "Date when consent was obtained"
+    },
+    "consent_document_url": {
+      "type": "string",
+      "format": "uri",
+      "title": "Consent Document URL",
+      "description": "URL to signed consent form"
+    },
+    "primary_doctor": {
+      "type": "string",
+      "title": "Primary Doctor",
+      "description": "Main dentist responsible for the plan",
+      "maxLength": 100
+    },
+    "created_by": {
+      "type": "string",
+      "title": "Created By",
+      "description": "User who created the plan",
+      "maxLength": 100
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At",
+      "description": "Record creation timestamp"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At",
+      "description": "Last update timestamp"
+    },
+    "approved_by": {
+      "type": "string",
+      "title": "Approved By",
+      "description": "Doctor who approved the plan",
+      "maxLength": 100
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Approved At",
+      "description": "Approval timestamp"
+    }
+  },
+  "required": ["name", "patient_id", "patient_name"],
+  "additionalProperties": false
+}

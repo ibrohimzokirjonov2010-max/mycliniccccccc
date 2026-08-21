@@ -1,0 +1,260 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/implant.schema.json",
+  "title": "Implant",
+  "description": "Dental implant tracking schema for patient implant management",
+  "type": "object",
+  "properties": {
+    "patient_id": {
+      "type": "string",
+      "title": "Bemor ID",
+      "description": "Unique identifier for the patient"
+    },
+    "patient_name": {
+      "type": "string",
+      "title": "Bemor ismi",
+      "description": "Full name of the patient",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "patient_phone": {
+      "type": "string",
+      "title": "Telefon",
+      "description": "Patient contact phone number",
+      "pattern": "^[+]?[0-9\\s\\-\\(\\)]{7,20}$"
+    },
+    "tooth_numbers": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "minimum": 11,
+        "maximum": 48
+      },
+      "title": "Tish raqamlari",
+      "description": "FDI tooth numbering system (11-48)"
+    },
+    "implant_type": {
+      "type": "string",
+      "title": "Implant turi",
+      "description": "Type of dental implant",
+      "enum": ["Bone level", "Tissue level"]
+    },
+    "firma": {
+      "type": "string",
+      "title": "Firma",
+      "description": "Implant manufacturer company",
+      "enum": ["Nobel", "Osstem", "Straumann", "Nucleoss", "Boshqa"]
+    },
+    "firma_custom": {
+      "type": "string",
+      "title": "Firma (boshqa)",
+      "description": "Custom manufacturer name when 'Boshqa' is selected",
+      "maxLength": 100
+    },
+    "brend": {
+      "type": "string",
+      "title": "Brend / Model",
+      "description": "Specific brand and model of the implant",
+      "maxLength": 255
+    },
+    "diameter": {
+      "type": "number",
+      "title": "Diametr (mm)",
+      "description": "Implant diameter in millimeters",
+      "minimum": 2.0,
+      "maximum": 8.0
+    },
+    "length": {
+      "type": "number",
+      "title": "Uzunlik (mm)",
+      "description": "Implant length in millimeters",
+      "minimum": 5.0,
+      "maximum": 20.0
+    },
+    "lot_number": {
+      "type": "string",
+      "title": "Lot / Seriya raqami",
+      "description": "Manufacturer lot or serial number for traceability",
+      "maxLength": 100
+    },
+    "torque": {
+      "type": "number",
+      "title": "Torque (Ncm)",
+      "description": "Insertion torque value in Newton-centimeters",
+      "minimum": 10,
+      "maximum": 100
+    },
+    "isq": {
+      "type": "number",
+      "title": "Primary stability (ISQ)",
+      "description": "Implant Stability Quotient value",
+      "minimum": 1,
+      "maximum": 99
+    },
+    "bone_type": {
+      "type": "string",
+      "title": "Suyak turi",
+      "description": "Misch bone classification",
+      "enum": ["D1", "D2", "D3", "D4"]
+    },
+    "placed_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Implant qo'yilgan sana",
+      "description": "Date when implant was placed (YYYY-MM-DD)"
+    },
+    "doctor": {
+      "type": "string",
+      "title": "Shifokor",
+      "description": "Dentist who performed the implant procedure",
+      "maxLength": 255
+    },
+    "lifecycle_status": {
+      "type": "string",
+      "title": "Lifecycle holati",
+      "description": "Current status of the implant lifecycle",
+      "enum": [
+        "Rejalashtirilgan",
+        "O'rnatildi",
+        "Healing jarayoni",
+        "Abutment qo'yildi",
+        "Crown tayyor",
+        "Tugallangan",
+        "Failure"
+      ],
+      "default": "Rejalashtirilgan"
+    },
+    "timeline": {
+      "type": "array",
+      "title": "Tarix",
+      "description": "History of status changes and events",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Event timestamp"
+          },
+          "status": {
+            "type": "string",
+            "description": "Status at this point",
+            "maxLength": 100
+          },
+          "note": {
+            "type": "string",
+            "description": "Additional notes about the event",
+            "maxLength": 1000
+          },
+          "user": {
+            "type": "string",
+            "description": "User who made the change",
+            "maxLength": 100
+          }
+        },
+        "required": ["date", "status"]
+      }
+    },
+    "complications": {
+      "type": "array",
+      "title": "Komplikatsiyalar",
+      "description": "List of complications during or after procedure",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type of complication",
+            "maxLength": 100
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date when complication occurred"
+          },
+          "note": {
+            "type": "string",
+            "description": "Detailed description of complication",
+            "maxLength": 2000
+          },
+          "status": {
+            "type": "string",
+            "description": "Resolution status",
+            "maxLength": 100
+          }
+        },
+        "required": ["type", "date"]
+      }
+    },
+    "reminder_months": {
+      "type": "number",
+      "title": "Eslatma (oy)",
+      "description": "Number of months until next reminder",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 60
+    },
+    "reminder_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Eslatma sanasi",
+      "description": "Calculated reminder date"
+    },
+    "reminder_sent": {
+      "type": "boolean",
+      "title": "Eslatma yuborildi",
+      "description": "Whether reminder has been sent",
+      "default": false
+    },
+    "passport_url": {
+      "type": "string",
+      "format": "uri",
+      "title": "Pasport hujjati URL",
+      "description": "URL to implant passport document"
+    },
+    "xray_urls": {
+      "type": "array",
+      "title": "Rentgen rasmlari",
+      "description": "Array of X-ray image URLs",
+      "items": {
+        "type": "string",
+        "format": "uri",
+        "description": "URL to X-ray image"
+      }
+    },
+    "notes": {
+      "type": "string",
+      "title": "Izoh",
+      "description": "General notes about the implant",
+      "maxLength": 5000
+    },
+    "audit_log": {
+      "type": "array",
+      "title": "Audit log",
+      "description": "System audit trail for data changes",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Action timestamp"
+          },
+          "user": {
+            "type": "string",
+            "description": "User who performed the action",
+            "maxLength": 100
+          },
+          "action": {
+            "type": "string",
+            "description": "Type of action performed",
+            "maxLength": 255
+          }
+        },
+        "required": ["date", "user", "action"]
+      }
+    }
+  },
+  "required": ["patient_name", "tooth_number", "firma", "placed_date"],
+  "additionalProperties": false
+}

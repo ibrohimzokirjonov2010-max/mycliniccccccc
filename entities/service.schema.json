@@ -1,0 +1,312 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/service.schema.json",
+  "title": "Service",
+  "description": "Dental clinic services and treatment catalog schema",
+  "type": "object",
+  "properties": {
+    "service_id": {
+      "type": "string",
+      "title": "Service ID",
+      "description": "Unique service identifier"
+    },
+    "name": {
+      "type": "string",
+      "title": "Name",
+      "description": "Service name/title",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "code": {
+      "type": "string",
+      "title": "Service Code",
+      "description": "Internal or insurance code for the service",
+      "maxLength": 50
+    },
+    "category": {
+      "type": "string",
+      "title": "Category",
+      "description": "Service category classification",
+      "enum": [
+        "Consultation",
+        "Examination",
+        "Cleaning",
+        "Filling",
+        "Root Canal",
+        "Extraction",
+        "Implant",
+        "Crown",
+        "Bridge",
+        "Veneer",
+        "Denture",
+        "Whitening",
+        "Orthodontics",
+        "Periodontics",
+        "Endodontics",
+        "Oral Surgery",
+        "Pediatric Dentistry",
+        "X-Ray",
+        "Preventive",
+        "Cosmetic",
+        "Emergency",
+        "Laboratory",
+        "Other"
+      ]
+    },
+    "subcategory": {
+      "type": "string",
+      "title": "Subcategory",
+      "description": "More specific classification within category",
+      "maxLength": 100
+    },
+    "description": {
+      "type": "string",
+      "title": "Description",
+      "description": "Detailed description of the service",
+      "maxLength": 2000
+    },
+    "short_description": {
+      "type": "string",
+      "title": "Short Description",
+      "description": "Brief summary for listings",
+      "maxLength": 200
+    },
+    "price": {
+      "type": "number",
+      "title": "Price",
+      "description": "Standard service price",
+      "minimum": 0
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency",
+      "description": "Currency code (ISO 4217)",
+      "default": "UZS",
+      "maxLength": 3
+    },
+    "cost_price": {
+      "type": "number",
+      "title": "Cost Price",
+      "description": "Internal cost of providing the service",
+      "minimum": 0
+    },
+    "duration": {
+      "type": "number",
+      "title": "Duration (min)",
+      "description": "Typical duration in minutes",
+      "default": 30,
+      "minimum": 5,
+      "maximum": 480
+    },
+    "duration_range": {
+      "type": "object",
+      "title": "Duration Range",
+      "description": "Min and max duration for this service",
+      "properties": {
+        "min": {
+          "type": "number",
+          "description": "Minimum duration in minutes",
+          "minimum": 5
+        },
+        "max": {
+          "type": "number",
+          "description": "Maximum duration in minutes",
+          "minimum": 5
+        }
+      }
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Active",
+      "description": "Whether service is currently offered",
+      "default": true
+    },
+    "requires_tooth": {
+      "type": "boolean",
+      "title": "Requires Tooth Number",
+      "description": "Whether specific tooth number is required",
+      "default": false
+    },
+    "requires_xray": {
+      "type": "boolean",
+      "title": "Requires X-Ray",
+      "description": "Whether X-ray is required before service",
+      "default": false
+    },
+    "requires_consent": {
+      "type": "boolean",
+      "title": "Requires Consent",
+      "description": "Whether patient consent form is required",
+      "default": false
+    },
+    "anesthesia_type": {
+      "type": "string",
+      "title": "Anesthesia Type",
+      "description": "Type of anesthesia typically used",
+      "enum": ["None", "Local", "Sedation", "General", "Optional"],
+      "default": "None"
+    },
+    "preparation_instructions": {
+      "type": "string",
+      "title": "Preparation Instructions",
+      "description": "Instructions for patient before appointment",
+      "maxLength": 1000
+    },
+    "aftercare_instructions": {
+      "type": "string",
+      "title": "Aftercare Instructions",
+      "description": "Post-treatment care instructions",
+      "maxLength": 2000
+    },
+    "contraindications": {
+      "type": "array",
+      "title": "Contraindications",
+      "description": "Medical conditions that may prevent this service",
+      "items": {
+        "type": "string",
+        "maxLength": 200
+      }
+    },
+    "materials_required": {
+      "type": "array",
+      "title": "Materials Required",
+      "description": "Inventory items needed for this service",
+      "items": {
+        "type": "object",
+        "properties": {
+          "inventory_id": {
+            "type": "string",
+            "description": "Inventory item ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Material name",
+            "maxLength": 255
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quantity required",
+            "minimum": 0
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit of measurement",
+            "maxLength": 50
+          }
+        },
+        "required": ["name", "quantity"]
+      }
+    },
+    "equipment_required": {
+      "type": "array",
+      "title": "Equipment Required",
+      "description": "Equipment needed for this service",
+      "items": {
+        "type": "string",
+        "maxLength": 200
+      }
+    },
+    "doctors_can_perform": {
+      "type": "array",
+      "title": "Doctors Can Perform",
+      "description": "List of doctors qualified to perform this service",
+      "items": {
+        "type": "string",
+        "maxLength": 100
+      }
+    },
+    "price_tiers": {
+      "type": "array",
+      "title": "Price Tiers",
+      "description": "Different pricing options",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Tier name (e.g., Standard, Premium)",
+            "maxLength": 100
+          },
+          "price": {
+            "type": "number",
+            "description": "Price for this tier",
+            "minimum": 0
+          },
+          "description": {
+            "type": "string",
+            "description": "What's included in this tier",
+            "maxLength": 500
+          }
+        },
+        "required": ["name", "price"]
+      }
+    },
+    "discount_eligible": {
+      "type": "boolean",
+      "title": "Discount Eligible",
+      "description": "Whether discounts can be applied",
+      "default": true
+    },
+    "max_discount_percent": {
+      "type": "number",
+      "title": "Max Discount %",
+      "description": "Maximum allowed discount percentage",
+      "default": 100,
+      "minimum": 0,
+      "maximum": 100
+    },
+    "taxable": {
+      "type": "boolean",
+      "title": "Taxable",
+      "description": "Whether service is subject to tax",
+      "default": true
+    },
+    "tax_rate": {
+      "type": "number",
+      "title": "Tax Rate %",
+      "description": "Applicable tax rate percentage",
+      "default": 0,
+      "minimum": 0,
+      "maximum": 100
+    },
+    "popularity_score": {
+      "type": "number",
+      "title": "Popularity Score",
+      "description": "Internal ranking for service popularity",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "image_url": {
+      "type": "string",
+      "format": "uri",
+      "title": "Image URL",
+      "description": "URL to service image/icon"
+    },
+    "display_order": {
+      "type": "number",
+      "title": "Display Order",
+      "description": "Order for displaying in lists",
+      "default": 0
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At",
+      "description": "Record creation timestamp"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At",
+      "description": "Last update timestamp"
+    },
+    "created_by": {
+      "type": "string",
+      "title": "Created By",
+      "description": "User who created the service",
+      "maxLength": 100
+    }
+  },
+  "required": ["name", "price"],
+  "additionalProperties": false
+}

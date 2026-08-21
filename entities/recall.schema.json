@@ -1,0 +1,256 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/recall.schema.json",
+  "title": "Recall",
+  "description": "Patient recall/reminder system schema for dental clinic follow-ups",
+  "type": "object",
+  "properties": {
+    "recall_id": {
+      "type": "string",
+      "title": "Recall ID",
+      "description": "Unique recall identifier"
+    },
+    "patient_id": {
+      "type": "string",
+      "title": "Patient ID",
+      "description": "Unique identifier of the patient"
+    },
+    "patient_name": {
+      "type": "string",
+      "title": "Patient Name",
+      "description": "Full name of the patient",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "patient_phone": {
+      "type": "string",
+      "title": "Patient Phone",
+      "description": "Patient contact phone number",
+      "pattern": "^[+]?[0-9\\s\\-\\(\\)]{7,20}$"
+    },
+    "recall_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Recall Date",
+      "description": "Scheduled recall date (YYYY-MM-DD)"
+    },
+    "recall_time": {
+      "type": "string",
+      "title": "Recall Time",
+      "description": "Preferred time for contact",
+      "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
+    },
+    "reason": {
+      "type": "string",
+      "title": "Reason",
+      "description": "Reason for the recall",
+      "enum": [
+        "Regular Checkup",
+        "Cleaning",
+        "Follow-up Treatment",
+        "Implant Check",
+        "Crown Check",
+        "Orthodontic Adjustment",
+        "X-Ray Review",
+        "Treatment Completion",
+        "Post-Surgery Check",
+        "Annual Exam",
+        "6-Month Recall",
+        "3-Month Recall",
+        "Custom"
+      ]
+    },
+    "reason_custom": {
+      "type": "string",
+      "title": "Custom Reason",
+      "description": "Custom reason if 'Custom' is selected",
+      "maxLength": 500
+    },
+    "priority": {
+      "type": "string",
+      "title": "Priority",
+      "description": "Recall priority level",
+      "enum": ["Low", "Normal", "High", "Urgent"],
+      "default": "Normal"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "description": "Current status of the recall",
+      "enum": [
+        "Pending",
+        "Contacted",
+        "No Answer",
+        "Left Message",
+        "Scheduled",
+        "Confirmed",
+        "Rescheduled",
+        "Completed",
+        "Declined",
+        "Unreachable",
+        "Missed"
+      ],
+      "default": "Pending"
+    },
+    "related_treatment_id": {
+      "type": "string",
+      "title": "Related Treatment ID",
+      "description": "ID of related treatment/procedure"
+    },
+    "related_appointment_id": {
+      "type": "string",
+      "title": "Related Appointment ID",
+      "description": "ID of scheduled appointment if booked"
+    },
+    "last_visit_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Last Visit Date",
+      "description": "Date of patient's last visit"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes",
+      "description": "Additional notes about the recall",
+      "maxLength": 2000
+    },
+    "communication_method": {
+      "type": "string",
+      "title": "Communication Method",
+      "description": "Preferred method to contact patient",
+      "enum": ["SMS", "Call", "Email", "Telegram", "WhatsApp"],
+      "default": "SMS"
+    },
+    "message_template": {
+      "type": "string",
+      "title": "Message Template",
+      "description": "Template used for recall message",
+      "maxLength": 1000
+    },
+    "message_sent": {
+      "type": "boolean",
+      "title": "Message Sent",
+      "description": "Whether recall message was sent",
+      "default": false
+    },
+    "message_sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Message Sent At",
+      "description": "Timestamp when message was sent"
+    },
+    "contact_attempts": {
+      "type": "number",
+      "title": "Contact Attempts",
+      "description": "Number of contact attempts made",
+      "default": 0,
+      "minimum": 0
+    },
+    "last_contact_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Contact Date",
+      "description": "Date of last contact attempt"
+    },
+    "response_received": {
+      "type": "boolean",
+      "title": "Response Received",
+      "description": "Whether patient responded",
+      "default": false
+    },
+    "response_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Response Date",
+      "description": "When patient responded"
+    },
+    "response_notes": {
+      "type": "string",
+      "title": "Response Notes",
+      "description": "Notes about patient response",
+      "maxLength": 1000
+    },
+    "assigned_to": {
+      "type": "string",
+      "title": "Assigned To",
+      "description": "Staff member responsible for recall",
+      "maxLength": 100
+    },
+    "recall_history": {
+      "type": "array",
+      "title": "Recall History",
+      "description": "History of recall attempts and interactions",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Interaction timestamp"
+          },
+          "action": {
+            "type": "string",
+            "enum": ["Created", "Sent", "Called", "Messaged", "Answered", "Scheduled", "Cancelled", "Completed", "No Answer"],
+            "description": "Type of action taken"
+          },
+          "staff": {
+            "type": "string",
+            "description": "Staff member who performed action",
+            "maxLength": 100
+          },
+          "notes": {
+            "type": "string",
+            "description": "Notes about this interaction",
+            "maxLength": 500
+          }
+        },
+        "required": ["date", "action"]
+      }
+    },
+    "next_recall_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Next Recall Date",
+      "description": "Date for next automatic recall"
+    },
+    "recall_interval_months": {
+      "type": "number",
+      "title": "Recall Interval (Months)",
+      "description": "Months until next automatic recall",
+      "minimum": 1,
+      "maximum": 36
+    },
+    "is_recurring": {
+      "type": "boolean",
+      "title": "Is Recurring",
+      "description": "Whether this is a recurring recall",
+      "default": false
+    },
+    "created_by": {
+      "type": "string",
+      "title": "Created By",
+      "description": "User who created the recall",
+      "maxLength": 100
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At",
+      "description": "Record creation timestamp"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At",
+      "description": "Last update timestamp"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Completed At",
+      "description": "When recall was completed"
+    }
+  },
+  "required": ["patient_id", "patient_name", "recall_date"],
+  "additionalProperties": false
+}

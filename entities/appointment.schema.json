@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/appointment.schema.json",
+  "title": "Appointment",
+  "description": "Medical appointment schema for patient scheduling system",
+  "type": "object",
+  "properties": {
+    "patient_id": {
+      "type": "string",
+      "title": "Patient ID",
+      "description": "Unique identifier for the patient"
+    },
+    "patient_name": {
+      "type": "string",
+      "title": "Patient Name",
+      "description": "Full name of the patient",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "doctor_id": {
+      "type": "string",
+      "title": "Doctor ID",
+      "description": "Unique identifier for the doctor"
+    },
+    "doctor_name": {
+      "type": "string",
+      "title": "Doctor Name",
+      "description": "Name of the doctor"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "Date",
+      "description": "Appointment date in YYYY-MM-DD format"
+    },
+    "time": {
+      "type": "string",
+      "title": "Time",
+      "description": "Appointment time (e.g., 09:00, 14:30)",
+      "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
+    },
+    "duration": {
+      "type": "number",
+      "title": "Duration (min)",
+      "description": "Appointment duration in minutes",
+      "default": 30,
+      "minimum": 5,
+      "maximum": 480
+    },
+    "service_id": {
+      "type": "string",
+      "title": "Service ID",
+      "description": "Unique identifier for the medical service"
+    },
+    "service_name": {
+      "type": "string",
+      "title": "Service Name",
+      "description": "Name of the medical service",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "price": {
+      "type": "number",
+      "title": "Price",
+      "description": "Service price in local currency",
+      "default": 0,
+      "minimum": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Scheduled",
+        "Waiting",
+        "In Progress",
+        "Completed",
+        "Cancelled",
+        "No-Show"
+      ],
+      "title": "Status",
+      "description": "Current status of the appointment"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes",
+      "description": "Additional notes or comments about the appointment",
+      "maxLength": 2000
+    }
+  },
+  "required": [
+    "patient_id",
+    "patient_name",
+    "date",
+    "time"
+  ],
+  "additionalProperties": false
+}

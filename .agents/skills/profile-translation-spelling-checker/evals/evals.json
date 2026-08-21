@@ -1,0 +1,16 @@
+{
+  "skill_name": "profile-translation-spelling-checker",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Bemor profilidagi so'zlarni boshidan oxirigacha tekshirib imlo xatolarini to'g'rilang va tarjimalarini kontrol qiling.",
+      "expected_output": "The agent reviews PatientProfile.jsx and its translations uz.json, ru.json, en.json, fixing typos and translation mismatches.",
+      "files": [
+        "src/pages/PatientProfile.jsx",
+        "src/i18n/translations/uz.json",
+        "src/i18n/translations/ru.json",
+        "src/i18n/translations/en.json"
+      ]
+    }
+  ]
+}

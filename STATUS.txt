@@ -1,0 +1,58 @@
+==============================================
+  🦷 DENTAL CLINIC - ISHGA TUSHIRISH NATIJASI
+==============================================
+
+✅ FRONTEND ISHLAYAPTI!
+
+🌐 URL: http://localhost:5175
+
+📱 Saytni ochish uchun:
+   - Yuqoridagi havolani brauzerda oching
+   - Yoki "Open Preview" tugmasini bosing
+
+==============================================
+  HOZIRGI HOLAT
+==============================================
+
+✅ Frontend (React + Vite) - Port 5175
+⚠️  Backend API - Hozircha o'chirilgan
+    (Backend to'liq emas, qo'shimcha ish kerak)
+
+==============================================
+  ASOSIY SAHIFALAR
+==============================================
+
+• Login - Kirish sahifasi
+• Dashboard - Boshqaruv paneli
+• Patients - Bemorlar
+• Appointments - Randevular
+• Payments - To'lovlar
+• Services - Xizmatlar
+• Inventory - Inventar
+• Leads - Potensial mijozlar
+• Reports - Hisobotlar
+• Settings - Sozlamalar
+
+==============================================
+  TO'XTATISH VA QAYTA ISHGA TUSHIRISH
+==============================================
+
+To'xtatish:
+  Terminal da: Ctrl + C, keyin Y
+
+Qayta ishga tushirish:
+  cd "c:\Users\PC\Desktop\APP SHAHOBIDIN"
+  npm run dev
+
+==============================================
+  YORDAM FAYLLARI
+==============================================
+
+• SAYT_ISHGA_TUSHDI.md - Batafsil ma'lumot
+• TEZ_BOSHLASH.md - Tez boshlash
+• TO_LIQ_ISHGA_TUSHIRISH.md - To'liq qo'llanma
+• README.md - Loyiha haqida
+
+==============================================
+
+Muvaffaqiyatlar! Sayt tayyor! 🎉

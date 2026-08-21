@@ -1,0 +1,304 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/xray.schema.json",
+  "title": "Xray",
+  "description": "Dental X-ray imaging and radiography management schema",
+  "type": "object",
+  "properties": {
+    "xray_id": {
+      "type": "string",
+      "title": "X-Ray ID",
+      "description": "Unique X-ray record identifier"
+    },
+    "patient_id": {
+      "type": "string",
+      "title": "Patient ID",
+      "description": "Unique identifier of the patient"
+    },
+    "patient_name": {
+      "type": "string",
+      "title": "Patient Name",
+      "description": "Full name of the patient",
+      "maxLength": 255
+    },
+    "image_url": {
+      "type": "string",
+      "format": "uri",
+      "title": "Image URL",
+      "description": "Primary URL to the X-ray image file"
+    },
+    "thumbnail_url": {
+      "type": "string",
+      "format": "uri",
+      "title": "Thumbnail URL",
+      "description": "URL to thumbnail/preview image"
+    },
+    "download_url": {
+      "type": "string",
+      "format": "uri",
+      "title": "Download URL",
+      "description": "URL for downloading the original file"
+    },
+    "file_name": {
+      "type": "string",
+      "title": "File Name",
+      "description": "Original file name",
+      "maxLength": 255
+    },
+    "file_size": {
+      "type": "number",
+      "title": "File Size (bytes)",
+      "description": "File size in bytes",
+      "minimum": 0
+    },
+    "file_format": {
+      "type": "string",
+      "title": "File Format",
+      "description": "Image file format",
+      "enum": ["JPEG", "PNG", "DICOM", "TIFF", "BMP", "PDF"],
+      "default": "JPEG"
+    },
+    "xray_type": {
+      "type": "string",
+      "title": "X-Ray Type",
+      "description": "Type of dental radiography",
+      "enum": [
+        "Intraoral Periapical",
+        "Intraoral Bitewing",
+        "Intraoral Occlusal",
+        "Panoramic",
+        "Cephalometric",
+        "CBCT",
+        "Occlusal",
+        "Full Mouth Series",
+        "TMJ",
+        "Sinus",
+        "Implant Planning",
+        "Other"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "title": "Description",
+      "description": "General description of the X-ray",
+      "maxLength": 1000
+    },
+    "findings": {
+      "type": "string",
+      "title": "Findings",
+      "description": "Radiographic findings and observations",
+      "maxLength": 5000
+    },
+    "diagnosis": {
+      "type": "string",
+      "title": "Diagnosis",
+      "description": "Diagnosis based on X-ray",
+      "maxLength": 2000
+    },
+    "tooth_numbers": {
+      "type": "array",
+      "title": "Tooth Numbers",
+      "description": "FDI tooth numbers visible in the X-ray",
+      "items": {
+        "type": "number",
+        "minimum": 11,
+        "maximum": 48
+      }
+    },
+    "quadrants": {
+      "type": "array",
+      "title": "Quadrants",
+      "description": "Dental quadrants covered",
+      "items": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 4
+      }
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "Date",
+      "description": "Date when X-ray was taken (YYYY-MM-DD)"
+    },
+    "time": {
+      "type": "string",
+      "title": "Time",
+      "description": "Time when X-ray was taken",
+      "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
+    },
+    "radiation_dose": {
+      "type": "number",
+      "title": "Radiation Dose (mSv)",
+      "description": "Radiation exposure dose in millisieverts",
+      "minimum": 0
+    },
+    "equipment_used": {
+      "type": "string",
+      "title": "Equipment Used",
+      "description": "X-ray machine or equipment model",
+      "maxLength": 255
+    },
+    "exposure_settings": {
+      "type": "object",
+      "title": "Exposure Settings",
+      "description": "Technical exposure parameters",
+      "properties": {
+        "kvp": {
+          "type": "number",
+          "description": "Kilovoltage peak",
+          "minimum": 0
+        },
+        "mas": {
+          "type": "number",
+          "description": "Milliampere-seconds",
+          "minimum": 0
+        },
+        "exposure_time": {
+          "type": "number",
+          "description": "Exposure time in seconds",
+          "minimum": 0
+        }
+      }
+    },
+    "related_appointment_id": {
+      "type": "string",
+      "title": "Related Appointment ID",
+      "description": "Associated appointment ID"
+    },
+    "related_treatment_id": {
+      "type": "string",
+      "title": "Related Treatment ID",
+      "description": "Associated treatment/procedure ID"
+    },
+    "ordered_by": {
+      "type": "string",
+      "title": "Ordered By",
+      "description": "Doctor who ordered the X-ray",
+      "maxLength": 100
+    },
+    "taken_by": {
+      "type": "string",
+      "title": "Taken By",
+      "description": "Technician who took the X-ray",
+      "maxLength": 100
+    },
+    "interpreted_by": {
+      "type": "string",
+      "title": "Interpreted By",
+      "description": "Doctor who interpreted the X-ray",
+      "maxLength": 100
+    },
+    "interpretation_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Interpretation Date",
+      "description": "Date of interpretation"
+    },
+    "comparison_with_previous": {
+      "type": "string",
+      "title": "Comparison With Previous",
+      "description": "Comparison with previous X-rays",
+      "maxLength": 2000
+    },
+    "previous_xray_id": {
+      "type": "string",
+      "title": "Previous X-Ray ID",
+      "description": "ID of previous X-ray for comparison"
+    },
+    "is_comparison_study": {
+      "type": "boolean",
+      "title": "Is Comparison Study",
+      "description": "Whether this is a follow-up/comparison study",
+      "default": false
+    },
+    "quality_assessment": {
+      "type": "string",
+      "title": "Quality Assessment",
+      "description": "Image quality evaluation",
+      "enum": ["Excellent", "Good", "Acceptable", "Poor", "Non-diagnostic"],
+      "default": "Good"
+    },
+    "annotations": {
+      "type": "array",
+      "title": "Annotations",
+      "description": "Annotations and markings on the X-ray",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["arrow", "circle", "text", "measurement", "highlight"],
+            "description": "Type of annotation"
+          },
+          "coordinates": {
+            "type": "object",
+            "description": "Position coordinates",
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" }
+            }
+          },
+          "text": {
+            "type": "string",
+            "description": "Annotation text",
+            "maxLength": 500
+          },
+          "created_by": {
+            "type": "string",
+            "description": "User who created annotation",
+            "maxLength": 100
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "tags": {
+      "type": "array",
+      "title": "Tags",
+      "description": "Tags for categorization",
+      "items": {
+        "type": "string",
+        "maxLength": 50
+      }
+    },
+    "is_archived": {
+      "type": "boolean",
+      "title": "Is Archived",
+      "description": "Whether X-ray is archived",
+      "default": false
+    },
+    "consent_obtained": {
+      "type": "boolean",
+      "title": "Consent Obtained",
+      "description": "Whether patient consent was obtained",
+      "default": true
+    },
+    "pregnancy_check": {
+      "type": "boolean",
+      "title": "Pregnancy Check",
+      "description": "Whether pregnancy status was confirmed",
+      "default": false
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At",
+      "description": "Record creation timestamp"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At",
+      "description": "Last update timestamp"
+    },
+    "uploaded_by": {
+      "type": "string",
+      "title": "Uploaded By",
+      "description": "User who uploaded the X-ray",
+      "maxLength": 100
+    }
+  },
+  "required": ["patient_id", "image_url"],
+  "additionalProperties": false
+}

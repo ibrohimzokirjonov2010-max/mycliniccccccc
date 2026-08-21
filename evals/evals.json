@@ -1,0 +1,21 @@
+{
+  "skill_name": "regression-preventer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "To'lovlar bo'limida avval yuz bergan xato qaytalanmasligini qanday ta'minlaymiz?",
+      "expected_output": "Agent regression-preventer skillidan foydalanib, .agents/regression-registry.md faylini tekshirishi va muammoni oldini olish choralarini tavsiya etishi kerak.",
+      "files": [
+        ".agents/regression-registry.md"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Yangi xatolik tuzatdim, buni qayerga qayd etishim kerak va qanday formatda?",
+      "expected_output": "Agent .agents/regression-registry.md reyestr faylini ko'rsatib, unda yangi xatolikni qayd etish formatini tushuntirishi kerak.",
+      "files": [
+        ".agents/regression-registry.md"
+      ]
+    }
+  ]
+}

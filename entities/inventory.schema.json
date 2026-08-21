@@ -1,0 +1,184 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/inventory.schema.json",
+  "title": "Inventory",
+  "description": "Dental clinic inventory/material management schema",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Material Name",
+      "description": "Name of the inventory item or material",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "category": {
+      "type": "string",
+      "title": "Category",
+      "description": "Category classification of the material",
+      "enum": [
+        "Implant",
+        "Abutment",
+        "Crown",
+        "Bridge",
+        "Filling Material",
+        "Anesthetic",
+        "Sterilization",
+        "Instrument",
+        "Consumable",
+        "Medication",
+        "X-Ray Material",
+        "Orthodontic",
+        "Prosthetic",
+        "Other"
+      ]
+    },
+    "unit": {
+      "type": "string",
+      "title": "Unit",
+      "description": "Unit of measurement",
+      "enum": [
+        "piece",
+        "pcs",
+        "box",
+        "pack",
+        "ml",
+        "mg",
+        "g",
+        "kg",
+        "set",
+        "pair",
+        "ampoule",
+        "vial",
+        "syringe",
+        "tube",
+        "bottle",
+        "kit"
+      ]
+    },
+    "quantity": {
+      "type": "number",
+      "title": "Quantity",
+      "description": "Current stock quantity",
+      "default": 0,
+      "minimum": 0
+    },
+    "min_quantity": {
+      "type": "number",
+      "title": "Min Quantity",
+      "description": "Minimum stock level for low inventory alert",
+      "default": 5,
+      "minimum": 0
+    },
+    "price_per_unit": {
+      "type": "number",
+      "title": "Price per Unit",
+      "description": "Cost per unit in local currency",
+      "default": 0,
+      "minimum": 0
+    },
+    "sku": {
+      "type": "string",
+      "title": "SKU",
+      "description": "Stock Keeping Unit - unique product code",
+      "maxLength": 100
+    },
+    "barcode": {
+      "type": "string",
+      "title": "Barcode",
+      "description": "Product barcode or QR code",
+      "maxLength": 100
+    },
+    "supplier": {
+      "type": "string",
+      "title": "Supplier",
+      "description": "Name of the supplier or vendor",
+      "maxLength": 255
+    },
+    "supplier_contact": {
+      "type": "string",
+      "title": "Supplier Contact",
+      "description": "Supplier phone or email",
+      "maxLength": 255
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Expiry Date",
+      "description": "Product expiration date (YYYY-MM-DD)"
+    },
+    "batch_number": {
+      "type": "string",
+      "title": "Batch Number",
+      "description": "Manufacturer batch or lot number",
+      "maxLength": 100
+    },
+    "location": {
+      "type": "string",
+      "title": "Storage Location",
+      "description": "Physical storage location in clinic",
+      "maxLength": 255
+    },
+    "description": {
+      "type": "string",
+      "title": "Description",
+      "description": "Detailed description of the item",
+      "maxLength": 1000
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Is Active",
+      "description": "Whether item is active in inventory",
+      "default": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Created At",
+      "description": "Record creation timestamp"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Updated At",
+      "description": "Last update timestamp"
+    },
+    "stock_history": {
+      "type": "array",
+      "title": "Stock History",
+      "description": "History of stock movements",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Transaction timestamp"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["in", "out", "adjustment", "return"],
+            "description": "Type of stock movement"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quantity changed"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason for movement",
+            "maxLength": 500
+          },
+          "user": {
+            "type": "string",
+            "description": "User who made the change",
+            "maxLength": 100
+          }
+        },
+        "required": ["date", "type", "quantity"]
+      }
+    }
+  },
+  "required": ["name", "quantity"],
+  "additionalProperties": false
+}

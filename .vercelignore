@@ -1,0 +1,15 @@
+backend/
+node_modules/
+dist/
+.env
+.git
+.vscode
+.uploads
+.node
+*.sql
+*.bat
+*.lnk
+*.log
+*.cjs
+*.mjs
+*.txt
