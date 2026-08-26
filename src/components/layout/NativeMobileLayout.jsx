@@ -228,7 +228,7 @@ export default function NativeMobileLayout({ children }) {
   return (
     <div 
       className="fixed inset-0 w-full h-full bg-[#F8FAFC] overflow-hidden"
-      style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, width: '100%', height: '100%' }}
+      style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, width: '100%', height: '100dvh' }}
     >
       {/* iOS-style Premium Header */}
       <header 
@@ -237,9 +237,9 @@ export default function NativeMobileLayout({ children }) {
             ? 'bg-white/80 backdrop-blur-2xl shadow-xl shadow-slate-200/20 border-b border-white/40' 
             : 'bg-transparent'
         }`}
-        style={{ paddingTop: 'max(24px, env(safe-area-inset-top, 24px))' }}
+        style={{ paddingTop: 'max(12px, env(safe-area-inset-top, 12px))' }}
       >
-        <div className="flex items-center justify-between h-16 px-6">
+        <div className="flex items-center justify-between h-14 px-5">
           <div className="flex items-center gap-4">
             {!['/', '/admin/dashboard', '/doctor/dashboard', '/patients', '/appointments', '/payments'].includes(location.pathname) ? (
               <motion.button 
@@ -308,8 +308,8 @@ export default function NativeMobileLayout({ children }) {
         style={{ 
           WebkitOverflowScrolling: 'touch',
           overscrollBehavior: 'contain',
-          paddingTop: 'calc(4.5rem + max(24px, env(safe-area-inset-top, 24px)))',
-          paddingBottom: 'calc(72px + max(env(safe-area-inset-bottom, 0px), 8px))'
+          paddingTop: 'calc(3.5rem + max(env(safe-area-inset-top, 12px), 12px))',
+          paddingBottom: 'calc(54px + env(safe-area-inset-bottom, 0px))'
         }}
       >
         <div className="px-5 mt-4">
@@ -333,15 +333,15 @@ export default function NativeMobileLayout({ children }) {
         </AnimatePresence>
 
         {/* Universal scroll spacer */}
-        <div className="h-16 w-full pointer-events-none shrink-0" aria-hidden="true" />
+        <div className="h-10 w-full pointer-events-none shrink-0" aria-hidden="true" />
       </main>
 
       {/* iOS-style Native Bottom Navigation Bar */}
       <nav 
-        className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl border-t border-slate-150 z-50 overflow-hidden no-print shadow-[0_-4px_20px_rgba(0,0,0,0.03)]"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 6px)' }}
+        className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-2xl border-t border-slate-200/60 z-50 overflow-hidden no-print shadow-[0_-2px_16px_rgba(0,0,0,0.03)]"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="flex items-center justify-around h-14 px-3 relative">
+        <div className="flex items-center justify-around h-[50px] px-2 relative">
           {tabs.map((tab) => {
             const isActive = location.pathname === tab.path;
             const Icon = tab.icon;
@@ -350,34 +350,27 @@ export default function NativeMobileLayout({ children }) {
               <button
                 key={tab.path}
                 onClick={() => navigate(tab.path)}
-                className="relative flex flex-col items-center justify-center py-1 px-2 rounded-2xl flex-1 h-full active:scale-95 transition-all duration-300"
+                className="relative flex flex-col items-center justify-center py-1 px-1 rounded-xl flex-1 h-full active:scale-95 transition-all duration-200"
               >
                 {/* Premium sliding capsule indicator behind active button */}
                 {isActive && (
                   <motion.div
                     layoutId="activeTabPill"
-                    className="absolute inset-x-1.5 inset-y-1 bg-[#1499AD]/10 rounded-2xl -z-10 border border-[#1499AD]/10"
-                    transition={{ type: 'spring', stiffness: 380, damping: 26 }}
+                    className="absolute inset-x-1 inset-y-1 bg-[#1499AD]/10 rounded-xl -z-10 border border-[#1499AD]/15"
+                    transition={{ type: 'spring', stiffness: 400, damping: 28 }}
                   />
                 )}
                 
-                {/* Icon with sub-glow */}
+                {/* Icon */}
                 <motion.div
                   animate={{ 
-                    scale: isActive ? 1.12 : 1,
+                    scale: isActive ? 1.08 : 1,
                     y: isActive ? -1 : 0
                   }}
                   className="relative flex items-center justify-center"
                 >
-                  {isActive && (
-                    <motion.span 
-                      layoutId="activeTabIconGlow"
-                      className="absolute w-7 h-7 rounded-full bg-[#1499AD]/15 blur-md -z-10" 
-                      transition={{ type: 'spring', stiffness: 385, damping: 26 }}
-                    />
-                  )}
                   <Icon 
-                    className="w-5 h-5 transition-colors duration-300 relative z-10"
+                    className="w-5 h-5 transition-colors duration-200 relative z-10"
                     style={{ color: isActive ? '#1499AD' : '#64748B' }}
                     strokeWidth={isActive ? 2.5 : 2}
                   />
@@ -385,7 +378,7 @@ export default function NativeMobileLayout({ children }) {
                 
                 {/* Label */}
                 <span 
-                  className={`text-[9px] font-black mt-0.5 transition-colors duration-300 tracking-tighter uppercase leading-none ${
+                  className={`text-[9.5px] font-black mt-0.5 transition-colors duration-200 tracking-tight uppercase leading-none ${
                     isActive ? 'text-[#1499AD]' : 'text-slate-400'
                   }`}
                 >
@@ -397,22 +390,22 @@ export default function NativeMobileLayout({ children }) {
         </div>
       </nav>
 
-      {/* Floating Action Button (FAB) */}
-      {isPatientProfile ? null : location.pathname === '/expenses' ? (
+      {/* Floating Action Button (FAB) - only where specifically needed, hidden on main pages with their own buttons */}
+      {isPatientProfile || ['/', '/admin/dashboard', '/doctor/dashboard', '/patients', '/appointments', '/payments', '/treatment-plans', '/settings', '/services', '/inventory', '/leads', '/payroll', '/reports'].includes(location.pathname) ? null : location.pathname === '/expenses' ? (
         <motion.button
           whileTap={{ scale: 0.92 }}
           onClick={() => window.dispatchEvent(new CustomEvent('open-expenses-add'))}
           className="fixed right-5 z-40 bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 rounded-full shadow-xl shadow-emerald-500/25 flex items-center justify-center text-white border-[3px] border-white active:scale-95 transition-transform"
-          style={{ width: 50, height: 50, bottom: 'calc(max(env(safe-area-inset-bottom, 0px), 6px) + 64px)' }}
+          style={{ width: 48, height: 48, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 58px)' }}
         >
-          <Plus className="w-6 h-6 text-white stroke-[2.5]" />
+          <Plus className="w-5 h-5 text-white stroke-[2.5]" />
         </motion.button>
       ) : location.pathname === '/cases' ? (
         <motion.button
           whileTap={{ scale: 0.92 }}
           onClick={() => window.dispatchEvent(new CustomEvent('open-cases-upload'))}
           className="fixed right-5 z-40 bg-gradient-to-br from-[#1499AD] to-[#0E7A8A] rounded-full shadow-xl shadow-[#1499AD]/40 flex items-center justify-center text-white border-[3px] border-white active:scale-95 transition-transform"
-          style={{ width: 50, height: 50, bottom: 'calc(max(env(safe-area-inset-bottom, 0px), 6px) + 64px)' }}
+          style={{ width: 48, height: 48, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 58px)' }}
         >
           <Camera className="w-5 h-5 text-white" />
         </motion.button>
@@ -421,25 +414,11 @@ export default function NativeMobileLayout({ children }) {
           whileTap={{ scale: 0.92 }}
           onClick={() => window.dispatchEvent(new CustomEvent('open-implants-add'))}
           className="fixed right-5 z-40 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full shadow-xl shadow-indigo-500/30 flex items-center justify-center text-white border-[3px] border-white active:scale-95 transition-transform"
-          style={{ width: 50, height: 50, bottom: 'calc(max(env(safe-area-inset-bottom, 0px), 6px) + 64px)' }}
+          style={{ width: 48, height: 48, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 58px)' }}
         >
           <Zap className="w-5 h-5 text-white" />
         </motion.button>
-      ) : (
-        <motion.button
-          whileTap={{ scale: 0.92 }}
-          onClick={() => setShowQuickActions(!showQuickActions)}
-          className="fixed right-5 z-40 bg-gradient-to-br from-[#1499AD] to-[#0E7A8A] rounded-full shadow-xl shadow-[#1499AD]/40 flex items-center justify-center text-white border-[3px] border-white"
-          style={{ width: 50, height: 50, bottom: 'calc(max(env(safe-area-inset-bottom, 0px), 6px) + 64px)' }}
-        >
-          <motion.div
-            animate={{ rotate: showQuickActions ? 45 : 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Plus className="w-6 h-6 text-white" />
-          </motion.div>
-        </motion.button>
-      )}
+      ) : null}
 
       {/* Quick Actions Menu */}
       <AnimatePresence>

@@ -4,13 +4,15 @@ import { motion } from 'framer-motion';
 import { 
   User, Globe, LogOut, 
   Building2, Users, Bell,
-  Clock, CheckCircle2, ChevronDown, ChevronUp, Layout as LayoutIcon
+  Clock, CheckCircle2, ChevronDown, ChevronUp, Layout as LayoutIcon,
+  Pencil, Trash2, Key, Phone, X
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
@@ -23,7 +25,17 @@ export default function MobileSettings() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showStaffForm, setShowStaffForm] = useState(false);
-  const [newStaff, setNewStaff] = useState({ full_name: '', role: 'Stomatolog', commission: 40 });
+  const [newStaff, setNewStaff] = useState({ full_name: '', role: 'Stomatolog', commission: 40, password: '', phone: '' });
+  const [editingStaff, setEditingStaff] = useState(null);
+  const [editStaffForm, setEditStaffForm] = useState({
+    name: '',
+    specialty: 'Stomatolog',
+    commission_rate: 40,
+    username: '',
+    password: '',
+    phone: ''
+  });
+  const [savingStaff, setSavingStaff] = useState(false);
   const [showWorkingHours, setShowWorkingHours] = useState(false);
   const [clinicData, setClinicData] = useState({
     name: 'My Clinic',
@@ -103,25 +115,84 @@ export default function MobileSettings() {
   };
 
   const addStaff = async () => {
-    if (!newStaff.full_name) return;
-    await base44.entities.User.create({
-      name: newStaff.full_name,
-      username: newStaff.full_name.toLowerCase().replace(/\s+/g, '.'),
-      password: 'doctor123',
-      role: 'doctor',
-      specialty: newStaff.role || 'Stomatolog',
-      commission_rate: Number(newStaff.commission || 0),
-      clinic_id: localStorage.getItem('current_clinic_id') || 'default_clinic'
+    if (!newStaff.full_name.trim()) {
+      toast.error('Ism kiriting!');
+      return;
+    }
+    try {
+      const cleanUsername = newStaff.full_name.toLowerCase().replace(/\s+/g, '.');
+      await base44.entities.User.create({
+        name: newStaff.full_name.trim(),
+        username: cleanUsername,
+        password: newStaff.password || 'doctor123',
+        phone: newStaff.phone?.trim() || '',
+        role: 'doctor',
+        specialty: newStaff.role || 'Stomatolog',
+        commission_rate: Number(newStaff.commission || 0),
+        clinic_id: localStorage.getItem('current_clinic_id') || 'default_clinic'
+      });
+      setNewStaff({ full_name: '', role: 'Stomatolog', commission: 40, password: '', phone: '' });
+      setShowStaffForm(false);
+      toast.success("Xodim muvaffaqiyatli qo'shildi!");
+      load();
+    } catch (e) {
+      console.error(e);
+      toast.error("Xodim qo'shishda xatolik yuz berdi");
+    }
+  };
+
+  const handleOpenEditStaff = (staff) => {
+    setEditingStaff(staff);
+    setEditStaffForm({
+      name: staff.name || staff.full_name || '',
+      specialty: staff.specialty || staff.role || 'Stomatolog',
+      commission_rate: staff.commission_rate ?? staff.commission ?? 40,
+      username: staff.username || (staff.name || staff.full_name || '').toLowerCase().replace(/\s+/g, '.'),
+      password: staff.password || '',
+      phone: staff.phone || ''
     });
-    setNewStaff({ full_name: '', role: 'Stomatolog', commission: 40 });
-    setShowStaffForm(false);
-    load();
+  };
+
+  const handleSaveEditStaff = async (e) => {
+    if (e) e.preventDefault();
+    if (!editStaffForm.name.trim()) {
+      toast.error('Ism kiriting!');
+      return;
+    }
+    setSavingStaff(true);
+    try {
+      const cleanUsername = editStaffForm.username.trim().toLowerCase().replace(/\s+/g, '.') || editStaffForm.name.trim().toLowerCase().replace(/\s+/g, '.');
+      const updatedData = {
+        name: editStaffForm.name.trim(),
+        full_name: editStaffForm.name.trim(),
+        specialty: editStaffForm.specialty.trim() || 'Stomatolog',
+        commission_rate: Number(editStaffForm.commission_rate || 0),
+        username: cleanUsername,
+        password: editStaffForm.password || 'doctor123',
+        phone: editStaffForm.phone?.trim() || ''
+      };
+
+      await base44.auth.updateUser(editingStaff.id, updatedData);
+      toast.success("Xodim ma'lumotlari muvaffaqiyatli yangilandi!");
+      setEditingStaff(null);
+      await load();
+    } catch (error) {
+      console.error('Update staff error:', error);
+      toast.error('Xatolik yuz berdi: ' + (error.message || ''));
+    } finally {
+      setSavingStaff(false);
+    }
   };
 
   const deleteStaff = async (id) => {
-    if (confirm('Xodimni o\'chirishni xohlaysizmi?')) {
-      await base44.entities.User.delete(id);
-      load();
+    if (window.confirm("Haqiqatdan ham ushbu xodimni o'chirmoqchimisiz?")) {
+      try {
+        await base44.auth.deleteUser(id);
+        toast.success("Xodim o'chirildi");
+        await load();
+      } catch (e) {
+        toast.error("O'chirishda xatolik yuz berdi");
+      }
     }
   };
 
@@ -485,51 +556,113 @@ export default function MobileSettings() {
             <motion.div 
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
-              className="bg-slate-50 rounded-xl p-3 mb-4 space-y-3"
+              className="bg-slate-50 rounded-2xl p-4 mb-4 space-y-3 border border-slate-100"
             >
-              <Input 
-                placeholder="FIO" 
-                value={newStaff.full_name}
-                onChange={e => setNewStaff({...newStaff, full_name: e.target.value})}
-              />
-              <Input 
-                placeholder="Lavozim" 
-                value={newStaff.role}
-                onChange={e => setNewStaff({...newStaff, role: e.target.value})}
-              />
-              <div className="flex gap-2">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">FIO *</Label>
                 <Input 
-                  type="number"
-                  placeholder="Komissiya %"
-                  value={newStaff.commission === 0 || newStaff.commission === '' ? '' : newStaff.commission}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setNewStaff({...newStaff, commission: val === '' ? '' : Number(val)});
-                  }}
+                  placeholder="Dr. Alisher" 
+                  value={newStaff.full_name}
+                  onChange={e => setNewStaff({...newStaff, full_name: e.target.value})}
+                  className="h-11 rounded-xl bg-white border-slate-200 font-medium"
                 />
-                <Button onClick={addStaff}>Saqlash</Button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Lavozim</Label>
+                  <Input 
+                    placeholder="Stomatolog" 
+                    value={newStaff.role}
+                    onChange={e => setNewStaff({...newStaff, role: e.target.value})}
+                    className="h-11 rounded-xl bg-white border-slate-200 font-medium"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Komissiya %</Label>
+                  <Input 
+                    type="number"
+                    placeholder="40"
+                    value={newStaff.commission === 0 || newStaff.commission === '' ? '' : newStaff.commission}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setNewStaff({...newStaff, commission: val === '' ? '' : Number(val)});
+                    }}
+                    className="h-11 rounded-xl bg-white border-slate-200 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Parol</Label>
+                  <Input 
+                    type="text"
+                    placeholder="doctor123"
+                    value={newStaff.password}
+                    onChange={e => setNewStaff({...newStaff, password: e.target.value})}
+                    className="h-11 rounded-xl bg-white border-slate-200 font-mono text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Telefon</Label>
+                  <Input 
+                    type="tel"
+                    placeholder="+998..."
+                    value={newStaff.phone}
+                    onChange={e => setNewStaff({...newStaff, phone: e.target.value})}
+                    className="h-11 rounded-xl bg-white border-slate-200 font-medium text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowStaffForm(false)} 
+                  className="flex-1 h-11 rounded-xl font-bold"
+                >
+                  Bekor qilish
+                </Button>
+                <Button 
+                  onClick={addStaff} 
+                  className="flex-1 h-11 rounded-xl bg-slate-900 text-white font-bold"
+                >
+                  Saqlash
+                </Button>
               </div>
             </motion.div>
           )}
 
           <div className="space-y-2">
             {users.map(u => (
-              <div key={u.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                <div>
-                  <p className="font-medium text-sm">{u.name || u.full_name}</p>
-                  <p className="text-xs text-slate-500">{u.specialty || 'Shifokor'}</p>
+              <div key={u.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl hover:bg-slate-100/80 transition-colors">
+                <div className="flex-1 min-w-0 pr-2">
+                  <p className="font-bold text-sm text-slate-900 truncate">{u.name || u.full_name}</p>
+                  <p className="text-xs text-slate-500 truncate">{u.specialty || u.role || 'Shifokor'}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
-                    {u.commission_rate || 0}%
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-xs font-black bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full">
+                    {u.commission_rate ?? u.commission ?? 0}%
                   </span>
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8 text-red-500"
-                    onClick={() => deleteStaff(u.id)}
+                    className="h-8 w-8 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl"
+                    onClick={() => handleOpenEditStaff(u)}
+                    title="Tahrirlash"
                   >
-                    ×
+                    <Pencil className="w-4 h-4 text-slate-600" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl"
+                    onClick={() => deleteStaff(u.id)}
+                    title="O'chirish"
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-400" />
                   </Button>
                 </div>
               </div>
@@ -548,7 +681,7 @@ export default function MobileSettings() {
         >
           <Button 
             variant="destructive" 
-            className="w-full"
+            className="w-full h-12 rounded-2xl font-bold"
             onClick={handleLogout}
           >
             <LogOut className="w-4 h-4 mr-2" />
@@ -556,6 +689,129 @@ export default function MobileSettings() {
           </Button>
         </motion.div>
       </div>
+
+      {/* ✏️ Xodim ma'lumotlarini tahrirlash dialogi */}
+      <Dialog open={!!editingStaff} onOpenChange={(open) => { if (!open) setEditingStaff(null); }}>
+        <DialogContent className="w-[92%] sm:max-w-md rounded-3xl p-6 bg-white border border-slate-100 shadow-2xl">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-11 h-11 bg-emerald-100 rounded-2xl flex items-center justify-center font-bold text-emerald-700 text-lg shadow-sm">
+                {editStaffForm.name?.[0]?.toUpperCase() || 'D'}
+              </div>
+              <div>
+                <DialogTitle className="text-base font-black text-slate-900 tracking-tight">
+                  Xodimni tahrirlash
+                </DialogTitle>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Ma'lumotlar, login va parolni yangilash
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveEditStaff} className="space-y-3.5 pt-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">
+                To'liq ismi *
+              </Label>
+              <Input 
+                placeholder="Dr. Alisher" 
+                value={editStaffForm.name}
+                onChange={e => setEditStaffForm({ ...editStaffForm, name: e.target.value })}
+                className="h-11 rounded-xl border-slate-200 font-medium"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">
+                  Lavozimi
+                </Label>
+                <Input 
+                  placeholder="Stomatolog" 
+                  value={editStaffForm.specialty}
+                  onChange={e => setEditStaffForm({ ...editStaffForm, specialty: e.target.value })}
+                  className="h-11 rounded-xl border-slate-200 font-medium"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">
+                  Ulush (%)
+                </Label>
+                <Input 
+                  type="number"
+                  placeholder="40" 
+                  value={editStaffForm.commission_rate === 0 || editStaffForm.commission_rate === '' ? '' : editStaffForm.commission_rate}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setEditStaffForm({ ...editStaffForm, commission_rate: val === '' ? '' : Number(val) });
+                  }}
+                  className="h-11 rounded-xl border-slate-200 font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">
+                  Login
+                </Label>
+                <Input 
+                  placeholder="dr_alisher" 
+                  value={editStaffForm.username}
+                  onChange={e => setEditStaffForm({ ...editStaffForm, username: e.target.value })}
+                  className="h-11 rounded-xl border-slate-200 font-mono text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">
+                  Parol
+                </Label>
+                <Input 
+                  type="text"
+                  placeholder="Parol" 
+                  value={editStaffForm.password}
+                  onChange={e => setEditStaffForm({ ...editStaffForm, password: e.target.value })}
+                  className="h-11 rounded-xl border-slate-200 font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">
+                Telefon raqami
+              </Label>
+              <Input 
+                type="tel"
+                placeholder="+998..." 
+                value={editStaffForm.phone}
+                onChange={e => setEditStaffForm({ ...editStaffForm, phone: e.target.value })}
+                className="h-11 rounded-xl border-slate-200 font-medium"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setEditingStaff(null)} 
+                className="flex-1 h-11 rounded-xl font-bold"
+              >
+                Bekor qilish
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={savingStaff} 
+                className="flex-1 h-11 rounded-xl bg-slate-900 text-white font-bold"
+              >
+                {savingStaff ? 'Saqlanmoqda...' : 'Saqlash'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

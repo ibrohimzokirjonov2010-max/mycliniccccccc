@@ -116,7 +116,7 @@ export default function Login() {
 
     if (onboardingStep === 1) {
       return (
-        <div className="min-h-screen w-full bg-slate-50 flex flex-col justify-between p-6 relative overflow-hidden font-sans select-none">
+        <div className="h-[100dvh] w-full bg-slate-50 flex flex-col justify-between p-6 relative overflow-hidden font-sans select-none">
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
           <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl" />
 
@@ -164,7 +164,7 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="p-6 shrink-0 w-full max-w-[360px] mx-auto z-10">
+          <div className="shrink-0 w-full max-w-[360px] mx-auto z-10" style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom, 16px))', paddingTop: '16px' }}>
             <Button 
               onClick={handleCountryNext}
               className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold uppercase tracking-wider transition-all shadow-lg shadow-blue-200 active:scale-95 border-none"
@@ -178,7 +178,7 @@ export default function Login() {
 
     if (onboardingStep === 2) {
       return (
-        <div className="min-h-screen w-full bg-slate-50 flex flex-col justify-between p-6 relative overflow-hidden font-sans select-none">
+        <div className="h-[100dvh] w-full bg-slate-50 flex flex-col justify-between p-6 relative overflow-hidden font-sans select-none">
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
           <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl" />
 
@@ -239,7 +239,7 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="p-6 shrink-0 w-full max-w-[360px] mx-auto z-10">
+          <div className="shrink-0 w-full max-w-[360px] mx-auto z-10" style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom, 16px))', paddingTop: '16px' }}>
             <Button 
               onClick={handleLanguageNext}
               className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold uppercase tracking-wider transition-all shadow-lg shadow-blue-200 active:scale-95 border-none"
@@ -252,7 +252,7 @@ export default function Login() {
     }
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#061B30] via-[#092B4F] to-[#041221] flex flex-col justify-between p-6 relative overflow-hidden font-sans text-white select-none">
+      <div className="h-[100dvh] bg-gradient-to-br from-[#061B30] via-[#092B4F] to-[#041221] flex flex-col justify-between p-6 relative overflow-hidden font-sans text-white select-none">
         
         {slideIndex < 3 ? (
           <button 
@@ -465,7 +465,7 @@ export default function Login() {
 
         </div>
 
-        <div className="p-6 shrink-0 w-full max-w-[360px] mx-auto z-10">
+        <div className="shrink-0 w-full max-w-[360px] mx-auto z-10" style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom, 16px))', paddingTop: '16px' }}>
           {slideIndex < 3 ? (
             <Button 
               onClick={() => setOnboardingStep(onboardingStep + 1)}

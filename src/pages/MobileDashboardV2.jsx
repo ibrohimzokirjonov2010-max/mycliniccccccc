@@ -201,7 +201,7 @@ export default function MobileDashboardV2() {
       <div className="min-h-screen bg-slate-50 pb-28">
         {/* Premium Header */}
         <div className="bg-white border-b border-slate-50 shadow-sm">
-          <div className="px-5 py-6">
+          <div className="px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-[#1499AD] rounded-2xl flex items-center justify-center shadow-lg shadow-[#1499AD]/20 text-white">

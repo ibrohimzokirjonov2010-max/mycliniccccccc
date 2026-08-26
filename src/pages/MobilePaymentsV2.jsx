@@ -871,6 +871,14 @@ export default function MobilePaymentsV2() {
                 <h1 className="text-2xl font-bold text-slate-900">{t('payments.title')}</h1>
                 <p className="text-sm text-slate-500 mt-0.5">{t('payments.subtitle')}</p>
               </div>
+
+              <Button 
+                onClick={() => setShowAddModal(true)}
+                className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-4 h-11 shadow-lg shadow-slate-200 flex items-center gap-1.5 active:scale-95 transition-all text-xs font-bold"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+                <span>{t('common.add') || "Qo'shish"}</span>
+              </Button>
             </div>
 
             {/* Financial Overview Cards */}
@@ -1503,13 +1511,6 @@ onClose={() => { setShowPlanInvoiceModal(false); setSelectedPlanForInvoice(null)
           </DialogContent>
         </Dialog>
 
-        {/* Floating Action Button (FAB) for adding a payment */}
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="fixed bottom-24 right-5 w-14 h-14 bg-slate-950 text-white rounded-full flex items-center justify-center shadow-lg shadow-slate-950/30 z-40 active:scale-90 active:bg-slate-900 transition-all duration-200 border-none"
-        >
-          <Plus className="w-6 h-6 stroke-[3]" />
-        </button>
       </div>
     </PullToRefresh>
   );
