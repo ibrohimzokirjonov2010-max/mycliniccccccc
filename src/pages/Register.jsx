@@ -1,12 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Lock, User, Building2, UserPlus, 
-  ArrowRight, Loader2, ShieldCheck, 
-  AlertCircle, Percent, ChevronLeft,
-  Stethoscope, Settings as SettingsIcon,
-  Phone, Globe
+import { Building2, UserPlus, Loader2, 
+  AlertCircle, ChevronLeft,
+  Stethoscope, Settings as SettingsIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

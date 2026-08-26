@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { getModelToken, MongooseModule } from '@nestjs/mongoose';
 import { TelegramService } from './telegram.service';
+import { SmsService } from './sms.service';
 import { AppointmentRemindersCron } from './appointment-reminders.cron';
 import { DebtRemindersCron } from './debt-reminders.cron';
 import { NotificationsController } from './notifications.controller';
@@ -28,6 +29,7 @@ const useMongo = process.env.SKIP_DB !== 'true';
     : [ConfigModule],
   providers: [
     TelegramService,
+    SmsService,
     AppointmentRemindersCron,
     DebtRemindersCron,
     ...(useMongo
@@ -41,6 +43,6 @@ const useMongo = process.env.SKIP_DB !== 'true';
         ]),
   ],
   controllers: [NotificationsController],
-  exports: [TelegramService, AppointmentRemindersCron],
+  exports: [TelegramService, SmsService, AppointmentRemindersCron],
 })
 export class NotificationsModule {}

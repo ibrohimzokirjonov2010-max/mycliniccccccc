@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Calendar, Clock, User, Phone, ChevronLeft, ChevronRight,
-  Plus, CheckCircle2, XCircle, Clock4, Stethoscope, Pencil, UserSquare, MessageCircle, Search
+import { Clock, User, Phone, ChevronLeft, ChevronRight,
+  Plus, CheckCircle2, XCircle, Clock4, Pencil, UserSquare, MessageCircle, Search
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -12,7 +11,7 @@ import { formatCurrency } from '@/lib/utils';
 import AppointmentModal from '@/components/appointments/AppointmentModal';
 import AppointmentTreatmentModal from '@/components/appointments/AppointmentTreatmentModal';
 import AppointmentConfirmationBadge from '@/components/appointments/AppointmentConfirmationBadge';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 
 /**
@@ -344,8 +343,8 @@ export default function MobileAppointmentsV2() {
       <motion.div 
         initial={{ opacity: 0, x: -20 }} 
         animate={{ opacity: 1, x: 0 }} 
-        transition={{ delay: index * 0.05 }} 
-        className="flex gap-2 mb-2"
+        transition={{ delay: isSearchMode ? 0 : Math.min(index, 6) * 0.02 }} 
+        className="flex gap-2 mb-2 content-visibility-auto"
       >
         <div className="flex flex-col items-center w-12 flex-shrink-0">
           <span className={`text-slate-900 ${isContinuing ? 'text-[9px] font-semibold opacity-40' : 'text-sm font-black'}`}>

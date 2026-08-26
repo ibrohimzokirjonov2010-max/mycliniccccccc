@@ -178,12 +178,6 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* Katta ro'yxatlar uchun contain — browser qayta hisoblashni kamaytiradi */
-table,
-[class*="space-y"],
-[class*="grid"] {
-  contain: layout style;
-}
 
 
 /* Custom scrollbar */
@@ -226,7 +220,7 @@ table,
 
 @media (max-width: 1023px) {
   .sticky-profile-header {
-    top: calc(4rem + max(24px, env(safe-area-inset-top, 24px)));
+    top: 0;
   }
 }
 
@@ -304,4 +298,10 @@ table,
 .text-\[11px\] {
   font-size: 11px !important;
   line-height: 1.5 !important;
+}
+
+/* Modern CSS Containment for list virtualization */
+.content-visibility-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 74px; /* Approximates the standard card height */
 }

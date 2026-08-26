@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, X, Trash2, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Bell, X, Trash2, Clock, AlertCircle } from 'lucide-react';
 import { notificationStore } from '@/lib/notificationStore';
 
 export default function NotificationPanel({ isOpen, onClose }) {

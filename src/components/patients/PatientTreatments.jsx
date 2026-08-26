@@ -3,13 +3,14 @@ import StatusBadge from '../ui/StatusBadge';
 import EmptyState from '../ui/EmptyState';
 import { 
   ClipboardList, Calendar, CheckCircle2, Stethoscope, 
-  ChevronRight, ListTodo, ActivitySquare, Clock, Percent, Pencil, Save, X, FileText, Printer, Download, Plus
+  ChevronRight, ListTodo, ActivitySquare, Percent, Pencil, Save, X, FileText, Printer, Plus
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 const REMOVED_TOOTH_STATUS = 'Olib tashlangan';
 const EXTRACTION_SERVICE_REGEX = /(aqil\s*tish|tish).*(olish|sug'?urish)|olib\s*tashlash|ekstraks|extraction|удалени/i;
@@ -25,8 +26,8 @@ const isExtractionService = (service) => {
   return EXTRACTION_SERVICE_REGEX.test(text);
 };
 
-const formatPlanName = (name) => {
-  if (!name) return 'Davolash rejasi';
+const formatPlanName = (name, t) => {
+  if (!name) return t ? t('patientProfile.treatmentPlanSingular') || t('patientTreatments.title') : 'Davolash rejasi';
   // Qavs ichidagi tish raqamini ajratib olamiz: masalan "(#11)" yoki "(#31)"
   const toothMatch = name.match(/\s*\(#\d+\)$/);
   const toothSuffix = toothMatch ? toothMatch[0] : '';
@@ -38,11 +39,12 @@ const formatPlanName = (name) => {
   if (parts.length <= 2) return name; // Agar 2 ta yoki undan kam xizmat bo'lsa, o'zgartirmaymiz
   
   // Dastlabki 2 ta xizmat nomi + qolganlar soni
-  const compactBase = parts.slice(0, 2).join(', ') + ` +${parts.length - 2} ta`;
+  const countSuffix = t ? ` +${parts.length - 2} ${t('common.count')}` : ` +${parts.length - 2} ta`;
+  const compactBase = parts.slice(0, 2).join(', ') + countSuffix;
   return compactBase + toothSuffix;
 };
 
-const getServiceDepartment = (service) => {
+const getServiceDepartment = (service, t) => {
   const raw = String(
     service?.category ||
     service?.type ||
@@ -54,43 +56,39 @@ const getServiceDepartment = (service) => {
     ''
   ).toLowerCase();
 
-  if (raw.includes('implant')) return 'Implantatsiya';
-  if (raw.includes('bolalar') || raw.includes('child')) return 'Bolalar stomatologiyasi';
-  if (raw.includes('gigiyena') || raw.includes('profilaktika') || raw.includes('skaler')) return 'Gigiyena va profilaktika';
-  if (raw.includes('vinir') || raw.includes('oqartirish') || raw.includes('bleaching') || raw.includes('estetik')) return 'Estetik stomatologiya';
-  if (raw.includes('endo') || raw.includes('kanal')) return 'Endodontiya';
-  if (raw.includes('olish') || raw.includes('sug\'urish') || raw.includes('xirurg') || raw.includes('anesteziya')) return 'Xirurgiya';
-  if (raw.includes('karonka') || raw.includes('protez') || raw.includes('sirkoniy') || raw.includes('ko\'prik')) return 'Ortopediya';
-  if (raw.includes('breket') || raw.includes('reteyner') || raw.includes('plastinka') || raw.includes('ortodont')) return 'Ortodontiya';
-  return 'Davolash bo\'limi';
+  if (raw.includes('implant')) return t ? t('patientTreatments.departments.implant') : 'Implantatsiya';
+  if (raw.includes('bolalar') || raw.includes('child')) return t ? t('patientTreatments.departments.child') : 'Bolalar stomatologiyasi';
+  if (raw.includes('gigiyena') || raw.includes('profilaktika') || raw.includes('skaler')) return t ? t('patientTreatments.departments.hygiene') : 'Gigiyena va profilaktika';
+  if (raw.includes('vinir') || raw.includes('oqartirish') || raw.includes('bleaching') || raw.includes('estetik')) return t ? t('patientTreatments.departments.esthetics') : 'Estetik stomatologiya';
+  if (raw.includes('endo') || raw.includes('kanal')) return t ? t('patientTreatments.departments.endodontics') : 'Endodontiya';
+  if (raw.includes('olish') || raw.includes('sug\'urish') || raw.includes('xirurg') || raw.includes('anesteziya')) return t ? t('patientTreatments.departments.surgery') : 'Xirurgiya';
+  if (raw.includes('karonka') || raw.includes('protez') || raw.includes('sirkoniy') || raw.includes('ko\'prik')) return t ? t('patientTreatments.departments.orthopedics') : 'Ortopediya';
+  if (raw.includes('breket') || raw.includes('reteyner') || raw.includes('plastinka') || raw.includes('ortodont')) return t ? t('patientTreatments.departments.orthodontics') : 'Ortodontiya';
+  return t ? t('patientTreatments.departments.general') : 'Davolash bo\'limi';
 };
 
-const formatPlanDepartmentName = (plan) => {
-  if (!plan) return 'Davolash rejasi';
+const formatPlanDepartmentName = (plan, t) => {
+  if (!plan) return t ? t('patientProfile.treatmentPlanSingular') || t('patientTreatments.title') : 'Davolash rejasi';
 
   const toothSuffix = plan?.tooth_number ? ` (#${plan.tooth_number})` : '';
   const services = Array.isArray(plan?.services) ? plan.services : [];
 
   if (!services.length) {
-    return `${formatPlanName(plan?.name || plan?.title || 'Davolash rejasi')}`;
+    return `${formatPlanName(plan?.name || plan?.title || (t ? t('patientProfile.treatmentPlanSingular') || t('patientTreatments.title') : 'Davolash rejasi'), t)}`;
   }
 
-  const departments = [...new Set(services.map(getServiceDepartment).filter(Boolean))];
+  const departments = [...new Set(services.map(s => getServiceDepartment(s, t)).filter(Boolean))];
   if (!departments.length) {
-    return `${formatPlanName(plan?.name || plan?.title || 'Davolash rejasi')}`;
+    return `${formatPlanName(plan?.name || plan?.title || (t ? t('patientProfile.treatmentPlanSingular') || t('patientTreatments.title') : 'Davolash rejasi'), t)}`;
   }
 
+  const countSuffix = t ? ` +${departments.length - 2} ${t('common.count')}` : ` +${departments.length - 2} ta`;
   const compactDepartments = departments.length > 2
-    ? `${departments.slice(0, 2).join(', ')} +${departments.length - 2} ta`
+    ? `${departments.slice(0, 2).join(', ')}${countSuffix}`
     : departments.join(', ');
 
   return `${compactDepartments}${toothSuffix}`;
 };
-
-const UZ_MONTHS = [
-  'yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun',
-  'iyul', 'avgust', 'sentyabr', 'oktyabr', 'noyabr', 'dekabr'
-];
 
 const toDateSafe = (value) => {
   if (!value) return null;
@@ -98,21 +96,20 @@ const toDateSafe = (value) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-const formatUzDate = (value, { withTime = false } = {}) => {
+const formatDate = (value, language, { withTime = false } = {}) => {
   const date = toDateSafe(value);
-  if (!date) return "Noma'lum";
+  if (!date) return language === 'uz' ? "Noma'lum" : language === 'ru' ? "Неизвестно" : "Unknown";
 
-  const day = date.getDate();
-  const month = UZ_MONTHS[date.getMonth()];
-  const year = date.getFullYear();
+  const locale = language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US';
+  const dateStr = date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
 
   if (!withTime) {
-    return `${day} ${month} ${year}`;
+    return dateStr;
   }
 
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${day} ${month} ${year}, ${hours}:${minutes}`;
+  return `${dateStr}, ${hours}:${minutes}`;
 };
 
 const formatMoney = (value) => `${Number(value || 0).toLocaleString('ru-RU')} so'm`;
@@ -134,6 +131,7 @@ function PatientTreatments({
   showRemainingAsPrimary = false,
   onAddPlan
 }) {
+  const { t, language } = useTranslation();
   const [localPlans, setLocalPlans] = useState(plans);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -198,8 +196,8 @@ function PatientTreatments({
     return (
       <EmptyState 
         icon={ClipboardList} 
-        title="Davolash rejalari yo'q" 
-        description="Bu bemor uchun hali davolash rejalari mavjud emas"
+        title={t('patientTreatments.emptyTitle')} 
+        description={t('patientTreatments.emptyDesc')}
       />
     );
   }
@@ -257,35 +255,69 @@ function PatientTreatments({
         return val;
       };
 
-      const completedExtractions = updatedServices.filter(service =>
-        Boolean(service?.completed) && isExtractionService(service)
-      );
-
-      if (completedExtractions.length > 0 && selectedPlan?.patient_id) {
+      if (updatedServices.length > 0 && selectedPlan?.patient_id) {
         const existingRecords = await base44.entities.ToothRecord.filter(
           { patient_id: selectedPlan.patient_id },
           'tooth_number',
           100
         );
 
-        for (const service of completedExtractions) {
+        const clinicId = localStorage.getItem('current_clinic_id') || selectedPlan?.clinic_id || 'default_clinic';
+
+        for (const service of updatedServices) {
           const toothNumber = getToothFdi(service);
           if (!toothNumber || toothNumber.toLowerCase() === 'general') continue;
 
           const existingRecord = (existingRecords || []).find(record => String(record?.tooth_number) === String(toothNumber));
+          const svcName = String(service.service_name || service.name || '').toLowerCase();
+          
+          let derivedCondition = null;
+          let derivedTreatment = service.service_name || service.name || 'Davolangan';
+          const isExtraction = isExtractionService(service);
+          
+          if (isExtraction) {
+            derivedCondition = REMOVED_TOOTH_STATUS;
+            derivedTreatment = REMOVED_TOOTH_STATUS;
+          } else if (svcName.includes('implant')) {
+            derivedTreatment = 'Implant';
+          } else if (svcName.includes('vinir') || svcName.includes('veneer')) {
+            derivedTreatment = 'Veneer';
+          } else if (svcName.includes('karonka') || svcName.includes('toj') || svcName.includes('crown') || svcName.includes('protez') || svcName.includes('metallokeramika')) {
+            derivedTreatment = 'Toj';
+          } else if (svcName.includes('plomba') || svcName.includes('restavratsiya')) {
+            derivedTreatment = 'Restavratsiya';
+          } else if (svcName.includes('endo') || svcName.includes('kanal') || svcName.includes('pulpit')) {
+            derivedCondition = 'Pulpit';
+            derivedTreatment = 'Kanal';
+          } else if (svcName.includes('kariyes') || svcName.includes('caries') || svcName.includes('karies')) {
+            derivedCondition = 'Kariyes';
+            derivedTreatment = 'Davolangan';
+          }
 
-          const payload = {
-            patient_id: selectedPlan.patient_id,
-            tooth_number: toothNumber,
-            status: REMOVED_TOOTH_STATUS,
-            diagnosis: REMOVED_TOOTH_STATUS,
-            notes: existingRecord?.notes || "Tish olib tashlangan",
-          };
+          if (service.completed) {
+            const payload = {
+              patient_id: selectedPlan.patient_id,
+              clinic_id: clinicId,
+              tooth_number: toothNumber,
+              condition: derivedCondition || (existingRecord ? existingRecord.condition : null),
+              treatment: derivedTreatment || (existingRecord ? existingRecord.treatment : null),
+              notes: existingRecord?.notes || `Tizim orqali avtomatik kiritildi (${service.service_name || service.name || 'xizmat'})`,
+            };
 
-          if (existingRecord?.id) {
-            await base44.entities.ToothRecord.update(existingRecord.id, payload);
+            if (existingRecord?.id) {
+              await base44.entities.ToothRecord.update(existingRecord.id, payload);
+            } else {
+              await base44.entities.ToothRecord.create(payload);
+            }
           } else {
-            await base44.entities.ToothRecord.create(payload);
+            // If the completed checkbox was unchecked, clear the condition & treatment (make it healthy/empty)
+            if (existingRecord?.id) {
+              await base44.entities.ToothRecord.update(existingRecord.id, {
+                condition: null,
+                treatment: null,
+                notes: (existingRecord.notes || '') + " (Qaytarildi)"
+              });
+            }
           }
         }
       }
@@ -317,8 +349,8 @@ function PatientTreatments({
                <ClipboardList className="w-6 h-6" />
             </div>
             <div>
-               <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter">Davolash rejalari</h3>
-               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{plans.length} ta umumiy muolaja</p>
+               <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter">{t('patientTreatments.title')}</h3>
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('patientTreatments.totalTreatments', { count: plans.length })}</p>
             </div>
          </div>
          {onAddPlan && (
@@ -326,36 +358,36 @@ function PatientTreatments({
              onClick={onAddPlan}
              className="w-full sm:w-auto h-12 rounded-2xl bg-[#10B981] hover:bg-[#059669] text-white font-black uppercase text-[11px] tracking-widest gap-2 px-6 shadow-lg shadow-emerald-500/20 transition-all active:scale-95 border-none"
            >
-             <Plus className="w-5 h-5" /> Reja qo'shish
+             <Plus className="w-5 h-5" /> {t('patientTreatments.addPlan')}
            </Button>
          )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3 sm:p-5 shadow-sm transition-transform hover:scale-[1.02]">
-          <p className="text-[9px] sm:text-[11px] uppercase tracking-wider font-black text-blue-600 mb-0.5 sm:mb-1">Jami rejalar</p>
+          <p className="text-[9px] sm:text-[11px] uppercase tracking-wider font-black text-blue-600 mb-0.5 sm:mb-1">{t('patientTreatments.totalPlans')}</p>
           <p className="text-xl sm:text-3xl font-black text-blue-700">{totalPlans}</p>
         </div>
         <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 sm:p-5 shadow-sm transition-transform hover:scale-[1.02]">
-          <p className="text-[9px] sm:text-[11px] uppercase tracking-wider font-black text-emerald-600 mb-0.5 sm:mb-1">Tugallangan</p>
+          <p className="text-[9px] sm:text-[11px] uppercase tracking-wider font-black text-emerald-600 mb-0.5 sm:mb-1">{t('patientTreatments.completed')}</p>
           <p className="text-xl sm:text-3xl font-black text-emerald-700">{completedPlans}</p>
         </div>
         <div className="bg-amber-50 border border-amber-100 rounded-2xl p-3 sm:p-5 shadow-sm transition-transform hover:scale-[1.02]">
           <p className="text-[9px] sm:text-[11px] uppercase tracking-wider font-black text-amber-600 mb-0.5 sm:mb-1">
-            {showRemainingAsPrimary ? "Qolgan qarz" : "Jami qiymat"}
+            {showRemainingAsPrimary ? t('patientTreatments.remainingDebt') : t('patientTreatments.totalValue')}
           </p>
           <p className="text-xl sm:text-2xl font-black text-amber-700 leading-tight">
-            {(showRemainingAsPrimary ? totalRemainingValue : totalValue).toLocaleString()} <span className="text-[10px] font-bold opacity-50">so'm</span>
+            {(showRemainingAsPrimary ? totalRemainingValue : totalValue).toLocaleString()} <span className="text-[10px] font-bold opacity-50">{t('common.currency')}</span>
           </p>
         </div>
         <div className="bg-rose-50 border border-rose-100 rounded-2xl p-3 sm:p-5 shadow-sm transition-transform hover:scale-[1.02]">
-          <p className="text-[9px] sm:text-[11px] uppercase tracking-wider font-black text-rose-600 mb-0.5 sm:mb-1">Chegirmalar</p>
+          <p className="text-[9px] sm:text-[11px] uppercase tracking-wider font-black text-rose-600 mb-0.5 sm:mb-1">{t('patientTreatments.discounts')}</p>
           <p className="text-xl sm:text-2xl font-black text-rose-700 leading-tight">
-            {discAmount.toLocaleString()} <span className="text-[10px] font-bold opacity-50">so'm</span>
+            {discAmount.toLocaleString()} <span className="text-[10px] font-bold opacity-50">{t('common.currency')}</span>
           </p>
           {discPercent > 0 && (
             <p className="text-[9px] font-black text-rose-500 uppercase mt-1">
-              -{discPercent}% chegirma
+              {t('patientTreatments.discountPercent', { percent: discPercent })}
             </p>
           )}
         </div>
@@ -384,7 +416,7 @@ function PatientTreatments({
                     {/* Row 1: Plan title + status */}
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-[13px] font-black text-slate-900 leading-5 uppercase break-words">
-                        {formatPlanDepartmentName(plan)}
+                        {formatPlanDepartmentName(plan, t)}
                       </p>
                       <StatusBadge status={plan.status} />
                     </div>
@@ -395,7 +427,7 @@ function PatientTreatments({
                         {plan.services.map(s => s.service_name || s.name).filter(Boolean).join(' • ')}
                       </p>
                     ) : (
-                      <p className="text-[10px] text-slate-300 italic mt-1">Xizmatlar yo'q</p>
+                      <p className="text-[10px] text-slate-300 italic mt-1">{t('patientTreatments.noServices')}</p>
                     )}
 
                     {/* Row 3: Discount */}
@@ -403,7 +435,7 @@ function PatientTreatments({
                       <div className="mt-1.5">
                         <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 border border-rose-100 px-2 py-0.5 text-[9px] font-black text-rose-600">
                           <Percent className="w-2.5 h-2.5" />
-                          -{effectiveDiscountPct}% chegirma — {effectiveDiscountAmt.toLocaleString()} so'm
+                          {t('patientTreatments.discountPercent', { percent: effectiveDiscountPct })} — {effectiveDiscountAmt.toLocaleString()} {t('common.currency')}
                         </span>
                       </div>
                     )}
@@ -415,14 +447,14 @@ function PatientTreatments({
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2">
                     <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">
-                      {showRemainingAsPrimary ? "Qolgan" : "Jami"}
+                      {showRemainingAsPrimary ? t('patientTreatments.remaining') : t('patientTreatments.planTotal')}
                     </p>
                     <p className="text-[15px] font-black text-emerald-700 mt-0.5 whitespace-nowrap">
                       {(showRemainingAsPrimary ? remainingAmount : currentPrice).toLocaleString('ru-RU')}
                     </p>
                   </div>
                   <div className="rounded-xl bg-rose-50 border border-rose-100 px-3 py-2">
-                    <p className="text-[9px] font-black text-rose-600 uppercase tracking-widest">Qarz</p>
+                    <p className="text-[9px] font-black text-rose-600 uppercase tracking-widest">{t('patientTreatments.debt')}</p>
                     <p className="text-[15px] font-black text-rose-700 mt-0.5 whitespace-nowrap">
                       {remainingAmount.toLocaleString('ru-RU')}
                     </p>
@@ -433,17 +465,17 @@ function PatientTreatments({
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {plan.tooth_number && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-100 px-2 py-0.5 text-[9px] font-black text-emerald-700">
-                      <Stethoscope className="w-3 h-3" /> #{plan.tooth_number}
+                      <Stethoscope className="w-3 h-3" /> {t('patientTreatments.forTooth', { number: plan.tooth_number })}
                     </span>
                   )}
                   <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 border border-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500">
                     <Calendar className="w-3 h-3 text-blue-400" />
-                    {plan.created_date ? formatUzDate(plan.created_date) : '--'}
+                    {plan.created_date ? formatDate(plan.created_date, language) : '--'}
                   </span>
                   {plan.installment_plan && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-100 px-2 py-0.5 text-[9px] font-black text-blue-700">
                       <Calendar className="w-3 h-3" />
-                      {plan.installment_plan.months} oy
+                      {t('patientTreatments.monthsCount', { count: plan.installment_plan.months })}
                     </span>
                   )}
                 </div>
@@ -455,7 +487,7 @@ function PatientTreatments({
                   className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700 text-[11px] font-black hover:bg-indigo-100 transition-all active:scale-95"
                 >
                   <FileText className="w-3.5 h-3.5" />
-                  Hisob-faktura ko'rish
+                  {t('patientTreatments.invoice')}
                 </button>
               </button>
             );
@@ -467,16 +499,16 @@ function PatientTreatments({
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50">
                 <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-wider px-6 py-5">
-                  Muolaja nomi
+                  {t('patientTreatments.invoiceDetails.plan')}
                 </th>
                 <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-wider px-6 py-5">
-                  Holati
+                  {t('patientTreatments.details.status')}
                 </th>
                 <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-wider px-6 py-5 hidden md:table-cell">
-                  Sana
+                  {t('patientPayments.date')}
                 </th>
                 <th className="text-right text-[10px] font-black text-slate-400 uppercase tracking-wider px-6 py-5">
-                  Qiymati
+                  {t('patientTreatments.details.price')}
                 </th>
                 <th className="text-right text-[10px] font-black text-slate-400 uppercase tracking-wider px-6 py-5">
                   {/* Action */}
@@ -493,7 +525,7 @@ function PatientTreatments({
                   <td className="px-4 py-3">
                     {/* Row 1: Plan Title */}
                     <p className="text-xs font-black text-slate-900 group-hover:text-emerald-600 transition-colors uppercase tracking-tight leading-tight mb-1.5">
-                      {formatPlanDepartmentName(plan)}
+                      {formatPlanDepartmentName(plan, t)}
                     </p>
 
                     {/* Row 2: Services list */}
@@ -502,7 +534,7 @@ function PatientTreatments({
                         {plan.services.map(s => s.service_name || s.name).filter(Boolean).join(' • ')}
                       </p>
                     ) : (
-                      <p className="text-[10px] font-bold text-slate-300 italic mb-1.5">Xizmatlar yo'q</p>
+                      <p className="text-[10px] font-bold text-slate-300 italic mb-1.5">{t('patientTreatments.noServices')}</p>
                     )}
 
                     {/* Row 3: Discount */}
@@ -517,7 +549,7 @@ function PatientTreatments({
                         return (
                           <span className="inline-flex items-center gap-1 text-[9px] font-black text-rose-500 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded uppercase">
                             <Percent className="w-2.5 h-2.5" />
-                            Chegirma: -{finalDiscountAmt.toLocaleString()} ({finalDiscountPct}%)
+                            {t('patientTreatments.discounts')}: -{finalDiscountAmt.toLocaleString()} ({finalDiscountPct}%)
                           </span>
                         );
                       }
@@ -533,16 +565,16 @@ function PatientTreatments({
                       )}
                       <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-400 bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded">
                         <Calendar className="w-2.5 h-2.5 text-blue-400" />
-                        {plan.created_date ? formatUzDate(plan.created_date) : '--'}
+                        {plan.created_date ? formatDate(plan.created_date, language) : '--'}
                         {plan.created_date && (
                           <span className="text-slate-300">·</span>
                         )}
-                        {plan.created_date ? formatUzDate(plan.created_date, { withTime: true }).split(', ')[1] : ''}
+                        {plan.created_date ? formatDate(plan.created_date, language, { withTime: true }).split(', ')[1] : ''}
                       </span>
                       {plan.installment_plan && (
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 border border-blue-100 rounded text-[9px] font-black text-blue-600 uppercase">
                           <Calendar className="w-2.5 h-2.5" />
-                          {plan.installment_plan.months} oy
+                          {t('patientTreatments.monthsCount', { count: plan.installment_plan.months })}
                         </span>
                       )}
                     </div>
@@ -576,24 +608,24 @@ function PatientTreatments({
                             )}
                             
                             <p className="text-base font-black text-slate-900 tracking-tighter">
-                              {(showRemainingAsPrimary ? remainingAmount : currentPrice).toLocaleString()} <span className="text-[10px] font-bold opacity-30">so'm</span>
+                              {(showRemainingAsPrimary ? remainingAmount : currentPrice).toLocaleString()} <span className="text-[10px] font-bold opacity-30">{t('common.currency')}</span>
                             </p>
 
                             {showRemainingAsPrimary && (
                               <p className="text-[10px] font-bold text-slate-400 mt-0.5">
-                                Reja jami: {currentPrice.toLocaleString()} so'm
+                                {t('patientTreatments.planTotal')}: {currentPrice.toLocaleString()} {t('common.currency')}
                               </p>
                             )}
 
                             {remainingAmount > 0 && (
                                <div className="flex flex-col items-end gap-1 mt-1">
                                  <p className="text-[10px] font-black text-rose-500 uppercase tracking-tighter bg-rose-50 inline-block px-2 py-0.5 rounded border border-rose-100/50">
-                                   Qarz: {remainingAmount.toLocaleString()}
+                                   {t('patientTreatments.debt')}: {remainingAmount.toLocaleString()}
                                  </p>
                                  {plan.installment_plan && (
                                    <div className="flex items-center gap-1 text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase tracking-tighter shadow-sm">
                                       <Calendar className="w-2.5 h-2.5" />
-                                      {plan.installment_plan.months} oy / {Math.round(plan.installment_plan.monthly_amount).toLocaleString()} so'm
+                                      {t('patientTreatments.monthlyInstallment', { months: plan.installment_plan.months, amount: Math.round(plan.installment_plan.monthly_amount).toLocaleString() })}
                                    </div>
                                  )}
                                </div>
@@ -603,7 +635,7 @@ function PatientTreatments({
                               <div className="mt-1.5 flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 border border-emerald-100/50 rounded-md shadow-sm">
                                 <Percent className="w-2.5 h-2.5 text-emerald-600" />
                                 <span className="text-[10px] font-black text-emerald-700 uppercase tracking-tighter">
-                                  {effectiveDiscountPct}% — {effectiveDiscountAmt.toLocaleString()} so'm
+                                  {t('patientTreatments.discountPercent', { percent: effectiveDiscountPct })} — {effectiveDiscountAmt.toLocaleString()} {t('common.currency')}
                                 </span>
                               </div>
                             )}
@@ -622,14 +654,16 @@ function PatientTreatments({
           </table>
         </div>
 
-        <div className="hidden md:flex px-6 py-4 bg-slate-50/50 border-t border-slate-100 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              Xavfsiz ma'lumotlar bazasi bilan ishlamoqdasiz
-            </span>
+        <div className="hidden md:block">
+          <div className="flex px-6 py-4 bg-slate-50/50 border-t border-slate-100 items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                {t('patientTreatments.safeDbNotice')}
+              </span>
+            </div>
+            <span className="text-[10px] font-black text-slate-300">{t('patientTreatments.version')}</span>
           </div>
-          <span className="text-[10px] font-black text-slate-300">SHIFOCRM v2.0</span>
         </div>
       </div>
 
@@ -650,22 +684,22 @@ function PatientTreatments({
                       {/* Bemor ismi va Xizmatlar nomi */}
                       <div className="flex flex-wrap items-baseline gap-2.5 leading-none">
                         <span className="text-2xl sm:text-3xl font-[1000] text-white tracking-tight uppercase leading-none">
-                          {selectedPlan.patient_name || 'Bemor'}
+                          {selectedPlan.patient_name || t('patientTreatments.invoiceDetails.patient')}
                         </span>
                         <span className="text-[11px] sm:text-xs font-black text-emerald-100/80 tracking-wide leading-none">
-                          ({formatPlanDepartmentName(selectedPlan)})
+                          ({formatPlanDepartmentName(selectedPlan, t)})
                         </span>
                       </div>
                       
                       {/* Status va Tish raqamlari (teparoq ko'chirildi) */}
                       <div className="flex flex-wrap items-center gap-2">
-                         <StatusBadge status={selectedPlan.status} />
-                         {selectedPlan.tooth_number && (
-                           <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black text-emerald-800 bg-white/90 px-3 py-1.5 rounded-full shadow-sm">
-                              <Stethoscope className="w-3 h-3 shrink-0 text-emerald-600" />
-                              TISH: #{selectedPlan.tooth_number}
-                           </span>
-                         )}
+                          <StatusBadge status={selectedPlan.status} />
+                          {selectedPlan.tooth_number && (
+                            <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black text-emerald-800 bg-white/90 px-3 py-1.5 rounded-full shadow-sm">
+                               <Stethoscope className="w-3 h-3 shrink-0 text-emerald-600" />
+                               {t('patientTreatments.forTooth', { number: selectedPlan.tooth_number }).toUpperCase()}
+                            </span>
+                          )}
                       </div>
                     </div>
                     
@@ -676,7 +710,7 @@ function PatientTreatments({
                         onClick={() => { setInvoicePlan(selectedPlan); setIsModalOpen(false); }}
                         className="h-11 rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 border-none font-black text-[10px] uppercase tracking-widest gap-2 shadow-md active:scale-95 transition-all"
                       >
-                        <FileText className="w-4 h-4 text-emerald-600" /> Hisob-faktura
+                        <FileText className="w-4 h-4 text-emerald-600" /> {t('patientTreatments.invoiceDetails.title')}
                       </Button>
                     </div>
                   </div>
@@ -692,9 +726,9 @@ function PatientTreatments({
                           <Calendar className="w-5 h-5 sm:w-6 sm:h-6" />
                        </div>
                        <div>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Yaratilgan sana</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('patientTreatments.details.createdDate')}</p>
                           <p className="font-black text-slate-900 text-[15px] sm:text-lg mt-0.5 break-words">
-                            {formatUzDate(selectedPlan.created_date || selectedPlan.created_at)}
+                            {formatDate(selectedPlan.created_date || selectedPlan.created_at, language)}
                           </p>
                        </div>
                     </div>
@@ -703,9 +737,9 @@ function PatientTreatments({
                           <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
                        </div>
                        <div>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tugallangan sana</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('patientTreatments.details.completedDate')}</p>
                           <p className="font-black text-slate-900 text-[15px] sm:text-lg mt-0.5 break-words">
-                            {selectedPlan.updated_date && selectedPlan.status === 'Completed' ? formatUzDate(selectedPlan.updated_date) : 'Hali tugallanmagan'}
+                            {selectedPlan.updated_date && selectedPlan.status === 'Completed' ? formatDate(selectedPlan.updated_date, language) : t('patientTreatments.details.notCompleted')}
                           </p>
                        </div>
                     </div>
@@ -726,26 +760,26 @@ function PatientTreatments({
                     return (
                       <div className="mb-5 sm:mb-8 bg-slate-900 rounded-2xl p-4 sm:p-5 text-white shadow-xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-36 h-36 bg-[#10b981] rounded-full blur-[80px] opacity-10 pointer-events-none" />
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Reja summasi tafsilotlari</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">{t('patientTreatments.details.priceDetails')}</p>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                           <div className="space-y-1">
-                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Jami qiymat</p>
-                            <p className="text-[13px] sm:text-base font-black text-white">{servicesTotal.toLocaleString()} so'm</p>
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">{t('patientTreatments.originalPrice')}</p>
+                            <p className="text-[13px] sm:text-base font-black text-white">{servicesTotal.toLocaleString()} {t('common.currency')}</p>
                           </div>
                           <div className="space-y-1">
-                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Chegirma</p>
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">{t('patientTreatments.discounts')}</p>
                             <p className="text-[13px] sm:text-base font-black text-rose-400">
-                              {finalDiscountAmt > 0 ? `-${finalDiscountAmt.toLocaleString()} so'm (${finalDiscountPct}%)` : '—'}
+                              {finalDiscountAmt > 0 ? `-${finalDiscountAmt.toLocaleString()} ${t('common.currency')} (${finalDiscountPct}%)` : '—'}
                             </p>
                           </div>
                           <div className="space-y-1">
-                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">To'langan</p>
-                            <p className="text-[13px] sm:text-base font-black text-emerald-400">{paid.toLocaleString()} so'm</p>
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">{t('patientTreatments.details.totalPaid')}</p>
+                            <p className="text-[13px] sm:text-base font-black text-emerald-400">{paid.toLocaleString()} {t('common.currency')}</p>
                           </div>
                           <div className="space-y-1">
-                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Qolgan summa</p>
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">{t('patientTreatments.details.remainingAmount')}</p>
                             <p className={`text-[13px] sm:text-base font-black ${remaining > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                              {remaining > 0 ? `${remaining.toLocaleString()} so'm` : "To'liq to'langan"}
+                              {remaining > 0 ? `${remaining.toLocaleString()} ${t('common.currency')}` : t('patientTreatments.details.fullyPaid')}
                             </p>
                           </div>
                         </div>
@@ -759,18 +793,18 @@ function PatientTreatments({
                       <div className="bg-blue-600 px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2">
                          <div className="flex items-center gap-2">
                             <Calendar className="w-4 h-4 text-white" />
-                            <span className="text-[9px] sm:text-[10px] font-black text-white uppercase tracking-widest">To'lovlar grafigi</span>
+                            <span className="text-[9px] sm:text-[10px] font-black text-white uppercase tracking-widest">{t('patientProfile.installments.title')}</span>
                          </div>
                          <div className="bg-white/20 px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-black text-white uppercase whitespace-nowrap">
-                            {selectedPlan.installment_plan.months} OY
+                            {t('patientTreatments.monthsCount', { count: selectedPlan.installment_plan.months }).toUpperCase()}
                          </div>
                       </div>
                       <div className="p-0 bg-blue-50/20">
                          <table className="w-full text-left">
                             <thead>
                                <tr className="border-b border-blue-100">
-                                  <th className="px-3 sm:px-4 py-2 text-[8px] sm:text-[9px] font-black text-blue-800 uppercase">Sana</th>
-                                  <th className="px-3 sm:px-4 py-2 text-[8px] sm:text-[9px] font-black text-blue-800 uppercase text-right">Summa</th>
+                                  <th className="px-3 sm:px-4 py-2 text-[8px] sm:text-[9px] font-black text-blue-800 uppercase">{t('patientPayments.date')}</th>
+                                  <th className="px-3 sm:px-4 py-2 text-[8px] sm:text-[9px] font-black text-blue-800 uppercase text-right">{t('patientPayments.amount')}</th>
                                </tr>
                             </thead>
                             <tbody>
@@ -780,18 +814,18 @@ function PatientTreatments({
                                   return (
                                      <tr key={idx} className="border-b border-blue-50/50 last:border-0 hover:bg-blue-50/40 transition-colors">
                                         <td className="px-3 sm:px-4 py-2 text-[10px] sm:text-[11px] font-medium text-slate-600">
-                                           {formatUzDate(d)}
+                                           {formatDate(d, language)}
                                         </td>
                                         <td className="px-3 sm:px-4 py-2 text-[10px] sm:text-[11px] font-black text-slate-900 text-right whitespace-nowrap">
-                                           {formatMoney(Math.round(selectedPlan.installment_plan.monthly_amount))}
+                                           {Math.round(selectedPlan.installment_plan.monthly_amount).toLocaleString()} {t('common.currency')}
                                         </td>
                                      </tr>
                                   );
-                               })}
+                                })}
                             </tbody>
                          </table>
                          <div className="p-3 bg-blue-50/50 border-t border-blue-100">
-                            <p className="text-[9px] sm:text-[10px] text-blue-700 italic font-medium">Bemor oldindan to'lov qilsa, qarz umumiy hisobdan kamayadi.</p>
+                            <p className="text-[9px] sm:text-[10px] text-blue-700 italic font-medium">{t('patientTreatments.invoiceDetails.footnote')}</p>
                          </div>
                       </div>
                    </div>
@@ -804,7 +838,7 @@ function PatientTreatments({
                          <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center">
                            <ListTodo className="w-3 h-3 text-emerald-600" />
                          </div>
-                         Xizmatlar ({(isEditingServices ? editedServices : selectedPlan.services)?.length || 0} ta)
+                         {t('patientTreatments.details.servicesTitle', { count: (isEditingServices ? editedServices : selectedPlan.services)?.length || 0 })}
                       </h4>
                       
                       <div className="flex items-center gap-2">
@@ -814,7 +848,7 @@ function PatientTreatments({
                             onClick={() => { setIsEditingServices(true); setEditedServices(Array.isArray(selectedPlan?.services) ? selectedPlan.services : []); }}
                             className="h-8 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-100 font-black text-[9px] uppercase tracking-widest gap-1.5 active:scale-95 transition-all"
                           >
-                            <Pencil className="w-3 h-3" /> Xizmatlarni belgilash
+                            <Pencil className="w-3 h-3" /> {t('patientTreatments.details.setServices')}
                           </Button>
                         ) : (
                           <div className="flex items-center gap-1.5">
@@ -823,7 +857,7 @@ function PatientTreatments({
                               disabled={savingServices}
                               className="h-8 px-3 rounded-lg bg-slate-900 hover:bg-slate-950 text-white font-black text-[9px] uppercase tracking-widest gap-1.5 active:scale-95 transition-all"
                             >
-                              <Save className="w-3 h-3" /> {savingServices ? "Saqlanmoqda..." : "Saqlash"}
+                              <Save className="w-3 h-3" /> {savingServices ? t('patientTreatments.details.saving') : t('patientTreatments.details.save')}
                             </Button>
                             <Button
                               variant="secondary"
@@ -831,7 +865,7 @@ function PatientTreatments({
                               onClick={() => { setIsEditingServices(false); setEditedServices(Array.isArray(selectedPlan?.services) ? selectedPlan.services : []); }}
                               className="h-8 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-500 border border-slate-200 font-black text-[9px] uppercase tracking-widest gap-1.5 active:scale-95 transition-all"
                             >
-                              <X className="w-3 h-3" /> Bekor qilish
+                              <X className="w-3 h-3" /> {t('patientTreatments.details.cancel')}
                             </Button>
                           </div>
                         )}
@@ -842,16 +876,16 @@ function PatientTreatments({
                        {!(isEditingServices ? editedServices : selectedPlan.services) || (isEditingServices ? editedServices : selectedPlan.services).length === 0 ? (
                           <div className="text-center py-8 bg-slate-50/50">
                              <ListTodo className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                             <p className="text-xs text-slate-500 font-bold">Bu reja uchun alohida xizmatlar biriktirilmagan.</p>
+                             <p className="text-xs text-slate-500 font-bold">{t('patientTreatments.details.noServicesAttached')}</p>
                           </div>
                        ) : (
                          <table className="w-full">
                            <thead>
                              <tr className="bg-slate-50 border-b border-slate-100">
                                <th className="px-3 sm:px-4 py-2.5 text-left text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest w-8">#</th>
-                               <th className="px-3 sm:px-4 py-2.5 text-left text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Xizmat</th>
-                               <th className="px-3 sm:px-4 py-2.5 text-right text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Narx</th>
-                               <th className="px-3 sm:px-4 py-2.5 text-center text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Holat</th>
+                               <th className="px-3 sm:px-4 py-2.5 text-left text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('patientTreatments.invoiceDetails.plan')}</th>
+                               <th className="px-3 sm:px-4 py-2.5 text-right text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('patientTreatments.details.price')}</th>
+                               <th className="px-3 sm:px-4 py-2.5 text-center text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('patientTreatments.details.status')}</th>
                              </tr>
                            </thead>
                            <tbody>
@@ -888,7 +922,7 @@ function PatientTreatments({
                                          </p>
                                          {(service.tooth_number || service.tooth_id) && (
                                            <span className="text-[8px] font-black text-emerald-700 bg-emerald-100/60 px-1.5 py-0.5 rounded uppercase mt-0.5 inline-block">
-                                             Tish #{service.tooth_number || service.tooth_id}
+                                             {t('patientTreatments.forTooth', { number: service.tooth_number || service.tooth_id })}
                                            </span>
                                          )}
                                        </div>
@@ -898,7 +932,7 @@ function PatientTreatments({
                                    <td className="px-4 py-3 text-right">
                                      <span className="text-xs font-black text-slate-900 whitespace-nowrap">
                                        {service.price ? `${service.price.toLocaleString()}` : '—'}
-                                       <span className="text-[9px] text-slate-300 ml-0.5">so'm</span>
+                                       <span className="text-[9px] text-slate-300 ml-0.5">{t('common.currency')}</span>
                                      </span>
                                    </td>
                                    {/* Holat */}
@@ -908,7 +942,7 @@ function PatientTreatments({
                                          ? 'bg-emerald-100 text-emerald-700'
                                          : 'bg-amber-50 text-amber-600'
                                      }`}>
-                                       {isCompleted ? '✔ Bajarilgan' : '⏳ Kutilmoqda'}
+                                       {isCompleted ? t('patientTreatments.details.completedSvc') : t('patientTreatments.details.pendingSvc')}
                                      </span>
                                    </td>
                                  </tr>
@@ -919,13 +953,13 @@ function PatientTreatments({
                            <tfoot>
                              <tr className="bg-slate-50 border-t border-slate-100">
                                <td colSpan={2} className="px-4 py-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                 Jami {(isEditingServices ? editedServices : selectedPlan.services).length} ta xizmat
+                                 {t('patientTreatments.details.totalServices', { count: (isEditingServices ? editedServices : selectedPlan.services).length })}
                                </td>
                                <td className="px-4 py-2.5 text-right">
                                  <span className="text-sm font-black text-emerald-700">
                                    {(isEditingServices ? editedServices : selectedPlan.services)
                                      .reduce((sum, s) => sum + (Number(s.price) || 0), 0).toLocaleString()}
-                                   <span className="text-[9px] text-slate-300 ml-0.5">so'm</span>
+                                   <span className="text-[9px] text-slate-300 ml-0.5">{t('common.currency')}</span>
                                  </span>
                                </td>
                                <td />
@@ -950,14 +984,14 @@ function PatientTreatments({
               <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50 no-print sticky top-0 z-10">
                 <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight flex items-center gap-2">
                   <FileText className="w-4 h-4 text-indigo-500" />
-                  Hisob-faktura
+                  {t('patientTreatments.invoiceDetails.title')}
                 </h3>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => window.print()}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-black hover:bg-blue-100 transition-all"
                   >
-                    <Printer className="w-3.5 h-3.5" /> PRINT
+                    <Printer className="w-3.5 h-3.5" /> {t('patientTreatments.invoiceDetails.print')}
                   </button>
                   <button
                     onClick={() => setInvoicePlan(null)}
@@ -980,13 +1014,13 @@ function PatientTreatments({
                     </div>
                     <div>
                       <h1 className="text-lg font-black text-slate-900 tracking-tight">DentaCRM</h1>
-                      <p className="text-[10px] text-slate-400 font-medium">Stomatologiya klinikasi</p>
+                      <p className="text-[10px] text-slate-400 font-medium">{t('patientTreatments.invoiceDetails.clinicSubtitle')}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">HISOB-FAKTURA</p>
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">{t('patientTreatments.invoiceDetails.title').toUpperCase()}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">
-                      {new Date().getDate()}-{['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'][new Date().getMonth()]}, {new Date().getFullYear()}
+                      {formatDate(new Date(), language)}
                     </p>
                     <p className="text-[10px] text-slate-300 font-mono">
                       № {invoicePlan.id?.split('-').pop()?.toUpperCase() || 'XXXXX'}
@@ -997,28 +1031,28 @@ function PatientTreatments({
                 {/* Patient + Plan Info */}
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Bemor</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('patientTreatments.invoiceDetails.patient')}</p>
                     <p className="text-sm font-black text-slate-900">{invoicePlan.patient_name || '—'}</p>
                   </div>
                   <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Reja</p>
-                    <p className="text-sm font-black text-slate-900 truncate">{formatPlanDepartmentName(invoicePlan)}</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('patientTreatments.invoiceDetails.plan')}</p>
+                    <p className="text-sm font-black text-slate-900 truncate">{formatPlanDepartmentName(invoicePlan, t)}</p>
                     {invoicePlan.tooth_number && (
-                      <p className="text-[10px] text-emerald-600 font-bold mt-0.5">Tish #{invoicePlan.tooth_number}</p>
+                      <p className="text-[10px] text-emerald-600 font-bold mt-0.5">{t('patientTreatments.forTooth', { number: invoicePlan.tooth_number })}</p>
                     )}
                   </div>
                 </div>
 
                 {/* Services Table */}
                 <div className="mb-6">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Xizmatlar ro'yxati</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('patientTreatments.invoiceDetails.servicesList')}</p>
                   <div className="rounded-xl border border-slate-100 overflow-hidden">
                     <table className="w-full">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-100">
-                          <th className="px-3 py-2 text-left text-[9px] font-black text-slate-400 uppercase">Xizmat</th>
-                          <th className="px-3 py-2 text-center text-[9px] font-black text-slate-400 uppercase">Holat</th>
-                          <th className="px-3 py-2 text-right text-[9px] font-black text-slate-400 uppercase">Narx</th>
+                          <th className="px-3 py-2 text-left text-[9px] font-black text-slate-400 uppercase">{t('patientTreatments.invoiceDetails.plan')}</th>
+                          <th className="px-3 py-2 text-center text-[9px] font-black text-slate-400 uppercase">{t('patientTreatments.details.status')}</th>
+                          <th className="px-3 py-2 text-right text-[9px] font-black text-slate-400 uppercase">{t('patientTreatments.details.price')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1029,11 +1063,11 @@ function PatientTreatments({
                             </td>
                             <td className="px-3 py-2.5 text-center">
                               <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${svc.completed || svc.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-50 text-amber-600'}`}>
-                                {svc.completed || svc.payment_status === 'paid' ? '✔ Bajarilgan' : '⏳ Kutilmoqda'}
+                                {svc.completed || svc.payment_status === 'paid' ? t('patientTreatments.invoiceDetails.completed') : t('patientTreatments.invoiceDetails.pending')}
                               </span>
                             </td>
                             <td className="px-3 py-2.5 text-right">
-                              <span className="text-[11px] font-black text-slate-900">{(svc.price || 0).toLocaleString()} so'm</span>
+                              <span className="text-[11px] font-black text-slate-900">{(svc.price || 0).toLocaleString()} {t('common.currency')}</span>
                             </td>
                           </tr>
                         ))}
@@ -1054,28 +1088,28 @@ function PatientTreatments({
                     return (
                       <>
                         <div className="flex justify-between text-[11px]">
-                          <span className="font-bold text-slate-500">Xizmatlar jami</span>
-                          <span className="font-black text-slate-800">{servicesTotal.toLocaleString()} so'm</span>
+                          <span className="font-bold text-slate-500">{t('patientTreatments.invoiceDetails.subtotal')}</span>
+                          <span className="font-black text-slate-800">{servicesTotal.toLocaleString()} {t('common.currency')}</span>
                         </div>
                         {discountAmt > 0 && (
                           <div className="flex justify-between text-[11px]">
-                            <span className="font-bold text-amber-600">Chegirma (-{discountPct}%)</span>
-                            <span className="font-black text-amber-600">-{discountAmt.toLocaleString()} so'm</span>
+                            <span className="font-bold text-amber-600">{t('patientTreatments.invoiceDetails.discount', { percent: discountPct })}</span>
+                            <span className="font-black text-amber-600">-{discountAmt.toLocaleString()} {t('common.currency')}</span>
                           </div>
                         )}
                         <div className="flex justify-between text-[12px] border-t border-slate-100 pt-2 mt-1">
-                          <span className="font-black text-slate-700">Jami to'lov</span>
-                          <span className="font-black text-slate-900">{finalTotal.toLocaleString()} so'm</span>
+                          <span className="font-black text-slate-700">{t('patientTreatments.invoiceDetails.total')}</span>
+                          <span className="font-black text-slate-900">{finalTotal.toLocaleString()} {t('common.currency')}</span>
                         </div>
                         {paid > 0 && (
                           <div className="flex justify-between text-[11px]">
-                            <span className="font-bold text-emerald-600">To'langan</span>
-                            <span className="font-black text-emerald-700">-{paid.toLocaleString()} so'm</span>
+                            <span className="font-bold text-emerald-600">{t('patientTreatments.invoiceDetails.paid')}</span>
+                            <span className="font-black text-emerald-700">-{paid.toLocaleString()} {t('common.currency')}</span>
                           </div>
                         )}
                         <div className="flex justify-between text-[13px] bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 mt-2">
-                          <span className="font-black text-rose-700 uppercase tracking-wide">Qolgan qarz</span>
-                          <span className="font-black text-rose-700">{remaining.toLocaleString()} so'm</span>
+                          <span className="font-black text-rose-700 uppercase tracking-wide">{t('patientTreatments.invoiceDetails.remaining')}</span>
+                          <span className="font-black text-rose-700">{remaining.toLocaleString()} {t('common.currency')}</span>
                         </div>
                       </>
                     );
@@ -1086,11 +1120,11 @@ function PatientTreatments({
                 <div className="grid grid-cols-2 gap-8 mt-10 pt-6 border-t border-slate-100">
                   <div>
                     <div className="border-b border-slate-300 mb-2 h-10" />
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Shifokor imzosi</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">{t('patientTreatments.invoiceDetails.doctorSig')}</p>
                   </div>
                   <div>
                     <div className="border-b border-slate-300 mb-2 h-10" />
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Bemor imzosi</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">{t('patientTreatments.invoiceDetails.patientSig')}</p>
                   </div>
                 </div>
               </div>

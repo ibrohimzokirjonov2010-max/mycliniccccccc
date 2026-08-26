@@ -9,6 +9,7 @@ import { Debt, DebtDocument } from '../debts/schemas/debt.schema';
 import { Patient, PatientDocument } from '../patients/schemas/patient.schema';
 import { Clinic, ClinicDocument } from '../clinics/schemas/clinic.schema';
 import { TelegramService } from './telegram.service';
+import { SmsService } from './sms.service';
 
 @Injectable()
 export class DebtRemindersCron {
@@ -20,6 +21,7 @@ export class DebtRemindersCron {
     @Optional() @InjectModel(Patient.name) private readonly patientModel: Model<PatientDocument> | null,
     @Optional() @InjectModel(Clinic.name) private readonly clinicModel: Model<ClinicDocument> | null,
     private readonly telegramService: TelegramService,
+    private readonly smsService: SmsService,
   ) {}
 
   /**
@@ -72,8 +74,7 @@ export class DebtRemindersCron {
       for (const debt of debts) {
         try {
           const patient = await this.patientModel.findById(debt.patient_id).exec();
-          if (!patient?.telegram_chat_id) {
-            // bemor botga ulanmagan bo'lsa, skip
+          if (!patient?.telegram_chat_id && !patient?.phone) {
             continue;
           }
 
@@ -81,20 +82,37 @@ export class DebtRemindersCron {
           const clinicName = clinic?.name || this.configService.get<string>('CLINIC_NAME') || 'Kliniyamiz';
 
           const amount = Number(debt.amount || 0);
-          const duePart = debt.due_date ? `📅 <b>Muddat:</b> ${debt.due_date}\n` : '';
-          const servicePart = debt.service_name ? `🦷 <b>Xizmat:</b> ${debt.service_name}\n` : '';
+          let sent = false;
 
-          const message =
-            `💳 <b>QARZ ESLATMASI</b>\n\n` +
-            `Hurmatli <b>${patient.full_name}</b>, sizda <b>${clinicName}</b> bo'yicha qarzdorlik mavjud.\n\n` +
-            `💰 <b>Qarz miqdori:</b> <b>${amount.toLocaleString()}</b> so'm\n` +
-            duePart +
-            servicePart +
-            `\nAgar to'lov qilgan bo'lsangiz, bu xabarni e'tiborsiz qoldirishingiz mumkin.\n` +
-            `To'lov va aniqlik uchun klinikaga bog'laning.`;
+          if (patient?.telegram_chat_id) {
+            const duePart = debt.due_date ? `📅 <b>Muddat:</b> ${debt.due_date}\n` : '';
+            const servicePart = debt.service_name ? `🦷 <b>Xizmat:</b> ${debt.service_name}\n` : '';
 
-          const ok = await this.telegramService.sendMessage(patient.telegram_chat_id, message);
-          if (ok) {
+            const message =
+              `💳 <b>QARZ ESLATMASI</b>\n\n` +
+              `Hurmatli <b>${patient.full_name}</b>, sizda <b>${clinicName}</b> bo'yicha qarzdorlik mavjud.\n\n` +
+              `💰 <b>Qarz miqdori:</b> <b>${amount.toLocaleString()}</b> so'm\n` +
+              duePart +
+              servicePart +
+              `\nAgar to'lov qilgan bo'lsangiz, bu xabarni e'tiborsiz qoldirishingiz mumkin.\n` +
+              `To'lov va aniqlik uchun klinikaga bog'laning.`;
+
+            const ok = await this.telegramService.sendMessage(patient.telegram_chat_id, message);
+            if (ok) sent = true;
+          }
+
+          if (patient?.phone) {
+            const ok = await this.smsService.sendDebtReminderSms(
+              patient.phone,
+              patient.full_name || 'Bemor',
+              amount,
+              clinicName,
+              debt.clinic_id,
+            );
+            if (ok) sent = true;
+          }
+
+          if (sent) {
             debt.last_reminder_at = new Date();
             await debt.save();
           }

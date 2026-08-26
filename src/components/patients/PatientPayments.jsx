@@ -2,6 +2,7 @@ import { useMemo, memo } from 'react';
 import StatusBadge from '../ui/StatusBadge';
 import EmptyState from '../ui/EmptyState';
 import { CreditCard, TrendingUp, TrendingDown, Wallet, Printer } from 'lucide-react';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 /**
  * PatientPayments Component
@@ -18,6 +19,7 @@ import { CreditCard, TrendingUp, TrendingDown, Wallet, Printer } from 'lucide-re
  * @param {string} props.payments[].method - Payment method
  */
 function PatientPayments({ payments = [] }) {
+  const { t, language } = useTranslation();
   const handlePrintPaymentReceipt = (payment) => {
     const win = window.open('', '_blank');
     const isIncome = payment.type === 'Income';
@@ -87,7 +89,7 @@ function PatientPayments({ payments = [] }) {
       </div>
       <div class="amount-box">
         <span class="amount-label">${langLabels.amount}</span>
-        <span class="amount-val">${payment.amount?.toLocaleString()} so'm</span>
+        <span class="amount-val">${payment.amount?.toLocaleString()} ${t('common.currency')}</span>
       </div>
       <div class="signatures">
         <div>
@@ -146,8 +148,8 @@ function PatientPayments({ payments = [] }) {
     return (
       <EmptyState 
         icon={CreditCard} 
-        title="To'lovlar yo'q" 
-        description="Bu bemor uchun hali to'lovlar mavjud emas"
+        title={t('patientPayments.emptyTitle')} 
+        description={t('patientPayments.emptyDesc')}
       />
     );
   }
@@ -160,10 +162,10 @@ function PatientPayments({ payments = [] }) {
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp className="w-4 h-4 text-emerald-600" />
-            <p className="text-sm text-emerald-600">Kirim</p>
+            <p className="text-sm text-emerald-600">{t('patientPayments.income')}</p>
           </div>
           <p className="text-xl font-bold text-emerald-700">
-            {income.toLocaleString()} <span className="text-sm font-normal">so'm</span>
+            {income.toLocaleString()} <span className="text-sm font-normal">{t('common.currency')}</span>
           </p>
         </div>
 
@@ -171,10 +173,10 @@ function PatientPayments({ payments = [] }) {
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-1">
             <TrendingDown className="w-4 h-4 text-red-600" />
-            <p className="text-sm text-red-600">Chiqim</p>
+            <p className="text-sm text-red-600">{t('patientPayments.expense')}</p>
           </div>
           <p className="text-xl font-bold text-red-700">
-            {expense.toLocaleString()} <span className="text-sm font-normal">so'm</span>
+            {expense.toLocaleString()} <span className="text-sm font-normal">{t('common.currency')}</span>
           </p>
         </div>
 
@@ -182,10 +184,10 @@ function PatientPayments({ payments = [] }) {
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-1">
             <CreditCard className="w-4 h-4 text-amber-600" />
-            <p className="text-sm text-amber-600">Qarz</p>
+            <p className="text-sm text-amber-600">{t('patientPayments.debt')}</p>
           </div>
           <p className="text-xl font-bold text-amber-700">
-            {Math.max(0, (debt + refund) - (income + discount)).toLocaleString()} <span className="text-sm font-normal">so'm</span>
+            {Math.max(0, (debt + refund) - (income + discount)).toLocaleString()} <span className="text-sm font-normal">{t('common.currency')}</span>
           </p>
         </div>
 
@@ -202,13 +204,13 @@ function PatientPayments({ payments = [] }) {
             <p className={`text-sm ${
               netBalance >= 0 ? 'text-blue-600' : 'text-purple-600'
             }`}>
-              Balans
+              {t('patientPayments.balance')}
             </p>
           </div>
           <p className={`text-xl font-bold ${
             netBalance >= 0 ? 'text-blue-700' : 'text-purple-700'
           }`}>
-            {netBalance.toLocaleString()} <span className="text-sm font-normal">so'm</span>
+            {netBalance.toLocaleString()} <span className="text-sm font-normal">{t('common.currency')}</span>
           </p>
         </div>
       </div>
@@ -220,30 +222,37 @@ function PatientPayments({ payments = [] }) {
             <thead>
               <tr className="border-b border-border bg-muted/50">
                 <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">
-                  Sana
+                  {t('patientPayments.date')}
                 </th>
                 <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">
-                  Tur
+                  {t('patientPayments.type')}
                 </th>
                 <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">
-                  Summa
+                  {t('patientPayments.amount')}
                 </th>
                 <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3 hidden sm:table-cell">
-                  Usul
+                  {t('patientPayments.method')}
                 </th>
                 <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3 hidden md:table-cell">
-                  Kategoriya
+                  {t('patientPayments.category')}
                 </th>
                 <th className="text-right text-xs font-medium text-muted-foreground uppercase px-5 py-3">
-                  Chek
+                  {t('patientPayments.receipt')}
                 </th>
               </tr>
             </thead>
             <tbody>
               {sortedPayments.map((payment) => {
                 const dt = new Date(payment.date);
-                const formattedDate = !isNaN(dt) ? dt.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }) : (payment.date || '—');
-                const formattedTime = !isNaN(dt) && payment.date?.includes('T') ? dt.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : '';
+                const localeStr = language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US';
+                const formattedDate = !isNaN(dt) ? dt.toLocaleDateString(localeStr, { day: '2-digit', month: '2-digit', year: 'numeric' }) : (payment.date || '—');
+                const formattedTime = !isNaN(dt) && payment.date?.includes('T') ? dt.toLocaleTimeString(localeStr, { hour: '2-digit', minute: '2-digit' }) : '';
+                const pType = (payment.type || '').toLowerCase();
+                const methodLabel =
+                  payment.method === 'Cash' ? t('patientPayments.methodCash') :
+                  payment.method === 'Card' ? t('patientPayments.methodCard') :
+                  payment.method === 'Transfer' ? t('patientPayments.methodTransfer') :
+                  payment.method || '—';
                 
                 const CATEGORY_TRANSLATIONS = {
                   'treatment': 'Davolash',
@@ -319,26 +328,26 @@ function PatientPayments({ payments = [] }) {
                       )}
                     </td>
                     <td className={`px-5 py-3 text-sm font-black ${
-                      payment.type === 'Income' ? 'text-emerald-600' :
-                      payment.type === 'Discount' ? 'text-purple-600' :
-                      payment.type === 'Expense' || payment.type === 'Refund' ? 'text-red-600' :
+                      pType === 'income' ? 'text-emerald-600' :
+                      pType === 'discount' ? 'text-purple-600' :
+                      pType === 'expense' || pType === 'refund' ? 'text-red-600' :
                       'text-amber-600'
                     }`}>
-                      {payment.amount?.toLocaleString()} so'm
+                      {payment.amount?.toLocaleString()} {t('common.currency')}
                     </td>
                     <td className="px-5 py-3 text-sm hidden sm:table-cell">
-                      {payment.method || '—'}
+                      {methodLabel}
                     </td>
                     <td className="px-5 py-3 text-sm hidden md:table-cell">
                       <div className="font-bold text-slate-700">{categoryClean || '—'}</div>
                     </td>
                     <td className="px-5 py-3 text-right">
-                      {payment.type === 'Income' || payment.type === 'Refund' ? (
+                      {pType === 'income' || pType === 'refund' ? (
                         <button
                           type="button"
                           onClick={() => handlePrintPaymentReceipt({ ...payment, categoryClean })}
                           className="p-1.5 hover:bg-slate-100 hover:text-slate-900 text-slate-400 rounded-xl transition-all border-none bg-transparent cursor-pointer inline-flex items-center justify-center active:scale-90"
-                          title="Kvitansiya chop etish"
+                          title={t('patientPayments.printReceipt')}
                         >
                           <Printer className="w-4 h-4 text-emerald-600" />
                         </button>
@@ -353,7 +362,7 @@ function PatientPayments({ payments = [] }) {
         
         {/* Summary footer */}
         <div className="px-5 py-2 bg-muted/30 border-t border-border text-xs text-muted-foreground">
-          Jami: {payments.length} ta tranzaksiya
+          {t('patientPayments.totalCount', { count: payments.length })}
         </div>
       </div>
     </div>

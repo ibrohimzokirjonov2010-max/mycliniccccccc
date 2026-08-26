@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
 import { 
-  Key, Copy, RefreshCw, Check, Code, 
-  Server, Shield, Globe, Terminal, Play, CheckCircle2, Info,
-  Radio, Activity, CheckCircle, Smartphone, ArrowUpRight, Zap,
-  Database, UserCheck, Calendar, Clock, AlertCircle, Link2
+  Key, Copy, RefreshCw, Check, Code, Shield, Globe, Terminal, Play, CheckCircle2, Info, Activity, CheckCircle, ArrowUpRight, Zap,
+  Database, UserCheck, Clock, Link2
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function WebsiteIntegrationSettings() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [clinic, setClinic] = useState(null);
@@ -107,12 +106,12 @@ export default function WebsiteIntegrationSettings() {
   const handleCopy = (text, fieldName) => {
     navigator.clipboard.writeText(text);
     setCopiedField(fieldName);
-    toast.success(`${fieldName} nusxalandi!`);
+    toast.success(t('settings.integration.credentials.copiedSuccess', { field: fieldName }) || `${fieldName} nusxalandi!`);
     setTimeout(() => setCopiedField(null), 2000);
   };
 
   const handleRegenerateApiKey = async () => {
-    if (!window.confirm("Yangi API Key yaratmoqchimisiz? Eski API Key ishlamay qoladi!")) {
+    if (!window.confirm(t('settings.integration.credentials.confirmRegenerate') || "Yangi API Key yaratmoqchimisiz? Eski API Key ishlamay qoladi!")) {
       return;
     }
     setSaving(true);
@@ -120,9 +119,9 @@ export default function WebsiteIntegrationSettings() {
       const newKey = 'sec_live_' + Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
       await base44.clinic.updateClinic(clinic.id, { api_key: newKey });
       setClinic(prev => ({ ...prev, api_key: newKey }));
-      toast.success("Yangi API Key muvaffaqiyatli yaratildi!");
+      toast.success(t('settings.integration.credentials.successRegenerate') || "Yangi API Key muvaffaqiyatli yaratildi!");
     } catch (err) {
-      toast.error("API Key yangilashda xatolik yuz berdi");
+      toast.error(t('settings.integration.credentials.errorRegenerate') || "API Key yangilashda xatolik yuz berdi");
     } finally {
       setSaving(false);
     }
@@ -239,14 +238,14 @@ export default function WebsiteIntegrationSettings() {
                 <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
               </span>
               <span className="text-xs font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full">
-                INTEGRATSIYA FAOL (REAL-TIME SYNC)
+                {t('settings.integration.activeSync') || "INTEGRATSIYA FAOL (REAL-TIME SYNC)"}
               </span>
             </div>
             <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white">
-              Vebsayt & Shablon Integratsiyasi
+              {t('settings.integration.title') || "Vebsayt & Shablon Integratsiyasi"}
             </h2>
             <p className="text-sm text-slate-300 max-w-xl font-medium">
-              Vebsayt shabloningiz Shifo CRM bilan 2 tomonlama ulangan. Arizalar CRM bazasiga tushadi, band vaqtlar esa saytda avtomatik bloklanadi.
+              {t('settings.integration.description') || "Vebsayt shabloningiz Shifo CRM bilan 2 tomonlama ulangan. Arizalar CRM bazasiga tushadi, band vaqtlar esa saytda avtomatik bloklanadi."}
             </p>
           </div>
 
@@ -257,7 +256,7 @@ export default function WebsiteIntegrationSettings() {
               className="h-11 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl px-4 shadow-lg shadow-emerald-500/20 text-xs"
             >
               <Zap className="w-4 h-4 mr-1.5 fill-current" />
-              {testing ? "..." : "Ulanishni Tekshirish"}
+              {testing ? "..." : (t('settings.integration.checkConnection') || "Ulanishni Tekshirish")}
             </Button>
             <Button
               onClick={runTestCreateAppointment}
@@ -265,7 +264,7 @@ export default function WebsiteIntegrationSettings() {
               className="h-11 bg-white text-slate-900 hover:bg-slate-100 font-bold rounded-xl px-4 shadow-lg text-xs"
             >
               <Play className="w-3.5 h-3.5 mr-1.5 fill-current text-indigo-600" />
-              Real Bron Sinash
+              {t('settings.integration.testRealBooking') || "Real Bron Sinash"}
             </Button>
           </div>
         </div>
@@ -279,7 +278,7 @@ export default function WebsiteIntegrationSettings() {
             activeTab === 'status' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Activity className="w-4 h-4 text-indigo-500" /> Integratsiya Holati
+          <Activity className="w-4 h-4 text-indigo-500" /> {t('settings.integration.tabStatus') || "Integratsiya Holati"}
         </button>
         <button
           onClick={() => setActiveTab('credentials')}
@@ -287,7 +286,7 @@ export default function WebsiteIntegrationSettings() {
             activeTab === 'credentials' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Key className="w-4 h-4 text-amber-500" /> API Kalitlar & ID
+          <Key className="w-4 h-4 text-amber-500" /> {t('settings.integration.tabCredentials') || "API Kalitlar & ID"}
         </button>
         <button
           onClick={() => setActiveTab('logs')}
@@ -295,7 +294,7 @@ export default function WebsiteIntegrationSettings() {
             activeTab === 'logs' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Database className="w-4 h-4 text-emerald-500" /> Tushgan Arizalar
+          <Database className="w-4 h-4 text-emerald-500" /> {t('settings.integration.tabLogs') || "Tushgan Arizalar"}
         </button>
         <button
           onClick={() => setActiveTab('docs')}
@@ -303,7 +302,7 @@ export default function WebsiteIntegrationSettings() {
             activeTab === 'docs' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Code className="w-4 h-4 text-blue-500" /> API Hujjatlar
+          <Code className="w-4 h-4 text-blue-500" /> {t('settings.integration.tabDocs') || "API Hujjatlar"}
         </button>
       </div>
 
@@ -314,40 +313,40 @@ export default function WebsiteIntegrationSettings() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-2">
               <div className="flex items-center justify-between text-slate-400">
-                <span className="text-[10px] font-black uppercase tracking-widest">Ulangan Vebsayt</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">{t('settings.integration.status.connectedWebsite') || "Ulangan Vebsayt"}</span>
                 <Globe className="w-4 h-4 text-indigo-500" />
               </div>
-              <p className="text-xl font-black text-slate-900">1 ta Shablon</p>
+              <p className="text-xl font-black text-slate-900">{t('settings.integration.status.templateCount') || "1 ta Shablon"}</p>
               <p className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                <CheckCircle className="w-3.5 h-3.5" /> Online & Sinxron
+                <CheckCircle className="w-3.5 h-3.5" /> {t('settings.integration.status.onlineSync') || "Online & Sinxron"}
               </p>
             </div>
 
             <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-2">
               <div className="flex items-center justify-between text-slate-400">
-                <span className="text-[10px] font-black uppercase tracking-widest">Onlayn Bronlar</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">{t('settings.integration.status.onlineBookings') || "Onlayn Bronlar"}</span>
                 <UserCheck className="w-4 h-4 text-emerald-500" />
               </div>
-              <p className="text-xl font-black text-slate-900">28 ta Bemor</p>
-              <p className="text-xs text-slate-500 font-medium">Shablon sayt orqali</p>
+              <p className="text-xl font-black text-slate-900">{t('settings.integration.status.patientCount', { count: 28 }) || "28 ta Bemor"}</p>
+              <p className="text-xs text-slate-500 font-medium">{t('settings.integration.status.viaTemplate') || "Shablon sayt orqali"}</p>
             </div>
 
             <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-2">
               <div className="flex items-center justify-between text-slate-400">
-                <span className="text-[10px] font-black uppercase tracking-widest">Band Vaqtlar Sync</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">{t('settings.integration.status.busySlotsSync') || "Band Vaqtlar Sync"}</span>
                 <Clock className="w-4 h-4 text-amber-500" />
               </div>
-              <p className="text-xl font-black text-slate-900">Avtomatik Blok</p>
-              <p className="text-xs text-emerald-600 font-bold">2-tomonga real-time</p>
+              <p className="text-xl font-black text-slate-900">{t('settings.integration.status.autoBlock') || "Avtomatik Blok"}</p>
+              <p className="text-xs text-emerald-600 font-bold">{t('settings.integration.status.twoWayRealtime') || "2-tomonga real-time"}</p>
             </div>
 
             <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-2">
               <div className="flex items-center justify-between text-slate-400">
-                <span className="text-[10px] font-black uppercase tracking-widest">Integratsiya Kodu</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">{t('settings.integration.status.integrationCode') || "Integratsiya Kodu"}</span>
                 <Shield className="w-4 h-4 text-purple-500" />
               </div>
               <p className="text-xl font-black text-slate-900 font-mono text-sm">{clinicId}</p>
-              <p className="text-xs text-slate-500 font-medium">Clinic ID tasdiqlangan</p>
+              <p className="text-xs text-slate-500 font-medium">{t('settings.integration.status.clinicIdVerified') || "Clinic ID tasdiqlangan"}</p>
             </div>
           </div>
 
@@ -360,9 +359,9 @@ export default function WebsiteIntegrationSettings() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-slate-900 text-lg">Stomatologiya Shablon Vebsayti</h3>
+                    <h3 className="font-bold text-slate-900 text-lg">{t('settings.integration.status.dentalTemplateTitle') || "Stomatologiya Shablon Vebsayti"}</h3>
                     <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full">
-                      ULANDI
+                      {t('settings.integration.status.connectedBadge') || "ULANDI"}
                     </span>
                   </div>
                   <p className="text-xs font-mono text-slate-500 mt-0.5 flex items-center gap-1">
@@ -377,24 +376,24 @@ export default function WebsiteIntegrationSettings() {
                 onClick={() => window.open('https://shifo-dental-template.vercel.app', '_blank')}
                 className="rounded-xl font-bold text-xs border-slate-200"
               >
-                Vebsaytni Ochish <ArrowUpRight className="w-3.5 h-3.5 ml-1" />
+                {t('settings.integration.status.openWebsite') || "Vebsaytni Ochish"} <ArrowUpRight className="w-3.5 h-3.5 ml-1" />
               </Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-100 bg-slate-50/50 p-4 rounded-2xl">
               <div>
-                <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Klinika ID</p>
+                <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">{t('settings.integration.status.clinicId') || "Klinika ID"}</p>
                 <p className="font-mono text-sm font-bold text-slate-800 mt-0.5">{clinicId}</p>
               </div>
               <div>
-                <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Status</p>
+                <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">{t('settings.integration.status.statusLabel') || "Status"}</p>
                 <p className="text-xs font-bold text-emerald-600 mt-0.5 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> 200 OK (Sinxronizatsiyada)
+                  <CheckCircle2 className="w-3.5 h-3.5" /> {t('settings.integration.status.syncingText') || "200 OK (Sinxronizatsiyada)"}
                 </p>
               </div>
               <div>
-                <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">So'nggi Arizalar</p>
-                <p className="text-xs font-bold text-slate-700 mt-0.5">Bugun, 14:05 (Jasur Rahimov)</p>
+                <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">{t('settings.integration.status.lastBookings') || "So'nggi Arizalar"}</p>
+                <p className="text-xs font-bold text-slate-700 mt-0.5">{t('settings.integration.status.lastBookingMock') || "Bugun, 14:05 (Jasur Rahimov)"}</p>
               </div>
             </div>
           </div>
@@ -410,9 +409,9 @@ export default function WebsiteIntegrationSettings() {
                 <Key className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-lg">Klinika Identifikatsiyasi va API Kalit</h3>
+                <h3 className="font-bold text-slate-900 text-lg">{t('settings.integration.credentials.title') || "Klinika Identifikatsiyasi va API Kalit"}</h3>
                 <p className="text-xs text-slate-500 font-medium tracking-wide">
-                  Ushbu kodlarni shablon vebsaytingiz admin paneliga kiriting
+                  {t('settings.integration.credentials.description') || "Ushbu kodlarni shablon vebsaytingiz admin paneliga kiriting"}
                 </p>
               </div>
             </div>
@@ -422,7 +421,7 @@ export default function WebsiteIntegrationSettings() {
             {/* Clinic ID */}
             <div className="space-y-2">
               <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1">
-                Clinic ID (Klinika Identifikatori)
+                {t('settings.integration.credentials.clinicIdLabel') || "Clinic ID (Klinika Identifikatori)"}
               </Label>
               <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-4 h-12">
                 <Shield className="w-4 h-4 text-slate-400 mr-2 flex-shrink-0" />
@@ -436,13 +435,13 @@ export default function WebsiteIntegrationSettings() {
                   {copiedField === 'Clinic ID' ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
-              <p className="text-[10px] text-slate-400 ml-1">Vebsayt admin paneliga kiritiladigan unikal klinika kodi</p>
+              <p className="text-[10px] text-slate-400 ml-1">{t('settings.integration.credentials.clinicIdHint') || "Vebsayt admin paneliga kiritiladigan unikal klinika kodi"}</p>
             </div>
 
             {/* API Key */}
             <div className="space-y-2">
               <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1">
-                Secret API Key (Header: x-api-key)
+                {t('settings.integration.credentials.apiKeyLabel') || "Secret API Key (Header: x-api-key)"}
               </Label>
               <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-4 h-12">
                 <Key className="w-4 h-4 text-slate-400 mr-2 flex-shrink-0" />
@@ -455,7 +454,7 @@ export default function WebsiteIntegrationSettings() {
                   className="h-8 text-xs font-bold text-slate-500 hover:text-slate-700 rounded-lg px-2 mr-1"
                   onClick={() => setShowApiKey(!showApiKey)}
                 >
-                  {showApiKey ? "Yashirish" : "Ko'rsatish"}
+                  {showApiKey ? (t('settings.integration.credentials.hide') || "Yashirish") : (t('settings.integration.credentials.show') || "Ko'rsatish")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -473,7 +472,7 @@ export default function WebsiteIntegrationSettings() {
                   disabled={saving}
                   className="text-[10px] font-bold text-amber-600 hover:text-amber-700 hover:underline flex items-center gap-1"
                 >
-                  <RefreshCw className={`w-3 h-3 ${saving ? 'animate-spin' : ''}`} /> Yangi API Key Yaratish
+                  <RefreshCw className={`w-3 h-3 ${saving ? 'animate-spin' : ''}`} /> {t('settings.integration.credentials.regenerateKey') || "Yangi API Key Yaratish"}
                 </button>
               </div>
             </div>
@@ -486,22 +485,22 @@ export default function WebsiteIntegrationSettings() {
         <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
-              <Database className="w-5 h-5 text-emerald-600" /> So'nggi Vebsaytdan Kelgan Arizalar va Loglar
+              <Database className="w-5 h-5 text-emerald-600" /> {t('settings.integration.logs.title') || "So'nggi Vebsaytdan Kelgan Arizalar va Loglar"}
             </h3>
-            <span className="text-xs text-slate-500 font-medium">Avtomatik CRM bazasiga tushgan</span>
+            <span className="text-xs text-slate-500 font-medium">{t('settings.integration.logs.subtitle') || "Avtomatik CRM bazasiga tushgan"}</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-100 text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                  <th className="pb-3 px-3">Bron ID</th>
-                  <th className="pb-3 px-3">Bemor Ismi</th>
-                  <th className="pb-3 px-3">Telefon</th>
-                  <th className="pb-3 px-3">Xizmat Tur / Shifokor</th>
-                  <th className="pb-3 px-3">Bron Sanasi & Vaqti</th>
-                  <th className="pb-3 px-3">Status</th>
-                  <th className="pb-3 px-3 text-right">Vaqt</th>
+                  <th className="pb-3 px-3">{t('settings.integration.logs.thBookingId') || "Bron ID"}</th>
+                  <th className="pb-3 px-3">{t('settings.integration.logs.thPatientName') || "Bemor Ismi"}</th>
+                  <th className="pb-3 px-3">{t('settings.integration.logs.thPhone') || "Telefon"}</th>
+                  <th className="pb-3 px-3">{t('settings.integration.logs.thServiceDoctor') || "Xizmat Tur / Shifokor"}</th>
+                  <th className="pb-3 px-3">{t('settings.integration.logs.thDateTime') || "Bron Sanasi & Vaqti"}</th>
+                  <th className="pb-3 px-3">{t('settings.integration.logs.thStatus') || "Status"}</th>
+                  <th className="pb-3 px-3 text-right">{t('settings.integration.logs.thTime') || "Vaqt"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -519,7 +518,7 @@ export default function WebsiteIntegrationSettings() {
                     </td>
                     <td className="py-3 px-3">
                       <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md font-bold text-[10px]">
-                        <CheckCircle2 className="w-3 h-3" /> {log.status} ({log.code})
+                        <CheckCircle2 className="w-3 h-3" /> {log.status === 'Muvaffaqiyatli' ? (t('settings.integration.logs.success') || "Muvaffaqiyatli") : log.status} ({log.code})
                       </span>
                     </td>
                     <td className="py-3 px-3 text-right font-medium text-slate-400">{log.timestamp}</td>
@@ -536,7 +535,7 @@ export default function WebsiteIntegrationSettings() {
         <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
-              <Code className="w-5 h-5 text-indigo-600" /> API Endpoints Hujjatlari
+              <Code className="w-5 h-5 text-indigo-600" /> {t('settings.integration.docs.title') || "API Endpoints Hujjatlari"}
             </h3>
             <Button
               size="sm"
@@ -544,7 +543,7 @@ export default function WebsiteIntegrationSettings() {
               disabled={testing}
               className="bg-slate-900 text-white rounded-xl px-4 font-bold text-xs flex items-center gap-1.5"
             >
-              <Play className="w-3.5 h-3.5 fill-current" /> {testing ? "Bajarilmoqda..." : "API Ni Sinab Ko'rish"}
+              <Play className="w-3.5 h-3.5 fill-current" /> {testing ? (t('settings.integration.docs.testing') || "Bajarilmoqda...") : (t('settings.integration.docs.testApi') || "API Ni Sinab Ko'rish")}
             </Button>
           </div>
 
@@ -553,7 +552,7 @@ export default function WebsiteIntegrationSettings() {
             <div className="bg-slate-900 text-slate-100 p-4 rounded-2xl font-mono text-xs space-y-2 border border-slate-800">
               <div className="flex items-center justify-between text-slate-400 border-b border-slate-800 pb-2">
                 <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
-                  <Terminal className="w-3.5 h-3.5" /> API Response (200 OK)
+                  <Terminal className="w-3.5 h-3.5" /> {t('settings.integration.docs.apiResponse') || "API Response (200 OK)"}
                 </span>
                 <span>GET /api/v1/public/busy-slots</span>
               </div>
@@ -573,14 +572,14 @@ export default function WebsiteIntegrationSettings() {
                 <code className="font-mono text-sm font-bold text-slate-800">/api/v1/public/busy-slots</code>
               </div>
               <p className="text-xs text-slate-600">
-                Tanlangan sana bo'yicha band bo'lgan qabul vaqtlarini oladi va saytda band vaqtlarni avtomatik bloklaydi.
+                {t('settings.integration.docs.getBusySlotsDesc') || "Tanlangan sana bo'yicha band bo'lgan qabul vaqtlarini oladi va saytda band vaqtlarni avtomatik bloklaydi."}
               </p>
               <div className="space-y-1.5 text-xs">
-                <p className="font-bold text-slate-700">Query Parametrlari:</p>
+                <p className="font-bold text-slate-700">{t('settings.integration.docs.queryParams') || "Query Parametrlari:"}</p>
                 <ul className="list-disc list-inside text-slate-600 font-mono text-[11px] space-y-1">
-                  <li><strong className="text-slate-800">clinic_id</strong> (string, majburiy) — masalan: <code>{clinicId}</code></li>
-                  <li><strong className="text-slate-800">date</strong> (string, majburiy) — format: <code>YYYY-MM-DD</code> (masalan: 2026-08-10)</li>
-                  <li><strong className="text-slate-800">doctor_id</strong> (string, ixtiyoriy) — shifokor kodi</li>
+                  <li><strong className="text-slate-800">clinic_id</strong> ({t('settings.integration.docs.required') || "majburiy"}) — masalan: <code>{clinicId}</code></li>
+                  <li><strong className="text-slate-800">date</strong> ({t('settings.integration.docs.required') || "majburiy"}) — format: <code>YYYY-MM-DD</code> (masalan: 2026-08-10)</li>
+                  <li><strong className="text-slate-800">doctor_id</strong> ({t('settings.integration.docs.optional') || "ixtiyoriy"}) — {t('settings.integration.docs.doctorCode') || "shifokor kodi"}</li>
                 </ul>
               </div>
               <div className="bg-slate-900 text-slate-200 p-3 rounded-xl font-mono text-[11px]">
@@ -603,7 +602,7 @@ export default function WebsiteIntegrationSettings() {
                 <code className="font-mono text-sm font-bold text-slate-800">/api/v1/public/appointments</code>
               </div>
               <p className="text-xs text-slate-600">
-                Vebsayt shablonidagi forma orqali yozilgan yangi bemor va bron ma'lumotlarini CRM bazasiga tushiradi.
+                {t('settings.integration.docs.postAppointmentsDesc') || "Vebsayt shablonidagi forma orqali yozilgan yangi bemor va bron ma'lumotlarini CRM bazasiga tushiradi."}
               </p>
               <div className="bg-slate-900 text-slate-200 p-3 rounded-xl font-mono text-[11px]">
                 <p className="text-slate-400">// Request Body (JSON):</p>

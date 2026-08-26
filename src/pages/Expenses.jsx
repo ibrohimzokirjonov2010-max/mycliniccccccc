@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Plus, TrendingDown, TrendingUp, DollarSign, Calendar, 
-  Download, Filter, PieChart, Building2, Zap, ShoppingCart, 
-  Car, Wrench, MoreHorizontal, Trash2, Edit2
+  Download, Filter, PieChart, Building2, Zap, ShoppingCart, Wrench, MoreHorizontal, Trash2, Edit2
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -36,7 +35,7 @@ export default function Expenses() {
   const [loading, setLoading] = useState(true);
   
   // Filter states
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -190,7 +189,7 @@ export default function Expenses() {
     const today = new Date();
     for (let i = 0; i < 12; i++) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const value = date.toISOString().slice(0, 7);
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const label = date.toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
       options.push({ value, label });
     }

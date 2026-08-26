@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Plus, Search, Filter, Image as ImageIcon, Sparkles, X, ChevronRight, ChevronLeft, Pen, Trash2 } from 'lucide-react';
+import { Camera, Plus, Search, Image as ImageIcon, Sparkles, X, ChevronRight, ChevronLeft, Pen, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { db } from '@/api/supabaseClient';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 // Mock Data for Initial State
 const MOCK_CASES = [
@@ -48,6 +49,7 @@ const MOCK_CASES = [
 ];
 
 export default function Cases() {
+  const { t, language } = useTranslation();
   const [cases, setCases] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const clinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
@@ -153,9 +155,9 @@ export default function Cases() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div>
             <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-3">
-              Klinik <span className="text-[#1499AD]">Keyslar</span>
+              {t('cases.title') || "Klinik Keyslar"}
             </h1>
-            <p className="text-slate-500 mt-2 font-bold text-sm uppercase tracking-widest opacity-60">Bemorlarning oldin va keyingi davolash natijalari</p>
+            <p className="text-slate-500 mt-2 font-bold text-sm uppercase tracking-widest opacity-60">{t('cases.subtitle') || "Bemorlarning oldin va keyingi davolash natijalari"}</p>
           </div>
 
           <Button 
@@ -164,7 +166,7 @@ export default function Cases() {
             className="bg-gradient-to-r from-[#1499AD] to-[#0E7A8A] hover:from-[#1acced] hover:to-[#1499AD] text-white shadow-xl shadow-[#1499AD]/20 rounded-2xl h-14 px-8 text-sm uppercase tracking-widest font-black"
           >
             <Camera className="w-5 h-5 mr-3" />
-            Yangi Keys Qo'shish
+            {t('cases.addNewCase') || "Yangi Keys Qo'shish"}
           </Button>
         </div>
 
@@ -182,7 +184,7 @@ export default function Cases() {
                       : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  {tag}
+                  {tag === "Barchasi" ? (t('cases.all') || "Barchasi") : tag}
                 </button>
               ))}
               <button
@@ -190,7 +192,7 @@ export default function Cases() {
                 className="px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap border-2 border-dashed border-[#1499AD]/30 text-[#1499AD] hover:bg-[#1499AD]/5 transition-all flex items-center gap-2 ml-2"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>Yangi Kategoriya</span>
+                <span>{t('cases.newCategory') || "Yangi Kategoriya"}</span>
               </button>
             </div>
           </div>
@@ -201,7 +203,7 @@ export default function Cases() {
             <Input 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Keys qidirish..." 
+              placeholder={t('cases.searchPlaceholder') || "Keys qidirish..."} 
               className="w-full h-[60px] bg-white border-slate-200 pl-14 rounded-3xl text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-[#1499AD]/10 focus:border-[#1499AD] shadow-sm shadow-slate-200/50"
             />
           </div>
@@ -211,7 +213,7 @@ export default function Cases() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4 bg-white/5 rounded-[2.5rem] border border-white/5 border-dashed">
              <div className="w-12 h-12 border-4 border-[#1499AD]/20 border-t-[#1499AD] rounded-full animate-spin" />
-             <p className="text-slate-400 font-bold uppercase tracking-tight text-[10px]">Ma'lumotlar bazadan yuklanmoqda...</p>
+             <p className="text-slate-400 font-bold uppercase tracking-tight text-[10px]">{t('cases.loadingData') || "Ma'lumotlar bazadan yuklanmoqda..."}</p>
           </div>
         ) : (
           <>
@@ -223,8 +225,8 @@ export default function Cases() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.4, delay: i * 0.1 }}
-                    className="break-inside-avoid"
+                    transition={{ duration: 0.4, delay: Math.min(i, 6) * 0.02 }}
+                    className="break-inside-avoid content-visibility-auto"
                   >
                     <CaseCard data={c} onClick={() => setSelectedCase(c)} />
                   </motion.div>
@@ -235,8 +237,8 @@ export default function Cases() {
             {filteredCases.length === 0 && (
               <div className="py-32 flex flex-col items-center justify-center text-slate-500 bg-white/5 rounded-[3rem] border border-white/5 border-dashed">
                 <ImageIcon className="w-16 h-16 mb-4 opacity-50" />
-                <p className="text-lg font-bold">Hech qanday keys topilmadi</p>
-                <p className="text-sm mt-1">Boshqa so'z bilan qidirib ko'ring yoki yangi qo'shing</p>
+                <p className="text-lg font-bold">{t('cases.noCasesFound') || "Hech qanday keys topilmadi"}</p>
+                <p className="text-sm mt-1">{t('cases.noCasesFoundDesc') || "Boshqa so'z bilan qidirib ko'ring yoki yangi qo'shing"}</p>
               </div>
             )}
           </>
@@ -426,6 +428,7 @@ function CaseCard({ data, onClick }) {
 /*                             BEFORE / AFTER MODAL                           */
 /* -------------------------------------------------------------------------- */
 function CaseDetailModal({ data, onClose }) {
+  const { t } = useTranslation();
   const [sliderPos, setSliderPos] = useState(50);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [color, setColor] = useState('#1499AD');
@@ -608,7 +611,7 @@ function CaseDetailModal({ data, onClose }) {
                animate={{ x: 0, opacity: 1 }}
                className="bg-black/80 backdrop-blur-md px-4 py-2 rounded-xl text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] border border-white/10 shadow-2xl"
             >
-              Oldin <span className="text-[8px] opacity-40 ml-1 font-bold">Holat</span>
+              {t('cases.detail.before') || "Oldin"} <span className="text-[8px] opacity-40 ml-1 font-bold">{t('cases.detail.status') || "Holat"}</span>
             </motion.div>
           </div>
           
@@ -618,7 +621,7 @@ function CaseDetailModal({ data, onClose }) {
                animate={{ x: 0, opacity: 1 }}
                className="bg-[#1499AD] backdrop-blur-md px-4 py-2 rounded-xl text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] shadow-xl shadow-[#1499AD]/40"
             >
-              Keyin <span className="text-[8px] text-white/50 ml-1 font-bold">Natija</span>
+              {t('cases.detail.after') || "Keyin"} <span className="text-[8px] text-white/50 ml-1 font-bold">{t('cases.detail.result') || "Natija"}</span>
             </motion.div>
           </div>
           
@@ -629,7 +632,7 @@ function CaseDetailModal({ data, onClose }) {
               className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-xl px-8 py-3.5 rounded-2xl border border-white/10 text-white text-[11px] font-black uppercase tracking-widest shadow-2xl pointer-events-none flex items-center gap-3"
             >
               <Pen className="w-4 h-4 text-[#1499AD]" />
-              Bemoringizga klinik holatni tushuntiring
+              {t('cases.detail.canvasInstruction') || "Bemoringizga klinik holatni tushuntiring"}
             </motion.div>
           )}
         </div>
@@ -646,7 +649,7 @@ function CaseDetailModal({ data, onClose }) {
           <div className="space-y-6 sm:space-y-8 relative z-10">
             <div>
               <h4 className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2">
-                 <Sparkles className="w-3 h-3" /> Davolovchi Shifokor
+                 <Sparkles className="w-3 h-3" /> {t('cases.detail.doctor') || "Davolovchi Shifokor"}
               </h4>
               <div className="flex items-center gap-3 bg-white/5 p-4 rounded-2xl border border-white/5">
                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center font-black text-lg shadow-lg">
@@ -657,7 +660,7 @@ function CaseDetailModal({ data, onClose }) {
             </div>
             
             <div>
-              <h4 className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3">Teglar (Kategoriyalar)</h4>
+              <h4 className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3">{t('cases.detail.tags') || "Teglar (Kategoriyalar)"}</h4>
               <div className="flex flex-wrap gap-2">
                 {(data.tags || []).map(tag => (
                   <span key={tag} className="px-3 py-2 bg-[#0C1222] border border-white/10 text-white text-[10px] font-black uppercase tracking-wider rounded-xl shadow-inner">
@@ -668,9 +671,9 @@ function CaseDetailModal({ data, onClose }) {
             </div>
 
             <div className="pb-4">
-              <h4 className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3">Tavsif va Izoh</h4>
+              <h4 className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3">{t('cases.detail.description') || "Tavsif va Izoh"}</h4>
               <p className="text-slate-300 text-sm sm:text-base leading-relaxed bg-white/5 p-4 sm:p-5 rounded-2xl border border-white/5 whitespace-pre-wrap">
-                {data.description || "Izoh kiritilmagan."}
+                {data.description || (t('cases.detail.noDescription') || "Izoh kiritilmagan.")}
               </p>
             </div>
           </div>
@@ -719,6 +722,7 @@ const compressImage = (base64Str, maxWidth = 1200, quality = 0.7) => {
 /*                          UPLOAD/ADD NEW CASE MODAL                         */
 /* -------------------------------------------------------------------------- */
 function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients = [], doctors = [] }) {
+  const { t } = useTranslation();
   const [beforeImg, setBeforeImg] = useState(null);
   const [afterImg, setAfterImg] = useState(null);
   const [description, setDescription] = useState("");
@@ -752,11 +756,11 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
   const handleSave = (e) => {
     if (e) e.preventDefault();
     if(!selectedPatient) {
-      toast.error("Iltimos bemorni tanlang");
+      toast.error(t('cases.upload.errorSelectPatient') || "Iltimos bemorni tanlang");
       return;
     }
     if(!afterImg) {
-      toast.error("Kamida 'Keyin' rasmini yuklang");
+      toast.error(t('cases.upload.errorUploadAfterImage') || "Kamida 'Keyin' rasmini yuklang");
       return;
     }
     
@@ -812,8 +816,8 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
         </button>
  
         <div className="mb-12">
-          <h2 className="text-4xl font-black text-slate-900 mb-3 tracking-tight">Yangi <span className="text-[#1499AD]">Keys</span> Qo'shish</h2>
-          <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">Davolash natijalari portfoliosi</p>
+          <h2 className="text-4xl font-black text-slate-900 mb-3 tracking-tight">{t('cases.upload.title') || "Yangi Keys Qo'shish"}</h2>
+          <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">{t('cases.upload.subtitle') || "Davolash natijalari portfoliosi"}</p>
         </div>
  
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
@@ -827,7 +831,7 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-slate-200 mx-auto mb-4 shadow-sm group-hover:text-[#1499AD] transition-colors">
                     <ImageIcon className="w-8 h-8" />
                  </div>
-                 <span className="text-slate-400 font-black text-xs uppercase tracking-widest block">"Oldin" holati</span>
+                 <span className="text-slate-400 font-black text-xs uppercase tracking-widest block">{t('cases.upload.beforePhoto') || "\"Oldin\" holati"}</span>
                </div>
              )}
            </label>
@@ -842,7 +846,7 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-emerald-300 mx-auto mb-4 shadow-sm group-hover:text-emerald-500 transition-colors">
                     <Sparkles className="w-8 h-8" />
                  </div>
-                 <span className="text-emerald-500 font-black text-xs uppercase tracking-widest block">"Keyin" holati</span>
+                 <span className="text-emerald-500 font-black text-xs uppercase tracking-widest block">{t('cases.upload.afterPhoto') || "\"Keyin\" holati"}</span>
                </div>
              )}
            </label>
@@ -852,7 +856,7 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
           <div className="space-y-8">
             {/* Shifokor */}
             <div>
-               <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1 mb-4 block">Davolovchi Shifokor</label>
+               <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1 mb-4 block">{t('cases.upload.doctor') || "Davolovchi Shifokor"}</label>
                <div className="flex flex-wrap gap-2">
                  {doctors.map(doc => (
                    <button 
@@ -869,7 +873,7 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
  
             {/* Bemor qidiruv */}
             <div className="relative">
-               <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1 mb-4 block">Bemorni tanlash</label>
+               <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1 mb-4 block">{t('cases.upload.selectPatient') || "Bemorni tanlash"}</label>
                
                {selectedPatient ? (
                   <div className="flex items-center justify-between bg-slate-50 border border-slate-200 p-6 rounded-[2rem]">
@@ -896,7 +900,7 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
                         setShowPatientDropdown(true);
                       }}
                       onFocus={() => setShowPatientDropdown(true)}
-                      placeholder="Bemorning ismi yoki raqami..." 
+                      placeholder={t('cases.upload.patientSearchPlaceholder') || "Bemorning ismi yoki raqami..."} 
                       className="bg-slate-50 border-slate-100 text-slate-900 placeholder:text-slate-300 h-16 pl-16 rounded-[2rem] focus:ring-2 focus:ring-[#1499AD]/10 focus:border-[#1499AD] text-base" 
                     />
                     
@@ -917,7 +921,7 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
                             </div>
                           ))
                         ) : (
-                          <div className="p-8 text-slate-400 text-sm text-center font-bold">Bemor topilmadi...</div>
+                          <div className="p-8 text-slate-400 text-sm text-center font-bold">{t('cases.upload.noPatientsFound') || "Bemor topilmadi..."}</div>
                         )}
                       </div>
                     )}
@@ -929,7 +933,7 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
           <div className="space-y-8">
             {/* Kategoriyalar (Tags) */}
             <div>
-               <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1 mb-4 block">Kategoriya / Teglar</label>
+               <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1 mb-4 block">{t('cases.upload.categories') || "Kategoriya / Teglar"}</label>
                <div className="flex flex-wrap gap-2">
                  {existingTags.map(tag => (
                    <button
@@ -944,7 +948,7 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
                  <button
                    type="button"
                    onClick={() => {
-                     const n = window.prompt("Yangi kategoriya:");
+                     const n = window.prompt(t('cases.upload.promptNewCategory') || "Yangi kategoriya:");
                      if(n && n.trim()) {
                        toggleTag(n.trim());
                      }
@@ -957,11 +961,11 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
             </div>
  
             <div>
-              <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1 mb-4 block">Batafsil Izoh (ixtiyoriy)</label>
+               <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1 mb-4 block">{t('cases.upload.detailedNote') || "Batafsil Izoh (ixtiyoriy)"}</label>
               <textarea 
                 value={description} 
                 onChange={e => setDescription(e.target.value)} 
-                placeholder="Davolash jarayoni haqida qisqacha izoh..." 
+                placeholder={t('cases.upload.notePlaceholder') || "Davolash jarayoni haqida qisqacha izoh..."} 
                 className="w-full bg-slate-50 border border-slate-100 text-slate-900 placeholder:text-slate-300 p-6 rounded-[2.5rem] focus:ring-2 focus:ring-[#1499AD]/10 focus:border-[#1499AD] outline-none min-h-[160px] text-sm leading-relaxed" 
               />
             </div>
@@ -969,8 +973,8 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
         </div>
  
         <div className="flex items-center justify-end gap-4 mt-12 pt-8 border-t border-slate-100">
-          <Button type="button" variant="ghost" onClick={onClose} className="text-slate-400 hover:text-slate-900 hover:bg-slate-50 h-14 px-10 rounded-2xl font-black text-xs uppercase tracking-widest">BEKOR QILISH</Button>
-          <Button type="button" onClick={handleSave} className="bg-[#1499AD] hover:bg-[#0E7A8A] text-white h-14 px-12 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-[#1499AD]/30">KEYS SAQLASH</Button>
+          <Button type="button" variant="ghost" onClick={onClose} className="text-slate-400 hover:text-slate-900 hover:bg-slate-50 h-14 px-10 rounded-2xl font-black text-xs uppercase tracking-widest">{t('common.cancel') || "BEKOR QILISH"}</Button>
+          <Button type="button" onClick={handleSave} className="bg-[#1499AD] hover:bg-[#0E7A8A] text-white h-14 px-12 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-[#1499AD]/30">{t('cases.upload.saveCase') || "KEYS SAQLASH"}</Button>
         </div>
       </motion.div>
     </div>

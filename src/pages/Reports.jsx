@@ -140,10 +140,10 @@ export default function Reports() {
     return Object.entries(servicePopularity)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
-      .map(([name, value]) => ({ name, value }));
-  }, [payments]);
+      .map(([name, value]) => ({ name: name === 'Boshqa' ? (t('reports.others') || 'Boshqa') : name, value }));
+  }, [payments, t]);
 
-  const colors = { Completed: '#10b981', Scheduled: '#3b82f6', Cancelled: '#ef4444', 'No-Show': '#64748b' };
+  const colors = { Completed: '#10b981', Scheduled: '#3b82f6', Cancelled: '#ef4444', 'No-Show': '#64748b', InProgress: '#8b5cf6', Waiting: '#f59e0b' };
   const chartColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
   
   // Appointment Statuses
@@ -158,7 +158,7 @@ export default function Reports() {
       else if (lower === 'cancelled') status = 'Cancelled';
       else if (lower === 'no-show' || lower === 'noshow' || lower === 'no_show') status = 'No-Show';
       else if (lower === 'waiting') status = 'Waiting';
-      else if (lower === 'inprogress' || lower === 'in_progress') status = 'InProgress';
+      else if (lower === 'inprogress' || lower === 'in_progress' || lower === 'in progress' || lower === 'status.in progress' || lower === 'status.in_progress') status = 'InProgress';
       else {
         status = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
       }
@@ -227,8 +227,8 @@ export default function Reports() {
             key={i}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.05 }}
-            className="bg-white border border-slate-100 rounded-[1.5rem] p-4 shadow-sm relative overflow-hidden group"
+            transition={{ delay: Math.min(i, 4) * 0.02 }}
+            className="bg-white border border-slate-100 rounded-[1.5rem] p-4 shadow-sm relative overflow-hidden group content-visibility-auto"
           >
             <div className={`w-9 h-9 rounded-xl ${s.bg} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
               <s.icon className={`w-5 h-5 ${s.color}`} />
@@ -249,7 +249,7 @@ export default function Reports() {
           className="bg-white rounded-[2.5rem] border border-slate-100 p-6 sm:p-8 shadow-sm"
         >
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">{t('navigation.payroll')} ({t('reports.last6months', 'Last 6 months')})</h3>
+            <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">{t('reports.incomeAndExpenses') || 'Kirim va Chiqimlar'} ({t('reports.last6months', 'Last 6 months')})</h3>
             <div className="flex gap-2">
               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-[9px] font-bold text-slate-400 uppercase">{t('payments.income')}</span></div>
               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-500" /><span className="text-[9px] font-bold text-slate-400 uppercase">{t('expenses.title')}</span></div>
@@ -310,7 +310,7 @@ export default function Reports() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-[2.5rem] border border-slate-100 p-6 sm:p-8 shadow-sm"
           >
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-8">Shifokorlar unumdorligi (Top 5)</h3>
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-8">{t('reports.doctorProductivity') || 'Shifokorlar unumdorligi (Top 5)'}</h3>
             <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={doctorData} layout="vertical" margin={{ left: 20, right: 30 }}>
@@ -328,7 +328,7 @@ export default function Reports() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-[2.5rem] border border-slate-100 p-6 sm:p-8 shadow-sm"
           >
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-8">Top Xizmatlar</h3>
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-8">{t('reports.topServices') || 'Top Xizmatlar'}</h3>
             {serviceData.length > 0 ? (
               <div className="flex flex-col sm:flex-row items-center gap-6">
                 <div className="h-[250px] w-full sm:w-1/2">
@@ -350,7 +350,7 @@ export default function Reports() {
                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: chartColors[index % chartColors.length] }} />
                         <span className="text-[11px] font-black text-slate-700 uppercase tracking-tight truncate">{d.name}</span>
                       </div>
-                      <span className="text-[11px] font-black text-slate-900 ml-2">{d.value} ta</span>
+                      <span className="text-[11px] font-black text-slate-900 ml-2">{d.value} {t('reports.pieces') || 'ta'}</span>
                     </div>
                   ))}
                 </div>

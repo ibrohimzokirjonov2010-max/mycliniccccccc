@@ -175,7 +175,7 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
             <Link
               key={item.path}
               to={item.path}
-              onClick={onMobileClose}
+              onClick={() => { onMobileClose(); prefetchModuleData(item.path); }}
               onMouseEnter={() => prefetchModuleData(item.path)}
               className={cn(
                 'flex items-center rounded-xl text-[10px] font-bold transition-all duration-200 relative group uppercase tracking-wider',

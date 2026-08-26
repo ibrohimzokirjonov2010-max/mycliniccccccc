@@ -35,8 +35,8 @@ function PatientAppointments({ appointments = [] }) {
     return (
       <EmptyState 
         icon={CalendarDays} 
-        title="Uchrashuvlar yo'q" 
-        description="Bu bemor uchun hali uchrashuvlar mavjud emas"
+        title={t('patientAppointments.emptyTitle')} 
+        description={t('patientAppointments.emptyDesc')}
       />
     );
   }
@@ -48,16 +48,16 @@ function PatientAppointments({ appointments = [] }) {
           <thead>
             <tr className="border-b border-border bg-muted/50">
               <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">
-                Sana
+                {t('patientAppointments.date')}
               </th>
               <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">
-                Vaqt
+                {t('patientAppointments.time')}
               </th>
               <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3 hidden sm:table-cell">
-                Xizmat
+                {t('patientAppointments.service')}
               </th>
               <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">
-                Status
+                {t('patientAppointments.status')}
               </th>
               <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">
                 {t('appointments.confirmation')}
@@ -66,9 +66,9 @@ function PatientAppointments({ appointments = [] }) {
           </thead>
           <tbody>
             {sortedAppointments.map((appointment) => {
-              const dateParts = appointment.date ? appointment.date.split('T')[0].split('-') : [];
-              const d = dateParts.length === 3 ? `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}` : appointment.date;
-              return (
+               const dateParts = appointment.date ? appointment.date.split('T')[0].split('-') : [];
+               const d = dateParts.length === 3 ? `${dateParts[2]}.${dateParts[1]}.${dateParts[0]}` : appointment.date;
+               return (
                 <tr 
                   key={appointment.id} 
                   className="border-b border-border last:border-0 hover:bg-accent/30 transition-colors"
@@ -76,14 +76,14 @@ function PatientAppointments({ appointments = [] }) {
                   <td className="px-5 py-4">
                     <p className="text-sm font-bold text-slate-700">{d}</p>
                     <p className="text-[10px] font-black text-slate-400 mt-1 sm:hidden truncate">
-                      {appointment.tooth_number ? `${appointment.tooth_number}-tish: ` : ''}{appointment.service_name}
+                      {appointment.tooth_number ? `${t('patientAppointments.tooth', { number: appointment.tooth_number })}: ` : ''}{appointment.service_name}
                     </p>
                   </td>
                   <td className="px-5 py-4 text-sm font-black text-blue-600 tracking-tighter">
                     {appointment.time}
                   </td>
                   <td className="px-5 py-4 text-sm hidden sm:table-cell font-bold text-slate-600">
-                    {appointment.tooth_number ? `${appointment.tooth_number}-tish: ` : ''}{appointment.service_name || '—'}
+                    {appointment.tooth_number ? `${t('patientAppointments.tooth', { number: appointment.tooth_number })}: ` : ''}{appointment.service_name || '—'}
                   </td>
                   <td className="px-5 py-4 text-sm">
                     <StatusBadge status={appointment.status} />
@@ -100,7 +100,7 @@ function PatientAppointments({ appointments = [] }) {
       
       {/* Summary footer */}
       <div className="px-5 py-2 bg-muted/30 border-t border-border text-xs text-muted-foreground">
-        Jami: {appointments.length} ta uchrashuv
+        {t('patientAppointments.totalCount', { count: appointments.length })}
       </div>
     </div>
   );

@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Plus, CalendarDays, List, Search, Filter, ChevronRight, User, Clock, ChevronLeft } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, CalendarDays, Search, ChevronLeft } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatusBadge from '@/components/ui/StatusBadge';
-import EmptyState from '@/components/ui/EmptyState';
 import AppointmentModal from '@/components/appointments/AppointmentModal';
 import CalendarView from '@/components/appointments/CalendarView';
 import DoctorDayGrid from '@/components/appointments/DoctorDayGrid';
@@ -14,16 +14,31 @@ import AppointmentConfirmationBadge from '@/components/appointments/AppointmentC
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { cn } from '@/lib/utils';
+import { QUERY_KEYS } from '@/lib/queryKeys';
+
+// ── Appointment date/time normalizer (shared helper) ─────────────────────────
+const normalizeAppt = (a) => {
+  let tStr = a.time || '08:00';
+  const parts = tStr.split(':');
+  if (parts.length >= 2) tStr = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+  let dStr = a.date || '';
+  if (dStr) {
+    const clean = String(dStr).split('T')[0].split(' ')[0];
+    if (clean.includes('.')) {
+      const dp = clean.split('.');
+      dStr = dp[0].length === 4 ? `${dp[0]}-${dp[1]}-${dp[2]}` : `${dp[2]}-${dp[1]}-${dp[0]}`;
+    } else { dStr = clean; }
+  }
+  return { ...a, time: tStr, date: dStr };
+};
 
 export default function Appointments() {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const [appointments, setAppointments] = useState([]);
-  const [patients, setPatients] = useState([]);
-  const [services, setServices] = useState([]);
-  const [doctors, setDoctors] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  // ── UI state ────────────────────────────────────────────────────────────────
   const [modalOpen, setModalOpen] = useState(false);
   const [editAppt, setEditAppt] = useState(null);
   const [prefillDate, setPrefillDate] = useState('');
@@ -33,17 +48,14 @@ export default function Appointments() {
   const [isMobile, setIsMobile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [viewDate, setViewDate] = useState(new Date().toISOString().split('T')[0]);
+  const [activeTab, setActiveTab] = useState('grid');
 
   // Debounce search
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-    }, 400);
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 400);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-  const [viewDate, setViewDate] = useState(new Date().toISOString().split('T')[0]);
-  const [activeTab, setActiveTab] = useState('grid');
-  const hasLoadedInitial = useRef(false);
 
   // Responsive check
   useEffect(() => {
@@ -53,143 +65,73 @@ export default function Appointments() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const load = useCallback(async (isSilent = false) => {
+  // ── React Query: Data fetching ──────────────────────────────────────────────
+  // 🗄️ appointments — 2 daqiqa kesh. Sahifalar orasida o'tganda qayta yuklanmaydi.
+  const { data: rawAppointments = [], isFetching: apptFetching } = useQuery({
+    queryKey: QUERY_KEYS.appointments,
+    queryFn: () => base44.entities.Appointment.list('-date', 500),
+    staleTime: 2 * 60 * 1000,
+    select: (appts) => appts.map(normalizeAppt),
+  });
+
+  // 🗄️ patients — 5 daqiqa kesh
+  const { data: patients = [] } = useQuery({
+    queryKey: QUERY_KEYS.patients,
+    queryFn: () => base44.entities.Patient.list('full_name', 300),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // 🗄️ services — 10 daqiqa kesh (deyarli o'zgarmaydi)
+  const { data: rawServices = [] } = useQuery({
+    queryKey: QUERY_KEYS.services,
+    queryFn: () => base44.entities.Service.filter({ is_active: true }, 'name', 100),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // 🗄️ doctors (users) — 10 daqiqa kesh
+  const { data: rawUsers = [] } = useQuery({
+    queryKey: QUERY_KEYS.doctors,
+    queryFn: () => base44.entities.User.list('name', 50),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const loading = apptFetching && rawAppointments.length === 0;
+
+  // ── Derived data (same logic as before, now from query cache) ───────────────
+  const appointments = rawAppointments;
+
+  // Services with localStorage sort order
+  const services = useMemo(() => {
     try {
-      if (!isSilent && !hasLoadedInitial.current) {
-        setLoading(true);
-      }
-
-      // ⚡ 1-BOSQICH: Tez yuklash — faqat bugungi va yaqin qabullar (50 ta)
-      // Foydalanuvchi darhol ko'radi, sahifa qotmaydi
-      const [appts, pats, svcs, users] = await Promise.all([
-        base44.entities.Appointment.list('-date', 50),
-        base44.entities.Patient.list('full_name', 50),
-        base44.entities.Service.filter({ is_active: true }, 'name', 100),
-        base44.entities.User.list('name', 50)
-      ]);
-
-      const normalizedAppts = (appts || []).map(a => {
-        let tStr = a.time || '08:00';
-        const parts = tStr.split(':');
-        if (parts.length >= 2) {
-          const h = parts[0].padStart(2, '0');
-          const m = parts[1].padStart(2, '0');
-          tStr = `${h}:${m}`;
+      const savedOrder = localStorage.getItem('service_item_order');
+      if (savedOrder) {
+        const allOrderedIds = Object.values(JSON.parse(savedOrder)).flat();
+        if (allOrderedIds.length > 0) {
+          return [...rawServices].sort((a, b) => {
+            const ai = allOrderedIds.indexOf(a.id);
+            const bi = allOrderedIds.indexOf(b.id);
+            if (ai === -1 && bi === -1) return 0;
+            return ai === -1 ? 1 : bi === -1 ? -1 : ai - bi;
+          });
         }
-        
-        let dStr = a.date || '';
-        if (dStr) {
-          const clean = String(dStr).split('T')[0].split(' ')[0];
-          if (clean.includes('.')) {
-            const dParts = clean.split('.');
-            if (dParts[0].length === 4) dStr = `${dParts[0]}-${dParts[1]}-${dParts[2]}`;
-            else dStr = `${dParts[2]}-${dParts[1]}-${dParts[0]}`;
-          } else {
-             dStr = clean;
-          }
-        }
-        
-        return { ...a, time: tStr, date: dStr };
-      });
-      setAppointments(normalizedAppts);
-      setPatients(pats || []);
-
-      // ✅ Xizmatlar bo'limidagi drag tartibini qo'llash
-      const rawSvcs = svcs || [];
-      try {
-        const savedOrder = localStorage.getItem('service_item_order');
-        if (savedOrder) {
-          const orderMap = JSON.parse(savedOrder); // { catName: [id1, id2, ...] }
-          // Barcha kategoriyalar uchun tartibni birlashtirish
-          const allOrderedIds = Object.values(orderMap).flat();
-          if (allOrderedIds.length > 0) {
-            const sorted = [...rawSvcs].sort((a, b) => {
-              const ai = allOrderedIds.indexOf(a.id);
-              const bi = allOrderedIds.indexOf(b.id);
-              if (ai === -1 && bi === -1) return 0;
-              if (ai === -1) return 1;
-              if (bi === -1) return -1;
-              return ai - bi;
-            });
-            setServices(sorted);
-          } else {
-            setServices(rawSvcs);
-          }
-        } else {
-          setServices(rawSvcs);
-        }
-      } catch {
-        setServices(rawSvcs);
       }
-      
-      const filteredDocs = (users || []).filter(u => {
-        const isStaff = u.role === 'doctor' || u.role === 'admin';
-        if (!isStaff) return false;
-        
-        // If user has NO name at all, skip them
-        if (!u.name) return false;
-        
-        // Check if this doctor has any appointments to avoid losing data
-        const hasAppointments = appts.some(a => String(a.doctor_id) === String(u.id));
-        
-        // If they have appointments, ALWAYS show them
-        if (hasAppointments) return true;
-        
-        // Otherwise, skip generic placeholders to keep it clean
-        const lowerName = u.name.toLowerCase();
-        return lowerName !== 'shifokor' && lowerName !== 'admin';
-      });
-      setDoctors(filteredDocs);
-      
-      if (selectedDoctorId === undefined) {
-        setSelectedDoctorId(null);
-      }
-      hasLoadedInitial.current = true;
+    } catch {}
+    return rawServices;
+  }, [rawServices]);
 
-      // ⚡ 2-BOSQICH: Background da to'liq ma'lumot yukla (UI bloklanmaydi)
-      // Foydalanuvchi allaqachon 50 ta qabulni ko'rmoqda — qolganlari jim yuklanadi
-      if (!isSilent) {
-        setTimeout(async () => {
-          try {
-            const [fullAppts, fullPats] = await Promise.all([
-              base44.entities.Appointment.list('-date', 500),
-              base44.entities.Patient.list('full_name', 300),
-            ]);
-            const normalized = (fullAppts || []).map(a => {
-              let tStr = a.time || '08:00';
-              const parts = tStr.split(':');
-              if (parts.length >= 2) tStr = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
-              let dStr = a.date || '';
-              if (dStr) {
-                const clean = String(dStr).split('T')[0].split(' ')[0];
-                if (clean.includes('.')) {
-                  const dp = clean.split('.');
-                  dStr = dp[0].length === 4 ? `${dp[0]}-${dp[1]}-${dp[2]}` : `${dp[2]}-${dp[1]}-${dp[0]}`;
-                } else { dStr = clean; }
-              }
-              return { ...a, time: tStr, date: dStr };
-            });
-            setAppointments(normalized);
-            setPatients(fullPats || []);
-          } catch (e) { /* fon yuklanishi muvaffaqiyatsiz bo'lsa ham muammo yo'q */ }
-        }, 500); // 500ms kutib, UI render bo'lib bo'lgandan keyin
-      }
-    } catch (error) {
-      console.error('Failed to load appointments:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedDoctorId]);
+  // Doctors derived from users
+  const doctors = useMemo(() => {
+    return (rawUsers || []).filter(u => {
+      if (u.role !== 'doctor' && u.role !== 'admin') return false;
+      if (!u.name) return false;
+      const hasAppointments = appointments.some(a => String(a.doctor_id) === String(u.id));
+      if (hasAppointments) return true;
+      const lowerName = u.name.toLowerCase();
+      return lowerName !== 'shifokor' && lowerName !== 'admin';
+    });
+  }, [rawUsers, appointments]);
 
-
-  useEffect(() => { 
-    // If we've already loaded once, run silently on refetch to avoid flashing
-    load(hasLoadedInitial.current); 
-  }, [load]);
-
-  // 🔴 Real-time: Telegram orqali qabul o'zgarganda avtomatik yangilash
-  const loadRef = useRef(load);
-  useEffect(() => { loadRef.current = load; }, [load]);
+  // ── Real-time: Supabase → invalidate React Query cache ─────────────────────
 
   useEffect(() => {
     if (!supabase) return;
@@ -199,41 +141,44 @@ export default function Appointments() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'appointments' },
         () => {
-          // Debounce — 800ms kuting, so'ng qayta yuklang
+          // Debounce 800ms — so'ng React Query keshni yangilaydi
           clearTimeout(window.__apptReloadTimer);
           window.__apptReloadTimer = setTimeout(() => {
-            loadRef.current(true);
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.appointments });
           }, 800);
         }
       )
       .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [queryClient]);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const openNewAppt = useCallback((date, time, doctorId) => {
+  const openNewAppt = (date, time, doctorId) => {
     setEditAppt(null);
     setPrefillDate(date || '');
     setPrefillTime(time || '');
     setPrefillDoctorId(doctorId || null);
     setModalOpen(true);
-  }, []);
+  };
 
-  const openEditAppt = useCallback((appointment) => {
+  const openEditAppt = (appointment) => {
     setEditAppt(appointment);
     setPrefillDoctorId(null);
     setModalOpen(true);
-  }, []);
+  };
 
-  const closeModal = useCallback(() => {
+  const closeModal = () => {
     setModalOpen(false);
     setEditAppt(null);
     setPrefillDate('');
     setPrefillTime('');
     setPrefillDoctorId(null);
-  }, []);
+  };
+
+  // onSaved: modal saqlangandan keyin keshni yangilash
+  const handleSaved = () => {
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.appointments });
+    closeModal();
+  };
 
   // Robust date normalization to YYYY-MM-DD
   const normalizeDateStr = (d) => {
@@ -304,7 +249,7 @@ export default function Appointments() {
                 {t('appointments.title')}
             </h1>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                {filteredAppointments.length} ta navbat mavjud
+                {t('appointments.queueCount', { count: filteredAppointments.length }) || `${filteredAppointments.length} ta navbat mavjud`}
             </p>
           </div>
         </motion.div>
@@ -338,19 +283,19 @@ export default function Appointments() {
                   onClick={() => setViewDate(new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0])}
                   className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all", viewDate === new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0] ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
                  >
-                   Kecha
+                   {t('appointments.yesterday') || 'Kecha'}
                  </button>
                  <button 
                   onClick={() => setViewDate(new Date().toISOString().split('T')[0])}
                   className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all", viewDate === new Date().toISOString().split('T')[0] ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
                  >
-                   Bugun
+                   {t('appointments.today') || 'Bugun'}
                  </button>
                  <button 
                   onClick={() => setViewDate(new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0])}
                   className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all", viewDate === new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0] ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
                  >
-                   Ertaga
+                   {t('appointments.tomorrow') || 'Ertaga'}
                  </button>
                </div>
 
@@ -379,7 +324,7 @@ export default function Appointments() {
           )}>
             <Search className="w-4 h-4 text-slate-300" />
             <input 
-              placeholder="Bemor, xizmat yoki shifokor..." 
+              placeholder={t('appointments.searchPlaceholder') || "Bemor, xizmat yoki shifokor..."} 
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="bg-transparent border-none text-xs font-bold outline-none w-full placeholder:text-slate-300"
@@ -390,13 +335,13 @@ export default function Appointments() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
             <TabsList className="bg-slate-50 p-1 rounded-2xl h-11 border border-slate-100 gap-1">
               <TabsTrigger value="grid" className="rounded-xl h-9 px-6 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm">
-                Setka
+                {t('appointments.viewGrid') || 'Setka'}
               </TabsTrigger>
               <TabsTrigger value="calendar" className="rounded-xl h-9 px-6 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm">
-                Haftalik
+                {t('appointments.viewWeekly') || 'Haftalik'}
               </TabsTrigger>
               <TabsTrigger value="list" className="rounded-xl h-9 px-6 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm">
-                Ro'yxat
+                {t('appointments.viewList') || 'Ro\'yxat'}
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -422,7 +367,7 @@ export default function Appointments() {
                     : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 shadow-sm"
                 )}
               >
-                Barchasi
+                {t('appointments.allDoctors') || 'Barchasi'}
               </button>
 
               {doctors.map((doc) => (
@@ -563,7 +508,7 @@ export default function Appointments() {
                                     )}
                                   </div>
                                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                                    {a.tooth_number ? `${a.tooth_number}-tish: ` : ''}{a.service_name || 'Maslahat'}
+                                    {a.tooth_number ? `${a.tooth_number}-tish: ` : ''}{a.service_name || t('appointments.defaultService') || 'Maslahat'}
                                     {debouncedSearch.trim() && a.doctor_name && (
                                       <span className="ml-2 text-[#1499AD]">· {a.doctor_name}</span>
                                     )}
@@ -599,7 +544,7 @@ export default function Appointments() {
         prefillDate={prefillDate || viewDate}
         prefillTime={prefillTime}
         prefillDoctorId={prefillDoctorId || selectedDoctorId}
-        onSaved={load}
+        onSaved={handleSaved}
       />
     </div>
   );

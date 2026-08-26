@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit2, Trash2, Download, Plus, AlertTriangle,
   CheckCircle2, Clock, FileText, Camera, Activity, Phone,
-  Building2, Tag, Layers, Settings2, Hash, UserRound, CalendarDays, BellRing, CalendarClock, NotebookPen, Pencil
+  Building2, Tag, Layers, Settings2, Hash, UserRound, CalendarDays, BellRing, CalendarClock
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -205,7 +205,7 @@ export default function ImplantDetail() {
   };
 
   const addExtraService = async (serviceId) => {
-    const serviceName = EXTRA_SERVICES.find(s => s.id === serviceId)?.label || serviceId;
+    const serviceName = t('implants.services.' + serviceId) || EXTRA_SERVICES.find(s => s.id === serviceId)?.label || serviceId;
     const teethToUpdate = relatedTeeth.length > 0 ? relatedTeeth : [implant];
     
     await Promise.all(teethToUpdate.map(t => {
@@ -313,7 +313,7 @@ export default function ImplantDetail() {
 
   // Get service label by ID
   const getServiceLabel = (id) => {
-    return EXTRA_SERVICES.find(s => s.id === id)?.label || id;
+    return t('implants.services.' + id) || EXTRA_SERVICES.find(s => s.id === id)?.label || id;
   };
 
   return (
@@ -628,7 +628,7 @@ export default function ImplantDetail() {
                 return (
                   <div key={s} className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-primary/10 to-teal-500/10 text-primary border border-primary/20 rounded-xl text-sm font-semibold shadow-sm group">
                     <span className="w-2 h-2 rounded-full bg-primary inline-block shrink-0"></span>
-                    <span>{svc?.label || s}</span>
+                    <span>{t('implants.services.' + s) || svc?.label || s}</span>
                     {svc?.category && <span className="text-[10px] text-primary/60 border-l border-primary/20 pl-1.5 ml-0.5">{svc.category}</span>}
                     <button onClick={() => removeExtraService(s)} className="ml-1 opacity-0 group-hover:opacity-100 text-rose-500 hover:text-rose-700 transition-opacity" title="O'chirish">
                       <Trash2 className="w-3.5 h-3.5" />
@@ -890,7 +890,7 @@ export default function ImplantDetail() {
                   onClick={() => addExtraService(service.id)}
                   className="flex flex-col text-left p-3 border border-border rounded-xl hover:bg-primary/5 hover:border-primary/30 transition-all group"
                 >
-                  <span className="font-semibold text-sm group-hover:text-primary">{service.label}</span>
+                  <span className="font-semibold text-sm group-hover:text-primary">{t('implants.services.' + service.id) || service.label}</span>
                   <span className="text-[10px] text-muted-foreground uppercase mt-1">{service.category}</span>
                 </button>
               ))}

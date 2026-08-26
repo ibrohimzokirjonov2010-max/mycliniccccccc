@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Plus, Calendar, Clock, User, FileText, UserSquare, X, Loader2 } from 'lucide-react';
+import { Calendar, X, Loader2 } from 'lucide-react';
 import PatientModal from '../patients/PatientModal';
 import PatientSelect from '../patients/PatientSelect';
 import { toast } from 'sonner';
@@ -64,6 +63,11 @@ export default function AppointmentModal({
   prefillDoctorId,
   prefillPatientId,
   prefillPatientName,
+  prefillServiceId,
+  prefillServiceName,
+  prefillPrice,
+  prefillNotes,
+  prefillToothNumber,
   onSaved 
 }) {
   const { t } = useTranslation();
@@ -156,19 +160,33 @@ export default function AppointmentModal({
         date: prefillDate || autoDate, 
         time: prefillTime || autoTime,
         duration: 30,
-        service_id: '',
-        service_name: '',
-        price: 0,
+        service_id: prefillServiceId || '',
+        service_name: prefillServiceName || '',
+        price: prefillPrice || 0,
         status: 'Scheduled',
-        notes: '',
-        tooth_number: '',
+        notes: prefillNotes || '',
+        tooth_number: prefillToothNumber || '',
       });
     }
     setError('');
     setBusyInfo(null);
     setShowValidation(false);
     setShowToothPicker(false);
-  }, [appointment, open, prefillDate, prefillTime, prefillDoctorId, doctors, prefillPatientId, prefillPatientName]);
+  }, [
+    appointment, 
+    open, 
+    prefillDate, 
+    prefillTime, 
+    prefillDoctorId, 
+    doctors, 
+    prefillPatientId, 
+    prefillPatientName,
+    prefillServiceId,
+    prefillServiceName,
+    prefillPrice,
+    prefillNotes,
+    prefillToothNumber
+  ]);
 
   // Real-time conflict check state (populated after checkDoubleBooking is defined)
   const [conflict, setConflict] = useState(null);
@@ -498,7 +516,7 @@ export default function AppointmentModal({
         <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] p-0 rounded-[2.5rem] border-0 shadow-2xl bg-white/95 backdrop-blur-xl flex flex-col overflow-visible">
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between shrink-0">
+          <div className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between shrink-0 rounded-t-[2.5rem]">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm">
                 <Calendar className="w-5 h-5 stroke-[2.5]" />
@@ -507,7 +525,7 @@ export default function AppointmentModal({
                 <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
                   {appointment ? t('appointments.editAppointment') : t('appointments.addNew')}
                 </DialogTitle>
-                <p className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">Uchrashuv ma'lumotlari</p>
+                <p className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('appointments.infoTitle') || "Uchrashuv ma'lumotlari"}</p>
               </div>
             </div>
             <button 
@@ -609,18 +627,18 @@ export default function AppointmentModal({
               <div className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100 shadow-inner">
                 <div className="flex items-center justify-between mb-2 px-1">
                   <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                    Vaqt grafigi
+                    {t('appointments.timeGrid') || 'Vaqt grafigi'}
                   </Label>
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-[#1499AD]" /><span className="text-[7.5px] font-bold text-slate-400 uppercase">Tanlangan</span></div>
-                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-rose-300" /><span className="text-[7.5px] font-bold text-slate-400 uppercase">Band</span></div>
-                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-slate-300" /><span className="text-[7.5px] font-bold text-slate-400 uppercase">O'tgan</span></div>
+                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-[#1499AD]" /><span className="text-[7.5px] font-bold text-slate-400 uppercase">{t('appointments.legendSelected') || 'Tanlangan'}</span></div>
+                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-rose-300" /><span className="text-[7.5px] font-bold text-slate-400 uppercase">{t('appointments.legendBusy') || 'Band'}</span></div>
+                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-slate-300" /><span className="text-[7.5px] font-bold text-slate-400 uppercase">{t('appointments.legendPast') || 'O\'tgan'}</span></div>
                   </div>
                 </div>
 
                 {busyInfo && (
                   <div className="mb-2 px-2.5 py-1.5 bg-rose-50 border border-rose-100 rounded-xl text-[9px] font-black text-rose-600 uppercase tracking-wide flex items-center gap-1.5">
-                    <span>⚠️ {busyInfo.time} da band: {busyInfo.patient_name}</span>
+                    <span>⚠️ {t('appointments.timeBusy', { time: busyInfo.time, patient: busyInfo.patient_name }) || `${busyInfo.time} da band: ${busyInfo.patient_name}`}</span>
                   </div>
                 )}
 
@@ -665,15 +683,15 @@ export default function AppointmentModal({
                           key={slotTime}
                           type="button"
                           disabled={isPast}
-                          title={busyAppt ? `Band: ${busyPatName} (${busyAppt.service_name || 'Maslahat'})` : undefined}
+                          title={busyAppt ? `${t('appointments.legendBusy') || 'Band'}: ${busyPatName} (${busyAppt.service_name || t('appointments.defaultService') || 'Maslahat'})` : undefined}
                           onClick={() => {
                             if (isPast) return;
                             if (busyAppt) {
                               const busyPatName = busyAppt.patient_name || patients.find(p => String(p.id) === String(busyAppt.patient_id))?.full_name || 'Bemor';
                               
                               // Trigger a beautiful, clear toast message
-                              toast.warning(`${slotTime} qabul band!`, {
-                                description: `Bemor: ${busyPatName} (${busyAppt.service_name || 'Maslahat'})`,
+                              toast.warning(`${slotTime} - ${t('appointments.busy') || 'qabul band!'}`, {
+                                description: `${t('appointments.patient') || 'Bemor'}: ${busyPatName} (${busyAppt.service_name || t('appointments.defaultService') || 'Maslahat'})`,
                                 duration: 5000,
                               });
 
@@ -858,7 +876,7 @@ export default function AppointmentModal({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
+          <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0 rounded-b-[2.5rem]">
             <div>
               {appointment && (
                 <Button 

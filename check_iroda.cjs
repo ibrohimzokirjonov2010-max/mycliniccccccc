@@ -1,6 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
-const supabaseUrl = 'https://epmemjirbqamqfvblaie.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwbWVtamlyYnFhbXFmdmJsYWllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2Njc4NTMsImV4cCI6MjA5ODI0Mzg1M30.qFZ1b5PGTLfRrJVfuLueAF-DDeLv9c7LnZTy79CW6f8';
+const supabaseUrl = 'https://zvyggjldzkxwufpnaatr.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2eWdnamxkemt4d3VmcG5hYXRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MTg3NTAsImV4cCI6MjEwMjk5NDc1MH0.v4IyrtyJR8a9bQ7tAapDQxe2VHZHiH_IVuHfeC6MeN4';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function fixAllPatients() {

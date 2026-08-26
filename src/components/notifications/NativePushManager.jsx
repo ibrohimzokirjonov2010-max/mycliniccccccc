@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { Bell, BellOff, X, Check } from 'lucide-react';
+import { Bell, X, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**

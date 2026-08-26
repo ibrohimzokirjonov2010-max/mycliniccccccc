@@ -20,12 +20,55 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import ErrorBoundary from './ErrorBoundary';
 import { Suspense, memo } from 'react';
 
-// Specialized loader for within-page transitions
+// Specialized skeleton loader for premium page-to-page transitions
 const InlineLoader = memo(() => (
-  <div className="flex items-center justify-center min-h-[400px]">
-    <div className="flex flex-col items-center gap-3">
-      <div className="w-8 h-8 border-2 border-emerald-100 border-t-emerald-500 rounded-full animate-spin" />
-      <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Yuklanmoqda...</span>
+  <div className="space-y-6 animate-pulse w-full pt-4 px-3">
+    {/* Page Header placeholder */}
+    <div className="flex items-center justify-between pb-2">
+      <div className="space-y-2">
+        <div className="h-6 w-36 bg-slate-200 rounded-lg"></div>
+        <div className="h-3 w-24 bg-slate-100 rounded-md"></div>
+      </div>
+      <div className="w-8 h-8 bg-slate-200 rounded-xl"></div>
+    </div>
+
+    {/* Metrics Cards Grid placeholder */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {[1, 2].map(i => (
+        <div key={i} className="p-5 bg-white border border-slate-100 rounded-2xl space-y-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="w-10 h-10 bg-slate-100 rounded-xl"></div>
+            <div className="w-12 h-5 bg-slate-100 rounded-full"></div>
+          </div>
+          <div className="space-y-2">
+            <div className="h-3 w-20 bg-slate-100 rounded"></div>
+            <div className="h-6 w-32 bg-slate-200 rounded-md"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Large Table placeholder */}
+    <div className="bg-white border border-slate-100 rounded-[2rem] p-6 space-y-6 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="h-5 w-40 bg-slate-200 rounded-md"></div>
+      </div>
+      <div className="space-y-3">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-slate-100 rounded-full"></div>
+              <div className="space-y-1.5">
+                <div className="h-3.5 w-36 bg-slate-200 rounded"></div>
+                <div className="h-2.5 w-24 bg-slate-100 rounded"></div>
+              </div>
+            </div>
+            <div className="space-y-2 text-right">
+              <div className="h-3.5 w-24 bg-slate-200 rounded ml-auto"></div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   </div>
 ));
@@ -72,6 +115,7 @@ const MENU_ITEMS_GEN = (t) => [
  */
 export default function NativeMobileLayout({ children }) {
   const location = useLocation();
+  const isPatientProfile = /^\/patients\/[^/]+$/.test(location.pathname);
   const navigate = useNavigate();
   const { user, isAdmin, isDoctor, logout } = useAuth();
   const { t } = useTranslation();
@@ -132,12 +176,16 @@ export default function NativeMobileLayout({ children }) {
 
   // Track scroll for header blur effect
   useEffect(() => {
+    const mainEl = contentRef.current;
+    if (!mainEl) return;
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+      setIsScrolled(mainEl.scrollTop > 10);
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    // Initial check
+    handleScroll();
+    mainEl.addEventListener('scroll', handleScroll, { passive: true });
+    return () => mainEl.removeEventListener('scroll', handleScroll);
+  }, [location.pathname]);
 
   const filteredMenuItems = useMemo(() => {
     let items = MENU_ITEMS_GEN(t);
@@ -170,15 +218,15 @@ export default function NativeMobileLayout({ children }) {
     { path: '/payroll', icon: UserPlus, label: t('payroll.addDoctor'), color: '#00D084', state: { openAddDoctor: true } },
   ], [t]);
 
-  // Page transition variants
+  // Page transition variants — 120fps optimized (GPU-only transform)
   const pageVariants = {
-    initial: { opacity: 0, x: 20 },
+    initial: { opacity: 0, x: 12 },
     animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: -20 }
+    exit: { opacity: 0, x: -8 }
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-24 md:pb-0 overflow-x-hidden">
+    <div className="fixed inset-0 w-screen h-screen h-[100dvh] bg-[#F8FAFC] overflow-hidden">
       {/* iOS-style Premium Header */}
       <header 
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
@@ -243,28 +291,35 @@ export default function NativeMobileLayout({ children }) {
           </div>
         </div>
       </header>
-
+ 
       {/* Global Notifications Panel */}
       <NotificationPanel 
         isOpen={showNotifications} 
         onClose={() => setShowNotifications(false)} 
       />
-
+ 
       {/* Main Content with Page Transitions */}
       <main 
         ref={contentRef} 
-        style={{ paddingTop: 'calc(4rem + max(24px, env(safe-area-inset-top, 24px)))' }}
+        className="absolute inset-0 overflow-y-auto no-scrollbar"
+        style={{ 
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain',
+          paddingTop: 'calc(4.5rem + max(24px, env(safe-area-inset-top, 24px)))',
+          paddingBottom: 'calc(90px + env(safe-area-inset-bottom, 20px))'
+        }}
       >
         <div className="px-5 mt-4">
           <SubscriptionBanner />
         </div>
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.02 }}
-            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -6 }}
+            transition={{ duration: 0.16, ease: [0.25, 0.46, 0.45, 0.94] }}
+            style={{ willChange: 'transform, opacity', transform: 'translateZ(0)' }}
           >
             <ErrorBoundary>
               <Suspense fallback={<InlineLoader />}>
@@ -273,12 +328,18 @@ export default function NativeMobileLayout({ children }) {
             </ErrorBoundary>
           </motion.div>
         </AnimatePresence>
+
+        {/* 🚨 BARCHA SAHIFALAR UCHUN UNIVERSAL BO'SHLIQ — Tab Bar to'sib qo'ymasligi uchun */}
+        <div className="h-28 w-full pointer-events-none shrink-0" aria-hidden="true" />
       </main>
 
-      {/* iOS-style Modern Bottom Tab Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-3xl border-t border-slate-100 z-50 safe-area-pb">
-        <div className="flex items-center justify-around h-20 px-4">
-          {tabs.map((tab, index) => {
+      {/* iOS-style Native Bottom Navigation Bar */}
+      <nav 
+        className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-2xl border-t border-slate-150 z-50 overflow-hidden no-print"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
+      >
+        <div className="flex items-center justify-around h-15 px-3 relative">
+          {tabs.map((tab) => {
             const isActive = location.pathname === tab.path;
             const Icon = tab.icon;
             
@@ -286,39 +347,43 @@ export default function NativeMobileLayout({ children }) {
               <button
                 key={tab.path}
                 onClick={() => navigate(tab.path)}
-                className="relative flex flex-col items-center justify-center flex-1 h-full active:scale-90 transition-transform duration-200"
+                className="relative flex flex-col items-center justify-center py-1.5 px-2 rounded-2xl flex-1 h-full active:scale-95 transition-all duration-300"
               >
-                {/* Active indicator bar */}
+                {/* Premium sliding capsule indicator behind active button */}
                 {isActive && (
                   <motion.div
-                    layoutId="activeTabMobile"
-                    className="absolute top-0 w-8 h-1 rounded-full bg-[#1499AD] shadow-lg shadow-[#1499AD]/40"
-                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    layoutId="activeTabPill"
+                    className="absolute inset-x-1.5 inset-y-1.5 bg-[#1499AD]/10 rounded-2xl -z-10 border border-[#1499AD]/10"
+                    transition={{ type: 'spring', stiffness: 380, damping: 26 }}
                   />
                 )}
                 
-                {/* Icon with glow */}
+                {/* Icon with sub-glow */}
                 <motion.div
                   animate={{ 
-                    scale: isActive ? 1.2 : 1,
-                    y: isActive ? -4 : 0
+                    scale: isActive ? 1.15 : 1,
+                    y: isActive ? -1 : 0
                   }}
-                  className="relative"
+                  className="relative flex items-center justify-center"
                 >
                   {isActive && (
-                    <div className="absolute inset-0 blur-lg bg-[#1499AD]/30 rounded-full" />
+                    <motion.span 
+                      layoutId="activeTabIconGlow"
+                      className="absolute w-8 h-8 rounded-full bg-[#1499AD]/15 blur-md -z-10" 
+                      transition={{ type: 'spring', stiffness: 385, damping: 26 }}
+                    />
                   )}
                   <Icon 
-                    className="w-6 h-6 transition-colors duration-300 relative z-10"
-                    style={{ color: isActive ? '#1499AD' : '#94A3B8' }}
+                    className="w-5 h-5 transition-colors duration-300 relative z-10"
+                    style={{ color: isActive ? '#1499AD' : '#64748B' }}
                     strokeWidth={isActive ? 2.5 : 2}
                   />
                 </motion.div>
                 
                 {/* Label */}
                 <span 
-                  className={`text-[10px] font-black mt-1.5 transition-all duration-300 tracking-tighter uppercase ${
-                    isActive ? 'text-slate-900 opacity-100' : 'text-slate-400 opacity-60'
+                  className={`text-[9px] font-black mt-1 transition-colors duration-300 tracking-tighter uppercase leading-none ${
+                    isActive ? 'text-[#1499AD]' : 'text-slate-400'
                   }`}
                 >
                   {tab.label}
@@ -330,11 +395,38 @@ export default function NativeMobileLayout({ children }) {
       </nav>
 
       {/* Floating Action Button (FAB) */}
-      {location.pathname !== '/cases' && (
+      {isPatientProfile ? null : location.pathname === '/expenses' ? (
+        <motion.button
+          whileTap={{ scale: 0.92 }}
+          onClick={() => window.dispatchEvent(new CustomEvent('open-expenses-add'))}
+          className="fixed right-5 bottom-[7.5rem] z-40 bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 rounded-full shadow-xl shadow-emerald-500/25 flex items-center justify-center text-white border-[3px] border-white active:scale-95 transition-transform"
+          style={{ width: 52, height: 52 }}
+        >
+          <Plus className="w-6 h-6 text-white stroke-[2.5]" />
+        </motion.button>
+      ) : location.pathname === '/cases' ? (
+        <motion.button
+          whileTap={{ scale: 0.92 }}
+          onClick={() => window.dispatchEvent(new CustomEvent('open-cases-upload'))}
+          className="fixed right-5 bottom-[7.5rem] z-40 bg-gradient-to-br from-[#1499AD] to-[#0E7A8A] rounded-full shadow-xl shadow-[#1499AD]/40 flex items-center justify-center text-white border-[3px] border-white active:scale-95 transition-transform"
+          style={{ width: 52, height: 52 }}
+        >
+          <Camera className="w-5 h-5 text-white" />
+        </motion.button>
+      ) : location.pathname === '/implants' ? (
+        <motion.button
+          whileTap={{ scale: 0.92 }}
+          onClick={() => window.dispatchEvent(new CustomEvent('open-implants-add'))}
+          className="fixed right-5 bottom-[7.5rem] z-40 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full shadow-xl shadow-indigo-500/30 flex items-center justify-center text-white border-[3px] border-white active:scale-95 transition-transform"
+          style={{ width: 52, height: 52 }}
+        >
+          <Zap className="w-5 h-5 text-white" />
+        </motion.button>
+      ) : (
         <motion.button
           whileTap={{ scale: 0.92 }}
           onClick={() => setShowQuickActions(!showQuickActions)}
-          className="fixed right-5 bottom-24 z-40 w-13 h-13 bg-gradient-to-br from-[#1499AD] to-[#0E7A8A] rounded-full shadow-xl shadow-[#1499AD]/40 flex items-center justify-center text-white border-[3px] border-white"
+          className="fixed right-5 bottom-[7.5rem] z-40 bg-gradient-to-br from-[#1499AD] to-[#0E7A8A] rounded-full shadow-xl shadow-[#1499AD]/40 flex items-center justify-center text-white border-[3px] border-white"
           style={{ width: 52, height: 52 }}
         >
           <motion.div
@@ -416,22 +508,32 @@ export default function NativeMobileLayout({ children }) {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="absolute right-0 top-0 bottom-0 w-[85%] bg-white shadow-2xl flex flex-col rounded-l-[2rem] overflow-hidden"
+              className="fixed right-0 top-0 bottom-0 w-[75%] sm:w-[320px] bg-white shadow-2xl flex flex-col rounded-l-[2rem] overflow-hidden"
             >
+              {/* Top Header with User Profile info */}
               <div 
-                className="px-5 pb-5 border-b flex items-center justify-between bg-slate-50/50"
-                style={{ paddingTop: 'calc(1.25rem + env(safe-area-inset-top, 0px))' }}
+                className="px-4 pb-4 border-b flex items-center justify-between bg-slate-50/50 shrink-0 gap-2.5"
+                style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
               >
-                <div />
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1499AD] to-[#0E7A8A] flex items-center justify-center text-white font-black text-xs shrink-0 shadow-sm">
+                    {user?.name?.[0] || 'U'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black text-slate-900 truncate tracking-tight uppercase leading-none">{user?.full_name || user?.name || 'User'}</p>
+                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">{user?.role === 'doctor' ? 'Yakka doktor' : 'Administrator'}</p>
+                  </div>
+                </div>
+                
                 <button 
                   onClick={() => setShowMenu(false)}
-                  className="p-2.5 rounded-2xl bg-white border border-slate-100 text-slate-400 shadow-sm active:scale-90 transition-transform"
+                  className="p-2 rounded-xl bg-white border border-slate-150 text-slate-400 shadow-sm active:scale-90 transition-transform cursor-pointer shrink-0"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
               
-              <nav className="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar bg-white">
+              <nav className="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar bg-white">
                 {filteredMenuItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.path;
@@ -443,27 +545,27 @@ export default function NativeMobileLayout({ children }) {
                         navigate(item.path);
                         setShowMenu(false);
                       }}
-                      className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all active:scale-[0.98] border ${
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all active:scale-[0.98] border ${
                         isActive 
                           ? 'bg-[#1499AD] border-[#1499AD] shadow-lg shadow-[#1499AD]/20' 
                           : 'bg-white border-slate-50 hover:bg-slate-50'
                       }`}
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform ${
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-transform ${
                         isActive ? 'bg-white/10 rotate-3' : item.bg
                       }`}>
-                        <Icon className={`w-5 h-5 ${isActive ? 'text-white' : item.color}`} />
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-white' : item.color}`} />
                       </div>
-                      <div className="flex-1 text-left">
-                        <span className={`text-sm font-black tracking-tight block ${
+                      <div className="flex-1 text-left min-w-0">
+                        <span className={`text-[12px] font-bold tracking-tight block truncate ${
                           isActive ? 'text-white' : 'text-slate-700'
                         }`}>
                           {item.label}
                         </span>
                       </div>
                       {!isActive && (
-                        <div className="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center">
-                          <ChevronLeft className="w-3.5 h-3.5 text-slate-300 rotate-180" />
+                        <div className="w-5 h-5 rounded-full bg-slate-50 flex items-center justify-center shrink-0">
+                          <ChevronLeft className="w-3 h-3 text-slate-300 rotate-180" />
                         </div>
                       )}
                     </button>
@@ -471,29 +573,19 @@ export default function NativeMobileLayout({ children }) {
                 })}
               </nav>
 
-              {/* Bottom Footer */}
-              <div className="p-6 border-t bg-slate-50/50">
-                <div className="flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-100 shadow-sm mb-3">
-                  <div className="w-10 h-10 rounded-full bg-[#1499AD] flex items-center justify-center text-white font-black text-sm">
-                    {user?.name?.[0] || 'U'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-slate-900 truncate tracking-tight">{user?.full_name || user?.name || 'User'}</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.role === 'doctor' ? 'Yakka doktor' : 'Administrator'}</p>
-                  </div>
-                </div>
-                
+              {/* Bottom Footer with Logout button only */}
+              <div className="p-4 border-t bg-slate-50/50 shrink-0">
                 <button 
                   onClick={handleLogout}
-                  className="w-full flex items-center justify-between p-5 bg-rose-50 text-rose-600 rounded-[2rem] active:scale-[0.98] transition-all group"
+                  className="w-full flex items-center justify-between p-3.5 bg-rose-50 hover:bg-rose-100/70 text-rose-600 rounded-2xl active:scale-[0.98] transition-all group border-none cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center">
-                      <LogOut className="w-5 h-5" />
+                    <div className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center shrink-0">
+                      <LogOut className="w-4.5 h-4.5" />
                     </div>
-                    <span className="font-bold">{t('common.logout')}</span>
+                    <span className="font-bold text-sm">Chiqish</span>
                   </div>
-                  <ChevronRight className="w-5 h-5 opacity-40 group-hover:translate-x-1 transition-transform" />
+                  <ChevronRight className="w-4 h-4 opacity-40 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
             </motion.div>

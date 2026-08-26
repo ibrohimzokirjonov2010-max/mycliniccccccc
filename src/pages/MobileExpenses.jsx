@@ -3,31 +3,41 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   TrendingDown, TrendingUp, DollarSign, Plus, Search, 
-  Calendar, MoreHorizontal, ShoppingCart, Car, Wrench, 
-  Zap, Building2, ChevronRight, Activity, ArrowLeft,
-  Filter, FileText, Wallet, ArrowUpRight, ArrowDownRight,
-  ChevronLeft
+  MoreHorizontal, ShoppingCart, Car, Wrench, 
+  Zap, Building2, ChevronRight, Activity,
+  Filter, FileText, ArrowUpRight, ArrowDownRight,
+  ChevronLeft, X, Trash2
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 
 const EXPENSE_CATEGORIES = [
-  { value: 'rent', label: 'Arenda', icon: Building2, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100' },
+  { value: 'rent', label: 'Arenda', icon: Building2, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
   { value: 'utilities', label: 'Kommunal', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-100' },
-  { value: 'materials', label: 'Materiallar', icon: ShoppingCart, color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-  { value: 'transport', label: 'Transport', icon: Car, color: 'text-purple-500', bg: 'bg-purple-50', border: 'border-purple-100' },
+  { value: 'materials', label: 'Materiallar', icon: ShoppingCart, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-100' },
+  { value: 'transport', label: 'Transport', icon: Car, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100' },
   { value: 'equipment', label: 'Uskunalar', icon: Wrench, color: 'text-orange-500', bg: 'bg-orange-50', border: 'border-orange-100' },
   { value: 'salary', label: 'Ish haqi', icon: DollarSign, color: 'text-rose-500', bg: 'bg-rose-50', border: 'border-rose-100' },
   { value: 'other', label: 'Boshqa', icon: MoreHorizontal, color: 'text-slate-500', bg: 'bg-slate-50', border: 'border-slate-100' },
 ];
+
+const formatCompactCurrency = (value) => {
+  if (value >= 1_000_000) {
+    return (value / 1_000_000).toFixed(1).replace(/\.0$/, '') + ' mln';
+  }
+  if (value >= 1_000) {
+    return (value / 1_000).toFixed(0) + 'k';
+  }
+  return String(value);
+};
 
 export default function MobileExpenses() {
   const navigate = useNavigate();
@@ -36,7 +46,7 @@ export default function MobileExpenses() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
@@ -54,8 +64,8 @@ export default function MobileExpenses() {
     try {
       setLoading(true);
       const [exps, pays] = await Promise.all([
-        base44.entities.Expense?.list('-date', 100) || Promise.resolve([]),  // ⚡
-        base44.entities.Payment.filter({ type: 'income' }, '-date', 100)     // ⚡
+        base44.entities.Expense?.list('-date', 100) || Promise.resolve([]),
+        base44.entities.Payment.filter({ type: 'income' }, '-date', 100)
       ]);
       setExpenses(exps);
       setPayments(pays);
@@ -67,6 +77,22 @@ export default function MobileExpenses() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    const handleOpenAdd = () => {
+      setEditingExpense(null);
+      setForm({
+        category: 'other',
+        amount: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0],
+        receipt_url: ''
+      });
+      setModalOpen(true);
+    };
+    window.addEventListener('open-expenses-add', handleOpenAdd);
+    return () => window.removeEventListener('open-expenses-add', handleOpenAdd);
+  }, []);
 
   const monthlyExpenses = useMemo(() => {
     const [year, month] = selectedMonth.split('-').map(Number);
@@ -89,6 +115,20 @@ export default function MobileExpenses() {
   const profit = totalIncome - totalExpense;
   const balancePercent = totalIncome > 0 ? Math.min(100, (totalExpense / totalIncome) * 100) : 0;
 
+  const categoryTotals = useMemo(() => {
+    const totals = {};
+    EXPENSE_CATEGORIES.forEach(c => totals[c.value] = 0);
+    monthlyExpenses.forEach(e => {
+      const cat = e.category || 'other';
+      if (totals[cat] !== undefined) {
+        totals[cat] += e.amount || 0;
+      } else {
+        totals['other'] += (e.amount || 0);
+      }
+    });
+    return totals;
+  }, [monthlyExpenses]);
+
   const handleSave = async () => {
     if (!form.amount || !form.date) return;
     setSaving(true);
@@ -110,10 +150,23 @@ export default function MobileExpenses() {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm("Ushbu xarajatni o'chirishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi!")) return;
+    try {
+      await base44.entities.Expense.delete(id);
+      toast.success("Xarajat o'chirildi!");
+      setModalOpen(false);
+      setEditingExpense(null);
+      await loadData();
+    } catch (error) {
+      toast.error("O'chirishda xatolik yuz berdi");
+    }
+  };
+
   const changeMonth = (offset) => {
     const [y, m] = selectedMonth.split('-').map(Number);
     const date = new Date(y, m - 1 + offset, 1);
-    setSelectedMonth(date.toISOString().slice(0, 7));
+    setSelectedMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
   };
 
   const filteredExpenses = useMemo(() => {
@@ -132,124 +185,143 @@ export default function MobileExpenses() {
 
   return (
     <PullToRefresh onRefresh={loadData}>
-      <div className="min-h-screen bg-slate-50/30 pb-28">
+      <div className="min-h-screen bg-[#F8FAFC] pb-32 w-full overflow-x-hidden">
+        
         {/* Modern Header */}
-        <div className="bg-white px-4 pt-4 pb-4 rounded-b-3xl shadow-lg shadow-slate-200/30 relative z-20">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <button onClick={() => navigate('/')} className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 active:scale-90 transition-transform">
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className="text-xl font-[1000] text-slate-900 tracking-tighter leading-none mb-1">Xarajatlar</h1>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest opacity-60">Moliyaviy Nazorat</p>
-              </div>
+        <div className="bg-white px-4 pt-4 pb-4 rounded-b-[2rem] shadow-sm border-b border-slate-100 relative z-20 w-full overflow-hidden">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-1">Xarajatlar</h1>
+              <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider">Moliyaviy Nazorat</p>
             </div>
-            <button 
-              onClick={() => { setEditingExpense(null); setModalOpen(true); }}
-              className="w-11 h-11 bg-slate-900 text-white rounded-xl flex items-center justify-center shadow-lg shadow-slate-900/20 active:scale-90 transition-transform"
-            >
-              <Plus className="w-6 h-6" />
-            </button>
           </div>
- 
+  
           {/* Month Selector */}
-          <div className="flex items-center justify-between bg-slate-50 rounded-xl p-1.5 mb-4 border border-slate-100/50">
-             <button onClick={() => changeMonth(-1)} className="p-1.5 text-slate-400 active:text-slate-900"><ChevronLeft className="w-5 h-5" /></button>
-             <span className="text-xs font-black text-slate-900 uppercase tracking-tighter">{monthName}</span>
-             <button onClick={() => changeMonth(1)} className="p-1.5 text-slate-400 active:text-slate-900"><ChevronRight className="w-5 h-5" /></button>
+          <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl p-1 mb-3">
+             <button onClick={() => changeMonth(-1)} className="w-8 h-8 flex items-center justify-center text-slate-400 active:text-slate-900 active:bg-slate-200/50 rounded-xl transition-all"><ChevronLeft className="w-4 h-4" /></button>
+             <span className="text-[11px] font-black text-slate-800 uppercase tracking-wider">{monthName}</span>
+             <button onClick={() => changeMonth(1)} className="w-8 h-8 flex items-center justify-center text-slate-400 active:text-slate-900 active:bg-slate-200/50 rounded-xl transition-all"><ChevronRight className="w-4 h-4" /></button>
           </div>
 
-          {/* Main Stats Card */}
-          <div className="bg-slate-950 rounded-2xl p-4.5 shadow-xl shadow-slate-900/20 text-white relative overflow-hidden group">
-             <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-12 -mt-12 blur-xl group-hover:scale-110 transition-transform duration-700" />
-             <div className="flex items-start justify-between mb-4">
-                <div>
-                   <p className="text-[9px] font-black text-white/50 uppercase tracking-[0.2em] mb-1">Umumiy Balans</p>
-                   <h2 className="text-2xl font-[1000] tracking-tighter">
+          {/* Main Stats Card with Green/Teal Premium Style */}
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 rounded-[1.75rem] p-4 shadow-xl shadow-emerald-950/20 text-white relative overflow-hidden group w-full">
+             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full -mr-6 -mt-6 blur-xl group-hover:scale-110 transition-transform duration-700 pointer-events-none" />
+             
+             <div className="flex items-start justify-between mb-3 min-w-0">
+                <div className="min-w-0 flex-1">
+                   <p className="text-[8px] font-bold text-emerald-400 uppercase tracking-[0.25em] mb-1 truncate">Umumiy Balans</p>
+                   <h2 className="text-xl font-black tracking-tight leading-none flex items-baseline truncate">
                       {formatCurrency(profit).replace("so'm", "").trim()}
-                      <span className="text-xs font-bold text-white/40 ml-0.5">UZS</span>
+                      <span className="text-[10px] font-black text-emerald-400 ml-1.5 uppercase shrink-0">UZS</span>
                    </h2>
                 </div>
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${profit >= 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                   {profit >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ml-2 ${profit >= 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
+                   {profit >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                 </div>
              </div>
- 
-             <div className="grid grid-cols-2 gap-4 relative z-10">
-                <div className="space-y-0.5">
-                   <div className="flex items-center gap-1 opacity-60">
-                      <ArrowUpRight className="w-3 h-3 text-emerald-400" />
-                      <p className="text-[8px] font-black uppercase tracking-widest">Kirim</p>
+  
+             {/* Income and Expense widgets */}
+             <div className="grid grid-cols-2 gap-2.5 relative z-10 border-t border-white/10 pt-3 w-full">
+                <div className="bg-white/5 border border-white/10 rounded-xl p-2 flex items-center gap-2 min-w-0">
+                   <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-400 shrink-0">
+                      <ArrowUpRight className="w-3.5 h-3.5 stroke-[2.5]" />
                    </div>
-                   <p className="text-base font-black tracking-tight">{formatCurrency(totalIncome).replace("so'm", "")}</p>
+                   <div className="min-w-0 flex-1">
+                      <p className="text-[7px] font-bold text-white/50 uppercase tracking-widest leading-none mb-0.5">Kirim</p>
+                      <p className="text-[11px] font-black text-white truncate leading-none">{formatCurrency(totalIncome).replace("so'm", "")}</p>
+                   </div>
                 </div>
-                <div className="space-y-0.5">
-                   <div className="flex items-center gap-1 opacity-60">
-                      <ArrowDownRight className="w-3 h-3 text-rose-400" />
-                      <p className="text-[8px] font-black uppercase tracking-widest">Chiqim</p>
+                <div className="bg-white/5 border border-white/10 rounded-xl p-2 flex items-center gap-2 min-w-0">
+                   <div className="w-8 h-8 rounded-lg bg-rose-500/15 flex items-center justify-center text-rose-400 shrink-0">
+                      <ArrowDownRight className="w-3.5 h-3.5 stroke-[2.5]" />
                    </div>
-                   <p className="text-base font-black tracking-tight text-rose-200">{formatCurrency(totalExpense).replace("so'm", "")}</p>
+                   <div className="min-w-0 flex-1">
+                      <p className="text-[7px] font-bold text-white/50 uppercase tracking-widest leading-none mb-0.5">Chiqim</p>
+                      <p className="text-[11px] font-black text-rose-300 truncate leading-none">{formatCurrency(totalExpense).replace("so'm", "")}</p>
+                   </div>
                 </div>
              </div>
- 
-             {/* Progress Bar */}
-             <div className="mt-4">
-                <div className="flex justify-between items-center mb-1.5">
-                   <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Sarflash darajasi</p>
-                   <p className="text-[8px] font-black text-white/40">{Math.round(balancePercent)}%</p>
+  
+             {/* Spend meter progress */}
+             <div className="mt-3">
+                <div className="flex justify-between items-center mb-1">
+                   <p className="text-[7.5px] font-bold text-white/40 uppercase tracking-widest leading-none">Sarflash darajasi</p>
+                   <p className="text-[7.5px] font-bold text-white/40 leading-none">{Math.round(balancePercent)}%</p>
                 </div>
-                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-1 bg-white/10 rounded-full overflow-hidden">
                    <motion.div 
                       initial={{ width: 0 }}
                       animate={{ width: `${balancePercent}%` }}
-                      className={`h-full rounded-full ${balancePercent > 80 ? 'bg-rose-500' : 'bg-emerald-500'}`}
+                      className={`h-full rounded-full ${balancePercent > 80 ? 'bg-gradient-to-r from-rose-500 to-red-500' : 'bg-gradient-to-r from-emerald-400 to-teal-500'}`}
                    />
                 </div>
              </div>
           </div>
         </div>
 
-        {/* Search and Filters Strip */}
-        <div className="px-4 -mt-5 relative z-30">
-           <div className="bg-white rounded-2xl p-2 shadow-xl shadow-slate-200/50 flex gap-2 border border-slate-100/50">
-              <div className="relative flex-1">
-                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        {/* Search Strip */}
+        <div className="px-4 -mt-4 relative z-30 w-full">
+           <div className="bg-white rounded-2xl p-1.5 shadow-md border border-slate-100 flex gap-2 w-full">
+              <div className="relative flex-1 min-w-0">
+                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                  <input 
                    type="text" 
                    value={search}
                    onChange={e => setSearch(e.target.value)}
                    placeholder="Xarajatlarni izlash..."
-                   className="w-full h-10 pl-10 pr-4 bg-slate-50 border-none rounded-xl text-xs font-black text-slate-900 placeholder:text-slate-400 placeholder:font-bold focus:ring-0 outline-none"
+                   className="w-full h-9 pl-9 pr-3 bg-slate-50 border-none rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:ring-0 outline-none"
                  />
               </div>
-              <button className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 active:bg-slate-100 transition-colors">
-                 <Filter className="w-4.5 h-4.5" />
+              <button className="w-9 h-9 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center text-slate-400 active:bg-slate-100 transition-colors border-none cursor-pointer shrink-0">
+                 <Filter className="w-4 h-4" />
               </button>
            </div>
         </div>
 
-        {/* Expenses Timeline */}
-        <div className="px-4 mt-6">
-           <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
-                 <Activity className="w-4 h-4 text-slate-400" /> Barcha harakatlar
+        {/* Categories Analysis horizontal analytics scroll bar */}
+        <div className="px-4 mt-5 w-full overflow-hidden">
+            <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2.5 ml-1">Kategoriyalar tahlili</h3>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 px-0.5 scroll-smooth w-full">
+               {EXPENSE_CATEGORIES.map(cat => {
+                  const totalSpent = categoryTotals[cat.value] || 0;
+                  return (
+                    <div key={cat.value} className="bg-white rounded-2xl p-2.5 border border-slate-100 shadow-sm min-w-[95px] flex flex-col items-center gap-1.5 text-center active:scale-95 transition-all shrink-0">
+                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${cat.bg} ${cat.color} border ${cat.border}`}>
+                          <cat.icon className="w-3.5 h-3.5" />
+                       </div>
+                       <div className="min-w-0 w-full">
+                          <span className="text-[8px] font-black uppercase text-slate-700 tracking-tighter block truncate leading-none">{cat.label}</span>
+                          <span className={`text-[9px] font-black block mt-1 leading-none ${totalSpent > 0 ? 'text-rose-500 font-extrabold' : 'text-slate-400 font-bold'}`}>
+                             {totalSpent > 0 ? formatCompactCurrency(totalSpent) : '0 UZS'}
+                          </span>
+                       </div>
+                    </div>
+                  );
+               })}
+            </div>
+        </div>
+
+        {/* Expenses List Timeline */}
+        <div className="px-4 mt-3 w-full">
+           <div className="flex items-center justify-between mb-2.5 px-1">
+              <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                 <Activity className="w-3.5 h-3.5 text-slate-400" /> Barcha harakatlar
               </h3>
-              <span className="px-2 py-0.5 bg-slate-100 rounded-full text-[9px] font-black text-slate-500 uppercase tracking-widest">
+              <span className="px-2 py-0.5 bg-slate-200/60 rounded-full text-[8px] font-black text-slate-500 uppercase tracking-widest">
                  {filteredExpenses.length} ta
               </span>
            </div>
- 
-           <div className="space-y-3">
+  
+           <div className="space-y-2 w-full">
               {loading ? (
-                [1,2,3,4].map(i => <div key={i} className="h-24 bg-white rounded-2xl animate-pulse shadow-sm" />)
+                [1,2,3].map(i => <div key={i} className="h-16 bg-white rounded-2xl animate-pulse shadow-sm border border-slate-50" />)
               ) : filteredExpenses.length === 0 ? (
-                <div className="py-16 text-center">
-                   <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <FileText className="w-8 h-8 text-slate-300" />
+                <div className="py-10 text-center bg-white rounded-[1.5rem] border border-slate-100 p-5 shadow-sm">
+                   <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-2 border border-slate-100">
+                      <FileText className="w-5 h-5 text-slate-350" />
                    </div>
-                   <p className="text-lg font-black text-slate-900 tracking-tight">Xarajatlar mavjud emas</p>
-                   <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Ushbu oyda hali xarajatlar kiritilmagan</p>
+                   <p className="text-xs font-bold text-slate-850 tracking-tight">Xarajatlar mavjud emas</p>
+                   <p className="text-[8px] font-bold text-slate-400 mt-1.5 uppercase tracking-widest leading-none">Ushbu oyda xarajatlar kiritilmagan</p>
                 </div>
               ) : (
                 <AnimatePresence mode="popLayout">
@@ -259,126 +331,153 @@ export default function MobileExpenses() {
                          <motion.div
                            key={expense.id}
                            layout
-                           initial={{ opacity: 0, y: 15 }}
+                           initial={{ opacity: 0, y: 10 }}
                            animate={{ opacity: 1, y: 0 }}
                            exit={{ opacity: 0, scale: 0.95 }}
-                           transition={{ delay: index * 0.04 }}
-                           className="bg-white rounded-2xl p-4 shadow-[0_2px_12px_rgba(0,0,0,0.02)] border border-slate-100 flex items-center gap-4 active:scale-[0.98] transition-all group"
+                           transition={{ delay: Math.min(index, 6) * 0.02 }}
+                           className="bg-white rounded-xl p-2.5 shadow-sm border border-slate-100 flex items-center gap-2.5 active:scale-[0.98] transition-all group content-visibility-auto cursor-pointer hover:shadow-md w-full"
                            onClick={() => { setEditingExpense(expense); setForm(expense); setModalOpen(true); }}
                          >
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-md ${cat.bg} ${cat.color} ${cat.border} border`}>
-                               <cat.icon className="w-5 h-5" />
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${cat.bg} ${cat.color} ${cat.border} border`}>
+                               <cat.icon className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
                                <div className="flex items-center justify-between mb-0.5">
-                                  <h4 className="text-xs font-black text-slate-900 truncate tracking-tight group-active:text-slate-600">
+                                  <h4 className="text-xs font-bold text-slate-800 truncate tracking-tight">
                                      {expense.description || cat.label}
                                   </h4>
-                                  <p className="text-sm font-[1000] text-rose-500 tracking-tighter">
-                                     -{Math.round(expense.amount/1000)}K
+                                  <p className="text-xs font-black text-rose-500 tracking-tight whitespace-nowrap">
+                                     -{formatCurrency(expense.amount || 0)}
                                   </p>
                                </div>
-                               <div className="flex items-center gap-2">
-                                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                               <div className="flex items-center gap-1.5 leading-none">
+                                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
                                      {formatDate(expense.date)}
                                   </p>
-                                  <div className="w-1 h-1 rounded-full bg-slate-200" />
-                                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{cat.label}</p>
-                               </div>
+                                  <div className="w-0.5 h-0.5 rounded-full bg-slate-200" />
+                                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{cat.label}</p>
+                                </div>
                             </div>
                          </motion.div>
-                       );
-                    })}
-                 </AnimatePresence>
+                      );
+                   })}
+                </AnimatePresence>
               )}
            </div>
         </div>
 
-        {/* Quick Categories Bar */}
-        <div className="px-4 mt-8 mb-8">
-            <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 ml-2">Kategoriyalar tahlili</h3>
-            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-3 px-1">
-               {EXPENSE_CATEGORIES.map(cat => (
-                 <div key={cat.value} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm min-w-[110px] flex flex-col items-center gap-2">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${cat.bg} ${cat.color} border ${cat.border}`}>
-                       <cat.icon className="w-5 h-5" />
-                    </div>
-                    <span className="text-[9px] font-black uppercase text-slate-900 tracking-tighter">{cat.label}</span>
-                 </div>
-               ))}
-            </div>
-        </div>
 
-        {/* Add Modal */}
+
+        {/* Add / Edit Dialog Modal */}
          <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-            <DialogContent className="rounded-2xl p-5 border-none max-w-[94%] w-full max-h-[85vh] overflow-y-auto">
-               <DialogHeader className="pr-10 text-left">
-                  <DialogTitle className="text-lg font-black tracking-tight uppercase">
-                     {editingExpense ? 'Tahrirlash' : 'Yangi Xarajat'}
-                  </DialogTitle>
-               </DialogHeader>
-               <div className="space-y-3.5 mt-2">
-                  <div className="space-y-1">
-                     <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-2">Kategoriya</Label>
-                    <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
-                       <SelectTrigger className="h-11 rounded-xl bg-slate-50 border-none font-black text-slate-800 outline-none">
-                          <SelectValue />
-                       </SelectTrigger>
-                       <SelectContent className="rounded-xl border-none shadow-2xl">
-                          {EXPENSE_CATEGORIES.map(c => (
-                             <SelectItem key={c.value} value={c.value} className="font-bold py-2.5">{c.label}</SelectItem>
-                          ))}
-                       </SelectContent>
-                    </Select>
-                 </div>
-                 
-                 <div className="space-y-1">
-                     <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-2">Summa (UZS)</Label>
-                    <div className="relative">
-                       <Input 
-                         type="number"
-                         value={form.amount}
-                         onChange={e => setForm({ ...form, amount: Number(e.target.value) })}
-                         className="h-11 rounded-xl bg-slate-50 border-none font-black text-slate-800 text-base"
-                         placeholder="Masalan: 500,000"
-                       />
-                       <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300">UZS</span>
+            <DialogContent 
+              className="w-[92vw] max-w-sm max-h-[85vh] p-0 border-none rounded-[2rem] bg-white outline-none overflow-hidden flex flex-col shadow-2xl !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]"
+              aria-describedby={undefined}
+            >
+               {/* Modal Header */}
+               <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-4 flex items-center justify-between shrink-0 text-white rounded-t-[2rem]">
+                 <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm">
+                      <TrendingDown className="w-4.5 h-4.5 stroke-[2.5]" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-[14px] font-black text-white uppercase tracking-tight leading-none">
+                         {editingExpense ? 'Tahrirlash' : 'Yangi Xarajat'}
+                      </DialogTitle>
+                      <p className="text-[8px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Xarajat ma'lumotlari</p>
                     </div>
                  </div>
+                 <button 
+                    onClick={() => setModalOpen(false)}
+                    className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-90 border-none cursor-pointer"
+                 >
+                    <X className="w-4 h-4" />
+                 </button>
+               </div>
 
-                  <div className="space-y-1">
-                     <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-2">Sana</Label>
-                    <Input 
-                      type="date"
-                      value={form.date}
-                      onChange={e => setForm({ ...form, date: e.target.value })}
-                      className="h-11 rounded-xl bg-slate-50 border-none font-black text-slate-800"
-                    />
-                 </div>
+               {/* Modal Input Fields Body */}
+               <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
+                  <div>
+                     <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Kategoriya</Label>
+                     <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
+                        <SelectTrigger className="h-10 rounded-xl bg-slate-50 border-none font-bold text-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/10">
+                           <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl border-none shadow-2xl">
+                           {EXPENSE_CATEGORIES.map(c => {
+                              const Icon = c.icon;
+                              return (
+                                 <SelectItem key={c.value} value={c.value} className="font-bold py-2 focus:bg-slate-50 text-xs">
+                                    <div className="flex items-center gap-2">
+                                       {Icon && <Icon className="w-3.5 h-3.5 text-slate-400" />}
+                                       <span>{c.label}</span>
+                                    </div>
+                                 </SelectItem>
+                              );
+                           })}
+                        </SelectContent>
+                     </Select>
+                  </div>
+                  
+                  <div>
+                     <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Summa (UZS)</Label>
+                     <div className="relative">
+                        <Input 
+                          type="number"
+                          value={form.amount}
+                          onChange={e => setForm({ ...form, amount: Number(e.target.value) })}
+                          className="h-10 rounded-xl bg-slate-50 border-none font-black text-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/10"
+                          placeholder="Masalan: 500,000"
+                        />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400">UZS</span>
+                     </div>
+                  </div>
+  
+                  <div>
+                     <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Sana</Label>
+                     <Input 
+                       type="date"
+                       value={form.date}
+                       onChange={e => setForm({ ...form, date: e.target.value })}
+                       className="h-10 rounded-xl bg-slate-50 border-none font-bold text-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/10"
+                     />
+                  </div>
+  
+                  <div>
+                     <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Tavsif</Label>
+                     <textarea 
+                       value={form.description}
+                       onChange={e => setForm({ ...form, description: e.target.value })}
+                       placeholder="Nima uchun xarajat qilindi?"
+                       className="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-bold text-slate-800 placeholder:text-slate-350 min-h-[70px] resize-none outline-none focus:ring-2 focus:ring-emerald-500/10"
+                     />
+                  </div>
+               </div>
 
-                  <div className="space-y-1">
-                     <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-2">Tavsif</Label>
-                    <Input 
-                      value={form.description}
-                      onChange={e => setForm({ ...form, description: e.target.value })}
-                      placeholder="Nima uchun xarajat qilindi?"
-                      className="h-11 rounded-xl bg-slate-50 border-none font-black text-slate-800 placeholder:text-slate-300 text-xs"
-                    />
-                 </div>
-
-                 <div className="flex gap-2 pt-3">
-                    <Button variant="ghost" onClick={() => setModalOpen(false)} className="h-11 flex-1 rounded-xl font-black text-slate-400 uppercase tracking-widest text-[10px]">Bekor</Button>
-                    <Button 
-                      onClick={handleSave} 
-                      disabled={saving}
-                      className="h-11 flex-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-slate-900/10"
-                    >
-                       {saving ? 'SAQLANMOQDA...' : 'SAQLASH'}
-                    </Button>
-                 </div>
-              </div>
-           </DialogContent>
-        </Dialog>
+               {/* Modal Actions Footer */}
+               <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center gap-2 shrink-0 rounded-b-[2rem]">
+                  {editingExpense && (
+                     <button 
+                        onClick={() => handleDelete(editingExpense.id)}
+                        className="w-10 h-10 bg-rose-50 border border-rose-100 text-rose-500 rounded-xl flex items-center justify-center shrink-0 active:scale-95 active:bg-rose-100 transition-all cursor-pointer"
+                        title="O'chirish"
+                     >
+                        <Trash2 className="w-4 h-4" />
+                     </button>
+                  )}
+                  <Button variant="ghost" onClick={() => setModalOpen(false)} className="h-10 flex-1 rounded-xl font-bold uppercase text-[10px] tracking-wider text-slate-400 hover:bg-slate-100 px-4 border-none">
+                     Bekor
+                  </Button>
+                  <Button 
+                    onClick={handleSave} 
+                    disabled={saving}
+                    className="h-10 flex-[2] rounded-xl font-black uppercase text-xs tracking-wider border-none shadow-md bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white active:scale-95 transition-all"
+                  >
+                     {saving ? '...' : 'Saqlash'}
+                  </Button>
+               </div>
+            </DialogContent>
+         </Dialog>
       </div>
     </PullToRefresh>
   );

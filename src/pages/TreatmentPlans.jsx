@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/lib/queryKeys';
 import { 
   Plus, Search, ClipboardList, FileDown, 
   ChevronRight, Edit2, Activity, Clock, 
@@ -8,7 +10,6 @@ import {
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import StatusBadge from '../components/ui/StatusBadge';
 import EmptyState from '../components/ui/EmptyState';
 import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
 import TreatmentPlanInvoice from '../components/treatments/TreatmentPlanInvoice';
@@ -25,10 +26,8 @@ import { toast } from 'sonner';
 export default function TreatmentPlans() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [plans, setPlans] = useState([]);
-  const [patients, setPatients] = useState([]);
-  const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
@@ -36,30 +35,43 @@ export default function TreatmentPlans() {
   const [selectedPlanForInvoice, setSelectedPlanForInvoice] = useState(null);
   const [deletePlanId, setDeletePlanId] = useState(null);
 
-  const load = async () => {
-    try {
-      const [pls, pats, svcs] = await Promise.all([
-        base44.entities.TreatmentPlan.list('-created_date', 50),  // ⚡ tez
-        base44.entities.Patient.list('full_name', 50),              // ⚡ tez
-        base44.entities.Service.list('name', 100),
-      ]);
-      setPlans(pls || []);
-      setPatients(pats || []);
-      // De-duplicate by name only (case-insensitive)
-      const seen = new Map();
-      (svcs || []).forEach(s => {
-        const key = s.name?.toLowerCase().trim();
-        if (key && !seen.has(key)) seen.set(key, s);
-      });
-      setServices(Array.from(seen.values()));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ── React Query: Treatment plans ──────────────────────────────────────────
+  const { data: rawPlans = [], isFetching: plansFetching } = useQuery({
+    queryKey: QUERY_KEYS.treatmentPlans,
+    queryFn: () => base44.entities.TreatmentPlan.list('-created_date', 50),
+    staleTime: 3 * 60 * 1000,
+  });
 
-  useEffect(() => { load(); }, []);
+  // ── React Query: Patients (initial load) ──────────────────────────────────
+  const { data: patients = [] } = useQuery({
+    queryKey: QUERY_KEYS.patients,
+    queryFn: () => base44.entities.Patient.list('full_name', 200),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // ── React Query: Services (initial load) ──────────────────────────────────
+  const { data: rawServices = [] } = useQuery({
+    queryKey: QUERY_KEYS.services,
+    queryFn: () => base44.entities.Service.list('name', 100),
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const plans = rawPlans;
+  const loading = plansFetching && rawPlans.length === 0;
+
+  // De-duplicate by name only (case-insensitive)
+  const services = useMemo(() => {
+    const seen = new Map();
+    (rawServices || []).forEach(s => {
+      const key = s.name?.toLowerCase().trim();
+      if (key && !seen.has(key)) seen.set(key, s);
+    });
+    return Array.from(seen.values());
+  }, [rawServices]);
+
+  const invalidatePlans = () => {
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.treatmentPlans });
+  };
 
   const handleDelete = async () => {
     if (!deletePlanId) return;
@@ -77,7 +89,7 @@ export default function TreatmentPlans() {
       
       toast.success(t('common.success'));
       setDeletePlanId(null);
-      load();
+      invalidatePlans();
     } catch (err) {
       console.error(err);
       toast.error(t('common.error'));
@@ -88,13 +100,17 @@ export default function TreatmentPlans() {
     try {
       const prev = plans.find(p => p.id === id)?.status;
       if (prev === newStatus) return;
-      // Optimistic upate
-      setPlans(plans.map(p => p.id === id ? { ...p, status: newStatus } : p));
+
+      // Optimistic update
+      queryClient.setQueryData(QUERY_KEYS.treatmentPlans, (old) => {
+        return (old || []).map(p => p.id === id ? { ...p, status: newStatus } : p);
+      });
+
       await base44.entities.TreatmentPlan.update(id, { status: newStatus });
-      load();
+      invalidatePlans();
     } catch (err) {
       console.error(err);
-      load();
+      invalidatePlans();
     }
   };
 
@@ -177,8 +193,8 @@ export default function TreatmentPlans() {
               key={s.label}
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
-              className={`bg-white border ${s.border} rounded-xl p-4.5 shadow-sm relative group hover:shadow-md transition-all duration-350`}
+              transition={{ delay: Math.min(i, 4) * 0.02 }}
+              className={`bg-white border ${s.border} rounded-xl p-4.5 shadow-sm relative group hover:shadow-md transition-all duration-350 content-visibility-auto`}
             >
               <div className="flex items-center gap-3.5">
                 <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center shrink-0`}>
@@ -235,11 +251,11 @@ export default function TreatmentPlans() {
                 <table className="w-full text-left border-collapse table-fixed min-w-[900px]">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-100">
-                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[32%] min-w-[240px]">Reja ma'lumotlari</th>
-                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[15%] min-w-[140px]">Status</th>
-                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[18%] min-w-[140px]">Tishlar</th>
-                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[15%] min-w-[120px]">Qiymati</th>
-                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right w-[20%] min-w-[160px]">Amallar</th>
+                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[32%] min-w-[240px]">{t('treatmentPlan.table.planDetails') || 'Reja ma\'lumotlari'}</th>
+                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[15%] min-w-[140px]">{t('treatmentPlan.table.status') || 'Status'}</th>
+                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[18%] min-w-[140px]">{t('treatmentPlan.table.teeth') || 'Tishlar'}</th>
+                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[15%] min-w-[120px]">{t('treatmentPlan.table.value') || 'Qiymati'}</th>
+                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right w-[20%] min-w-[160px]">{t('treatmentPlan.table.actions') || 'Amallar'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -349,9 +365,9 @@ export default function TreatmentPlans() {
                     layout
                     initial={{ opacity: 0, scale: 0.96 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.04 }}
+                    transition={{ delay: Math.min(index, 6) * 0.02 }}
                     onClick={() => { setEditPlan(p); setModalOpen(true); }}
-                    className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group active:scale-[0.98] cursor-pointer"
+                    className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group active:scale-[0.98] cursor-pointer content-visibility-auto"
                   >
                     <div className="p-4.5">
                       <div className="flex items-start justify-between mb-3.5">
@@ -420,7 +436,7 @@ export default function TreatmentPlans() {
         )}
       </div>
 
-      <TreatmentPlanModal open={modalOpen} onClose={() => { setModalOpen(false); setEditPlan(null); }} plan={editPlan} patients={patients} services={services} onSaved={load} />
+      <TreatmentPlanModal open={modalOpen} onClose={() => { setModalOpen(false); setEditPlan(null); }} plan={editPlan} patients={patients} services={services} onSaved={invalidatePlans} />
       <TreatmentPlanInvoice open={invoiceOpen} onClose={() => { setInvoiceOpen(false); setSelectedPlanForInvoice(null); }} plan={selectedPlanForInvoice} />
 
       {/* Delete Confirmation */}

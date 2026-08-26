@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
   Users, UserPlus, Trash2, Shield, 
-  Search, Filter, Plus, Mail, Phone,
-  TrendingUp, Wallet, Star, Clock
+  Search, Filter,
+  TrendingUp, Star
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -249,7 +249,8 @@ export default function Staff() {
                   <Input 
                     type="number"
                     value={newStaff.commission}
-                    onChange={e => setNewStaff({...newStaff, commission: Number(e.target.value)})}
+                    onChange={e => setNewStaff({...newStaff, commission: e.target.value})}
+                    onWheel={e => e.target.blur()}
                     className="rounded-xl"
                   />
                 </div>
@@ -352,8 +353,8 @@ export default function Staff() {
                 key={user.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="p-4 space-y-3"
+                transition={{ delay: Math.min(i, 6) * 0.02 }}
+                className="p-4 space-y-3 content-visibility-auto"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -423,7 +424,7 @@ export default function Staff() {
                     key={user.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
+                    transition={{ delay: Math.min(i, 6) * 0.02 }}
                     className="group hover:bg-slate-50/30 transition-colors"
                   >
                     <td className="px-6 py-4">

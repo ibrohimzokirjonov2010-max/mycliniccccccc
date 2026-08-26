@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import {
   Bot, MessageSquare, Calendar, Settings, Send, TrendingUp, CheckCircle, XCircle,
   RefreshCw, Copy, ExternalLink, Clock, User, Eye, Play, Pause, Save, Smartphone
@@ -94,7 +94,6 @@ const DEFAULT_WORKING_HOURS = {
 
 export default function TelegramBot() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const clinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
 
@@ -145,7 +144,7 @@ export default function TelegramBot() {
     },
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ['botConfig'] });
-      toast({ title: 'Sozlamalar saqlandi', description: 'Bot konfiguratsiyasi yangilandi' });
+      toast.success('Sozlamalar saqlandi', { description: 'Bot konfiguratsiyasi yangilandi' });
 
       // Global bot: barcha klinikalar uchun bitta bot ishlatilsa,
       // klinika almashtirilganda ham link chiqishi uchun localStorage’ga ham saqlab qo‘yamiz.
@@ -159,7 +158,7 @@ export default function TelegramBot() {
       }
     },
     onError: (error) => {
-      toast({ title: 'Xatolik', description: error.message || 'Sozlamalarni saqlashda xatolik', variant: 'destructive' });
+      toast.error('Xatolik', { description: error.message || 'Sozlamalarni saqlashda xatolik' });
     }
   });
 
@@ -170,7 +169,7 @@ export default function TelegramBot() {
     },
     onSuccess: (_, isActive) => {
       queryClient.invalidateQueries({ queryKey: ['botConfig'] });
-      toast({ title: isActive ? 'Bot yoqildi' : 'Bot ochirildi', description: isActive ? 'Telegram bot faollashtirildi' : 'Telegram bot vaqtinchalik ochirildi' });
+      toast.success(isActive ? 'Bot yoqildi' : 'Bot ochirildi', { description: isActive ? 'Telegram bot faollashtirildi' : 'Telegram bot vaqtinchalik ochirildi' });
     }
   });
 
@@ -181,7 +180,7 @@ export default function TelegramBot() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['telegramBookings'] });
-      toast({ title: 'Status yangilandi', description: 'Navbat statusi ozgartirildi' });
+      toast.success('Status yangilandi', { description: 'Navbat statusi ozgartirildi' });
     }
   });
 
@@ -191,11 +190,11 @@ export default function TelegramBot() {
       return response.data;
     },
     onSuccess: () => {
-      toast({ title: 'Xabar yuborildi', description: 'Test xabar muvaffaqiyatli yuborildi' });
+      toast.success('Xabar yuborildi', { description: 'Test xabar muvaffaqiyatli yuborildi' });
       setTestMessage('');
     },
     onError: (error) => {
-      toast({ title: 'Xatolik', description: error.message || 'Xabar yuborishda xatolik', variant: 'destructive' });
+      toast.error('Xatolik', { description: error.message || 'Xabar yuborishda xatolik' });
     }
   });
 
@@ -246,7 +245,7 @@ export default function TelegramBot() {
 
   const handleSaveConfig = useCallback(async () => {
     if (!config.botToken) {
-      toast({ title: 'Xatolik', description: 'Bot tokenini kiriting', variant: 'destructive' });
+      toast.error('Xatolik', { description: 'Bot tokenini kiriting' });
       return;
     }
 
@@ -254,10 +253,8 @@ export default function TelegramBot() {
     if (!String(nextConfig.botUsername || '').replace(/^@/, '').trim()) {
       const username = await fetchTelegramBotUsername(nextConfig.botToken);
       if (!username) {
-        toast({
-          title: 'Xatolik',
+        toast.error('Xatolik', {
           description: 'Bot username topilmadi. Token to\'g\'riligini tekshiring yoki username ni qo\'lda kiriting.',
-          variant: 'destructive',
         });
         return;
       }
@@ -266,14 +263,14 @@ export default function TelegramBot() {
     }
 
     saveConfig.mutate({ ...nextConfig, commands });
-  }, [config, commands, saveConfig, toast]);
+  }, [config, commands, saveConfig]);
 
   const copyBotLink = useCallback(() => {
     if (!config.botUsername) return;
     const link = `https://t.me/${config.botUsername}`;
     navigator.clipboard.writeText(link);
-    toast({ title: 'Nusxa olindi', description: 'Bot havolasi nusxalandi' });
-  }, [config.botUsername, toast]);
+    toast.success('Nusxa olindi', { description: 'Bot havolasi nusxalandi' });
+  }, [config.botUsername]);
 
   const generateDeepLink = useCallback(() => {
     if (!config.botUsername) return '';

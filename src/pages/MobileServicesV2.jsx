@@ -1,15 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  Plus, Search, Stethoscope, Edit2, Trash2, Clock, 
-  ChevronRight, Activity, Scissors, Layers, Baby, 
-  ShieldCheck, Syringe, Sparkles, Filter, TrendingUp,
-  MoreVertical, Pencil, Settings2, Check, ArrowLeft, X
+  Plus, Search, Stethoscope, Trash2, Clock, 
+  Activity, Scissors, Layers, Baby, 
+  ShieldCheck, Syringe, Sparkles, TrendingUp,
+  Pencil, Settings2, Check, ArrowLeft, X
 } from 'lucide-react';
-import { base44, DEFAULT_SERVICES_DATA } from '@/api/base44Client';
+import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -29,15 +29,15 @@ const ALLOWED_CATEGORIES = [
 ];
 
 const CATEGORY_MAP = {
-  'TERAPIYA( ENDO +PLOMBA)': { icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50' },
-  'XIRURGIYA': { icon: Scissors, color: 'text-rose-500', bg: 'bg-rose-50' },
-  'ORTOPEDIYA': { icon: Layers, color: 'text-violet-500', bg: 'bg-violet-50' },
-  'ORTODONTIYA': { icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  'GIGIENA VA PROFILAKTIKA': { icon: Sparkles, color: 'text-cyan-500', bg: 'bg-cyan-50' },
-  'ESTETIK STOMATOLOGIYA': { icon: Sparkles, color: 'text-pink-500', bg: 'bg-pink-50' },
-  'BOLALAR STOMATOLOGIYASI': { icon: Baby, color: 'text-orange-500', bg: 'bg-orange-50' },
-  'IMPLANTATSIYA': { icon: Syringe, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-  'ENDODONTIYA': { icon: Activity, color: 'text-teal-500', bg: 'bg-teal-50' }
+  'TERAPIYA( ENDO +PLOMBA)': { icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-l-blue-500' },
+  'XIRURGIYA': { icon: Scissors, color: 'text-rose-500', bg: 'bg-rose-50', border: 'border-l-rose-500' },
+  'ORTOPEDIYA': { icon: Layers, color: 'text-violet-500', bg: 'bg-violet-50', border: 'border-l-violet-500' },
+  'ORTODONTIYA': { icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-l-emerald-500' },
+  'GIGIENA VA PROFILAKTIKA': { icon: Sparkles, color: 'text-cyan-500', bg: 'bg-cyan-50', border: 'border-l-cyan-500' },
+  'ESTETIK STOMATOLOGIYA': { icon: Sparkles, color: 'text-pink-500', bg: 'bg-pink-50', border: 'border-l-pink-500' },
+  'BOLALAR STOMATOLOGIYASI': { icon: Baby, color: 'text-orange-500', bg: 'bg-orange-50', border: 'border-l-orange-500' },
+  'IMPLANTATSIYA': { icon: Syringe, color: 'text-indigo-500', bg: 'bg-indigo-50', border: 'border-l-indigo-500' },
+  'ENDODONTIYA': { icon: Activity, color: 'text-teal-500', bg: 'bg-teal-50', border: 'border-l-teal-500' }
 };
 
 const getCategoryStyle = (cat) => CATEGORY_MAP[cat] || CATEGORY_MAP['TERAPIYA( ENDO +PLOMBA)'];
@@ -167,136 +167,183 @@ export default function MobileServicesV2() {
   };
 
   return (
-    <div className="pb-24 pt-4 px-4 bg-[#f8fafc] min-h-screen">
-      <div className="flex items-center justify-between mb-6">
+    <div className="pb-24 pt-4 px-4 bg-[#F8FAFC] min-h-screen">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">{t('services.title')}</h1>
-          <p className="text-slate-500 font-medium text-sm">{t('services.subtitle')}</p>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-1">{t('services.title')}</h1>
+          <p className="text-emerald-600 font-bold text-[9px] uppercase tracking-wider">{t('services.subtitle')}</p>
         </div>
         <button 
           onClick={() => { setEditService(null); setModalOpen(true); }}
-          className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-slate-200 active:scale-90 transition-transform"
+          className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl flex items-center justify-center shadow-md shadow-emerald-500/20 active:scale-90 transition-all cursor-pointer"
         >
-          <Plus className="w-6 h-6" />
+          <Plus className="w-5 h-5 stroke-[2.5]" />
         </button>
       </div>
 
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4 px-1">
-          <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('services.sidebar.categories')}</span>
+      {/* Categories Bar */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-2.5 px-1">
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('services.sidebar.categories')}</span>
           <button 
             onClick={() => setIsReordering(!isReordering)}
             className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all",
-              isReordering ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              "flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all border",
+              isReordering 
+                ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-100" 
+                : "bg-emerald-50/70 border-emerald-100/50 text-emerald-650 hover:bg-emerald-100/40"
             )}
           >
-            {isReordering ? <><Check className="w-3 h-3" /> SAQLASH</> : <><Settings2 className="w-3 h-3" /> JOYINI O'ZGARTIRISH</>}
+            {isReordering ? <><Check className="w-3 h-3 stroke-[2.5]" /> SAQLASH</> : <><Settings2 className="w-3 h-3" /> JOYINI O'ZGARTIRISH</>}
           </button>
         </div>
 
-        <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 no-scrollbar items-center">
+        <div className="flex gap-2.5 overflow-x-auto pb-3 -mx-4 px-4 no-scrollbar items-center">
           <button
             onClick={() => setSelectedCategory('all')}
             className={cn(
-              "shrink-0 whitespace-nowrap px-6 py-3.5 rounded-[22px] font-black text-[13px] transition-all duration-300 border-2",
+              "shrink-0 flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2 rounded-xl font-black text-[11px] uppercase tracking-wider transition-all border",
               selectedCategory === 'all' 
-                ? "bg-slate-900 text-white border-slate-900 shadow-xl shadow-slate-200 scale-105" 
-                : "bg-white text-slate-500 border-slate-50 hover:border-slate-200 shadow-sm",
+                ? "bg-gradient-to-r from-emerald-500 to-teal-650 text-white border-none shadow-md shadow-emerald-500/15" 
+                : "bg-white text-slate-500 border-slate-100 hover:border-slate-200 shadow-sm",
               isReordering && "opacity-50 grayscale pointer-events-none"
             )}
           >
-            {t('services.sidebar.all')}
+            <Stethoscope className="w-3.5 h-3.5" />
+            <span>{t('services.sidebar.all')}</span>
           </button>
 
           <Reorder.Group 
             axis="x" 
             values={categoryOrder} 
             onReorder={handleReorder}
-            className="flex gap-3 items-center shrink-0"
+            className="flex gap-2.5 items-center shrink-0"
           >
-            {categoryOrder.map((cat) => (
-              <Reorder.Item key={cat} value={cat} dragListener={isReordering} className="shrink-0">
-                <div className="relative">
-                  <button
-                    onClick={() => !isReordering && setSelectedCategory(cat)}
-                    className={cn(
-                      "shrink-0 whitespace-nowrap px-6 py-3.5 rounded-[22px] font-black text-[13px] transition-all duration-300 border-2",
-                      selectedCategory === cat 
-                        ? "bg-slate-900 text-white border-slate-900 shadow-xl shadow-slate-200 scale-105" 
-                        : "bg-white text-slate-500 border-slate-50 hover:border-slate-200 shadow-sm",
-                      isReordering 
-                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 animate-pulse cursor-move ring-4 ring-emerald-500/10 touch-none"
-                        : "touch-pan-x"
+            {categoryOrder.map((cat) => {
+              const catStyle = getCategoryStyle(cat);
+              const Icon = catStyle.icon || Stethoscope;
+              const isSelected = selectedCategory === cat;
+              return (
+                <Reorder.Item key={cat} value={cat} dragListener={isReordering} className="shrink-0">
+                  <div className="relative">
+                    <button
+                      onClick={() => !isReordering && setSelectedCategory(cat)}
+                      className={cn(
+                        "shrink-0 flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2 rounded-xl font-black text-[11px] uppercase tracking-wider transition-all border",
+                        isSelected 
+                          ? "bg-gradient-to-r from-emerald-500 to-teal-650 text-white border-none shadow-md shadow-emerald-500/15" 
+                          : "bg-white text-slate-500 border-slate-100 hover:border-slate-200 shadow-sm",
+                        isReordering 
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-700 animate-pulse cursor-move ring-2 ring-emerald-500/10 touch-none"
+                          : "touch-pan-x"
+                      )}
+                    >
+                      <Icon className={cn("w-3.5 h-3.5", isSelected ? "text-white" : catStyle.color)} />
+                      <span>{cat}</span>
+                    </button>
+                    {isReordering && (
+                      <div className="absolute -top-2.5 -right-1.5 flex gap-1 z-10">
+                        <button 
+                           onClick={(e) => { e.stopPropagation(); setRenamingCat({ old: cat, new: cat }); setCatEditOpen(true); }}
+                           className="w-6.5 h-6.5 bg-white shadow-lg border border-slate-100 rounded-full flex items-center justify-center text-blue-500 active:scale-90"
+                        >
+                           <Pencil className="w-3 h-3" />
+                        </button>
+                        <button 
+                           onClick={(e) => { e.stopPropagation(); setCatToDelete(cat); }}
+                           className="w-6.5 h-6.5 bg-white shadow-lg border border-slate-100 rounded-full flex items-center justify-center text-rose-500 active:scale-90"
+                        >
+                           <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
                     )}
-                  >
-                    {cat}
-                  </button>
-                  {isReordering && (
-                    <div className="absolute -top-3 -right-2 flex gap-1">
-                      <button 
-                         onClick={(e) => { e.stopPropagation(); setRenamingCat({ old: cat, new: cat }); setCatEditOpen(true); }}
-                         className="w-7 h-7 bg-white shadow-lg border border-slate-100 rounded-full flex items-center justify-center text-blue-500 active:scale-90"
-                      >
-                         <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button 
-                         onClick={(e) => { e.stopPropagation(); setCatToDelete(cat); }}
-                         className="w-7 h-7 bg-white shadow-lg border border-slate-100 rounded-full flex items-center justify-center text-rose-500 active:scale-90"
-                      >
-                         <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </Reorder.Item>
-            ))}
+                  </div>
+                </Reorder.Item>
+              );
+            })}
           </Reorder.Group>
         </div>
       </div>
 
-      <div className="relative mb-8">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+      {/* Search Input */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <Input 
           placeholder={t('services.sidebar.search')}
           value={search} 
           onChange={e => setSearch(e.target.value)} 
-          className="pl-12 h-14 rounded-2xl bg-white border-none shadow-sm font-bold text-slate-600 focus:ring-2 focus:ring-slate-900/10"
+          className="pl-10 pr-9 h-10 rounded-xl bg-white border border-slate-200 shadow-sm font-bold text-slate-700 text-xs focus-visible:ring-emerald-400 focus-visible:border-emerald-400 transition-all placeholder:text-slate-350"
         />
+        {search && (
+          <button 
+            onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-650 transition-colors border-none"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        )}
       </div>
 
-      <div className="space-y-10">
+      {/* Services List Grouped */}
+      <div className="space-y-4">
         {grouped.map(([catName, items]) => {
           const style = getCategoryStyle(catName);
-          const Icon = style.icon;
+          const Icon = style.icon || Stethoscope;
           return (
-            <div key={catName} className="space-y-4">
-              <div className="flex items-center gap-2 px-1">
-                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{catName}</span>
-                <Badge variant="secondary" className="bg-slate-100 text-slate-400 border-none rounded-lg px-2 h-5 text-[10px] font-black">{items.length}</Badge>
+            <div key={catName} className="space-y-1.5">
+              <div className="flex items-center justify-between px-1.5">
+                <div className="flex items-center gap-1.5">
+                  <div className={cn("w-5.5 h-5.5 rounded-lg flex items-center justify-center", style.bg)}>
+                    <Icon className={cn("w-3.5 h-3.5", style.color)} />
+                  </div>
+                  <span className="text-[9px] font-black text-slate-500 tracking-wider uppercase">{catName}</span>
+                </div>
+                <Badge variant="secondary" className="bg-slate-100 text-slate-450 border-none rounded-lg px-2 h-4 text-[8px] font-black">{items.length}</Badge>
               </div>
-              <div className="space-y-3">
+              <div className={cn("bg-white rounded-2xl border border-slate-150 shadow-sm overflow-hidden divide-y divide-slate-100 border-l-[3.5px]", style.border)}>
                 <AnimatePresence>
                   {items.map(s => (
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} key={s.id}
-                      className="bg-white p-5 rounded-[28px] border border-slate-50 shadow-sm flex items-center justify-between active:scale-98 transition-transform"
+                      initial={{ opacity: 0, y: 5 }} 
+                      animate={{ opacity: 1, y: 0 }} 
+                      key={s.id}
+                      className="p-3 px-3.5 flex items-center justify-between hover:bg-slate-50/40 active:bg-slate-50/70 transition-colors group"
                     >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-14 h-14 rounded-[20px] ${style.bg} ${style.color} flex items-center justify-center shadow-inner`}>
-                          <Icon className="w-7 h-7" />
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-slate-800 text-[13px] leading-snug truncate">{s.name}</h4>
+                          {!s.is_active && (
+                            <span className="text-[8px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-widest">Faol emas</span>
+                          )}
                         </div>
-                        <div>
-                          <h3 className="font-bold text-slate-900 leading-tight mb-1">{s.name}</h3>
-                          <div className="flex items-center gap-3">
-                            <span className="font-black text-emerald-600 text-sm">{Number(s.price).toLocaleString()} so'm</span>
-                            <span className="flex items-center gap-1 text-[11px] font-bold text-slate-400"><Clock className="w-3 h-3" /> {s.duration} min</span>
-                          </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="font-extrabold text-emerald-600 text-xs">{Number(s.price).toLocaleString()} so'm</span>
+                          <span className="w-0.5 h-0.5 rounded-full bg-slate-350" />
+                          <span className="flex items-center gap-1 text-[9px] font-medium text-slate-400">
+                            <Clock className="w-3 h-3 text-slate-400" /> {s.duration} min
+                          </span>
+                          {s.requires_tooth && (
+                            <>
+                              <span className="w-0.5 h-0.5 rounded-full bg-slate-350" />
+                              <span className="text-[8px] bg-emerald-50 text-emerald-600 border border-emerald-100/50 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Tish raqami</span>
+                            </>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => { setEditService(s); setModalOpen(true); }} className="p-3 text-slate-300 hover:text-slate-900"><Pencil className="w-5 h-5" /></button>
-                        <button onClick={() => handleDelete(s.id)} className="p-3 text-rose-200 hover:text-rose-500"><Trash2 className="w-5 h-5" /></button>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <button 
+                          onClick={() => { setEditService(s); setModalOpen(true); }} 
+                          className="p-1.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg active:scale-90 transition-all duration-200 cursor-pointer"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(s.id)} 
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg active:scale-90 transition-all duration-200 cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </motion.div>
                   ))}
@@ -307,47 +354,51 @@ export default function MobileServicesV2() {
         })}
       </div>
 
+      {/* Add / Edit Dialog Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-md p-6 rounded-[32px] border-none shadow-2xl bg-white overflow-hidden">
-          {/* Header Row */}
-          <div className="flex items-center justify-between mb-6 pb-2 border-b border-slate-100">
-            <button 
-              onClick={() => setModalOpen(false)} 
-              className="w-10 h-10 rounded-full bg-slate-50 active:bg-slate-100 flex items-center justify-center text-slate-600 active:scale-90 transition-all border border-slate-100"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <DialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight">
-              {editService ? t('services.modals.editTitle') : t('services.modals.addTitle')}
-            </DialogTitle>
-            <button 
-              onClick={() => setModalOpen(false)} 
-              className="w-10 h-10 rounded-full bg-slate-50 active:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 active:scale-90 transition-all border border-slate-100"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+        <DialogContent className="w-[92vw] max-w-sm max-h-[85vh] p-0 border-none rounded-[2rem] bg-white outline-none overflow-hidden flex flex-col shadow-2xl !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
+          {/* Green Gradient Header */}
+          <DialogHeader className="shrink-0">
+            <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-4 flex items-center justify-between text-white rounded-t-[2rem]">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm text-lg">
+                  🩺
+                </div>
+                <div>
+                  <DialogTitle className="text-[14px] font-black text-white uppercase leading-none tracking-tight">
+                    {editService ? t('services.modals.editTitle') : t('services.modals.addTitle')}
+                  </DialogTitle>
+                  <p className="text-[8px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Xizmatlar katalogi</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setModalOpen(false)} 
+                className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center active:scale-90 transition-all border-none cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </DialogHeader>
 
-          <div className="space-y-5">
+          {/* Form Body */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
             {/* Input: Service Name */}
-            <div className="space-y-2">
-              <label className="ml-1 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] flex items-center gap-1.5">
-                <Stethoscope className="w-3.5 h-3.5 text-slate-400" />
+            <div>
+              <label className="ml-1 text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">
                 {t('services.modals.name')}
               </label>
               <Input 
                 value={form.name} 
                 onChange={e => setForm({ ...form, name: e.target.value })} 
                 placeholder="Xizmat nomini kiriting..."
-                className="h-13 rounded-2xl bg-slate-50 border border-slate-100 focus:border-[#1499AD] focus:ring-4 focus:ring-[#1499AD]/5 font-bold text-slate-800 px-5 text-sm transition-all"
+                className="h-10 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-bold text-slate-800 text-xs px-4"
               />
             </div>
 
             {/* Inputs: Price & Duration */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="ml-1 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] flex items-center gap-1.5">
-                  <Activity className="w-3.5 h-3.5 text-slate-400" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="ml-1 text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">
                   {t('services.modals.price')}
                 </label>
                 <div className="relative">
@@ -356,15 +407,14 @@ export default function MobileServicesV2() {
                     value={form.price} 
                     onChange={e => setForm({ ...form, price: e.target.value })} 
                     placeholder="0"
-                    className="h-13 rounded-2xl bg-slate-50 border border-slate-100 focus:border-[#1499AD] focus:ring-4 focus:ring-[#1499AD]/5 font-black text-slate-800 pl-5 pr-12 text-sm transition-all"
+                    className="h-10 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-black text-slate-800 pl-4 pr-12 text-xs"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase">so'm</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 uppercase">so'm</span>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="ml-1 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <div>
+                <label className="ml-1 text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">
                   {t('services.modals.duration')}
                 </label>
                 <div className="relative">
@@ -373,74 +423,75 @@ export default function MobileServicesV2() {
                     value={form.duration} 
                     onChange={e => setForm({ ...form, duration: e.target.value })} 
                     placeholder="30"
-                    className="h-13 rounded-2xl bg-slate-50 border border-slate-100 focus:border-[#1499AD] focus:ring-4 focus:ring-[#1499AD]/5 font-black text-slate-800 pl-5 pr-12 text-sm transition-all"
+                    className="h-10 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-black text-slate-800 pl-4 pr-10 text-xs"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase">min</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 uppercase">min</span>
                 </div>
               </div>
             </div>
 
             {/* Toggles Group Card */}
             <div className="border border-slate-100 bg-slate-50/50 rounded-2xl overflow-hidden divide-y divide-slate-100">
-              <div className="flex items-center justify-between p-4 bg-white hover:bg-slate-50/30 transition-colors">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between p-3.5 bg-white hover:bg-slate-50/30 transition-colors">
+                <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center">
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="font-bold text-xs text-slate-800">{t('services.modals.active')}</p>
-                    <p className="text-[10px] font-medium text-slate-450">Xizmatdan foydalanish faolligi</p>
+                    <p className="font-bold text-[11px] text-slate-800 leading-none">{t('services.modals.active')}</p>
+                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Xizmat faolligi</p>
                   </div>
                 </div>
                 <Switch checked={form.is_active} onCheckedChange={v => setForm({ ...form, is_active: v })} />
               </div>
               
-              <div className="flex items-center justify-between p-4 bg-white hover:bg-slate-50/30 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#1499AD]/10 text-[#1499AD] flex items-center justify-center">
+              <div className="flex items-center justify-between p-3.5 bg-white hover:bg-slate-50/30 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
                     <Layers className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="font-bold text-xs text-slate-800">{t('services.modals.tooth')}</p>
-                    <p className="text-[10px] font-medium text-slate-450">Tish raqamini tanlash majburiyati</p>
+                    <p className="font-bold text-[11px] text-slate-800 leading-none">{t('services.modals.tooth')}</p>
+                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-wider font-mono">Tish raqamini kiritish</p>
                   </div>
                 </div>
                 <Switch checked={form.requires_tooth} onCheckedChange={v => setForm({ ...form, requires_tooth: v })} />
               </div>
             </div>
+          </div>
 
-            {/* Action Save Button */}
+          {/* Modal Actions Footer */}
+          <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex gap-2 shrink-0 rounded-b-[2rem]">
+            <Button variant="ghost" onClick={() => setModalOpen(false)} className="h-10 flex-1 rounded-xl font-bold uppercase text-[10px] tracking-wider text-slate-400 hover:bg-slate-100 px-4 border-none">
+              Bekor
+            </Button>
             <Button 
               onClick={handleSave} 
-              disabled={saving} 
-              className="w-full h-14 rounded-2xl bg-[#1499AD] hover:bg-[#1499AD]/90 text-white font-black text-sm mt-4 shadow-xl shadow-[#1499AD]/10 active:scale-95 transition-all flex items-center justify-center gap-2 border-none"
+              disabled={saving}
+              className="h-10 flex-1 rounded-xl font-black uppercase text-xs tracking-wider border-none shadow-md bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white active:scale-95 transition-all flex items-center justify-center gap-1.5"
             >
-              {saving ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>{t('common.save')}...</span>
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span>{t('common.save')}</span>
-                </>
-              )}
+              {saving ? '...' : <><Check className="w-4 h-4 stroke-[3]" /> Saqlash</>}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
+      {/* Edit Category Name Dialog */}
       <Dialog open={catEditOpen} onOpenChange={setCatEditOpen}>
-        <DialogContent className="sm:max-w-md p-8 rounded-[40px] border-none shadow-2xl">
-          <DialogHeader className="mb-6"><DialogTitle className="text-2xl font-black text-slate-900 text-center uppercase tracking-tighter">BO'LIM NOMINI TAHRIRLASH</DialogTitle></DialogHeader>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label className="ml-2 text-xs font-black text-slate-400 uppercase tracking-widest">Yangi nomni kiriting</Label>
+        <DialogContent className="w-[92vw] max-w-xs p-0 border-none rounded-[2rem] bg-white outline-none overflow-hidden flex flex-col shadow-2xl !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
+          <DialogHeader className="shrink-0">
+            <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-3.5 flex items-center justify-between text-white rounded-t-[2rem]">
+              <DialogTitle className="text-xs font-black text-white uppercase tracking-wider leading-none">Nomni tahrirlash</DialogTitle>
+              <button onClick={() => setCatEditOpen(false)} className="w-7 h-7 rounded-full bg-white/15 text-white flex items-center justify-center border-none cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+            </div>
+          </DialogHeader>
+          <div className="p-4 space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block ml-1">Bo'limning yangi nomi</Label>
               <Input 
                 value={renamingCat.new} 
                 onChange={e => setRenamingCat({ ...renamingCat, new: e.target.value })} 
-                className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-lg px-6"
+                className="h-10 rounded-xl bg-slate-50 border-none font-bold text-sm px-4"
               />
             </div>
             <Button 
@@ -450,28 +501,29 @@ export default function MobileServicesV2() {
                 handleReorder(newOrder);
                 setCatEditOpen(false);
               }}
-              className="w-full h-16 rounded-[24px] bg-slate-900 text-white font-black text-lg shadow-xl shadow-slate-200 active:scale-95 transition-all"
+              className="w-full h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-650 text-white font-black text-xs uppercase tracking-wider border-none shadow-md active:scale-95 transition-all"
             >
-              SAQLASH
+              Saqlash
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
+      {/* Delete Category Dialog */}
       <Dialog open={!!catToDelete} onOpenChange={() => setCatToDelete(null)}>
-        <DialogContent className="sm:max-w-md p-10 rounded-[40px] border-none shadow-2xl text-center">
-          <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-[32px] flex items-center justify-center mx-auto mb-6"><Trash2 className="w-10 h-10" /></div>
-          <h3 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">O'CHIRILSINMI?</h3>
-          <p className="text-slate-500 font-bold mb-8 italic">"{catToDelete}" bo'limini butunlay o'chirib tashlamoqchimisiz?</p>
-          <div className="flex gap-4">
-            <Button variant="ghost" onClick={() => setCatToDelete(null)} className="flex-1 h-14 rounded-2xl font-black text-slate-400">YO'Q</Button>
+        <DialogContent className="w-[92vw] max-w-xs p-6 border-none rounded-[2rem] bg-white outline-none overflow-hidden text-center shadow-2xl !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
+          <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-[1.5rem] flex items-center justify-center mx-auto mb-4 border border-rose-100"><Trash2 className="w-8 h-8" /></div>
+          <h3 className="text-base font-black text-slate-900 mb-1 uppercase tracking-tight leading-none">Bo'limni o'chirish?</h3>
+          <p className="text-slate-400 font-bold text-[10px] mb-6 italic leading-relaxed">"{catToDelete}" bo'limini butunlay o'chirib tashlamoqchimisiz?</p>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => setCatToDelete(null)} className="flex-1 h-10 rounded-xl font-black text-xs text-slate-400">YO'Q</Button>
             <Button 
               onClick={() => {
                 const newOrder = categoryOrder.filter(c => c !== catToDelete);
                 handleReorder(newOrder);
                 setCatToDelete(null);
               }}
-              className="flex-1 h-14 rounded-2xl bg-rose-500 text-white font-black shadow-lg shadow-rose-100 active:scale-95 transition-all"
+              className="flex-1 h-10 rounded-xl bg-rose-500 text-white font-black text-xs uppercase tracking-wider shadow-md active:scale-95 transition-all border-none"
             >
               HA, O'CHIRILSIN
             </Button>

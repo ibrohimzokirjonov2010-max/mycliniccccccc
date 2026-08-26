@@ -1,22 +1,22 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, TrendingDown,
-  Plus, Search, FileText, Printer, Stethoscope, X, User, Clock, Calendar,
-  Check, CreditCard, AlertTriangle, ClipboardList, Activity
+  Plus, Search, FileText, Stethoscope, X, User, Clock, Calendar,
+  Check, CreditCard, AlertTriangle
 } from 'lucide-react';
 import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
-import { formatCurrency, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/lib/AuthContext';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import PatientSelect from '@/components/patients/PatientSelect';
 import { useTranslation } from '@/i18n/LanguageContext';
 
@@ -106,13 +106,19 @@ const formatAmountInput = (value) => {
 
 const parseAmountInput = (value) => Number(sanitizeAmountInput(value)) || 0;
 
+const getLocalDatetimeString = () => {
+  const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+  return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 16);
+};
+
 /**
  * Premium SaaS Mobile Payments
  * Modern financial dashboard with transaction management
  */
 export default function MobilePaymentsV2() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, isDoctor } = useAuth();
   const [payments, setPayments] = useState([]);
   const [patients, setPatients] = useState([]);
@@ -132,7 +138,7 @@ export default function MobilePaymentsV2() {
   const loadStats = useCallback(async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const allPays = await base44.entities.Payment.list('-date', 5000, 0);
+      const allPays = await base44.entities.Payment.list('-date', 500, 0);
       const incomePays = (allPays || []).filter(p => !p.type || p.type?.toLowerCase() === 'income');
 
       const totalRevenue = incomePays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
@@ -221,30 +227,54 @@ export default function MobilePaymentsV2() {
     return () => { active = false; };
   }, [payments]);
   const [patientPlans, setPatientPlans] = useState([]);
+  const [patientAllPlans, setPatientAllPlans] = useState([]);
+  const [patientPayments, setPatientPayments] = useState([]);
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [selectedPlanServiceIds, setSelectedPlanServiceIds] = useState([]);
   const [patientServices, setPatientServices] = useState([]);
   const [selectedPlanForInvoice, setSelectedPlanForInvoice] = useState(null);
   const [showPlanInvoiceModal, setShowPlanInvoiceModal] = useState(false);
   
-  // Check for navigation state to open modal
+  // Automatically open modal if requested in navigation state
   useEffect(() => {
     if (location.state?.openAddModal) {
       setShowAddModal(true);
-      if (location.state.prefillPatient || location.state.prefillAmount) {
-        setFormData(prev => ({
-          ...prev,
-          patient_id: location.state.prefillPatient || prev.patient_id,
-          amount: location.state.prefillAmount || prev.amount,
-          category: location.state.prefillCategory || prev.category,
-          doctor_id: location.state.prefillDoctor || prev.doctor_id,
-        }));
-      }
-      // Clear state to avoid reopening on refresh
-      window.history.replaceState({}, document.title);
     }
   }, [location.state]);
-  
+
+  // Handle modal opening, reset, and prefill
+  useEffect(() => {
+    if (showAddModal) {
+      const prefillPatient = location.state?.prefillPatient || '';
+      const prefillAmount = location.state?.prefillAmount || '';
+      const prefillCategory = location.state?.prefillCategory || 'Treatment';
+      const prefillDoctor = location.state?.prefillDoctor || '';
+      const prefillNotes = location.state?.prefillNotes || '';
+
+      setFormData({
+        patient_id: prefillPatient,
+        doctor_id: prefillDoctor,
+        type: 'Income',
+        amount: prefillAmount,
+        method: 'Cash',
+        category: prefillCategory,
+        date: getLocalDatetimeString(),
+        notes: prefillNotes
+      });
+      setSelectedPlanId('');
+      setSelectedPlanServiceIds([]);
+      setPatientPlans([]);
+      setPatientAllPlans([]);
+      setPatientServices([]);
+      setPatientPayments([]);
+
+      // Clear state to avoid reopening on refresh
+      if (location.state?.openAddModal) {
+        navigate(location.pathname, { replace: true, state: null });
+      }
+    }
+  }, [showAddModal]);
+
   // Form state
   const [formData, setFormData] = useState({
     patient_id: '',
@@ -253,7 +283,7 @@ export default function MobilePaymentsV2() {
     amount: '',
     method: 'Cash',
     category: 'Treatment',
-    date: new Date().toISOString().slice(0, 16),
+    date: getLocalDatetimeString(),
     notes: ''
   });
 
@@ -305,10 +335,43 @@ export default function MobilePaymentsV2() {
     [patients, formData.patient_id]
   );
 
-  const selectedPatientDebt = useMemo(
-    () => Number(selectedPatient?.total_debt) || 0,
-    [selectedPatient]
-  );
+  const selectedPatientDebt = useMemo(() => {
+    if (!formData.patient_id) return 0;
+    
+    const paymentsList = patientPayments;
+    const plansList = patientAllPlans;
+
+    const totalIncomes = paymentsList
+      .filter(p => p.type?.toLowerCase() === 'income')
+      .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+
+    const totalDebts = paymentsList
+      .filter(p => p.type?.toLowerCase() === 'debt')
+      .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+
+    const totalRefunds = paymentsList
+      .filter(p => p.type?.toLowerCase() === 'refund')
+      .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+
+    const totalDiscounts = paymentsList
+      .filter(p => p.type?.toLowerCase() === 'discount')
+      .reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
+
+    let calculatedDebt = 0;
+    if (totalDebts > 0) {
+      const net = totalIncomes + totalDiscounts - totalDebts - totalRefunds;
+      calculatedDebt = net < 0 ? Math.abs(net) : 0;
+    } else if (plansList.length > 0) {
+      const totalPlansPrice = plansList.reduce((sum, plan) => sum + (Number(plan.total_price) || 0), 0);
+      const net = totalIncomes + totalDiscounts - totalPlansPrice;
+      calculatedDebt = net < 0 ? Math.abs(net) : 0;
+    } else {
+      const net = totalIncomes - totalRefunds;
+      calculatedDebt = net < 0 ? Math.abs(net) : 0;
+    }
+    
+    return calculatedDebt;
+  }, [formData.patient_id, patientPayments, patientAllPlans]);
 
   const isIncomeBlockedForPatient = formData.type === 'Income' && !!formData.patient_id && selectedPatientDebt <= 0;
 
@@ -377,13 +440,19 @@ export default function MobilePaymentsV2() {
     }
   };
 
-  // Fetch patient plans and services when patient changes
+  // Fetch patient plans, payments and services when patient changes
   useEffect(() => {
     if (formData.patient_id && (formData.type === 'Income' || formData.type === 'Debt')) {
       const fetchPlansAndServices = async () => {
         try {
-          const plans = await base44.entities.TreatmentPlan.filter({ patient_id: formData.patient_id }, '-created_date', 50);
+          const [plans, patientPays] = await Promise.all([
+            base44.entities.TreatmentPlan.filter({ patient_id: formData.patient_id }, '-created_date', 50),
+            base44.entities.Payment.filter({ patient_id: formData.patient_id }, '-date', 500)
+          ]);
+          
+          setPatientAllPlans(plans || []);
           setPatientPlans((plans || []).filter(p => (p.paid_amount || 0) < p.total_price));
+          setPatientPayments(patientPays || []);
           
           const unpaidServices = [];
           (plans || []).forEach(plan => {
@@ -409,7 +478,9 @@ export default function MobilePaymentsV2() {
       fetchPlansAndServices();
     } else {
       setPatientPlans([]);
+      setPatientAllPlans([]);
       setPatientServices([]);
+      setPatientPayments([]);
       setSelectedPlanId('');
     }
   }, [formData.patient_id, formData.type]);
@@ -481,22 +552,79 @@ export default function MobilePaymentsV2() {
     setSaving(true);
     try {
       const patient = patients.find(p => p.id === formData.patient_id);
+      
+      let newDebt = 0;
+      let newPaid = 0;
+      let currentDebt = 0;
 
-      if (formData.type === 'Income' && formData.patient_id) {
-        const currentPatient = await base44.entities.Patient.read(formData.patient_id);
-        const currentDebt = Number(currentPatient?.total_debt) || 0;
+      if (formData.patient_id) {
+        // Fetch all plans and payments to calculate actual remaining debt
+        const [plans, patientPays] = await Promise.all([
+          base44.entities.TreatmentPlan.filter({ patient_id: formData.patient_id }, '-created_date', 50),
+          base44.entities.Payment.filter({ patient_id: formData.patient_id }, '-date', 500)
+        ]);
 
-        if (currentDebt <= 0) {
-          toast.error("Bu bemorda qarz yo'q");
-          return;
+        const totalIncomes = (patientPays || [])
+          .filter(p => p.type?.toLowerCase() === 'income')
+          .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+
+        const totalDebts = (patientPays || [])
+          .filter(p => p.type?.toLowerCase() === 'debt')
+          .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+
+        const totalRefunds = (patientPays || [])
+          .filter(p => p.type?.toLowerCase() === 'refund')
+          .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+
+        const totalDiscounts = (patientPays || [])
+          .filter(p => p.type?.toLowerCase() === 'discount')
+          .reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
+
+        if (totalDebts > 0) {
+          const net = totalIncomes + totalDiscounts - totalDebts - totalRefunds;
+          currentDebt = net < 0 ? Math.abs(net) : 0;
+        } else if ((plans || []).length > 0) {
+          const totalPlansPrice = (plans || []).reduce((sum, plan) => sum + (Number(plan.total_price) || 0), 0);
+          const net = totalIncomes + totalDiscounts - totalPlansPrice;
+          currentDebt = net < 0 ? Math.abs(net) : 0;
+        } else {
+          const net = totalIncomes - totalRefunds;
+          currentDebt = net < 0 ? Math.abs(net) : 0;
         }
 
-        if (parsedAmount > currentDebt) {
-          toast.error("Kiritilgan summa bemor qarzidan ko'p! Maksimal: " + currentDebt.toLocaleString() + " so'm");
-          return;
+        if (formData.type === 'Income') {
+          if (currentDebt <= 0) {
+            toast.error("Bu bemorda qarz yo'q");
+            return;
+          }
+
+          if (parsedAmount > currentDebt) {
+            toast.error("Kiritilgan summa bemor qarzidan ko'p! Maksimal: " + currentDebt.toLocaleString() + " so'm");
+            return;
+          }
+        }
+
+        // Calculate new paid/debt values for patient update
+        const patientFilterRes = await base44.entities.Patient.filter({ id: formData.patient_id });
+        const ptRecord = patientFilterRes?.[0] || null;
+        const dbPaid = ptRecord ? (Number(ptRecord.total_paid) || 0) : 0;
+        
+        const payType = (formData.type || 'Income').toLowerCase();
+        if (payType === 'income') {
+          newPaid = dbPaid + parsedAmount;
+          newDebt = Math.max(0, currentDebt - parsedAmount);
+        } else if (payType === 'debt') {
+          newDebt = currentDebt + parsedAmount;
+          newPaid = dbPaid;
+        } else if (payType === 'discount') {
+          newDebt = Math.max(0, currentDebt - parsedAmount);
+          newPaid = dbPaid;
+        } else if (payType === 'refund') {
+          newDebt = currentDebt + parsedAmount;
+          newPaid = Math.max(0, dbPaid - parsedAmount);
         }
       }
-      
+
       const selectedDocId = isDoctor ? user.id : formData.doctor_id;
       const selectedDoc = doctors.find(d => d.id === selectedDocId);
       
@@ -510,7 +638,8 @@ export default function MobilePaymentsV2() {
         method: formData.method,
         category: formData.category,
         date: formData.date,
-        notes: formData.notes
+        notes: formData.notes,
+        debt_amount: formData.patient_id ? newDebt : null
       });
 
       // Update treatment plan paid_amount
@@ -526,38 +655,53 @@ export default function MobilePaymentsV2() {
           const newPaid = (plan.paid_amount || 0) + parsedAmount;
           await base44.entities.TreatmentPlan.update(plan.id, { paid_amount: newPaid, services: newServices });
         }
+      } else if (formData.type === 'Income' && formData.patient_id) {
+        // Automatically distribute general payment to active treatment plans (oldest first)
+        try {
+          const plans = await base44.entities.TreatmentPlan.filter({ patient_id: formData.patient_id }, 'created_date', 50);
+          const activePlans = (plans || []).filter(p => (p.paid_amount || 0) < p.total_price);
+          let remainingPayment = parsedAmount;
+          
+          for (const plan of activePlans) {
+            if (remainingPayment <= 0) break;
+            const planRemaining = plan.total_price - (plan.paid_amount || 0);
+            const applyAmount = Math.min(remainingPayment, planRemaining);
+            
+            const newPaid = (plan.paid_amount || 0) + applyAmount;
+            const newServices = JSON.parse(JSON.stringify(plan.services || []));
+            let tempRemaining = applyAmount;
+            
+            for (let i = 0; i < newServices.length; i++) {
+              if (tempRemaining <= 0) break;
+              const s = newServices[i];
+              if (s.payment_status !== 'paid') {
+                const svcPrice = s.price || 0;
+                if (tempRemaining >= svcPrice) {
+                  newServices[i].payment_status = 'paid';
+                  tempRemaining -= svcPrice;
+                }
+              }
+            }
+            
+            await base44.entities.TreatmentPlan.update(plan.id, { 
+              paid_amount: newPaid, 
+              services: newServices 
+            });
+            remainingPayment -= applyAmount;
+          }
+        } catch (planErr) {
+          console.error("Failed to automatically distribute payment to plans:", planErr);
+        }
       }
 
-      // ✅ Incremental yangilash: faqatgina yangi to'lov summasi bilan qarz/to'lov yangilanadi
+      // Update patient stats in DB
       if (formData.patient_id) {
-        const payType = (formData.type || 'Income').toLowerCase();
-        const payAmount = parsedAmount;
-
-        const currentPatient = await base44.entities.Patient.read(formData.patient_id);
-        const currentDebt = Number(currentPatient?.total_debt) || 0;
-        const currentPaid = Number(currentPatient?.total_paid) || 0;
-
-        let newDebt = currentDebt;
-        let newPaid = currentPaid;
-
-        if (payType === 'income') {
-          newPaid = currentPaid + payAmount;
-          newDebt = Math.max(0, currentDebt - payAmount);
-        } else if (payType === 'debt') {
-          newDebt = currentDebt + payAmount;
-        } else if (payType === 'discount') {
-          newDebt = Math.max(0, currentDebt - payAmount);
-        } else if (payType === 'refund') {
-          newDebt = currentDebt + payAmount;
-          newPaid = Math.max(0, currentPaid - payAmount);
-        }
-
         await base44.entities.Patient.update(formData.patient_id, {
           total_paid: newPaid,
           total_debt: newDebt
         });
 
-        // Mahalliy patients state ni FAQAT shu bemor uchun yangilaymiz
+        // Update local patients state
         setPatients(prev => prev.map(pt =>
           pt.id === formData.patient_id
             ? { ...pt, total_paid: newPaid, total_debt: newDebt }
@@ -573,9 +717,13 @@ export default function MobilePaymentsV2() {
         amount: '',
         method: 'Cash',
         category: 'Treatment',
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalDatetimeString(),
         notes: ''
       });
+      setSelectedPlanId('');
+      setSelectedPlanServiceIds([]);
+      setPatientPlans([]);
+      setPatientServices([]);
       toast.success(t('common.success'));
       loadData();
     } catch (error) {
@@ -631,8 +779,8 @@ export default function MobilePaymentsV2() {
         onClick={() => setSelectedPayment(payment)}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.03, duration: 0.18 }}
-        className="bg-white rounded-xl px-3.5 py-2.5 mb-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.06)] active:scale-[0.98] transition-transform"
+        transition={{ delay: searchQuery ? 0 : Math.min(index, 6) * 0.02, duration: 0.18 }}
+        className="bg-white rounded-xl px-3.5 py-2.5 mb-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.06)] active:scale-[0.98] transition-transform content-visibility-auto"
       >
         <div className="flex items-center gap-2.5">
           {/* Colored icon */}
@@ -674,9 +822,8 @@ export default function MobilePaymentsV2() {
           <div className="text-right shrink-0 ml-1">
             {(() => {
               const pat = patients.find(pt => pt.id === payment.patient_id);
-              const qarz = payment.debt_amount !== undefined && payment.debt_amount !== null
-                ? Number(payment.debt_amount)
-                : Number(pat?.total_debt || 0);
+              const bal = patientBalances[payment.id];
+              const qarz = bal ? bal.debtAtTime : (payment.debt_amount !== undefined && payment.debt_amount !== null ? Number(payment.debt_amount) : Number(pat?.total_debt || 0));
               return (
                 <>
                   <p className="text-[14px] font-black leading-none text-emerald-600">
@@ -724,15 +871,6 @@ export default function MobilePaymentsV2() {
                 <h1 className="text-2xl font-bold text-slate-900">{t('payments.title')}</h1>
                 <p className="text-sm text-slate-500 mt-0.5">{t('payments.subtitle')}</p>
               </div>
-              
-              {/* Primary CTA */}
-              <Button 
-                onClick={() => setShowAddModal(true)}
-                className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-5 h-11 shadow-lg shadow-slate-200"
-              >
-                <Plus className="w-5 h-5 mr-1.5" />
-                {t('common.add')}
-              </Button>
             </div>
 
             {/* Financial Overview Cards */}
@@ -879,10 +1017,9 @@ export default function MobilePaymentsV2() {
 
                   <div className="p-6 space-y-5 bg-white flex-1 overflow-y-auto no-scrollbar pb-8">
                     
-                    {/* Patient Select (optional for Income/Debt) */}
                     {(formData.type === 'Income' || formData.type === 'Debt') && (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
+                      <div className="space-y-4 relative z-50">
+                        <div className="space-y-2 relative z-50">
                           <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('payments.patient')}</Label>
                           <PatientSelect 
                             patients={patients}
@@ -897,7 +1034,7 @@ export default function MobilePaymentsV2() {
 
                         {formData.patient_id && (
                           <div className={cn(
-                            "rounded-2xl border px-4 py-3 flex items-center justify-between shadow-sm transition-colors",
+                            "rounded-2xl border px-4 py-3 flex items-center justify-between shadow-sm transition-colors relative z-40",
                             selectedPatientDebt > 0 ? "border-amber-100 bg-amber-50/50" : "border-emerald-100 bg-emerald-50/50"
                           )}>
                             <div className="flex items-center gap-2">
@@ -919,34 +1056,47 @@ export default function MobilePaymentsV2() {
                         )}
                         
                         {isIncomeBlockedForPatient && (
-                          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-100 text-[10px] font-black text-emerald-800 uppercase tracking-wide text-center">
+                          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-100 text-[10px] font-black text-emerald-800 uppercase tracking-wide text-center relative z-40">
                             Bemorda faol qarz yo'q. To'lov qabul qilib bo'lmaydi.
                           </div>
                         )}
 
                         {/* Davolash rejalari */}
                         {patientPlans.length > 0 && (
-                          <div className="space-y-2">
+                          <div className="space-y-2 relative z-30">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-[#1499AD] ml-1 flex items-center gap-1.5">
-                              <FileText className="w-3.5 h-3.5" /> Davolash rejasi
+                              <FileText className="w-3.5 h-3.5" /> {t('patientProfile.treatmentPlanSingular') || 'Davolash rejasi'}
                             </Label>
                             <div className="flex flex-col gap-2.5">
                               {patientPlans.map(plan => {
                                 const paid = Number(plan.paid_amount) || 0;
                                 const total = Number(plan.total_price) || 0;
                                 const remaining = Math.max(0, total - paid);
+                                const isSelected = selectedPlanId === plan.id;
                                 
                                 return (
-                                  <div key={plan.id} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-3.5 shadow-sm">
+                                  <div 
+                                    key={plan.id} 
+                                    onClick={() => handlePlanSelect(isSelected ? '' : plan.id)}
+                                    className={cn(
+                                      "flex items-center justify-between rounded-2xl border p-3.5 shadow-sm cursor-pointer transition-all active:scale-[0.98]",
+                                      isSelected 
+                                        ? "border-blue-500 bg-blue-50/30 ring-1 ring-blue-500/20" 
+                                        : "border-slate-100 bg-white hover:border-slate-200"
+                                    )}
+                                  >
                                     <div className="min-w-0 flex-1 mr-2">
-                                      <p className="text-[12px] font-black text-slate-800 truncate">{plan.name || 'Davolash rejasi'}</p>
+                                      <div className="flex items-center gap-1.5">
+                                        {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 stroke-[3]" />}
+                                        <p className="text-[12px] font-black text-slate-800 truncate">{plan.name || (t ? t('patientProfile.treatmentPlanSingular') : 'Davolash rejasi')}</p>
+                                      </div>
                                       <p className="text-[10px] text-slate-500 font-bold mt-0.5">
-                                        Qarz: <span className={remaining > 0 ? 'text-rose-600 font-extrabold' : 'text-emerald-600 font-extrabold'}>{remaining.toLocaleString()} so'm</span>
+                                        {t('common.debt') || 'Qarz'}: <span className={remaining > 0 ? 'text-rose-600 font-extrabold' : 'text-emerald-600 font-extrabold'}>{remaining.toLocaleString()} {t('common.currency')}</span>
                                       </p>
                                     </div>
                                     <button
                                       type="button"
-                                      onClick={() => { setSelectedPlanForInvoice(plan); setShowPlanInvoiceModal(true); }}
+                                      onClick={(e) => { e.stopPropagation(); setSelectedPlanForInvoice(plan); setShowPlanInvoiceModal(true); }}
                                       className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 text-[9px] font-black uppercase hover:bg-blue-100 active:scale-95 transition-all"
                                     >
                                       Faktura
@@ -959,7 +1109,7 @@ export default function MobilePaymentsV2() {
                         )}
 
                         {/* Responsible Doctor */}
-                        <div className="space-y-2">
+                        <div className="space-y-2 relative z-20">
                           <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('payments.doctor')}</Label>
                           <Select 
                             disabled={isDoctor}
@@ -1144,7 +1294,11 @@ export default function MobilePaymentsV2() {
                         className="flex-1 h-12 rounded-2xl bg-slate-950 hover:bg-slate-900 text-white font-black uppercase text-xs tracking-wider border-none relative overflow-hidden group shadow-lg"
                       >
                         <span className="relative z-10 transition-transform group-hover:scale-105 block">
-                          {saving ? t('common.loading') : t('common.save')}
+                          {saving 
+                            ? t('common.loading') 
+                            : formData.type === 'Income' 
+                              ? (language === 'uz' ? "To'lash" : language === 'ru' ? "Оплатить" : "Pay") 
+                              : t('common.save')}
                         </span>
                         <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                       </Button>
@@ -1348,6 +1502,14 @@ onClose={() => { setShowPlanInvoiceModal(false); setSelectedPlanForInvoice(null)
             })()}
           </DialogContent>
         </Dialog>
+
+        {/* Floating Action Button (FAB) for adding a payment */}
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="fixed bottom-24 right-5 w-14 h-14 bg-slate-950 text-white rounded-full flex items-center justify-center shadow-lg shadow-slate-950/30 z-40 active:scale-90 active:bg-slate-900 transition-all duration-200 border-none"
+        >
+          <Plus className="w-6 h-6 stroke-[3]" />
+        </button>
       </div>
     </PullToRefresh>
   );

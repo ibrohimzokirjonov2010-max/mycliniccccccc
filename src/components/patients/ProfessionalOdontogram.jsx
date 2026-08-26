@@ -1,4 +1,4 @@
-import { useState, useCallback, memo, useMemo } from 'react';
+import { useState, useCallback, memo, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -123,7 +123,9 @@ const ToothColumn = memo(function ToothColumn({
   const [hovered, setHovered] = useState(false);
   const statusKey = toothStatus?.status;
   const st = STATUS[statusKey] || STATUS.healthy;
-  const isExtracted = statusKey === 'extracted' || statusKey === 'missing';
+  const hasImplant = statusKey === 'implant' || Boolean(toothStatus?.hasImplant);
+  const hasExtractedHistory = Boolean(toothStatus?.isExtracted || statusKey === 'extracted' || statusKey === 'missing');
+  const isExtracted = (statusKey === 'extracted' || statusKey === 'missing') && !hasImplant;
 
   // _root.png  = full LATERAL side view (root pointing UP in source image)
   // _crown.png = small OCCLUSAL top-down view (the oval biting surface)
@@ -178,6 +180,7 @@ const ToothColumn = memo(function ToothColumn({
     const hasPeriodontit = combined.includes('periodontit') || combined.includes('gingivit');
     const hasFissurePigment = combined.includes('fissure') || combined.includes('pigment') || combined.includes('initial caries') || combined.includes('boshlang') || statusKey === 'fissure_pigmentation';
     const isCrownRestoration = combined.includes('crown') || combined.includes('toj') || combined.includes('karonka') || statusKey === 'crown';
+    const hasImplant = combined.includes('implant') || statusKey === 'implant';
 
     return (
       <div
@@ -193,11 +196,11 @@ const ToothColumn = memo(function ToothColumn({
             height: '100%',
             objectFit: 'contain',
             transform,
-            filter: isExtracted ? 'grayscale(1) opacity(0.25)' : undefined,
+            filter: isExtracted ? 'grayscale(1) opacity(0.25)' : (hasImplant && hasExtractedHistory ? 'grayscale(0.6) opacity(0.5)' : undefined),
           }}
         />
         {/* Status color overlay — skip for conditions that have dedicated SVG */}
-        {overlayStyle && !isExtracted && !hasCavity && !hasFilling && !hasCanal && !hasCalculus && !hasFissurePigment && !hasSecondaryCavity && (
+        {overlayStyle && !isExtracted && !hasCavity && !hasFilling && !hasCanal && !hasCalculus && !hasFissurePigment && !hasSecondaryCavity && !hasImplant && (
           <div className="absolute inset-0 pointer-events-none" style={overlayStyle} />
         )}
         {/* PSR alert red overlay on lateral roots view */}
@@ -206,6 +209,14 @@ const ToothColumn = memo(function ToothColumn({
         )}
 
         {/* ═══════ 1. OCCLUSAL CROWN OVERLAYS ═══════ */}
+
+        {/* Implant Hex on occlusal view */}
+        {isCrown && !isExtracted && hasImplant && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <circle cx="50" cy="50" r="18" fill="#f97316" fillOpacity="0.3" stroke="#ea580c" strokeWidth="2.5" />
+            <polygon points="50,38 60,44 60,56 50,62 40,56 40,44" fill="#ea580c" />
+          </svg>
+        )}
 
         {/* Filling / Restoration — pink area with dark fissure lines */}
         {isCrown && !isExtracted && hasFilling && !hasSecondaryCavity && (
@@ -283,6 +294,29 @@ const ToothColumn = memo(function ToothColumn({
         )}
 
         {/* ═══════ 2. LATERAL ROOT & CROWN VIEW OVERLAYS ═══════ */}
+
+        {/* Implant Screw on lateral root view */}
+        {!isCrown && !isExtracted && hasImplant && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {/* Implant cylinder screw body */}
+            <rect
+              x="36"
+              y={isUpper ? "15" : "35"}
+              width="28"
+              height="50"
+              rx="3"
+              fill="#f97316"
+              fillOpacity="0.25"
+              stroke="#ea580c"
+              strokeWidth="2.5"
+            />
+            {/* Threads */}
+            <line x1="32" y1={isUpper ? "26" : "46"} x2="68" y2={isUpper ? "26" : "46"} stroke="#ea580c" strokeWidth="2.2" strokeLinecap="round" />
+            <line x1="32" y1={isUpper ? "38" : "58"} x2="68" y2={isUpper ? "38" : "58"} stroke="#ea580c" strokeWidth="2.2" strokeLinecap="round" />
+            <line x1="32" y1={isUpper ? "50" : "70"} x2="68" y2={isUpper ? "50" : "70"} stroke="#ea580c" strokeWidth="2.2" strokeLinecap="round" />
+            <line x1="34" y1={isUpper ? "62" : "82"} x2="66" y2={isUpper ? "62" : "82"} stroke="#ea580c" strokeWidth="2.2" strokeLinecap="round" />
+          </svg>
+        )}
 
         {/* Canal (full) — pink/red line down the full root */}
         {!isCrown && !isExtracted && hasCanal && !isCanalPartial && (
@@ -503,7 +537,7 @@ const ToothColumn = memo(function ToothColumn({
 
       {/* Hover tooltip */}
       <AnimatePresence>
-        {hovered && statusKey && statusKey !== 'healthy' && (
+        {hovered && (statusKey !== 'healthy' || hasExtractedHistory) && (
           <motion.div
             initial={{ opacity: 0, scale: 0.85, y: isUpper ? 4 : -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -512,7 +546,7 @@ const ToothColumn = memo(function ToothColumn({
             style={{ [isUpper ? 'bottom' : 'top']: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 4, marginBottom: 4 }}
           >
             <div className="px-2 py-1 rounded-lg text-[9px] font-[800] text-white shadow-xl" style={{ backgroundColor: st.color }}>
-              #{fdi} — {t('odontogram.statuses.' + statusKey) || st.label}
+              #{fdi} — {hasExtractedHistory && hasImplant ? "Tish olingan + Implantat" : (t('odontogram.statuses.' + statusKey) || st.label)}
             </div>
           </motion.div>
         )}
@@ -529,8 +563,17 @@ const StatsSummary = memo(({ toothStatuses, allTeeth }) => {
   const counts = useMemo(() => {
     const c = {};
     allTeeth.forEach(t => {
-      const s = toothStatuses[t.id]?.status || 'healthy';
-      c[s] = (c[s] || 0) + 1;
+      const stObj = toothStatuses[t.id];
+      const s = stObj?.status || 'healthy';
+      if (s !== 'healthy') {
+        c[s] = (c[s] || 0) + 1;
+      } else {
+        c.healthy = (c.healthy || 0) + 1;
+      }
+      // If the tooth was extracted alongside another status
+      if (stObj?.isExtracted && s !== 'extracted') {
+        c['extracted'] = (c['extracted'] || 0) + 1;
+      }
     });
     return c;
   }, [toothStatuses, allTeeth]);
@@ -543,10 +586,10 @@ const StatsSummary = memo(({ toothStatuses, allTeeth }) => {
   const nonHealthy = Object.entries(counts).filter(([k, v]) => k !== 'healthy' && v > 0);
 
   return (
-    <div className="flex flex-wrap items-center gap-3 px-5 py-2 border-t border-slate-50 bg-slate-50/50">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-2.5 border-t border-slate-100 bg-slate-50/60 w-full overflow-hidden">
       <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="text-[9px] font-[900] uppercase tracking-widest text-slate-400">{t('odontogram.statuses.healthy')}</span>
-        <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+        <span className="text-[10px] font-[900] uppercase tracking-wider text-slate-500">{t('odontogram.statuses.healthy')}</span>
+        <div className="w-20 h-2 bg-slate-200/80 rounded-full overflow-hidden">
           <motion.div
             className="h-full rounded-full"
             style={{ backgroundColor: barColor }}
@@ -558,7 +601,7 @@ const StatsSummary = memo(({ toothStatuses, allTeeth }) => {
         <span className="text-[11px] font-[900]" style={{ color: barColor }}>{pct}%</span>
       </div>
 
-      <div className="flex items-center gap-1.5 flex-wrap ml-auto">
+      <div className="flex items-center gap-1.5 flex-wrap">
         {nonHealthy.map(([key, cnt]) => {
           const st = STATUS[key];
           if (!st) return null;
@@ -583,7 +626,7 @@ const StatsSummary = memo(({ toothStatuses, allTeeth }) => {
 const Legend = memo(() => {
   const { t } = useTranslation();
   return (
-    <div className="px-5 py-2.5 border-t border-slate-50 flex flex-wrap items-center gap-x-5 gap-y-2">
+    <div className="px-4 sm:px-6 py-2.5 border-t border-slate-100 flex flex-wrap items-center gap-x-4 gap-y-2 w-full">
       {Object.entries(STATUS).map(([key, val]) => (
         <div key={key} className="flex items-center gap-1.5 flex-shrink-0">
           <div
@@ -651,9 +694,28 @@ function ProfessionalOdontogram({
   hideHeader      = false,
   hideLegend      = false,
   hideStats       = false,
-  compact         = true
+  compact         = true,
+  patientAge      = null
 }) {
   const { t } = useTranslation();
+
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      const baseWidth = compact ? 440 : 560;
+      // Chart base is 440px when compact.
+      // We calculate fluid scale to fit the viewport with layout safe margins.
+      const margin = width < 380 ? 44 : 58;
+      const targetWidth = Math.min(width - margin, baseWidth);
+      const calculatedScale = targetWidth / baseWidth;
+      setScale(Math.max(calculatedScale, 0.55));
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [compact]);
   const upperRight = patientType === 'child' ? CHILD_UPPER_RIGHT : UPPER_RIGHT;
   const upperLeft  = patientType === 'child' ? CHILD_UPPER_LEFT  : UPPER_LEFT;
   const lowerRight = patientType === 'child' ? CHILD_LOWER_RIGHT : LOWER_RIGHT;
@@ -811,73 +873,41 @@ function ProfessionalOdontogram({
       } : {}}
     >
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      {!hideHeader && (
+      {!hideHeader && onPatientTypeChange && (patientAge === null || patientAge <= 15) && (
         <div
-          className="flex items-center justify-between px-5 py-3 border-b border-slate-50"
-          style={{
-            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-          }}
+          className="flex items-center justify-end px-3.5 py-1.5 border-b border-slate-100 bg-slate-50/70"
         >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm"
-              style={{ background: 'linear-gradient(135deg, #1d4ed8, #3b82f6)' }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="white">
-                <path d="M12 3C9.1 3 6 6 6 9c0 2.2 1.1 4.5 2.8 6L12 21l3.2-6C16.9 13.5 18 11.2 18 9c0-3-3.1-6-6-6z"/>
-              </svg>
-            </div>
-            <div>
-              <p className="text-[13px] font-[900] text-slate-800 uppercase tracking-tight leading-none">
-                {t('odontogram.title') || 'Tish Formulasi'}
-              </p>
-              <p className="text-[9px] font-[700] text-slate-400 uppercase tracking-[0.2em] mt-0.5">
-                {t('odontogram.fdiSystem') || 'FDI Belgilash Tizimi'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* O'ng / Chap labels */}
-            <div className="flex items-center gap-2 text-[9px] font-[900] uppercase tracking-widest">
-              <span className="px-2 py-1 bg-white rounded-lg border border-slate-100 text-slate-400 shadow-sm">
-                {t('odontogram.right') || "O'NG"}
-              </span>
-              <span className="text-slate-200">|</span>
-              <span className="px-2 py-1 bg-white rounded-lg border border-slate-100 text-slate-400 shadow-sm">
-                {t('odontogram.left') || 'CHAP'}
-              </span>
-            </div>
-
-            {/* Patient type toggle */}
-            {onPatientTypeChange && (
-              <div className="flex items-center bg-slate-100/80 rounded-xl p-1">
-                {[['adult', t('odontogram.patientTypes.adult') || 'Kattalar'], ['child', t('odontogram.patientTypes.child') || 'Bolalar']].map(([val, label]) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => onPatientTypeChange(val)}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg text-[9px] font-[900] uppercase tracking-widest transition-all',
-                      patientType === val
-                        ? 'bg-white text-slate-800 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-600',
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="flex items-center bg-slate-100/60 rounded-lg p-0.5">
+            {[['adult', t('odontogram.patientTypes.adult') || 'Kattalar'], ['child', t('odontogram.patientTypes.child') || 'Bolalar']].map(([val, label]) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => onPatientTypeChange(val)}
+                className={cn(
+                  'px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-wider transition-all',
+                  patientType === val
+                    ? 'bg-white text-slate-700 shadow-sm border border-slate-200/20'
+                    : 'text-slate-400 hover:text-slate-500',
+                )}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       )}
 
       {/* ── Chart Area ──────────────────────────────────────────────────── */}
-      <div className={`py-3 px-2 flex justify-center w-full ${compact ? '' : 'overflow-x-auto no-scrollbar'}`}>
+      <div className="py-3 px-2 flex justify-center w-full overflow-hidden">
         <div
-          className="grid grid-cols-2 gap-0 relative select-none"
-          style={{ width: 'fit-content', margin: '0 auto', minWidth: compact ? 440 : 560 }}
+          className="grid grid-cols-2 gap-0 relative select-none origin-top transition-transform duration-200"
+          style={{ 
+            width: 'fit-content', 
+            margin: '0 auto', 
+            minWidth: compact ? 440 : 560,
+            transform: scale < 1 ? `scale(${scale})` : undefined,
+            marginBottom: scale < 1 ? `${-250 * (1 - scale)}px` : undefined
+          }}
         >
           {/* Quadrant 1: Upper Right (teeth 18-11) */}
           {chartView !== 'mandible' && (

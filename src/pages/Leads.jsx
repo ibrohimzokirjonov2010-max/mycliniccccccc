@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { base44 } from '@/api/base44Client';
-import { supabase } from '@/api/supabaseClient';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,10 +23,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
 import LeadQuickView from '../components/marketing/LeadQuickView';
 import { useRef, useState, useEffect } from 'react';
-import { Plus, Search, Phone, Edit2, Trash2, MessageCircle, TrendingUp, Target, Calendar, Mail, UserPlus, Filter, Zap, Upload, GripVertical, MoreHorizontal, Bell, Send } from 'lucide-react';
+import { Search, Phone, Edit2, Trash2, MessageCircle, TrendingUp, Target, Calendar, UserPlus, Filter, Zap, Upload, Bell } from 'lucide-react';
 
 export default function Leads() {
-  const { t } = useTranslation();
+  const { t, currentLanguage } = useTranslation();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -179,14 +178,8 @@ export default function Leads() {
     if (!dateStr) return '—';
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return '—';
-    const day = date.getDate();
-    const months = [
-      "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", 
-      "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"
-    ];
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
+    const localeStr = currentLanguage === 'uz' ? 'uz-UZ' : currentLanguage === 'ru' ? 'ru-RU' : 'en-US';
+    return date.toLocaleDateString(localeStr, { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
    const onDragEnd = async (result) => {
@@ -319,9 +312,9 @@ export default function Leads() {
       >
         <div>
           <h1 className="text-xl premium-title">
-            {t('leads.title')}
+            {t('leads.title') || 'Lidlar'}
           </h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-0.5 ml-1">Potentsial bemorlar va ularni boshqarish</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-0.5 ml-1">{t('leads.subtitle') || 'Potentsial bemorlar va ularni boshqarish'}</p>
         </div>
         <div className="flex items-center gap-3">
           <input 
@@ -334,11 +327,10 @@ export default function Leads() {
           <Button 
             onClick={() => fileInputRef.current?.click()}
             disabled={isImporting}
-            variant="outline"
-            className="border-slate-200 text-slate-700 bg-white hover:bg-slate-50 h-14 px-6 rounded-2xl font-black uppercase tracking-widest text-xs shadow-sm"
+            className="bg-white border-2 border-purple-200 text-purple-600 hover:bg-purple-50 shadow-sm rounded-2xl h-14 px-6 font-black uppercase tracking-widest text-[10px]"
           >
             <Upload className="w-4 h-4 mr-2" /> 
-            {isImporting ? 'Yuklanmoqda...' : 'CSV Import'}
+            {isImporting ? t('common.saving') || 'Yuklanmoqda...' : t('leads.csvImport') || 'CSV Import'}
           </Button>
 
           <Button 
@@ -346,7 +338,7 @@ export default function Leads() {
             asChild
           >
             <a href={`https://t.me/${botUsername}?start=admin_${clinicId}`} target="_blank" rel="noopener noreferrer">
-              <Bell className="w-4 h-4 mr-2" /> Telegram bildirishnoma
+              <Bell className="w-4 h-4 mr-2" /> {t('leads.telegramNotification') || 'Telegram bildirishnoma'}
             </a>
           </Button>
 
@@ -354,7 +346,7 @@ export default function Leads() {
             onClick={() => { setEditLead(null); setModalOpen(true); }}
             className="bg-[#1499AD] hover:bg-[#0E7A8A] text-white shadow-lg shadow-[#1499AD]/20 rounded-2xl h-14 px-8 font-black uppercase tracking-widest text-xs border-none"
           >
-            <UserPlus className="w-4 h-4 mr-2" /> Yangi lead
+            <UserPlus className="w-4 h-4 mr-2" /> {t('leads.newLead') || 'Yangi lead'}
           </Button>
         </div>
       </motion.div>
@@ -381,7 +373,7 @@ export default function Leads() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-purple-600 uppercase tracking-wider">
-                {kanbanColumns.find(c => c.id === 'new')?.title || 'Yangi'}
+                {t('leads.columns.new') || kanbanColumns.find(c => c.id === 'new')?.title || 'Yangi'}
               </p>
               <p className="text-3xl font-bold text-purple-900 mt-1">{stats?.new || 0}</p>
             </div>
@@ -395,7 +387,7 @@ export default function Leads() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider">
-                {kanbanColumns.find(c => c.id === 'contacted')?.title || 'Bog\'lanildi'}
+                {t('leads.columns.contacted') || kanbanColumns.find(c => c.id === 'contacted')?.title || 'Bog\'lanildi'}
               </p>
               <p className="text-3xl font-bold text-amber-900 mt-1">{stats?.contacted || 0}</p>
             </div>
@@ -409,7 +401,7 @@ export default function Leads() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">
-                {kanbanColumns.find(c => c.id === 'converted')?.title || 'Konvertatsiya'}
+                {t('leads.columns.converted') || kanbanColumns.find(c => c.id === 'converted')?.title || 'Konvertatsiya'}
               </p>
               <p className="text-3xl font-bold text-emerald-900 mt-1">{stats?.converted || 0}</p>
             </div>
@@ -427,13 +419,13 @@ export default function Leads() {
             onClick={() => setView('kanban')}
             className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${view === 'kanban' ? 'bg-white shadow-md text-purple-600' : 'text-slate-500 hover:text-slate-700'}`}
           >
-            📋 Kanban
+            📋 {t('leads.viewKanban') || 'Kanban'}
           </button>
           <button 
             onClick={() => setView('table')}
             className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${view === 'table' ? 'bg-white shadow-md text-purple-600' : 'text-slate-500 hover:text-slate-700'}`}
           >
-            📑 Jadval
+            📑 {t('leads.viewTable') || 'Jadval'}
           </button>
         </div>
       </div>
@@ -448,14 +440,14 @@ export default function Leads() {
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input 
-            placeholder="Ism yoki telefon raqami bo'yicha qidirish..." 
+            placeholder={t('leads.searchPlaceholder') || "Ism yoki telefon raqami bo'yicha qidirish..."} 
             value={search} 
             onChange={e => setSearch(e.target.value)} 
             className="pl-12 h-12 rounded-xl border-2 focus:border-purple-500 transition-colors" 
           />
         </div>
         <Button variant="outline" className="h-12 rounded-xl border-2">
-          <Filter className="w-4 h-4 mr-2" /> Filtr
+          <Filter className="w-4 h-4 mr-2" /> {t('common.filter') || 'Filtr'}
         </Button>
       </motion.div>
 
@@ -504,7 +496,7 @@ export default function Leads() {
                            className="flex items-center gap-1.5 cursor-pointer" 
                            onClick={() => { setEditingColId(col.id); setEditingTitle(col.title); }}
                         >
-                          <span className="text-sm font-bold text-slate-700 hover:text-purple-600 transition-colors uppercase tracking-tight">{col.title}</span>
+                          <span className="text-sm font-bold text-slate-700 hover:text-purple-600 transition-colors uppercase tracking-tight">{t(`leads.columns.${col.id}`) || col.title}</span>
                           <Edit2 className="w-3 h-3 text-slate-300 opacity-0 group-hover/header:opacity-100 transition-opacity" />
                         </div>
                       )}
@@ -572,7 +564,7 @@ export default function Leads() {
 
                                 <div className="pt-4 border-t border-slate-50 flex items-center justify-between">
                                   <div className="flex flex-col">
-                                    <span className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] mb-0.5">Yaratildi</span>
+                                    <span className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] mb-0.5">{t('leads.created') || 'Yaratildi'}</span>
                                     <span className="text-[10px] font-bold text-slate-500">
                                       {formatDate(l.created_date || l.visit_date)}
                                     </span>
@@ -597,7 +589,7 @@ export default function Leads() {
                             <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mb-2">
                               <Target className="w-6 h-6 text-slate-200" />
                             </div>
-                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Ma'lumot yo'q</p>
+                              <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{t('common.noData') || "Ma'lumot yo'q"}</p>
                           </div>
                         )}
                       </div>
@@ -657,7 +649,7 @@ export default function Leads() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20 }}
-                      transition={{ delay: index * 0.05 }}
+                      transition={{ delay: Math.min(index, 6) * 0.02 }}
                       className="border-b border-slate-100 last:border-0 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-pink-50/50 cursor-pointer transition-all group"
                     >
                       <td className="px-6 py-4">
@@ -754,21 +746,21 @@ export default function Leads() {
         <DialogContent className="sm:max-w-lg rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              {editLead ? "Lead tahrirlash" : "Yangi lead qo'shish"}
+              {editLead ? t('leads.editLead') || "Lead tahrirlash" : t('leads.newLeadModalTitle') || "Yangi lead qo'shish"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div>
-              <Label className="text-sm font-semibold">Ism *</Label>
+              <Label className="text-sm font-semibold">{t('common.name') || 'Ism'} *</Label>
               <Input 
                 value={form.name} 
                 onChange={e => setForm({ ...form, name: e.target.value })} 
                 className="mt-1.5 h-11 rounded-xl border-2 focus:border-purple-500"
-                placeholder="Bemor ismi"
+                placeholder={t('common.name') || "Bemor ismi"}
               />
             </div>
             <div>
-              <Label className="text-sm font-semibold">Telefon *</Label>
+              <Label className="text-sm font-semibold">{t('common.phone') || 'Telefon'} *</Label>
               <Input 
                 value={form.phone} 
                 onChange={e => setForm({ ...form, phone: e.target.value })} 
@@ -777,7 +769,7 @@ export default function Leads() {
               />
             </div>
             <div>
-              <Label className="text-sm font-semibold">Tashrif sanasi</Label>
+              <Label className="text-sm font-semibold">{t('leads.visitDate') || 'Tashrif sanasi'}</Label>
               <Input 
                 type="date" 
                 value={form.visit_date} 
@@ -786,7 +778,7 @@ export default function Leads() {
               />
             </div>
             <div>
-              <Label className="text-sm font-semibold">Manba</Label>
+              <Label className="text-sm font-semibold">{t('leads.source') || 'Manba'}</Label>
               <Select value={form.source} onValueChange={v => setForm({ ...form, source: v })}>
                 <SelectTrigger className="mt-1.5 h-11 rounded-xl border-2"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -808,13 +800,13 @@ export default function Leads() {
               </Select>
             </div>
             <div>
-              <Label className="text-sm font-semibold">Izohlar</Label>
+              <Label className="text-sm font-semibold">{t('common.notes') || 'Izohlar'}</Label>
               <Textarea 
                 value={form.notes} 
                 onChange={e => setForm({ ...form, notes: e.target.value })} 
                 rows={3}
                 className="mt-1.5 rounded-xl border-2 focus:border-purple-500"
-                placeholder="Qo'shimcha ma'lumotlar..."
+                placeholder={t('leads.notesPlaceholder') || "Qo'shimcha ma'lumotlar..."}
               />
             </div>
 
@@ -823,7 +815,7 @@ export default function Leads() {
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mt-2">
                 <div className="flex items-center gap-2 mb-3">
                   <Target className="w-4 h-4 text-purple-500" />
-                  <span className="text-xs font-black uppercase tracking-widest text-slate-700">Facebook Form Javoblari</span>
+                  <span className="text-xs font-black uppercase tracking-widest text-slate-700">{t('leads.fbFormResponses') || 'Facebook Form Javoblari'}</span>
                 </div>
                 <div className="space-y-3">
                   {Object.entries(editLead.form_data).map(([question, answer], idx) => (
@@ -841,14 +833,14 @@ export default function Leads() {
                 onClick={() => { setModalOpen(false); setEditLead(null); }}
                 className="rounded-xl"
               >
-                Bekor qilish
+                {t('common.cancel') || 'Bekor qilish'}
               </Button>
               <Button 
                 onClick={handleSave} 
                 disabled={saveMutation.isPending || !form.name || !form.phone} 
                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl"
               >
-                {saveMutation.isPending ? 'Saqlanmoqda...' : 'Saqlash'}
+                {saveMutation.isPending ? t('common.saving') || 'Saqlanmoqda...' : t('common.save') || 'Saqlash'}
               </Button>
             </div>
           </div>

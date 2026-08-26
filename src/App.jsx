@@ -1,6 +1,6 @@
 // App.jsx fayliga Cases sahifasini qoshamiz.
 import { useState, useEffect, lazy, Suspense, memo } from 'react';
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from 'sonner';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
@@ -64,6 +64,7 @@ const MobileSettings      = lazy(() => import('./pages/MobileSettings'));
 const Marketing           = lazy(() => import('./pages/Marketing'));
 const MobileMarketing      = lazy(() => import('./pages/MobileMarketing'));
 const Implants            = lazy(() => import('./pages/Implants'));
+const MobileImplants      = lazy(() => import('./pages/MobileImplants'));
 const ImplantDetail       = lazy(() => import('./pages/ImplantDetail'));
 const Technicians         = lazy(() => import('./pages/Technicians'));
 const Staff               = lazy(() => import('./pages/Staff'));
@@ -73,6 +74,10 @@ const PublicClinicPage    = lazy(() => import('./pages/PublicClinicPage'));
 // Yeni Cases Sahifalari
 const Cases               = lazy(() => import('./pages/Cases'));
 const MobileCases         = lazy(() => import('./pages/MobileCases'));
+
+// SMS + Xabarlar sahifalari
+const MobileSmsSettings   = lazy(() => import('./pages/MobileSmsSettings'));
+const MobileSentMessages  = lazy(() => import('./pages/MobileSentMessages'));
 
 // ─── Page loader (shown while lazy chunk loads) ──────────────────────────────
 const PageLoader = memo(() => {
@@ -200,7 +205,7 @@ const AuthenticatedApp = memo(() => {
               <Route path="/treatment-tracking" element={<TreatmentTracking />} />
               <Route path="/debts"             element={M(<Debts />, <MobileDebts />)} />
               <Route path="/implants"
-                element={<PlanRoute feature="implants"><Implants /></PlanRoute>} />
+                element={<PlanRoute feature="implants">{M(<Implants />, <MobileImplants />)}</PlanRoute>} />
               <Route path="/implants/:id"
                 element={<PlanRoute feature="implants"><ImplantDetail /></PlanRoute>} />
               <Route path="/marketing"         element={M(<Marketing />, <MobileMarketing />)} />
@@ -209,6 +214,10 @@ const AuthenticatedApp = memo(() => {
               
               {/* YANGI QO'SHILDI: Klinik Keyslar (Portfolio) */}
               <Route path="/cases"             element={M(<Cases />, <MobileCases />)} />
+
+              {/* SMS va Xabarlar */}
+              <Route path="/sms-settings"      element={<MobileSmsSettings />} />
+              <Route path="/sent-messages"     element={<MobileSentMessages />} />
 
               <Route path="*" element={<PageNotFound />} />
             </Route>
@@ -230,7 +239,7 @@ function App() {
           <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <AuthenticatedApp />
           </Router>
-          <Toaster />
+          <Toaster richColors closeButton position="top-right" />
         </QueryClientProvider>
       </AuthProvider>
     </LanguageProvider>

@@ -1,27 +1,25 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
-  Plus, Search, Stethoscope, Edit2, Trash2, Clock, Tag, 
-  Activity, Scissors, Layers, Baby, ShieldCheck, Syringe, 
+  Plus, Search, Stethoscope, Edit2, Trash2, Clock, 
+  Activity, Scissors, Layers, Baby, Syringe, 
   Sparkles, Filter, TrendingUp, DollarSign, ListFilter,
-  BarChart3, Settings2, CheckCircle2, AlertCircle, ChevronRight,
-  MoreVertical, Pencil, ChevronUp, ChevronDown, Check, GripVertical
+  BarChart3, Settings2, CheckCircle2, ChevronRight, Pencil, Check, GripVertical
 } from 'lucide-react';
 import { cn as classNames } from '@/lib/utils';
 import { base44, DEFAULT_SERVICES_DATA } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import EmptyState from '../components/ui/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { Reorder } from 'framer-motion';
 import {
   DndContext,
   closestCenter,
@@ -30,7 +28,6 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
-  DragOverlay,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -101,6 +98,7 @@ function ToothButton({ num, selected, onClick }) {
 
 // ─── Xizmat kartochkasi kontent ───────────────────────────────────────────────
 function ServiceCardContent({ service: s, isOverlay = false, onEdit, onDelete, onView }) {
+  const { t } = useTranslation();
   return (
     <div
       className={classNames(
@@ -129,7 +127,7 @@ function ServiceCardContent({ service: s, isOverlay = false, onEdit, onDelete, o
         </div>
         <div className="pt-4 border-t border-slate-50 flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">NARXI</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('services.price') || 'NARXI'}</p>
             <p className="text-xl font-bold text-slate-900 tracking-tight">
               {(Number(s.price) || 0).toLocaleString()}
               <span className="text-[10px] font-bold text-slate-300 ml-1">UZS</span>
@@ -142,7 +140,7 @@ function ServiceCardContent({ service: s, isOverlay = false, onEdit, onDelete, o
             <Badge className={s.is_active !== false
               ? 'bg-emerald-50 text-emerald-600 border-none text-[9px] px-2 py-0'
               : 'bg-slate-100 text-slate-400 border-none text-[9px] px-2 py-0'}>
-              {s.is_active !== false ? 'FAOL' : 'NOFAOL'}
+              {s.is_active !== false ? (t('services.active') || 'FAOL') : (t('services.inactive') || 'NOFAOL')}
             </Badge>
           </div>
         </div>
@@ -488,7 +486,7 @@ export default function Services() {
           { label: t('services.stats.total'), value: stats.total, icon: ListFilter, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: t('services.stats.active'), value: stats.active, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: t('services.stats.avgPrice'), value: `${(Math.round(stats.avgPrice / 1000) * 1000).toLocaleString()} UZS`, icon: DollarSign, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'BO\'LIMLAR', value: categoryOrder.length, icon: BarChart3, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: t('services.categories') || 'BO\'LIMLAR', value: categoryOrder.length, icon: BarChart3, color: 'text-purple-600', bg: 'bg-purple-50' },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3 group hover:shadow-md transition-all">
             <div className={`w-9 h-9 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0`}><stat.icon className="w-4 h-4" /></div>
@@ -642,7 +640,14 @@ export default function Services() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-5"><div className="bg-slate-50 p-8 rounded-[36px] text-center border border-slate-100"><p className="text-3xl font-black text-slate-900">{(Number(viewService.price) || 0).toLocaleString()}</p><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mt-2">{t('services.modals.price')}</p></div><div className="bg-slate-50 p-8 rounded-[36px] text-center border border-slate-100"><p className="text-3xl font-black text-slate-900">{viewService.duration}</p><p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mt-2">{t('services.modals.duration')}</p></div></div>
-              <div className="flex gap-4"><Button variant="ghost" className="flex-1 h-16 rounded-2xl font-black text-slate-400" onClick={() => setViewService(null)}>YOPISH</Button><Button className="flex-1 h-16 rounded-[24px] bg-slate-900 font-black shadow-2xl active:scale-95 transition-all text-lg" onClick={() => { setEditService(viewService); setViewService(null); setModalOpen(true); }}>TAHRIRLASH</Button></div>
+              <div className="flex gap-4">
+                <Button variant="ghost" className="flex-1 h-16 rounded-2xl font-black text-slate-400" onClick={() => setViewService(null)}>
+                  {t('common.close') || 'YOPISH'}
+                </Button>
+                <Button className="flex-1 h-16 rounded-[24px] bg-slate-900 font-black shadow-2xl active:scale-95 transition-all text-lg" onClick={() => { setEditService(viewService); setViewService(null); setModalOpen(true); }}>
+                  {t('common.edit') || 'TAHRIRLASH'}
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
@@ -650,12 +655,17 @@ export default function Services() {
 
       {/* Add/Edit Modal */}
       <Dialog open={modalOpen} onOpenChange={() => { setModalOpen(false); setEditService(null); }}>
-        <DialogContent className="sm:max-w-2xl p-10 rounded-[48px] border-none shadow-2xl bg-white"><DialogHeader className="mb-10 text-center"><DialogTitle className="text-3xl font-black text-slate-900 uppercase tracking-tighter">{editService ? 'XIZMATNI TAHRIRLASH' : 'YANGI XIZMAT QO\'SHISH'}</DialogTitle></DialogHeader>
+        <DialogContent className="sm:max-w-2xl p-10 rounded-[48px] border-none shadow-2xl bg-white">
+          <DialogHeader className="mb-10 text-center">
+            <DialogTitle className="text-3xl font-black text-slate-900 uppercase tracking-tighter">
+              {editService ? (t('services.modals.editTitle') || 'XIZMATNI TAHRIRLASH') : (t('services.modals.addTitle') || 'YANGI XIZMAT QO\'SHISH')}
+            </DialogTitle>
+          </DialogHeader>
           <div className="space-y-8">
             <div className="grid grid-cols-2 gap-8"><div className="space-y-3"><Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">{t('services.modals.name')} *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="h-15 rounded-[24px] border-none bg-slate-50 font-black text-slate-900 px-6 text-lg" /></div><div className="space-y-3"><Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">{t('services.modals.category')}</Label><Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}><SelectTrigger className="h-15 rounded-[24px] border-none bg-slate-50 font-black px-6 text-lg"><SelectValue /></SelectTrigger><SelectContent>{categoryOrder.map(cat => (<SelectItem key={cat} value={cat}>{cat}</SelectItem>))}</SelectContent></Select></div></div>
             <div className="grid grid-cols-2 gap-8">
               <div className="space-y-3">
-                <Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">ASOSIY NARX (UZS) *</Label>
+                <Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">{t('services.modals.basePrice') || 'ASOSIY NARX'} (UZS) *</Label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -672,7 +682,7 @@ export default function Services() {
                 />
               </div>
               <div className="space-y-3">
-                <Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">MINIMAL NARX (UZS)</Label>
+                <Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">{t('services.modals.minPrice') || 'MINIMAL NARX'} (UZS)</Label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -684,14 +694,14 @@ export default function Services() {
                   }}
                   onKeyDown={e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
                   onWheel={e => e.target.blur()}
-                  placeholder="Chegirma chegarasi"
+                  placeholder={t('services.modals.minPricePlaceholder') || 'Chegirma chegarasi'}
                   className="w-full h-14 rounded-[24px] border-none bg-slate-50 font-black text-2xl tracking-tighter px-6 outline-none focus:ring-2 focus:ring-slate-200"
                 />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-8">
               <div className="space-y-3">
-                <Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">DAVOMIYLIGI (MIN)</Label>
+                <Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">{t('services.modals.durationMinutes') || 'DAVOMIYLIGI'} (MIN)</Label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -707,29 +717,48 @@ export default function Services() {
                 />
               </div>
               <div className="space-y-3">
-                <Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">LOYIHA TAVSIFI</Label>
-                <Input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Qisqacha ma'lumot..." className="h-15 rounded-[24px] border-none bg-slate-50 font-bold px-6" />
+                <Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">{t('services.modals.projectDescription') || 'LOYIHA TAVSIFI'}</Label>
+                <Input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t('services.modals.descriptionPlaceholder') || "Qisqacha ma'lumot..."} className="h-15 rounded-[24px] border-none bg-slate-50 font-bold px-6" />
               </div>
             </div>
-            <div className="flex items-center justify-between p-8 bg-slate-900 rounded-[36px] text-white"><div className="flex items-center gap-8"><div className="flex items-center gap-3"><Switch checked={form.is_active} onCheckedChange={v => setForm({ ...form, is_active: v })} /><Label className="font-black text-sm uppercase tracking-widest tracking-widest">AKTIV HOLAT</Label></div><div className="flex items-center gap-3"><Switch checked={form.requires_tooth} onCheckedChange={v => setForm({ ...form, requires_tooth: v, tooth_numbers: v ? (form.tooth_numbers || []) : [] })} /><Label className="font-black text-sm uppercase tracking-widest">TISH TANLASH</Label></div></div><div className="flex gap-4"><Button variant="ghost" onClick={() => setModalOpen(false)} className="text-slate-400">BEKOR QILISH</Button><Button onClick={handleSaveService} className="h-14 rounded-2xl bg-white text-slate-900 font-black px-10">SAQLASH</Button></div></div>
+            <div className="flex items-center justify-between p-8 bg-slate-900 rounded-[36px] text-white">
+              <div className="flex items-center gap-8">
+                <div className="flex items-center gap-3">
+                  <Switch checked={form.is_active} onCheckedChange={v => setForm({ ...form, is_active: v })} />
+                  <Label className="font-black text-sm uppercase tracking-widest">{t('services.modals.activeState') || 'AKTIV HOLAT'}</Label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Switch checked={form.requires_tooth} onCheckedChange={v => setForm({ ...form, requires_tooth: v, tooth_numbers: v ? (form.tooth_numbers || []) : [] })} />
+                  <Label className="font-black text-sm uppercase tracking-widest">{t('services.modals.toothSelection') || 'TISH TANLASH'}</Label>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <Button variant="ghost" onClick={() => setModalOpen(false)} className="text-slate-400">
+                  {t('common.cancel') || 'BEKOR QILISH'}
+                </Button>
+                <Button onClick={handleSaveService} className="h-14 rounded-2xl bg-white text-slate-900 font-black px-10">
+                  {t('common.save') || 'SAQLASH'}
+                </Button>
+              </div>
+            </div>
 
             {/* ✅ Tish diagrammasi — faqat "TISH TANLASH" yoqilganda */}
             {form.requires_tooth && (
               <div className="bg-slate-50 rounded-[28px] p-6 border border-slate-100 space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-[13px] font-black text-slate-600 uppercase tracking-widest">
-                    Tegishli tishlarni belgilang
+                    {t('services.modals.selectTeeth') || 'Tegishli tishlarni belgilang'}
                   </Label>
                   {(form.tooth_numbers || []).length > 0 && (
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-black text-[#1499AD] bg-[#1499AD]/10 px-3 py-1 rounded-full">
-                        Tanlangan: {(form.tooth_numbers || []).join(', ')}
+                        {t('common.selected') || 'Tanlangan'}: {(form.tooth_numbers || []).join(', ')}
                       </span>
                       <button
                         onClick={() => setForm({ ...form, tooth_numbers: [] })}
                         className="text-xs font-black text-rose-400 hover:text-rose-600 transition-colors"
                       >
-                        Tozalash
+                        {t('common.clear') || 'Tozalash'}
                       </button>
                     </div>
                   )}
@@ -804,10 +833,21 @@ export default function Services() {
       {/* Category Edit Modal */}
       <Dialog open={catEditOpen} onOpenChange={setCatEditOpen}>
         <DialogContent className="sm:max-w-md p-10 rounded-[40px] bg-white border-none shadow-3xl">
-          <DialogHeader className="mb-6"><DialogTitle className="text-2xl font-black text-slate-900 uppercase">Bo'lim nomini tahrirlash</DialogTitle></DialogHeader>
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-2xl font-black text-slate-900 uppercase">
+              {t('services.categoryModals.editTitle') || 'Bo\'lim nomini tahrirlash'}
+            </DialogTitle>
+          </DialogHeader>
           <div className="space-y-6">
-            <div className="space-y-2"><Label className="text-xs font-black text-slate-400 uppercase ml-1">Yangi nomni kiriting</Label><Input value={renamingCat.new} onChange={e => setRenamingCat({ ...renamingCat, new: e.target.value })} className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-lg px-6" /></div>
-            <Button onClick={() => { if (!renamingCat.new) return; const newOrder = categoryOrder.map(c => c === renamingCat.old ? renamingCat.new : c); handleReorder(newOrder); setCatEditOpen(false); }} className="w-full h-15 rounded-2xl bg-slate-900 text-white font-black">O'ZGARTIRISHNI SAQLASH</Button>
+            <div className="space-y-2">
+              <Label className="text-xs font-black text-slate-400 uppercase ml-1">
+                {t('services.categoryModals.enterNewName') || 'Yangi nomni kiriting'}
+              </Label>
+              <Input value={renamingCat.new} onChange={e => setRenamingCat({ ...renamingCat, new: e.target.value })} className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-lg px-6" />
+            </div>
+            <Button onClick={() => { if (!renamingCat.new) return; const newOrder = categoryOrder.map(c => c === renamingCat.old ? renamingCat.new : c); handleReorder(newOrder); setCatEditOpen(false); }} className="w-full h-15 rounded-2xl bg-slate-900 text-white font-black">
+              {t('services.categoryModals.saveChanges') || 'O\'ZGARTIRISHNI SAQLASH'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -816,23 +856,44 @@ export default function Services() {
       <Dialog open={!!catToDelete} onOpenChange={() => setCatToDelete(null)}>
         <DialogContent className="sm:max-w-md p-10 rounded-[40px] bg-white border-none shadow-3xl text-center">
           <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-[32px] flex items-center justify-center mx-auto mb-6"><Trash2 className="w-10 h-10" /></div>
-          <h3 className="text-2xl font-black text-slate-900 uppercase">O'chirishni tasdiqlang</h3>
-          <p className="text-slate-500 font-bold mt-2">"{catToDelete}" bo'limi va undagi barcha sozlamalar o'chiriladi. Davom etasizmi?</p>
-          <div className="flex gap-4 mt-8"><Button variant="ghost" onClick={() => setCatToDelete(null)} className="flex-1 h-14 rounded-2xl font-black text-slate-400">BEKOR QILISH</Button><Button onClick={() => { const newOrder = categoryOrder.filter(c => c !== catToDelete); handleReorder(newOrder); setCatToDelete(null); }} className="flex-1 h-14 rounded-2xl bg-rose-500 text-white font-black">HA, O'CHIRILSIN</Button></div>
+          <h3 className="text-2xl font-black text-slate-900 uppercase">
+            {t('services.categoryModals.confirmDelete') || 'O\'chirishni tasdiqlang'}
+          </h3>
+          <p className="text-slate-500 font-bold mt-2">
+            {t('services.categoryModals.deleteWarning', { name: catToDelete }) || `"${catToDelete}" bo'limi va undagi barcha sozlamalar o'chiriladi. Davom etasizmi?`}
+          </p>
+          <div className="flex gap-4 mt-8">
+            <Button variant="ghost" onClick={() => setCatToDelete(null)} className="flex-1 h-14 rounded-2xl font-black text-slate-400">
+              {t('common.cancel') || 'BEKOR QILISH'}
+            </Button>
+            <Button onClick={() => { const newOrder = categoryOrder.filter(c => c !== catToDelete); handleReorder(newOrder); setCatToDelete(null); }} className="flex-1 h-14 rounded-2xl bg-rose-500 text-white font-black">
+              {t('services.categoryModals.yesDelete') || 'HA, O\'CHIRILSIN'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* New Category Modal */}
       <Dialog open={newCatModalOpen} onOpenChange={setNewCatModalOpen}>
         <DialogContent className="sm:max-w-md p-10 rounded-[40px] bg-white border-none shadow-3xl">
-          <DialogHeader className="mb-6"><DialogTitle className="text-2xl font-black text-slate-900 uppercase">Yangi bo'lim qo'shish</DialogTitle></DialogHeader>
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-2xl font-black text-slate-900 uppercase">
+              {t('services.categoryModals.addTitle') || "Yangi bo'lim qo'shish"}
+            </DialogTitle>
+          </DialogHeader>
           <div className="space-y-6">
-            <div className="space-y-2"><Label className="text-xs font-black text-slate-400 uppercase ml-1">Bo'lim nomi</Label><Input value={newCatName} onChange={e => setNewCatName(e.target.value)} className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-lg px-6" placeholder="Masalan: GNATOLOGIYA" /></div>
-            <Button onClick={() => { if (!newCatName) return; const newOrder = [newCatName, ...categoryOrder]; handleReorder(newOrder); setForm({ ...form, category: newCatName }); setNewCatName(''); setNewCatModalOpen(false); }} className="w-full h-15 rounded-2xl bg-slate-900 text-white font-black uppercase tracking-widest shadow-2xl">BO'LIMNI QO'SHISH</Button>
+            <div className="space-y-2">
+              <Label className="text-xs font-black text-slate-400 uppercase ml-1">
+                {t('services.categoryModals.categoryName') || 'Bo\'lim nomi'}
+              </Label>
+              <Input value={newCatName} onChange={e => setNewCatName(e.target.value)} className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-lg px-6" placeholder={t('services.categoryModals.placeholder') || 'Masalan: GNATOLOGIYA'} />
+            </div>
+            <Button onClick={() => { if (!newCatName) return; const newOrder = [newCatName, ...categoryOrder]; handleReorder(newOrder); setForm({ ...form, category: newCatName }); setNewCatName(''); setNewCatModalOpen(false); }} className="w-full h-15 rounded-2xl bg-slate-900 text-white font-black uppercase tracking-widest shadow-2xl">
+              {t('services.categoryModals.addCategory') || 'BO\'LIMNI QO\'SHISH'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
-      {/* ✅ Xizmatni o'chirish — tasdiq dialogi */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
         <AlertDialogContent className="sm:max-w-md rounded-[40px] border-none shadow-3xl bg-white p-10 text-center">
           <AlertDialogHeader className="items-center">
@@ -840,11 +901,11 @@ export default function Services() {
               <Trash2 className="w-10 h-10" />
             </div>
             <AlertDialogTitle className="text-2xl font-black text-slate-900 uppercase tracking-tight">
-              Xizmatni o'chirish
+              {t('services.alerts.deleteTitle') || 'Xizmatni o\'chirish'}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-500 font-bold mt-2 text-base">
-              Bu xizmatni rostan o'chirmoqchimisiz?<br />
-              <span className="text-rose-400 font-black">Bu amalni qaytarib bo'lmaydi!</span>
+              {t('services.alerts.deleteConfirm') || 'Bu xizmatni rostan o\'chirmoqchimisiz?'}<br />
+              <span className="text-rose-400 font-black">{t('services.alerts.deleteWarning') || 'Bu amalni qaytarib bo\'lmaydi!'}</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex gap-4 mt-8 sm:flex-row">
@@ -852,7 +913,7 @@ export default function Services() {
               onClick={() => setDeleteId(null)}
               className="flex-1 h-14 rounded-2xl border-slate-200 font-black text-slate-500 bg-slate-50 hover:bg-slate-100"
             >
-              BEKOR QILISH
+              {t('common.cancel') || 'BEKOR QILISH'}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
@@ -866,7 +927,7 @@ export default function Services() {
               }}
               className="flex-1 h-14 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-black shadow-lg shadow-rose-200"
             >
-              HA, O'CHIRILSIN
+              {t('services.categoryModals.yesDelete') || 'HA, O\'CHIRILSIN'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

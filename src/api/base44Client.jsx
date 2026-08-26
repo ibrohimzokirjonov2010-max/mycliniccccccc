@@ -165,7 +165,7 @@ class HybridEntityLoader {
 
   _techFields() {
     if (this.entityName === 'TreatmentPlan') {
-      return ['name', 'patient_name', 'status', 'priority', 'tooth_number', 'services', 'total_price', 'start_date', 'notes', 'installment_plan', 'paid_amount'];
+      return ['name', 'patient_name', 'status', 'priority', 'tooth_number', 'services', 'total_price', 'start_date', 'notes', 'installment_plan', 'paid_amount', 'doctor_id', 'doctor_name'];
     }
     if (this.entityName === 'Implant') {
       return ['firma', 'firma_custom', 'brend', 'diameter', 'length', 'lot_number',
@@ -175,7 +175,7 @@ class HybridEntityLoader {
               'tooth_data', 'placement_date', 'lifecycle_status', 'tooth_id'];
     }
     if (this.entityName === 'Payment') {
-      return ['doctor_id', 'commission_rate', 'patient_name', 'category', 'debt_amount'];
+      return ['doctor_id', 'commission_rate', 'patient_name', 'category', 'debt_amount', 'method'];
     }
     if (this.entityName === 'User') {
       // MUHIM: username va password notes'ga ENCODE QILINMASIN!
@@ -187,7 +187,7 @@ class HybridEntityLoader {
       return ['patient_name', 'patient_phone', 'type', 'type_label', 'status', 'recall_date', 'notes'];
     }
     if (this.entityName === 'TechnicianJob') {
-      return ['patient_name', 'patient_id', 'doctor_name', 'doctor_id', 'technician_name', 'technician_id', 'tooth_number', 'work_type', 'construction_type', 'shade', 'status', 'deadline', 'impression_date', 'cost', 'notes'];
+      return ['patient_name', 'patient_id', 'doctor_name', 'doctor_id', 'technician_name', 'technician_id', 'tooth_number', 'work_type', 'construction_type', 'shade', 'status', 'deadline', 'impression_date', 'cost', 'notes', 'photo_urls'];
     }
     if (this.entityName === 'Technician') {
       return ['name', 'phone', 'specialization', 'is_active', 'created_date'];
@@ -430,14 +430,24 @@ class HybridEntityLoader {
       
       let { data, error } = res;
       
-      // Agar ustun topilmasa (400/500) — created_date bilan qayta urinib ko'r
+      // Agar ustun topilmasa (400/500) — created_at bilan qayta urinib ko'r
       if (error && (error.code === '42703' || error.message?.includes('column') || error.message?.includes('does not exist'))) {
-        console.warn(`[${this.entityName}] Column '${actualOrder}' not found, retrying with created_date`);
+        console.warn(`[${this.entityName}] Column '${actualOrder}' not found, retrying with created_at`);
         const fallbackRes = isMultiplexed
-          ? await supabase.from('notes').select('*').eq('clinic_id', clinicId).order('created_date', { ascending: false }).range(offset, offset + limit - 1)
-          : await query.order('created_date', { ascending: false }).range(offset, offset + limit - 1);
-        data = fallbackRes.data;
-        error = fallbackRes.error;
+          ? await supabase.from('notes').select('*').eq('clinic_id', clinicId).order('created_at', { ascending: false }).range(offset, offset + limit - 1)
+          : await query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+        
+        if (fallbackRes.error) {
+          console.warn(`[${this.entityName}] Column 'created_at' not found, retrying without ordering`);
+          const fallbackRes2 = isMultiplexed
+            ? await supabase.from('notes').select('*').eq('clinic_id', clinicId).range(offset, offset + limit - 1)
+            : await query.range(offset, offset + limit - 1);
+          data = fallbackRes2.data;
+          error = fallbackRes2.error;
+        } else {
+          data = fallbackRes.data;
+          error = fallbackRes.error;
+        }
       }
       
       if (error) throw error;
@@ -1350,6 +1360,17 @@ const initializeSystem = () => {
                   pChanged = true;
                 }
               }
+              if (p.notes) {
+                const oldN = p.notes;
+                const newN = oldN
+                  .replace(/⚠️ MUHIM OGOHLANTIRISH:\s*ikkiqat\s*\n?\s*Izoh:\s*ikkiqat/gi, '')
+                  .replace(/⚠️ MUHIM OGOHLANTIRISH:\s*ikkiqat\s*Izoh:\s*ikkiqat/gi, '')
+                  .trim();
+                if (newN !== oldN) {
+                  p.notes = newN;
+                  pChanged = true;
+                }
+              }
               if (pChanged) changed = true;
               return p;
             });
@@ -1432,6 +1453,31 @@ const initializeSystem = () => {
               }
               if (tpChanged) changed = true;
               return tp;
+            });
+          }
+
+          // CD. If the key is for Services, normalize English category names to Uzbek uppercase
+          if (key.includes('_Service')) {
+            data = data.map(s => {
+              if (!s || !s.category) return s;
+              let sChanged = false;
+              const catUpper = s.category.toUpperCase().trim();
+              let newCat = s.category;
+
+              if (catUpper === 'THERAPY') newCat = 'TERAPIYA( ENDO +PLOMBA)';
+              else if (catUpper === 'SURGERY') newCat = 'XIRURGIYA';
+              else if (catUpper === 'HYGIENE') newCat = 'GIGIENA VA PROFILAKTIKA';
+              else if (catUpper === 'IMPLANTOLOGY') newCat = 'IMPLANTATSIYA';
+              else if (catUpper === 'ORTHOPEDICS') newCat = 'ORTOPEDIYA';
+              else if (catUpper === 'ESTHETICS') newCat = 'ESTETIK STOMATOLOGIYA';
+              else if (catUpper === 'PEDIATRICS') newCat = 'BOLALAR STOMATOLOGIYASI';
+
+              if (newCat !== s.category) {
+                s.category = newCat;
+                sChanged = true;
+              }
+              if (sChanged) changed = true;
+              return s;
             });
           }
 

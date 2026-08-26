@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Plus, Upload, FileText, X, Check, Calendar, User, Activity, Info, Shield, Layers, Hash, Thermometer, Stethoscope, Image as ImageIcon } from 'lucide-react';
+import { Plus, Upload, FileText, X, Check, Calendar, User, Activity, Info, Shield, Layers, Stethoscope, Image as ImageIcon } from 'lucide-react';
 import PatientModal from '../patients/PatientModal';
 import PatientSelect from '../patients/PatientSelect';
 import ProfessionalOdontogram from '../patients/ProfessionalOdontogram';
@@ -187,7 +186,7 @@ export default function ImplantForm({ open, onClose, patients, services, implant
       setToothDataMap({});
     }
     setStep(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [open, implant?.id]);
 
   /**
@@ -650,31 +649,33 @@ export default function ImplantForm({ open, onClose, patients, services, implant
    * Render step indicator
    */
   const renderStepIndicator = () => (
-    <div className="mb-6 sm:mb-8">
-      <div className="flex items-center justify-between mb-2 px-2 sm:px-4">
+    <div className="mb-4 mt-3">
+      <div className="flex items-center justify-between mb-2 px-2">
         {[1, 2, 3].map(s => (
-          <div key={s} className="flex flex-col items-center gap-1.5 sm:gap-2">
+          <div key={s} className="flex flex-col items-center gap-1">
             <button
               onClick={() => step >= s && setStep(s)}
-              className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-black transition-all duration-500 shadow-md ${
-                step >= s 
-                  ? 'bg-primary text-white scale-110' 
-                  : 'bg-muted text-muted-foreground'
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 shadow-md ${
+                step > s
+                  ? 'bg-emerald-500 text-white'
+                  : step === s
+                  ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white scale-110 shadow-emerald-200'
+                  : 'bg-slate-100 text-slate-400'
               }`}
             >
-              {s}
+              {step > s ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : s}
             </button>
-            <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${
-              step >= s ? 'text-primary' : 'text-muted-foreground'
+            <span className={`text-[9px] font-black uppercase tracking-wider ${
+              step >= s ? 'text-emerald-600' : 'text-slate-300'
             }`}>
               {s === 1 ? t('patients.wizard.patient') : s === 2 ? t('patients.wizard.services') : t('navigation.implants')}
             </span>
           </div>
         ))}
       </div>
-      <div className="relative h-1 bg-muted rounded-full mx-8 sm:mx-10 -mt-6 sm:-mt-8 -z-10">
+      <div className="relative h-1 bg-slate-100 rounded-full mx-10 -mt-5 -z-10">
         <div 
-          className="absolute h-full bg-primary transition-all duration-500 rounded-full"
+          className="absolute h-full bg-gradient-to-r from-emerald-500 to-teal-600 transition-all duration-500 rounded-full"
           style={{ width: `${(step - 1) * 50}%` }}
         />
       </div>
@@ -932,7 +933,14 @@ export default function ImplantForm({ open, onClose, patients, services, implant
         </div>
       )}
 
-      <div className="flex justify-end pt-2 sm:pt-4">
+      <div className="flex justify-between pt-2 sm:pt-4 gap-3">
+        <Button 
+          variant="outline" 
+          onClick={onClose} 
+          className="h-10 sm:h-12 px-6 rounded-xl sm:rounded-2xl border-2 text-xs sm:text-sm font-black text-slate-600"
+        >
+          Bekor qilish
+        </Button>
         <Button
           onClick={() => setStep(2)}
           disabled={!isStep1Valid}
@@ -954,7 +962,7 @@ export default function ImplantForm({ open, onClose, patients, services, implant
           <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
             <Layers className="w-4 h-4" />
           </div>
-          Implant uchun qo'shimcha xizmatlar
+          {t('implants.form.extraServices') || "Implant uchun qo'shimcha xizmatlar"}
         </Label>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -969,7 +977,7 @@ export default function ImplantForm({ open, onClose, patients, services, implant
                   : 'bg-white border-slate-100 text-slate-500 hover:border-slate-300'
               }`}
             >
-              <span className="text-left leading-tight">{service.label}</span>
+              <span className="text-left leading-tight">{t('implants.services.' + service.id) || service.label}</span>
               {form.extra_services.includes(service.id) ? (
                 <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center text-white">
                   <Check className="w-3 h-3 stroke-[3]" />
@@ -1185,35 +1193,38 @@ export default function ImplantForm({ open, onClose, patients, services, implant
   return (
     <>
       <Dialog open={open && !newPatientOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-4xl w-[98vw] max-h-[95vh] p-0 overflow-hidden rounded-[1.5rem] sm:rounded-[2.5rem] border-none shadow-2xl flex flex-col">
-          {/* Sticky Header - Simplified to avoid Radix key conflicts */}
-          <DialogHeader className="p-4 sm:p-6 pb-2 bg-background/80 backdrop-blur-md sticky top-0 z-50 border-b border-border/10 flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 sm:p-2 bg-primary/10 rounded-lg sm:rounded-xl text-primary shrink-0">🦷</span>
-              <DialogTitle className="text-lg sm:text-2xl font-black tracking-tight truncate">
-                {implant ? t('common.edit') : t('implants.form.newImplant')}
-              </DialogTitle>
-            </div>
-            
-            <div key="schema-status-indicator" className={`mr-10 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all ${
-              isSchemaOptimized 
-                ? 'bg-emerald-50 border-emerald-100 text-emerald-600' 
-                : 'bg-blue-50 border-blue-100 text-blue-600'
-            }`}>
-              {isSchemaOptimized ? (
-                <div key="optimized-badge" className="flex items-center gap-1.5 uppercase text-[10px] font-black tracking-tighter">
-                  <Shield className="w-3.5 h-3.5 fill-emerald-500/10" /> Baza: Optimized
+        <DialogContent className="w-[95vw] max-w-xl max-h-[90vh] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl flex flex-col" aria-describedby={undefined}>
+          {/* Green Gradient Header */}
+          <DialogHeader className="shrink-0">
+            <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-4 flex items-center justify-between text-white rounded-t-[2rem]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm text-xl">
+                  🦷
                 </div>
-              ) : (
-                <div key="smart-badge" className="flex items-center gap-1.5 uppercase text-[10px] font-black tracking-tighter">
-                  <Activity className="w-3.5 h-3.5 animate-pulse" /> Baza: Smart Persistence
+                <div>
+                  <DialogTitle className="text-[15px] font-black text-white uppercase leading-none tracking-tight">
+                    {implant ? t('common.edit') : t('implants.form.newImplant')}
+                  </DialogTitle>
+                  <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Dental System</p>
                 </div>
-              )}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className={`px-2 py-1 rounded-full bg-white/15 border border-white/20 text-[8px] font-black text-white/90 uppercase tracking-tighter flex items-center gap-1`}>
+                  <Shield className="w-2.5 h-2.5" />
+                  {isSchemaOptimized ? 'Optimized' : 'Smart'}
+                </div>
+                <button 
+                  onClick={onClose} 
+                  className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center active:scale-90 transition-all border-none cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </DialogHeader>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-6 sm:pb-8 pt-2 scrollbar-hide">
+          <div className="flex-1 overflow-y-auto px-4 pb-6 pt-2 no-scrollbar">
             {renderStepIndicator()}
 
             {step === 1 && renderStep1()}

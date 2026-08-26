@@ -8,10 +8,9 @@ import {
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import { formatCurrency } from '@/lib/utils';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 
 // Telefon raqamini chiroyli formatlash
@@ -175,8 +174,8 @@ export default function MobileDebts() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2, delay: index * 0.03 }}
-                  className="bg-white rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.04)] border border-slate-100 active:scale-[0.99] transition-transform"
+                  transition={{ duration: 0.2, delay: Math.min(index, 6) * 0.02 }}
+                  className="bg-white rounded-2xl overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.04)] border border-slate-100 active:scale-[0.99] transition-transform content-visibility-auto"
                 >
                   <div className="px-3.5 pt-3.5 pb-2.5">
                     {/* Top row: avatar + info + debt */}

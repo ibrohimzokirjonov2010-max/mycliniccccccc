@@ -21,8 +21,18 @@ import { useAuth } from '@/lib/AuthContext';
  */
 export default function Login() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, changeLanguage } = useTranslation();
   const { setAuthData } = useAuth();
+  
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    const completed = localStorage.getItem('has_completed_onboarding');
+    const isMobileScreen = window.innerWidth < 1024;
+    return isMobileScreen && !completed;
+  });
+
+  const [onboardingStep, setOnboardingStep] = useState(1); // 1: Country, 2: Language, 3: Slide 1, 4: Slide 2, 5: Slide 3
+  const [selectedCountry, setSelectedCountry] = useState('uz'); // 'uz' or 'tj'
+  const [selectedLang, setSelectedLang] = useState('uz-lat'); // 'uz-lat', 'uz-cyr', 'ru'
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -86,6 +96,396 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  const handleCountryNext = () => {
+    setOnboardingStep(2);
+  };
+
+  const handleLanguageNext = () => {
+    const langCode = selectedLang === 'ru' ? 'ru' : 'uz';
+    changeLanguage(langCode);
+    setOnboardingStep(3);
+  };
+
+  if (showOnboarding) {
+    const slideIndex = onboardingStep - 2; // 1, 2, 3
+    const completeOnboarding = () => {
+      localStorage.setItem('has_completed_onboarding', 'true');
+      setShowOnboarding(false);
+    };
+
+    if (onboardingStep === 1) {
+      return (
+        <div className="min-h-screen w-full bg-slate-50 flex flex-col justify-between p-6 relative overflow-hidden font-sans select-none">
+          <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
+          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl" />
+
+          <div className="h-10 shrink-0" />
+
+          <div className="w-full max-w-[360px] mx-auto z-10 flex-1 flex flex-col justify-center">
+            <div className="text-center mb-8">
+              <motion.div 
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                className="w-16 h-16 bg-blue-600 rounded-2xl shadow-xl shadow-blue-200 flex items-center justify-center mx-auto mb-4 border border-white text-2xl flex items-center justify-center"
+              >
+                🌍
+              </motion.div>
+              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight text-center">Добро пожаловать!</h1>
+              <p className="text-slate-400 font-bold mt-1.5 text-xs text-center">Выберите вашу страну, чтобы продолжить:</p>
+            </div>
+
+            <div className="bg-white rounded-[2rem] p-6 shadow-2xl shadow-slate-200/60 border border-white space-y-3">
+              <button 
+                onClick={() => setSelectedCountry('uz')}
+                className={`w-full flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border transition-all active:scale-[0.98] ${selectedCountry === 'uz' ? 'border-blue-500 bg-blue-55 shadow-sm' : 'border-slate-100'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🇺🇿</span>
+                  <span className="text-sm font-black text-slate-800">Узбекистан</span>
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedCountry === 'uz' ? 'border-blue-500 bg-blue-500 text-white shadow-sm' : 'border-slate-300'}`}>
+                  {selectedCountry === 'uz' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </div>
+              </button>
+              
+              <button 
+                onClick={() => setSelectedCountry('tj')}
+                className={`w-full flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border transition-all active:scale-[0.98] ${selectedCountry === 'tj' ? 'border-blue-500 bg-blue-55 shadow-sm' : 'border-slate-100'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🇹🇯</span>
+                  <span className="text-sm font-black text-slate-800">Таджикистан</span>
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedCountry === 'tj' ? 'border-blue-500 bg-blue-500 text-white shadow-sm' : 'border-slate-300'}`}>
+                  {selectedCountry === 'tj' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <div className="p-6 shrink-0 w-full max-w-[360px] mx-auto z-10">
+            <Button 
+              onClick={handleCountryNext}
+              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold uppercase tracking-wider transition-all shadow-lg shadow-blue-200 active:scale-95 border-none"
+            >
+              Продолжить
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    if (onboardingStep === 2) {
+      return (
+        <div className="min-h-screen w-full bg-slate-50 flex flex-col justify-between p-6 relative overflow-hidden font-sans select-none">
+          <div className="absolute -top-24 -left-24 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
+          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl" />
+
+          <div className="h-10 shrink-0" />
+
+          <div className="w-full max-w-[360px] mx-auto z-10 flex-1 flex flex-col justify-center">
+            <div className="text-center mb-8">
+              <motion.div 
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                className="w-16 h-16 bg-blue-600 rounded-2xl shadow-xl shadow-blue-200 flex items-center justify-center mx-auto mb-4 border border-white text-2xl flex items-center justify-center"
+              >
+                💬
+              </motion.div>
+              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight text-center">Добро пожаловать!</h1>
+              <p className="text-slate-400 font-bold mt-1.5 text-xs text-center">Для работы выберите удобный для вас язык:</p>
+            </div>
+
+            <div className="bg-white rounded-[2rem] p-6 shadow-2xl shadow-slate-200/60 border border-white space-y-3">
+              <button 
+                onClick={() => setSelectedLang('uz-lat')}
+                className={`w-full flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border transition-all active:scale-[0.98] ${selectedLang === 'uz-lat' ? 'border-blue-500 bg-blue-55 shadow-sm' : 'border-slate-100'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🇺🇿</span>
+                  <span className="text-sm font-black text-slate-800">O'zbekcha (Lotincha)</span>
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedLang === 'uz-lat' ? 'border-blue-500 bg-blue-500 text-white shadow-sm' : 'border-slate-300'}`}>
+                  {selectedLang === 'uz-lat' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </div>
+              </button>
+
+              <button 
+                onClick={() => setSelectedLang('uz-cyr')}
+                className={`w-full flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border transition-all active:scale-[0.98] ${selectedLang === 'uz-cyr' ? 'border-blue-500 bg-blue-55 shadow-sm' : 'border-slate-100'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🇺🇿</span>
+                  <span className="text-sm font-black text-slate-800">Ўзбекча (Кирилча)</span>
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedLang === 'uz-cyr' ? 'border-blue-500 bg-blue-500 text-white shadow-sm' : 'border-slate-300'}`}>
+                  {selectedLang === 'uz-cyr' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </div>
+              </button>
+
+              <button 
+                onClick={() => setSelectedLang('ru')}
+                className={`w-full flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border transition-all active:scale-[0.98] ${selectedLang === 'ru' ? 'border-blue-500 bg-blue-55 shadow-sm' : 'border-slate-100'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🇷🇺</span>
+                  <span className="text-sm font-black text-slate-800">Русский</span>
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedLang === 'ru' ? 'border-blue-500 bg-blue-500 text-white shadow-sm' : 'border-slate-300'}`}>
+                  {selectedLang === 'ru' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <div className="p-6 shrink-0 w-full max-w-[360px] mx-auto z-10">
+            <Button 
+              onClick={handleLanguageNext}
+              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold uppercase tracking-wider transition-all shadow-lg shadow-blue-200 active:scale-95 border-none"
+            >
+              Продолжить
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#061B30] via-[#092B4F] to-[#041221] flex flex-col justify-between p-6 relative overflow-hidden font-sans text-white select-none">
+        
+        {slideIndex < 3 ? (
+          <button 
+            onClick={completeOnboarding} 
+            className="absolute top-6 right-6 px-4 py-1.5 rounded-full border border-white/20 bg-white/5 backdrop-blur-md text-[10px] font-black uppercase text-white tracking-widest active:scale-90 transition-all z-50"
+          >
+            O'tkazish
+          </button>
+        ) : null}
+
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl -z-10" />
+
+        <div className="flex-1 flex flex-col justify-center items-center gap-6 mt-6">
+          <div className="relative w-72 h-80 flex items-center justify-center mt-4">
+            
+            {/* iPhone Mock */}
+            <div className="w-48 h-72 bg-[#0E1F35] border-[3px] border-slate-700 rounded-[2rem] shadow-2xl relative overflow-hidden flex flex-col p-3 z-10">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-3 bg-slate-700 rounded-b-lg z-20" />
+              
+              <div className="flex justify-between items-center text-[7px] text-white/40 mb-2 px-1">
+                <span>10:47</span>
+                <span className="flex items-center gap-1">📶 🔋</span>
+              </div>
+
+              <div className="flex-1 rounded-[1.2rem] bg-slate-900 border border-white/5 p-2 flex flex-col justify-between overflow-hidden">
+                
+                {slideIndex === 1 && (
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div className="border-b border-white/5 pb-1 mb-1.5 flex justify-between items-center">
+                      <span className="text-[7px] font-bold text-white/50 uppercase">Dental Patient</span>
+                      <span className="text-[6px] text-emerald-400 font-bold uppercase tracking-wider">Active</span>
+                    </div>
+                    
+                    <div className="flex-1 flex items-center justify-center relative">
+                      <motion.div 
+                        animate={{ rotate: 360 }} 
+                        transition={{ repeat: Infinity, duration: 15, ease: 'linear' }}
+                        className="w-18 h-18 rounded-full border border-dashed border-sky-500/30 flex items-center justify-center relative"
+                      >
+                        {[...Array(12)].map((_, i) => (
+                          <div 
+                            key={i} 
+                            className={`absolute w-1.5 h-1.5 rounded-full ${i % 3 === 0 ? 'bg-sky-400' : 'bg-slate-700'}`}
+                            style={{
+                              transform: `rotate(${i * 30}deg) translateY(-32px)`
+                            }}
+                          />
+                        ))}
+                      </motion.div>
+                      <span className="absolute text-[8px] font-black text-sky-400">🦷 3D</span>
+                    </div>
+
+                    <div className="space-y-1 mt-1">
+                      <div className="bg-white/5 p-1 rounded-md flex justify-between items-center"><span className="text-[5px] text-white/80">L. Chen - Fillings</span><span className="text-[5px] text-emerald-400 font-bold">100%</span></div>
+                      <div className="bg-white/5 p-1 rounded-md flex justify-between items-center"><span className="text-[5px] text-white/80">T. Ortho - Crown</span><span className="text-[5px] text-[#1499AD] font-bold">Planned</span></div>
+                    </div>
+                  </div>
+                )}
+
+                {slideIndex === 2 && (
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div className="border-b border-white/5 pb-1 mb-1 flex justify-between items-center">
+                      <span className="text-[7px] font-bold text-white/50 uppercase">Appointment</span>
+                      <span className="text-[6px] text-sky-400 font-bold">New</span>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-0.5 text-[5px] text-white/30 text-center font-bold">
+                      {['M','T','W','T','F','S','S'].map((d,i)=> <span key={i} className="text-white/50">{d}</span>)}
+                      {[...Array(21)].map((_, i) => (
+                        <span key={i} className={`p-0.5 rounded-sm ${i === 11 ? 'bg-sky-500 text-white font-black' : ''}`}>{20 + i}</span>
+                      ))}
+                    </div>
+
+                    <div className="space-y-1 mt-1">
+                      <div className="bg-sky-500/20 border-l border-sky-400 p-1 rounded flex justify-between items-center"><span className="text-[5px] font-bold text-white/90">09:00 - Dr. Shaxin</span><span className="text-[4px] text-sky-300 font-semibold">Urgent</span></div>
+                      <div className="bg-amber-500/20 border-l border-amber-400 p-1 rounded flex justify-between items-center"><span className="text-[5px] font-bold text-white/90">11:30 - Dr. Jafar</span><span className="text-[4px] text-amber-300 font-semibold">Planned</span></div>
+                    </div>
+                  </div>
+                )}
+
+                {slideIndex === 3 && (
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div className="border-b border-white/5 pb-1 mb-1 flex justify-between items-center">
+                      <span className="text-[7px] font-bold text-white/50 uppercase">AI History</span>
+                      <span className="text-[6px] text-rose-400 font-bold uppercase">Caries Detected</span>
+                    </div>
+
+                    <div className="flex-1 flex flex-col items-center justify-center relative bg-slate-950/40 rounded-lg p-1 overflow-hidden">
+                      <div className="w-12 h-14 bg-contain bg-center opacity-85 relative text-xl flex items-center justify-center">🦷</div>
+                      <motion.div 
+                        animate={{ top: ['0%', '100%', '0%'] }} 
+                        transition={{ repeat: Infinity, duration: 2.5, ease: 'linear' }}
+                        className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent" 
+                      />
+                    </div>
+
+                    <div className="bg-rose-500/10 border border-rose-500/20 p-1 rounded-md text-[5px] text-rose-355 font-semibold tracking-wide uppercase text-center mt-1">
+                      Deep Caries Detected on Tooth #36
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+
+            {/* Floating Glassmorphism circles */}
+            {slideIndex === 1 && (
+              <>
+                <motion.div 
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                  className="absolute -top-2 left-6 w-10 h-10 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-lg shadow-lg"
+                >
+                  🦷
+                </motion.div>
+                <motion.div 
+                  animate={{ y: [0, 8, 0] }}
+                  transition={{ repeat: Infinity, duration: 2.7, ease: 'easeInOut' }}
+                  className="absolute top-1/2 -left-4 w-9 h-9 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-base shadow-lg"
+                >
+                  📄
+                </motion.div>
+                <motion.div 
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ repeat: Infinity, duration: 3.2, ease: 'easeInOut' }}
+                  className="absolute bottom-12 -right-2 w-11 h-11 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-lg shadow-lg"
+                >
+                  📈
+                </motion.div>
+              </>
+            )}
+
+            {slideIndex === 2 && (
+              <>
+                <motion.div 
+                  animate={{ y: [0, -12, 0] }}
+                  transition={{ repeat: Infinity, duration: 2.8, ease: 'easeInOut' }}
+                  className="absolute -top-1 right-6 w-10 h-10 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-lg shadow-lg"
+                >
+                  📅
+                </motion.div>
+                <motion.div 
+                  animate={{ y: [0, 8, 0] }}
+                  transition={{ repeat: Infinity, duration: 3.1, ease: 'easeInOut' }}
+                  className="absolute top-1/3 -left-4 w-10 h-10 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-lg shadow-lg"
+                >
+                  🔔
+                </motion.div>
+                <motion.div 
+                  animate={{ y: [0, -7, 0] }}
+                  transition={{ repeat: Infinity, duration: 2.9, ease: 'easeInOut' }}
+                  className="absolute bottom-10 -right-2 w-10 h-10 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-lg shadow-lg"
+                >
+                  💬
+                </motion.div>
+              </>
+            )}
+
+            {slideIndex === 3 && (
+              <>
+                <motion.div 
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{ repeat: Infinity, duration: 3.3, ease: 'easeInOut' }}
+                  className="absolute -top-2 left-8 w-10 h-10 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-lg shadow-lg"
+                >
+                  🛡️
+                </motion.div>
+                <motion.div 
+                  animate={{ y: [0, 9, 0] }}
+                  transition={{ repeat: Infinity, duration: 2.8, ease: 'easeInOut' }}
+                  className="absolute top-1/3 -right-6 w-11 h-11 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-lg shadow-lg"
+                >
+                  🤖
+                </motion.div>
+                <motion.div 
+                  animate={{ y: [0, -9, 0] }}
+                  transition={{ repeat: Infinity, duration: 3.0, ease: 'easeInOut' }}
+                  className="absolute bottom-8 -left-4 w-9 h-9 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 flex items-center justify-center text-base shadow-lg"
+                >
+                  🧬
+                </motion.div>
+              </>
+            )}
+
+          </div>
+
+          <div className="text-center px-6 max-w-[340px] space-y-2 mt-2">
+            <h2 className="text-xl font-extrabold tracking-tight leading-tight">
+              {slideIndex === 1 && "Sizning sog'lig'ingiz — bizning ustuvor vazifamiz"}
+              {slideIndex === 2 && "Qabulga oson yoziling"}
+              {slideIndex === 3 && "Bemorlar tarixini nazorat qiling"}
+            </h2>
+            <p className="text-xs text-white/60 font-semibold leading-normal">
+              {slideIndex === 1 && "Istalgan vaqtda va istalgan joyda malakali shifokorlar va tibbiy xizmatlardan foydalaning."}
+              {slideIndex === 2 && "Mutaxassis qabuliga bir necha bosqich orqali yoziling."}
+              {slideIndex === 3 && "Aqlli eslatmalar yordamida dorilarni o'z vaqtida qabul qiling."}
+            </p>
+          </div>
+
+          <div className="flex gap-2.5 mt-2">
+            {[1, 2, 3].map(i => (
+              <div 
+                key={i} 
+                className={`h-2.5 rounded-full transition-all duration-300 ${
+                  i === slideIndex ? 'w-6 bg-blue-500' : 'w-2.5 bg-white/20'
+                }`}
+              />
+            ))}
+          </div>
+
+        </div>
+
+        <div className="p-6 shrink-0 w-full max-w-[360px] mx-auto z-10">
+          {slideIndex < 3 ? (
+            <Button 
+              onClick={() => setOnboardingStep(onboardingStep + 1)}
+              className="w-full h-12 bg-white/10 hover:bg-white/15 text-white border border-white/10 rounded-full font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg"
+            >
+              Davom etish
+            </Button>
+          ) : (
+            <Button 
+              onClick={completeOnboarding}
+              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-black uppercase tracking-wider transition-all shadow-lg shadow-blue-500/20 active:scale-95 border-none"
+            >
+              Boshlash
+            </Button>
+          )}
+        </div>
+
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden font-sans">

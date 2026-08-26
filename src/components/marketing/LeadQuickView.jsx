@@ -1,14 +1,17 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '@/i18n/LanguageContext';
 import { 
-  X, CheckCircle2, Facebook, Clock, Share2, 
-  Phone, MessageSquare, Calendar, Target, Instagram,
-  Zap, ArrowRight, User, Hash, Globe, MessageCircle, Loader2, ClipboardList
+  X, CheckCircle2, Facebook, 
+  Phone, MessageSquare, Target, Instagram,
+  Zap, User, Globe, MessageCircle, Loader2, ClipboardList
 } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
 
 export default function LeadQuickView({ lead, isOpen, onClose }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [isConverting, setIsConverting] = useState(false);
 
@@ -73,16 +76,24 @@ export default function LeadQuickView({ lead, isOpen, onClose }) {
     iconBgClass = "bg-slate-50 text-slate-600 border border-slate-100";
   }
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 bg-slate-900/60 backdrop-blur-sm">
+        <div 
+          onClick={onClose}
+          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm"
+        >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden relative flex flex-col max-h-[92vh]"
+            initial={{ y: '100%', opacity: 0.5 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0.5 }}
+            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white rounded-t-[2rem] sm:rounded-2xl shadow-2xl overflow-hidden relative flex flex-col max-h-[88vh] sm:max-h-[90vh]"
           >
+            {/* Mobile drag handle */}
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto my-3 sm:hidden shrink-0" />
+
             <div className="flex-1 overflow-y-auto no-scrollbar">
               {/* Header / Summary Style */}
               <div className="p-5 border-b border-slate-100">
@@ -228,7 +239,10 @@ export default function LeadQuickView({ lead, isOpen, onClose }) {
             </div>
 
             {/* Footer Actions */}
-            <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col gap-2">
+            <div 
+              className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col gap-2"
+              style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))' }}
+            >
               <div className="flex gap-2">
                 <button 
                   onClick={handleConvertToPatient}
@@ -236,7 +250,7 @@ export default function LeadQuickView({ lead, isOpen, onClose }) {
                   className="flex-1 h-11 bg-gradient-to-r from-emerald-500 to-emerald-400 text-white rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md shadow-emerald-500/10 disabled:opacity-50 hover:-translate-y-0.5"
                 >
                   {isConverting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4 text-white" />}
-                  Bemorga O'tkazish
+                  {t('leads.actionConvertToPatient') || "Bemorga O'tkazish"}
                 </button>
 
                 <button 
@@ -250,7 +264,7 @@ export default function LeadQuickView({ lead, isOpen, onClose }) {
                   className="px-4 h-11 bg-white border border-emerald-300 text-emerald-600 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-emerald-50 hover:-translate-y-0.5"
                 >
                   <ClipboardList className="w-4 h-4 text-emerald-500" />
-                  Reja Yaratish
+                  {t('leads.actionCreatePlan') || "Reja Yaratish"}
                 </button>
               </div>
               
@@ -260,7 +274,7 @@ export default function LeadQuickView({ lead, isOpen, onClose }) {
                   className="flex-1 h-11 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all hover:-translate-y-0.5"
                 >
                   <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                  Qo'ng'iroq Qilish
+                  {t('leads.actionCall') || "Qo'ng'iroq Qilish"}
                 </button>
                 <button 
                   onClick={() => {
@@ -276,7 +290,8 @@ export default function LeadQuickView({ lead, isOpen, onClose }) {
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

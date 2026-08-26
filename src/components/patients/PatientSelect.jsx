@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Loader2, Search, User } from 'lucide-react';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function PatientSelect({ 
   patients = [], 
@@ -14,6 +15,7 @@ export default function PatientSelect({
   inputClassName = "border-emerald-200 focus:border-emerald-500 focus:ring-emerald-500",
   buttonClassName = "bg-emerald-500 hover:bg-emerald-600 px-3 w-10 shadow-sm"
 }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState(initialName || '');
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
@@ -47,7 +49,7 @@ export default function PatientSelect({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
           <Input 
-            placeholder="Ism yoki telefon orqali qidiring..." 
+            placeholder={t('patientSelect.placeholder') || "Ism yoki telefon orqali qidiring..."} 
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -67,7 +69,7 @@ export default function PatientSelect({
         {open && (
            <div 
              style={{ backgroundColor: '#ffffff', zIndex: 9999 }}
-             className="absolute top-full left-0 right-0 mt-1.5 border border-slate-200 rounded-xl shadow-2xl max-h-[260px] overflow-y-auto no-scrollbar py-2"
+             className="absolute top-full left-0 right-0 mt-1.5 border border-slate-200 bg-white rounded-xl shadow-2xl max-h-[260px] overflow-y-auto no-scrollbar py-2"
            >
              {isLoading ? (
                <div className="px-4 py-6 text-sm font-medium text-slate-400 text-center flex flex-col gap-2 items-center">
@@ -78,6 +80,12 @@ export default function PatientSelect({
                 <div 
                   key={p.id}
                   onMouseDown={(e) => {
+                    e.preventDefault();
+                    onChange(p.id, p);
+                    setSearch(p.full_name);
+                    setOpen(false);
+                  }}
+                  onTouchStart={(e) => {
                     e.preventDefault();
                     onChange(p.id, p);
                     setSearch(p.full_name);
@@ -103,6 +111,7 @@ export default function PatientSelect({
                   {onAddPatient && (
                     <button
                       onMouseDown={(e) => { e.preventDefault(); onAddPatient(); setOpen(false); }}
+                      onTouchStart={(e) => { e.preventDefault(); onAddPatient(); setOpen(false); }}
                       className="text-xs font-bold text-[#1499AD] hover:underline"
                     >
                       + Yangi bemor qo'shish

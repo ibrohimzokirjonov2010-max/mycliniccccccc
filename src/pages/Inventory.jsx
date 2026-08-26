@@ -1,18 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Package, Edit2, Trash2, AlertTriangle, Boxes, AlertOctagon, CircleDollarSign, ArrowRight, X, Layers, ShoppingBag, BarChart3 } from 'lucide-react';
+import { Plus, Search, Package, Edit2, Trash2, AlertOctagon, CircleDollarSign, Layers, ShoppingBag, BarChart3 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import EmptyState from '../components/ui/EmptyState';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
+  AlertDialogDescription, AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatCurrency } from '@/lib/utils';
@@ -393,9 +392,9 @@ export default function Inventory() {
                   <div className="relative z-10 flex items-center justify-between">
                      <div>
                         <h2 className="text-xl font-[900] tracking-tighter uppercase mb-0.5">
-                            {editItem ? 'Mahsulotni tahrirlash' : 'Yangi mahsulot'}
+                            {editItem ? (t('inventory.modal.titleEdit') || 'Mahsulotni tahrirlash') : (t('inventory.modal.titleAddProduct') || 'Yangi mahsulot')}
                         </h2>
-                        <p className="text-[9px] font-black text-white/40 tracking-[0.2em] uppercase">Mahsulot tafsilotlarini kiriting</p>
+                        <p className="text-[9px] font-black text-white/40 tracking-[0.2em] uppercase">{t('inventory.modal.subtitle') || 'Mahsulot tafsilotlarini kiriting'}</p>
                      </div>
                      <ShoppingBag className="w-8 h-8 text-blue-500/30" />
                   </div>
@@ -405,7 +404,7 @@ export default function Inventory() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-4">
                           <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] ml-4">Mahsulot nomi</Label>
+                            <Label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] ml-4">{t('inventory.modal.nameLabelProduct') || 'Mahsulot nomi'}</Label>
                             <Input 
                                 value={form.name} 
                                 onChange={e => setForm({ ...form, name: e.target.value })} 
@@ -416,13 +415,13 @@ export default function Inventory() {
                           
                           <div className="grid grid-cols-2 gap-3">
                               <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] ml-4">Kategoriya</Label>
+                                <Label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] ml-4">{t('inventory.modal.categoryLabel') || 'Kategoriya'}</Label>
                                 <Select 
                                   value={form.category} 
                                   onValueChange={v => setForm({ ...form, category: v })}
                                 >
                                   <SelectTrigger className="h-11 rounded-xl border-none bg-slate-50 px-5 font-bold text-slate-900 text-xs shadow-none">
-                                    <SelectValue placeholder="Tanlang..." />
+                                    <SelectValue placeholder={t('inventory.modal.categoryPlaceholder') || 'Tanlang...'} />
                                   </SelectTrigger>
                                   <SelectContent className="rounded-xl border-none shadow-xl">
                                     <SelectItem value="Anesteziya" className="font-bold py-2 text-xs">Anesteziya</SelectItem>
@@ -437,12 +436,12 @@ export default function Inventory() {
                                 </Select>
                               </div>
                               <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] ml-4">Birlik</Label>
+                                <Label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] ml-4">{t('inventory.modal.unitLabel') || 'Birlik'}</Label>
                                 <Input 
                                     value={form.unit} 
                                     onChange={e => setForm({ ...form, unit: e.target.value })} 
                                     className="h-11 rounded-xl border-none bg-slate-50 px-5 font-bold text-slate-900 text-xs"
-                                    placeholder="Dona, quti..."
+                                    placeholder={t('inventory.modal.unitPlaceholder') || 'Dona, quti...'}
                                 />
                               </div>
                           </div>
@@ -450,7 +449,7 @@ export default function Inventory() {
 
                       <div className="space-y-4 bg-slate-50/50 p-6 rounded-2xl border border-slate-100/50">
                           <div className="space-y-1.5">
-                            <Label className="text-[9px] font-black text-blue-500 uppercase tracking-[0.15em] ml-4 text-center block">Mavjud miqdor</Label>
+                            <Label className="text-[9px] font-black text-blue-500 uppercase tracking-[0.15em] ml-4 text-center block">{t('inventory.modal.quantityLabel') || 'Mavjud miqdor'}</Label>
                             <input
                               type="text"
                               inputMode="numeric"
@@ -464,7 +463,7 @@ export default function Inventory() {
 
                           <div className="grid grid-cols-2 gap-3">
                               <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black text-rose-500 uppercase tracking-[0.15em] text-center block">Min. Zaxira</Label>
+                                <Label className="text-[9px] font-black text-rose-500 uppercase tracking-[0.15em] text-center block">{t('inventory.modal.minQuantityLabel') || 'Min. Zaxira'}</Label>
                                 <input
                                   type="text"
                                   inputMode="numeric"
@@ -476,7 +475,7 @@ export default function Inventory() {
                                 />
                               </div>
                               <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.15em] text-center block">Narxi (dona)</Label>
+                                <Label className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.15em] text-center block">{t('inventory.modal.pricePerUnit') || 'Narxi (dona)'}</Label>
                                 <input
                                   type="text"
                                   inputMode="numeric"
@@ -498,7 +497,7 @@ export default function Inventory() {
                     onClick={() => { setModalOpen(false); setEditItem(null); }}
                     className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-all border-none bg-transparent cursor-pointer"
                   >
-                    Bekor qilish
+                    {t('common.cancel') || 'Bekor qilish'}
                   </button>
                   <Button 
                     onClick={handleSave} 
@@ -510,7 +509,7 @@ export default function Inventory() {
                     ) : (
                         <>
                           <Plus className="w-4 h-4 text-blue-400" />
-                          Saqlash
+                          {t('common.save') || 'Saqlash'}
                         </>
                     )}
                   </Button>

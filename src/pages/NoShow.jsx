@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
 import { 
   AlertTriangle, Calendar, Clock, User, 
@@ -14,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 const formatCurrency = (val) => new Intl.NumberFormat('uz-UZ', { style: 'currency', currency: 'UZS', maximumFractionDigits: 0 }).format(val);
 
 export default function NoShow() {
+  const { t } = useTranslation();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,16 +49,16 @@ export default function NoShow() {
     if (phone) {
       window.location.href = `tel:${phone}`;
     } else {
-      alert("Telefon raqami topilmadi");
+      alert(t('noShow.phoneNotFound') || "Telefon raqami topilmadi");
     }
   };
 
   const handleSMS = (phone, name) => {
     if (phone) {
-      const message = `Assalomu alaykum ${name}, bugungi uchrashuvga kela olmaganingiz sababli siz bilan bog'lana olmadik. Qayta vaqt belgilash uchun javob yozishingizni so'raymiz.`;
+      const message = (t('noShow.smsMessage') || "Assalomu alaykum {name}, bugungi uchrashuvga kela olmaganingiz sababli siz bilan bog'lana olmadik. Qayta vaqt belgilash uchun javob yozishingizni so'raymiz.").replace('{name}', name);
       window.location.href = `sms:${phone}?body=${encodeURIComponent(message)}`;
     } else {
-      alert("Telefon raqami topilmadi");
+      alert(t('noShow.phoneNotFound') || "Telefon raqami topilmadi");
     }
   };
 
@@ -75,10 +77,10 @@ export default function NoShow() {
         <div>
           <h1 className="text-xl font-black text-slate-900 tracking-tight text-red-600 flex items-center gap-2.5">
             <AlertTriangle className="w-6 h-6 stroke-[2.5px]" />
-            No-Show Nazorat
+            {t('noShow.title') || 'No-Show Nazorat'}
           </h1>
           <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">
-            Kelmagan bemorlar va yo'qotilgan daromad tahlili
+            {t('noShow.subtitle') || "Kelmagan bemorlar va yo'qotilgan daromad tahlili"}
           </p>
         </div>
       </div>
@@ -91,7 +93,7 @@ export default function NoShow() {
             <History className="w-4.5 h-4.5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Jami No-Show</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('noShow.stats.total') || 'Jami No-Show'}</p>
             <p className="text-xl font-black text-slate-900 mt-0.5">{appointments.length}</p>
           </div>
         </div>
@@ -102,7 +104,7 @@ export default function NoShow() {
             <Calendar className="w-4.5 h-4.5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Shu oyda</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('noShow.stats.thisMonth') || 'Shu oyda'}</p>
             <p className="text-xl font-black text-slate-900 mt-0.5">{monthlyNoShows.length}</p>
           </div>
         </div>
@@ -113,7 +115,7 @@ export default function NoShow() {
             <TrendingDown className="w-4.5 h-4.5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Yo'qotilgan</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('noShow.stats.lostRevenue') || 'Yo\'qotilgan'}</p>
             <p className="text-xl font-black text-rose-600 mt-0.5">
               {formatCurrency(totalLostRevenue).replace(" so'm", "")}
               <span className="text-[10px] ml-0.5 opacity-60">UZS</span>
@@ -127,7 +129,7 @@ export default function NoShow() {
         <div className="relative group">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-red-500 transition-colors pointer-events-none" />
           <Input 
-            placeholder="Bemor ismini qidirish..."
+            placeholder={t('noShow.searchPlaceholder') || 'Bemor ismini qidirish...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-10 pl-10 pr-4 rounded-xl border-slate-200 bg-white placeholder:text-slate-400 text-sm font-semibold focus-visible:ring-1 focus-visible:ring-slate-350"
@@ -147,8 +149,8 @@ export default function NoShow() {
           <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center shadow-sm">
             <EmptyState 
               icon={AlertTriangle} 
-              title="No-Show yo'q" 
-              description={searchQuery ? "Qidiruv bo'yicha hech kim topilmadi" : "Hozircha no-show bemorlar ro'yxati bo'sh"} 
+              title={t('noShow.emptyTitle') || "No-Show yo'q"} 
+              description={searchQuery ? (t('noShow.searchEmpty') || "Qidiruv bo'yicha hech kim topilmadi") : (t('noShow.emptyDescription') || "Hozircha no-show bemorlar ro'yxati bo'sh")} 
             />
           </div>
         ) : (
@@ -159,11 +161,11 @@ export default function NoShow() {
                 <table className="w-full text-left border-collapse table-fixed min-w-[850px]">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-100">
-                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[30%] min-w-[200px]">Bemor</th>
-                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[20%] min-w-[150px]">Tashrif vaqti</th>
-                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[20%] min-w-[150px]">Xizmat</th>
-                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[15%] min-w-[110px]">Yo'qotilgan</th>
-                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right w-[15%] min-w-[130px]">Amallar</th>
+                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[30%] min-w-[200px]">{t('noShow.table.patient') || 'Bemor'}</th>
+                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[20%] min-w-[150px]">{t('noShow.table.time') || 'Tashrif vaqti'}</th>
+                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[20%] min-w-[150px]">{t('noShow.table.service') || 'Xizmat'}</th>
+                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[15%] min-w-[110px]">{t('noShow.table.lost') || 'Yo\'qotilgan'}</th>
+                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right w-[15%] min-w-[130px]">{t('noShow.table.actions') || 'Amallar'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -176,7 +178,7 @@ export default function NoShow() {
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="font-bold text-slate-800 text-[13px] truncate" title={appt.patient_name}>{appt.patient_name}</p>
-                              <p className="text-[10.5px] font-medium text-slate-500 mt-0.5 truncate">{appt.phone || "Telefon yo'q"}</p>
+                              <p className="text-[10.5px] font-medium text-slate-500 mt-0.5 truncate">{appt.phone || t('noShow.noPhone') || "Telefon yo'q"}</p>
                             </div>
                           </div>
                         </td>
@@ -213,7 +215,7 @@ export default function NoShow() {
                               size="icon"
                               className="h-7.5 w-7.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors shrink-0"
                               onClick={() => handleCall(appt.phone)}
-                              title="Qo'ng'iroq qilish"
+                              title={t('recall.makeCall') || "Qo'ng'iroq qilish"}
                             >
                               <Phone className="w-3 h-3" />
                             </Button>
@@ -222,7 +224,7 @@ export default function NoShow() {
                               size="icon"
                               className="h-7.5 w-7.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 transition-colors shrink-0"
                               onClick={() => handleSMS(appt.phone, appt.patient_name)}
-                              title="SMS yuborish"
+                              title={t('recall.sendSms') || "SMS yuborish"}
                             >
                               <MessageSquare className="w-3 h-3" />
                             </Button>
@@ -232,7 +234,7 @@ export default function NoShow() {
                                 size="icon"
                                 className="h-7.5 w-7.5 rounded-lg bg-slate-50 text-slate-450 hover:bg-slate-900 hover:text-white transition-all shrink-0 animate-none p-0"
                                 onClick={() => navigate(`/patients/${appt.patient_id}`)}
-                                title="Bemor profili"
+                                title={t('noShow.patientProfile') || "Bemor profili"}
                               >
                                 <ChevronRight className="w-3.5 h-3.5" />
                               </Button>
@@ -255,8 +257,8 @@ export default function NoShow() {
                     layout
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group"
+                    transition={{ delay: Math.min(index, 6) * 0.02 }}
+                    className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group content-visibility-auto"
                   >
                     <div className="p-3.5">
                       <div className="flex items-start justify-between mb-3 gap-2">
@@ -268,11 +270,11 @@ export default function NoShow() {
                             <h3 className="text-sm font-bold text-slate-800 tracking-tight truncate max-w-[150px]">
                               {appt.patient_name}
                             </h3>
-                            <p className="text-[10px] text-slate-400 font-mono mt-0.5">{appt.phone || "Telefon yo'q"}</p>
+                            <p className="text-[10px] text-slate-400 font-mono mt-0.5">{appt.phone || t('noShow.noPhone') || "Telefon yo'q"}</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Yo'qotilgan</p>
+                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{t('noShow.table.lost') || 'Yo\'qotilgan'}</p>
                           <p className="text-sm font-bold text-rose-600 tracking-tight">
                             -{appt.price ? formatCurrency(appt.price).replace(" so'm", "") : '0'} <span className="text-[8px] opacity-60">UZS</span>
                           </p>
@@ -319,7 +321,7 @@ export default function NoShow() {
                               variant="ghost" 
                               size="icon"
                               onClick={() => navigate(`/patients/${appt.patient_id}`)}
-                              className="h-8 w-8 rounded-lg bg-slate-50 text-slate-400 p-0 hover:bg-slate-100"
+                              className="h-8 w-8 rounded-lg bg-slate-50 text-slate-450 p-0 hover:bg-slate-100"
                             >
                               <ChevronRight className="w-3.5 h-3.5" />
                             </Button>

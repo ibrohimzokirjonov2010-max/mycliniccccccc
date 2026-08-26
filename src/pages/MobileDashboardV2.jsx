@@ -6,7 +6,6 @@ import {
   UserPlus, CalendarPlus, Phone, Clock, ChevronRight, DollarSign, Activity, Heart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { base44 } from '@/api/base44Client';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import { formatCurrency } from '@/lib/utils';
 import { useAuth } from '@/lib/AuthContext';
@@ -145,9 +144,9 @@ export default function MobileDashboardV2() {
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.08 }}
+      transition={{ delay: Math.min(index, 6) * 0.02 }}
       onClick={() => navigate('/appointments')}
-      className="flex items-center gap-3 bg-white rounded-xl p-3 mb-2 shadow-[0_2px_8px_rgba(0,0,0,0.04)] active:scale-[0.98] transition-transform"
+      className="flex items-center gap-3 bg-white rounded-xl p-3 mb-2 shadow-[0_2px_8px_rgba(0,0,0,0.04)] active:scale-[0.98] transition-transform content-visibility-auto"
     >
       {/* Avatar */}
       <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getAvatarGradient(app.patient_name)} flex items-center justify-center text-white text-sm font-semibold flex-shrink-0`}>
@@ -199,7 +198,7 @@ export default function MobileDashboardV2() {
 
   return (
     <PullToRefresh onRefresh={loadData}>
-      <div className="min-h-screen bg-slate-50 pb-20">
+      <div className="min-h-screen bg-slate-50 pb-28">
         {/* Premium Header */}
         <div className="bg-white border-b border-slate-50 shadow-sm">
           <div className="px-5 py-6">
@@ -331,9 +330,9 @@ export default function MobileDashboardV2() {
                     <motion.div 
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
+                      transition={{ delay: Math.min(index, 6) * 0.02 }}
                       key={index} 
-                      className="flex items-center gap-3 p-3 active:bg-slate-50 transition-colors"
+                      className="flex items-center gap-3 p-3 active:bg-slate-50 transition-colors content-visibility-auto"
                     >
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
                         isPayment ? 'bg-emerald-50' : 'bg-blue-50'
@@ -375,8 +374,8 @@ export default function MobileDashboardV2() {
           </div>
         </div>
 
-        {/* Bottom spacing */}
-        <div className="h-8" />
+        {/* Bottom spacing — Tab Bar uchun joy */}
+        <div className="h-24" />
       </div>
     </PullToRefresh>
   );

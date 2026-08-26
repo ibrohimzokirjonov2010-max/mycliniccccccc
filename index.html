@@ -2,22 +2,55 @@
 <html lang="uz">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/logo.png" />
+
+    <!-- ===================== ICONS ===================== -->
+    <link rel="icon" type="image/svg+xml" href="/icon-192x192.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-192x192.svg" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon-192x192.svg" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/icon-192x192.svg" />
+
+    <!-- ===================== VIEWPORT ===================== -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#3b82f6" />
+
+    <!-- ===================== THEME ===================== -->
+    <meta name="theme-color" content="#1499AD" />
+    <meta name="msapplication-TileColor" content="#1499AD" />
+    <meta name="msapplication-navbutton-color" content="#1499AD" />
+
+    <!-- ===================== PWA — iOS (Safari) ===================== -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="My Clinic" />
+
+    <!-- ===================== PWA — Android / General ===================== -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="application-name" content="My Clinic" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="MobileOptimized" content="320" />
+
+    <!-- ===================== PWA MANIFEST ===================== -->
     <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/logo.png" />
-    <title>My Clinic — Professional Dental CRM & Management System</title>
+
+    <!-- ===================== iOS SPLASH SCREENS ===================== -->
+    <!-- iPhone 14 Pro Max -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="/icon-512x512.svg" />
+    <!-- iPhone 14 / 13 -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="/icon-512x512.svg" />
+    <!-- iPhone SE -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" href="/icon-512x512.svg" />
+
+    <!-- ===================== SEO ===================== -->
+    <title>My Clinic — Professional Dental CRM &amp; Management System</title>
     <meta name="description" content="My Clinic — O'zbekistondagi eng zamonaviy stomatologik klinika boshqaruv tizimi. Bemorlar, to'lovlar va davolash rejalari uchun professional yechim." />
     <meta name="keywords" content="stomatologiya, crm, klinika boshqaruvi, dental software, uzbekistan dental" />
+
+    <!-- ===================== Open Graph ===================== -->
     <meta property="og:title" content="My Clinic — Stomatologik CRM" />
     <meta property="og:description" content="Zamonaviy klinika boshqaruv tizimi" />
-    <meta property="og:image" content="/logo.png" />
+    <meta property="og:image" content="/icon-512x512.svg" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://app-shahobidin-4.vercel.app" />
   </head>
   <body>
     <div id="root"></div>

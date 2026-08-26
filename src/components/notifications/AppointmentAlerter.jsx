@@ -1,7 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { notificationStore } from '@/lib/notificationStore';
 
 /**
@@ -11,7 +11,9 @@ import { notificationStore } from '@/lib/notificationStore';
  */
 export default function AppointmentAlerter() {
   const { user } = useAuth();
-  const [alertedIds, setAlertedIds] = useState(new Set());
+  // 🔑 useRef ishlatamiz (useState emas) — ref o'zgarganda useEffect qayta ishga tushmaydi!
+  // useState alertedIds → setAlertedIds → [alertedIds] dep → infinite loop edi!
+  const alertedIdsRef = useRef(new Set());
   const timerRef = useRef(null);
 
   // Request browser notification permission
@@ -41,9 +43,9 @@ export default function AppointmentAlerter() {
         const diffMinutes = Math.round((appDate - now) / 60000);
 
         // Check if it's exactly 20 minutes away (or 19-21 to be safe against interval skips)
-        if (diffMinutes >= 19 && diffMinutes <= 21 && !alertedIds.has(app.id)) {
+        if (diffMinutes >= 19 && diffMinutes <= 21 && !alertedIdsRef.current.has(app.id)) {
+          alertedIdsRef.current.add(app.id); // ref ni yangilaymiz — re-render yo'q!
           sendNotification(app);
-          setAlertedIds(prev => new Set([...prev, app.id]));
         }
       });
     } catch (err) {
@@ -91,16 +93,22 @@ export default function AppointmentAlerter() {
   };
 
   useEffect(() => {
-    // Check every 60 seconds
+    if (!user) return;
+    // 🔑 [user] — faqat user o'zgarganda qayta ishga tushadi (alertedIds EMAS!)
+    // Ilgari [user, alertedIds] edi → setAlertedIds → loop → 100+ API req/min edi!
     timerRef.current = setInterval(checkAppointments, 60000);
     
     // Initial check
     checkAppointments();
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
-  }, [user, alertedIds]);
+  }, [user]); // ← alertedIds OLIB TASHLANDI
 
   return null; // Background component
 }
+

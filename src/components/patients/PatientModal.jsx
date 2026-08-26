@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { applyPhoneMask, capitalizeName, validateAddress, capitalizeAsYouType } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { User, X } from 'lucide-react';
 
 /**
  * Patient status options
@@ -16,7 +17,15 @@ const PATIENT_STATUSES = ['new', 'active', 'in treatment', 'waiting', 'inactive'
 /**
  * Patient source options
  */
-const PATIENT_SOURCES = ['Telegram', 'Instagram', 'Google', 'Website', 'Tavsiya', 'Call', 'Boshqa'];
+const PATIENT_SOURCES = [
+  { value: 'Telegram', labelKey: 'Telegram' },
+  { value: 'Instagram', labelKey: 'Instagram' },
+  { value: 'Google', labelKey: 'Google' },
+  { value: 'Website', labelKey: 'Website' },
+  { value: 'Tavsiya', labelKey: 'Recommendation' },
+  { value: 'Call', labelKey: 'Call' },
+  { value: 'Boshqa', labelKey: 'Other' }
+];
 
 /**
  * PatientModal Component
@@ -101,7 +110,7 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
       return false;
     }
     if (form.address && !validateAddress(form.address)) {
-      setError("Iltimos, manzilni to'g'ri kiriting (masalan: Toshkent sh., Chilonzor tumani)");
+      setError(t('patients.addressError'));
       return false;
     }
     return true;
@@ -159,12 +168,30 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditMode ? t('patients.editPatient') : t('patients.addNew')}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] p-0 rounded-[2.5rem] border-0 shadow-2xl bg-white/95 backdrop-blur-xl flex flex-col overflow-visible">
+        
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 px-6 py-4 flex items-center justify-between shrink-0 rounded-t-[2.5rem]">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm">
+              <User className="w-5 h-5 stroke-[2.5]" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
+                {isEditMode ? t('patients.editPatient') : t('patients.addNew')}
+              </DialogTitle>
+              <p className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('patients.patientInfo')}</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleClose}
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95 border-none cursor-pointer"
+          >
+            <X className="w-4.5 h-4.5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 no-scrollbar">
 
         {/* Error message */}
         {error && (
@@ -267,13 +294,13 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
           {/* Important Info (Medical warnings) */}
           <div>
             <Label htmlFor="important_info" className="flex items-center gap-1">
-              <span>{t('patientProfile.importantInfo') || "Muhim ma'lumot (Allergiya, kasalliklar, xavf)"}</span>
+              <span>{t('patients.importantInfo')}</span>
             </Label>
             <Input
               id="important_info"
               value={form.important_info}
               onChange={e => handleChange('important_info', e.target.value)}
-              placeholder="Masalan: Lidokain allergiyasi, qandli diabet, gipertoniya"
+              placeholder={t('patients.importantInfoPlaceholder')}
               disabled={saving}
               className="text-rose-600 placeholder-rose-300 font-semibold"
             />
@@ -292,29 +319,32 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
               </SelectTrigger>
               <SelectContent>
                 {PATIENT_SOURCES.map(s => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                  <SelectItem key={s.value} value={s.value}>{t(`patients.sources.${s.labelKey}`)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              disabled={saving}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={saving || !isValid}
-              className="bg-primary hover:bg-primary/90 min-w-[100px]"
-            >
-              {saving ? t('treatmentPlan.saving') : (isEditMode ? t('common.update') : t('common.save'))}
-            </Button>
-          </div>
+        </div>
+      </div>
+
+      {/* Actions Footer */}
+      <div className="px-6 py-4 bg-slate-55 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0 rounded-b-[2.5rem]">
+          <Button
+            variant="ghost"
+            onClick={handleClose}
+            disabled={saving}
+            className="h-10 rounded-xl font-black uppercase text-[10px] tracking-wider text-slate-400 hover:bg-slate-100/50 px-4 border-none"
+          >
+            {t('common.cancel')}
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving || !isValid}
+            className="h-10 px-6 rounded-xl font-black uppercase text-xs tracking-wider border-none relative overflow-hidden shadow-md bg-slate-950 hover:bg-slate-900 text-white"
+          >
+            {saving ? t('treatmentPlan.saving') : (isEditMode ? t('common.update') : t('common.save'))}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

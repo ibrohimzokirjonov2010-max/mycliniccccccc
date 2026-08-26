@@ -1,24 +1,24 @@
-import { useState, useEffect, useRef } from 'react';
-import { useLocation, Link } from 'react-router-dom';
-import { Plus, Search, DollarSign, TrendingUp, Wallet, Filter, Calendar, Receipt, X, Trash2, Download, Clock, PlusCircle, Phone, CreditCard, Banknote, FileText, ChevronRight, Printer } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/lib/queryKeys';
+import { useLocation } from 'react-router-dom';
+import { Plus, Search, TrendingUp, Wallet, Filter, Calendar, Receipt, X, Trash2, Download, Clock, PlusCircle, Phone, CreditCard, Banknote, FileText, Printer } from 'lucide-react';
 import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import EmptyState from '../components/ui/EmptyState';
 import PatientModal from '../components/patients/PatientModal';
 import PatientSelect from '../components/patients/PatientSelect';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useTranslation } from '@/i18n/LanguageContext';
-import { toast } from 'react-hot-toast';
-import { cn, formatPhone } from '@/lib/utils';
+import { toast } from 'sonner';
+import { formatPhone } from '@/lib/utils';
 import { format } from 'date-fns';
-import jsPDF from 'jspdf';
 
 const CATEGORY_TRANSLATIONS = {
   'treatment': 'Davolash',
@@ -71,19 +71,32 @@ const formatCategory = (category) => {
   return prefix ? `${prefix.trim()}: ${translatedBase}${toothSuffix}` : translatedBase + toothSuffix;
 };
 
-const getPaymentMethodLabel = (method) => {
-  if (method === 'Card') return 'Plastik karta';
-  if (method === 'Transfer') return 'Bank o‘tkazma';
-  if (method === 'Cash') return 'Naqd pul';
+const getPaymentMethodLabel = (method, t) => {
+  if (!t) {
+    if (method === 'Card') return 'Plastik karta';
+    if (method === 'Transfer') return 'Bank o‘tkazma';
+    if (method === 'Cash') return 'Naqd pul';
+    return method || '—';
+  }
+  if (method === 'Card') return t('payments.methods.Card') || 'Plastik karta';
+  if (method === 'Transfer') return t('payments.methods.Transfer') || 'Bank o‘tkazma';
+  if (method === 'Cash') return t('payments.methods.Cash') || 'Naqd pul';
   return method || '—';
 };
 
-const getPaymentTypeLabel = (type) => {
-  if (type === 'Expense') return 'Chiqim';
-  if (type === 'Refund') return 'Qaytarish';
-  if (type === 'Discount') return 'Chegirma';
-  if (type === 'Debt') return 'Qarz';
-  return 'Kirim';
+const getPaymentTypeLabel = (type, t) => {
+  if (!t) {
+    if (type === 'Expense') return 'Chiqim';
+    if (type === 'Refund') return 'Qaytarish';
+    if (type === 'Discount') return 'Chegirma';
+    if (type === 'Debt') return 'Qarz';
+    return 'Kirim';
+  }
+  if (type === 'Expense') return t('payments.types.Expense') || 'Chiqim';
+  if (type === 'Refund') return t('payments.types.Refund') || 'Qaytarish';
+  if (type === 'Discount') return t('payments.types.Discount') || 'Chegirma';
+  if (type === 'Debt') return t('payments.types.Debt') || 'Qarz';
+  return t('payments.types.Income') || 'Kirim';
 };
 
 const extractPaymentProcedures = (payment) => {
@@ -118,14 +131,16 @@ export default function Payments() {
   const { t } = useTranslation();
   const location = useLocation();
   const { user, isDoctor } = useAuth();
+  const queryClient = useQueryClient();
 
-  const [payments, setPayments] = useState([]);
-  const [patients, setPatients] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [doctors, setDoctors] = useState([]);
-  const loadingTimerRef = useRef(null);
+  // ── Pagination & search state ───────────────────────────────────────
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadingTimerRef = useRef(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [newPatientOpen, setNewPatientOpen] = useState(false);
   const getInitialTime = () => {
@@ -150,36 +165,161 @@ export default function Payments() {
   const [editPayment, setEditPayment] = useState(null);
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
   const [patientServices, setPatientServices] = useState([]);
-  const [selectedServiceId, setSelectedServiceId] = useState(''); // tanlangan xizmat id si
+  const [selectedServiceId, setSelectedServiceId] = useState('');
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [invoiceData, setInvoiceData] = useState(null);
   const invoiceRef = useRef(null);
-  const [selectedPaymentDebt, setSelectedPaymentDebt] = useState(null); // dialog uchun real qarz
-  const [selectedPaymentPatientData, setSelectedPaymentPatientData] = useState(null); // dialog uchun bemorning real-time hisobi
-  const [patientCurrentTotals, setPatientCurrentTotals] = useState({}); // barcha bemorlarning real-time qarzlari va to'lovlari
-  const [stats, setStats] = useState({ totalRevenue: 0, monthRevenue: 0, todayRevenue: 0, totalCount: 0 });
+  const [selectedPaymentDebt, setSelectedPaymentDebt] = useState(null);
+  const [selectedPaymentPatientData, setSelectedPaymentPatientData] = useState(null);
+  const [patientCurrentTotals, setPatientCurrentTotals] = useState({});
   const [isMobile, setIsMobile] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
-  // Modal ichidagi bemor uchun real-time hisoblangan qarz
   const [realPatientDebt, setRealPatientDebt] = useState(null);
   const [loadingDebt, setLoadingDebt] = useState(false);
   const [patientBalances, setPatientBalances] = useState({});
   const [patientPlans, setPatientPlans] = useState([]);
   const [selectedPlanForInvoice, setSelectedPlanForInvoice] = useState(null);
   const [showPlanInvoiceModal, setShowPlanInvoiceModal] = useState(false);
-
-  // Patient payments history for Detail dialog
   const [patientPaymentsHistory, setPatientPaymentsHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
+  // ── Debounce search ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(0);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Responsive check
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // ── React Query: Payments list (paginated + searchable) ─────────────────
+  const {
+    data: paymentsPageData,
+    isFetching: paymentsFetching,
+  } = useQuery({
+    queryKey: QUERY_KEYS.payments(debouncedSearch, page),
+    queryFn: async () => {
+      const offset = page * PAGE_SIZE;
+      const pays = debouncedSearch
+        ? await base44.entities.Payment.search(debouncedSearch, PAGE_SIZE, offset)
+        : await base44.entities.Payment.list('-date', PAGE_SIZE, offset);
+      return pays || [];
+    },
+    enabled: !!user,
+    staleTime: 3 * 60 * 1000,
+    placeholderData: (prev) => prev, // Eski ma'lumot search paytida ko'rinib turadi
+  });
+
+  // Paginated payments with deduplication
+  const [payments, setPayments] = useState([]);
+  const [patients, setPatients] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const loading = paymentsFetching && payments.length === 0;
+
+  // Merge paginated data + fetch missing patients
+  useEffect(() => {
+    if (!paymentsPageData) return;
+    const rawPays = paymentsPageData;
+    const validPays = [...rawPays].sort((a, b) => {
+      const ta = a.created_date || a.created_at || a.date || '';
+      const tb = b.created_date || b.created_at || b.date || '';
+      return tb.localeCompare(ta);
+    });
+
+    const applyPage = async () => {
+      // Fetch missing patients
+      let currentPatients = patients;
+      const existingIds = new Set(currentPatients.map(p => p.id));
+      const missingIds = [...new Set(validPays.map(p => p.patient_id).filter(id => id && !existingIds.has(id)))];
+      if (missingIds.length > 0) {
+        try {
+          const fetched = await Promise.all(missingIds.map(id => base44.entities.Patient.read(id).catch(() => null)));
+          currentPatients = [...currentPatients, ...fetched.filter(Boolean)];
+        } catch {}
+      }
+
+      if (page === 0) {
+        const seen = new Set();
+        setPayments(validPays.filter(p => { if (!p.id || seen.has(p.id)) return false; seen.add(p.id); return true; }));
+        setPatients(currentPatients);
+      } else {
+        setPayments(prev => {
+          const seen = new Set(prev.map(p => p.id));
+          return [...prev, ...validPays.filter(p => p.id && !seen.has(p.id))];
+        });
+        setPatients(currentPatients);
+      }
+      setHasMore(rawPays.length === PAGE_SIZE);
+      setLoadingMore(false);
+    };
+    applyPage();
+   
+  }, [paymentsPageData, page]);
+
+  // ── React Query: Stats (10 daqiqa kesh — sahifa ochilganda 1 marta yuklanadi) ─
+  const { data: statsData } = useQuery({
+    queryKey: QUERY_KEYS.paymentStats,
+    queryFn: async () => {
+      const allPays = await base44.entities.Payment.list('-date', 500, 0);
+      return allPays || [];
+    },
+    enabled: !!user,
+    staleTime: 10 * 60 * 1000, // 10 daqiqa — statsni har search da qayta yuklamaslik
+  });
+
+  const stats = useMemo(() => {
+    if (!statsData) return { totalRevenue: 0, monthRevenue: 0, todayRevenue: 0, totalCount: 0 };
+    const today = new Date().toISOString().split('T')[0];
+    const incomePays = statsData.filter(p => !p.type || p.type?.toLowerCase() === 'income');
+    return {
+      totalRevenue: incomePays.reduce((s, p) => s + (Number(p.amount) || 0), 0),
+      monthRevenue: incomePays.filter(p => (p.date || '').slice(0, 7) === today.slice(0, 7)).reduce((s, p) => s + (Number(p.amount) || 0), 0),
+      todayRevenue: incomePays.filter(p => (p.date || '').slice(0, 10) === today).reduce((s, p) => s + (Number(p.amount) || 0), 0),
+      totalCount: statsData.length,
+    };
+  }, [statsData]);
+
+  // ── React Query: Patients + Doctors (initial load only) ──────────────────
+  const { data: initialPatients = [] } = useQuery({
+    queryKey: QUERY_KEYS.patients,
+    queryFn: () => base44.entities.Patient.list('full_name', 200),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
+  const { data: initialDoctors = [] } = useQuery({
+    queryKey: QUERY_KEYS.doctors,
+    queryFn: () => base44.entities.User.filter({ role: 'doctor' }, 'name'),
+    enabled: !!user,
+    staleTime: 10 * 60 * 1000,
+  });
+  // Seed patients/doctors from query cache on first load
+  useEffect(() => {
+    if (initialPatients.length > 0 && patients.length === 0) setPatients(initialPatients);
+  }, [initialPatients]);
+  useEffect(() => {
+    if (initialDoctors.length > 0 && doctors.length === 0) setDoctors(initialDoctors);
+  }, [initialDoctors]);
+
+  // Pagination: load next page
+  useEffect(() => {
+    if (page > 0) setLoadingMore(true);
+  }, [page]);
+
+  // Patient payments history
   const loadPatientPaymentsHistory = async (patientId) => {
     if (!patientId) return;
     setLoadingHistory(true);
     try {
       const history = await base44.entities.Payment.filter({ patient_id: patientId }, '-date', 1000);
-      // Filter out Expenses or only show Income/Refund? The user wants to see "all paid sums" (barcha to'lagan summalari).
-      // We will show all, but typically they care about payments. Let's list all payments.
       setPatientPaymentsHistory(history || []);
     } catch (err) {
       console.error('Failed to load patient payments history:', err);
@@ -206,147 +346,12 @@ export default function Payments() {
     }
   }, [editPayment]);
 
-  // Responsive check
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const PAGE_SIZE = 50;
-
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(0);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  // Load stats separately from all payments (not limited by PAGE_SIZE)
-  const loadStats = async () => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-
-      // Fetch recent payments for stats (500 records — enough for accurate monthly stats)
-      const allPays = await base44.entities.Payment.list('-date', 500, 0);
-      const incomePays = (allPays || []).filter(p => !p.type || p.type?.toLowerCase() === 'income');
-
-      const totalRevenue = incomePays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-      const monthRevenue = incomePays
-        .filter(p => (p.date || '').slice(0, 7) === today.slice(0, 7))
-        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-      const todayRevenue = incomePays
-        .filter(p => (p.date || '').slice(0, 10) === today)
-        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-
-      setStats({ totalRevenue, monthRevenue, todayRevenue, totalCount: (allPays || []).length });
-    } catch (err) {
-      console.error('Stats load error:', err);
-    }
+  // onSaved: to'lov saqlangandan keyin keshni yangilash
+  const invalidatePayments = () => {
+    queryClient.invalidateQueries({ queryKey: ['payments'] });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.paymentStats });
   };
 
-  const load = async (isNewSearch = false) => {
-    try {
-      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
-      
-      if (isNewSearch) {
-        if (payments.length === 0) {
-          loadingTimerRef.current = setTimeout(() => {
-            setLoading(true);
-          }, 150);
-        }
-      } else {
-        setLoadingMore(true);
-      }
-
-      // Always use current page state for pagination
-      const currentPage = isNewSearch ? 0 : page;
-      const offset = currentPage * PAGE_SIZE;
-
-      const [pays, pats, docs] = await Promise.all([
-        debouncedSearch 
-          ? base44.entities.Payment.search(debouncedSearch, PAGE_SIZE, offset)
-          : base44.entities.Payment.list('-created_date', PAGE_SIZE, offset),
-        isNewSearch ? base44.entities.Patient.list('full_name', 200) : Promise.resolve(patients),
-        isNewSearch ? base44.entities.User.filter({ role: 'doctor' }, 'name') : Promise.resolve(doctors),
-      ]);
-
-      const rawPays = pays || [];
-
-      // Sort newest first (by created_date, fallback to created_at/date)
-      const validPays = [...rawPays].sort((a, b) => {
-        const ta = a.created_date || a.created_at || a.date || '';
-        const tb = b.created_date || b.created_at || b.date || '';
-        return tb.localeCompare(ta);
-      });
-      
-      // Dynamic fetch of missing patients to ensure phone and debt display properly
-      let currentPatients = isNewSearch ? (pats || []) : patients;
-      const existingPatientIds = new Set(currentPatients.map(p => p.id));
-      const missingPatientIds = [...new Set(validPays.map(p => p.patient_id).filter(id => id && !existingPatientIds.has(id)))];
-      
-      if (missingPatientIds.length > 0) {
-        try {
-          const fetchedMissing = await Promise.all(
-            missingPatientIds.map(id => base44.entities.Patient.read(id).catch(() => null))
-          );
-          const validMissing = fetchedMissing.filter(Boolean);
-          currentPatients = [...currentPatients, ...validMissing];
-        } catch (err) {
-          console.error("Error fetching missing patients:", err);
-        }
-      }
-
-      if (isNewSearch) {
-        // Deduplicate by ID on fresh load
-        const seen = new Set();
-        const uniquePays = validPays.filter(p => {
-          if (!p.id || seen.has(p.id)) return false;
-          seen.add(p.id);
-          return true;
-        });
-        setPayments(uniquePays);
-        setPage(0);
-        setPatients(currentPatients);
-        setDoctors(docs || []);
-        setHasMore(rawPays.length === PAGE_SIZE);
-      } else {
-        // Append new page but deduplicate against existing
-        setPayments(prev => {
-          const seen = new Set(prev.map(p => p.id));
-          const newItems = validPays.filter(p => p.id && !seen.has(p.id));
-          return [...prev, ...newItems];
-        });
-        setPatients(currentPatients);
-        setHasMore(rawPays.length === PAGE_SIZE);
-      }
-
-    } catch (error) {
-      console.error('Error loading payments:', error);
-    } finally {
-      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user) {
-      load(true);
-      loadStats();
-    }
-  }, [user, debouncedSearch]);
-
-  useEffect(() => {
-    if (page > 0) load(false);
-  }, [page]);
-
-  // Deduplicate by ID and sort newest first (created_date desc, then created_at desc, then date desc)
   const filteredPayments = (() => {
     const seen = new Set();
     return [...payments]
@@ -364,7 +369,9 @@ export default function Payments() {
 
   const displayPayments = filteredPayments.filter(p => {
     const t = String(p.type || 'Income').toLowerCase();
-    return t === 'income' || t === 'expense' || t === 'refund';
+    // Show all payment types — Income, Expense, Refund, Debt, Discount
+    // Hiding Debt caused the table to appear empty when most payments were of type Debt
+    return t === 'income' || t === 'expense' || t === 'refund' || t === 'debt' || t === 'discount';
   });
 
   // Calculate patient balances from already-loaded payments (no extra API calls)
@@ -601,7 +608,7 @@ export default function Payments() {
           }
 
           // Stats va ro'yxatni yangilash
-          await Promise.all([load(true), loadStats()]);
+          invalidatePayments();
         } catch (bgErr) {
           console.error('Background update error:', bgErr);
         }
@@ -665,7 +672,7 @@ export default function Payments() {
 
 
       toast.success('O\'chirildi va qarz qayta hisoblandi');
-      await Promise.all([load(true), loadStats()]);
+      invalidatePayments();
     } catch (error) {
       toast.error('O\'chirishda xatolik');
     }
@@ -685,7 +692,7 @@ export default function Payments() {
       await base44.entities.Payment.update(id, { doctor_id: docId });
       toast.success('Shifokor biriktirildi');
       setEditPayment(null);
-      load();
+      invalidatePayments();
     } catch (error) {
       console.error('handleAssignDoctor error:', error);
       toast.error('Xatolik yuz berdi: ' + (error?.message || error || 'Unknown error'));
@@ -961,9 +968,9 @@ export default function Payments() {
       {/* Analytics Mini Dashboard */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: t('payments.totalIncome'), value: formatCurrency(stats.totalRevenue), color: 'from-[#1499AD] to-[#0E7A8A]', icon: TrendingUp, detail: 'Umumiy tushum' },
-          { label: t('payments.thisMonth'), value: formatCurrency(stats.monthRevenue), color: 'from-emerald-500 to-teal-600', icon: Calendar, detail: 'Joriy oy' },
-          { label: t('payments.todayIncome'), value: formatCurrency(stats.todayRevenue), color: 'from-blue-600 to-indigo-700', icon: Clock, detail: 'Bugun' }
+          { label: t('payments.totalIncome'), value: formatCurrency(stats.totalRevenue), color: 'from-[#1499AD] to-[#0E7A8A]', icon: TrendingUp, detail: t('payments.totalRevenueDetail') || 'Umumiy tushum' },
+          { label: t('payments.thisMonth'), value: formatCurrency(stats.monthRevenue), color: 'from-emerald-500 to-teal-600', icon: Calendar, detail: t('payments.thisMonthDetail') || 'Joriy oy' },
+          { label: t('payments.todayIncome'), value: formatCurrency(stats.todayRevenue), color: 'from-blue-600 to-indigo-700', icon: Clock, detail: t('payments.todayDetail') || 'Bugun' }
         ].map((stat, i) => (
           <motion.div
             key={i}
@@ -1005,11 +1012,11 @@ export default function Payments() {
         <div className="flex items-center gap-1.5 w-full md:w-auto">
             <button className="h-9 px-4 bg-white border border-slate-100 rounded-xl flex items-center gap-1.5 text-[9px] font-black text-slate-500 uppercase tracking-widest hover:border-[#1499AD] transition-all">
                 <Filter className="w-3 h-3" />
-                Filtr
+                {t('common.filter') || 'Filtr'}
             </button>
-            <button className="h-9 px-4 bg-white border border-slate-100 rounded-xl flex items-center gap-1.5 text-[9px] font-black text-slate-500 uppercase tracking-widest hover:border-[#1499AD] transition-all" onClick={() => toast.success('Eksport qilinmoqda...')}>
+            <button className="h-9 px-4 bg-white border border-slate-100 rounded-xl flex items-center gap-1.5 text-[9px] font-black text-slate-500 uppercase tracking-widest hover:border-[#1499AD] transition-all" onClick={() => toast.success(t('common.exporting') || 'Eksport qilinmoqda...')}>
                 <Download className="w-3 h-3" />
-                Eksport
+                {t('common.export') || 'Eksport'}
             </button>
         </div>
       </div>
@@ -1037,8 +1044,8 @@ export default function Payments() {
               <tr className="bg-slate-50/70 border-b border-slate-100">
                 <th className="py-3 px-4 text-left text-[9px] font-black text-[#1499AD] uppercase tracking-[0.15em]">{t('patients.fullName')}</th>
                 <th className="py-3 px-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">{t('payments.service')}</th>
-                <th className="py-3 px-4 text-left text-[9px] font-black text-emerald-500 uppercase tracking-[0.15em]">To'lov summasi</th>
-                <th className="py-3 px-4 text-left text-[9px] font-black text-rose-400 uppercase tracking-[0.15em]">Qarz</th>
+                <th className="py-3 px-4 text-left text-[9px] font-black text-emerald-500 uppercase tracking-[0.15em]">{t('payments.amount') || "To'lov summasi"}</th>
+                <th className="py-3 px-4 text-left text-[9px] font-black text-rose-400 uppercase tracking-[0.15em]">{t('common.debt') || "Qarz"}</th>
                 <th className="py-3 px-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">{t('payments.doctor')}</th>
                 <th className="py-3 px-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">{t('appointments.date')}</th>
                 <th className="py-3 px-4"></th>
@@ -1057,7 +1064,7 @@ export default function Payments() {
                   <motion.tr 
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.02 }}
+                    transition={{ delay: Math.min(idx, 6) * 0.02 }}
                     key={p.id} 
                     className="group border-b border-slate-50 last:border-0 cursor-pointer hover:bg-[#1499AD]/[0.02] transition-colors"
                     onClick={() => openPaymentDetail(p)}
@@ -1080,7 +1087,7 @@ export default function Payments() {
                                   )}
                                   {pat?.total_debt != null && (
                                     <span className={`text-[9px] font-bold ${debtVal > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                      Qarz: {debtVal > 0 ? `${debtVal.toLocaleString()} UZS` : '✓ Qarz yo\'q'}
+                                      {t('common.debt') || 'Qarz'}: {debtVal > 0 ? `${debtVal.toLocaleString()} UZS` : ('✓ ' + (t('payments.noDebt') || 'Qarz yo\'q'))}
                                     </span>
                                   )}
                                 </div>
@@ -1099,19 +1106,17 @@ export default function Payments() {
                         )}
                       </div>
                     </td>
-                    {/* To'lov summasi */}
                     <td className="px-4 py-2.5">
                       <span className="text-[11px] font-black text-emerald-600">
                         {Number(p.amount || 0).toLocaleString()} <span className="text-[8px] text-emerald-300 font-bold">UZS</span>
                       </span>
                     </td>
-                    {/* Qarz — bemorning o'sha paytdagi qarzi */}
                     <td className="px-4 py-2.5">
                       <div className="flex flex-col gap-0.5">
                         <span className={`text-[11px] font-black ${debtVal > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
                           {debtVal > 0
                             ? <>{debtVal.toLocaleString()} <span className="text-[8px] text-rose-300 font-bold">UZS</span></>
-                            : '✓ To\'liq'}
+                            : ('✓ ' + (t('payments.fullyPaid') || 'To\'liq'))}
                         </span>
                       </div>
                     </td>
@@ -1120,7 +1125,7 @@ export default function Payments() {
                           <div className="flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.6)]" />
                             <span className="text-[10px] font-black text-slate-600 uppercase tracking-tight">
-                                {doctors.find(d => d.id === p.doctor_id)?.name || 'Shifokor'}
+                                {doctors.find(d => d.id === p.doctor_id)?.name || t('payments.doctor') || 'Shifokor'}
                             </span>
                           </div>
                        ) : (
@@ -1130,7 +1135,7 @@ export default function Payments() {
                           >
                              <PlusCircle className="w-3.5 h-3.5 text-slate-300 group-hover/btn:text-[#1499AD] transition-colors" />
                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest group-hover/btn:text-[#1499AD] transition-all">
-                                 Biriktirish
+                                 {t('payments.assign') || 'Biriktirish'}
                              </span>
                           </button>
                        )}
@@ -1172,8 +1177,37 @@ export default function Payments() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-20 text-center text-slate-300 uppercase font-black text-xs tracking-widest">
-                    To'lovlar topilmadi
+                  <td colSpan={8} className="py-20 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center">
+                        <Receipt className="w-7 h-7 text-slate-300" />
+                      </div>
+                      {debouncedSearch ? (
+                        <>
+                          <p className="text-sm font-black text-slate-400 uppercase tracking-wider">
+                            "{debouncedSearch}" bo'yicha to'lov topilmadi
+                          </p>
+                          <p className="text-[11px] text-slate-300 font-bold">
+                            Boshqa so'z yoki bemor ismi bilan qidirib ko'ring
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-black text-slate-400 uppercase tracking-wider">
+                            To'lovlar yuklanmadi
+                          </p>
+                          <p className="text-[11px] text-slate-300 font-bold max-w-xs">
+                            Ma'lumotlar bazasi bilan aloqa tekshirilmoqda. Sahifani yangilang yoki bir necha soniya kuting.
+                          </p>
+                          <button
+                            onClick={() => invalidatePayments()}
+                            className="mt-1 px-4 py-2 bg-[#1499AD] text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-[#0E7A8A] transition-all"
+                          >
+                            Qayta yuklash
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}
@@ -1205,9 +1239,9 @@ export default function Payments() {
             <motion.div 
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.03 }}
+              transition={{ delay: Math.min(idx, 6) * 0.02 }}
               key={p.id} 
-              className="premium-card p-4 border-none shadow-md shadow-slate-200/40 relative overflow-hidden active:scale-[0.99] transition-all cursor-pointer hover:bg-slate-50/50"
+              className="premium-card p-4 border-none shadow-md shadow-slate-200/40 relative overflow-hidden active:scale-[0.99] transition-all cursor-pointer hover:bg-slate-50/50 content-visibility-auto"
               onClick={() => openPaymentDetail(p)}
             >
               <div className="flex items-center justify-between mb-3">
@@ -1310,10 +1344,10 @@ export default function Payments() {
         <DialogContent className="max-w-xl p-0 overflow-hidden rounded-[2rem] border-none shadow-3xl">
           <div className="premium-bg-gradient px-8 py-5 text-white relative">
             <h2 className="text-xl font-[900] tracking-tighter uppercase mb-0.5">{t('payments.addNew')}</h2>
-            <p className="text-[10px] font-black text-white/50 tracking-[0.3em] uppercase">Mablag' qabul qilish</p>
+            <p className="text-[10px] font-black text-white/50 tracking-[0.3em] uppercase">{t('payments.receiveAmount') || "Mablag' qabul qilish"}</p>
           </div>
 
-          <div className="p-5 bg-white max-h-[80vh] overflow-y-auto no-scrollbar">
+          <div className="p-5 bg-white max-h-[65vh] overflow-y-auto no-scrollbar">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-3">
                    <div className="space-y-1.5 relative z-50">
@@ -1336,30 +1370,37 @@ export default function Payments() {
 
                    {/* Davolash rejalari va hisob-faktura ko'rish */}
                    {patientPlans && patientPlans.length > 0 && (
-                      <div className="space-y-2 pt-3 border-t border-slate-50 relative z-20">
-                        <Label className="text-[9px] font-black text-[#1499AD] uppercase tracking-widest ml-1 flex items-center gap-1.5">
-                          <Receipt className="w-3 h-3" /> Davolash rejalari
-                        </Label>
-                        <div className="flex flex-col gap-2">
+                      <div className="space-y-1.5 pt-2.5 border-t border-slate-100/85 relative z-20">
+                        <div className="flex items-center justify-between ml-1">
+                          <Label className="text-[9px] font-black text-[#1499AD] uppercase tracking-widest flex items-center gap-1.5">
+                            <Receipt className="w-3 h-3" /> {t('patientProfile.tabs.treatments') || 'Davolash rejalari'}
+                          </Label>
+                          {patientPlans.length > 2 && (
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                              ({patientPlans.length} ta)
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-1.5 max-h-[110px] overflow-y-auto pr-1">
                           {patientPlans.map(plan => {
                             const paid = Number(plan.paid_amount) || 0;
                             const total = Number(plan.total_price) || 0;
                             const remaining = Math.max(0, total - paid);
                             return (
-                              <div key={plan.id} className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
+                              <div key={plan.id} className="flex items-center justify-between bg-slate-50/50 hover:bg-slate-50 rounded-lg px-2.5 py-1.5 border border-slate-100 transition-all duration-200">
                                 <div className="flex-1 min-w-0 mr-2">
-                                  <p className="text-[11px] font-black text-slate-800 truncate">{plan.name || 'Davolash rejasi'}</p>
-                                  <p className="text-[10px] text-slate-500 font-medium">
-                                    Qarz: <span className={remaining > 0 ? 'text-rose-600 font-black' : 'text-emerald-600 font-black'}>{remaining.toLocaleString()} so'm</span>
+                                  <p className="text-[11px] font-black text-slate-800 truncate leading-snug">{plan.name || (t ? t('patientProfile.treatmentPlanSingular') : 'Davolash rejasi')}</p>
+                                  <p className="text-[10px] text-slate-500 font-medium leading-none mt-0.5">
+                                    {t('common.debt') || 'Qarz'}: <span className={remaining > 0 ? 'text-rose-600 font-black' : 'text-emerald-600 font-black'}>{remaining.toLocaleString()} {t('common.currency')}</span>
                                   </p>
                                 </div>
                                 <button
                                   type="button"
                                   onClick={() => { setSelectedPlanForInvoice(plan); setShowPlanInvoiceModal(true); }}
-                                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 text-[10px] font-black uppercase tracking-wide hover:bg-blue-100 active:scale-95 transition-all"
+                                  className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 border border-blue-100 text-blue-600 text-[9px] font-black uppercase tracking-wide hover:bg-blue-100 active:scale-95 transition-all"
                                 >
-                                  <FileText className="w-3 h-3" />
-                                  Faktura
+                                  <FileText className="w-2.5 h-2.5" />
+                                  {t('common.invoice') || 'Faktura'}
                                 </button>
                               </div>
                             );
@@ -1368,19 +1409,19 @@ export default function Payments() {
                       </div>
                     )}
 
-                    <div className="space-y-2 pt-3 border-t border-slate-50 relative z-10">
-                       <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">To'lov turi va usuli</Label>
+                    <div className="space-y-1.5 pt-2.5 border-t border-slate-100/85 relative z-10">
+                       <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">{t('payments.typeAndMethod') || "To'lov turi va usuli"}</Label>
                        <div className="grid grid-cols-2 gap-3">
                          <Select 
                            value={form.type} 
                            onValueChange={val => setForm({ ...form, type: val })}
                          >
                            <SelectTrigger className="h-11 rounded-xl border-none bg-slate-50 px-4 font-black text-slate-900 text-sm focus:ring-0">
-                             <SelectValue placeholder="Turi" />
+                             <SelectValue placeholder={t('payments.type') || "Turi"} />
                            </SelectTrigger>
                            <SelectContent className="rounded-xl border-none shadow-2xl">
-                              <SelectItem value="Income" className="font-bold py-2 text-emerald-600">Kirim (+)</SelectItem>
-                              <SelectItem value="Expense" className="font-bold py-2 text-rose-600">Chiqim (-)</SelectItem>
+                              <SelectItem value="Income" className="font-bold py-2 text-emerald-600">{t('payments.types.Income') || "Kirim"} (+)</SelectItem>
+                              <SelectItem value="Expense" className="font-bold py-2 text-rose-600">{t('payments.types.Expense') || "Chiqim"} (-)</SelectItem>
                            </SelectContent>
                          </Select>
 
@@ -1389,18 +1430,18 @@ export default function Payments() {
                            onValueChange={val => setForm({ ...form, method: val })}
                          >
                            <SelectTrigger className="h-11 rounded-xl border-none bg-slate-50 px-4 font-black text-slate-900 text-sm focus:ring-0">
-                             <SelectValue placeholder="Usuli" />
+                             <SelectValue placeholder={t('payments.method') || "Usuli"} />
                            </SelectTrigger>
                            <SelectContent className="rounded-xl border-none shadow-2xl">
-                              <SelectItem value="Cash" className="font-bold py-2">Naqd pul</SelectItem>
-                              <SelectItem value="Card" className="font-bold py-2">Plastik karta</SelectItem>
-                              <SelectItem value="Transfer" className="font-bold py-2">Bank/O'tkazma</SelectItem>
+                              <SelectItem value="Cash" className="font-bold py-2">{t('payments.methods.Cash') || "Naqd pul"}</SelectItem>
+                              <SelectItem value="Card" className="font-bold py-2">{t('payments.methods.Card') || "Plastik karta"}</SelectItem>
+                              <SelectItem value="Transfer" className="font-bold py-2">{t('payments.methods.Transfer') || "Bank/O'tkazma"}</SelectItem>
                            </SelectContent>
                          </Select>
                        </div>
                     </div>
 
-                    <div className="space-y-3 pt-3 border-t border-slate-50">
+                    <div className="space-y-2 pt-2.5 border-t border-slate-100/85">
                       <div className="space-y-1.5">
                          <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">{t('payments.doctor')}</Label>
                          <Select 
@@ -1511,7 +1552,7 @@ export default function Payments() {
           {/* Premium Footer */}
           <div className="px-6 py-4 bg-slate-100/30 border-t border-slate-50 flex items-center justify-between">
             <div className="flex flex-col">
-               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Jami Summa</span>
+               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('common.totalSum') || 'Jami Summa'}</span>
                <span className="text-lg font-[900] text-slate-900">{form.amount ? Number(form.amount).toLocaleString() : '—'} <span className="text-xs text-slate-300 font-black">UZS</span></span>
             </div>
             
@@ -1635,7 +1676,7 @@ export default function Payments() {
                   await base44.entities.Payment.update(editPayment.id, { doctor_id: selectedDoctorId });
                   toast.success('Shifokor biriktirildi ✓');
                   setEditPayment(null);
-                  load(true);
+                  invalidatePayments();
                 } catch (err) {
                   console.error(err);
                   toast.error('Xatolik: ' + (err?.message || 'Unknown'));
@@ -1659,9 +1700,9 @@ export default function Payments() {
           const pat = patients.find(pt => pt.id === sp.patient_id);
           const doc = doctors.find(d => d.id === sp.doctor_id);
           const isInstallment = !!(sp.notes && sp.notes.toLowerCase().includes('reja')) || !!sp.plan_id;
-          const methodLabel = getPaymentMethodLabel(sp.method);
+          const methodLabel = getPaymentMethodLabel(sp.method, t);
           const typeColor = sp.type === 'Expense' ? 'text-rose-600 bg-rose-50 border-rose-100' : sp.type === 'Refund' ? 'text-amber-600 bg-amber-50 border-amber-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100';
-          const typeLabel = getPaymentTypeLabel(sp.type);
+          const typeLabel = getPaymentTypeLabel(sp.type, t);
           const procedures = extractPaymentProcedures(sp);
           const paymentAmount = Number(sp.amount) || 0;
           const debtAtPaymentTime = selectedPaymentDebt != null
@@ -1677,11 +1718,11 @@ export default function Payments() {
                 <button onClick={() => setSelectedPayment(null)} className="absolute right-4 top-4 w-7 h-7 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
-                <p className="text-[9px] font-black text-white/50 uppercase tracking-[0.3em] mb-1">To'lov tafsilotlari</p>
+                <p className="text-[9px] font-black text-white/50 uppercase tracking-[0.3em] mb-1">{t('payments.details') || "To'lov tafsilotlari"}</p>
                 <h2 className="text-2xl sm:text-3xl font-[900] tracking-tight">{paymentAmount < 0 ? '' : '+'}{paymentAmount.toLocaleString()} <span className="text-sm font-bold text-white/60">UZS</span></h2>
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${typeColor}`}>{typeLabel}</span>
-                  {isInstallment && <span className="inline-flex items-center gap-1 text-[9px] font-black text-blue-100 bg-white/10 px-2 py-0.5 rounded-full"><Calendar className="w-2.5 h-2.5" />Muddatli to'lov</span>}
+                  {isInstallment && <span className="inline-flex items-center gap-1 text-[9px] font-black text-blue-100 bg-white/10 px-2 py-0.5 rounded-full"><Calendar className="w-2.5 h-2.5" />{t('payments.installment') || "Muddatli to'lov"}</span>}
                 </div>
               </div>
 
@@ -1689,39 +1730,39 @@ export default function Payments() {
               <div className="p-5 sm:p-6 bg-white space-y-4 max-h-[80vh] overflow-y-auto">
                 <div className="rounded-[1.5rem] border border-slate-200 overflow-hidden">
                   <div className="px-4 sm:px-5 py-3 bg-slate-50 border-b border-slate-200">
-                    <h3 className="text-[11px] font-black text-slate-700 uppercase tracking-[0.18em]">Bemor va shifokor ma'lumotlari</h3>
+                    <h3 className="text-[11px] font-black text-slate-700 uppercase tracking-[0.18em]">{t('payments.patientAndDoctorInfo') || "Bemor va shifokor ma'lumotlari"}</h3>
                   </div>
                   <div className="divide-y divide-slate-100">
                     <div className="grid grid-cols-[110px_1fr] gap-3 px-4 sm:px-5 py-3">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bemor</span>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('payments.patient') || "Bemor"}</span>
                       <div className="min-w-0">
                         <p className="text-[13px] sm:text-[14px] font-[900] text-slate-900 break-words">{sp.patient_name || '—'}</p>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
                           <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
                             <Phone className="w-3 h-3" />
-                            {pat?.phone ? formatPhone(pat.phone) : 'Telefon kiritilmagan'}
+                            {pat?.phone ? formatPhone(pat.phone) : (t('patients.noPhone') || 'Telefon kiritilmagan')}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="grid grid-cols-[110px_1fr] gap-3 px-4 sm:px-5 py-3">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Shifokor</span>
-                      <p className="text-[13px] sm:text-[14px] font-[900] text-slate-800 break-words">{doc?.name || doc?.full_name || 'Biriktirilmagan'}</p>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('payments.doctor') || "Shifokor"}</span>
+                      <p className="text-[13px] sm:text-[14px] font-[900] text-slate-800 break-words">{doc?.name || doc?.full_name || t('payments.unassigned') || 'Biriktirilmagan'}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                   <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">To'lov turi</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('payments.type') || "To'lov turi"}</p>
                     <p className="text-[12px] font-[900] text-slate-800">{typeLabel}</p>
                   </div>
                   <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">To'lov usuli</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('payments.method') || "To'lov usuli"}</p>
                     <p className="text-[12px] font-[900] text-slate-800">{methodLabel}</p>
                   </div>
                   <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Sana</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('payments.date') || "Sana"}</p>
                     <p className="text-[12px] font-[900] text-slate-800">
                       {hasValidDate ? format(dt, 'dd MMMM yyyy') : (sp.date ? format(new Date(sp.date), 'dd MMMM yyyy') : '—')}
                     </p>
@@ -1733,9 +1774,9 @@ export default function Payments() {
                     )}
                   </div>
                   <div className="p-3 rounded-2xl bg-rose-50 border border-rose-100">
-                    <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">Qolgan qarz</p>
+                    <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">{t('payments.remainingDebt') || 'Qolgan qarz'}</p>
                     <p className={`text-[13px] font-[900] ${debtAtPaymentTime > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                      {debtAtPaymentTime > 0 ? `${debtAtPaymentTime.toLocaleString()} so'm` : "To'liq yopilgan"}
+                      {debtAtPaymentTime > 0 ? `${debtAtPaymentTime.toLocaleString()} ${t('common.currency') || 'so\'m'}` : (t('payments.fullyPaid') || "To'liq yopilgan")}
                     </p>
                   </div>
                 </div>
@@ -1748,10 +1789,10 @@ export default function Payments() {
                   return (
                     <div className="rounded-[1.5rem] border border-slate-200 overflow-hidden">
                       <div className="px-4 sm:px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                        <h3 className="text-[11px] font-black text-slate-700 uppercase tracking-[0.18em]">Bemorning umumiy moliyaviy holati</h3>
+                        <h3 className="text-[11px] font-black text-slate-700 uppercase tracking-[0.18em]">{t('payments.overallFinancialStatus') || "Bemorning umumiy moliyaviy holati"}</h3>
                         {selectedPaymentPatientData?.totalDiscount > 0 && (
                           <span className="text-[10px] font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100">
-                            Chegirma: {selectedPaymentPatientData.totalDiscount.toLocaleString()} UZS
+                            {t('payments.types.Discount') || 'Chegirma'}: {selectedPaymentPatientData.totalDiscount.toLocaleString()} UZS
                           </span>
                         )}
                       </div>
@@ -1762,15 +1803,15 @@ export default function Payments() {
                           title="Barcha to'langan summalarni ko'rish"
                         >
                           <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1 flex items-center justify-between">
-                            <span>Jami to'langan</span>
-                            <span className="text-[8px] opacity-75">{showHistory ? '▲ yopish' : '▼ ko\'rish'}</span>
+                            <span>{t('payments.totalPaidLabel') || "Jami to'langan"}</span>
+                            <span className="text-[8px] opacity-75">{showHistory ? ('▲ ' + (t('common.close') || 'yopish')) : ('▼ ' + (t('common.view') || 'ko\'rish'))}</span>
                           </p>
-                          <p className="text-[14px] font-[900] text-emerald-700">{displayPaid.toLocaleString()} so'm</p>
+                          <p className="text-[14px] font-[900] text-emerald-700">{displayPaid.toLocaleString()} {t('common.currency') || 'so\'m'}</p>
                         </div>
                         <div className="p-3 rounded-2xl bg-amber-50 border border-amber-100">
-                          <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-1">Hozirgi qarz</p>
+                          <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-1">{t('payments.currentDebt') || 'Hozirgi qarz'}</p>
                           <p className={`text-[14px] font-[900] ${displayDebt > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
-                            {displayDebt > 0 ? `${displayDebt.toLocaleString()} so'm` : "Qarz yo'q"}
+                            {displayDebt > 0 ? `${displayDebt.toLocaleString()} ${t('common.currency') || 'so\'m'}` : (t('payments.noDebt') || "Qarz yo'q")}
                           </p>
                         </div>
                         <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
@@ -1786,18 +1827,18 @@ export default function Payments() {
                   <div className="rounded-[1.5rem] border border-slate-200 overflow-hidden bg-slate-50 p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                        To'lovlar tarixi
+                        {t('payments.history') || "To'lovlar tarixi"}
                       </h4>
-                      {loadingHistory && <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Yuklanmoqda...</span>}
+                      {loadingHistory && <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{t('common.loading') || "Yuklanmoqda..."}</span>}
                     </div>
                     {patientPaymentsHistory.length === 0 ? (
-                      <p className="text-xs text-slate-400 font-bold italic py-2">To'lovlar topilmadi</p>
+                      <p className="text-xs text-slate-400 font-bold italic py-2">{t('payments.noPayments') || "To'lovlar topilmadi"}</p>
                     ) : (
                       <div className="max-h-[180px] overflow-y-auto space-y-2 pr-1 no-scrollbar">
                         {patientPaymentsHistory.map((p, idx) => {
                           const pAmt = Number(p.amount) || 0;
                           const pType = p.type || 'Income';
-                          const pMethod = getPaymentMethodLabel(p.method);
+                          const pMethod = getPaymentMethodLabel(p.method, t);
                           const pDate = p.created_date || p.created_at || p.date;
                           const pDateFormatted = pDate ? new Date(pDate).toLocaleDateString('uz-UZ') : '—';
                           const pTimeFormatted = pDate ? new Date(pDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
@@ -1832,8 +1873,12 @@ export default function Payments() {
                 {/* Izoh */}
                 {sp.notes && (
                   <div className="p-4 bg-blue-50 rounded-[1.5rem] border border-blue-100">
-                    <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-1 flex items-center gap-1"><FileText className="w-3 h-3" />Izoh / Reja</p>
-                    <p className="text-[12px] font-bold text-blue-800 whitespace-pre-wrap break-words">{sp.notes}</p>
+                    <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-1 flex items-center gap-1"><FileText className="w-3 h-3" />{t('payments.notesOrPlan') || 'Izoh / Reja'}</p>
+                    <p className="text-[12px] font-bold text-blue-800 whitespace-pre-wrap break-words">
+                      {sp.notes.startsWith('Linked to Plan: ')
+                        ? (t('payments.linkedToPlan') || 'Davolash rejasiga biriktirilgan') + ': ' + sp.notes.replace('Linked to Plan: ', '')
+                        : sp.notes}
+                    </p>
                   </div>
                 )}
 

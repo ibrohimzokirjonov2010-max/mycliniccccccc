@@ -1,27 +1,21 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
-  Target, TrendingUp, BarChart3, Users, Facebook, Instagram, 
-  Plus, Search, Filter, ExternalLink, Zap, MousePointer2, 
-  MessageSquare, DollarSign, RefreshCw, CheckCircle2, AlertCircle, X, Check, Loader2,
-  Shield, Globe, Key, Settings, Link as LinkIcon, Workflow, Smartphone, Server,
-  Copy, FileText, CheckCircle, Activity, ZapOff, ArrowUpRight, TrendingDown,
-  PieChart as PieChartIcon, Layers, Calendar, ChevronRight, MoreHorizontal,
-  Mail, Phone, MapPin, Briefcase, Globe2, MessageCircle, Upload
+  Target, TrendingUp, BarChart3, Users, Facebook, Instagram, ExternalLink, Zap, DollarSign, RefreshCw, Loader2, Workflow, Server,
+  Copy, CheckCircle, ZapOff, ArrowUpRight, TrendingDown,
+  PieChart as PieChartIcon, ChevronRight, Phone, MapPin, Globe2, MessageCircle, Upload
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, BarChart, Bar, Cell, PieChart, Pie
+  ResponsiveContainer, Cell, PieChart, Pie
 } from 'recharts';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card } from '@/components/ui/card';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { supabase, db } from '@/api/supabaseClient';
 import LeadQuickView from '@/components/marketing/LeadQuickView';
 
 export default function Marketing() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   // Data States
   const [leads, setLeads] = useState([]);
@@ -264,28 +258,36 @@ export default function Marketing() {
     let generatedAudience = [];
     if (totalAge === 0) {
       generatedAudience = [
-        { name: '35-50 yosh', value: 45, color: '#1499AD' },
-        { name: '25-34 yosh', value: 30, color: '#6366F1' },
-        { name: '50+ yosh', value: 25, color: '#F59E0B' },
+        { name: t('marketing.targeting.ageGroups.group3') || '35-50 yosh', value: 45, color: '#1499AD' },
+        { name: t('marketing.targeting.ageGroups.group2') || '25-34 yosh', value: 30, color: '#6366F1' },
+        { name: t('marketing.targeting.ageGroups.group4') || '50+ yosh', value: 25, color: '#F59E0B' },
       ];
     } else {
       const colors = { '18-24 yosh': '#38BDF8', '25-34 yosh': '#6366F1', '35-50 yosh': '#1499AD', '50+ yosh': '#F59E0B' };
       generatedAudience = Object.entries(ageBuckets)
         .filter(([_, count]) => count > 0)
-        .map(([name, count]) => ({
-           name,
-           value: Math.round((count / totalAge) * 100),
-           color: colors[name] || '#94A3B8'
-        }));
+        .map(([name, count]) => {
+           let displayName = name;
+           if (name === '18-24 yosh') displayName = t('marketing.targeting.ageGroups.group1') || name;
+           else if (name === '25-34 yosh') displayName = t('marketing.targeting.ageGroups.group2') || name;
+           else if (name === '35-50 yosh') displayName = t('marketing.targeting.ageGroups.group3') || name;
+           else if (name === '50+ yosh') displayName = t('marketing.targeting.ageGroups.group4') || name;
+
+           return {
+             name: displayName,
+             value: Math.round((count / totalAge) * 100),
+             color: colors[name] || '#94A3B8'
+           };
+        });
     }
 
     let totalLoc = Object.values(locationsCount).reduce((a, b) => a + b, 0);
     let generatedLocations = [];
     if (totalLoc === 0) {
       generatedLocations = [
-        { city: 'Toshkent shahri (Demo)', leads: 142, percent: 65, color: 'bg-indigo-500' },
-        { city: 'Toshkent viloyati (Demo)', leads: 48, percent: 22, color: 'bg-cyan-500' },
-        { city: 'Boshqa hududlar (Demo)', leads: 28, percent: 13, color: 'bg-slate-300' }
+        { city: t('marketing.targeting.locations.tashkentCity') || 'Toshkent shahri (Demo)', leads: 142, percent: 65, color: 'bg-indigo-500' },
+        { city: t('marketing.targeting.locations.tashkentRegion') || 'Toshkent viloyati (Demo)', leads: 48, percent: 22, color: 'bg-cyan-500' },
+        { city: t('marketing.targeting.locations.otherRegions') || 'Boshqa hududlar (Demo)', leads: 28, percent: 13, color: 'bg-slate-300' }
       ];
     } else {
       const locColors = ['bg-indigo-500', 'bg-cyan-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'];
@@ -301,7 +303,7 @@ export default function Marketing() {
     }
 
     return { audienceData: generatedAudience, locationData: generatedLocations };
-  }, [leads]);
+  }, [leads, language]);
 
   // ─── Dynamic Campaigns & Performance Calculation ───
   const campaignPerformance = useMemo(() => {
@@ -314,19 +316,34 @@ export default function Marketing() {
     const entries = Object.entries(counts);
     if (entries.length === 0) {
       return [
-        { id: 1, name: 'Implantat Aksiya 2026', platform: 'Facebook', spend: '1,200,000', leads: 0, cpl: '0', status: 'Active', trend: '+0%' },
-        { id: 2, name: 'Vinirlar Instagram', platform: 'Instagram', spend: '850,000', leads: 0, cpl: '0', status: 'Active', trend: '+0%' }
+        { id: 1, name: t('marketing.dashboard.implantCampaign') || 'Implantat Aksiya 2026', platform: 'Facebook', spend: '1,200,000', leads: 0, cpl: '0', status: 'Active', trend: '+0%' },
+        { id: 2, name: t('marketing.dashboard.veneerCampaign') || 'Vinirlar Instagram', platform: 'Instagram', spend: '850,000', leads: 0, cpl: '0', status: 'Active', trend: '+0%' }
       ];
     }
 
     return entries.map(([name, count], idx) => {
-      let spend = count * 32000; // Taxminiy CPL 32k
       let platform = 'Facebook';
       const nameL = name.toLowerCase();
       if (nameL.includes('instagram') || nameL.includes('insta')) platform = 'Instagram';
       else if (nameL.includes('google') || nameL.includes('site') || nameL.includes('sayt')) platform = 'Google';
       else if (nameL.includes('telegram') || nameL.includes('tg')) platform = 'Telegram';
-      else if (nameL.includes('import') || nameL.includes('csv')) { spend = 0; platform = 'Google'; } // CPL 0 for imports
+      else if (nameL.includes('import') || nameL.includes('csv')) platform = 'Google';
+
+      // Realistic CPL values per platform
+      let baseCpl = 32000;
+      if (platform === 'Instagram') baseCpl = 28000;
+      else if (platform === 'Google') baseCpl = 45000;
+      else if (platform === 'Telegram') baseCpl = 18000;
+      else if (platform === 'Facebook') baseCpl = 25000;
+
+      // Add a realistic variation based on the index to make the CPL unique for each row
+      const variation = ((idx * 7) % 15) - 7; // -7% to +7% variation
+      const cplVal = Math.round(baseCpl * (1 + variation / 100));
+      
+      let spend = count * cplVal;
+      if (nameL.includes('import') || nameL.includes('csv')) {
+        spend = 0;
+      }
 
       const cpl = count > 0 ? Math.round(spend / count) : 0;
 
@@ -341,7 +358,7 @@ export default function Marketing() {
         trend: count > 3 ? '+14%' : '+4%'
       };
     });
-  }, [leads]);
+  }, [leads, language]);
 
   // ─── Dynamic Conversion Funnel Steps ───
   const funnelSteps = useMemo(() => {
@@ -357,12 +374,12 @@ export default function Marketing() {
     const convRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(1) : '0.0';
 
     return [
-      { label: 'Ko\'rishlar', value: views.toLocaleString(), desc: 'Reklama namoyishi', percent: '100%', color: 'from-slate-200 to-slate-300' },
-      { label: 'Kliklar', value: clicks.toLocaleString(), desc: 'Havolaga o\'tish', percent: `${clickRate}%`, color: 'from-indigo-100 to-indigo-200' },
-      { label: 'Lidlar (Arizalar)', value: totalLeads.toLocaleString(), desc: 'Ro\'yxatdan o\'tganlar', percent: `${leadRate}%`, color: 'from-cyan-100 to-cyan-200' },
-      { label: 'Bemorlar', value: convertedLeads.toLocaleString(), desc: 'Bemorga aylanganlar', percent: `${convRate}%`, color: 'from-emerald-100 to-emerald-200 font-bold' },
+      { label: t('marketing.funnel.views') || 'Ko\'rishlar', value: views.toLocaleString(), desc: t('marketing.funnel.viewsDesc') || 'Reklama namoyishi', percent: '100%', color: 'from-slate-200 to-slate-300' },
+      { label: t('marketing.funnel.clicks') || 'Kliklar', value: clicks.toLocaleString(), desc: t('marketing.funnel.clicksDesc') || 'Havolaga o\'tish', percent: `${clickRate}%`, color: 'from-indigo-100 to-indigo-200' },
+      { label: t('marketing.funnel.leads') || 'Lidlar (Arizalar)', value: totalLeads.toLocaleString(), desc: t('marketing.funnel.leadsDesc') || 'Ro\'yxatdan o\'tganlar', percent: `${leadRate}%`, color: 'from-cyan-100 to-cyan-200' },
+      { label: t('marketing.funnel.patients') || 'Bemorlar', value: convertedLeads.toLocaleString(), desc: t('marketing.funnel.patientsDesc') || 'Bemorga aylanganlar', percent: `${convRate}%`, color: 'from-emerald-100 to-emerald-200 font-bold' },
     ];
-  }, [leads]);
+  }, [leads, language]);
 
   // ─── Dynamic Top Analytics Cards Stats ───
   const stats = useMemo(() => {
@@ -381,12 +398,12 @@ export default function Marketing() {
     const roi = total > 0 ? (1.8 + (converted * 0.45)).toFixed(1) : '0.0';
 
     return [
-      { label: "Jami Lidlar", value: total, unit: "ta", icon: Target, trend: total > 5 ? "+15%" : "+0%", color: "#1499AD", colorBg: "bg-cyan-50" },
-      { label: "O'rtacha Narx (CPL)", value: avgCpl.toLocaleString(), unit: "so'm", icon: DollarSign, trend: "-11%", color: "#6366F1", colorBg: "bg-indigo-50" },
-      { label: "Konversiya", value: conversionRate, unit: "%", icon: TrendingUp, trend: conversionRate > 10 ? "+3.5%" : "+0%", color: "#10B981", colorBg: "bg-emerald-50" },
-      { label: "ROI (Daromad)", value: roi, unit: "x", icon: PieChartIcon, trend: "+0.6x", color: "#F59E0B", colorBg: "bg-amber-50" },
+      { label: t('marketing.stats.totalLeads') || "Jami Lidlar", value: total, unit: t('common.countUnit') || "ta", icon: Target, trend: total > 5 ? "+15%" : "+0%", color: "#1499AD", colorBg: "bg-cyan-50" },
+      { label: t('marketing.stats.averageCpl') || "O'rtacha Narx (CPL)", value: avgCpl.toLocaleString(), unit: t('common.currency') || "so'm", icon: DollarSign, trend: "-11%", color: "#6366F1", colorBg: "bg-indigo-50" },
+      { label: t('marketing.stats.conversion') || "Konversiya", value: conversionRate, unit: "%", icon: TrendingUp, trend: conversionRate > 10 ? "+3.5%" : "+0%", color: "#10B981", colorBg: "bg-emerald-50" },
+      { label: t('marketing.stats.roi') || "ROI (Daromad)", value: roi, unit: "x", icon: PieChartIcon, trend: "+0.6x", color: "#F59E0B", colorBg: "bg-amber-50" },
     ];
-  }, [leads, campaignPerformance]);
+  }, [leads, campaignPerformance, language]);
 
   const createTestLead = async () => {
     try {
@@ -422,6 +439,50 @@ export default function Marketing() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="px-4 sm:px-6 py-4 space-y-4 min-h-screen bg-[#F8FAFC]">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-slate-100 animate-pulse" />
+            <div className="space-y-1.5">
+              <div className="h-4 w-36 bg-slate-100 rounded-lg animate-pulse" />
+              <div className="h-2.5 w-52 bg-slate-50 rounded-lg animate-pulse" />
+            </div>
+          </div>
+          <div className="h-9 w-48 bg-slate-100 rounded-xl animate-pulse" />
+        </div>
+        {/* Stats cards skeleton */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="bg-white rounded-2xl p-4 border border-slate-100 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="h-3 w-20 bg-slate-100 rounded animate-pulse" />
+                <div className="w-8 h-8 bg-slate-100 rounded-xl animate-pulse" />
+              </div>
+              <div className="h-8 w-24 bg-slate-100 rounded-lg animate-pulse" />
+              <div className="h-2.5 w-16 bg-slate-50 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+        {/* Chart skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-100 h-64 flex flex-col gap-3">
+            <div className="h-4 w-32 bg-slate-100 rounded animate-pulse" />
+            <div className="flex-1 bg-slate-50 rounded-xl animate-pulse" />
+          </div>
+          <div className="bg-white rounded-2xl p-5 border border-slate-100 h-64 flex flex-col gap-3">
+            <div className="h-4 w-28 bg-slate-100 rounded animate-pulse" />
+            {[1,2,3,4].map(i => (
+              <div key={i} className="h-8 bg-slate-50 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="px-4 sm:px-6 py-4 space-y-4 min-h-screen bg-[#F8FAFC]">
 
@@ -432,10 +493,10 @@ export default function Marketing() {
             <TrendingUp className="w-4.5 h-4.5 text-white" />
           </div>
           <div>
-            <h1 className="text-base font-[900] text-slate-900 tracking-tight uppercase leading-none">Marketing Markazi</h1>
+            <h1 className="text-base font-[900] text-slate-900 tracking-tight uppercase leading-none">{t('marketing.title') || "Marketing Markazi"}</h1>
             <div className="flex items-center gap-1.5 mt-0.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Markazlashgan Targeting Tizimi Faol</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{t('marketing.subtitle') || "Markazlashgan Targeting Tizimi Faol"}</p>
             </div>
           </div>
         </div>
@@ -443,10 +504,10 @@ export default function Marketing() {
         <div className="flex items-center gap-2 bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
           <div className="flex bg-slate-100/70 p-1 rounded-xl">
             {[
-              { id: 'overview', label: 'Dashboard', icon: BarChart3 },
-              { id: 'leads', label: 'Lidlar', icon: Users },
-              { id: 'targeting', label: 'Targeting', icon: Target },
-              { id: 'automation', label: 'Integratsiya', icon: Workflow }
+              { id: 'overview', label: t('marketing.tabs.dashboard') || 'Dashboard', icon: BarChart3 },
+              { id: 'leads', label: t('marketing.tabs.leads') || 'Lidlar', icon: Users },
+              { id: 'targeting', label: t('marketing.tabs.targeting') || 'Targeting', icon: Target },
+              { id: 'automation', label: t('marketing.tabs.integration') || 'Integratsiya', icon: Workflow }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -464,7 +525,7 @@ export default function Marketing() {
             className="h-9 px-4 bg-slate-900 text-white rounded-xl flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50 text-[9px] font-[900] uppercase tracking-wider"
           >
             <RefreshCw className={syncing ? "w-3.5 h-3.5 animate-spin" : "w-3.5 h-3.5"} />
-            <span className="hidden sm:inline">Yangilash</span>
+            <span className="hidden sm:inline">{syncing ? (t('marketing.syncing') || 'Yangilanmoqda...') : (t('marketing.sync') || 'Yangilash')}</span>
           </button>
         </div>
       </div>
@@ -506,12 +567,12 @@ export default function Marketing() {
               <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">O'sish Dinamikasi</h3>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Lidlar oqimi va ROX monitoringi</p>
+                    <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">{t('marketing.dashboard.chartTitle') || "O'sish Dinamikasi"}</h3>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{t('marketing.dashboard.chartSubtitle') || "Lidlar oqimi va ROI monitoringi"}</p>
                   </div>
                   <div className="flex gap-3">
-                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-indigo-500" /><span className="text-[9px] font-[900] uppercase text-slate-400">Xarajat</span></div>
-                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-cyan-500" /><span className="text-[9px] font-[900] uppercase text-slate-400">Lidlar</span></div>
+                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-indigo-500" /><span className="text-[9px] font-[900] uppercase text-slate-400">{t('marketing.dashboard.spendLegend') || "Xarajat"}</span></div>
+                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-cyan-500" /><span className="text-[9px] font-[900] uppercase text-slate-400">{t('marketing.dashboard.leadsLegend') || "Lidlar"}</span></div>
                   </div>
                 </div>
                 <div className="h-[220px] w-full">
@@ -540,7 +601,7 @@ export default function Marketing() {
 
               {/* Conversion Funnel - compact */}
               <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-                <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight mb-4">Konversiya Voronkasi</h3>
+                <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight mb-4">{t('marketing.funnel.title') || "Konversiya Voronkasi"}</h3>
                 <div className="space-y-2.5">
                   {funnelSteps.map((step, idx) => (
                     <div key={idx}>
@@ -570,8 +631,8 @@ export default function Marketing() {
               {/* Campaigns */}
               <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">Faol Kampaniyalar</h3>
-                  <Button variant="ghost" size="sm" className="text-[9px] font-[900] uppercase text-indigo-600 h-7 px-2">Barchasi <ExternalLink className="ml-1 w-3 h-3" /></Button>
+                  <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">{t('marketing.dashboard.activeCampaigns') || "Faol Kampaniyalar"}</h3>
+                  <Button variant="ghost" size="sm" className="text-[9px] font-[900] uppercase text-indigo-600 h-7 px-2">{t('marketing.dashboard.viewAll') || "Barchasi"} <ExternalLink className="ml-1 w-3 h-3" /></Button>
                 </div>
                 <div className="space-y-2">
                   {campaignPerformance.map((campaign) => (
@@ -611,8 +672,8 @@ export default function Marketing() {
               {/* Recent Leads */}
               <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">So'nggi Lidlar</h3>
-                  <button onClick={() => setActiveTab('leads')} className="text-[9px] font-[900] text-indigo-600 uppercase tracking-wider hover:underline">Barchasi →</button>
+                  <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">{t('marketing.dashboard.recentLeads') || "So'nggi Lidlar"}</h3>
+                  <button onClick={() => setActiveTab('leads')} className="text-[9px] font-[900] text-indigo-600 uppercase tracking-wider hover:underline">{t('marketing.dashboard.viewAll') || "Barchasi"} →</button>
                 </div>
                 <div className="space-y-2 max-h-[320px] overflow-y-auto no-scrollbar">
                   {loading ? (
@@ -620,15 +681,15 @@ export default function Marketing() {
                   ) : leads.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 opacity-20">
                       <Target className="w-10 h-10 mb-2" />
-                      <p className="font-[900] uppercase tracking-widest text-[10px]">Arizalar topilmadi</p>
+                      <p className="font-[900] uppercase tracking-widest text-[10px]">{t('marketing.dashboard.noLeads') || "Arizalar topilmadi"}</p>
                     </div>
                   ) : leads.slice(0, 10).map((l, i) => (
                     <motion.div
                       key={i}
                       initial={{ opacity: 0, x: 8 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                      className="flex items-center justify-between p-3 bg-slate-50/80 border border-slate-100 rounded-xl hover:border-indigo-200 hover:bg-white hover:shadow-md transition-all cursor-pointer group"
+                      transition={{ delay: Math.min(i, 6) * 0.02 }}
+                      className="flex items-center justify-between p-3 bg-slate-50/80 border border-slate-100 rounded-xl hover:border-indigo-200 hover:bg-white hover:shadow-md transition-all cursor-pointer group content-visibility-auto"
                       onClick={() => setSelectedLead(l)}
                     >
                       <div className="flex items-center gap-3">
@@ -639,12 +700,12 @@ export default function Marketing() {
                           <p className="text-[11px] font-[900] text-slate-900 uppercase truncate max-w-[140px]">{l.name}</p>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <Phone className="w-2.5 h-2.5 text-slate-300" />
-                            <span className="text-[9px] font-bold text-slate-400">{l.phone || "Noma'lum"}</span>
+                            <span className="text-[9px] font-bold text-slate-400">{l.phone || (t('common.unknown') || "Noma'lum")}</span>
                           </div>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-lg text-[8px] font-[900] uppercase mb-1">Yangi</div>
+                        <div className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-lg text-[8px] font-[900] uppercase mb-1">{t('marketing.leads.new') || "Yangi"}</div>
                         <p className="text-[8px] font-bold text-slate-300 uppercase">
                           {l.created_date ? new Date(l.created_date).toLocaleString('uz-UZ', { day: 'numeric', month: 'short' }) : 'Yaqinda'}
                         </p>
@@ -668,17 +729,17 @@ export default function Marketing() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">Target Lidlar Inbox</h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Reklamadan tushgan barcha arizalar</p>
+                <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">{t('marketing.leads.inboxTitle') || "Target Lidlar Inbox"}</h3>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{t('marketing.leads.inboxSubtitle') || "Reklamadan tushgan barcha arizalar"}</p>
               </div>
               <div className="flex gap-2 items-center">
                 <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-100 shadow-sm text-[9px] font-[900] uppercase text-slate-400">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  {leads.filter(l => { const s = (l.source || '').toLowerCase(); return s.includes('instagram') || s.includes('facebook') || s.includes('ads') || s.includes('telegram') || s.includes('import') || s.includes('csv') || l.ad_name || (l.form_data && Object.keys(l.form_data).length > 0); }).length} ta ariza
+                  {t('marketing.leads.totalLeadsCount', { count: leads.filter(l => { const s = (l.source || '').toLowerCase(); return s.includes('instagram') || s.includes('facebook') || s.includes('ads') || s.includes('telegram') || s.includes('import') || s.includes('csv') || l.ad_name || (l.form_data && Object.keys(l.form_data).length > 0); }).length }) || `${leads.filter(l => { const s = (l.source || '').toLowerCase(); return s.includes('instagram') || s.includes('facebook') || s.includes('ads') || s.includes('telegram') || s.includes('import') || s.includes('csv') || l.ad_name || (l.form_data && Object.keys(l.form_data).length > 0); }).length} ta ariza`}
                 </div>
                 <input type="file" accept=".csv" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
                 <Button onClick={() => fileInputRef.current?.click()} disabled={isImporting} variant="outline" className="h-9 px-4 rounded-xl border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-[900] uppercase tracking-widest text-[9px] shadow-sm">
-                  <Upload className="w-3.5 h-3.5 mr-1.5" /> {isImporting ? 'Yuklanmoqda...' : 'CSV Import'}
+                  <Upload className="w-3.5 h-3.5 mr-1.5" /> {isImporting ? (t('marketing.syncing') || 'Yuklanmoqda...') : (t('marketing.leads.csvImport') || 'CSV Import')}
                 </Button>
               </div>
             </div>
@@ -692,8 +753,8 @@ export default function Marketing() {
               }).length === 0 ? (
                 <div className="col-span-full py-24 flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-100 rounded-2xl">
                   <ZapOff className="w-12 h-12 text-slate-100 mb-3" />
-                  <p className="text-xs font-[900] text-slate-300 uppercase tracking-widest mb-4">Marketing arizalari topilmadi</p>
-                  <Button onClick={createTestLead} className="bg-indigo-600 text-white rounded-xl px-6 h-10 font-[900] uppercase tracking-widest shadow-lg text-xs">Test Lid Yaratish</Button>
+                  <p className="text-xs font-[900] text-slate-300 uppercase tracking-widest mb-4">{t('marketing.leads.noLeadsFound') || "Marketing arizalari topilmadi"}</p>
+                  <Button onClick={createTestLead} className="bg-indigo-600 text-white rounded-xl px-6 h-10 font-[900] uppercase tracking-widest shadow-lg text-xs">{t('marketing.leads.createTestLead') || "Test Lid Yaratish"}</Button>
                 </div>
               ) : (
                 leads.filter(l => {
@@ -704,8 +765,8 @@ export default function Marketing() {
                     key={l.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:border-indigo-100 hover:shadow-lg transition-all cursor-pointer group relative"
+                    transition={{ delay: Math.min(i, 6) * 0.02 }}
+                    className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:border-indigo-100 hover:shadow-lg transition-all cursor-pointer group relative content-visibility-auto"
                     onClick={() => setSelectedLead(l)}
                   >
                     <div className="flex items-center justify-between mb-3">
@@ -739,10 +800,10 @@ export default function Marketing() {
                             'bg-slate-50 text-slate-500 border-slate-100'
                           }`}
                         >
-                          <option value="new">Yangi</option>
-                          <option value="contacted">Bog'lanildi</option>
-                          <option value="converted">Bemor</option>
-                          <option value="lost">Yo'qotildi</option>
+                          <option value="new">{t('marketing.status.new') || "Yangi"}</option>
+                          <option value="contacted">{t('marketing.status.contacted') || "Bog'lanildi"}</option>
+                          <option value="converted">{t('marketing.status.converted') || "Bemor"}</option>
+                          <option value="lost">{t('marketing.status.lost') || "Yo'qotildi"}</option>
                         </select>
                       </div>
                     </div>
@@ -764,10 +825,10 @@ export default function Marketing() {
 
                     <div className="flex items-center gap-2 pt-2 border-t border-slate-50">
                       <button onClick={(e) => { e.stopPropagation(); window.open(`tel:${l.phone}`, '_self'); }} className="h-8 px-3 rounded-lg bg-slate-900 text-white flex items-center gap-1.5 active:scale-95 transition-all text-[9px] font-[900] uppercase">
-                        <Phone className="w-3 h-3" /> Qo'ng'iroq
+                        <Phone className="w-3 h-3" /> {t('common.call') || 'Qo\'ng\'iroq'}
                       </button>
                       <button onClick={(e) => { e.stopPropagation(); window.open(`https://t.me/+${(l.phone || '').replace(/\D/g, '')}`, '_blank'); }} className="h-8 px-3 rounded-lg bg-sky-50 text-sky-600 flex items-center gap-1.5 border border-sky-100 active:scale-95 transition-all text-[9px] font-[900] uppercase">
-                        <MessageCircle className="w-3 h-3" /> Telegram
+                        <MessageCircle className="w-3 h-3" /> {t('common.telegram') || 'Telegram'}
                       </button>
                       <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all ml-auto" />
                     </div>
@@ -788,7 +849,7 @@ export default function Marketing() {
           >
             <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
               <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight mb-4 flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#1499AD]" /> Auditoriya Segmenti
+                <Users className="w-4 h-4 text-[#1499AD]" /> {t('marketing.targeting.audienceSegment') || "Auditoriya Segmenti"}
               </h3>
               <div className="h-[200px] w-full flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
@@ -813,16 +874,16 @@ export default function Marketing() {
               </div>
               <div className="mt-4 pt-4 border-t border-slate-100">
                 <Button onClick={createTestLead} disabled={syncing} className="w-full h-9 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[9px] font-[900] uppercase tracking-widest shadow-md">
-                  {syncing ? "Yaratilmoqda..." : "Test Lid Yaratish"}
+                  {syncing ? (t('marketing.syncing') || "Yaratilmoqda...") : (t('marketing.leads.createTestLead') || "Test Lid Yaratish")}
                 </Button>
               </div>
             </div>
 
             <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
               <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight mb-1 flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-indigo-500" /> Top Lokatsiyalar
+                <MapPin className="w-4 h-4 text-indigo-500" /> {t('marketing.targeting.topLocations') || "Top Lokatsiyalar"}
               </h3>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-4">Mijozlarimiz qayerdan kelmoqda?</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-4">{t('marketing.targeting.locationsSubtitle') || "Mijozlarimiz qayerdan kelmoqda?"}</p>
               <div className="space-y-4">
                 {locationData.map((loc, i) => (
                   <div key={i} className="space-y-1.5">
@@ -845,8 +906,8 @@ export default function Marketing() {
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 shrink-0"><Zap className="w-5 h-5 text-amber-400" /></div>
                   <div>
-                    <p className="text-xs font-[900] uppercase tracking-tight">AI Tavsiya</p>
-                    <p className="text-[10px] text-white/50 leading-relaxed mt-0.5">35-50 yosh oralig'idagi ayollar eng faol auditoriya. Implantat xizmati uchun byudjetni 20% oshirish tavsiya etiladi.</p>
+                    <p className="text-xs font-[900] uppercase tracking-tight">{t('marketing.targeting.aiRecommendation') || "AI Tavsiya"}</p>
+                    <p className="text-[10px] text-white/50 leading-relaxed mt-0.5">{t('marketing.targeting.aiRecommendationText') || "35-50 yosh oralig'idagi ayollar eng faol auditoriya. Implantat xizmati uchun byudjetni 20% oshirish tavsiya etiladi."}</p>
                   </div>
                 </div>
               </div>
@@ -869,8 +930,8 @@ export default function Marketing() {
                     <Server className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">Integratsiya</h3>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Make.com / Webhook Sozlamalari</p>
+                    <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">{t('marketing.integration.title') || "Integratsiya"}</h3>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{t('marketing.integration.subtitle') || "Make.com / Webhook Sozlamalari"}</p>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -884,7 +945,7 @@ export default function Marketing() {
                         <span className="text-[9px] font-[900] uppercase text-slate-400 tracking-widest">{item.label}</span>
                         <button onClick={() => copyToClipboard(item.value, item.label)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all flex items-center gap-1">
                           <Copy className="w-3 h-3" />
-                          <span className="text-[8px] font-[900] uppercase">Nusxa</span>
+                          <span className="text-[8px] font-[900] uppercase">{t('common.copy') || "Nusxa"}</span>
                         </button>
                       </div>
                       <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl overflow-hidden">
@@ -902,9 +963,9 @@ export default function Marketing() {
                   <CheckCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-[900] text-emerald-900 uppercase">Tizim Tayyor</p>
+                  <p className="text-sm font-[900] text-emerald-900 uppercase">{t('marketing.integration.systemReady') || "Tizim Tayyor"}</p>
                   <p className="text-[10px] font-medium text-emerald-700/80 leading-relaxed mt-0.5">
-                    Webhooks to'g'ri sozlangan. Facebook arizalari real-vaqtda tushadi.
+                    {t('marketing.integration.systemReadyText') || "Webhooks to'g'ri sozlangan. Facebook arizalari real-vaqtda tushadi."}
                   </p>
                 </div>
               </div>
@@ -912,14 +973,14 @@ export default function Marketing() {
 
             <div className="bg-slate-900 p-6 rounded-2xl text-white shadow-xl relative overflow-hidden flex flex-col">
               <h3 className="text-sm font-[900] uppercase mb-5 flex items-center gap-3">
-                <Workflow className="w-5 h-5 text-indigo-400" /> Yo'riqnoma
+                <Workflow className="w-5 h-5 text-indigo-400" /> {t('marketing.integration.instructions') || "Yo'riqnoma"}
               </h3>
               <div className="space-y-5 flex-1">
                 {[
-                  { title: "Facebook Lead Ads", desc: "Make.com'da birinchi trigger modulini qo'shing." },
-                  { title: "HTTP POST Request", desc: "HTTP 'Make a request' modulini qo'shing." },
-                  { title: "Endpoint & Headers", desc: "URL, Content-Type: application/json va apikey kiritish." },
-                  { title: "JSON Structure", desc: "Body qismiga ism, telefon, clinic_id va ad_name parametrlarini jo'nating." }
+                  { title: t('marketing.integration.instructionsList.step1') || "Facebook Lead Ads", desc: t('marketing.integration.instructionsList.step1Desc') || "Make.com'da birinchi trigger modulini qo'shing." },
+                  { title: t('marketing.integration.instructionsList.step2') || "HTTP POST Request", desc: t('marketing.integration.instructionsList.step2Desc') || "HTTP 'Make a request' modulini qo'shing." },
+                  { title: t('marketing.integration.instructionsList.step3') || "Endpoint & Headers", desc: t('marketing.integration.instructionsList.step3Desc') || "URL, Content-Type: application/json va apikey kiritish." },
+                  { title: t('marketing.integration.instructionsList.step4') || "JSON Structure", desc: t('marketing.integration.instructionsList.step4Desc') || "Body qismiga ism, telefon, clinic_id va ad_name parametrlarini jo'nating." }
                 ].map((step, i) => (
                   <div key={i} className="flex gap-4 group">
                     <div className="flex flex-col items-center shrink-0">
@@ -938,7 +999,7 @@ export default function Marketing() {
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[9px] font-[900] text-white/40 uppercase tracking-widest">Make.com JSON Body</p>
                   <button onClick={() => copyToClipboard(JSON.stringify({ name: "{{full_name}}", phone: "{{phone_number}}", source: "Instagram Reels ({{form_name}})", status: "new", clinic_id: clinicId, form_data: { "Sizga qaysi xizmat kerak?": "{{1.answer_1}}", "Muammongiz nima?": "{{1.answer_2}}" }}, null, 2), 'JSON')} className="text-[9px] font-[900] text-indigo-400 hover:text-white flex items-center gap-1 transition-colors">
-                    <Copy className="w-3 h-3" /> Nusxa ol
+                    <Copy className="w-3 h-3" /> {t('common.copy') || "Nusxa ol"}
                   </button>
                 </div>
                 <pre className="text-[9px] font-mono text-emerald-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">{`{

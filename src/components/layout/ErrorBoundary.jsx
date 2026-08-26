@@ -21,7 +21,12 @@ export default class ErrorBoundary extends Component {
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: null });
+    const errorMsg = this.state.error?.message || '';
+    if (errorMsg.includes('dynamically imported module') || errorMsg.includes('Loading chunk')) {
+      window.location.reload();
+    } else {
+      this.setState({ hasError: false, error: null });
+    }
   };
 
   render() {

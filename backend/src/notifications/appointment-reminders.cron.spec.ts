@@ -11,6 +11,7 @@ describe('AppointmentRemindersCron', () => {
   let clinicModel: any;
   let userModel: any;
   let telegramService: any;
+  let smsService: any;
 
   const createAppointment = (overrides: Record<string, any> = {}) => ({
     _id: 'appt-1',
@@ -58,20 +59,10 @@ describe('AppointmentRemindersCron', () => {
     doctor?: any;
   } = {}) => {
     patientModel.findById.mockImplementation((patientId: string) =>
-      execResult(patients[patientId] ?? null),
+      execResult(patients[patientId] || null),
     );
-    clinicModel.findOne.mockImplementation((query: Record<string, any>) =>
-      execResult(query.id === 'clinic-1' ? clinic : null),
-    );
-    userModel.findOne.mockImplementation((query: Record<string, any>) =>
-      execResult(
-        query.clinic_id === 'clinic-1' &&
-          query.name === 'Dr Test' &&
-          query.role === 'doctor'
-          ? doctor
-          : null,
-      ),
-    );
+    clinicModel.findOne.mockReturnValue(execResult(clinic));
+    userModel.findOne.mockReturnValue(execResult(doctor));
   };
 
   beforeEach(() => {
@@ -87,6 +78,21 @@ describe('AppointmentRemindersCron', () => {
       sendAppointmentConfirmationMessage: jest.fn().mockResolvedValue(501),
       syncAppointmentConfirmationToSupabase: jest.fn().mockResolvedValue(undefined),
     };
+    smsService = {
+      getSettings: jest.fn().mockReturnValue({
+        sms_enabled: true,
+        on_appointment_day: true,
+        on_appointment_day_time: '08:00',
+        on_day_before: true,
+        on_day_before_time: '08:00',
+        birthday_greetings: true,
+        recall_reminder: true,
+        debt_reminder: true,
+      }),
+      sendAppointmentDaySms: jest.fn().mockResolvedValue(true),
+      sendDayBeforeReminderSms: jest.fn().mockResolvedValue(true),
+      sendSms: jest.fn().mockResolvedValue(true),
+    };
 
     cron = new AppointmentRemindersCron(
       appointmentModel,
@@ -94,6 +100,7 @@ describe('AppointmentRemindersCron', () => {
       clinicModel,
       userModel,
       telegramService,
+      smsService,
     );
   });
 

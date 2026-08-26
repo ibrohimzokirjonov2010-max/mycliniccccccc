@@ -14,38 +14,38 @@ export const runSeeder = async () => {
     // ==================== 1. XIZMATLAR (Services) ====================
     const services = [
       // Terapiya
-      { name: 'Karies davolash (oddiy)', category: 'Therapy', duration: 45, price: 250000, is_active: true },
-      { name: 'Karies davolash (murakkab)', category: 'Therapy', duration: 60, price: 350000, is_active: true },
-      { name: 'Pulpotomiya', category: 'Therapy', duration: 90, price: 450000, is_active: true },
-      { name: 'Kanal davolash (1 ta)', category: 'Therapy', duration: 120, price: 600000, is_active: true },
+      { name: 'Karies davolash (oddiy)', category: 'TERAPIYA( ENDO +PLOMBA)', duration: 45, price: 250000, is_active: true },
+      { name: 'Karies davolash (murakkab)', category: 'TERAPIYA( ENDO +PLOMBA)', duration: 60, price: 350000, is_active: true },
+      { name: 'Pulpotomiya', category: 'TERAPIYA( ENDO +PLOMBA)', duration: 90, price: 450000, is_active: true },
+      { name: 'Kanal davolash (1 ta)', category: 'TERAPIYA( ENDO +PLOMBA)', duration: 120, price: 600000, is_active: true },
       // Xirurgiya
-      { name: 'Tish olish (oddiy)', category: 'Surgery', duration: 30, price: 150000, is_active: true },
-      { name: 'Tish olish (murakkab)', category: 'Surgery', duration: 60, price: 300000, is_active: true },
-      { name: '8-raqamli tish olish', category: 'Surgery', duration: 90, price: 500000, is_active: true },
+      { name: 'Tish olish (oddiy)', category: 'XIRURGIYA', duration: 30, price: 150000, is_active: true },
+      { name: 'Tish olish (murakkab)', category: 'XIRURGIYA', duration: 60, price: 300000, is_active: true },
+      { name: '8-raqamli tish olish', category: 'XIRURGIYA', duration: 90, price: 500000, is_active: true },
       // Gigiena
-      { name: 'Tish tozalash (AirFlow)', category: 'Hygiene', duration: 60, price: 300000, is_active: true },
-      { name: 'Professional gigiena', category: 'Hygiene', duration: 90, price: 450000, is_active: true },
-      { name: 'Chotka va pastani o\'rgatish', category: 'Hygiene', duration: 30, price: 50000, is_active: true },
+      { name: 'Tish tozalash (AirFlow)', category: 'GIGIENA VA PROFILAKTIKA', duration: 60, price: 300000, is_active: true },
+      { name: 'Professional gigiena', category: 'GIGIENA VA PROFILAKTIKA', duration: 90, price: 450000, is_active: true },
+      { name: 'Chotka va pastani o\'rgatish', category: 'GIGIENA VA PROFILAKTIKA', duration: 30, price: 50000, is_active: true },
       // Implantologiya
-      { name: 'Implant o\'rnatish (S. Korea)', category: 'Implantology', duration: 90, price: 3500000, is_active: true },
-      { name: 'Implant o\'rnatish (USA)', category: 'Implantology', duration: 90, price: 5500000, is_active: true },
-      { name: 'Sinus lift', category: 'Implantology', duration: 120, price: 2500000, is_active: true },
-      { name: 'Suyak bloki', category: 'Implantology', duration: 150, price: 3000000, is_active: true },
+      { name: 'Implant o\'rnatish (S. Korea)', category: 'IMPLANTATSIYA', duration: 90, price: 3500000, is_active: true },
+      { name: 'Implant o\'rnatish (USA)', category: 'IMPLANTATSIYA', duration: 90, price: 5500000, is_active: true },
+      { name: 'Sinus lift', category: 'IMPLANTATSIYA', duration: 120, price: 2500000, is_active: true },
+      { name: 'Suyak bloki', category: 'IMPLANTATSIYA', duration: 150, price: 3000000, is_active: true },
       // Ortopediya
-      { name: 'Metallokeramika koronka', category: 'Orthopedics', duration: 60, price: 800000, is_active: true },
-      { name: 'Zirkoniy koronka', category: 'Orthopedics', duration: 60, price: 1500000, is_active: true },
-      { name: 'E-max koronka', category: 'Orthopedics', duration: 60, price: 1800000, is_active: true },
-      { name: 'Breketlar (metall)', category: 'Orthopedics', duration: 120, price: 4500000, is_active: true },
-      { name: 'Breketlar (keramika)', category: 'Orthopedics', duration: 120, price: 6500000, is_active: true },
-      { name: 'Protez (to\'liq)', category: 'Orthopedics', duration: 180, price: 2500000, is_active: true },
+      { name: 'Metallokeramika koronka', category: 'ORTOPEDIYA', duration: 60, price: 800000, is_active: true },
+      { name: 'Zirkoniy koronka', category: 'ORTOPEDIYA', duration: 60, price: 1500000, is_active: true },
+      { name: 'E-max koronka', category: 'ORTOPEDIYA', duration: 60, price: 1800000, is_active: true },
+      { name: 'Breketlar (metall)', category: 'ORTOPEDIYA', duration: 120, price: 4500000, is_active: true },
+      { name: 'Breketlar (keramika)', category: 'ORTOPEDIYA', duration: 120, price: 6500000, is_active: true },
+      { name: 'Protez (to\'liq)', category: 'ORTOPEDIYA', duration: 180, price: 2500000, is_active: true },
       // Estetika
-      { name: 'Viniyr (1 ta)', category: 'Esthetics', duration: 60, price: 1200000, is_active: true },
-      { name: 'Tishlarni oqartirish', category: 'Esthetics', duration: 90, price: 1500000, is_active: true },
-      { name: 'Restavratsiya (1 ta)', category: 'Esthetics', duration: 45, price: 400000, is_active: true },
+      { name: 'Viniyr (1 ta)', category: 'ESTETIK STOMATOLOGIYA', duration: 60, price: 1200000, is_active: true },
+      { name: 'Tishlarni oqartirish', category: 'ESTETIK STOMATOLOGIYA', duration: 90, price: 1500000, is_active: true },
+      { name: 'Restavratsiya (1 ta)', category: 'ESTETIK STOMATOLOGIYA', duration: 45, price: 400000, is_active: true },
       // Pediatriya
-      { name: 'Bolalar konsultatsiyasi', category: 'Pediatrics', duration: 30, price: 50000, is_active: true },
-      { name: 'Salyant seali', category: 'Pediatrics', duration: 30, price: 100000, is_active: true },
-      { name: 'Bolalar plombasi', category: 'Pediatrics', duration: 45, price: 200000, is_active: true },
+      { name: 'Bolalar konsultatsiyasi', category: 'BOLALAR STOMATOLOGIYASI', duration: 30, price: 50000, is_active: true },
+      { name: 'Salyant seali', category: 'BOLALAR STOMATOLOGIYASI', duration: 30, price: 100000, is_active: true },
+      { name: 'Bolalar plombasi', category: 'BOLALAR STOMATOLOGIYASI', duration: 45, price: 200000, is_active: true },
     ];
     for (const s of services) await base44.entities.Service.create(s);
     const createdServices = await base44.entities.Service.list('-created_date', 100);

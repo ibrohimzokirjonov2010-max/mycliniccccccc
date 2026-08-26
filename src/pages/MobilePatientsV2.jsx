@@ -3,8 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Plus,
-  User, Calendar, Clock,
-  ArrowUpRight, TrendingDown, Phone, MessageCircle, ChevronRight
+  User, Calendar, Clock, Phone, ChevronRight
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -222,9 +221,9 @@ export default function MobilePatientsV2() {
                     key={patient.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: index * 0.03 }}
+                    transition={{ delay: searchQuery ? 0 : Math.min(index, 6) * 0.02 }}
                     onClick={() => navigate(`/patients/${patient.id}`)}
-                    className="bg-white rounded-xl p-2.5 mb-2 shadow-sm border border-slate-50 flex items-center gap-3 relative active:scale-[0.98] transition-transform"
+                    className="bg-white rounded-xl p-2.5 mb-2 shadow-sm border border-slate-50 flex items-center gap-3 relative active:scale-[0.98] transition-transform content-visibility-auto"
                   >
                     {/* Avatar */}
                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden shrink-0 border border-slate-200/50">

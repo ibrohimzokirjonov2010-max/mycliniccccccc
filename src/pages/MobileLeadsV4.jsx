@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, Phone, Plus, Search, 
   MoreVertical, Globe, Instagram, Send,
-  MapPin, PhoneCall, Filter, MessageCircle,
-  Calendar, CheckCircle2, XCircle, ArrowRight,
+  MapPin, PhoneCall, MessageCircle, CheckCircle2, XCircle,
   MoreHorizontal
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';

@@ -9,11 +9,11 @@ import {
   parseBotTechData,
   resolveBotUsernameFromConfig,
 } from '@/lib/telegramBotConfig';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle2, User, ClipboardList, ArrowLeft, Printer, Download, X, Check, Plus, MessageCircle, Copy, Share2, Percent, Calendar, QrCode, Phone, Mail, AlertTriangle, Search } from 'lucide-react';
+import { CheckCircle2, User, ClipboardList, ArrowLeft, Printer, Download, X, Check, MessageCircle, Copy, Share2, Calendar, QrCode, Phone, Mail, AlertTriangle, Search } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { applyPhoneMask, cn, capitalizeName, validateAddress, capitalizeAsYouType } from '@/lib/utils';
 
@@ -24,6 +24,16 @@ const STEPS = [
   { id: 1, label: 'patients.wizard.patient', icon: User },
   { id: 2, label: 'patients.wizard.plan', icon: ClipboardList },
   { id: 3, label: 'patients.wizard.done', icon: CheckCircle2 },
+];
+
+const WIZARD_SOURCES = [
+  { value: 'Telegram', labelKey: 'Telegram' },
+  { value: 'Instagram', labelKey: 'Instagram' },
+  { value: 'Google', labelKey: 'Google' },
+  { value: 'Website', labelKey: 'Website' },
+  { value: 'Tavsiya', labelKey: 'Recommendation' },
+  { value: 'Call', labelKey: 'Call' },
+  { value: 'Boshqa', labelKey: 'Other' }
 ];
 
 /**
@@ -98,15 +108,19 @@ const fdiToInternal = (fdi) => {
 };
 
 const CategoryAccordion = ({ title, services, activeTooth, toothData, toggleService, isBulkMode, selectedTeeth }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(true);
 
   const friendlyTitle = (() => {
-    if (title === 'TERAPIYA( ENDO +PLOMBA)') return 'Therapy';
-    if (title === 'ENDODONTIYA') return 'Endodontia';
-    if (title === 'XIRURGIYA') return 'Surgery';
-    if (title === 'ORTOPEDIYA') return 'Orthopedics';
-    if (title === 'ORTODONTIYA') return 'Orthodontics';
-    if (title === 'GIGIENA VA PROFILAKTIKA') return 'Hygiene';
+    if (title === 'TERAPIYA( ENDO +PLOMBA)') return 'Terapiya';
+    if (title === 'ENDODONTIYA') return 'Endodontiya';
+    if (title === 'XIRURGIYA') return 'Xirurgiya';
+    if (title === 'ORTOPEDIYA') return 'Ortopediya';
+    if (title === 'ORTODONTIYA') return 'Ortodontiya';
+    if (title === 'GIGIENA VA PROFILAKTIKA') return 'Gigiyena';
+    if (title === 'ESTETIK STOMATOLOGIYA') return 'Estetika';
+    if (title === 'BOLALAR STOMATOLOGIYASI') return 'Pediatriya';
+    if (title === 'IMPLANTATSIYA') return 'Implantatsiya';
     return title;
   })();
 
@@ -147,7 +161,7 @@ const CategoryAccordion = ({ title, services, activeTooth, toothData, toggleServ
                 )}
               >
                 <span className="text-[11px] font-bold uppercase truncate mr-2 flex-1">{svc.name}</span>
-                <span className="text-[11px] font-black text-emerald-600 shrink-0">{(svc.price || 0).toLocaleString()} so'm</span>
+                <span className="text-[11px] font-black text-emerald-600 shrink-0">{(svc.price || 0).toLocaleString()} {t('common.currency')}</span>
               </button>
             );
           })}
@@ -561,10 +575,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     if (normalizedPatientName && step === 1) {
       setPlanForm(prev => ({ 
         ...prev, 
-        name: `${normalizedPatientName} — Davolash rejasi` 
+        name: `${normalizedPatientName} — ${t('patients.wizard.treatmentPlan')}` 
       }));
     }
-  }, [normalizedPatientName, step]);
+  }, [normalizedPatientName, step, t]);
 
   /**
    * Handle tooth selection
@@ -573,8 +587,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     setPlanForm(prev => ({ ...prev, tooth_numbers: teeth }));
     setToothData(prev => {
       const next = {};
-      teeth.forEach(t => { 
-        next[t] = prev[t] || { services: [], expanded: true }; 
+      teeth.forEach(tooth => { 
+        next[tooth] = prev[tooth] || { services: [], expanded: true }; 
       });
       return next;
     });
@@ -626,15 +640,15 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   /**
    * Calculate tooth total
    */
-  const toothTotal = useCallback((t) => {
-    return (toothData[t]?.services || []).reduce((s, sv) => s + (sv.price || 0), 0);
+  const toothTotal = useCallback((toothId) => {
+    return (toothData[toothId]?.services || []).reduce((s, sv) => s + (sv.price || 0), 0);
   }, [toothData]);
 
   /**
    * Calculate grand total
    */
   const grandTotal = useMemo(() => {
-    const teethSum = planForm.tooth_numbers.reduce((s, t) => s + toothTotal(t), 0);
+    const teethSum = planForm.tooth_numbers.reduce((s, toothId) => s + toothTotal(toothId), 0);
     return teethSum + toothTotal('general');
   }, [planForm.tooth_numbers, toothTotal]);
 
@@ -700,18 +714,18 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   const handleSavePatient = useCallback(async () => {
     if (!canProceedPatientStep) {
       if (!normalizedLastName) {
-        toast.error('Familiya kiritilishi shart');
+        toast.error(t('patients.wizard.errorLastNameRequired'));
         return;
       }
       if (!normalizedFirstName) {
-        toast.error('Ism kiritilishi shart');
+        toast.error(t('patients.errorNameRequired'));
         return;
       }
-      toast.error('Telefon raqami kiritilishi shart');
+      toast.error(t('patients.errorPhoneRequired'));
       return;
     }
     if (patientForm.address && !validateAddress(patientForm.address)) {
-      toast.error("Iltimos, manzilni to'g'ri kiriting (masalan: Toshkent sh., Chilonzor tumani)");
+      toast.error(t('patients.addressError'));
       return;
     }
     setSaving(true);
@@ -764,7 +778,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
             phone: patientForm.phone,
             source: patientForm.contact,
             status: 'converted',
-            notes: `Bemor ro'yxatdan o'tdi. Manba: ${patientForm.contact}`,
+            notes: t('patients.wizard.registeredLog', { source: patientForm.contact }),
           });
         } catch (leadError) {
           console.error('Lead yaratishda xatolik:', leadError);
@@ -773,7 +787,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       
       setCreatedPatient(patient);
       onSaved?.(patient);
-      toast.success("Bemor saqlandi. Endi davolash rejasini qo'shishingiz mumkin.");
+      toast.success(t('patients.wizard.saveSuccess'));
       setStep(2);
     } catch (error) {
       console.error('Failed to create patient:', error);
@@ -838,16 +852,19 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         ? allSvcNames.slice(0, MAX_SHOW).join(', ') + ` +& ${allSvcNames.length - MAX_SHOW} ta`
         : allSvcNames.join(', ');
 
-      const displayCategory = planForm.name || (serviceNames ? `${serviceNames}${teethSuffix}` : "Davolash rejasi");
+      const displayCategory = planForm.name || (serviceNames ? `${serviceNames}${teethSuffix}` : t('patients.wizard.treatmentPlan'));
 
       // 1. Create a single treatment plan containing all services
       const planDiscountAmt = Math.round((price * discountPercent) / 100);
       const planFinalPrice = Math.max(0, price - planDiscountAmt);
 
+      const selectedDoc = doctors.find(d => d.id === patientForm.main_treatment_provider);
       const plan = await base44.entities.TreatmentPlan.create({
         name: displayCategory,
         patient_id: createdPatient.id,
         patient_name: createdPatient.full_name,
+        doctor_id: patientForm.main_treatment_provider || '',
+        doctor_name: selectedDoc?.name || selectedDoc?.full_name || '',
         status: 'Planned',
         priority: planForm.priority || 'Medium',
         total_price: planFinalPrice,
@@ -883,6 +900,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         await base44.entities.Payment.create({
           patient_id: createdPatient.id,
           patient_name: createdPatient.full_name,
+          doctor_id: patientForm.main_treatment_provider || '',
           type: 'Debt',
           category: displayCategory,
           amount: price,
@@ -898,8 +916,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         await base44.entities.Payment.create({
           patient_id: createdPatient.id,
           patient_name: createdPatient.full_name,
+          doctor_id: patientForm.main_treatment_provider || '',
           type: 'Income',
-          category: `Boshlang'ich to'lov: ${displayCategory}`,
+          category: `${t('patients.wizard.downPayment')}: ${displayCategory}`,
           amount: installmentAdvance,
           method: 'Cash',
           date: today,
@@ -924,9 +943,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
           total_debt: Math.max(0, debt + discount - paid - refund),
         });
         
-        toast.success(`Davolash rejasi yaratildi. Jami qarz: ${totalDebt.toLocaleString()} so'm`);
+        toast.success(t('patients.wizard.planCreatedWithDebt', { amount: totalDebt.toLocaleString() }));
       } else {
-        toast.success('Davolash rejasi yaratildi');
+        toast.success(t('patients.wizard.planCreated'));
       }
       
       // Prepare complete plan data with all services
@@ -936,12 +955,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       teethList.forEach(tooth => {
         const toothSvcs = tooth ? (toothData[tooth]?.services || []) : [];
         const planName = tooth && tooth !== 'general'
-          ? `${createdPatient.full_name} — Tish #${tooth}`
-          : planForm.name || `${createdPatient.full_name} — Davolash rejasi`;
+          ? `${createdPatient.full_name} — ${t('patients.fdiTooth', { number: tooth })}`
+          : planForm.name || `${createdPatient.full_name} — ${t('patients.wizard.treatmentPlan')}`;
         
         allPlans.push({
           name: planName,
-          tooth: tooth === 'general' ? 'Umumiy' : tooth,
+          tooth: tooth === 'general' ? t('patients.wizard.general') : tooth,
           services: toothSvcs
         });
         
@@ -966,9 +985,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       setStep(4);
       onSaved?.();
     } catch (error) {
-      console.error('[NewPatientFlow] Reja saqlashda xatolik:', error);
+      console.error('[NewPatientFlow] ' + t('patients.wizard.saveError') + ':', error);
       setSavingError(error.message || String(error));
-      toast.error('Reja saqlashda xatolik: ' + error.message);
+      toast.error(t('patients.wizard.saveError') + ': ' + error.message);
     } finally {
       setSaving(false);
     }
@@ -1017,13 +1036,13 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       element.style.transform = oldTransform;
       
       const link = document.createElement('a');
-      link.download = `Chek_${createdPatient?.full_name?.replace(/\\s+/g, '_') || 'Bemor'}.png`;
+      link.download = `Chek_${createdPatient?.full_name?.replace(/\\s+/g, '_') || t('patients.wizard.patient')}.png`;
       link.href = canvas.toDataURL('image/png', 1.0);
       link.click();
-      toast.success("Muvaffaqiyatli saqlandi!", { id: "img-download" });
+      toast.success(t('common.success') || "Muvaffaqiyatli saqlandi!", { id: "img-download" });
     } catch (e) {
       console.error(e);
-      toast.error("Rasmga saqlashda xatolik yuz berdi", { id: "img-download" });
+      toast.error(t('common.errorSave'), { id: "img-download" });
     }
   }, [createdPatient]);
 
@@ -1040,7 +1059,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
    */
   const handleClose = useCallback(() => {
     if (step === 1 && (patientForm.full_name || patientForm.phone)) {
-      if (!confirm("Ma'lumotlar saqlanmadi. Haqiqatdan ham yopmoqchimisiz?")) {
+      if (!confirm(t('patients.wizard.closeConfirm'))) {
         return;
       }
     }
@@ -1059,12 +1078,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       if (mode === 'pct') {
         setDiscountPercent(val);
         discountAmount = (originalTotal * val) / 100;
-        label = val === 0 ? "Yo'q" : `Chegirma ${val}%`;
+        label = val === 0 ? "Yo'q" : t('patients.wizard.discountPercentLabel', { val });
       } else {
         // Use a unique number to identify custom amount in UI
         setDiscountPercent(-1); 
         discountAmount = val;
-        label = `Chegirma (${val.toLocaleString()} so'm)`;
+        label = t('patients.wizard.discountAmountLabel', { val: val.toLocaleString() });
       }
       setAppliedDiscountAmount(discountAmount);
       
@@ -1187,70 +1206,79 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       
       if (onSaved) onSaved();
       
-      toast.success(val === 0 && mode === 'pct' ? "Chegirma olib tashlandi" : `${label} qo'llanildi!`);
+      toast.success(val === 0 && mode === 'pct' ? t('patients.wizard.discountRemoved') : t('patients.wizard.discountApplied', { label }));
     } catch (error) {
       console.error('Chegirma tizimida xatolik:', error);
-      toast.error("Chegirma qo'shishda xatolik yuz berdi");
+      toast.error(t('patients.wizard.discountError'));
     }
   }, [createdPatient, createdPlan, grandTotal, discountPaymentId, onSaved]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="!p-0 w-full sm:w-[94vw] md:w-[90vw] max-w-4xl h-[100dvh] sm:h-[90dvh] md:h-[94dvh] md:max-h-[94dvh] flex flex-col overflow-hidden rounded-none sm:rounded-2xl border-0 shadow-2xl gap-0 !top-0 sm:!top-[5dvh] !translate-y-0">
+      <DialogContent className="!p-0 w-[95vw] sm:w-[94vw] md:w-[92vw] max-w-5xl h-[88dvh] max-h-[88dvh] flex flex-col overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border-0 shadow-2xl gap-0 !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
 
-        <div 
-          className="flex-shrink-0 px-4 pb-2 sm:px-5 sm:pb-3 lg:p-6 border-b bg-white relative z-10 shadow-sm no-print"
-          style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top, 0px))' }}
-        >
-          <DialogHeader className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => {
-                  if (step > 1 && step < 4) setStep(step - 1);
-                  else if (step === 4) setStep(2);
-                  else handleClose();
-                }}
-                className="p-2 -ml-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-600"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <DialogTitle className="text-xl font-bold text-slate-800">{t('patients.addNew')}</DialogTitle>
+         {/* Header */}
+         <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 pb-0 flex items-start justify-between shrink-0 rounded-t-[2rem] sm:rounded-t-[2.5rem] text-white no-print" style={{ paddingTop: 'calc(max(20px, env(safe-area-inset-top, 20px)) + 8px)' }}>
+            <div className="flex items-center gap-3 pb-4">
+              {step > 1 ? (
+                <button 
+                  onClick={() => {
+                    if (step > 1 && step < 4) setStep(step - 1);
+                    else if (step === 4) setStep(2);
+                    else handleClose();
+                  }}
+                  className="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95 border-none cursor-pointer"
+                >
+                  <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
+                </button>
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm">
+                  <User className="w-5 h-5 stroke-[2.5]" />
+                </div>
+              )}
+              <div>
+                <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
+                  {t('patients.addNew')}
+                </DialogTitle>
+                <p className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('patients.wizard.registrationTitle')}</p>
+              </div>
             </div>
             <button 
               onClick={handleClose}
-              className="p-2 -mr-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95 border-none cursor-pointer mt-1"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4.5 h-4.5" />
             </button>
-          </DialogHeader>
+         </div>
 
-          {/* Stepper (Matching Screenshot) */}
-          <div className="flex items-center justify-center gap-0 mt-6 mb-2 no-print">
-            {STEPS.map((s, i) => {
-              const Icon = s.icon;
-              const done = step > s.id || (step === 4 && s.id === 3);
-              const active = step === s.id || (step === 4 && s.id === 3);
-              return (
-                <div key={s.id} className="flex items-center">
-                  <div className="flex flex-col items-center gap-1.5 min-w-[60px]">
-                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300
-                      ${done ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100' :
-                        active ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100' :
-                        'bg-slate-100 border-slate-200 text-slate-400'}`}>
-                      {done && !active ? <Check className="w-4 h-4 stroke-[3px]" /> : <Icon className="w-3.5 h-3.5 sm:w-5 sm:h-5" />}
-                    </div>
-                    <span className={`text-[9px] sm:text-[11px] font-bold uppercase tracking-wider ${active || done ? 'text-emerald-600' : 'text-slate-400'}`}>
-                      {t(s.label)}
-                    </span>
-                  </div>
-                  {i < STEPS.length - 1 && (
-                    <div className={`h-[2px] w-12 sm:w-20 mx-[-4px] mb-5 rounded transition-colors duration-300 ${step > s.id ? 'bg-emerald-500' : 'bg-slate-200'}`} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+         {/* Stepper — yashil headerdan pastda oq fonda */}
+         <div className="bg-white border-b border-slate-100 px-4 py-3.5 shrink-0 z-10 shadow-sm no-print">
+           <div className="flex items-center justify-center gap-0">
+             {STEPS.map((s, i) => {
+               const Icon = s.icon;
+               const done = step > s.id || (step === 4 && s.id === 3);
+               const active = step === s.id || (step === 4 && s.id === 3);
+               return (
+                 <div key={s.id} className="flex items-center">
+                   <div className="flex flex-col items-center gap-1 min-w-[60px]">
+                     <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300
+                       ${done ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100' :
+                         active ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100' :
+                         'bg-slate-100 border-slate-200 text-slate-400'}`}>
+                       {done && !active ? <Check className="w-4 h-4 stroke-[3px]" /> : <Icon className="w-3.5 h-3.5 sm:w-5 sm:h-5" />}
+                     </div>
+                     <span className={`text-[9px] sm:text-[11px] font-bold uppercase tracking-wider ${active || done ? 'text-emerald-600' : 'text-slate-400'}`}>
+                       {t(s.label)}
+                     </span>
+                   </div>
+                   {i < STEPS.length - 1 && (
+                     <div className={`h-[2px] w-12 sm:w-20 mx-[-4px] mb-5 rounded transition-colors duration-300 ${step > s.id ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                   )}
+                 </div>
+               );
+             })}
+           </div>
+         </div>
 
         <div className="flex-1 overflow-hidden bg-white sm:bg-slate-50/50 flex flex-col">
 
@@ -1266,7 +1294,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   <div className="flex-shrink-0">
                     <div className="relative w-20 h-20 sm:w-24 sm:h-24 bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden group shadow-inner flex items-center justify-center">
                       {patientForm.photo_url ? (
-                        <img src={patientForm.photo_url} alt="Bemor rasmi" className="w-full h-full object-cover" />
+                        <img src={patientForm.photo_url} alt={t('patients.wizard.patient')} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
                           <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
@@ -1291,16 +1319,16 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   {/* Name fields right of photo */}
                   <div className="flex-1 grid grid-cols-1 gap-2">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Familiya <span className="text-red-500">*</span></label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.wizard.lastName')} <span className="text-red-500">*</span></label>
                       <Input value={patientForm.last_name} onChange={e => setPatientForm({ ...patientForm, last_name: capitalizeAsYouType(e.target.value) })}
                         onBlur={e => setPatientForm(prev => ({ ...prev, last_name: capitalizeName(e.target.value) }))}
-                        placeholder="Familiya" className="h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 w-full" autoFocus />
+                        placeholder={t('patients.wizard.lastName')} className="h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 w-full" autoFocus />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Ism <span className="text-red-500">*</span></label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.wizard.firstName')} <span className="text-red-500">*</span></label>
                       <Input value={patientForm.first_name} onChange={e => setPatientForm({ ...patientForm, first_name: capitalizeAsYouType(e.target.value) })}
                         onBlur={e => setPatientForm(prev => ({ ...prev, first_name: capitalizeName(e.target.value) }))}
-                        placeholder="Ism" className="h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 w-full" />
+                        placeholder={t('patients.wizard.firstName')} className="h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 w-full" />
                     </div>
                   </div>
                 </div>
@@ -1310,7 +1338,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                   {/* Phone */}
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Telefon <span className="text-red-500">*</span></label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('common.phone')} <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Phone className="w-4 h-4" /></span>
                       <Input type="tel" inputMode="tel" value={patientForm.phone}
@@ -1322,7 +1350,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                   {/* Phone 2 */}
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Telefon 2</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.wizard.phone2')}</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Phone className="w-4 h-4" /></span>
                       <Input type="tel" inputMode="tel" value={patientForm.phone_secondary}
@@ -1332,79 +1360,56 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     </div>
                   </div>
 
-                  {/* Status */}
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Bemor holati</label>
-                    <Select value={patientForm.status} onValueChange={v => setPatientForm({ ...patientForm, status: v })}>
-                      <SelectTrigger className="h-9 rounded-lg border-slate-200 text-sm w-full"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="New">Yangi</SelectItem>
-                        <SelectItem value="Active">Faol</SelectItem>
-                        <SelectItem value="In Treatment">Davolanishda</SelectItem>
-                        <SelectItem value="Waiting">Kutmoqda</SelectItem>
-                        <SelectItem value="Inactive">Nofaol</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
 
                   {/* Gender */}
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Jinsi</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.gender')}</label>
                     <div className="flex items-center gap-4 h-9">
                       <label className="flex items-center gap-2 cursor-pointer select-none">
                         <input type="radio" name="gender" value="Male" checked={patientForm.gender === 'Male'}
                           onChange={() => setPatientForm({ ...patientForm, gender: 'Male' })}
                           className="w-4 h-4 text-emerald-600 border-slate-300 focus:ring-0" />
-                        <span className="text-sm font-medium text-slate-700">Erkak</span>
+                        <span className="text-sm font-medium text-slate-700">{t('patients.male')}</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer select-none">
                         <input type="radio" name="gender" value="Female" checked={patientForm.gender === 'Female'}
                           onChange={() => setPatientForm({ ...patientForm, gender: 'Female' })}
                           className="w-4 h-4 text-emerald-600 border-slate-300 focus:ring-0" />
-                        <span className="text-sm font-medium text-slate-700">Ayol</span>
+                        <span className="text-sm font-medium text-slate-700">{t('patients.female')}</span>
                       </label>
                     </div>
                   </div>
 
                   {/* Date of birth */}
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Tug'ilgan sana</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.birthDate')}</label>
                     <div className="grid grid-cols-3 gap-1.5">
                       <EditableSelect value={patientForm.birth_day} onChange={v => setPatientForm(prev => ({ ...prev, birth_day: v }))}
-                        onValidate={handleDayValidate} placeholder="Kun" options={dayOptions} type="text" maxLength={2} />
+                        onValidate={handleDayValidate} placeholder={t('common.day') || 'Kun'} options={dayOptions} type="text" maxLength={2} />
                       <EditableSelect value={patientForm.birth_month} onChange={v => setPatientForm(prev => ({ ...prev, birth_month: v }))}
-                        onValidate={handleMonthValidate} placeholder="Oy" options={monthOptions} type="text" maxLength={2} />
+                        onValidate={handleMonthValidate} placeholder={t('common.month') || 'Oy'} options={monthOptions} type="text" maxLength={2} />
                       <EditableSelect value={patientForm.birth_year} onChange={v => setPatientForm(prev => ({ ...prev, birth_year: v }))}
-                        onValidate={handleYearValidate} placeholder="Yil" options={yearOptions} type="text" maxLength={4} />
+                        onValidate={handleYearValidate} placeholder={t('common.year') || 'Yil'} options={yearOptions} type="text" maxLength={4} />
                     </div>
                   </div>
 
-                  {/* Email */}
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Email</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Mail className="w-4 h-4" /></span>
-                      <Input type="email" value={patientForm.email} onChange={e => setPatientForm({ ...patientForm, email: e.target.value })}
-                        placeholder="example@mail.com" className="h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 pl-10 w-full" />
-                    </div>
-                  </div>
 
                   {/* Address - full width */}
                   <div className="sm:col-span-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Manzil</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('common.address')}</label>
                     <Input value={patientForm.address} onChange={e => setPatientForm({ ...patientForm, address: e.target.value })}
-                      placeholder="Toshkent shahri, Chilonzor tumani..."
+                      placeholder={t('patients.addressPlaceholder')}
                       className="h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 w-full" />
                   </div>
 
                   {/* Contact/Source */}
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Manba</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.sourceLabel')}</label>
                     <Select value={patientForm.contact} onValueChange={v => setPatientForm({ ...patientForm, contact: v })}>
-                      <SelectTrigger className="h-9 rounded-lg border-slate-200 text-sm w-full"><SelectValue placeholder="Tanlang" /></SelectTrigger>
+                      <SelectTrigger className="h-9 rounded-lg border-slate-200 text-sm w-full"><SelectValue placeholder={t('common.select')} /></SelectTrigger>
                       <SelectContent>
-                        {['Telegram', 'Instagram', 'Google', 'Veb-sayt', 'Tavsiya', "Qo'ng'iroq", 'Boshqa'].map(s => (
-                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        {WIZARD_SOURCES.map(s => (
+                          <SelectItem key={s.value} value={s.value}>{t(`patients.sources.${s.labelKey}`)}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1412,9 +1417,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                   {/* Main treatment provider */}
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Asosiy shifokor</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('common.doctor')}</label>
                     <Select value={patientForm.main_treatment_provider} onValueChange={v => setPatientForm({ ...patientForm, main_treatment_provider: v })}>
-                      <SelectTrigger className="h-9 rounded-lg border-slate-200 text-sm w-full"><SelectValue placeholder="Tanlang" /></SelectTrigger>
+                      <SelectTrigger className="h-9 rounded-lg border-slate-200 text-sm w-full"><SelectValue placeholder={t('common.select')} /></SelectTrigger>
                       <SelectContent className="max-h-[200px]">
                         {doctors.map(d => (
                           <SelectItem key={d.id} value={d.id || d.name}>{d.name}</SelectItem>
@@ -1425,49 +1430,42 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                   {/* Card number */}
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Karta raqami</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.wizard.cardNumber')}</label>
                     <Input value={patientForm.card_number} onChange={e => setPatientForm({ ...patientForm, card_number: e.target.value })}
-                      placeholder="043/u tibbiy karta"
+                      placeholder={t('patients.wizard.cardNumberPlaceholder')}
                       className="h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 w-full" />
                   </div>
 
                   {/* Registration date */}
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Ro'yxat sanasi <span className="text-red-500">*</span></label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.wizard.registrationDate')} <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Calendar className="w-4 h-4" /></span>
                       <Input value={patientForm.registration_date} onChange={e => setPatientForm({ ...patientForm, registration_date: e.target.value })}
-                        placeholder="17.07.2026" className="h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 pl-10 w-full font-medium" />
+                        placeholder="" className="h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 pl-10 w-full font-medium" />
                     </div>
                   </div>
 
                   {/* Important info - full width */}
                   <div className="sm:col-span-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-                      Muhim ma'lumot
-                      <span className="text-[9px] bg-slate-100 text-slate-500 rounded-full w-4 h-4 flex items-center justify-center cursor-help font-bold" title="Allergiyalar, kasalliklar, xavf omillari">i</span>
+                      {t('patients.importantInfo')}
+                      <span className="text-[9px] bg-slate-100 text-slate-500 rounded-full w-4 h-4 flex items-center justify-center cursor-help font-bold" title={t('patients.importantInfoPlaceholder')}>i</span>
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500"><AlertTriangle className="w-4 h-4" /></span>
                       <Input value={patientForm.important_info} onChange={e => setPatientForm({ ...patientForm, important_info: e.target.value })}
-                        placeholder="Allergiyalar, kasalliklar, xavf omillari..."
+                        placeholder={t('patients.importantInfoPlaceholder')}
                         className="h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 pl-10 text-rose-600 placeholder-rose-300 font-medium w-full" />
                     </div>
                   </div>
 
-                  {/* Payer - full width */}
-                  <div className="sm:col-span-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">To'lovchi</label>
-                    <Input value={patientForm.payer} onChange={e => setPatientForm({ ...patientForm, payer: e.target.value })}
-                      placeholder="To'lovchi tashkilot yoki kafil shaxs..."
-                      className="h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 w-full" />
-                  </div>
 
                   {/* Comment - full width */}
                   <div className="sm:col-span-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Izoh</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('common.note')}</label>
                     <textarea value={patientForm.comment} onChange={e => setPatientForm({ ...patientForm, comment: e.target.value })}
-                      placeholder="Tafsilotlar..."
+                      placeholder={t('common.details')}
                       className="w-full min-h-[60px] p-2.5 rounded-lg text-sm border border-slate-200 focus:border-slate-400 outline-none transition-all resize-y" />
                   </div>
 
@@ -1477,12 +1475,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
               
               {/* Cancel / Save actions (Matching color of screenshot) */}
-              <div className="flex-shrink-0 flex flex-col gap-3 p-4 border-t bg-slate-50 z-30 pb-safe-offset-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] w-full">
+              <div className="flex-shrink-0 flex flex-col gap-3 p-4 border-t bg-slate-50 z-30 pb-safe-offset-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] w-full rounded-b-[2.5rem]">
                 {savingError && (
                   <div className="bg-rose-50 border border-rose-100 rounded-2xl p-3 text-xs font-bold text-rose-600 w-full flex items-start gap-2 shadow-inner">
                     <span className="shrink-0 text-base">⚠️</span>
                     <div className="flex-1 text-left break-all">
-                      Bemor saqlashda xatolik: {savingError}
+                      {t('patients.wizard.saveError')}: {savingError}
                     </div>
                   </div>
                 )}
@@ -1492,7 +1490,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     onClick={handleClose} 
                     className="h-10 px-8 rounded-lg font-bold border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 transition-all text-sm min-w-[120px]"
                   >
-                    Bekor qilish
+                    {t('common.cancel')}
                   </Button>
                   <Button
                     onClick={handleSavePatient}
@@ -1500,11 +1498,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     className="bg-[#2ea44f] hover:bg-[#2c974b] text-white gap-2 h-10 px-8 rounded-lg font-bold shadow-md transition-all text-sm border-none flex items-center justify-center min-w-[120px]"
                   >
                     {saving ? (
-                      'Saqlanmoqda...'
+                      t('common.saving')
                     ) : (
                       <>
                         <Check className="w-4.5 h-4.5 stroke-[3px]" />
-                        Saqlash
+                        {t('common.save')}
                       </>
                     )}
                   </Button>
@@ -1549,7 +1547,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     const isActive = activeTooth === internalId;
                     let next;
                     if (isActive) {
-                      next = planForm.tooth_numbers.filter(t => t !== internalId);
+                       next = planForm.tooth_numbers.filter(tooth => tooth !== internalId);
                     } else {
                       next = planForm.tooth_numbers.includes(internalId)
                         ? planForm.tooth_numbers
@@ -1559,13 +1557,13 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     setActiveTooth(next.includes(internalId) ? internalId : null);
                   }}
                   className={cn(
-                    "w-8 h-9 rounded-lg flex items-center justify-center text-xs font-black transition-all cursor-pointer leading-none shrink-0 p-0 border",
+                    "w-6 sm:w-7 md:w-[25px] lg:w-7 h-7 sm:h-8 rounded-lg flex items-center justify-center text-[10px] sm:text-[11px] font-black transition-all cursor-pointer leading-none shrink-0 p-0 border",
                     isActive    ? "bg-[#1499AD] text-white border-[#1499AD] ring-2 ring-[#1499AD]/30 shadow-md shadow-[#1499AD]/10 scale-105" :
                     isSelected  ? "bg-emerald-500 text-white border-emerald-500 shadow-sm" :
                                   "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                   )}
                 >
-                  <span className="text-[11px] font-black">{fdi}</span>
+                  <span className="text-[10px] sm:text-[11px] font-black">{fdi}</span>
                 </button>
               );
             };
@@ -1579,47 +1577,53 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   {/* ═══ LEFT PANEL ═══ */}
                   <div className="flex-[0_0_62%] flex flex-col border-r border-slate-100 overflow-hidden bg-white min-h-0">
                     <div className="pl-6 pr-4 py-2 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
-                      <span className="text-[12px] font-bold text-slate-700">Davolash rejasi</span>
+                      <span className="text-[12px] font-bold text-slate-700">{t('patients.wizard.treatmentPlan')}</span>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] font-medium text-slate-500">Bemor: {createdPatient?.full_name}</span>
+                        <span className="text-[11px] font-medium text-slate-500">{t('patients.wizard.patient')}: {createdPatient?.full_name}</span>
                       </div>
                     </div>
 
-                    {/* ── Compact FDI tooth chart (Horizontal swipe on mobile) ── */}
-                    <div className="shrink-0 bg-[#fef9f7] border-b border-slate-100 py-2 overflow-x-auto no-scrollbar touch-pan-x">
-                      <div className="min-w-[560px] px-6">
+                    {/* ── Compact FDI tooth chart ── */}
+                    <div className="shrink-0 bg-[#fef9f7] border-b border-slate-100 py-2.5 px-2 sm:px-3">
+                      <div className="w-full flex flex-col items-center justify-center">
                         {/* Upper jaw */}
-                        <div className="flex items-center justify-center gap-0.5 sm:gap-1.5 mb-1">
-                          {upperRight.map(n => <ToothBtn key={n} fdi={n} />)}
-                          <div className="w-px h-5 bg-slate-300 mx-1" />
-                          {upperLeft.map(n => <ToothBtn key={n} fdi={n} />)}
+                        <div className="flex items-center justify-center gap-0.5 sm:gap-1 mb-1 w-full max-w-full">
+                          <div className="flex items-center justify-end gap-0.5 sm:gap-1">
+                            {upperRight.map(n => <ToothBtn key={n} fdi={n} />)}
+                          </div>
+                          <div className="w-[2px] h-6 bg-slate-300 mx-1 shrink-0 rounded-full" />
+                          <div className="flex items-center justify-start gap-0.5 sm:gap-1">
+                            {upperLeft.map(n => <ToothBtn key={n} fdi={n} />)}
+                          </div>
                         </div>
                         {/* Midline */}
-                        <div className="flex justify-center my-0.5">
-                          <div className="w-64 border-t border-dashed border-slate-300" />
-                        </div>
+                        <div className="w-48 sm:w-64 border-t border-dashed border-slate-200 my-0.5" />
                         {/* Lower jaw */}
-                        <div className="flex items-center justify-center gap-0.5 sm:gap-1.5 mt-1">
-                          {lowerRight.map(n => <ToothBtn key={n} fdi={n} />)}
-                          <div className="w-px h-5 bg-slate-300 mx-1" />
-                          {lowerLeft.map(n => <ToothBtn key={n} fdi={n} />)}
+                        <div className="flex items-center justify-center gap-0.5 sm:gap-1 mt-1 w-full max-w-full">
+                          <div className="flex items-center justify-end gap-0.5 sm:gap-1">
+                            {lowerRight.map(n => <ToothBtn key={n} fdi={n} />)}
+                          </div>
+                          <div className="w-[2px] h-6 bg-slate-300 mx-1 shrink-0 rounded-full" />
+                          <div className="flex items-center justify-start gap-0.5 sm:gap-1">
+                            {lowerLeft.map(n => <ToothBtn key={n} fdi={n} />)}
+                          </div>
                         </div>
                       </div>
                       {/* Legend */}
                       <div className="flex items-center justify-center gap-3 mt-2 shrink-0">
-                        <span className="flex items-center gap-1 text-[9px] text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-[#f87171] inline-block" />Tanlangan</span>
-                        <span className="flex items-center gap-1 text-[9px] text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />Faol</span>
-                        <span className="flex items-center gap-1 text-[9px] text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-slate-200 inline-block" />Tanlash</span>
+                        <span className="flex items-center gap-1 text-[9px] text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-[#f87171] inline-block" />{t('patients.wizard.selected')}</span>
+                        <span className="flex items-center gap-1 text-[9px] text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />{t('common.active')}</span>
+                        <span className="flex items-center gap-1 text-[9px] text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-slate-200 inline-block" />{t('patients.wizard.select')}</span>
                       </div>
                     </div>
 
                     {/* Services table header */}
                     <div className="pl-6 pr-4 py-1.5 bg-slate-50 border-b border-slate-100 grid grid-cols-[minmax(0,1fr)_32px_64px_40px_64px_18px] gap-1 shrink-0">
-                      <span className="text-[9px] font-black text-slate-400 uppercase">Xizmat</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase">{t('patients.wizard.services')}</span>
                       <span className="text-[9px] font-black text-slate-400 uppercase text-center">T#</span>
-                      <span className="text-[9px] font-black text-slate-400 uppercase text-right">Narx</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase text-right">{t('common.price')}</span>
                       <span className="text-[9px] font-black text-slate-400 uppercase text-center">%</span>
-                      <span className="text-[9px] font-black text-slate-400 uppercase text-right">Jami</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase text-right">{t('common.total')}</span>
                       <span />
                     </div>
 
@@ -1628,7 +1632,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       {allSelectedServices.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full gap-1.5 text-slate-300 py-10">
                           <ClipboardList className="w-7 h-7" />
-                          <p className="text-[11px] font-bold">Xizmat tanlanmagan</p>
+                          <p className="text-[11px] font-bold">{t('patients.wizard.noServiceSelected')}</p>
                         </div>
                       ) : (
                         allSelectedServices.map((s, idx) => {
@@ -1666,19 +1670,19 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     {/* Bottom: discount + save */}
                     <div className="pl-6 pr-4 pt-2 pb-3 border-t border-slate-100 bg-white shrink-0">
                       <div className="flex items-center gap-1 flex-wrap mb-1.5">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Chegirma:</span>
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{t('patients.wizard.discount')}:</span>
                         {[0,10,20,30].map(val => (
                           <button key={val} onClick={() => { handleApplyDiscount(val); setShowCustomDiscount(false); setCustomDiscountAmount(''); }}
                             className={cn("px-2 py-0.5 rounded text-[9px] font-black transition-all border-none cursor-pointer",
                               discountPercent === val && !showCustomDiscount ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                             )}>
-                            {val === 0 ? "Yo'q" : `${val}%`}
+                            {val === 0 ? t('patients.wizard.noDiscount') : `${val}%`}
                           </button>
                         ))}
                         <button onClick={() => setShowCustomDiscount(!showCustomDiscount)}
                           className={cn("px-2 py-0.5 rounded text-[9px] font-black transition-all border-none cursor-pointer",
                             showCustomDiscount ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200")}>
-                          Boshqa
+                          {t('common.other')}
                         </button>
                         {showCustomDiscount && (
                           <div className="flex gap-1">
@@ -1694,12 +1698,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         <div className="flex flex-col gap-0.5 text-left">
                           <div>
                             <span className="font-black text-slate-900 text-[14px]">{Math.floor(grandTotal * (1 - discountPercent/100)).toLocaleString()}</span>
-                            <span className="ml-1 text-[10px] text-slate-400">so'm</span>
+                            <span className="ml-1 text-[10px] text-slate-400">{t('common.currency')}</span>
                             {discountPercent > 0 && <span className="ml-2 text-[9px] text-slate-400 line-through">{grandTotal.toLocaleString()}</span>}
                           </div>
                           {discountPercent > 0 && (
                             <span className="text-[10px] font-bold text-rose-500">
-                              Chegirma summasi: -{Math.floor(grandTotal * (discountPercent/100)).toLocaleString()} so'm ({discountPercent}%)
+                              {t('patients.wizard.discountAmountSummary', { amount: Math.floor(grandTotal * (discountPercent/100)).toLocaleString(), percent: discountPercent })}
                             </span>
                           )}
                         </div>
@@ -1711,17 +1715,17 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   <div className="flex-1 flex flex-col overflow-hidden bg-white min-h-0">
                     <div className="pl-3 pr-6 py-2 border-b border-slate-100 shrink-0 bg-white">
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[11px] font-bold text-slate-600">Narxlar ro'yxati</span>
+                        <span className="text-[11px] font-bold text-slate-600">{t('patients.wizard.priceList')}</span>
                         {activeTooth ? (
-                          <span className="text-[11px] text-blue-500 font-bold">Tish #{idToFdi(activeTooth)} uchun</span>
+                          <span className="text-[11px] text-blue-500 font-bold">{t('patients.wizard.forTooth', { number: idToFdi(activeTooth) })}</span>
                         ) : (
-                          <span className="text-[11px] text-amber-500 font-bold">Avval tish tanlang</span>
+                          <span className="text-[11px] text-amber-500 font-bold">{t('patients.wizard.selectToothFirst')}</span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-2.5 h-7 border border-slate-100">
                         <Search className="w-3 h-3 text-slate-300 shrink-0" />
                         <input type="text" value={serviceSearch} onChange={e => setServiceSearch(e.target.value)}
-                          placeholder="Xizmat qidirish..."
+                          placeholder={t('patients.searchPlaceholder')}
                           className="flex-1 bg-transparent border-none text-[11px] text-slate-700 placeholder:text-slate-300 outline-none font-medium" />
                         {serviceSearch && (
                           <button onClick={() => setServiceSearch('')} className="text-slate-300 hover:text-slate-500 border-none bg-transparent cursor-pointer"><X className="w-2.5 h-2.5" /></button>
@@ -1785,12 +1789,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs">🦷</span>
                       <span className="text-[11px] font-black uppercase tracking-tight text-slate-700">
-                        {activeTooth ? `#${idToFdi(activeTooth)}-tish tanlandi` : 'Tish tanlanmagan'}
+                        {activeTooth ? t('patients.wizard.toothSelected', { number: idToFdi(activeTooth) }) : t('patients.wizard.noToothSelected')}
                       </span>
                     </div>
                     {activeTooth && (
                       <span className="text-[9px] bg-blue-50 text-blue-600 font-black px-2 py-0.5 rounded-full border border-blue-100">
-                        {(toothData[activeTooth]?.services || []).length} ta xizmat
+                        {t('patients.wizard.servicesCount', { count: (toothData[activeTooth]?.services || []).length })}
                       </span>
                     )}
                   </div>
@@ -1801,7 +1805,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       <details className="group">
                         <summary className="list-none flex items-center justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest cursor-pointer select-none">
                           <span className="flex items-center gap-1.5">
-                            📋 Tanlangan xizmatlar ({allSelectedServices.length})
+                            {t('patients.wizard.selectedServices', { count: allSelectedServices.length })}
                           </span>
                           <svg 
                             className="w-3 h-3 text-slate-400 transition-transform group-open:rotate-180" 
@@ -1818,7 +1822,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                                 <span className="text-[10px] font-bold text-slate-700 uppercase tracking-tight truncate block sm:inline">{s.service_name}</span>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-[10px] font-black text-emerald-600">{(s.price || 0).toLocaleString()} so'm</span>
+                                <span className="text-[10px] font-black text-emerald-600">{(s.price || 0).toLocaleString()} {t('common.currency')}</span>
                                 <button 
                                   type="button"
                                   onClick={() => toggleToothService({ id: s.service_id, name: s.service_name, price: s.price })}
@@ -1974,7 +1978,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                   {/* Bottom Sticky Bar */}
                   <div 
-                    className="p-4 border-t border-slate-150 bg-white flex flex-col gap-3 shrink-0 shadow-lg sticky bottom-0 z-50"
+                    className="p-4 border-t border-slate-150 bg-white flex flex-col gap-3 shrink-0 shadow-lg sticky bottom-0 z-50 rounded-b-[2.5rem]"
                     style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
                   >
                     {/* Chegirma tanlash (Mobile) */}
@@ -1985,7 +1989,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                           className={cn("px-2 py-0.5 rounded text-[9px] font-black transition-all border-none cursor-pointer",
                             discountPercent === val && !showCustomDiscount ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                           )}>
-                          {val === 0 ? "Yo'q" : `${val}%`}
+                          {val === 0 ? t('patients.wizard.noDiscount') : `${val}%`}
                         </button>
                       ))}
                       <button type="button" onClick={() => setShowCustomDiscount(!showCustomDiscount)}
@@ -2007,13 +2011,13 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     <div className="flex justify-between items-end px-1">
                       <div className="flex flex-col text-left">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
-                          Rejada: {allSelectedServices.length} ta muolaja
+                          {t('patients.wizard.planTreatmentsCount', { count: allSelectedServices.length })}
                         </span>
                         <div className="flex items-center gap-1 mt-1">
                           <span className="text-lg font-black text-slate-900 leading-none tabular-nums">
                             {Math.floor(grandTotal * (1 - discountPercent/100)).toLocaleString()}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-bold">so'm</span>
+                          <span className="text-[10px] text-slate-400 font-bold">{t('common.currency')}</span>
                           {discountPercent > 0 && (
                             <span className="text-[10px] text-slate-400 line-through ml-1.5 font-medium tabular-nums">
                               {grandTotal.toLocaleString()}
@@ -2042,19 +2046,19 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         disabled={saving || allSelectedServices.length === 0}
                         className="flex-grow h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase text-xs tracking-wider rounded-xl shadow-md border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.98] transition-all"
                       >
-                        {saving ? "Saqlanmoqda..." : "Saqlash va Yakunlash"}
+                        {saving ? t('common.saving') : t('patients.wizard.saveAndFinish')}
                       </button>
                     </div>
                   </div>
                 </div>
 
                 {/* Bottom Navigation buttons (Desktop) */}
-                <div className="hidden md:flex flex-shrink-0 flex-col gap-3 p-4 sm:p-5 border-t bg-white z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe-offset-4 w-full">
+                <div className="hidden md:flex flex-shrink-0 flex-col gap-3 p-4 sm:p-5 border-t bg-white z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe-offset-4 w-full rounded-b-[2.5rem]">
                   {savingError && (
                     <div className="bg-rose-50 border border-rose-100 rounded-2xl p-3 text-xs font-bold text-rose-600 w-full flex items-start gap-2 shadow-inner">
                       <span className="shrink-0 text-base">⚠️</span>
                       <div className="flex-1 text-left break-all">
-                        Reja saqlashda xatolik: {savingError}
+                        t('patients.wizard.saveError') + ':' {savingError}
                       </div>
                     </div>
                   )}
@@ -2065,7 +2069,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       onClick={handleSkipPlan} 
                       className="hidden sm:flex text-muted-foreground h-11 px-3 sm:px-4 rounded-xl font-medium"
                     >
-                      Rejasiz davom etish
+                      {t('patients.wizard.skipPlan')}
                     </Button>
                     <div className="flex gap-2 w-full sm:w-auto justify-end">
                       <Button variant="outline" onClick={() => setStep(1)} className="h-12 sm:h-11 px-4 sm:px-6 rounded-xl font-bold">
@@ -2076,9 +2080,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         disabled={saving}
                         className="flex-1 sm:flex-none bg-primary hover:bg-primary/90 gap-1.5 h-12 sm:h-11 px-4 sm:px-8 rounded-xl font-bold shadow-sm"
                       >
-                        {saving ? 'Saqlanmoqda...' : (
+                        {saving ? t('common.saving') : (
                           <>
-                            <span>Saqlash{planForm.tooth_numbers.length > 1 ? ` (${planForm.tooth_numbers.length})` : ''}</span>
+                            <span>{t('common.save')}{planForm.tooth_numbers.length > 1 ? ` (${planForm.tooth_numbers.length})` : ''}</span>
                             <Check className="w-4 h-4" />
                           </>
                         )}
@@ -2095,20 +2099,20 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
               <CheckCircle2 className="w-10 h-10 text-emerald-600" />
             </div>
             <div>
-              <h3 className="text-lg font-bold">Muvaffaqiyatli yakunlandi!</h3>
+              <h3 className="text-lg font-bold">{t('common.success')}</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                <span className="font-semibold text-foreground">{createdPatient?.full_name}</span> qo'shildi
+                {t('patients.wizard.patientAdded', { name: createdPatient?.full_name })}
                 {createdPatient && (
-                  <> va <span className="font-semibold text-primary">
-                    {createdPlan && (createdPlan._count > 1 ? `${createdPlan._count} ta alohida reja` : createdPlan.name)}
-                  </span> tuzildi</>
+                  <> {t('common.and')} <span className="font-semibold text-primary">
+                    {createdPlan && (createdPlan._count > 1 ? t('patients.wizard.plansCreatedCount', { count: createdPlan._count }) : `${createdPlan.name} ${t('patients.wizard.planCreatedLog')}`)}
+                  </span></>
                 )}
                 {createdPlan?.total_price > 0 && (
                   <>
                     <br />
                     <span className="text-amber-600 font-medium">
-                      {createdPlan.total_price.toLocaleString()} so'm
-                    </span> qarz sifatida to'lovlarga qo'shildi
+                      {createdPlan.total_price.toLocaleString()} {t('common.currency')}
+                    </span> {t('patients.wizard.addedToDebt')}
                   </>
                 )}
               </p>
@@ -2121,8 +2125,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   <MessageCircle className="w-5 h-5" />
                 </div>
                 <div className="text-left">
-                  <p className="text-[13px] font-bold text-blue-900">Eslatmalar tizimi</p>
-                  <p className="text-[10px] text-blue-700">Bemorni botimizga ulab qo'ying</p>
+                  <p className="text-[13px] font-bold text-blue-900">{t('patients.wizard.reminderSystem')}</p>
+                  <p className="text-[10px] text-blue-700">{t('patients.wizard.connectBot')}</p>
                 </div>
               </div>
               
@@ -2136,7 +2140,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     const link = getTelegramDeepLink(createdPatient?.id);
                     if (!link) return;
                     navigator.clipboard.writeText(link);
-                    toast.success("Havola nusxalandi!");
+                    toast.success("t('patients.wizard.linkCopied')");
                   }}
                   className="p-1.5 hover:bg-slate-50 text-blue-500 rounded-md transition-colors"
                 >
@@ -2154,7 +2158,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                 className="w-full bg-blue-600 hover:bg-blue-700 h-10 rounded-xl text-xs font-bold gap-2"
               >
                 <Share2 className="w-4 h-4" />
-                Telegramga yuborish
+                {t('patients.wizard.sendToTelegram')}
               </Button>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 mt-8 w-full sm:w-auto px-4 sm:px-0">
@@ -2163,10 +2167,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                 onClick={() => setStep(4)} 
                 className="border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-800 px-8 font-bold h-12 rounded-xl transition-all w-full sm:w-auto"
               >
-                <Printer className="w-5 h-5 mr-2" /> Chek ko'rish
+                <Printer className="w-5 h-5 mr-2" /> {t('patients.wizard.viewReceipt')}
               </Button>
               <Button onClick={handleClose} className="bg-primary hover:bg-primary/90 px-10 h-12 rounded-xl font-bold shadow-md w-full sm:w-auto text-base">
-                Yopish
+                {t('common.close')}
               </Button>
             </div>
           </div>
@@ -2187,8 +2191,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-black text-emerald-900 uppercase tracking-tight">Muvaffaqiyatli saqlandi!</h4>
-                  <p className="text-[11px] text-emerald-700 font-medium">Bemor va davolash rejasi tizimga muvaffaqiyatli qo'shildi.</p>
+                  <h4 className="text-sm font-black text-emerald-900 uppercase tracking-tight">{t('common.success')}</h4>
+                  <p className="text-[11px] text-emerald-700 font-medium">{t('patients.wizard.successMsg')}</p>
                 </div>
               </motion.div>
 
@@ -2308,7 +2312,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   
                   <div className="text-left sm:text-right flex flex-col gap-1 items-start sm:items-end bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded-xl">
                     <h3 className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-widest text-right w-full sm:w-auto">{t('patients.wizard.invoice').toUpperCase()}</h3>
-                    <p className="text-[11px] text-slate-500 font-medium">{t('common.date')}: {new Date().getDate()}-{(['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'])[new Date().getMonth()]}, {new Date().getFullYear()}</p>
+                    <p className="text-[11px] text-slate-500 font-medium">{t('common.date')}: {new Date().getDate()}-{(t('common.months') || ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'])[new Date().getMonth()]}, {new Date().getFullYear()}</p>
                     <p className="text-[11px] text-slate-400 font-medium">№ {createdPlan?.id ? createdPlan.id.split('-').pop()?.toUpperCase() : String(Date.now()).slice(-6)}</p>
                   </div>
                 </div>
@@ -2323,10 +2327,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     </div>
                     <div>
                       <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold uppercase mb-0.5">
-                        {t('patients.appointmentDate') && t('patients.appointmentDate') !== 'patients.appointmentDate' ? t('patients.appointmentDate') : 'Qabul vaqti'}
+                        {t('patients.appointmentDate') && t('patients.appointmentDate') !== 'patients.appointmentDate' ? t('patients.appointmentDate') : t('appointments.date')}
                       </p>
                       <p className="text-[13px] sm:text-sm font-bold text-slate-800">
-                        {new Date().getDate()}-{(['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'])[new Date().getMonth()]}, {new Date().getFullYear()} {new Date().toLocaleTimeString("uz-UZ", {hour:'2-digit',minute:'2-digit'})}
+                        {new Date().getDate()}-{(t('common.months') || ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'])[new Date().getMonth()]}, {new Date().getFullYear()} {new Date().toLocaleTimeString("uz-UZ", {hour:'2-digit',minute:'2-digit'})}
                       </p>
                     </div>
                     <div>
@@ -2334,9 +2338,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       <p className="text-[13px] sm:text-sm font-bold text-slate-800">{localStorage.getItem('user_name') || 'Demo Admin'}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold uppercase mb-0.5">{t('patients.treatmentType') && t('patients.treatmentType') !== 'patients.treatmentType' ? t('patients.treatmentType') : 'Muolaja turi'}</p>
+                      <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold uppercase mb-0.5">{t('patients.treatmentType') && t('patients.treatmentType') !== 'patients.treatmentType' ? t('patients.treatmentType') : t('patients.wizard.treatmentPlan')}</p>
                       <p className="text-[13px] sm:text-sm font-bold text-slate-800">
-                         {createdPlan?.services?.[0]?.service_name || createdPlan?.name || 'Davolash'}
+                         {createdPlan?.services?.[0]?.service_name || createdPlan?.name || t('patients.wizard.treatmentPlan')}
                       </p>
                     </div>
                   </div>
@@ -2344,11 +2348,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                 {/* Treatment List */}
                 <div className="p-4 sm:p-5 lg:px-8 bg-slate-50/50">
-                  <p className="text-[10px] sm:text-xs font-bold text-blue-500 uppercase tracking-wider mb-4">DAVOLASHLAR RO'YXATI</p>
+                  <p className="text-[10px] sm:text-xs font-bold text-blue-500 uppercase tracking-wider mb-4">t('patients.wizard.treatmentList')</p>
                   
                   <div className="hidden sm:grid grid-cols-12 gap-2 mb-2 pb-2 border-b border-slate-200">
-                    <div className="col-span-8 text-[11px] font-bold text-slate-400 uppercase">Davolash nomi</div>
-                    <div className="col-span-4 text-[11px] font-bold text-slate-400 uppercase text-right">Summa</div>
+                    <div className="col-span-8 text-[11px] font-bold text-slate-400 uppercase">{t('patients.wizard.treatmentName')}</div>
+                    <div className="col-span-4 text-[11px] font-bold text-slate-400 uppercase text-right">{t('common.total')}</div>
                   </div>
 
                   <div className="space-y-3 sm:space-y-0">
@@ -2358,12 +2362,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         rows.push({ 
                           key: i, 
                           name: s.service_name, 
-                          tooth: s.tooth_number ? `Tish #${s.tooth_number}` : 'Umumiy', 
+                          tooth: s.tooth_number ? t('patients.fdiTooth', { number: s.tooth_number }) : 'Umumiy', 
                           price: s.price 
                         });
                       });
                       if (rows.length === 0) {
-                        rows.push({ key: 0, name: createdPlan?.name || 'Davolash rejasi', tooth: '—', price: createdPlan?.total_price || 0 });
+                        rows.push({ key: 0, name: createdPlan?.name || t('patients.wizard.treatmentPlan'), tooth: '—', price: createdPlan?.total_price || 0 });
                       }
                       
                       return rows.map((row, idx) => (
@@ -2387,26 +2391,26 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   {/* Summary Totals */}
                   <div className="mt-2 sm:mt-4 flex flex-col items-end gap-1.5 pt-2">
                     <div className="flex items-center justify-between w-full sm:w-64 mb-1">
-                      <span className="text-[12px] sm:text-sm text-slate-500 font-medium">Jami xizmatlar:</span>
-                      <span className="text-[13px] sm:text-sm font-bold text-slate-800">{(createdPlan?.total_price || grandTotal || 0).toLocaleString()} so'm</span>
+                      <span className="text-[12px] sm:text-sm text-slate-500 font-medium">{t('patients.wizard.services')}:</span>
+                      <span className="text-[13px] sm:text-sm font-bold text-slate-800">{(createdPlan?.total_price || grandTotal || 0).toLocaleString()} {t('common.currency')}</span>
                     </div>
                     {appliedDiscountAmount > 0 && (
                       <div className="flex items-center justify-between w-full sm:w-64 mb-1">
                         <span className="text-[12px] sm:text-sm text-rose-500 font-bold">
-                          {discountPercent > 0 ? `Chegirma (${discountPercent}%):` : 'Chegirma:'}
+                          {discountPercent > 0 ? `${t('patients.wizard.discount')} (${discountPercent}%):` : `${t('patients.wizard.discount')}:`}
                         </span>
                         <span className="text-[13px] sm:text-sm font-black text-rose-500">
-                          - {appliedDiscountAmount.toLocaleString()} so'm
+                          - {appliedDiscountAmount.toLocaleString()} {t('common.currency')}
                         </span>
                       </div>
                     )}
                     {createdPlanAdvanceTotal > 0 && (
                       <div className="flex items-center justify-between w-full sm:w-64 mb-1 border-b border-dashed border-slate-200 pb-2">
                         <span className="text-[12px] sm:text-sm text-emerald-600 font-bold">
-                          Boshlang'ich to'lov:
+                          {t('patients.wizard.downPayment')}:
                         </span>
                         <span className="text-[13px] sm:text-sm font-black text-emerald-600">
-                          - {createdPlanAdvanceTotal.toLocaleString()} so'm
+                          - {createdPlanAdvanceTotal.toLocaleString()} {t('common.currency')}
                         </span>
                       </div>
                     )}
@@ -2420,8 +2424,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500 rounded-full blur-[40px] opacity-20 -mr-10 -mt-10 pointer-events-none"></div>
                     )}
                     <div className="z-10">
-                      <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest">JAMI TO'LOV (QARZ)</p>
-                      <p className="text-[12px] text-yellow-400 font-semibold mt-0.5">To'lov kutilmoqda</p>
+                      <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest">{t('patients.wizard.totalDebt')}</p>
+                      <p className="text-[12px] text-yellow-400 font-semibold mt-0.5">{t('patients.wizard.paymentPending')}</p>
                     </div>
                     <div className="text-left sm:text-right z-10 w-full sm:w-auto flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start -mt-1 sm:mt-0">
                       {appliedDiscountAmount > 0 && (
@@ -2431,7 +2435,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       )}
                       <p className="text-2xl sm:text-3xl font-black text-white">
                         {((createdPlan?.total_price || grandTotal || 0) - appliedDiscountAmount - createdPlanAdvanceTotal).toLocaleString()} 
-                        <span className="text-sm font-medium text-slate-400 ml-1">so'm</span>
+                        <span className="text-sm font-medium text-slate-400 ml-1">{t('common.currency')}</span>
                       </p>
                     </div>
                   </div>
@@ -2440,11 +2444,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   <div className="grid grid-cols-2 gap-8 mt-6">
                     <div className="flex flex-col items-center">
                       <div className="w-full border-b border-slate-300 mb-1 h-[25px]" />
-                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Shifokor imzosi</p>
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">{t('patients.wizard.doctorSignature')}</p>
                     </div>
                     <div className="flex flex-col items-center">
                       <div className="w-full border-b border-slate-300 mb-1 h-[25px]" />
-                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Bemor imzosi</p>
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">{t('patients.wizard.patientSignature')}</p>
                     </div>
                   </div>
                 </div>
@@ -2459,40 +2463,40 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                            <Calendar className="w-5 h-5" />
                          </div>
                          <div>
-                           <h4 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">To'lovlar grafigi</h4>
+                           <h4 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">{t('patients.wizard.paymentSchedule')}</h4>
                            <p className="text-[10px] text-slate-500 font-bold uppercase">{createdPatient?.full_name}</p>
                          </div>
                       </div>
                       <div className="text-right">
                         <p className="text-[9px] font-black text-slate-400 uppercase">№ {createdPlan?.id ? createdPlan.id.split('-').pop()?.toUpperCase() : String(Date.now()).slice(-6)}</p>
-                        <p className="text-[10px] font-bold text-slate-800">{new Date().getDate()}-{(['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'])[new Date().getMonth()]}, {new Date().getFullYear()}</p>
+                        <p className="text-[10px] font-bold text-slate-800">{new Date().getDate()}-{(t('common.months') || ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'])[new Date().getMonth()]}, {new Date().getFullYear()}</p>
                       </div>
                     </div>
 
                     <div className="border border-blue-100 rounded-2xl overflow-hidden shadow-sm">
                       <div className="bg-blue-600 px-4 py-2.5 flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-white" />
-                        <span className="text-[10px] font-black text-white uppercase tracking-widest">MUDDATLI TO'LOV GRAFIGI</span>
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest">{t('patients.wizard.installmentSchedule')}</span>
                       </div>
                       
                       {/* Summary for Installment */}
                       <div className="bg-blue-50/50 p-4 border-b border-blue-100 grid grid-cols-3 gap-4">
                         <div>
-                          <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Umumiy summa</p>
+                          <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">{t('common.total')}</p>
                           <p className="text-[13px] font-black text-slate-800">
-                            {((createdPlan?.total_price || grandTotal || 0) - appliedDiscountAmount).toLocaleString()} <span className="text-[10px] opacity-50">so'm</span>
+                            {((createdPlan?.total_price || grandTotal || 0) - appliedDiscountAmount).toLocaleString()} <span className="text-[10px] opacity-50">{t('common.currency')}</span>
                           </p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Boshlang'ich to'lov</p>
+                          <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">{t('patients.wizard.downPayment')}</p>
                           <p className="text-[13px] font-black text-emerald-600">
-                            {createdPlanAdvanceTotal.toLocaleString()} <span className="text-[10px] opacity-50">so'm</span>
+                            {createdPlanAdvanceTotal.toLocaleString()} <span className="text-[10px] opacity-50">{t('common.currency')}</span>
                           </p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Qolgan qarz</p>
+                          <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">{t('patients.wizard.remainingDebt')}</p>
                           <p className="text-[13px] font-black text-rose-600">
-                            {((createdPlan?.total_price || grandTotal || 0) - createdPlanAdvanceTotal - appliedDiscountAmount).toLocaleString()} <span className="text-[10px] opacity-50">so'm</span>
+                            {((createdPlan?.total_price || grandTotal || 0) - createdPlanAdvanceTotal - appliedDiscountAmount).toLocaleString()} <span className="text-[10px] opacity-50">{t('common.currency')}</span>
                           </p>
                         </div>
                       </div>
@@ -2501,9 +2505,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         <table className="w-full text-left">
                           <thead>
                             <tr className="bg-blue-50/50 border-b border-blue-100">
-                              <th className="px-4 py-2 text-[10px] font-bold text-blue-600 uppercase">Bosqich</th>
-                              <th className="px-4 py-2 text-[10px] font-bold text-blue-600 uppercase">Sana</th>
-                              <th className="px-4 py-2 text-[10px] font-bold text-blue-600 uppercase text-right">Summa</th>
+                              <th className="px-4 py-2 text-[10px] font-bold text-blue-600 uppercase">{t('patients.wizard.stage')}</th>
+                              <th className="px-4 py-2 text-[10px] font-bold text-blue-600 uppercase">{t('patients.wizard.date')}</th>
+                              <th className="px-4 py-2 text-[10px] font-bold text-blue-600 uppercase text-right">{t('patients.wizard.amount')}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -2522,12 +2526,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                                 
                                 return (
                                   <tr key={i} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
-                                    <td className="px-4 py-3 text-[11px] font-black text-slate-700">{i + 1}-oy to'lovi</td>
+                                    <td className="px-4 py-3 text-[11px] font-black text-slate-700">{t('patients.wizard.monthlyPayment', { month: i + 1 })}</td>
                                     <td className="px-4 py-3 text-[11px] text-slate-500 font-medium">
-                                      {d.getDate()}-{(['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'])[d.getMonth()]}, {d.getFullYear()}
+                                      {d.getDate()}-{(t('common.months') || ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'])[d.getMonth()]}, {d.getFullYear()}
                                     </td>
                                     <td className="px-4 py-3 text-[11px] font-black text-slate-900 text-right">
-                                      {monthly.toLocaleString()} <span className="text-[9px] opacity-30">so'm</span>
+                                      {monthly.toLocaleString()} <span className="text-[9px] opacity-30">{t('common.currency')}</span>
                                     </td>
                                   </tr>
                                 );
@@ -2537,7 +2541,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         </table>
                       </div>
                       <div className="bg-slate-50 px-4 py-3 border-t border-slate-100 italic">
-                        <p className="text-[10px] text-slate-400 font-black tracking-tight">* To'lovlarni o'z vaqtida amalga oshirishingizni so'raymiz.</p>
+                        <p className="text-[10px] text-slate-400 font-black tracking-tight">{t('patients.wizard.paymentWarning')}</p>
                       </div>
                     </div>
 
@@ -2545,11 +2549,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     <div className="grid grid-cols-2 gap-8 mt-16 p-2">
                       <div className="flex flex-col items-center">
                         <div className="w-full border-b border-slate-300 mb-2 h-[45px]" />
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Shifokor imzosi</p>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">{t('patients.wizard.doctorSignature')}</p>
                       </div>
                       <div className="flex flex-col items-center">
                         <div className="w-full border-b border-slate-300 mb-2 h-[45px]" />
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Bemor imzosi</p>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">{t('patients.wizard.patientSignature')}</p>
                       </div>
                     </div>
                   </div>
@@ -2563,7 +2567,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         <MessageCircle className="w-5 h-5" />
                       </div>
                       <div className="text-left">
-                        <p className="text-sm font-black text-blue-900 uppercase tracking-tight">Eslatmalar tizimi</p>
+                        <p className="text-sm font-black text-blue-900 uppercase tracking-tight">{t('patients.wizard.reminderSystem')}</p>
                         <p className="text-[11px] text-blue-700 font-medium">Bemorga Telegram bot linkini yuboring</p>
                       </div>
                     </div>
@@ -2580,7 +2584,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                             const link = getTelegramDeepLink(createdPatient?.id);
                             if (!link) return;
                             navigator.clipboard.writeText(link);
-                            toast.success("Havola nusxalandi!");
+                            toast.success("t('patients.wizard.linkCopied')");
                           }}
                           className="h-8 w-8 p-0 hover:bg-blue-50 text-blue-500 rounded-xl"
                         >
@@ -2633,7 +2637,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
               </div>
 
               {/* Bottom Actions Section */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3 mt-6 no-print">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3 mt-6 no-print rounded-b-[2.5rem]">
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                   <button
                     onClick={handleDownloadImage}

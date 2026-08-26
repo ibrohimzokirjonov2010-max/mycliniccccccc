@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Users, UserPlus, Phone, Shield, Search, 
-  ChevronRight, Trash2, Mail, MoreVertical, Star, Activity, Plus, MessageCircle
+  Users, Phone, Shield, Search, 
+  ChevronRight, Trash2, Plus, MessageCircle,
+  UserPlus, X
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PullToRefresh from '@/components/ui/PullToRefresh';
@@ -208,9 +209,9 @@ export default function MobileStaff() {
                   key={user.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: index * 0.03 }}
+                  transition={{ delay: Math.min(index, 6) * 0.02 }}
                   onClick={() => navigate(`/staff/${user.id}`)}
-                  className="bg-white rounded-2xl p-3 mb-2 shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-50 flex items-center gap-3 relative active:scale-[0.98] transition-all group"
+                  className="bg-white rounded-2xl p-3 mb-2 shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-50 flex items-center gap-3 relative active:scale-[0.98] transition-all group content-visibility-auto"
                 >
                   {/* Left: Mini Avatar */}
                   <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${getAvatarGradient(user.role)} flex items-center justify-center text-white font-black text-sm shadow-sm shrink-0`}>
@@ -290,18 +291,37 @@ export default function MobileStaff() {
 
         {/* Add Staff Modal */}
         <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <DialogContent className="w-[90%] rounded-[2.5rem] p-6">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-black tracking-tight">Yangi xodim qo'shish</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
+          <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] p-0 rounded-[2.5rem] border-0 shadow-2xl bg-white/95 backdrop-blur-xl flex flex-col overflow-visible">
+            
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between shrink-0 rounded-t-[2.5rem]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm">
+                  <UserPlus className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
+                    Yangi xodim qo'shish
+                  </DialogTitle>
+                  <p className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">Xodim ma'lumotlari</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowAddModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 p-6 overflow-y-auto max-h-[60vh]">
               <div className="space-y-1.5">
                 <p className="text-[10px] font-black uppercase text-slate-400 ml-1">F.I.O</p>
                 <Input 
                   placeholder="Dr. Alisher Toshmatov" 
                   value={newStaff.full_name}
                   onChange={e => setNewStaff({...newStaff, full_name: e.target.value})}
-                  className="rounded-2xl bg-slate-50 border-none h-12"
+                  className="rounded-2xl bg-slate-50 border-none h-12 font-bold"
                 />
               </div>
               
@@ -312,7 +332,7 @@ export default function MobileStaff() {
                     placeholder="+998..." 
                     value={newStaff.phone}
                     onChange={e => setNewStaff({...newStaff, phone: e.target.value})}
-                    className="rounded-2xl bg-slate-50 border-none h-12"
+                    className="rounded-2xl bg-slate-50 border-none h-12 font-bold"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -321,7 +341,7 @@ export default function MobileStaff() {
                     placeholder="Ortodont" 
                     value={newStaff.specialty}
                     onChange={e => setNewStaff({...newStaff, specialty: e.target.value})}
-                    className="rounded-2xl bg-slate-50 border-none h-12"
+                    className="rounded-2xl bg-slate-50 border-none h-12 font-bold"
                   />
                 </div>
               </div>
@@ -333,7 +353,7 @@ export default function MobileStaff() {
                     placeholder="login" 
                     value={newStaff.username}
                     onChange={e => setNewStaff({...newStaff, username: e.target.value})}
-                    className="rounded-2xl bg-slate-50 border-none h-12"
+                    className="rounded-2xl bg-slate-50 border-none h-12 font-bold"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -343,7 +363,7 @@ export default function MobileStaff() {
                     placeholder="••••••" 
                     value={newStaff.password}
                     onChange={e => setNewStaff({...newStaff, password: e.target.value})}
-                    className="rounded-2xl bg-slate-50 border-none h-12"
+                    className="rounded-2xl bg-slate-50 border-none h-12 font-bold"
                   />
                 </div>
               </div>
@@ -352,7 +372,7 @@ export default function MobileStaff() {
                 <div className="space-y-1.5">
                   <p className="text-[10px] font-black uppercase text-slate-400 ml-1">Lavozim</p>
                   <select 
-                    className="flex h-12 w-full rounded-2xl bg-slate-50 border-none px-3 py-2 text-sm"
+                    className="flex h-12 w-full rounded-2xl bg-slate-50 border-none px-3 py-2 text-sm font-bold"
                     value={newStaff.role}
                     onChange={e => setNewStaff({...newStaff, role: e.target.value})}
                   >
@@ -367,14 +387,15 @@ export default function MobileStaff() {
                     type="number"
                     value={newStaff.commission}
                     onChange={e => setNewStaff({...newStaff, commission: Number(e.target.value)})}
-                    className="rounded-2xl bg-slate-50 border-none h-12"
+                    className="rounded-2xl bg-slate-50 border-none h-12 font-bold"
                   />
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
+
+            <div className="flex gap-2 p-6 border-t border-slate-100 bg-slate-50 rounded-b-[2.5rem] shrink-0">
               <Button variant="ghost" onClick={() => setShowAddModal(false)} className="flex-1 h-12 rounded-2xl font-bold uppercase text-[10px]">Bekor</Button>
-              <Button onClick={handleAddStaff} className="flex-1 bg-slate-900 text-white h-12 rounded-2xl font-bold uppercase text-[10px]">Saqlash</Button>
+              <Button onClick={handleAddStaff} className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white h-12 rounded-2xl font-bold uppercase text-[10px] shadow-md shadow-emerald-500/10 border-none transition-all active:scale-95">Saqlash</Button>
             </div>
           </DialogContent>
         </Dialog>

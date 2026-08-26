@@ -13,7 +13,7 @@ Supabase'ga data **kirmiryapti** chunki:
 👉 https://supabase.com/dashboard 
 
 ### 2-qadam: Loyihangizni tanlang
-- `epmemjirbqamqfvblaie` loyihasini tanlang
+- `zvyggjldzkxwufpnaatr` loyihasini tanlang
 
 ### 3-qadam: SQL Editor'ga kiring
 - Chap menuda **"SQL Editor"** tugmasini bosing

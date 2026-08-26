@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
-  ArrowLeft, Copy, ExternalLink, Send, 
-  Share2, QrCode, Download, Sparkles,
-  Link2, CheckCircle2, AlertCircle, X,
-  Globe, MessageCircle, Instagram, MapPin, 
+  ArrowLeft, Send, Sparkles,
+  Link2, CheckCircle2, AlertCircle,
+  Globe, Instagram, MapPin, 
   Clock, FileText, Info
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';

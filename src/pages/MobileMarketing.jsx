@@ -1,20 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  Target, TrendingUp, BarChart3, Users, Facebook, Instagram, 
-  Plus, Search, Zap, DollarSign, RefreshCw, MessageSquare, 
-  ChevronRight, ExternalLink, Activity, X, Check, AlertCircle,
-  Shield, Globe, Key, Settings, Loader2, Link as LinkIcon,
-  CheckCircle2, Copy, FileText, Smartphone, Workflow, Terminal,
-  Server, ZapOff, CheckCircle, PieChart as PieChartIcon, MapPin,
-  TrendingDown, ArrowUpRight, Phone, Globe2, MessageCircle
+  Target, Users, Facebook, Instagram, Zap, RefreshCw, 
+  ChevronRight, Activity, Loader2,
+  Server, ZapOff, CheckCircle, ArrowUpRight, Phone, MessageCircle
 } from 'lucide-react';
 import LeadQuickView from '@/components/marketing/LeadQuickView';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { supabase } from '@/api/supabaseClient';
@@ -167,7 +162,18 @@ export default function MobileMarketing() {
   const calculatedStats = useMemo(() => {
     const total = leads.length;
     const converted = leads.filter(l => l.status?.toLowerCase() === 'converted' || l.status?.toLowerCase() === 'bemorga aylandi').length;
-    const totalSpend = total * 32000; // Taxminiy CPL 32,000 so'm
+    
+    let totalSpend = 0;
+    leads.forEach(l => {
+      const src = (l.source || 'Facebook Ads').toLowerCase();
+      let cpl = 32000;
+      if (src.includes('instagram') || src.includes('insta')) cpl = 28000;
+      else if (src.includes('google') || src.includes('site') || src.includes('sayt')) cpl = 45000;
+      else if (src.includes('telegram') || src.includes('tg')) cpl = 18000;
+      else if (src.includes('facebook')) cpl = 25000;
+      else if (src.includes('import') || src.includes('csv')) cpl = 0;
+      totalSpend += cpl;
+    });
     const avgCpl = total > 0 ? Math.round(totalSpend / total) : 0;
     
     return {
@@ -177,7 +183,6 @@ export default function MobileMarketing() {
       conversionRate: total > 0 ? ((converted / total) * 100).toFixed(1) : '0.0'
     };
   }, [leads]);
-
   return (
     <div className="flex flex-col gap-4 px-3 pb-24 pt-3 bg-[#F8FAFC] min-h-screen">
       {/* Executive Mobile Header */}
@@ -273,9 +278,9 @@ export default function MobileMarketing() {
                         key={l.id} 
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.04 }}
+                        transition={{ delay: Math.min(i, 6) * 0.02 }}
                         onClick={() => setSelectedLead(l)}
-                        className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-3 active:scale-[0.98] transition-all relative overflow-hidden"
+                        className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-3 active:scale-[0.98] transition-all relative overflow-hidden content-visibility-auto"
                      >
                         {l.status?.toLowerCase() === 'new' && (
                            <div className="absolute top-0 right-0 w-6 h-6 bg-emerald-500/10 rounded-bl-xl flex items-center justify-center">
@@ -399,8 +404,8 @@ export default function MobileMarketing() {
                         key={i} 
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between active:scale-[0.98] transition-all"
+                        transition={{ delay: Math.min(i, 6) * 0.02 }}
+                        className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between active:scale-[0.98] transition-all content-visibility-auto"
                      >
                         <div className="flex items-center gap-4">
                            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500 shrink-0">

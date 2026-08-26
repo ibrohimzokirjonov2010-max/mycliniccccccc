@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  DollarSign, TrendingUp, Users, Calendar, 
-  ChevronRight, ChevronDown, Activity, Download, Search, Plus, Shield
+  DollarSign, 
+  ChevronRight, ChevronDown, Activity, Download, Search, Shield
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PullToRefresh from '@/components/ui/PullToRefresh';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 
 /**
@@ -26,7 +26,7 @@ export default function MobilePayroll() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
   const [expandedDoctor, setExpandedDoctor] = useState(null);
 
   // Add Doctor states
@@ -221,8 +221,8 @@ export default function MobilePayroll() {
                   key={doctor.id}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className={`bg-white rounded-[2rem] overflow-hidden shadow-sm border ${expandedDoctor === doctor.id ? 'border-emerald-200 ring-1 ring-emerald-50' : 'border-slate-50'}`}
+                  transition={{ delay: Math.min(index, 6) * 0.02 }}
+                  className={`bg-white rounded-[2rem] overflow-hidden shadow-sm border ${expandedDoctor === doctor.id ? 'border-emerald-200 ring-1 ring-emerald-50' : 'border-slate-50'} content-visibility-auto`}
                 >
                   <div 
                     className="p-5 flex items-center gap-4"

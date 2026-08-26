@@ -13,6 +13,131 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi Bemor Qo'shish / Davolash Rejasi Wizardida 8-Tishlar (Donolik Tishlari: 18, 28, 38, 48) Sig'ishi va Ko'rinishi
+- **Sana:** 2026-08-26
+- **Tuzatilgan Fayllar:**
+  - [`src/components/patients/NewPatientFlow.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/patients/NewPatientFlow.jsx)
+  - [`src/components/treatments/TreatmentPlanModal.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/treatments/TreatmentPlanModal.jsx)
+- **Muammo Tavsifi:** 
+  - Yangi bemor qo'shish oynasining 2-bosqichida (Davolash rejasi) tishlar ro'yxatida 8-tishlar (18, 28, 48, 38 - donolik tishlari) chetdan chiqib ketib, ekranga sig'may ko'rinmay qolgan edi (faqat 17-27 va 47-37 ko'ringan).
+- **Sababi:** 
+  - Tish tugmalari eni (`w-8`, 32px) va oraliq masofalari (`gap-1.5`, 6px) modalning chap paneli enidan (`~520px`) kattaroq (jami `~660px`) bo'lib, gorizontal `overflow-x-auto` bo'lgani sababli chetdagi 18, 28, 48, 38 tishlar qirqilib qolgan.
+- **Qanday tuzatildi:** 
+  1. `ToothBtn` o'lchamlari ixchamlashtirildi (`w-6 sm:w-7 md:w-[25px] lg:w-7 h-7 sm:h-8 rounded-lg`, matn `text-[10px] sm:text-[11px] font-black`).
+  2. Tish qatorlari konteyneri to'liq eni bo'yicha moslashuvchan (`w-full max-w-full justify-center gap-0.5 sm:gap-1`) qilindi.
+  3. Barcha 32 ta tish (18-28 va 48-38) hech qanday gorizontal aylantirishsiz (scrollsiz) to'liq, zargarlik aniqligida ekranga sig'dirildi.
+  4. Donolik tishlari (18, 28, 38, 48) ni tanlash va ularga "Donolik tishini olish" xizmatini biriktirish muvaffaqiyatli sinovdan o'tkazildi.
+- **Qaytalamaslik choralari:** Tish formulasi va wizard oynalarida 16 ta tish qatori doimo ixcham o'lchamlarda berilishi va chap panel eniga to'liq sig'ishi shart.
+
+### 🦷 Davolash Tarixi Statistikasi va Tish Jadvalida Bajarilgan Ishlar (Tish Olish + Implant) Aks Etishi
+- **Sana:** 2026-08-26
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/PatientProfile.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/PatientProfile.jsx)
+  - [`src/components/patients/ProfessionalOdontogram.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/patients/ProfessionalOdontogram.jsx)
+- **Muammo Tavsifi:** 
+  1. Davolash rejasida bir vaqtning o'zida ham "Tish olish", ham "Implantat o'rnatish" bo'lganda, tish formulasi va o'ng tarafdagi xulosalar ro'yxatida faqat bitta amal (avval faqat tish olish, keyin faqat implant) chiqib, "Tish olish" ko'rinmay qolayotgan edi.
+  2. `Davolash tarixi va rejalashtirilgan ishlar` bo'limida `Bajarildi ✅` statistikasi 0 bo'lib qolayotgan edi.
+- **Sababi:** 
+  - Har bir tish uchun faqat yagona string status (`status` va `treatment`) saqlangan, bir nechta amallar (masalan, tish sug'urilishi + implant qo'yilishi) massiv ko'rinishida yig'ilmagan edi.
+- **Qanday tuzatildi:** 
+  1. `getToothStatuses` funksiyasida har bir tish uchun `treatments` va `conditions` to'liq massiv qilib yig'ildi.
+  2. Odontogrammaning o'ng panelidagi xulosa ro'yxatida ham **"• Tish olingan - 21"**, ham **"• Implantat - 21"** birgalikda to'liq aks ettirildi.
+  3. Odontogramma pastki statistika panelida `1 × Implant` va `1 × Tish olingan` hisoblagichlari parallel chiqarildi.
+  4. Odontogramma 21-tish ustiga kursorni olib borganda tooltipda `"#21 — Tish olingan + Implantat"` chiqarildi.
+  5. Pastdagi `Davolash tarixi`da `Bajarildi ✅` bo'limida barcha 3 ta amal (Anesteziya, Implantat, Tish olish) ko'rsatilib, har biri `BAJARILDI` maqomida saqlab qolindi.
+- **Qaytalamaslik choralari:** Tishda bir vaqtning o'zida bir nechta muolaja (tish olish + implant + plomba) bajarilganda, bittasi ikkinchisini o'chirib yubormasligi uchun doimo `treatments` ro'yxatida barchasi saqlanishi va ro'yxatlarda ko'rsatilishi shart.
+
+### 🏷️ Bemor Lentasi (Patient Feed) - Chegirmaning "To'lanmagan" deb chiqishi va Eski Chegirmasiz Narxning Duplikat Bo'lishi
+- **Sana:** 2026-08-26
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/PatientProfile.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/PatientProfile.jsx)
+- **Muammo Tavsifi:** Bemor profilidagi faoliyat lentasida (timeline feed) davolash rejasi chegirma bilan tuzilganda:
+  1. `CHEGIRMA QO'LLANGAN — TO'LOV KUTILMOQDA: -1 254 000 so'm` deb sariq kartochka chiqib, unga `TO'LANMAGAN` nishoni (badge) taqib qo'yilgan (vaziyatda chegirma to'lanadigan qarz emas, balki chegirma edi).
+  2. Eski 4 180 000 so'mlik chegirmasiz xom narx alohida `REJA NARXI — TO'LOV KUTILMOQDA` kartochkasi sifatida duplikat bo'lib chiqib, foydalanuvchini chalg'itayotgan edi.
+- **Sababi:** 
+  - `PatientProfile.jsx` dagi `timelineItems` massiviga barcha to'lovlar qo'shilayotgan paytda davolash rejasiga biriktirilgan ichki qarz (`type: 'Debt'`) va avtomatik chegirma (`type: 'Discount'`) yozuvlari filtrlanmagan.
+  - Kartochkani render qilish kodida `isAutoDiscount` shartiga `showBadge: true` va `"to'lov kutilmoqda"` yozuvi qattiq kodlab qo'yilgan edi.
+- **Qanday tuzatildi:** 
+  1. `timelineItems` ichida davolash rejasiga bog'langan ichki `Debt` va `Discount` yozuvlari filtrlab olib tashlandi, chunki davolash rejasi o'zining alohida reja kartasida chegirmali yakuniy narxi (`NARX (CHEGIRMA BILAN): 2 926 000 so'm`) va chegirma nishoni (`Chegirma qo'llangan: -30%`) bilan chiroyli chiqadi.
+  2. To'lovlarni render qilishda chegirma hech qachon `To'lanmagan` yoki `to'lov kutilmoqda` deb chiqmaydigan qilindi (`showBadge: false`, `label: "Chegirma berildi"`).
+  3. `load()` funksiyasida DB dagi legacy soxta discount to'lovlarini avtomatik tozalash va qarz yozuvlarini rejaning yakuniy chegirmali narxiga sinxronlash qo'shildi.
+- **Qaytalamaslik choralari:** Davolash rejasi narxini va chegirmasini ko'rsatishda har doim faqat chegirmali yakuniy narxni ko'rsating. Chegirmalarga HECH QACHON "to'lanmagan" / "qarz" nishonlarini qo'ymang.
+
+### 📱 Premium Suzuvchi Navigatsiya Paneli (Mobile Floating Glassmorphism Dock Layout)
+- **Sana:** 2026-08-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/layout/NativeMobileLayout.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/layout/NativeMobileLayout.jsx)
+- **Muammo Tavsifi:** Mobil telefonda pastki navigatsiya paneli (bottom bar) 100% enli tekis oq blok ko'rinishida pastki chetga yopishib qolgani foydalanuvchiga eski/sodda ko'ringan. Uni professional "iPhone 17" uslubidagi, suv tomchisi kabi shaffof va suzuvchi (glassmorphism floating dock) ko'rinishga keltirish so'ralgan.
+- **Sababi:** Pastki navigatsiya barining CSS klasslari chekkalardan ajralmagan va klassik tekis blok ko'rinishida yozilgan edi.
+- **Qanday tuzatildi:** Navigatsiya bar konteyneri chekkalardan ajratilib (`fixed bottom-5 left-5 right-5`), to'liq yumaloq burchakli (`rounded-[2.2rem]`), shaffof oq (`bg-white/85 backdrop-blur-2xl border border-white/40`) va yumshoq soyali (`shadow-[0_12px_40px_rgba(15,23,42,0.12)]`) qilindi. Aktiv element ko'rsatkichi uchun ustki chiziq olib tashlanib, uning o'rniga tugma ortida joylashgan va silliq siljiydigan shaffof ko'k kapsula (`layoutId="activeTabPill"`) hamda ikona ostidagi yorug'lik refraktsiyasi (`layoutId="activeTabIconGlow"`) animatsiyalari o'rnatildi.
+- **Qaytalamaslik choralari:** Mobil suzuvchi panellar o'rnatishda chekka masofalarini (`bottom-5 left-5 right-5`) va Framer Motion spring animatsiyalari muvofiqligini tekshiring.
+
+### 📱 Mobil Onboarding va Kutib Olish Oqimi (Mobile Welcome & Language/Country Onboarding Flow)
+- **Sana:** 2026-08-22
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Login.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/Login.jsx)
+- **Muammo Tavsifi:** Mobil telefonda ilovani birinchi marta ochganda professional tarzda mamlakat tanlash, til tanlash va foydalanish yo'riqnomasi (benefit onboarding slides) chiqishi talab qilingan.
+- **Sababi:** Ilovada mobil foydalanuvchilar uchun kutib olish (onboarding/til tanlash) oqimi loyihada mavjud emas edi.
+- **Qanday tuzatildi:** `Login.jsx` komponentiga mobil ekranlar (`width < 1024`) uchun maxsus onboarding boshqaruvi qo'shildi. Foydalanuvchi birinchi marta kirganini tekshirish uchun `localStorage` ishlatildi va quyidagi bosqichlar ishlab chiqildi:
+  1. **Mamlakat tanlash:** O'zbekiston yoki Tojikiston radioguruh orqali tanlanadi.
+  2. **Til tanlash:** O'zbekcha (Lotincha), Ўзбекча (Кирилча), yoki Русский tillari. Til tanlanganda `changeLanguage` orqali ilova tili darhol o'zgaradi.
+  3. **Tushuntirish slaydlari:** 3 ta to'liq animatsiyali slaydlar (odontogram, kalendar rejasi, hamda AI tish tahlili bilan) iPhone Mockup ko'rinishida Framer Motion orqali ishlab chiqildi.
+  Slaydlar yakunida "Boshlash" tugmasi bosilganda onboarding holati saqlanadi va kirish formasiga yo'naltiradi.
+- **Qaytalamaslik choralari:** Mobil kutib olish oqimi faqat bir marta ko'rsatilishini ta'minlash uchun `localStorage` tekshiruvlarini to'g'ri bajaring.
+
+### 📋 Yangi Davolash Rejasi Modali Navigatsiya va Visual Yaxshilashlar (New Plan Wizard UX Improvements)
+- **Sana:** 2026-08-22
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/MobileTreatmentPlansV2.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/MobileTreatmentPlansV2.jsx)
+- **Muammo Tavsifi:** Yangi davolash rejasi yaratish (Yangi reja form/wizard) muloqot oynasida 1-qadamda "Bekor qilish" tugmasi yo'qligi va orqaga qaytish hamda yopish tugmalarining bir vaqtda ko'rinib chalkashlik yaratishi kuzatilgan. Sarlavha ostidagi qadam ko'rsatkichlari (step indicator) bir-biri bilan ulanmagan va oddiy ko'ringan.
+- **Sababi:** Wizard navigatsiya boshqaruvi va sarlavha qismida foydalanuvchi interfeysi (UI/UX) qadamlari mobil versiya uchun yetarlicha moslashtirilmagan edi.
+- **Qanday tuzatildi:** Top header qismida 1-qadamda orqaga qaytish tugmasi olib tashlandi, faqat `Yangi Reja` va `X` yopish tugmalari qoldirildi (Step 2+ dan boshlab orqaga qaytish tugmasi chiqadi). Bosqichlar ko'rsatkichi (step indicator) uchun visual bog'lovchi progress chizig'i va har bir qadam uchun nomlar (`Bemor`, `Xizmatlar`, `Yakunlash`) qo'shildi. 1-qadam uchun navigatsiya ostiga "Bekor qilish" tugmasi biriktirildi. Qadamlar ichidagi tish sarlavhalari FDI raqamlariga (`16`, `36` kabi) o'girib chiqildi.
+- **Qaytalamaslik choralari:** Mobil wizard (qadamma-qadam) oynalarini yaratishda visual progress liniyasi va sarlavhalardan to'g'ri foydalaning, shuningdek ortiqcha takrorlanuvchi yopish tugmalarini olib tashlang.
+
+### 🦷 Yangi Implant Modali Yopish va Bekor Qilish Tugmalari (Implant Form Cancel & Close Buttons)
+- **Sana:** 2026-08-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/ImplantForm.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/implants/ImplantForm.jsx)
+- **Muammo Tavsifi:** Yangi implant qo'shish (Implant form/wizard) muloqot oynasining yuqori o'ng burchagida yopish tugmasi ("X") hamda birinchi qadamda (Step 1 - Bemor) orqaga qaytish/yopish tugmalari yo'q edi. Bu foydalanuvchiga jarayonni bekor qilishni qiyinlashtirgan.
+- **Sababi:** Radix UI dialog close tugmasi `overflow-hidden` va maxsus header tufayli yashirinib qolgan. Birinchi qadamda navigatsiya faqat o'ngdagi "Keyingisi" tugmasidan iborat edi.
+- **Qanday tuzatildi:** `<DialogHeader>` ichiga maxsus, mobil uchun qulay va katta o'lchamli "X" yopish tugmasi qo'shildi. Birinchi qadam (Step 1) navigatsiyasiga chap tarafga joylashtirilgan "Bekor qilish" tugmasi qo'shildi va scroll konteyneri no-scrollbar klassiga moslandi.
+- **Qaytalamaslik choralari:** Mobil wizard/dialog oynalarini loyihalashda har doim foydalanuvchi istalgan vaqtda muloqot oynasini yopa olishi yoki bekor qila olishi uchun yaqqol ko'rinadigan tugmalarni ta'minlang.
+
+### 📋 Davolash Rejasi Tafsilotlari va Checkbox Sinxronizatsiyasi (Treatment Plan Details Compatibility)
+- **Sana:** 2026-08-22
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/MobileTreatmentPlansV2.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/MobileTreatmentPlansV2.jsx)
+- **Muammo Tavsifi:** Davolash rejasi tafsilotlari (Reja tafsilotlari) oynasi ochilganda, kompyuterdan (desktop) yaratilgan rejalarda tish raqamlari ko'rinmasdan bo'sh `# tish xizmatlari` deb chiqib qolayotgan edi. Shuningdek, xizmatlarning bajarilganlik (checkbox) holati ma'lumotlar bazasidan o'qilmayotgan va modal ochilganda hamisha bo'sh (unchecked) ko'rinayotgan edi.
+- **Sababi:** Kompyuter versiyasida davolash rejasi xizmatlari tekis (flat array) formatda, har bir elementda alohida `tooth` maydoni bilan saqlanadi. Mobil versiyada esa tish bo'yicha guruhlangan format (`tooth_id` va `items` massivi) kutilgan edi. Shuningdek, `completedServices` holati modal ochilganda plan ma'lumotlaridan sinxronizatsiya qilinmagan.
+- **Qanday tuzatildi:** `groupedServices` nomli dynamic normalizator qo'shildi. U ma'lumotlar bazasidagi har ikkala formatni (flat va grouped) avtomatik aniqlab, mobil ekranga guruhlangan holatda xavfsiz va chiroyli o'tkazadi va tish raqamlarini to'liq chiqaradi (quadrantlarni FDI raqamlarga aylantiradi). `useEffect` orqali muloqot oynasi ochilganda completed statuslar to'g'ri o'qib olinadigan bo'ldi.
+- **Qaytalamaslik choralari:** Turli platformalar (desktop va mobil) yozadigan ma'lumotlar strukturasining o'zaro muvofiqligini ta'minlash uchun har doim o'qish qismida data normalizer/adapter yozing hamda foydalanuvchi tanlovi holatini bazadagi real status bilan sinxronlashtiring.
+
+### 📱 Mobil Pastki Panel Sakrashi (Mobile Bottom Nav Bar Jumping) - Viewport va Scroll muammosi
+- **Sana:** 2026-08-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/layout/NativeMobileLayout.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/layout/NativeMobileLayout.jsx)
+- **Muammo Tavsifi:** Mobil telefonda pastki navigatsiya paneli (bottom navigation bar) sahifa scroll qilinganda sakrab/o'ynab yurishi va tagidagi sahifa kontentining uning ostiga kirib, eng pastda ko'rinib qolishi kuzatilgan.
+- **Sababi:** Mobil layoutda butun brauzer oynasi (`<body>`) scroll qilinayotgan edi. Mobil Safari/WebKit brauzerlarida scroll qilinganda dinamik viewport o'zgarishi tufayli `fixed bottom-0` elementlar lag bilan harakatlanadi va o'ynab ketadi.
+- **Qanday tuzatildi:** Loyiha tashqi konteyneri `fixed inset-0 overflow-hidden` orqali to'liq ekran o'lchamiga qulflab qo'yildi va scroll qilish faqat kontent maydoni (`<main>` ning `absolute inset-0 overflow-y-auto no-scrollbar` klassi) ichiga o'tkazildi. Bu navigatsiya panelini mutlaqo barqaror (static stuck) holatga keltirdi.
+- **Qaytalamaslik choralari:** Mobil PWA va veb ilovalar layoutini yaratishda har doim body scrollini bloklab (`overflow-hidden`), scrollni faqat ichki elementlar ichida boshqaring. Bu fixed elementlarning sakrashini butunlay yo'qotadi.
+
+### 👤 Bemor Tanlash Dropdown (Patient Selection Dropdown) - Z-Index Overlapping va Mobil Tanlov Ishlamasligi
+- **Sana:** 2026-08-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/patients/PatientSelect.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/patients/PatientSelect.jsx)
+  - [`src/pages/MobilePaymentsV2.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/MobilePaymentsV2.jsx)
+  - [`src/pages/MobileTreatmentPlansV2.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/MobileTreatmentPlansV2.jsx)
+  - [`src/pages/MobileRecall.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/MobileRecall.jsx)
+  - [`src/components/treatments/TreatmentPlanModal.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/treatments/TreatmentPlanModal.jsx)
+- **Muammo Tavsifi:** Mobil telefonda va ba'zi modallarda bemor tanlash (PatientSelect) qidiruv ro'yxati ochilganda, ro'yxat keyingi kiritish maydonlari (Shifokor, To'lov summasi, Reja nomi va boshqalar) ostida (orqasida) qolib ketgan. Bemor nomini bosganda boshqa maydonlar bosilib ketishi tufayli bemorni umuman tanlab bo'lmas edi.
+- **Sababi:**
+  - `overflow-y-auto` bo'lgan modal konteynerlarda va form maydonlarida stacking context (qavatlar ierarxiyasi) shakllanmagan edi. Natijada DOM tartibi bo'yicha keyingi kelgan positioned maydonlar `PatientSelect` ro'yxatidan yuqorida render bo'lib, uning white backgroundini berkitib qo'ygan.
+  - Mobil touch ekranlarda `onBlur` hodisasi touch tugashidan oldin `setTimeout` tugab ro'yxatni yopib qo'yar edi, bu esa bemor bosilganda select o'zgarishini bloklagan.
+- **Qanday tuzatildi:**
+  - `PatientSelect.jsx` qidiruv dropdown konteyneriga explicit `bg-white` klassi qo'shildi hamda mobil touch mosligi uchun `onTouchStart` hodisalarida `e.preventDefault()` chaqirib, blur bo'lishidan oldin select o'zgarishini darhol bajarish ta'minlandi.
+  - `MobilePaymentsV2.jsx`, `MobileTreatmentPlansV2.jsx`, `MobileRecall.jsx`, va `TreatmentPlanModal.jsx` sahifalaridagi form maydonlarining ota `div` konteynerlariga explicit `relative z-50`, `relative z-40`, `relative z-30`, `relative z-20`, `relative z-10` kaskadli z-index klasslari qo'shilib, qidiruv oynasi har doim eng yuqori qavatda ko'rinishi va to'liq click/touch qabul qilishi ta'minlandi.
+- **Qaytalamaslik choralari:** Mobil modal va sahifalar ichida `PatientSelect` yoki boshqa custom absolute qidiruv/dropdown elementlaridan foydalanilganda, uning ostidagi form maydonlari konteynerlarida har doim kaskadli `relative z-XX` klasslarini ishlating. Mobil touch hodisalarni aslo unutmang (`onTouchStart` / `onPointerDown`).
+
 ### ⚡ Tizim Latentligi (System Latency) - Boshlang'ich yuklanish oq ekran qotishi va tablar orasida o'tgandagi laglar
 - **Sana:** 2026-08-19
 - **Tuzatilgan Fayllar:**

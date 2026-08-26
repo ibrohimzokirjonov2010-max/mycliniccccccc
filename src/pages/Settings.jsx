@@ -84,11 +84,11 @@ export default function Settings() {
 
   const addStaff = async () => {
     if (!newStaff.full_name) {
-      toast.error('Ism kiriting!');
+      toast.error(t('settings.staff.errorEnterName') || 'Ism kiriting!');
       return;
     }
     if (!newStaff.password || newStaff.password.length < 4) {
-      toast.error('Parol kamida 4 ta belgidan iborat bo\'lishi kerak!');
+      toast.error(t('settings.staff.errorMinPassword') || 'Parol kamida 4 ta belgidan iborat bo\'lishi kerak!');
       return;
     }
 
@@ -108,7 +108,7 @@ export default function Settings() {
 
       setNewStaff({ full_name: '', specialty: 'Stomatolog', commission: 40, password: '' });
       await load(); 
-      toast.success('Shifokor muvaffaqiyatli qo\'shildi!');
+      toast.success(t('settings.staff.successAddDoctor') || 'Shifokor muvaffaqiyatli qo\'shildi!');
     } catch (error) {
       console.error('Add doctor error:', error);
       toast.error('Xatolik yuz berdi: ' + (error.message || ''));
@@ -116,7 +116,7 @@ export default function Settings() {
   };
 
   const deleteStaff = async (id) => {
-    if (window.confirm("Haqiqatdan ham ushbu xodimni o'chirmoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi.")) {
+    if (window.confirm(t('settings.staff.confirmDeleteDoctor') || "Haqiqatdan ham ushbu xodimni o'chirmoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi.")) {
       try {
         await base44.auth.deleteUser(id);
         toast.success("Xodim o'chirildi");
@@ -167,29 +167,29 @@ export default function Settings() {
            localStorage.removeItem('clinic_id');
            window.location.href = '/login';
         }}>
-          Chiqish
+          {t('settings.logout') || "Chiqish"}
         </Button>
       </div>
 
       <Tabs defaultValue="public-page" className="space-y-6">
         <TabsList className="bg-slate-100/50 p-1 rounded-2xl border border-slate-100 inline-flex flex-wrap h-auto gap-1">
           <TabsTrigger value="website-integration" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-sm flex items-center gap-2">
-            <Globe className="w-4 h-4 text-indigo-500" /> Vebsayt Integratsiyasi
+            <Globe className="w-4 h-4 text-indigo-500" /> {t('settings.tabs.websiteIntegration') || "Vebsayt Integratsiyasi"}
           </TabsTrigger>
           <TabsTrigger value="public-page" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-sm flex items-center gap-2">
-            <LayoutIcon className="w-4 h-4" /> Ommaviy sahifa
+            <LayoutIcon className="w-4 h-4" /> {t('settings.tabs.publicPage') || "Ommaviy sahifa"}
           </TabsTrigger>
           <TabsTrigger value="general" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-sm flex items-center gap-2">
-            <SettingsIcon className="w-4 h-4" /> Klinika sozlamalari
+            <SettingsIcon className="w-4 h-4" /> {t('settings.tabs.clinicSettings') || "Klinika sozlamalari"}
           </TabsTrigger>
           <TabsTrigger value="staff" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-sm flex items-center gap-2">
-            <Users className="w-4 h-4" /> Xodimlar
+            <Users className="w-4 h-4" /> {t('settings.tabs.staff') || "Xodimlar"}
           </TabsTrigger>
           <TabsTrigger value="profile" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-sm flex items-center gap-2">
-            <User className="w-4 h-4" /> Mening profilim
+            <User className="w-4 h-4" /> {t('settings.tabs.myProfile') || "Mening profilim"}
           </TabsTrigger>
           <TabsTrigger value="language" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-sm flex items-center gap-2">
-             <Languages className="w-4 h-4" /> Til sozlamalari
+             <Languages className="w-4 h-4" /> {t('settings.tabs.language') || "Til sozlamalari"}
           </TabsTrigger>
         </TabsList>
 
@@ -215,17 +215,17 @@ export default function Settings() {
                 <div className="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-xl px-4 h-12">
                   <ShieldCheck className="w-4 h-4 text-slate-400 flex-shrink-0" />
                   <span className="font-mono text-slate-700 font-bold flex-1 text-sm">{localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id') || 'default_clinic'}</span>
-                  <span className="text-[9px] uppercase font-black text-slate-400 tracking-widest bg-slate-200 px-2 py-1 rounded-lg">O'zgarmaydi</span>
+                  <span className="text-[9px] uppercase font-black text-slate-400 tracking-widest bg-slate-200 px-2 py-1 rounded-lg">{t('settings.clinic.immutable') || "O'zgarmaydi"}</span>
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1.5 uppercase font-black tracking-widest">
-                  Klinika ID xavfsizlik uchun o'zgartirib bo'lmaydi
+                  {t('settings.clinic.immutableIdText') || "Klinika ID xavfsizlik uchun o'zgartirib bo'lmaydi"}
                 </p>
               </div>
               
               <div className="pt-4 border-t border-slate-50">
                 <Label className="flex items-center gap-2 mb-4 font-bold text-slate-700">
                   <ImagePlus className="w-4 h-4 text-indigo-500" />
-                  Klinika Logotipi
+                  {t('settings.clinic.clinicLogo') || "Klinika Logotipi"}
                 </Label>
                 <div className="flex items-center gap-6 bg-slate-50 p-4 rounded-2xl border border-slate-100 border-dashed">
                   <div className="relative">
@@ -242,7 +242,7 @@ export default function Settings() {
                             const currentClinic = await base44.clinic.getCurrentClinic();
                             if (currentClinic) {
                               await base44.clinic.updateClinic(currentClinic.id, { logo: reader.result });
-                              toast.success("Logotip muvaffaqiyatli saqlandi!");
+                              toast.success(t('settings.clinic.logoSaved') || "Logotip muvaffaqiyatli saqlandi!");
                               setTimeout(() => window.location.reload(), 1500);
                             }
                           };
@@ -252,11 +252,11 @@ export default function Settings() {
                     />
                     <Button variant="outline" className="h-10 rounded-xl px-6 bg-white border-slate-200 font-bold" asChild>
                       <label htmlFor="logo-upload" className="cursor-pointer">
-                        Yuklash
+                        {t('settings.clinic.upload') || "Yuklash"}
                       </label>
                     </Button>
                   </div>
-                  <p className="text-xs text-slate-500 font-medium">Ixtiyoriy PNG yoki JPG rasm. Bemorlar sahifasida va hisob-fakturalarda ko'rinadi.</p>
+                  <p className="text-xs text-slate-500 font-medium">{t('settings.clinic.logoDescription') || "Ixtiyoriy PNG yoki JPG rasm. Bemorlar sahifasida va hisob-fakturalarda ko'rinadi."}</p>
                 </div>
               </div>
 
@@ -295,7 +295,7 @@ export default function Settings() {
                    disabled={saving}
                    className="w-full h-12 bg-slate-900 rounded-xl font-bold"
                  >
-                   {saving ? 'Saqlanmoqda...' : 'SAQLASH'}
+                   {saving ? (t('settings.publicPage.saving') || 'Saqlanmoqda...') : (t('settings.clinic.save') || 'SAQLASH')}
                  </Button>
               </div>
             </div>
@@ -306,13 +306,13 @@ export default function Settings() {
           <div className="bg-white rounded-3xl border border-slate-100 p-8 shadow-sm">
             <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
               <Plus className="w-5 h-5 text-emerald-600" /> 
-              Shifokor qo'shish
+              {t('settings.staff.addDoctor') || "Shifokor qo'shish"}
             </h3>
             
             <div className="grid grid-cols-1 gap-4 mb-8 bg-slate-50 p-6 rounded-2xl border border-slate-100">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 mb-2 block">To'liq ismi *</Label>
+                  <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 mb-2 block">{t('settings.staff.fullName') || "To'liq ismi"} *</Label>
                   <Input 
                     placeholder="Dr. Alisher" 
                     value={newStaff.full_name}
@@ -321,7 +321,7 @@ export default function Settings() {
                   />
                 </div>
                 <div>
-                  <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 mb-2 block">Parol * (login parol)</Label>
+                  <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 mb-2 block">{t('settings.staff.passwordLogin') || "Parol * (login parol)"}</Label>
                   <Input 
                     type="text"
                     placeholder="Masalan: doctor2024"
@@ -333,7 +333,7 @@ export default function Settings() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div>
-                  <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 mb-2 block">Ulush (%)</Label>
+                  <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 mb-2 block">{t('settings.staff.share') || "Ulush (%)"}</Label>
                   <Input 
                     type="number"
                     value={newStaff.commission === 0 || newStaff.commission === '' ? '' : newStaff.commission}
@@ -346,7 +346,7 @@ export default function Settings() {
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 mb-2 block">Lavozimi</Label>
+                  <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 mb-2 block">{t('settings.staff.role') || "Lavozimi"}</Label>
                   <Input 
                     placeholder="Masalan: Stomatolog" 
                     value={newStaff.specialty}
@@ -356,7 +356,7 @@ export default function Settings() {
                 </div>
                 <div className="flex items-end">
                   <Button onClick={addStaff} className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold">
-                    Qo'shish
+                    {t('common.add') || "Qo'shish"}
                   </Button>
                 </div>
               </div>
@@ -364,7 +364,7 @@ export default function Settings() {
 
             <div className="space-y-4">
               <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1">
-                Mavjud shifokorlar ({users.filter(u => u.role === 'doctor').length} ta)
+                {t('settings.staff.availableDoctors', { count: users.filter(u => u.role === 'doctor').length }) || `Mavjud shifokorlar (${users.filter(u => u.role === 'doctor').length} ta)`}
               </Label>
               <div className="grid grid-cols-1 gap-2">
                 {users.filter(u => u.role === 'doctor').map(doctor => {
@@ -379,14 +379,14 @@ export default function Settings() {
                           <div>
                             <p className="font-bold text-slate-900">{doctor.name}</p>
                             <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">
-                              {doctor.specialty || 'Shifokor'} • {doctor.commission_rate || 0}% ulush
+                              {doctor.specialty || t('settings.staff.doctor') || 'Shifokor'} • {t('settings.staff.shareLabel', { rate: doctor.commission_rate || 0 }) || `${doctor.commission_rate || 0}% ulush`}
                             </p>
                             <div className="flex items-center gap-2 mt-1">
                               <span className="text-[10px] bg-slate-100 text-slate-600 font-mono px-2 py-0.5 rounded-md">
                                 Login: {doctor.username || doctor.name?.toLowerCase().replace(/\s+/g, '.')}
                               </span>
                               <span className="text-[10px] bg-amber-50 text-amber-700 font-mono px-2 py-0.5 rounded-md border border-amber-100">
-                                Parol: {doctor.password || '—'}
+                                {t('settings.staff.passwordLabel', { pass: doctor.password || '—' }) || `Parol: ${doctor.password || '—'}`}
                               </span>
                             </div>
                           </div>
@@ -418,7 +418,7 @@ export default function Settings() {
                         <div className="pt-4 border-t border-slate-100 space-y-4 bg-slate-50/50 p-4 rounded-xl">
                           <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
                             <Clock className="w-3.5 h-3.5 text-indigo-500" />
-                            Ish vaqtlarini sozlash
+                            {t('settings.staff.settingWorkingHours') || "Ish vaqtlarini sozlash"}
                           </h4>
                           
                           <div className="space-y-2.5">
@@ -468,7 +468,7 @@ export default function Settings() {
                                           <option key={h} value={h}>{h}</option>
                                         ))}
                                       </select>
-                                      <span className="text-[10px] font-bold text-slate-400">dan</span>
+                                      <span className="text-[10px] font-bold text-slate-400">{t('common.from') || "dan"}</span>
                                       <select 
                                         value={daySettings.end}
                                         className="h-8 rounded-lg border-slate-200 bg-white text-xs font-bold text-slate-700 px-2 focus:ring-1 focus:ring-indigo-500"
@@ -483,10 +483,10 @@ export default function Settings() {
                                           <option key={h} value={h}>{h}</option>
                                         ))}
                                       </select>
-                                      <span className="text-[10px] font-bold text-slate-400">gacha</span>
+                                      <span className="text-[10px] font-bold text-slate-400">{t('common.to') || "gacha"}</span>
                                     </div>
                                   ) : (
-                                    <span className="text-[10px] font-bold text-slate-400 italic pr-4">Dam olish kuni</span>
+                                    <span className="text-[10px] font-bold text-slate-400 italic pr-4">{t('settings.staff.dayOff') || "Dam olish kuni"}</span>
                                   )}
                                 </div>
                               );
@@ -499,14 +499,14 @@ export default function Settings() {
                               onClick={() => setEditingScheduleDoctorId(null)}
                               className="h-9 rounded-lg text-xs font-bold px-4"
                             >
-                              Bekor qilish
+                              {t('common.cancel') || "Bekor qilish"}
                             </Button>
                             <Button 
                               onClick={() => saveWorkingHours(doctor, currentSchedule)}
                               disabled={saving}
                               className="h-9 bg-slate-900 text-white rounded-lg text-xs font-bold px-4"
                             >
-                              {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+                              {saving ? (t('settings.publicPage.saving') || 'Saqlanmoqda...') : (t('settings.clinic.save') || 'Saqlash')}
                             </Button>
                           </div>
                         </div>
@@ -515,7 +515,7 @@ export default function Settings() {
                   );
                 })}
                 {users.filter(u => u.role === 'doctor').length === 0 && (
-                  <p className="text-xs text-slate-400 italic py-8 text-center bg-slate-50/50 rounded-2xl border border-dashed">Hali shifokorlar qo'shilmagan</p>
+                  <p className="text-xs text-slate-400 italic py-8 text-center bg-slate-50/50 rounded-2xl border border-dashed">{t('settings.staff.noDoctorsYet') || "Hali shifokorlar qo'shilmagan"}</p>
                 )}
               </div>
             </div>

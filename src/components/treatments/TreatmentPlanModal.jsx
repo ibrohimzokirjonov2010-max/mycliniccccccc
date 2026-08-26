@@ -4,20 +4,15 @@ import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { 
-  ClipboardList, Check, Target, ArrowLeft, ArrowRight, 
-  X, UserCircle2, CheckCircle2,
-  Stethoscope, Printer, Save, CheckSquare, 
-  Search, Plus, Minus, Info, Scissors, Calendar, Download,
-  DollarSign, MapPin, MessageCircle, Share2, Percent
+  ClipboardList, Check, ArrowLeft, ArrowRight, 
+  X, UserCircle2, CheckCircle2, Printer, 
+  Search, Download, MessageCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProfessionalOdontogram from '../patients/ProfessionalOdontogram';
-import { Tooth } from '@/components/ui/Icons';
 import PatientSelect from '../patients/PatientSelect';
 import { cn } from '@/lib/utils';
 
@@ -93,12 +88,15 @@ const CategoryAccordion = ({ title, services, activeTooth, toothData, toggleServ
   const { t } = useTranslation();
 
   const friendlyTitle = (() => {
-    if (title === 'TERAPIYA( ENDO +PLOMBA)') return 'Therapy';
-    if (title === 'ENDODONTIYA') return 'Endodontia';
-    if (title === 'XIRURGIYA') return 'Surgery';
-    if (title === 'ORTOPEDIYA') return 'Orthopedics';
-    if (title === 'ORTODONTIYA') return 'Orthodontics';
-    if (title === 'GIGIENA VA PROFILAKTIKA') return 'Hygiene';
+    if (title === 'TERAPIYA( ENDO +PLOMBA)') return 'Terapiya';
+    if (title === 'ENDODONTIYA') return 'Endodontiya';
+    if (title === 'XIRURGIYA') return 'Xirurgiya';
+    if (title === 'ORTOPEDIYA') return 'Ortopediya';
+    if (title === 'ORTODONTIYA') return 'Ortodontiya';
+    if (title === 'GIGIENA VA PROFILAKTIKA') return 'Gigiyena';
+    if (title === 'ESTETIK STOMATOLOGIYA') return 'Estetika';
+    if (title === 'BOLALAR STOMATOLOGIYASI') return 'Pediatriya';
+    if (title === 'IMPLANTATSIYA') return 'Implantatsiya';
     return title;
   })();
 
@@ -183,6 +181,8 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   const [step, setStep] = useState(1);
   const [patientId, setPatientId] = useState('');
   const [patientName, setPatientName] = useState('');
+  const [doctorId, setDoctorId] = useState('');
+  const [doctors, setDoctors] = useState([]);
   const [selectedTeeth, setSelectedTeeth] = useState([]);
   const [toothData, setToothData] = useState({});
   const [activeTooth, setActiveTooth] = useState(null);
@@ -234,9 +234,24 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   }, [services]);
 
   useEffect(() => {
+    const fetchDoctors = async () => {
+      try {
+        const docs = await base44.entities.User.filter({ role: 'doctor' }, 'name');
+        setDoctors(docs || []);
+      } catch (err) {
+        console.error('Failed to load doctors in TreatmentPlanModal:', err);
+      }
+    };
+    if (open) {
+      fetchDoctors();
+    }
+  }, [open]);
+
+  useEffect(() => {
     if (plan && open) {
       setPatientId(plan.patient_id || '');
       setPatientName(plan.patient_name || '');
+      setDoctorId(plan.doctor_id || '');
       
       const disc = Number(plan.discount_percent) || 0;
       setDiscount(disc);
@@ -285,12 +300,16 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       if (initialPatientId) {
         setPatientId(initialPatientId);
         const p = patients?.find(pat => pat.id === initialPatientId);
-        if (p) setPatientName(p.full_name);
-        setStep(2);
+        if (p) {
+          setPatientName(p.full_name);
+          setDoctorId(p.main_treatment_provider || '');
+        }
+        setStep(1);
       } else {
         setStep(1); 
         setPatientId(''); 
         setPatientName('');
+        setDoctorId('');
       }
       setSelectedTeeth([]); 
       setSelectedCategory(availableCategories[0] || "");
@@ -304,7 +323,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       setInstallmentStartDate(new Date().toISOString().split('T')[0]);
       setInstallmentServiceKeys([]);
     }
-  }, [plan, open, initialPatientId]); 
+  }, [plan, open, initialPatientId, patients]); 
 
   useEffect(() => {
     let cancelled = false;
@@ -529,11 +548,13 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       console.error(e);
       toast.error("Yuklashda xatolik yuz berdi", { id: "invoice-download" });
     }
-  };
-
-  const handleSave = async () => {
+  };  const handleSave = async () => {
     if (!patientId) {
       toast.error('Bemorni tanlang');
+      return;
+    }
+    if (!doctorId) {
+      toast.error('Shifokorni tanlang');
       return;
     }
     setSaving(true);
@@ -545,9 +566,12 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
         ? allSelectedServices.map(s => s.key)
         : installmentServiceKeys;
       
+      const selectedDoc = doctors.find(d => d.id === doctorId);
       const payload = {
         patient_id: patientId,
         patient_name: patientName,
+        doctor_id: doctorId,
+        doctor_name: selectedDoc?.name || selectedDoc?.full_name || '',
         status: 'planned',
         priority: 'medium',
         tooth_number: selectedTeeth.map(idToFdi).join(', '),
@@ -568,17 +592,33 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       };
 
       const compactName = formatDepartmentPlanName(allSvcs, selectedTeeth);
+      const proposedName = (compactName || 'Davolash rejasi').trim();
+
+      // Duplicate plan check: if creating a new plan, ensure no active plan with the same name exists
+      if (!plan) {
+        const existingPlans = await base44.entities.TreatmentPlan.filter({ patient_id: patientId });
+        const isDuplicate = existingPlans.some(p => 
+          p.name?.trim().toLowerCase() === proposedName.toLowerCase() && 
+          p.status !== 'completed' && 
+          p.status !== 'cancelled'
+        );
+        if (isDuplicate) {
+          toast.error("Ushbu bemorda bunday nomli faol davolash rejasi allaqachon mavjud!");
+          setSaving(false);
+          return;
+        }
+      }
 
       let currentPlan;
       if (plan) {
         currentPlan = await base44.entities.TreatmentPlan.update(plan.id, {
           ...payload,
-          name: compactName || 'Davolash rejasi'
+          name: proposedName
         });
       } else {
         currentPlan = await base44.entities.TreatmentPlan.create({ 
           ...payload, 
-          name: compactName || 'Davolash rejasi'
+          name: proposedName
         });
       }
       
@@ -595,13 +635,14 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       const debtPayment = existingPayments.find(p => p.type === 'Debt');
       const discountPayment = existingPayments.find(p => p.type === 'Discount');
 
-      // 1. Manage Debt вЂ” chegirma bilan hisoblab saqlaymiz (finalTotal = chegirmali narx)
+      // 1. Manage Debt — chegirma bilan hisoblab saqlaymiz (finalTotal = chegirmali narx)
       const finalTotal = Math.floor(rawTotal * (1 - discount / 100));
       if (finalTotal > 0) {
         if (debtPayment) {
           // Update existing debt with discounted price
           await base44.entities.Payment.update(debtPayment.id, {
             amount: finalTotal,
+            doctor_id: doctorId,
             category: `Reja yangilandi: ${selectedTeeth.map(idToFdi).join(', ')}${discount > 0 ? ` (-${discount}% chegirma)` : ''}`,
             date: new Date().toISOString().split('T')[0]
           });
@@ -610,10 +651,11 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
           await base44.entities.Payment.create({
             patient_id: patientId,
             patient_name: patientName,
+            doctor_id: doctorId,
             type: 'Debt',
             category: `Reja: ${selectedTeeth.map(idToFdi).join(', ')}${discount > 0 ? ` (-${discount}% chegirma)` : ''}`,
             amount: finalTotal,
-            method: 'вЂ”',
+            method: '—',
             date: new Date().toISOString().split('T')[0],
             notes: linkedContext
           });
@@ -631,6 +673,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
           await base44.entities.Payment.create({
             patient_id: patientId,
             patient_name: patientName,
+            doctor_id: doctorId,
             type: 'Income',
             category: `Boshlang'ich to'lov: ${currentPlan.name}`,
             amount: installmentAdvance,
@@ -764,33 +807,72 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="!p-0 max-w-[1100px] w-full sm:w-[calc(100%-32px)] h-[98vh] sm:h-[95vh] flex flex-col overflow-hidden rounded-none sm:rounded-2xl border-0 shadow-2xl bg-white gap-0">
+      <DialogContent className="!p-0 w-[95vw] sm:w-[94vw] md:w-[90vw] max-w-4xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden rounded-[2.5rem] border-0 shadow-2xl bg-white gap-0 !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
         
-        {/* Top Navigation */}
-        {step !== 2 && (
-          <div className="bg-white border-b border-slate-50 px-6 sm:px-12 py-3 sm:py-4 shrink-0 relative no-print">
-              <div className="flex items-center justify-center relative max-w-[320px] mx-auto">
-                  <div className="absolute top-1/2 left-0 right-0 h-[1px] bg-slate-100 -translate-y-1/2" />
-                  <div className="flex justify-between w-full relative z-10">
-                      {[
-                          { id: 1, title: t('odontogram.steps.patient') || 'BEMOR', icon: UserCircle2 },
-                          { id: 2, title: t('odontogram.steps.plan') || 'REJA', icon: ClipboardList },
-                          { id: 3, title: t('odontogram.steps.finish') || 'YAKUN', icon: CheckCircle2 }
-                      ].map((s) => (
-                          <div key={s.id} className="flex flex-col items-center gap-1 bg-white px-2">
-                              <div className={`w-7.5 h-7.5 sm:w-8.5 sm:h-8.5 rounded-full flex items-center justify-center shadow-sm border transition-all ${step >= s.id ? 'bg-[#10b981] border-[#10b981] text-white' : 'bg-white border-slate-100 text-slate-300'}`}>
-                                  {step > s.id ? <Check className="w-3.5 h-3.5 stroke-[3px]" /> : <s.icon className="w-3.5 h-3.5" />}
-                              </div>
-                              <span className={`text-[8px] font-bold tracking-wider ${step >= s.id ? 'text-emerald-500' : 'text-slate-350'}`}>{s.title}</span>
-                          </div>
-                      ))}
-                  </div>
-              </div>
-              <button onClick={onClose} className="absolute top-3.5 right-3.5 sm:top-4 sm:right-6 w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 hover:text-slate-900 transition-all border-none">
-                  <X className="w-4.5 h-4.5" />
+        {/* Gradient Header */}
+        <div className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between shrink-0 rounded-t-[2.5rem] text-white no-print">
+          <div className="flex items-center gap-3">
+            {step > 1 ? (
+              <button 
+                onClick={() => {
+                  if (step > 1) setStep(step - 1);
+                }}
+                className="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95 border-none cursor-pointer"
+              >
+                <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
               </button>
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm">
+                <ClipboardList className="w-5 h-5 stroke-[2.5]" />
+              </div>
+            )}
+            <div>
+              <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
+                {plan ? t('treatmentPlan.editPlan') : t('treatmentPlan.createNew')}
+              </DialogTitle>
+              <p className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('treatmentPlan.subtitle') || 'Bemorga davolash rejasi tayinlash'}</p>
+            </div>
           </div>
-        )}
+          <button 
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95 border-none cursor-pointer"
+          >
+            <X className="w-4.5 h-4.5" />
+          </button>
+        </div>
+
+        {/* Stepper (Matching Onboarding style) */}
+        <div className="bg-white border-b border-slate-100 px-4 py-3.5 shrink-0 z-10 shadow-sm no-print">
+          <div className="flex items-center justify-center gap-0">
+            {[
+              { id: 1, label: t('odontogram.steps.patient') || 'BEMOR', icon: UserCircle2 },
+              { id: 2, label: t('odontogram.steps.plan') || 'REJA', icon: ClipboardList },
+              { id: 3, label: t('odontogram.steps.finish') || 'YAKUN', icon: CheckCircle2 }
+            ].map((s, i, arr) => {
+              const Icon = s.icon;
+              const done = step > s.id;
+              const active = step === s.id;
+              return (
+                <div key={s.id} className="flex items-center">
+                  <div className="flex flex-col items-center gap-1 min-w-[60px]">
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300
+                      ${done ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100' :
+                        active ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-105' :
+                        'bg-slate-100 border-slate-200 text-slate-400'}`}>
+                      {done && !active ? <Check className="w-4 h-4 stroke-[3px]" /> : <Icon className="w-3.5 h-3.5 sm:w-5 sm:h-5" />}
+                    </div>
+                    <span className={`text-[9px] sm:text-[11px] font-bold uppercase tracking-wider ${active || done ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {s.label}
+                    </span>
+                  </div>
+                  {i < arr.length - 1 && (
+                    <div className={`h-[2px] w-12 sm:w-20 mx-[-4px] mb-5 rounded transition-colors duration-300 ${step > s.id ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Modal Main Content */}
         <div className={`flex-1 min-h-0 bg-slate-50/20 ${step === 2 ? 'overflow-hidden' : 'overflow-y-auto no-scrollbar p-4 sm:p-6'}`}>
@@ -798,16 +880,37 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                 {step === 1 && (
                     <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }} className="max-w-md mx-auto space-y-4 pt-4 pb-8">
                         <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center">
-                            <p className="text-slate-700 font-bold uppercase tracking-wider text-[11px]">{t('odontogram.step1Title') || '1-bosqich: Bemorni tanlang'}</p>
+                            <p className="text-slate-700 font-bold uppercase tracking-wider text-[11px]">{t('odontogram.step1Title') || '1-bosqich: Bemor va shifokorni tanlang'}</p>
                         </div>
                         <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-                            <div className="space-y-2.5">
+                            <div className="space-y-2.5 relative z-20">
                                 <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">{t('odontogram.patientSearch') || 'Bemor qidirish *'}</Label>
                                 <PatientSelect 
                                     patients={patients} value={patientId}
-                                    onChange={(id, pat) => { setPatientId(id); setPatientName(pat?.full_name || ''); }}
+                                    onChange={(id, pat) => { 
+                                      setPatientId(id); 
+                                      setPatientName(pat?.full_name || ''); 
+                                      if (pat?.main_treatment_provider) {
+                                        setDoctorId(pat.main_treatment_provider);
+                                      }
+                                    }}
                                     inputClassName="h-11 rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-4 font-semibold text-slate-800 text-sm focus:bg-white transition-colors"
                                 />
+                            </div>
+                            <div className="space-y-2.5 relative z-10">
+                                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">{t('payments.doctor') || 'Shifokor *'}</Label>
+                                <Select value={doctorId} onValueChange={setDoctorId}>
+                                    <SelectTrigger className="h-11 rounded-xl border border-slate-200 bg-slate-50 font-semibold text-slate-800 text-sm focus:bg-white transition-colors">
+                                        <SelectValue placeholder={t('payments.doctorPlaceholder') || 'Shifokorni tanlang'} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {doctors.map(doc => (
+                                            <SelectItem key={doc.id} value={doc.id}>
+                                                {doc.name || doc.full_name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     </motion.div>
@@ -847,14 +950,14 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                             applySelectableTeeth(next, next.includes(internalId) ? internalId : null);
                           }}
                           className={cn(
-                            "w-8 h-9 rounded-lg flex items-center justify-center text-xs font-black transition-all cursor-pointer leading-none shrink-0 p-0 border",
+                            "w-6 sm:w-7 md:w-[25px] lg:w-7 h-7 sm:h-8 rounded-lg flex items-center justify-center text-[10px] sm:text-[11px] font-black transition-all cursor-pointer leading-none shrink-0 p-0 border",
                             isDisabled  ? "bg-slate-100 text-slate-350 border-slate-200 cursor-not-allowed" :
                             isActive    ? "bg-[#1499AD] text-white border-[#1499AD] ring-2 ring-[#1499AD]/30 shadow-md shadow-[#1499AD]/10 scale-105" :
                             isSelected  ? "bg-emerald-500 text-white border-emerald-500 shadow-sm" :
                                           "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                           )}
                         >
-                          <span className="text-[11px] font-black">{fdi}</span>
+                          <span className="text-[10px] sm:text-[11px] font-black">{fdi}</span>
                         </button>
                       );
                     };
@@ -868,14 +971,8 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                         <div className="flex-[0_0_62%] flex flex-col border-r border-slate-100 overflow-hidden bg-white min-h-0">
                           <div className="pl-6 pr-4 py-2 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
                             <span className="text-[12px] font-bold text-slate-700">{t('odontogram.labelTreatments') || 'Davolash rejasi'}</span>
-                            <div className="flex items-center gap-3">
-                              <button
-                                type="button"
-                                onClick={onClose}
-                                className="w-6 h-6 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors border-none bg-transparent cursor-pointer p-0"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] font-medium text-slate-500">{t('treatmentPlan.patient') || 'Bemor'}: {patientName}</span>
                             </div>
                           </div>
                           <div className="shrink-0 bg-[#fafafa] border-b border-slate-100 py-2.5 px-3 overflow-x-auto no-scrollbar touch-pan-x">
@@ -1565,51 +1662,52 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
             </AnimatePresence>
         </div>
 
-        {step !== 2 && (
-          <div className="p-3 sm:p-4.5 border-t border-slate-100 bg-white flex items-center justify-between shrink-0 mb-safe pointer-events-auto sticky bottom-0 z-50 shadow-sm no-print">
-               <div className="hidden sm:block">
-                   {step > 1 && (
-                       <Button variant="outline" onClick={() => setStep(step - 1)} className="h-9.5 w-9.5 rounded-lg text-slate-400 p-0 hover:bg-slate-50 border-slate-200">
-                           <ArrowLeft className="w-4 h-4" />
-                       </Button>
-                   )}
-               </div>
-               <div className="flex items-center gap-3 w-full sm:w-auto">
-                  {step > 1 && step < 3 && (
-                       <Button variant="outline" onClick={() => setStep(step - 1)} className="sm:hidden h-10 w-10 rounded-xl text-slate-450 border-slate-200 p-0">
-                           <ArrowLeft className="w-4.5 h-4.5" />
-                       </Button>
-                  )}
-                  
-                  {step < 3 ? (
-                       <Button 
-                           onClick={step === 1 ? () => setStep(2) : handleSave}
-                           disabled={(step === 1 && !patientId) || saving}
-                           className={`h-11 flex-1 sm:px-12 rounded-xl font-bold uppercase text-[11px] tracking-wider transition-all flex items-center justify-center gap-2 border-none shadow-md ${
-                                step === 1 
-                                ? 'bg-slate-900 text-white shadow-slate-900/10' 
-                                : 'bg-[#10b981] text-white shadow-emerald-500/10'
-                           }`}
-                       >
-                           {saving ? (
-                               <span className="flex items-center gap-2">
-                                   <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full" />
-                                   {t('odontogram.states.saving') || 'Saqlanmoqda...'}
-                               </span>
-                           ) : (
-                               step === 1 ? (
-                                   <>{t('odontogram.actions.next') || 'Davom etish'} <ArrowRight className="w-3.5 h-3.5" /></>
-                               ) : (
-                                   <>{t('odontogram.actions.saveFinish') || 'Saqlash & Yakunlash'} <Check className="w-3.5 h-3.5 stroke-[3px]" /></>
-                               )
-                           )}
-                       </Button>
-                  ) : (
-                       <Button onClick={onClose} className="h-11 w-full sm:px-12 rounded-xl bg-slate-900 text-white font-bold uppercase text-[11.5px] tracking-wider shadow-md shadow-slate-900/10 hover:bg-slate-800">{t('odontogram.actions.close') || 'Yopish'}</Button>
-                  )}
-               </div>
-          </div>
-        )}
+        <div className={cn(
+          "p-3 sm:p-4.5 border-t border-slate-100 bg-white flex items-center justify-between shrink-0 mb-safe pointer-events-auto sticky bottom-0 z-50 shadow-sm no-print",
+          step === 2 && "hidden md:flex"
+        )}>
+             <div className="hidden sm:block">
+                 {step > 1 && (
+                     <Button variant="outline" onClick={() => setStep(step - 1)} className="h-9.5 w-9.5 rounded-lg text-slate-400 p-0 hover:bg-slate-50 border-slate-200">
+                         <ArrowLeft className="w-4 h-4" />
+                     </Button>
+                 )}
+             </div>
+             <div className="flex items-center gap-3 w-full sm:w-auto">
+                {step > 1 && step < 3 && (
+                     <Button variant="outline" onClick={() => setStep(step - 1)} className="sm:hidden h-10 w-10 rounded-xl text-slate-450 border-slate-200 p-0">
+                         <ArrowLeft className="w-4.5 h-4.5" />
+                     </Button>
+                )}
+                
+                {step < 3 ? (
+                     <Button 
+                         onClick={step === 1 ? () => setStep(2) : handleSave}
+                         disabled={(step === 1 && (!patientId || !doctorId)) || saving}
+                         className={`h-11 flex-1 sm:px-12 rounded-xl font-bold uppercase text-[11px] tracking-wider transition-all flex items-center justify-center gap-2 border-none shadow-md ${
+                              step === 1 
+                              ? 'bg-slate-900 text-white shadow-slate-900/10' 
+                              : 'bg-[#10b981] text-white shadow-emerald-500/10'
+                         }`}
+                     >
+                         {saving ? (
+                             <span className="flex items-center gap-2">
+                                 <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full" />
+                                 {t('odontogram.states.saving') || 'Saqlanmoqda...'}
+                             </span>
+                         ) : (
+                             step === 1 ? (
+                                 <>{t('odontogram.actions.next') || 'Davom etish'} <ArrowRight className="w-3.5 h-3.5" /></>
+                             ) : (
+                                 <>{t('odontogram.actions.saveFinish') || 'Saqlash & Yakunlash'} <Check className="w-3.5 h-3.5 stroke-[3px]" /></>
+                             )
+                         )}
+                     </Button>
+                ) : (
+                     <Button onClick={onClose} className="h-11 w-full sm:px-12 rounded-xl bg-slate-900 text-white font-bold uppercase text-[11.5px] tracking-wider shadow-md shadow-slate-900/10 hover:bg-slate-800">{t('odontogram.actions.close') || 'Yopish'}</Button>
+                )}
+             </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

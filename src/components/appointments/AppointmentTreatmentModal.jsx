@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, CheckCircle2, Circle, Activity, ChevronRight, Camera } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 /**
  * AppointmentTreatmentModal
@@ -88,6 +88,93 @@ export default function AppointmentTreatmentModal({ open, onClose, appointment, 
           services: updatedServices,
           status: allCompleted ? 'Completed' : 'In Progress'
         });
+
+        // 3. Sync completed services to ToothRecords
+        const completedInThisPlan = updatedServices.filter(s => itemIds.includes(s.service_id));
+        if (completedInThisPlan.length > 0 && appointment?.patient_id) {
+          const existingRecords = await base44.entities.ToothRecord.filter(
+            { patient_id: appointment.patient_id },
+            'tooth_number',
+            100
+          );
+
+          const clinicId = localStorage.getItem('current_clinic_id') || plan?.clinic_id || 'default_clinic';
+
+          const getToothFdi = (service) => {
+            let val = service.tooth || service.tooth_number || service.tooth_id || '';
+            val = String(val).trim();
+            if (!val) return '';
+            const match = val.match(/^(ur|ul|lr|ll)(\d+)(c)?$/i);
+            if (match) {
+              const [, quad, num, isChild] = match;
+              const q = quad.toLowerCase();
+              if (isChild) {
+                const qMap = { ur: 5, ul: 6, ll: 7, lr: 8 };
+                return `${qMap[q]}${num}`;
+              } else {
+                const qMap = { ur: 1, ul: 2, ll: 3, lr: 4 };
+                return `${qMap[q]}${num}`;
+              }
+            }
+            return val;
+          };
+
+          const isExtractionService = (service) => {
+            const text = [
+              service?.service_name,
+              service?.name,
+              service?.type,
+              service?.category,
+            ].filter(Boolean).join(' ');
+            return /(aqil\s*tish|tish).*(olish|sug'?urish)|olib\s*tashlash|ekstraks|extraction|удалени/i.test(text);
+          };
+
+          for (const service of completedInThisPlan) {
+            const toothNumber = getToothFdi(service);
+            if (!toothNumber || toothNumber.toLowerCase() === 'general') continue;
+
+            const existingRecord = (existingRecords || []).find(record => String(record?.tooth_number) === String(toothNumber));
+            const svcName = String(service.service_name || service.name || '').toLowerCase();
+            
+            let derivedCondition = null;
+            let derivedTreatment = service.service_name || service.name || 'Davolangan';
+            const isExtraction = isExtractionService(service);
+            
+            if (isExtraction) {
+              derivedCondition = 'Olib tashlangan';
+              derivedTreatment = 'Olib tashlangan';
+            } else if (svcName.includes('implant')) {
+              derivedTreatment = 'Implant';
+            } else if (svcName.includes('vinir') || svcName.includes('veneer')) {
+              derivedTreatment = 'Veneer';
+            } else if (svcName.includes('karonka') || svcName.includes('toj') || svcName.includes('crown') || svcName.includes('protez') || svcName.includes('metallokeramika')) {
+              derivedTreatment = 'Toj';
+            } else if (svcName.includes('plomba') || svcName.includes('restavratsiya')) {
+              derivedTreatment = 'Restavratsiya';
+            } else if (svcName.includes('endo') || svcName.includes('kanal') || svcName.includes('pulpit')) {
+              derivedCondition = 'Pulpit';
+              derivedTreatment = 'Kanal';
+            } else if (svcName.includes('kariyes') || svcName.includes('caries') || svcName.includes('karies')) {
+              derivedCondition = 'Kariyes';
+              derivedTreatment = 'Davolangan';
+            }
+
+            const payload = {
+              patient_id: appointment.patient_id,
+              clinic_id: clinicId,
+              tooth_number: toothNumber,
+              condition: derivedCondition || (existingRecord ? existingRecord.condition : null),
+              treatment: derivedTreatment || (existingRecord ? existingRecord.treatment : null),
+              notes: existingRecord?.notes || `Qabul yakunlanganda tizim orqali kiritildi (${service.service_name})`,
+            };
+
+            if (existingRecord?.id) {
+              await base44.entities.ToothRecord.update(existingRecord.id, payload);
+            } else {
+              await base44.entities.ToothRecord.create(payload);
+            }
+          }
+        }
       }
 
       toast.success("Qabul va muolajalar saqlandi");

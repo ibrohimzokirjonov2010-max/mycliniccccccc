@@ -2,10 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Bell, Phone, MessageCircle, Calendar, CheckCircle2,
-  Plus, Search, ArrowLeft, TrendingUp, Clock,
-  ChevronRight, X, User, BellRing, Sparkles, Activity,
-  Stethoscope, ShieldCheck, Heart, ArrowUpRight
+  Bell, Phone, CheckCircle2,
+  Plus, Search, ArrowLeft, Clock,
+  ChevronRight, Sparkles, Activity,
+  Stethoscope, Heart, ArrowUpRight
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import PullToRefresh from '@/components/ui/PullToRefresh';
 import { format } from 'date-fns';
 import { uz } from 'date-fns/locale';
 import PatientSelect from '@/components/patients/PatientSelect';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 
 const RECALL_TYPES = [
@@ -219,7 +219,7 @@ export default function MobileRecall() {
                   className="space-y-3"
                 >
                   <div className="bg-white rounded-xl p-5 shadow border border-slate-100 space-y-4">
-                     <div className="space-y-1.5">
+                     <div className="space-y-1.5 relative z-20">
                         <Label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-1">Bemorni tanlang</Label>
                         <PatientSelect 
                           patients={patients}
@@ -229,7 +229,7 @@ export default function MobileRecall() {
                         />
                      </div>
 
-                     <div className="space-y-2">
+                     <div className="space-y-2 relative z-10">
                         <Label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-1">Eslatma turi</Label>
                         <div className="grid grid-cols-2 gap-2">
                            {RECALL_TYPES.map(type => (
@@ -320,8 +320,8 @@ export default function MobileRecall() {
                               key={recall.id}
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: index * 0.05 }}
-                              className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-100 relative overflow-hidden group"
+                              transition={{ delay: Math.min(index, 6) * 0.02 }}
+                              className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-100 relative overflow-hidden group content-visibility-auto"
                             >
                                <div className="flex items-start justify-between mb-4">
                                   <div className="flex items-center gap-3">

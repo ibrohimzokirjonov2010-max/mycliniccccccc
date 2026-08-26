@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, FileText, Trash2, Loader2 } from 'lucide-react';
 import EmptyState from '../ui/EmptyState';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 /**
  * PatientNotes Component
@@ -15,6 +16,7 @@ import EmptyState from '../ui/EmptyState';
  * @param {string} props.patientId - Patient ID
  */
 function PatientNotes({ patientId }) {
+  const { t, language } = useTranslation();
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [loading, setLoading] = useState(true);
@@ -98,13 +100,13 @@ function PatientNotes({ patientId }) {
           value={newNote} 
           onChange={e => setNewNote(e.target.value)} 
           onKeyDown={handleKeyDown}
-          placeholder="Yangi eslatma yozing... (Ctrl+Enter bilan saqlash)" 
+          placeholder={t('patientNotes.placeholder')} 
           rows={3}
           disabled={saving}
         />
         <div className="flex justify-between items-center mt-3">
           <span className="text-xs text-muted-foreground">
-            {newNote.length} belgi
+            {t('patientNotes.charCount', { count: newNote.length })}
           </span>
           <Button 
             onClick={addNote} 
@@ -117,7 +119,7 @@ function PatientNotes({ patientId }) {
             ) : (
               <Plus className="w-4 h-4 mr-1" />
             )}
-            Qo'shish
+            {t('patientNotes.add')}
           </Button>
         </div>
       </div>
@@ -128,8 +130,8 @@ function PatientNotes({ patientId }) {
       ) : notes.length === 0 ? (
         <EmptyState 
           icon={FileText} 
-          title="Eslatmalar yo'q" 
-          description="Bu bemor uchun hali eslatmalar mavjud emas"
+          title={t('patientNotes.emptyTitle')} 
+          description={t('patientNotes.emptyDesc')}
         />
       ) : (
         <div className="space-y-3">
@@ -141,7 +143,7 @@ function PatientNotes({ patientId }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm whitespace-pre-wrap">{note.content}</p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  {new Date(note.created_date).toLocaleString('uz-UZ', {
+                  {new Date(note.created_date).toLocaleString(language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-US', {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',

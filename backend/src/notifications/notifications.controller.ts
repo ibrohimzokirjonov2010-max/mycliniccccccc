@@ -3,6 +3,7 @@ import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
 import { TelegramService } from './telegram.service';
+import { SmsService } from './sms.service';
 import { AppointmentRemindersCron } from './appointment-reminders.cron';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 
@@ -16,6 +17,7 @@ export class NotificationsController {
 
   constructor(
     private readonly telegramService: TelegramService,
+    private readonly smsService: SmsService,
     private readonly remindersCron: AppointmentRemindersCron,
   ) {}
 
@@ -292,5 +294,41 @@ export class NotificationsController {
       target_2h: now.add(2, 'hour').format('HH:mm'),
       server_utc: new Date().toISOString(),
     };
+  }
+
+  // ─── SMS Endpoints ────────────────────────────────────────────────────────
+
+  /** Test: bitta SMS yuborish */
+  @Post('send-sms')
+  async sendTestSms(
+    @Body() body: { phone: string; message: string; patient_name?: string },
+  ) {
+    const ok = await this.smsService.sendSms(
+      body.phone,
+      body.message,
+      body.patient_name || 'Test',
+    );
+    return { success: ok, phone: body.phone };
+  }
+
+  /** SMS sozlamalarini saqlash */
+  @Post('sms-settings')
+  saveSmsSettings(@Body() body: any) {
+    this.smsService.saveSettings(body);
+    return { success: true, settings: body };
+  }
+
+  /** SMS sozlamalarini o'qish */
+  @Get('sms-settings')
+  getSmsSettings(): Record<string, any> {
+    return this.smsService.getSettings() as Record<string, any>;
+  }
+
+  /** Yuborilgan xabarlar logi (sana bo'yicha) */
+  @Get('sent-messages')
+  getSentMessages(@Query('date') date?: string): any[] {
+    const targetDate = date || dayjs().format('YYYY-MM-DD');
+    const smsList = this.smsService.getLogByDate(targetDate);
+    return smsList as any[];
   }
 }

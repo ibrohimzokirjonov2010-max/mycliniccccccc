@@ -56,6 +56,9 @@ export class Appointment {
   @Prop({ default: false })
   current_reminder_sent?: boolean;
 
+  @Prop({ default: false })
+  day_before_reminder_sent?: boolean;
+
   @Prop({ default: 'pending' })
   confirmation_status?: string;
 

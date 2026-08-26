@@ -16,7 +16,7 @@ import { formatCurrency } from '@/lib/utils';
 import { useAuth } from '@/lib/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from '@/i18n/LanguageContext';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 /**
  * Payroll Page
@@ -53,7 +53,7 @@ export default function Payroll() {
   const [loading, setLoading] = useState(true);
   
   // Filter states
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
   const [selectedDoctor, setSelectedDoctor] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -69,8 +69,8 @@ export default function Payroll() {
     password: '',
     phone: '',
     specialization: 'Stomatolog',
-    base_salary: 0,
-    commission_rate: 30,
+    base_salary: '',
+    commission_rate: '30',
     role: 'doctor'
   });
 
@@ -194,8 +194,8 @@ export default function Payroll() {
         password: '',
         phone: '',
         specialization: 'Stomatolog',
-        base_salary: 0,
-        commission_rate: 30,
+        base_salary: '',
+        commission_rate: '30',
         role: 'doctor'
       });
 
@@ -407,24 +407,26 @@ export default function Payroll() {
     <div className="space-y-6 pb-24 sm:pb-10 bg-slate-50/50 min-h-screen -m-4 p-4 sm:m-0 sm:p-0">
       {/* Premium Header */}
       <div className="flex flex-col gap-5 px-1 sm:px-0">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-[900] text-slate-900 tracking-tight">{t('payroll.title')}</h1>
             <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">
               {t('payroll.subtitle')}
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={exportCSV} className="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-100 text-slate-600">
-            <Download className="w-4.5 h-4.5" />
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={() => setAddDoctorOpen(true)} 
+              className="h-11 px-6 rounded-xl bg-[#00D084] hover:bg-[#00B875] text-white font-black gap-2 shadow-lg shadow-[#00D084]/20 transition-all active:scale-[0.98] border-none text-xs uppercase tracking-wider"
+            >
+              <Plus className="w-4 h-4 stroke-[3px]" />
+              {t('payroll.addDoctor')}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={exportCSV} className="w-11 h-11 rounded-xl bg-white shadow-sm border border-slate-100 text-slate-600 hover:bg-slate-50 transition-colors">
+              <Download className="w-4.5 h-4.5" />
+            </Button>
+          </div>
         </div>
-        <Button 
-          onClick={() => setAddDoctorOpen(true)} 
-          className="w-full h-12 rounded-2xl bg-[#00D084] hover:bg-[#00B875] text-white font-black gap-2 shadow-xl shadow-[#00D084]/20 transition-all active:scale-[0.98] border-none"
-        >
-          <Plus className="w-5 h-5 stroke-[3px]" />
-          {t('payroll.addDoctor')}
-        </Button>
       </div>
 
       {/* Modern Dashboard Stats */}
@@ -439,8 +441,8 @@ export default function Payroll() {
             key={s.label}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.05 }}
-            className="bg-white border border-slate-100/80 rounded-[1.5rem] p-4 sm:p-6 shadow-sm shadow-slate-200/40 relative group overflow-hidden"
+            transition={{ delay: Math.min(i, 4) * 0.02 }}
+            className="bg-white border border-slate-100/80 rounded-[1.5rem] p-4 sm:p-6 shadow-sm shadow-slate-200/40 relative group overflow-hidden content-visibility-auto"
           >
             <div className={`absolute -right-2 -top-2 w-16 h-16 ${s.lightColor} opacity-40 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500`} />
             <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl ${s.lightColor} flex items-center justify-center mb-3 transition-transform group-hover:rotate-6`}>
@@ -458,8 +460,8 @@ export default function Payroll() {
       </div>
 
       {/* Floating Filter Bar */}
-      <div className="sticky top-2 z-30 bg-white/80 backdrop-blur-xl border border-slate-100 rounded-2xl p-2 sm:p-3 shadow-xl shadow-slate-200/30 mx-1 sm:mx-0 flex flex-col gap-2">
-        <div className="relative">
+      <div className="sticky top-2 z-30 bg-white/80 backdrop-blur-xl border border-slate-100 rounded-2xl p-2 sm:p-3 shadow-lg shadow-slate-200/20 mx-1 sm:mx-0 flex flex-col md:flex-row gap-2">
+        <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input 
             placeholder={t('payroll.doctorName')}
@@ -468,9 +470,9 @@ export default function Payroll() {
             className="h-11 pl-11 pr-4 rounded-xl border-transparent bg-slate-50/50 focus:bg-white transition-colors text-sm font-bold"
           />
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 md:flex gap-2 shrink-0">
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="h-11 rounded-xl border-transparent bg-slate-50/50 font-black text-slate-700 text-xs">
+            <SelectTrigger className="h-11 md:w-[160px] rounded-xl border-transparent bg-slate-50/50 font-black text-slate-700 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="rounded-2xl border-slate-100 shadow-2xl">
@@ -480,7 +482,7 @@ export default function Payroll() {
             </SelectContent>
           </Select>
           <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
-            <SelectTrigger className="h-11 rounded-xl border-transparent bg-slate-50/50 font-black text-slate-700 text-xs">
+            <SelectTrigger className="h-11 md:w-[180px] rounded-xl border-transparent bg-slate-50/50 font-black text-slate-700 text-xs">
               <SelectValue placeholder={t('payroll.allDoctors')} />
             </SelectTrigger>
             <SelectContent className="rounded-2xl border-slate-100 shadow-2xl">
@@ -510,7 +512,7 @@ export default function Payroll() {
             <p className="text-sm text-slate-400 font-medium mt-1">{t('payroll.noDataSubtitle')}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-3">
             <AnimatePresence mode="popLayout">
               {payrollData.map((doctor, index) => (
                 <motion.div 
@@ -518,74 +520,74 @@ export default function Payroll() {
                   layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className={`bg-white border transition-all duration-500 rounded-[2rem] overflow-hidden ${expandedDoctor === doctor.id ? 'border-emerald-200 shadow-2xl shadow-emerald-500/10 ring-1 ring-emerald-100' : 'border-slate-100 hover:border-slate-200 shadow-sm'}`}
+                  transition={{ delay: Math.min(index, 6) * 0.02 }}
+                  className={`bg-white border transition-all duration-300 rounded-2xl overflow-hidden ${expandedDoctor === doctor.id ? 'border-emerald-200 shadow-lg shadow-emerald-500/5 ring-1 ring-emerald-50' : 'border-slate-100 hover:border-slate-200 shadow-sm'} content-visibility-auto`}
                 >
-                  {/* Doctor Card Header */}
+                  {/* Doctor Card Header - Slim single line layout */}
                   <div 
-                    className="p-5 sm:p-6 cursor-pointer"
+                    className="p-3 sm:p-4 cursor-pointer flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
                     onClick={() => setExpandedDoctor(expandedDoctor === doctor.id ? null : doctor.id)}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black shadow-lg transition-all duration-500 shrink-0 ${expandedDoctor === doctor.id ? 'bg-[#00D084] text-white rotate-6 scale-110' : 'bg-slate-100 text-slate-500'}`}>
+                    <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-base font-black shadow-sm transition-all duration-500 shrink-0 ${expandedDoctor === doctor.id ? 'bg-[#00D084] text-white rotate-3 scale-105' : 'bg-slate-100 text-slate-500'}`}>
                         {(doctor.name || doctor.full_name)?.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-black text-slate-900 tracking-tight truncate pr-2">{doctor.name || doctor.full_name}</h3>
-                          <div className="flex items-center gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteDoctor(doctor.id, doctor.name || doctor.full_name);
-                              }}
-                              className="w-8 h-8 rounded-full text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors shrink-0"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shrink-0 ${expandedDoctor === doctor.id ? 'bg-emerald-50 text-emerald-500 rotate-180' : 'bg-slate-50 text-slate-400'}`}>
-                              <ChevronDown className="w-4 h-4" />
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 mt-1">
-                          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 rounded-lg">
-                            <Activity className="w-3 h-3 text-blue-500" />
-                            <span className="text-[10px] font-black text-blue-600">{doctor.treatments} {t('payroll.works')}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 rounded-lg">
-                            <TrendingUp className="w-3 h-3 text-emerald-500" />
-                            <span className="text-[10px] font-black text-emerald-600 truncate max-w-[80px]">
-                              {formatCurrency(doctor.totalRevenue).replace(' so\'m', '')}
-                            </span>
+                        <h3 className="text-sm font-black text-slate-900 tracking-tight truncate">{doctor.name || doctor.full_name}</h3>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{doctor.specialty || 'Stomatolog'}</span>
+                          <span className="text-slate-300">•</span>
+                          <div className="flex items-center gap-1 text-[10px] font-black text-blue-600 bg-blue-50/50 px-1.5 py-0.5 rounded-md">
+                            <Activity className="w-2.5 h-2.5" />
+                            <span>{doctor.treatments} {t('payroll.works')}</span>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-5 pt-5 border-t border-slate-50 flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('payroll.salary')}</p>
-                        <p className={`text-2xl font-black tracking-tighter ${expandedDoctor === doctor.id ? 'text-emerald-600' : 'text-slate-900'}`}>
-                          {formatCurrency(doctor.totalSalary)}
+                    <div className="flex items-center justify-between sm:justify-end gap-5 shrink-0">
+                      <div className="text-left sm:text-right mr-0 sm:mr-3">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{t('payroll.salary')}</p>
+                        <p className={`text-base font-black tracking-tight leading-none ${expandedDoctor === doctor.id ? 'text-emerald-600 font-[900]' : 'text-slate-900 font-[900]'}`}>
+                          {formatCurrency(doctor.totalSalary, t('common.currency'))}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3">
+
+                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                         <Button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            // Navigate to expenses with prefilled data or open a payout modal
-                            toast.success('Maosh to\'lash oynasi ochiladi...');
+                            toast.success(t('payroll.payWindowWillOpen') || 'Maosh to\'lash oynasi ochiladi...');
                           }}
-                          className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-black text-[11px] uppercase tracking-wider text-white shadow-lg shadow-emerald-500/20 transition-all border-none"
+                          className="h-8 px-3.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 font-black text-[10px] uppercase tracking-wider text-white shadow-md shadow-emerald-500/10 border-none transition-all duration-200 active:scale-95 flex items-center gap-1.5"
                         >
-                          To'lash
+                          <TrendingUp className="w-3.5 h-3.5" />
+                          {t('payroll.pay') || "To'lash"}
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-9 px-4 rounded-xl bg-slate-50 font-black text-[11px] uppercase tracking-wider text-slate-500 hover:bg-slate-100 transition-colors">
-                          {t('payroll.details')}
+                        <Button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedDoctor(expandedDoctor === doctor.id ? null : doctor.id);
+                          }}
+                          variant="ghost" 
+                          className="h-8 px-2.5 rounded-lg bg-slate-50 font-black text-[10px] uppercase tracking-wider text-slate-500 hover:bg-slate-100 transition-colors"
+                        >
+                          {expandedDoctor === doctor.id ? t('common.close') || 'Yopish' : t('payroll.details') || 'Batafsil'}
                         </Button>
+                        
+                        <div className="flex items-center gap-1 border-l border-slate-100 pl-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteDoctor(doctor.id, doctor.name || doctor.full_name);
+                            }}
+                            className="w-7 h-7 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-colors shrink-0"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -609,7 +611,7 @@ export default function Payroll() {
                             ].map(b => (
                               <div key={b.label} className={`${b.bg} rounded-2xl p-4 border border-white/50 shadow-sm flex flex-col items-center justify-center text-center`}>
                                 <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${b.color} opacity-60`}>{b.label}</p>
-                                <p className={`text-base font-black ${b.color}`}>{formatCurrency(b.value)}</p>
+                                <p className={`text-base font-black ${b.color}`}>{formatCurrency(b.value, t('common.currency'))}</p>
                               </div>
                             ))}
                           </div>
@@ -644,7 +646,7 @@ export default function Payroll() {
                                           <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md">{earning.commissionRate}%</span>
                                         </TableCell>
                                         <TableCell className="px-4 py-3 text-right font-black text-emerald-600 text-xs">
-                                          {formatCurrency(earning.totalCommission)}
+                                          {formatCurrency(earning.totalCommission, t('common.currency'))}
                                         </TableCell>
                                       </TableRow>
                                     ))
@@ -716,7 +718,8 @@ export default function Payroll() {
                 <Input 
                   type="number"
                   value={newDoctorForm.base_salary}
-                  onChange={e => setNewDoctorForm({...newDoctorForm, base_salary: Number(e.target.value)})}
+                  onChange={e => setNewDoctorForm({...newDoctorForm, base_salary: e.target.value})}
+                  onWheel={e => e.target.blur()}
                   placeholder="0"
                   className="rounded-xl"
                 />
@@ -726,7 +729,8 @@ export default function Payroll() {
                 <Input 
                   type="number"
                   value={newDoctorForm.commission_rate}
-                  onChange={e => setNewDoctorForm({...newDoctorForm, commission_rate: Number(e.target.value)})}
+                  onChange={e => setNewDoctorForm({...newDoctorForm, commission_rate: e.target.value})}
+                  onWheel={e => e.target.blur()}
                   placeholder="30"
                   className="rounded-xl"
                 />
@@ -808,7 +812,7 @@ function generateMonthOptions() {
   
   for (let i = 0; i < 12; i++) {
     const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-    const value = date.toISOString().slice(0, 7);
+    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     const label = date.toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long' });
     options.push({ value, label });
   }

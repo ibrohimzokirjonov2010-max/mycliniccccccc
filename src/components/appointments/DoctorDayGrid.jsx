@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Clock, Printer, Wallet, CheckCircle2, FlaskConical, X, User, Phone, Calendar, Stethoscope, CreditCard, FileText, History, Receipt, Edit3, UserCircle } from 'lucide-react';
+import { Clock, Wallet, CheckCircle2, FlaskConical, X, Phone, Calendar, Stethoscope, CreditCard, FileText, History, Receipt, Edit3, UserCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
 import AppointmentConfirmationBadge from './AppointmentConfirmationBadge';
@@ -90,6 +90,7 @@ const statusBadgeColors = {
    QUICK VIEW POPUP — cliniccards.com uslubi
    ═══════════════════════════════════════════════════ */
 export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
+  const { t } = useTranslation();
   const popupRef = useRef(null);
   const navigate = useNavigate();
   const [placement, setPlacement] = useState('bottom');
@@ -269,7 +270,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
                 onClick={goToProfile}
                 className="font-black text-slate-900 text-[15px] leading-tight truncate hover:text-[#1499AD] transition-colors border-none bg-transparent cursor-pointer p-0 text-left"
               >
-                {a.patient_name || 'Bemor'}
+                {a.patient_name || t('appointments.patient') || 'Bemor'}
               </button>
             </div>
             {/* Telefon */}
@@ -281,7 +282,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
             )}
             {/* Status badge */}
             <span className={cn('text-[10px] font-black px-2 py-0.5 rounded-full', statusBadgeColors[statusKey] || 'bg-teal-100 text-teal-700')}>
-              {statusUz[statusKey] || statusKey}
+              {t(`appointments.statusLabels.${statusKey.replace(/\s+/g, '')}`) || statusUz[statusKey] || statusKey}
             </span>
           </div>
 
@@ -307,7 +308,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
             </span>
             {a.is_paid && (
               <span className="ml-auto text-[11px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                To'langan
+                {t('common.paid') || "To'langan"}
               </span>
             )}
           </div>
@@ -331,7 +332,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
           {age !== null && (
             <div className="flex items-center gap-2.5">
               <UserCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span className="text-[12px] text-slate-500 font-medium">{age} yosh</span>
+              <span className="text-[12px] text-slate-500 font-medium">{t('patientProfile.age', { age }) || `${age} yosh`}</span>
             </div>
           )}
           {/* Izoh */}
@@ -350,7 +351,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
             className="flex-1 h-9 bg-slate-900 hover:bg-slate-700 text-white text-[11px] font-black rounded-xl flex items-center justify-center gap-1.5 border-none cursor-pointer transition-all active:scale-95"
           >
             <Edit3 className="w-3.5 h-3.5" />
-            Tahrirlash
+            {t('appointments.actionEdit') || 'Tahrirlash'}
           </button>
           {/* To'lov sahifasiga o'tadi */}
           <button
@@ -358,7 +359,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
             className="flex-1 h-9 bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-black rounded-xl flex items-center justify-center gap-1.5 border-none cursor-pointer transition-all active:scale-95"
           >
             <CreditCard className="w-3.5 h-3.5" />
-            To'lov
+            {t('appointments.actionPayment') || "To'lov"}
           </button>
         </div>
 
@@ -370,7 +371,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
             className="flex-1 flex flex-col items-center gap-0.5 py-1.5 text-slate-500 hover:text-[#1499AD] hover:bg-slate-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span className="text-[9px] font-bold">Navbatlar</span>
+            <span className="text-[9px] font-bold">{t('appointments.actionQueue') || "Navbatlar"}</span>
           </button>
           {/* Rejalar */}
           <button
@@ -378,7 +379,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
             className="flex-1 flex flex-col items-center gap-0.5 py-1.5 text-slate-500 hover:text-[#1499AD] hover:bg-slate-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5" />
-            <span className="text-[9px] font-bold">Rejalar</span>
+            <span className="text-[9px] font-bold">{t('appointments.actionPlans') || "Rejalar"}</span>
           </button>
           {/* Tarix — bemor profiliga o'tadi */}
           <button
@@ -386,7 +387,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
             className="flex-1 flex flex-col items-center gap-0.5 py-1.5 text-slate-500 hover:text-[#1499AD] hover:bg-slate-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
           >
             <History className="w-3.5 h-3.5" />
-            <span className="text-[9px] font-bold">Tarix</span>
+            <span className="text-[9px] font-bold">{t('appointments.actionHistory') || "Tarix"}</span>
           </button>
           {/* Hisobot — payments sahifasiga o'tadi */}
           <button
@@ -394,7 +395,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
             className="flex-1 flex flex-col items-center gap-0.5 py-1.5 text-slate-500 hover:text-[#1499AD] hover:bg-slate-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
           >
             <Receipt className="w-3.5 h-3.5" />
-            <span className="text-[9px] font-bold">Hisobot</span>
+            <span className="text-[9px] font-bold">{t('appointments.actionReport') || "Hisobot"}</span>
           </button>
         </div>
       </div>
@@ -602,7 +603,7 @@ export default function DoctorDayGrid({
                           <div className="flex items-center justify-between mt-1">
                              <div className="flex items-center gap-1 min-w-0 max-w-[78%]">
                                <div className="px-2 py-0.5 bg-white/60 rounded-lg text-[8px] font-black uppercase tracking-tighter truncate max-w-[85%] border border-black/5">
-                                  {appointment.tooth_number ? `${appointment.tooth_number}-tish: ` : ''}{appointment.service_name || 'Maslahat'}
+                                   {appointment.tooth_number ? `${appointment.tooth_number}-tish: ` : ''}{appointment.service_name || t('appointments.defaultService') || 'Maslahat'}
                                </div>
                                <AppointmentConfirmationBadge appointment={appointment} size="sm" className="!text-[8px] !px-1.5 !py-0.5" />
                              </div>

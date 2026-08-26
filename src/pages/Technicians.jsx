@@ -2,17 +2,16 @@ import { useState, useEffect } from 'react';
 /* Technicians Management Module */
 import { 
   Wrench, Plus, Search, Calendar, User, Clock, 
-  CheckCircle2, Send, Clock3, Microscope, 
-  UserPlus, Phone, Briefcase, X, PackageCheck, Truck, Bell, MessageCircle
+  CheckCircle2, Send, 
+  UserPlus, Phone, Briefcase, X, PackageCheck, Truck, MessageCircle, Camera
 } from 'lucide-react';
 import { Tooth } from '@/components/ui/Icons';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { 
   Select, 
   SelectContent, 
@@ -66,7 +65,8 @@ export default function Technicians() {
     deadline: '',
     impression_date: new Date().toISOString().split('T')[0],
     status: 'Sent',
-    notes: ''
+    notes: '',
+    photo_urls: []
   });
   const [jobStep, setJobStep] = useState(1);
 
@@ -117,7 +117,7 @@ export default function Technicians() {
         patient_id: '', patient_name: '', work_type: '', construction_type: '', shade: '',
         technician_id: '', technician_name: '', doctor_id: '', doctor_name: '',
         tooth_number: '', cost: '', deadline: '', impression_date: new Date().toISOString().split('T')[0],
-        status: 'Sent', notes: '' 
+        status: 'Sent', notes: '', photo_urls: [] 
       });
       loadData();
     } catch (e) {
@@ -343,6 +343,25 @@ export default function Technicians() {
                       </div>
                     )}
 
+                    {Array.isArray(job.photo_urls) && job.photo_urls.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-5">
+                        {job.photo_urls.map((url, idx) => (
+                          <div 
+                            key={idx} 
+                            onClick={() => {
+                              const w = window.open();
+                              if (w) {
+                                w.document.write(`<img src="${url}" style="max-width:100%; max-height:100%; margin:auto; display:block; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.15);" />`);
+                              }
+                            }}
+                            className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden shadow-sm cursor-pointer hover:opacity-90 active:scale-95 transition-all shrink-0 bg-slate-50"
+                          >
+                            <img src={url} alt="Tooth detail" className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Workflow Action Buttons */}
                     <div className="space-y-3 relative z-10">
                       {/* Step 1: Sent → Texnik olib ketdi */}
@@ -550,16 +569,38 @@ Sizni kutib qolamiz! 🏥`;
         setJobModalOpen(open);
         if (!open) {
           setJobStep(1);
-          setJobForm({ patient_id: '', patient_name: '', work_type: '', construction_type: '', shade: '', technician_id: '', technician_name: '', doctor_id: '', doctor_name: '', tooth_number: '', cost: '', deadline: '', impression_date: new Date().toISOString().split('T')[0], status: 'Sent', notes: '' });
+          setJobForm({ patient_id: '', patient_name: '', work_type: '', construction_type: '', shade: '', technician_id: '', technician_name: '', doctor_id: '', doctor_name: '', tooth_number: '', cost: '', deadline: '', impression_date: new Date().toISOString().split('T')[0], status: 'Sent', notes: '', photo_urls: [] });
         }
       }}>
-        <DialogContent className="fixed inset-0 translate-x-0 translate-y-0 data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100 sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-4xl w-full h-[100dvh] sm:h-[90vh] p-0 border-none rounded-none sm:rounded-[2rem] overflow-hidden bg-white flex flex-col shadow-2xl">
+        <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-[95vw] max-w-4xl h-[85vh] sm:h-[90vh] p-0 border-none rounded-[2rem] overflow-hidden bg-white flex flex-col shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-1/2">
+          
+          {/* Header */}
+          <div className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between shrink-0 rounded-t-[2rem]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm">
+                <Wrench className="w-5 h-5 stroke-[2.5]" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
+                  Yangi buyurtma yaratish
+                </DialogTitle>
+                <p className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">Laboratoriya uchrashuvi</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setJobModalOpen(false)}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95"
+            >
+              <X className="w-4.5 h-4.5" />
+            </button>
+          </div>
+
           {/* Compact Stepper Header */}
-          <div className="bg-white border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between shrink-0">
+          <div className="bg-slate-50 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-center shrink-0">
             <div className="flex items-center gap-2 sm:gap-4">
               {/* Step 1 */}
               <div className={cn("flex items-center gap-1 sm:gap-2 transition-all", jobStep === 1 ? "opacity-100" : "opacity-40")}>
-                <div className={cn("w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-black text-[10px] sm:text-xs shrink-0", jobStep === 1 ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500")}>
+                <div className={cn("w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-black text-[10px] sm:text-xs shrink-0", jobStep === 1 ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500")}>
                   {jobStep > 1 ? "✓" : "1"}
                 </div>
                 <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-tight text-slate-700">Bemor</span>
@@ -567,7 +608,7 @@ Sizni kutib qolamiz! 🏥`;
               <div className="w-3 sm:w-8 h-px bg-slate-200 shrink-0" />
               {/* Step 2 */}
               <div className={cn("flex items-center gap-1 sm:gap-2 transition-all", jobStep === 2 ? "opacity-100" : "opacity-40")}>
-                <div className={cn("w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-black text-[10px] sm:text-xs shrink-0", jobStep === 2 ? "bg-indigo-600 text-white" : jobStep > 2 ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-500")}>
+                <div className={cn("w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-black text-[10px] sm:text-xs shrink-0", jobStep === 2 ? "bg-emerald-600 text-white" : jobStep > 2 ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500")}>
                   {jobStep > 2 ? "✓" : "2"}
                 </div>
                 <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-tight text-slate-700">Tishlar</span>
@@ -575,13 +616,10 @@ Sizni kutib qolamiz! 🏥`;
               <div className="w-3 sm:w-8 h-px bg-slate-200 shrink-0" />
               {/* Step 3 */}
               <div className={cn("flex items-center gap-1 sm:gap-2 transition-all", jobStep === 3 ? "opacity-100" : "opacity-40")}>
-                <div className={cn("w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-black text-[10px] sm:text-xs shrink-0", jobStep === 3 ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500")}>3</div>
+                <div className={cn("w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-black text-[10px] sm:text-xs shrink-0", jobStep === 3 ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500")}>3</div>
                 <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-tight text-slate-700">Tafsilot</span>
               </div>
             </div>
-            <button onClick={() => setJobModalOpen(false)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-all shrink-0 ml-2">
-              <X className="w-4 h-4 text-slate-500" />
-            </button>
           </div>
 
           {/* Scrollable Content Area */}
@@ -593,16 +631,16 @@ Sizni kutib qolamiz! 🏥`;
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="flex flex-col items-center justify-center min-h-full px-4 py-6 sm:py-10 space-y-4 sm:space-y-6"
+                  className="flex flex-col items-center justify-start min-h-full px-4 pt-8 pb-4 sm:py-12 space-y-3 sm:space-y-6"
                 >
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-indigo-50 rounded-2xl sm:rounded-3xl flex items-center justify-center text-indigo-600">
-                     <UserPlus className="w-8 h-8 sm:w-10 sm:h-10" />
+                  <div className="w-11 h-11 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shadow-inner">
+                     <UserPlus className="w-5 h-5" />
                   </div>
-                  <div className="text-center space-y-1">
-                     <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Bemor tanlang</h2>
-                     <p className="text-slate-400 text-sm font-medium">Buyurtma qaysi bemor uchun?</p>
+                  <div className="text-center space-y-0.5">
+                     <h2 className="text-[15px] sm:text-xl font-bold text-slate-900 tracking-tight">Bemor tanlang</h2>
+                     <p className="text-slate-400 text-[10px] sm:text-sm font-medium">Buyurtma qaysi bemor uchun?</p>
                   </div>
-                  <div className="w-full max-w-sm">
+                  <div className="w-full max-w-sm px-2">
                     <PatientSelect 
                       patients={patients}
                       value={jobForm.patient_id}
@@ -610,7 +648,7 @@ Sizni kutib qolamiz! 🏥`;
                         setJobForm({...jobForm, patient_id: id, patient_name: p?.full_name || ''});
                         if (id) setTimeout(() => setJobStep(2), 300);
                       }}
-                      inputClassName="h-14 rounded-2xl bg-white border-slate-200 shadow-xl shadow-indigo-500/5 font-bold text-base text-indigo-600"
+                      inputClassName="h-11 rounded-xl bg-white border-slate-200 shadow-lg shadow-emerald-500/5 font-semibold text-xs text-emerald-600"
                     />
                   </div>
                 </motion.div>
@@ -628,13 +666,13 @@ Sizni kutib qolamiz! 🏥`;
                   <div className="flex items-center justify-between mb-3 px-1">
                     <div>
                       <h2 className="text-base sm:text-xl font-black text-slate-900 flex items-center gap-2">
-                        <Tooth className="w-5 h-5 text-indigo-600" /> 
+                        <Tooth className="w-5 h-5 text-emerald-600" /> 
                         Tishlarni belgilang
                       </h2>
                       <p className="text-slate-400 text-[10px] sm:text-xs font-bold mt-0.5 ml-7">{jobForm.patient_name}</p>
                     </div>
                     {jobForm.tooth_number && (
-                      <div className="px-3 py-1.5 bg-indigo-600 text-white rounded-xl font-black text-sm">
+                      <div className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl font-black text-sm">
                         {jobForm.tooth_number.split(', ').length} ta ✓
                       </div>
                     )}
@@ -681,7 +719,7 @@ Sizni kutib qolamiz! 🏥`;
                     <h2 className="text-base sm:text-xl font-black text-slate-900">📋 Texnik ko'rsatmalar</h2>
                     <div className="flex flex-wrap gap-1 max-w-[150px] justify-end">
                       {jobForm.tooth_number?.split(', ').slice(0, 4).map(n => (
-                        <span key={n} className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-black text-[10px]">{n}</span>
+                        <span key={n} className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center font-black text-[10px]">{n}</span>
                       ))}
                       {jobForm.tooth_number?.split(', ').length > 4 && <span className="text-[10px] text-slate-400 font-bold self-center">+{jobForm.tooth_number.split(', ').length - 4}</span>}
                     </div>
@@ -705,7 +743,7 @@ Sizni kutib qolamiz! 🏥`;
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Material</Label>
                       <Select onValueChange={(val) => setJobForm({...jobForm, work_type: val})} value={jobForm.work_type}>
-                        <SelectTrigger className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-bold shadow-sm text-indigo-600">
+                        <SelectTrigger className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-bold shadow-sm text-emerald-600">
                           <SelectValue placeholder="Zirconia, E-Max..." />
                         </SelectTrigger>
                         <SelectContent className="rounded-2xl border-none shadow-xl">
@@ -747,7 +785,7 @@ Sizni kutib qolamiz! 🏥`;
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Texnik</Label>
                       <Select onValueChange={(val) => setJobForm({...jobForm, technician_id: val})} value={jobForm.technician_id}>
-                        <SelectTrigger className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-bold shadow-sm text-indigo-600">
+                        <SelectTrigger className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-bold shadow-sm text-emerald-600">
                           <SelectValue placeholder="Texnikni tanlang" />
                         </SelectTrigger>
                         <SelectContent className="rounded-2xl border-none shadow-xl">
@@ -773,6 +811,60 @@ Sizni kutib qolamiz! 🏥`;
                     <Input placeholder="Qo'shimcha ko'rsatmalar..." className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-medium shadow-sm" value={jobForm.notes} onChange={e => setJobForm({...jobForm, notes: e.target.value})} />
                   </div>
 
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Tishga tegishli rasmlar (Fotosurat / Rentgen)</Label>
+                    <div className="flex flex-wrap gap-2.5 items-center pt-1">
+                      {/* Upload Button */}
+                      <label className="w-16 h-16 rounded-2xl border-2 border-dashed border-slate-200 hover:border-emerald-500 cursor-pointer flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-emerald-600 transition-colors bg-slate-50/50">
+                        <Camera className="w-5 h-5" />
+                        <span className="text-[8px] font-bold uppercase tracking-tight">Kamera / Rasm</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={async (e) => {
+                            const files = Array.from(e.target.files || []);
+                            if (files.length === 0) return;
+                            
+                            const loadedUrls = await Promise.all(
+                              files.map(file => {
+                                return new Promise((resolve) => {
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => resolve(reader.result);
+                                  reader.readAsDataURL(file);
+                                });
+                              })
+                            );
+                            setJobForm(prev => ({
+                              ...prev,
+                              photo_urls: [...(prev.photo_urls || []), ...loadedUrls]
+                            }));
+                          }}
+                        />
+                      </label>
+
+                      {/* Thumbnails list */}
+                      {jobForm.photo_urls?.map((url, idx) => (
+                        <div key={idx} className="relative w-16 h-16 rounded-2xl overflow-hidden group border border-slate-100 shadow-sm shrink-0">
+                          <img src={url} alt="Tooth" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setJobForm(prev => ({
+                                ...prev,
+                                photo_urls: prev.photo_urls.filter((_, i) => i !== idx)
+                              }));
+                            }}
+                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-md opacity-90 hover:opacity-100 hover:scale-105 transition-all cursor-pointer"
+                          >
+                            <span className="text-[10px] font-black leading-none">×</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* pb for footer */}
                   <div className="h-4" />
                 </motion.div>
@@ -794,7 +886,7 @@ Sizni kutib qolamiz! 🏥`;
                 <button
                   onClick={() => setJobStep(3)}
                   disabled={!jobForm.tooth_number}
-                  className="flex-1 h-12 rounded-xl sm:rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2"
+                  className="flex-1 h-12 rounded-xl sm:rounded-2xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2"
                 >
                   Davom etish →
                   {jobForm.tooth_number && <span className="px-2 py-0.5 bg-white/20 rounded-lg text-xs">{jobForm.tooth_number.split(', ').length} ta</span>}
@@ -802,7 +894,7 @@ Sizni kutib qolamiz! 🏥`;
               ) : (
                 <button
                   onClick={handleCreateJob}
-                  className="flex-1 h-12 rounded-xl sm:rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2"
+                  className="flex-1 h-12 rounded-xl sm:rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-emerald-500/10 flex items-center justify-center gap-2"
                 >
                   ✅ Saqlash
                 </button>
@@ -816,28 +908,48 @@ Sizni kutib qolamiz! 🏥`;
 
       {/* Creation Modal (Tech) */}
       <Dialog open={techModalOpen} onOpenChange={setTechModalOpen}>
-        <DialogContent className="rounded-[3rem] border-none shadow-2xl sm:max-w-md p-8">
-          <DialogHeader>
-            <DialogTitle className="text-3xl font-black text-slate-900 tracking-tighter mb-4 text-center">Texnik qo'shish</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-5 py-2">
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] p-0 rounded-[2.5rem] border-0 shadow-2xl bg-white/95 backdrop-blur-xl flex flex-col overflow-visible">
+          
+          {/* Header */}
+          <div className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between shrink-0 rounded-t-[2.5rem]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm">
+                <UserPlus className="w-5 h-5 stroke-[2.5]" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
+                  Texnik qo'shish
+                </DialogTitle>
+                <p className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">Texnik ma'lumotlari</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setTechModalOpen(false)}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95"
+            >
+              <X className="w-4.5 h-4.5" />
+            </button>
+          </div>
+
+          <div className="space-y-5 p-6 overflow-y-auto max-h-[60vh]">
             <div className="space-y-2">
                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">To'liq nomi</Label>
-               <Input placeholder="Azizbek Musayev" className="h-14 rounded-2xl bg-slate-50 border-none font-bold" value={techForm.name} onChange={e => setTechForm({...techForm, name: e.target.value})} />
+               <Input placeholder="Azizbek Musayev" className="h-12 rounded-2xl bg-slate-50 border-none font-bold" value={techForm.name} onChange={e => setTechForm({...techForm, name: e.target.value})} />
             </div>
             <div className="space-y-2">
                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Telefon</Label>
-               <Input placeholder="+998" className="h-14 rounded-2xl bg-slate-50 border-none font-bold" value={techForm.phone} onChange={e => setTechForm({...techForm, phone: e.target.value})} />
+               <Input placeholder="+998" className="h-12 rounded-2xl bg-slate-50 border-none font-bold" value={techForm.phone} onChange={e => setTechForm({...techForm, phone: e.target.value})} />
             </div>
             <div className="space-y-2">
                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Ixtisosligi</Label>
-               <Input placeholder="Zirkon, Ortopediya" className="h-14 rounded-2xl bg-slate-50 border-none font-bold" value={techForm.specialization} onChange={e => setTechForm({...techForm, specialization: e.target.value})} />
+               <Input placeholder="Zirkon, Ortopediya" className="h-12 rounded-2xl bg-slate-50 border-none font-bold" value={techForm.specialization} onChange={e => setTechForm({...techForm, specialization: e.target.value})} />
             </div>
           </div>
-          <DialogFooter className="px-0 sm:justify-center gap-3 mt-8">
-            <Button variant="ghost" onClick={() => setTechModalOpen(false)} className="rounded-2xl h-14 font-black uppercase tracking-widest text-slate-400 px-8">Bekor qilish</Button>
-            <Button onClick={handleCreateTech} className="bg-slate-900 hover:bg-black rounded-2xl h-14 px-12 font-black uppercase tracking-widest text-white shadow-xl shadow-slate-200">Saqlash</Button>
-          </DialogFooter>
+
+          <div className="flex gap-2 p-6 border-t border-slate-100 bg-slate-50 rounded-b-[2.5rem] shrink-0">
+            <Button variant="ghost" onClick={() => setTechModalOpen(false)} className="flex-1 h-12 rounded-2xl font-bold uppercase text-[10px]">Bekor qilish</Button>
+            <Button onClick={handleCreateTech} className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white h-12 rounded-2xl font-bold uppercase text-[10px] shadow-md shadow-emerald-500/10 border-none transition-all active:scale-95">Saqlash</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

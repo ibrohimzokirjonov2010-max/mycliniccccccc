@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MapPin, Clock, Phone, Send, 
-  Instagram, MessageCircle, ChevronRight, 
-  Globe, Calendar, User, CheckCircle2,
-  X, ChevronLeft, Stethoscope, Star,
+  Instagram, ChevronRight, Calendar, CheckCircle2,
+  X, ChevronLeft, Star,
   ShieldCheck, AlertCircle, Sparkles
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';

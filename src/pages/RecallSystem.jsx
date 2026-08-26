@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from '@/i18n/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, Search, Bell, Send, MessageCircle, Smartphone, History, Settings, 
@@ -18,7 +19,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import EmptyState from '@/components/ui/EmptyState';
 import { formatDateTime } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 /**
  * RECALL_RULES - Avtomatik recall qoidalar
@@ -69,7 +70,22 @@ const RECALL_STATUSES = {
  * - Priority management and intelligent filtering
  */
 export default function RecallSystem() {
-  const { toast } = useToast();
+  const { t } = useTranslation();
+  
+  const getRuleLabel = (value, defaultLabel) => {
+    switch (value) {
+      case '3_months':
+        return `3 ${t('recall.months') || 'oy'}`;
+      case '6_months':
+        return `6 ${t('recall.months') || 'oy'}`;
+      case '1_year':
+        return `1 ${t('recall.year') || 'yil'}`;
+      case 'custom':
+        return t('common.other') || t('recall.sort.custom') || 'Boshqa';
+      default:
+        return defaultLabel;
+    }
+  };
   
   // Data states
   const [recalls, setRecalls] = useState([]);
@@ -143,18 +159,11 @@ export default function RecallSystem() {
       setRecalls(enrichedRecalls);
       setPatients(pats);
       setNotificationHistory(history);
-      
-      toast({
-        title: 'Ma\'lumotlar yuklandi',
-        description: `${enrichedRecalls.length} ta recall topildi`,
-        duration: 3000
-      });
+      // ✅ toast olib tashlandi — load funksiyasi endi [] bilan stable (loop xavfi yo'q)
     } catch (error) {
       console.error('Failed to load recalls:', error);
-      toast({
-        title: 'Xatolik',
-        description: 'Ma\'lumotlarni yuklashda xatolik yuz berdi',
-        variant: 'destructive'
+      toast.error('Xatolik', {
+        description: 'Ma\'lumotlarni yuklashda xatolik yuz berdi'
       });
     } finally {
       setLoading(false);
@@ -457,8 +466,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
         await base44.entities.Recall.update(recall.id, { status: 'Sent' });
       }
       
-      toast({
-        title: 'Muvaffaqiyatli!',
+      toast.success('Muvaffaqiyatli!', {
         description: `${selected.length} ta recall yuborildi`,
         duration: 3000
       });
@@ -467,15 +475,13 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
       await load();
     } catch (error) {
       console.error('Bulk send failed:', error);
-      toast({
-        title: 'Xatolik',
-        description: 'Yuborishda xatolik yuz berdi',
-        variant: 'destructive'
+      toast.error('Xatolik', {
+        description: 'Yuborishda xatolik yuz berdi'
       });
     } finally {
       setSending(false);
     }
-  }, [recalls, load, toast]);
+  }, [recalls, load]);
 
   /**
    * Toggle recall selection for bulk actions
@@ -585,9 +591,9 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight">Recall Tizimi</h1>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('recall.title') || 'Recall Tizimi'}</h1>
           <p className="text-[10.5px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">
-            Avtomatik eslatmalar bilan bemorlarni qayta chaqirish
+            {t('recall.subtitle') || 'Avtomatik eslatmalar bilan bemorlarni qayta chaqirish'}
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
@@ -598,7 +604,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
             className="gap-1.5 h-9 rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white"
           >
             <Settings className="w-3.5 h-3.5 text-slate-400" />
-            Sozlamalar
+            {t('recall.settings') || t('common.settings') || 'Sozlamalar'}
           </Button>
           <Button 
             size="sm"
@@ -606,7 +612,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
             className="bg-[#10b981] hover:bg-[#10b981]/90 gap-1.5 h-9 rounded-xl text-xs font-bold text-white shadow-md shadow-emerald-500/10 border-none"
           >
             <Plus className="w-3.5 h-3.5" />
-            Yangi recall
+            {t('recall.newRecall') || t('recall.addNew') || 'Yangi recall'}
           </Button>
         </div>
       </div>
@@ -619,7 +625,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
             <Bell className="w-4.5 h-4.5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Jami recalllar</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('recall.stats.total') || 'Jami recalllar'}</p>
             <p className="text-xl font-black text-slate-900 mt-0.5">{recalls.length}</p>
           </div>
         </div>
@@ -630,7 +636,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
             <Clock className="w-4.5 h-4.5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kutilayotgan</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('recall.stats.pending') || 'Kutilayotgan'}</p>
             <p className="text-xl font-black text-slate-900 mt-0.5">{recalls.filter(r => r.status === 'Pending').length}</p>
           </div>
         </div>
@@ -641,7 +647,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
             <CheckCircle2 className="w-4.5 h-4.5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Yuborilgan</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('recall.stats.sent') || 'Yuborilgan'}</p>
             <p className="text-xl font-black text-slate-900 mt-0.5">{notificationHistory.length}</p>
           </div>
         </div>
@@ -658,7 +664,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
           >
             <div className="flex items-center gap-2">
               <CheckSquare className="w-4.5 h-4.5 text-emerald-400 animate-pulse" />
-              <span className="font-bold text-xs">{selectedRecalls.size} ta recall tanlandi</span>
+              <span className="font-bold text-xs">{selectedRecalls.size} {t('recall.bulkActions.selected') || 'ta recall tanlandi'}</span>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -668,7 +674,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
                 className="bg-emerald-500 hover:bg-emerald-600 gap-1.5 h-8 px-3 text-xs font-bold border-none"
               >
                 <Send className="w-3 h-3" />
-                Yuborish
+                {t('recall.bulkActions.send') || t('common.send') || 'Yuborish'}
               </Button>
               <Button
                 variant="ghost"
@@ -676,7 +682,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
                 onClick={() => setSelectedRecalls(new Set())}
                 className="text-white/60 hover:text-white hover:bg-white/10 h-8 px-2 text-xs font-bold"
               >
-                Bekor qilish
+                {t('recall.bulkActions.cancel') || t('common.cancel') || 'Bekor qilish'}
               </Button>
             </div>
           </motion.div>
@@ -688,7 +694,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
         <div className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           <Input 
-            placeholder="Qidirish (ism, telefon)..." 
+            placeholder={t('recall.searchPlaceholder') || 'Qidirish (ism, telefon)...'} 
             value={search} 
             onChange={e => setSearch(e.target.value)} 
             className="pl-10 h-10 rounded-xl border-slate-200 bg-white placeholder:text-slate-400 text-sm focus-visible:ring-1 focus-visible:ring-slate-350" 
@@ -700,14 +706,14 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
             <SelectTrigger className="h-10 w-[140px] rounded-xl border-slate-200 text-xs font-semibold text-slate-700 bg-white">
               <div className="flex items-center gap-2 truncate">
                 <Filter className="w-3.5 h-3.5 text-slate-400" />
-                <SelectValue placeholder="Filtrlash" />
+                <SelectValue placeholder={t('recall.filters.label') || 'Filtrlash'} />
               </div>
             </SelectTrigger>
             <SelectContent className="rounded-xl border-slate-150">
-              <SelectItem value="all" className="text-xs font-medium">Barchasi</SelectItem>
-              <SelectItem value="urgent" className="text-xs font-medium">🔥 Dolzarb</SelectItem>
-              <SelectItem value="today" className="text-xs font-medium">Bugun</SelectItem>
-              <SelectItem value="week" className="text-xs font-medium">Bu hafta</SelectItem>
+              <SelectItem value="all" className="text-xs font-medium">{t('recall.filters.all') || 'Barchasi'}</SelectItem>
+              <SelectItem value="urgent" className="text-xs font-medium">{t('recall.filters.urgent') || '🔥 Dolzarb'}</SelectItem>
+              <SelectItem value="today" className="text-xs font-medium">{t('recall.filters.today') || 'Bugun'}</SelectItem>
+              <SelectItem value="week" className="text-xs font-medium">{t('recall.filters.week') || 'Bu hafta'}</SelectItem>
             </SelectContent>
           </Select>
           
@@ -719,9 +725,9 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
               </div>
             </SelectTrigger>
             <SelectContent className="rounded-xl border-slate-150">
-              <SelectItem value="date_asc" className="text-xs font-medium">Sana ↑</SelectItem>
-              <SelectItem value="date_desc" className="text-xs font-medium">Sana ↓</SelectItem>
-              <SelectItem value="priority" className="text-xs font-medium">Muhimlik 🔽</SelectItem>
+              <SelectItem value="date_asc" className="text-xs font-medium">{t('recall.sort.dateAsc') || 'Sana ↑'}</SelectItem>
+              <SelectItem value="date_desc" className="text-xs font-medium">{t('recall.sort.dateDesc') || 'Sana ↓'}</SelectItem>
+              <SelectItem value="priority" className="text-xs font-medium">{t('recall.sort.priority') || 'Muhimlik 🔽'}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -730,11 +736,11 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
       {/* Tabs */}
       <Tabs defaultValue="all" className="w-full">
         <TabsList className="bg-muted w-full justify-start overflow-x-auto no-scrollbar h-11 p-1">
-          <TabsTrigger value="all" className="flex-1 sm:flex-none h-9">Barcha</TabsTrigger>
+          <TabsTrigger value="all" className="flex-1 sm:flex-none h-9">{t('recall.tabs.all') || 'Barcha'}</TabsTrigger>
           <TabsTrigger value="upcoming" className="flex-1 sm:flex-none h-9 whitespace-nowrap">
-            Yaqinlashayotgan ({upcomingRecalls.length})
+            {t('recall.tabs.upcoming') || 'Yaqinlashayotgan'} ({upcomingRecalls.length})
           </TabsTrigger>
-          <TabsTrigger value="history" className="flex-1 sm:flex-none h-9">Tarix</TabsTrigger>
+          <TabsTrigger value="history" className="flex-1 sm:flex-none h-9">{t('recall.tabs.history') || 'Tarix'}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="mt-4 outline-none">
@@ -769,11 +775,11 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Yangi Recall</DialogTitle>
+            <DialogTitle>{t('recall.modal.newTitle') || 'Yangi Recall'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Bemor *</Label>
+              <Label>{t('recall.modal.patient') || 'Bemor *'}</Label>
               <Select 
                 value={form.patient_id} 
                 onValueChange={v => {
@@ -788,7 +794,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Tanlang" />
+                  <SelectValue placeholder={t('common.select') || 'Tanlang'} />
                 </SelectTrigger>
                 <SelectContent>
                   {patients.map(p => (
@@ -800,7 +806,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
             
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Recall sanasi *</Label>
+                <Label>{t('recall.modal.date') || 'Recall sanasi *'}</Label>
                 <Input 
                   type="date" 
                   value={form.recall_date} 
@@ -808,7 +814,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
                 />
               </div>
               <div>
-                <Label>Vaqt</Label>
+                <Label>{t('recall.modal.time') || 'Vaqt'}</Label>
                 <Input 
                   type="time" 
                   value={form.recall_time} 
@@ -819,7 +825,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
             
             {/* Auto Recall Rule */}
             <div>
-              <Label>Avtomatik recall qoidasi</Label>
+              <Label>{t('recall.modal.rule') || 'Avtomatik recall qoidasi'}</Label>
               <Select 
                 value={form.recall_rule} 
                 onValueChange={v => {
@@ -837,27 +843,27 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
                 <SelectContent>
                   {RECALL_RULES.map(rule => (
                     <SelectItem key={rule.value} value={rule.value}>
-                      {rule.icon} {rule.label}
+                      {rule.icon} {getRuleLabel(rule.value, rule.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-slate-400 mt-1">
-                {form.recall_rule !== 'custom' && `Sana avtomatik hisoblandi: ${calculateRecallDate(form.recall_rule)}`}
+                {form.recall_rule !== 'custom' && `${t('recall.modal.autoCalculated') || 'Sana avtomatik hisoblandi'}: ${calculateRecallDate(form.recall_rule)}`}
               </p>
             </div>
 
             <div>
-              <Label>Davolash turi</Label>
+              <Label>{t('recall.modal.reason') || 'Davolash turi'}</Label>
               <Input 
                 value={form.treatment_type} 
                 onChange={e => setForm({ ...form, treatment_type: e.target.value, reason: `${e.target.value} - qayta ko'rik` })} 
-                placeholder="Masalan: Plomba qo'yish"
+                placeholder={t('recall.modal.placeholderTreatment') || "Masalan: Plomba qo'yish"}
               />
             </div>
             
             <div>
-              <Label>Izohlar</Label>
+              <Label>{t('recall.modal.notes') || t('common.notes') || 'Izohlar'}</Label>
               <Textarea 
                 value={form.notes} 
                 onChange={e => setForm({ ...form, notes: e.target.value })} 
@@ -867,7 +873,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
 
             {/* Notification Channels */}
             <div className="border rounded-lg p-3 space-y-3">
-              <Label className="text-sm font-medium">Eslatma kanallari</Label>
+              <Label className="text-sm font-medium">{t('recall.modal.channels') || 'Eslatma kanallari'}</Label>
               <div className="flex gap-4">
                 <div className="flex items-center gap-2">
                   <Checkbox 
@@ -890,7 +896,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
             
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setModalOpen(false)}>
-                Bekor
+                {t('recall.bulkActions.cancel') || t('common.cancel') || 'Bekor'}
               </Button>
               <Button 
                 onClick={handleSave} 
@@ -898,8 +904,8 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
                 className="bg-primary hover:bg-primary/90"
               >
                 {saving ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saqlanmoqda...</>
-                ) : 'Saqlash'}
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('recall.modal.creating') || t('common.saving') || 'Saqlanmoqda...'}</>
+                ) : (t('common.save') || 'Saqlash')}
               </Button>
             </div>
           </div>
@@ -1027,6 +1033,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
  * Recalls Table Component
  */
 function RecallsTable({ recalls, loading, onStatusChange, onSendClick, emptyMessage, selectedRecalls, toggleRecallSelection }) {
+  const { t } = useTranslation();
   if (loading) {
     return (
       <div className="space-y-3">
@@ -1041,8 +1048,8 @@ function RecallsTable({ recalls, loading, onStatusChange, onSendClick, emptyMess
     return (
       <EmptyState 
         icon={Bell} 
-        title={emptyMessage || "Recall yo'q"}
-        description="Yangi recall qo'shish uchun tugmani bosing"
+        title={emptyMessage || t('recall.empty') || "Recall yo'q"}
+        description={t('recall.emptyDesc') || "Yangi recall qo'shish uchun tugmani bosing"}
       />
     );
   }
@@ -1050,11 +1057,11 @@ function RecallsTable({ recalls, loading, onStatusChange, onSendClick, emptyMess
   // Status colors
   const getStatusStyle = (status) => {
     const styles = {
-      'Pending': { bg: 'bg-amber-55 text-amber-700 border-amber-100/70', text: 'text-amber-700', border: 'border-amber-100', label: 'Kutilayotgan' },
-      'Contacted': { bg: 'bg-blue-55 text-blue-700 border-blue-100/70', text: 'text-blue-700', border: 'border-blue-100', label: 'Bog\'lanildi' },
-      'Scheduled': { bg: 'bg-purple-55 text-purple-700 border-purple-100/70', text: 'text-purple-700', border: 'border-purple-100', label: 'Rejalashtirilgan' },
-      'Completed': { bg: 'bg-emerald-55 text-emerald-700 border-emerald-100/70', text: 'text-emerald-700', border: 'border-emerald-100', label: 'Bajarildi' },
-      'Missed': { bg: 'bg-rose-55 text-rose-700 border-rose-100/70', text: 'text-rose-700', border: 'border-rose-100', label: 'O\'tkazib yuborildi' }
+      'Pending': { bg: 'bg-amber-55 text-amber-700 border-amber-100/70', text: 'text-amber-700', border: 'border-amber-100', label: t('status.Pending') || t('status.pending') || 'Kutilayotgan' },
+      'Contacted': { bg: 'bg-blue-55 text-blue-700 border-blue-100/70', text: 'text-blue-700', border: 'border-blue-100', label: t('status.Contacted') || t('status.contacted') || 'Bog\'lanildi' },
+      'Scheduled': { bg: 'bg-purple-55 text-purple-700 border-purple-100/70', text: 'text-purple-700', border: 'border-purple-100', label: t('status.Scheduled') || t('status.scheduled') || 'Rejalashtirilgan' },
+      'Completed': { bg: 'bg-emerald-55 text-emerald-700 border-emerald-100/70', text: 'text-emerald-700', border: 'border-emerald-100', label: t('status.Completed') || t('status.completed') || 'Bajarildi' },
+      'Missed': { bg: 'bg-rose-55 text-rose-700 border-rose-100/70', text: 'text-rose-700', border: 'border-rose-100', label: t('status.Missed') || t('status.missed') || 'O\'tkazib yuborildi' }
     };
     return styles[status] || styles['Pending'];
   };
@@ -1062,11 +1069,11 @@ function RecallsTable({ recalls, loading, onStatusChange, onSendClick, emptyMess
   // Priority badge
   const getPriorityBadge = (priority) => {
     const badges = {
-      'overdue': { bg: 'bg-rose-50 text-rose-600 border border-rose-100', text: 'text-rose-600', label: '⚠️ Muddati o\'tgan' },
-      'urgent': { bg: 'bg-amber-50 text-amber-700 border border-amber-150', text: 'text-amber-700', label: '🔥 Dolzarb' },
-      'high': { bg: 'bg-orange-50 text-orange-600 border border-orange-100', text: 'text-orange-600', label: 'Yuqori' },
-      'medium': { bg: 'bg-blue-50 text-blue-600 border border-blue-100', text: 'text-blue-600', label: 'O\'rta' },
-      'low': { bg: 'bg-slate-50 text-slate-600 border border-slate-100', text: 'text-slate-600', label: 'Past' }
+      'overdue': { bg: 'bg-rose-50 text-rose-600 border border-rose-100', text: 'text-rose-600', label: `⚠️ ${t('status.overdue') || 'Muddati o\'tgan'}` },
+      'urgent': { bg: 'bg-amber-50 text-amber-700 border border-amber-150', text: 'text-amber-700', label: `🔥 ${t('status.urgent') || 'Dolzarb'}` },
+      'high': { bg: 'bg-orange-50 text-orange-600 border border-orange-100', text: 'text-orange-600', label: t('status.High') || 'Yuqori' },
+      'medium': { bg: 'bg-blue-50 text-blue-600 border border-blue-100', text: 'text-blue-600', label: t('status.Medium') || 'O\'rta' },
+      'low': { bg: 'bg-slate-50 text-slate-600 border border-slate-100', text: 'text-slate-600', label: t('status.Low') || 'Past' }
     };
     return badges[priority] || badges['low'];
   };
@@ -1079,12 +1086,12 @@ function RecallsTable({ recalls, loading, onStatusChange, onSendClick, emptyMess
           <table className="w-full text-left border-collapse table-fixed min-w-[850px]">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100">
-                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[28%] min-w-[200px]">Bemor</th>
-                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[14%] min-w-[110px]">Sana</th>
-                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[12%] min-w-[95px]">Muhimlik</th>
-                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[18%] min-w-[130px]">Turi / Izoh</th>
-                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[13%] min-w-[110px]">Status</th>
-                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right w-[15%] min-w-[140px]">Amallar</th>
+                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[28%] min-w-[200px]">{t('recall.table.patient') || 'Bemor'}</th>
+                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[14%] min-w-[110px]">{t('recall.table.recallDate') || 'Sana'}</th>
+                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[12%] min-w-[95px]">{t('recall.priority') || 'Muhimlik'}</th>
+                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[18%] min-w-[130px]">{t('recall.table.reason') || 'Turi / Izoh'}</th>
+                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[13%] min-w-[110px]">{t('recall.table.status') || 'Status'}</th>
+                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right w-[15%] min-w-[140px]">{t('recall.table.actions') || 'Amallar'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1107,7 +1114,7 @@ function RecallsTable({ recalls, loading, onStatusChange, onSendClick, emptyMess
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="font-bold text-slate-800 text-[13px] truncate" title={recall.patient_name}>{recall.patient_name}</p>
-                          <p className="text-[10.5px] font-medium text-slate-500 mt-0.5 truncate">{recall.patient_phone || "Telefon yo'q"}</p>
+                          <p className="text-[10.5px] font-medium text-slate-500 mt-0.5 truncate">{recall.patient_phone || t('recall.noPhone') || "Telefon yo'q"}</p>
                         </div>
                       </div>
                     </td>
@@ -1149,7 +1156,7 @@ function RecallsTable({ recalls, loading, onStatusChange, onSendClick, emptyMess
                               e.stopPropagation();
                               window.location.href = `tel:${recall.patient_phone}`;
                             }}
-                            title="Qo'ng'iroq qilish"
+                            title={t('recall.makeCall') || "Qo'ng'iroq qilish"}
                           >
                             <Phone className="w-3 h-3" />
                           </Button>
@@ -1159,16 +1166,16 @@ function RecallsTable({ recalls, loading, onStatusChange, onSendClick, emptyMess
                           size="icon"
                           className="h-7.5 w-7.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors shrink-0"
                           onClick={() => onSendClick(recall)}
-                          title="Xabar yuborish"
+                          title={t('recall.sendSms') || "Xabar yuborish"}
                         >
                           <Send className="w-3 h-3" />
                         </Button>
                         {recall.lastAction ? (
-                          <div className="w-7.5 h-7.5 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0" title={`Yuborildi: ${formatDateTime(recall.lastAction.time)}`}>
+                          <div className="w-7.5 h-7.5 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0" title={`${t('recall.sent') || 'Yuborildi'}: ${formatDateTime(recall.lastAction.time)}`}>
                             {recall.lastAction.type === 'telegram' ? <MessageCircle className="w-3.5 h-3.5 text-blue-500" /> : <Smartphone className="w-3.5 h-3.5 text-green-500" />}
                           </div>
                         ) : recall.deliveryStatus === 'failed' ? (
-                          <div className="w-7.5 h-7.5 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center shrink-0 text-red-500" title="Xatolik">
+                          <div className="w-7.5 h-7.5 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center shrink-0 text-red-500" title={t('common.error') || "Xatolik"}>
                             <AlertCircle className="w-3.5 h-3.5" />
                           </div>
                         ) : null}
@@ -1216,7 +1223,7 @@ function RecallsTable({ recalls, loading, onStatusChange, onSendClick, emptyMess
                   <div className="flex justify-between items-start mb-1.5 gap-2">
                     <div>
                       <h4 className="font-bold text-slate-800 text-sm truncate">{recall.patient_name}</h4>
-                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">{recall.patient_phone || "Telefon yo'q"}</p>
+                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">{recall.patient_phone || t('recall.noPhone') || "Telefon yo'q"}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${priority.bg} ${priority.text}`}>
@@ -1290,6 +1297,7 @@ function RecallsTable({ recalls, loading, onStatusChange, onSendClick, emptyMess
  * Notification History Table Component
  */
 function NotificationHistoryTable({ history, loading }) {
+  const { t } = useTranslation();
   if (loading) {
     return (
       <div className="space-y-3">
@@ -1304,8 +1312,8 @@ function NotificationHistoryTable({ history, loading }) {
     return (
       <EmptyState 
         icon={History}
-        title="Tarix bo'sh"
-        description="Hali hech qanday eslatma yuborilmagan"
+        title={t('recall.historyEmpty') || "Tarix bo'sh"}
+        description={t('recall.historyEmptyDesc') || "Hali hech qanday eslatma yuborilmagan"}
       />
     );
   }
@@ -1318,10 +1326,10 @@ function NotificationHistoryTable({ history, loading }) {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/50">
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">Bemor</th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">Kanal</th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">Yuborilgan</th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">Status</th>
+                <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">{t('recall.table.patient') || 'Bemor'}</th>
+                <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">{t('recall.table.channel') || 'Kanal'}</th>
+                <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">{t('recall.sent') || 'Yuborilgan'}</th>
+                <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">{t('recall.table.status') || 'Status'}</th>
               </tr>
             </thead>
             <tbody>
@@ -1341,11 +1349,11 @@ function NotificationHistoryTable({ history, loading }) {
                   <td className="px-5 py-3.5">
                     {item.status === 'sent' ? (
                       <span className="flex items-center gap-1 text-emerald-600 text-sm font-medium">
-                        <CheckCircle2 className="w-4 h-4" /> Yuborildi
+                        <CheckCircle2 className="w-4 h-4" /> {t('recall.sent') || 'Yuborildi'}
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-red-600 text-sm font-medium">
-                        <XCircle className="w-4 h-4" /> Xatolik
+                        <XCircle className="w-4 h-4" /> {t('common.error') || 'Xatolik'}
                       </span>
                     )}
                   </td>
@@ -1363,9 +1371,9 @@ function NotificationHistoryTable({ history, loading }) {
             <div className="flex justify-between items-start mb-2">
               <h4 className="font-bold text-sm">{item.patient_name}</h4>
               {item.status === 'sent' ? (
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Yuborildi</span>
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{t('recall.sent') || 'Yuborildi'}</span>
               ) : (
-                <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Xatolik</span>
+                <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">{t('common.error') || 'Xatolik'}</span>
               )}
             </div>
             <div className="flex justify-between items-center text-xs text-slate-500">

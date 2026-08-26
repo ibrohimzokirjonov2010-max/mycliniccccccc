@@ -75,7 +75,7 @@ export default function TelegramReminderWorker() {
 
     pollTimerRef.current = setInterval(() => {
       runPoll();
-    }, 30000); // har 30 sekundda
+    }, 2 * 60 * 1000); // 30s → 120s: Telegram bot uchun 2 daqiqa yetarli (trafik 4x kamaydi)
 
     return () => {
       clearTimeout(initTimer);

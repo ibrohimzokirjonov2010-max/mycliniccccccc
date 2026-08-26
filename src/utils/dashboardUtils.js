@@ -59,8 +59,12 @@ export async function fetchDashboardStats(user, isDoctor, isAdmin) {
 
   // Dynamic Trends Calculation
   const calculateTrend = (current, previous) => {
+    if (current === 0 && previous === 0) return '0%';
     if (!previous || previous === 0) {
-      return current > 0 ? '+100%' : '0%';
+      return '—';
+    }
+    if (current === 0) {
+      return '—';
     }
     const diff = ((current - previous) / previous) * 100;
     const sign = diff >= 0 ? '+' : '';
@@ -123,6 +127,23 @@ export async function fetchDashboardStats(user, isDoctor, isAdmin) {
 
   const newPatientsTrend = calculateTrend(newPatientsThisWeek, newPatientsLastWeek);
 
+  // Today-scoped appointment status breakdown
+  const todayCompleted = todayAppts.filter(a => (a.status || '').toLowerCase() === 'completed').length;
+  const todayWaiting   = todayAppts.filter(a => {
+    const s = (a.status || '').toLowerCase();
+    return s === 'waiting' || s === 'scheduled' || s === 'planned';
+  }).length;
+  const todayNoShow    = todayAppts.filter(a => {
+    const s = (a.status || '').toLowerCase();
+    return s === 'no-show' || s === 'noshow' || s === 'no_show';
+  }).length;
+
+  // Real efficiency: completed / (completed + no-show), only when there is data
+  const efficiencyBase = todayCompleted + todayNoShow;
+  const realEfficiency = efficiencyBase > 0
+    ? Math.round((todayCompleted / efficiencyBase) * 100)
+    : null; // null = no data yet today
+
   return {
     appointments,
     patients,
@@ -144,6 +165,11 @@ export async function fetchDashboardStats(user, isDoctor, isAdmin) {
       todayRevenueTrend,
       weekRevenueTrend,
       newPatientsTrend,
+      // Today breakdown
+      todayCompleted,
+      todayWaiting,
+      todayNoShow,
+      realEfficiency,
     },
     todayApptsList: todayAppts
   };

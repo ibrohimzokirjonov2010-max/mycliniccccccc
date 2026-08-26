@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Lock, AlertCircle, Phone, CreditCard, LogOut } from 'lucide-react';
+import { Lock, Phone, CreditCard, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/AuthContext';
 

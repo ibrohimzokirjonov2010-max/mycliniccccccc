@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Package, AlertTriangle, Plus, Search, Edit3, Trash2, Archive, TrendingDown, Boxes,
-  ShoppingCart, ArrowUpRight
+  Package, AlertTriangle, Plus, Search, Archive, TrendingDown, Boxes,
+  ShoppingCart, X, Check, Trash2
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -12,10 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-/**
- * Premium SaaS Mobile Inventory
- * Modern inventory management with low stock alerts
- */
 export default function MobileInventoryV2() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +69,7 @@ export default function MobileInventoryV2() {
   const categoryConfig = {
     'Materials': { icon: Package, color: 'from-blue-500 to-indigo-600', bg: 'bg-blue-50', text: 'text-blue-700' },
     'Instruments': { icon: ShoppingCart, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50', text: 'text-violet-700' },
-    'Medications': { icon: Archive, color: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+    'Medications': { icon: Archive, color: 'from-emerald-500 to-teal-650', bg: 'bg-emerald-50', text: 'text-emerald-700' },
     'Equipment': { icon: Boxes, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50', text: 'text-amber-700' },
     'Consumables': { icon: TrendingDown, color: 'from-rose-500 to-pink-600', bg: 'bg-rose-50', text: 'text-rose-700' }
   };
@@ -174,53 +170,50 @@ export default function MobileInventoryV2() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: index * 0.05 }}
+        transition={{ delay: Math.min(index, 6) * 0.02 }}
         onClick={() => startEdit(item)}
-        className="px-5 py-4 flex items-center gap-4 active:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 relative"
+        className="px-4 py-3 flex items-center gap-3.5 active:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 relative content-visibility-auto cursor-pointer"
       >
         {/* Left: Icon Avatar */}
-        <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${style.color} flex items-center justify-center text-white shrink-0 shadow-sm`}>
-          <CategoryIcon className="w-5 h-5" />
+        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${style.color} flex items-center justify-center text-white shrink-0 shadow-sm`}>
+          <CategoryIcon className="w-4.5 h-4.5" />
         </div>
 
         {/* Middle: Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="font-bold text-[17px] text-slate-900 truncate leading-tight">
+            <h3 className="font-bold text-[14px] text-slate-800 truncate leading-tight">
               {item.name}
             </h3>
             {isLowStock && (
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
             )}
           </div>
-          <p className="text-[13px] text-slate-500 font-medium mt-0.5">{item.category}</p>
+          <p className="text-[10px] font-bold text-slate-450 mt-0.5 uppercase tracking-wide">{item.category}</p>
         </div>
 
-        {/* Right: Stock & Info Icon */}
-        <div className="flex items-center gap-3">
+        {/* Right: Stock */}
+        <div className="flex items-center gap-2">
           <div className="text-right">
-             <p className={`text-[15px] font-bold ${isLowStock ? 'text-rose-500' : 'text-slate-900'}`}>
+             <p className={`text-[13px] font-black ${isLowStock ? 'text-rose-500' : 'text-slate-850'}`}>
                {item.quantity} {item.unit}
              </p>
-             <p className="text-[11px] font-bold text-slate-400 mt-0.5">{item.price ? `${item.price.toLocaleString()} so'm` : 'Narxsiz'}</p>
-          </div>
-          <div className="w-8 h-8 rounded-full border border-blue-500 flex items-center justify-center text-blue-500 shrink-0">
-            <span className="font-serif italic text-sm font-bold">i</span>
+             <p className="text-[9px] font-bold text-slate-400 mt-0.5">{item.price ? `${item.price.toLocaleString()} so'm` : 'Narxsiz'}</p>
           </div>
         </div>
       </motion.div>
     );
   };
 
-  // Skeleton - iOS Style
+  // Skeleton
   const SkeletonCard = () => (
     <div className="px-5 py-4 flex items-center gap-4 border-b border-slate-50 last:border-0">
-      <div className="w-12 h-12 rounded-full bg-slate-100 animate-pulse shrink-0" />
+      <div className="w-10 h-10 rounded-xl bg-slate-100 animate-pulse shrink-0" />
       <div className="flex-1 space-y-2">
         <div className="w-1/2 h-5 bg-slate-100 rounded animate-pulse" />
         <div className="w-1/3 h-4 bg-slate-100 rounded animate-pulse" />
       </div>
-      <div className="w-8 h-8 rounded-full bg-slate-100 animate-pulse shrink-0" />
+      <div className="w-7 h-7 rounded-full bg-slate-100 animate-pulse shrink-0" />
     </div>
   );
 
@@ -230,61 +223,61 @@ export default function MobileInventoryV2() {
 
   return (
     <PullToRefresh onRefresh={loadItems}>
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-[#F8FAFC] pb-32">
         {/* Premium Header */}
         <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
-          <div className="px-5 pt-5 pb-4">
+          <div className="px-4 pt-4 pb-4">
             {/* Title Row */}
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Ombor</h1>
-                <p className="text-sm text-slate-500 mt-0.5">Materiallar boshqaruvi</p>
+                <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-1">Ombor</h1>
+                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider">Materiallar boshqaruvi</p>
               </div>
               
               {/* Primary CTA */}
-              <Button 
+              <button 
                 onClick={() => {
                   setEditingItem(null);
                   resetForm();
                   setShowAddModal(true);
                 }}
-                className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-5 h-11 shadow-lg shadow-slate-200"
+                className="bg-gradient-to-br from-emerald-500 to-teal-650 hover:from-emerald-600 hover:to-teal-750 text-white rounded-xl px-4 h-9 shadow-md shadow-emerald-500/10 active:scale-95 transition-all text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 border-none cursor-pointer"
               >
-                <Plus className="w-5 h-5 mr-1.5" />
+                <Plus className="w-4 h-4 stroke-[2.5]" />
                 Yangi
-              </Button>
+              </button>
             </div>
 
             {/* Enhanced Stats */}
-            <div className="grid grid-cols-3 gap-3 mb-5">
-              <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm text-center">
-                <p className="text-2xl font-bold text-slate-900">{totalItems}</p>
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Jami</p>
+            <div className="grid grid-cols-3 gap-2.5 mb-4">
+              <div className="bg-white rounded-2xl p-3 border border-slate-100 shadow-sm text-center">
+                <p className="text-xl font-black text-slate-800">{totalItems}</p>
+                <p className="text-[8px] font-black text-slate-450 uppercase tracking-widest mt-1">Jami</p>
               </div>
-              <div className={`rounded-2xl p-4 text-center border ${lowStockItems.length > 0 ? 'bg-rose-50 border-rose-100' : 'bg-emerald-50 border-emerald-100'}`}>
-                <p className={`text-2xl font-bold ${lowStockItems.length > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+              <div className={`rounded-2xl p-3 text-center border ${lowStockItems.length > 0 ? 'bg-rose-50 border-rose-100' : 'bg-emerald-50 border-emerald-100'}`}>
+                <p className={`text-xl font-black ${lowStockItems.length > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                   {lowStockItems.length}
                 </p>
-                <p className={`text-xs font-medium uppercase tracking-wide ${lowStockItems.length > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                <p className={`text-[8px] font-black uppercase tracking-widest mt-1 ${lowStockItems.length > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
                   Kam qolgan
                 </p>
               </div>
-              <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 text-center">
-                <p className="text-lg font-bold text-blue-700">{totalValue.toLocaleString()}</p>
-                <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Qiymati</p>
+              <div className="bg-emerald-50/50 rounded-2xl p-3 border border-emerald-100 text-center">
+                <p className="text-[13px] font-black text-emerald-800 leading-tight truncate mt-1">{totalValue.toLocaleString()}</p>
+                <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mt-1 leading-none">Qiymati</p>
               </div>
             </div>
 
             {/* Enhanced Low Stock Alert */}
             {lowStockItems.length > 0 && (
-              <div className="bg-gradient-to-r from-rose-50 to-red-50 border border-rose-200 rounded-2xl p-4 mb-5">
+              <div className="bg-gradient-to-r from-rose-50 to-red-50 border border-rose-100 rounded-2xl p-3.5 mb-4">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center flex-shrink-0">
-                    <AlertTriangle className="w-5 h-5 text-rose-600" />
+                  <div className="w-9 h-9 rounded-xl bg-rose-100 flex items-center justify-center flex-shrink-0 border border-rose-200">
+                    <AlertTriangle className="w-4.5 h-4.5 text-rose-600" />
                   </div>
                   <div>
-                    <p className="font-bold text-rose-800">Kam qolgan materiallar ({lowStockItems.length})</p>
-                    <p className="text-sm text-rose-600 mt-1">
+                    <p className="font-extrabold text-[12px] text-rose-800">Kam qolgan materiallar ({lowStockItems.length})</p>
+                    <p className="text-[10px] font-semibold text-rose-600 mt-0.5 leading-snug">
                       {lowStockItems.slice(0, 3).map(i => i.name).join(', ')}
                       {lowStockItems.length > 3 && ` va ${lowStockItems.length - 3} ta boshqa`}
                     </p>
@@ -295,18 +288,18 @@ export default function MobileInventoryV2() {
             
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Material nomi bo'yicha qidirish..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-12 pl-12 pr-4 rounded-xl border-0 bg-slate-100 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:bg-white transition-all"
+                className="w-full h-10 pl-10 pr-3 rounded-xl border-none bg-slate-50 text-slate-800 font-bold placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:bg-white transition-all text-xs"
               />
             </div>
             
             {/* Filter Pills */}
-            <div className="flex gap-2 mt-4 overflow-x-auto scrollbar-hide pb-1">
+            <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide pb-0.5">
               {[
                 { key: 'all', label: 'Barchasi' },
                 { key: 'low', label: 'Kam qolgan' },
@@ -315,10 +308,10 @@ export default function MobileInventoryV2() {
                 <button
                   key={filter.key}
                   onClick={() => setFilterStatus(filter.key)}
-                  className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
+                  className={`shrink-0 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all border ${
                     filterStatus === filter.key
-                      ? 'bg-slate-900 text-white shadow-md'
-                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-650 text-white border-none shadow-md shadow-emerald-500/10'
+                      : 'bg-white text-slate-500 border-slate-100 hover:border-slate-200 shadow-sm'
                   }`}
                 >
                   {filter.label}
@@ -329,10 +322,9 @@ export default function MobileInventoryV2() {
         </div>
 
         {/* Items List */}
-        <div className="bg-white mx-4 rounded-[2rem] overflow-hidden border border-slate-100 shadow-sm min-h-[200px]">
+        <div className="bg-white mx-4 mt-4 rounded-[2rem] overflow-hidden border border-slate-100 shadow-sm min-h-[200px]">
           {loading ? (
              <>
-               <SkeletonCard />
                <SkeletonCard />
                <SkeletonCard />
                <SkeletonCard />
@@ -344,12 +336,12 @@ export default function MobileInventoryV2() {
               ))}
             </AnimatePresence>
           ) : (
-            <div className="text-center py-16 bg-slate-50/50">
-              <div className="w-20 h-20 bg-white rounded-[2rem] flex items-center justify-center mx-auto mb-5 shadow-sm">
-                <Package className="w-10 h-10 text-slate-300" />
+            <div className="text-center py-12 bg-slate-50/50">
+              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-slate-100">
+                <Package className="w-6 h-6 text-slate-300" />
               </div>
-              <p className="text-slate-600 font-semibold text-lg">Materiallar topilmadi</p>
-              <p className="text-sm text-slate-400 mt-1">Boshqa so'z bilan qidirib ko'ring</p>
+              <p className="text-slate-650 font-bold text-sm">Materiallar topilmadi</p>
+              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest leading-none">Boshqa so'z bilan qidirib ko'ring</p>
             </div>
           )}
         </div>
@@ -357,160 +349,193 @@ export default function MobileInventoryV2() {
         {/* Bottom spacing */}
         <div className="h-8" />
 
-        {/* Add/Edit Modal */}
+        {/* Add/Edit Modal - Green & Compact Redesign */}
         <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">
-                {editingItem ? 'Materialni tahrirlash' : 'Yangi material'}
-              </DialogTitle>
+          <DialogContent className="w-[92vw] max-w-sm max-h-[85vh] p-0 border-none rounded-[2rem] bg-white outline-none overflow-hidden flex flex-col shadow-2xl !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
+            
+            {/* Green Gradient Header */}
+            <DialogHeader className="shrink-0">
+              <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-4 flex items-center justify-between text-white rounded-t-[2rem]">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm text-lg">
+                    📦
+                  </div>
+                  <div>
+                    <DialogTitle className="text-[14px] font-black text-white uppercase leading-none tracking-tight">
+                      {editingItem ? 'Tahrirlash' : 'Yangi material'}
+                    </DialogTitle>
+                    <p className="text-[8px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Ombor katalogi</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setEditingItem(null);
+                    resetForm();
+                  }} 
+                  className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center active:scale-90 transition-all border-none cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </DialogHeader>
             
-            <div className="space-y-5 py-4">
+            {/* Form Body - Compact Layout */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
               {/* Name */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700">Nomi</Label>
+              <div>
+                <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Nomi</Label>
                 <Input
                   placeholder="Material nomi"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="h-12 rounded-xl border-slate-200"
+                  className="h-10 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-bold text-slate-800 text-xs px-4"
                 />
               </div>
 
               {/* Category */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700">Kategoriya</Label>
+              <div>
+                <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Kategoriya</Label>
                 <Select 
                   value={formData.category} 
                   onValueChange={(v) => setFormData({...formData, category: v})}
                 >
-                  <SelectTrigger className="h-12 rounded-xl border-slate-200">
+                  <SelectTrigger className="h-10 rounded-xl bg-slate-50 border-none font-bold text-slate-800 text-xs focus:ring-emerald-500/10">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Materials">Materiallar</SelectItem>
-                    <SelectItem value="Instruments">Asbob-uskunalar</SelectItem>
-                    <SelectItem value="Medications">Dori-darmonlar</SelectItem>
-                    <SelectItem value="Equipment">Uskunalar</SelectItem>
-                    <SelectItem value="Consumables">Sarflanuvchi</SelectItem>
+                  <SelectContent className="rounded-xl border-none shadow-2xl">
+                    <SelectItem value="Materials" className="font-bold py-2 focus:bg-slate-50 text-xs">Materiallar</SelectItem>
+                    <SelectItem value="Instruments" className="font-bold py-2 focus:bg-slate-50 text-xs">Asbob-uskunalar</SelectItem>
+                    <SelectItem value="Medications" className="font-bold py-2 focus:bg-slate-50 text-xs">Dori-darmonlar</SelectItem>
+                    <SelectItem value="Equipment" className="font-bold py-2 focus:bg-slate-50 text-xs">Uskunalar</SelectItem>
+                    <SelectItem value="Consumables" className="font-bold py-2 focus:bg-slate-50 text-xs">Sarflanuvchi</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {/* Quantity & Unit */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-700">Miqdori</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Miqdori</Label>
                   <Input
                     type="number"
                     placeholder="0"
                     value={formData.quantity}
                     onChange={(e) => setFormData({...formData, quantity: e.target.value})}
-                    className="h-12 rounded-xl border-slate-200"
+                    className="h-10 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-bold text-slate-800 text-xs"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-700">Birligi</Label>
+                <div>
+                  <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Birligi</Label>
                   <Select 
                     value={formData.unit} 
                     onValueChange={(v) => setFormData({...formData, unit: v})}
                   >
-                    <SelectTrigger className="h-12 rounded-xl border-slate-200">
+                    <SelectTrigger className="h-10 rounded-xl bg-slate-50 border-none font-bold text-slate-800 text-xs focus:ring-emerald-500/10">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pcs">dona</SelectItem>
-                      <SelectItem value="pack">qop</SelectItem>
-                      <SelectItem value="box">quti</SelectItem>
-                      <SelectItem value="ml">ml</SelectItem>
-                      <SelectItem value="g">g</SelectItem>
-                      <SelectItem value="kg">kg</SelectItem>
+                    <SelectContent className="rounded-xl border-none shadow-2xl">
+                      <SelectItem value="pcs" className="font-bold text-xs">dona</SelectItem>
+                      <SelectItem value="pack" className="font-bold text-xs">qop</SelectItem>
+                      <SelectItem value="box" className="font-bold text-xs">quti</SelectItem>
+                      <SelectItem value="ml" className="font-bold text-xs">ml</SelectItem>
+                      <SelectItem value="g" className="font-bold text-xs">g</SelectItem>
+                      <SelectItem value="kg" className="font-bold text-xs">kg</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               {/* Min Quantity & Price */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-700">Min. miqdor</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Min. miqdor</Label>
                   <Input
                     type="number"
                     placeholder="10"
                     value={formData.min_quantity}
                     onChange={(e) => setFormData({...formData, min_quantity: e.target.value})}
-                    className="h-12 rounded-xl border-slate-200"
+                    className="h-10 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-bold text-slate-800 text-xs"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-700">Narxi</Label>
+                <div>
+                  <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Narxi</Label>
                   <div className="relative">
                     <Input
                       type="number"
                       placeholder="0"
                       value={formData.price}
                       onChange={(e) => setFormData({...formData, price: e.target.value})}
-                      className="h-12 rounded-xl border-slate-200 pr-12"
+                      className="h-10 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-black text-slate-800 text-xs pr-12"
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">so'm</span>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 uppercase">so'm</span>
                   </div>
                 </div>
               </div>
 
               {/* Supplier & Location */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700">Yetkazib beruvchi</Label>
-                <Input
-                  placeholder="Kompaniya nomi"
-                  value={formData.supplier}
-                  onChange={(e) => setFormData({...formData, supplier: e.target.value})}
-                  className="h-12 rounded-xl border-slate-200"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700">Joylashuv</Label>
-                <Input
-                  placeholder="Ombordagi joyi"
-                  value={formData.location}
-                  onChange={(e) => setFormData({...formData, location: e.target.value})}
-                  className="h-12 rounded-xl border-slate-200"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Yetkazib beruvchi</Label>
+                  <Input
+                    placeholder="Kompaniya nomi"
+                    value={formData.supplier}
+                    onChange={(e) => setFormData({...formData, supplier: e.target.value})}
+                    className="h-10 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-bold text-slate-800 text-xs"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Joylashuv</Label>
+                  <Input
+                    placeholder="Ombordagi joyi"
+                    value={formData.location}
+                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    className="h-10 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-bold text-slate-800 text-xs"
+                  />
+                </div>
               </div>
 
               {/* Notes */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700">Izoh</Label>
-                <Input
+              <div>
+                <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Izoh</Label>
+                <textarea
                   placeholder="Qo'shimcha ma'lumot..."
                   value={formData.notes}
                   onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                  className="h-12 rounded-xl border-slate-200"
+                  className="w-full bg-slate-50 border-none rounded-xl p-3 text-xs font-bold text-slate-800 placeholder:text-slate-350 min-h-[60px] resize-none outline-none focus:ring-2 focus:ring-emerald-500/10"
                 />
               </div>
+            </div>
 
-              {/* Actions */}
-              <div className="flex gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setEditingItem(null);
-                    resetForm();
-                  }}
-                  className="flex-1 h-12 rounded-xl border-slate-200"
+            {/* Actions Footer */}
+            <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center gap-2 shrink-0 rounded-b-[2rem]">
+              {editingItem && (
+                <button 
+                  onClick={() => handleDelete(editingItem.id)}
+                  className="w-10 h-10 bg-rose-50 border border-rose-100 text-rose-500 rounded-xl flex items-center justify-center shrink-0 active:scale-95 active:bg-rose-100 transition-all cursor-pointer"
+                  title="O'chirish"
                 >
-                  Bekor
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex-1 h-12 rounded-xl bg-slate-900 hover:bg-slate-800"
-                >
-                  {saving ? 'Saqlanmoqda...' : (editingItem ? 'Yangilash' : 'Saqlash')}
-                </Button>
-              </div>
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowAddModal(false);
+                  setEditingItem(null);
+                  resetForm();
+                }}
+                className="h-10 flex-1 rounded-xl font-bold uppercase text-[10px] tracking-wider text-slate-400 hover:bg-slate-100 px-4 border-none"
+              >
+                Bekor
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className="h-10 flex-[2] rounded-xl font-black uppercase text-xs tracking-wider border-none shadow-md bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white active:scale-95 transition-all flex items-center justify-center gap-1.5"
+              >
+                {saving ? '...' : <><Check className="w-4 h-4 stroke-[3]" /> Saqlash</>}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

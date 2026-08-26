@@ -89,23 +89,27 @@ function makeTable(tableName, orderField = 'created_date') {
     },
     
     // Core create with retry logic to handle missing columns automatically
+    // MAX_RETRIES: 50 dan 3 ga tushirildi — kechikishni 90s dan <1s ga kamaytiradi
     _createWithRetry: async function(payload) {
+      const MAX_RETRIES = 3;
       let record = { ...payload };
       let removedCols = [];
       
-      for (let i = 0; i < 50; i++) {
+      for (let i = 0; i < MAX_RETRIES; i++) {
         const { data, error } = await supabase.from(tableName).insert([record]).select().single();
         
         if (error) {
-          // 42703 or PGRST204: Column not found
+          // 42703 or PGRST204: Column not found — ustunni olib tashlash va qayta urinish
           if ((error.code === '42703' || error.code === 'PGRST204') && error.message) {
             const colMatch = error.message.match(/column "(\w+)"/) || error.message.match(/the '(\w+)' column/);
             if (colMatch) {
               const badCol = colMatch[1];
-              console.warn(`⚠️ [${tableName}] Column '${badCol}' missing in DB, removing and retrying...`);
+              console.warn(`⚠️ [${tableName}] Column '${badCol}' missing in DB, removing and retrying... (${i + 1}/${MAX_RETRIES})`);
               removedCols.push(badCol);
               delete record[badCol];
-              continue; // Retry
+              // Serverni bloklamaslik uchun 300ms kutish
+              await new Promise(res => setTimeout(res, 300));
+              continue;
             }
           }
           console.error(`❌ [${tableName}] Create error:`, error);
@@ -113,12 +117,12 @@ function makeTable(tableName, orderField = 'created_date') {
         }
         
         if (removedCols.length > 0) {
-          console.info(`✅ [${tableName}] Successfully created after removing missing columns:`, removedCols.join(', '));
+          console.info(`✅ [${tableName}] Created after removing missing columns:`, removedCols.join(', '));
         }
         if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('crm-data-updated'));
         return data;
       }
-      throw new Error(`[${tableName}] Create failed after max retries`);
+      throw new Error(`[${tableName}] Create failed after ${MAX_RETRIES} retries`);
     },
 
     create: async function(record) {
@@ -126,10 +130,11 @@ function makeTable(tableName, orderField = 'created_date') {
     },
 
     update: async function(id, updates) {
+      const MAX_RETRIES = 3;
       let record = { ...updates };
       let removedCols = [];
       
-      for (let i = 0; i < 50; i++) {
+      for (let i = 0; i < MAX_RETRIES; i++) {
         const { data, error } = await supabase.from(tableName).update(record).eq('id', id).select().single();
         
         if (error) {
@@ -137,10 +142,11 @@ function makeTable(tableName, orderField = 'created_date') {
             const colMatch = error.message.match(/column "(\w+)"/) || error.message.match(/the '(\w+)' column/);
             if (colMatch) {
               const badCol = colMatch[1];
-              console.warn(`⚠️ [${tableName}] Column '${badCol}' missing in DB on UPDATE, removing and retrying...`);
+              console.warn(`⚠️ [${tableName}] Column '${badCol}' missing in DB on UPDATE, removing and retrying... (${i + 1}/${MAX_RETRIES})`);
               removedCols.push(badCol);
               delete record[badCol];
-              continue; // Retry
+              await new Promise(res => setTimeout(res, 300));
+              continue;
             }
           }
           console.error(`❌ [${tableName}] Update error:`, error);
@@ -148,12 +154,12 @@ function makeTable(tableName, orderField = 'created_date') {
         }
         
         if (removedCols.length > 0) {
-          console.info(`✅ [${tableName}] Successfully updated after removing missing columns:`, removedCols.join(', '));
+          console.info(`✅ [${tableName}] Updated after removing missing columns:`, removedCols.join(', '));
         }
         if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('crm-data-updated'));
         return data;
       }
-      throw new Error(`[${tableName}] Update failed after max retries`);
+      throw new Error(`[${tableName}] Update failed after ${MAX_RETRIES} retries`);
     },
 
     delete: async (id) => {
@@ -183,23 +189,22 @@ export const db = {
     },
 
     create: async (clinic) => {
-      // Logic from base44Client suggests using created_at for clinics
       const payload = {
         ...clinic,
         created_at: clinic.created_at || new Date().toISOString()
       };
-      // Reuse the generic create method if it's been extended or use a custom retry version
-      // For now, let's implement the robust retry directly to be safe
+      const MAX_RETRIES = 3;
       let record = { ...payload };
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < MAX_RETRIES; i++) {
         const { data, error } = await supabase.from('clinics').insert([record]).select().single();
         if (error) {
           if ((error.code === '42703' || error.code === 'PGRST204') && error.message) {
             const colMatch = error.message.match(/column "(\w+)"/) || error.message.match(/the '(\w+)' column/);
             if (colMatch) {
               const badCol = colMatch[1];
-              console.warn(`⚠️ clinics: Column '${badCol}' missing, removing and retrying...`);
+              console.warn(`⚠️ clinics: Column '${badCol}' missing, removing and retrying... (${i + 1}/${MAX_RETRIES})`);
               delete record[badCol];
+              await new Promise(res => setTimeout(res, 300));
               continue;
             }
           }
@@ -207,14 +212,15 @@ export const db = {
         }
         return data;
       }
-      throw new Error('Clinics creation failed after retries');
+      throw new Error('Clinics creation failed after 3 retries');
     },
 
     update: async (id, updates) => {
+      const MAX_RETRIES = 3;
       let record = { ...updates };
       let removedCols = [];
       
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < MAX_RETRIES; i++) {
         const { data, error } = await supabase.from('clinics').update(record).eq('id', id).select().single();
         
         if (error) {
@@ -222,9 +228,10 @@ export const db = {
             const colMatch = error.message.match(/column "(\w+)"/) || error.message.match(/the '(\w+)' column/);
             if (colMatch) {
               const badCol = colMatch[1];
-              console.warn(`⚠️ clinics: Column '${badCol}' missing on update, removing and retrying...`);
+              console.warn(`⚠️ clinics: Column '${badCol}' missing on update, removing and retrying... (${i + 1}/${MAX_RETRIES})`);
               removedCols.push(badCol);
               delete record[badCol];
+              await new Promise(res => setTimeout(res, 300));
               continue;
             }
           }
@@ -233,11 +240,11 @@ export const db = {
         }
         
         if (removedCols.length > 0) {
-           console.info(`✅ clinics: Successfully updated after skipping: ${removedCols.join(', ')}`);
+           console.info(`✅ clinics: Updated after skipping: ${removedCols.join(', ')}`);
         }
         return data;
       }
-      throw new Error('Clinics update failed after retries');
+      throw new Error('Clinics update failed after 3 retries');
     },
 
     delete: async (id) => {
@@ -262,20 +269,22 @@ export const db = {
     },
 
     create: async (user) => {
+      const MAX_RETRIES = 3;
       let record = { 
         ...user,
         created_at: user.created_at || new Date().toISOString()
       };
       
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < MAX_RETRIES; i++) {
         const { data, error } = await supabase.from('users').insert([record]).select().single();
         if (error) {
           if ((error.code === '42703' || error.code === 'PGRST204') && error.message) {
             const colMatch = error.message.match(/column "(\w+)"/) || error.message.match(/the '(\w+)' column/);
             if (colMatch) {
               const badCol = colMatch[1];
-              console.warn(`⚠️ users: Column '${badCol}' missing, removing and retrying...`);
+              console.warn(`⚠️ users: Column '${badCol}' missing, removing and retrying... (${i + 1}/${MAX_RETRIES})`);
               delete record[badCol];
+              await new Promise(res => setTimeout(res, 300));
               continue;
             }
           }
@@ -283,21 +292,22 @@ export const db = {
         }
         return data;
       }
-      throw new Error('Users creation failed after retries');
+      throw new Error('Users creation failed after 3 retries');
     },
 
     update: async (id, updates) => {
-      // Also make update robust
+      const MAX_RETRIES = 3;
       let record = { ...updates };
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < MAX_RETRIES; i++) {
         const { data, error } = await supabase.from('users').update(record).eq('id', id).select().single();
         if (error) {
           if ((error.code === '42703' || error.code === 'PGRST204') && error.message) {
             const colMatch = error.message.match(/column "(\w+)"/) || error.message.match(/the '(\w+)' column/);
             if (colMatch) {
               const badCol = colMatch[1];
-              console.warn(`⚠️ users: Column '${badCol}' missing on update, removing and retrying...`);
+              console.warn(`⚠️ users: Column '${badCol}' missing on update, removing and retrying... (${i + 1}/${MAX_RETRIES})`);
               delete record[badCol];
+              await new Promise(res => setTimeout(res, 300));
               continue;
             }
           }
@@ -305,7 +315,7 @@ export const db = {
         }
         return data;
       }
-      throw new Error('Users update failed after retries');
+      throw new Error('Users update failed after 3 retries');
     },
 
     delete: async (id) => {
@@ -377,3 +387,25 @@ export const db = {
     }
   }
 };
+
+// ============================================================
+// 🏓 Supabase Keep-Alive Ping — DB uyquga ketmasligi uchun
+// Supabase Free Tier harakatsiz qolganda connection sovib qoladi.
+// Har 4 daqiqada yengil ping yuborib, ulanishni issiq saqlaydi.
+// ============================================================
+if (typeof window !== 'undefined' && supabaseUrl) {
+  // Sahifa yuklangandan 30 soniya o'tib birinchi pingni yuborish
+  // (app to'liq ishga tushishini kutish uchun)
+  setTimeout(() => {
+    const keepAlive = async () => {
+      try {
+        await supabase.from('clinics').select('id').limit(1);
+        console.debug('🏓 [Supabase] Keep-alive ping yuborildi');
+      } catch {
+        // Xato bo'lsa jim o'tkazib yuborish — konsolni to'ldirmaslik
+      }
+    };
+    keepAlive();
+    setInterval(keepAlive, 4 * 60 * 1000); // har 4 daqiqada
+  }, 30_000);
+}

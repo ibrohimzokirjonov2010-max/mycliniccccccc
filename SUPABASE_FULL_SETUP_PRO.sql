@@ -1,6 +1,6 @@
 -- ============================================================
 -- DENTAL CRM - FULL SUPABASE SETUP (PRO)
--- Project URL: https://epmemjirbqamqfvblaie.supabase.co
+-- Project URL: https://zvyggjldzkxwufpnaatr.supabase.co
 -- Ushbu faylni Supabase SQL Editor ichida bir marta ishga tushiring
 -- Maqsad: yangi project'da eski app to'liq va barqaror ishlashi
 -- ============================================================

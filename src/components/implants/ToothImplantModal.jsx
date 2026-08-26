@@ -1,76 +1,36 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, X, Info } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 
 const FIRMALAR = ['Nobel', 'Osstem', 'Straumann', 'Nucleoss', 'Boshqa'];
-const IMPLANT_TYPES = ['Bone level', 'Tissue level'];
 const BONE_TYPES = ['D1', 'D2', 'D3', 'D4'];
 
-/**
- * ToothImplantModal - Individual tooth implant data entry
- * Opens when clicking on a tooth in the odontogram
- */
-export default function ToothImplantModal({ 
-  open, 
-  onClose, 
-  toothId, 
-  fdiNumber, 
-  onSave, 
-  existingData 
-}) {
+export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, onSave, existingData }) {
   const [form, setForm] = useState({
-    firma: 'Osstem',
-    firma_custom: '',
-    brend: '',
-    diameter: '',
-    length: '',
-    lot_number: '',
-    torque: '',
-    isq: '',
-    bone_type: 'D2',
-    implant_type: 'Bone level',
-    notes: ''
+    firma: 'Osstem', firma_custom: '', brend: '',
+    diameter: '', length: '', lot_number: '',
+    torque: '', isq: '', bone_type: 'D2',
+    implant_type: 'Bone level', notes: ''
   });
 
-  // Load existing data if editing
   useEffect(() => {
-    if (existingData) {
-      setForm(existingData);
-    } else {
-      resetForm();
-    }
+    if (existingData) setForm(existingData);
+    else resetForm();
   }, [open, existingData]);
 
-  const resetForm = () => {
-    setForm({
-      firma: 'Osstem',
-      firma_custom: '',
-      brend: '',
-      diameter: '',
-      length: '',
-      lot_number: '',
-      torque: '',
-      isq: '',
-      bone_type: 'D2',
-      implant_type: 'Bone level',
-      notes: ''
-    });
-  };
+  const resetForm = () => setForm({
+    firma: 'Osstem', firma_custom: '', brend: '',
+    diameter: '', length: '', lot_number: '',
+    torque: '', isq: '', bone_type: 'D2',
+    implant_type: 'Bone level', notes: ''
+  });
 
-  const setField = (key, val) => {
-    setForm(prev => ({ ...prev, [key]: val }));
-  };
+  const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
   const handleSave = () => {
-    if (!form.firma || !form.brend) {
-      alert('Firma va Brend majburiy!');
-      return;
-    }
-
+    if (!form.firma || !form.brend) { alert('Firma va Brend majburiy!'); return; }
     onSave(toothId, form);
     onClose();
   };
@@ -79,27 +39,41 @@ export default function ToothImplantModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto rounded-2xl">
-        <DialogHeader className="pb-4 border-b">
-          <DialogTitle className="flex items-center gap-3 text-xl font-black">
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg">
-              🦷
+      <DialogContent
+        className="w-[92vw] max-w-sm max-h-[88vh] p-0 border-none rounded-[2rem] bg-white shadow-2xl flex flex-col overflow-hidden"
+        aria-describedby={undefined}
+      >
+        {/* Green Gradient Header */}
+        <DialogHeader className="shrink-0">
+          <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-4 flex items-center justify-between text-white rounded-t-[2rem]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm text-lg">
+                🦷
+              </div>
+              <div>
+                <DialogTitle className="text-[15px] font-black text-white uppercase leading-none tracking-tight">
+                  Tish {fdiNumber}
+                </DialogTitle>
+                <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Implant ma'lumotlari</p>
+              </div>
             </div>
-            <div>
-              <div className="text-sm text-slate-500 font-bold uppercase tracking-wider">Tish</div>
-              <div className="text-2xl text-emerald-600">{fdiNumber}</div>
-            </div>
-          </DialogTitle>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center active:scale-90 transition-all border-none cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-5 py-4">
-          {/* Firma Selection */}
-          <div className="bg-gradient-to-br from-slate-50 to-blue-50 p-4 rounded-xl border border-slate-200 space-y-3">
-            <Label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-2">
-              <Info className="w-4 h-4" /> Implant firmasi *
-            </Label>
-            <Select value={form.firma} onValueChange={v => setField('firma', v)}>
-              <SelectTrigger className="bg-white border-slate-300 h-11 rounded-xl shadow-sm font-bold">
+        {/* Form Body */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
+
+          {/* Firma */}
+          <div>
+            <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-1.5 block">Implant Firmasi *</label>
+            <Select value={form.firma} onValueChange={v => set('firma', v)}>
+              <SelectTrigger className="bg-white border-slate-200 h-10 rounded-xl shadow-sm font-bold text-sm focus:ring-emerald-400">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -108,87 +82,72 @@ export default function ToothImplantModal({
                 ))}
               </SelectContent>
             </Select>
-
             {form.firma === 'Boshqa' && (
               <Input
-                className="bg-white border-slate-300 h-11 rounded-xl font-medium"
+                className="mt-2 bg-white border-slate-200 h-10 rounded-xl font-medium text-sm"
                 value={form.firma_custom}
-                onChange={e => setField('firma_custom', e.target.value)}
+                onChange={e => set('firma_custom', e.target.value)}
                 placeholder="Firma nomini kiriting"
               />
             )}
           </div>
 
-          {/* Brend/Model */}
-          <div className="bg-gradient-to-br from-slate-50 to-purple-50 p-4 rounded-xl border border-slate-200 space-y-3">
-            <Label className="text-xs font-black text-slate-700 uppercase tracking-wider">
-              Brend / Model *
-            </Label>
+          {/* Brend */}
+          <div>
+            <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-1.5 block">Brend / Model *</label>
             <Input
-              className="bg-white border-slate-300 h-11 rounded-xl font-medium"
+              className="bg-white border-slate-200 h-10 rounded-xl font-medium text-sm focus-visible:ring-emerald-400"
               value={form.brend}
-              onChange={e => setField('brend', e.target.value)}
+              onChange={e => set('brend', e.target.value)}
               placeholder="Masalan: Replace CC, TSIII, SLA..."
             />
           </div>
 
-          {/* Razmerlar Grid */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-gradient-to-br from-emerald-50 to-green-50 p-4 rounded-xl border border-emerald-200 space-y-2">
-              <Label className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">
-                Diametr
-              </Label>
+          {/* Diametr & Uzunlik */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-[1.25rem] space-y-1.5">
+              <label className="text-[9px] font-black text-emerald-700 uppercase tracking-wider block">Diametr</label>
               <div className="relative">
                 <Input
-                  type="number"
-                  step="0.1"
-                  className="bg-white border-emerald-300 h-11 rounded-xl pr-8 font-bold text-emerald-700"
+                  type="number" step="0.1"
+                  className="bg-white border-emerald-200 h-9 rounded-lg pr-8 font-bold text-emerald-800 text-sm"
                   value={form.diameter}
-                  onChange={e => setField('diameter', e.target.value)}
+                  onChange={e => set('diameter', e.target.value)}
                   placeholder="3.5"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-emerald-600">mm</span>
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-emerald-500">mm</span>
               </div>
             </div>
-
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-200 space-y-2">
-              <Label className="text-[10px] font-black text-blue-700 uppercase tracking-wider">
-                Uzunlik
-              </Label>
+            <div className="bg-teal-50 border border-teal-100 p-3 rounded-[1.25rem] space-y-1.5">
+              <label className="text-[9px] font-black text-teal-700 uppercase tracking-wider block">Uzunlik</label>
               <div className="relative">
                 <Input
-                  type="number"
-                  step="0.1"
-                  className="bg-white border-blue-300 h-11 rounded-xl pr-8 font-bold text-blue-700"
+                  type="number" step="0.1"
+                  className="bg-white border-teal-200 h-9 rounded-lg pr-8 font-bold text-teal-800 text-sm"
                   value={form.length}
-                  onChange={e => setField('length', e.target.value)}
+                  onChange={e => set('length', e.target.value)}
                   placeholder="10"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-blue-600">mm</span>
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-teal-500">mm</span>
               </div>
             </div>
           </div>
 
-          {/* Lot Number & Type */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-              <Label className="text-[10px] font-black text-slate-700 uppercase tracking-wider">
-                Lot #
-              </Label>
+          {/* Lot & Suyak */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-1.5 block">Lot #</label>
               <Input
-                className="bg-white border-slate-300 h-11 rounded-xl font-mono font-bold"
+                className="bg-white border-slate-200 h-10 rounded-xl font-mono font-bold text-sm"
                 value={form.lot_number}
-                onChange={e => setField('lot_number', e.target.value)}
+                onChange={e => set('lot_number', e.target.value)}
                 placeholder="LOT-123"
               />
             </div>
-
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-              <Label className="text-[10px] font-black text-slate-700 uppercase tracking-wider">
-                Suyak turi
-              </Label>
-              <Select value={form.bone_type} onValueChange={v => setField('bone_type', v)}>
-                <SelectTrigger className="bg-white border-slate-300 h-11 rounded-xl shadow-sm font-bold">
+            <div>
+              <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-1.5 block">Suyak turi</label>
+              <Select value={form.bone_type} onValueChange={v => set('bone_type', v)}>
+                <SelectTrigger className="bg-white border-slate-200 h-10 rounded-xl font-bold text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -201,67 +160,59 @@ export default function ToothImplantModal({
           </div>
 
           {/* Torque & ISQ */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-orange-50 p-4 rounded-xl border border-orange-200 space-y-2">
-              <Label className="text-[10px] font-black text-orange-700 uppercase tracking-wider">
-                Torque
-              </Label>
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="bg-amber-50 border border-amber-100 p-3 rounded-[1.25rem] space-y-1.5">
+              <label className="text-[9px] font-black text-amber-700 uppercase tracking-wider block">Torque</label>
               <div className="relative">
                 <Input
                   type="number"
-                  className="bg-white border-orange-300 h-11 rounded-xl pr-10 font-bold text-orange-700"
+                  className="bg-white border-amber-200 h-9 rounded-lg pr-10 font-bold text-amber-800 text-sm"
                   value={form.torque}
-                  onChange={e => setField('torque', e.target.value)}
+                  onChange={e => set('torque', e.target.value)}
                   placeholder="35"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-orange-600">Ncm</span>
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-amber-500">Ncm</span>
               </div>
             </div>
-
-            <div className="bg-pink-50 p-4 rounded-xl border border-pink-200 space-y-2">
-              <Label className="text-[10px] font-black text-pink-700 uppercase tracking-wider">
-                ISQ
-              </Label>
+            <div className="bg-slate-50 border border-slate-200 p-3 rounded-[1.25rem] space-y-1.5">
+              <label className="text-[9px] font-black text-slate-600 uppercase tracking-wider block">ISQ</label>
               <Input
                 type="number"
-                className="bg-white border-pink-300 h-11 rounded-xl font-bold text-pink-700"
+                className="bg-white border-slate-200 h-9 rounded-lg font-bold text-slate-800 text-sm"
                 value={form.isq}
-                onChange={e => setField('isq', e.target.value)}
+                onChange={e => set('isq', e.target.value)}
                 placeholder="70"
               />
             </div>
           </div>
 
           {/* Notes */}
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-            <Label className="text-xs font-black text-slate-700 uppercase tracking-wider">
-              Qo'shimcha izoh
-            </Label>
+          <div>
+            <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-1.5 block">Qo'shimcha izoh (ixtiyoriy)</label>
             <textarea
-              className="w-full bg-white border-slate-300 rounded-xl p-3 font-medium min-h-[80px] resize-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="w-full bg-white border border-slate-200 rounded-[1.25rem] p-3 text-sm font-medium text-slate-700 placeholder:text-slate-300 min-h-[70px] resize-none outline-none focus:border-emerald-400 transition-colors"
               value={form.notes}
-              onChange={e => setField('notes', e.target.value)}
+              onChange={e => set('notes', e.target.value)}
               placeholder="Muolaja haqida qisqacha..."
             />
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-4 border-t">
-          <Button 
-            variant="outline" 
+        {/* Footer */}
+        <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex gap-2.5 shrink-0">
+          <button
             onClick={onClose}
-            className="flex-1 h-12 rounded-xl border-2 font-black text-sm hover:bg-slate-50"
+            className="flex-1 h-10 rounded-xl border border-slate-200 font-bold text-xs uppercase tracking-wider text-slate-500 bg-white cursor-pointer transition-colors hover:bg-slate-50"
           >
-            <X className="w-4 h-4 mr-2" /> Bekor
-          </Button>
-          <Button 
+            Bekor
+          </button>
+          <button
             onClick={handleSave}
             disabled={!isValid}
-            className="flex-1 h-12 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black shadow-lg shadow-emerald-500/30 transition-all active:scale-95 text-sm"
+            className="flex-1 h-10 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black uppercase tracking-wider text-xs shadow-md border-none transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center gap-1.5"
           >
-            <Check className="w-4 h-4 mr-2" /> Saqlash
-          </Button>
+            <Check className="w-3.5 h-3.5 stroke-[3]" /> Saqlash
+          </button>
         </div>
       </DialogContent>
     </Dialog>

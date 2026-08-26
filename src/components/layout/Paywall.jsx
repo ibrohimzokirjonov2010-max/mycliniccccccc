@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldAlert, Zap, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ShieldAlert, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 

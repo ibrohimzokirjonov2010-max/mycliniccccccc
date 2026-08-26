@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
 import {
   ArrowLeft, Phone, Calendar, DollarSign, ClipboardList,
@@ -69,6 +70,7 @@ let doctorsCache = null;
 const DIAGNOSTIC_TRANSLATIONS = {
   'missing tooth': { uz: "Tish yo'q", ru: 'Отсутствует зуб', en: 'Missing tooth' },
   'missing': { uz: "Tish yo'q", ru: 'Отсутствует зуб', en: 'Missing tooth' },
+  'tish olingan': { uz: 'Tish olingan', ru: 'Удаленный зуб', en: 'Extracted tooth' },
   'tooth root': { uz: 'Tish ildizi', ru: 'Корень зуба', en: 'Tooth root' },
   'tooth discoloration': { uz: "Tish rangining o'zgarishi", ru: 'Изменение цвета зуба', en: 'Tooth discoloration' },
   'tooth decay': { uz: 'Tish yemirolishi', ru: 'Разрушение зуба', en: 'Tooth decay' },
@@ -90,9 +92,13 @@ const DIAGNOSTIC_TRANSLATIONS = {
   'canal partially sealed': { uz: 'Kanal qisman to\'ldirilgan', ru: 'Канал частично пломбирован', en: 'Canal partially sealed' },
   'pulpit': { uz: 'Pulpit', ru: 'Пульпит', en: 'Pulpitis' },
   'filling': { uz: 'Plomba', ru: 'Пломба', en: 'Filling' },
+  'plomba': { uz: 'Plomba', ru: 'Пломба', en: 'Filling' },
   'crown': { uz: 'Toj (Koronka)', ru: 'Коронка', en: 'Crown' },
+  'toj': { uz: 'Toj (Koronka)', ru: 'Коронка', en: 'Crown' },
   'veneer': { uz: 'Vinir', ru: 'Винир', en: 'Veneer' },
-  'implant': { uz: 'Implantat', ru: 'Иmplant', en: 'Implant' },
+  'vinir': { uz: 'Vinir', ru: 'Винир', en: 'Veneer' },
+  'implant': { uz: 'Implantat', ru: 'Имплант', en: 'Implant' },
+  'implantat': { uz: 'Implantat', ru: 'Имплант', en: 'Implant' },
   'davolangan': { uz: 'Davolangan', ru: 'Вылечен', en: 'Treated' },
   'completed': { uz: 'Tugallangan', ru: 'Завершено', en: 'Completed' },
   'jarayonda': { uz: 'Jarayonda', ru: 'В процессе', en: 'In progress' },
@@ -104,6 +110,34 @@ export default function PatientProfile() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [patient, setPatient] = useState(null);
+
+  // Horizontal scroll shadow indicator states
+  const tabScrollRef = useRef(null);
+  const [showLeftShadow, setShowLeftShadow] = useState(false);
+  const [showRightShadow, setShowRightShadow] = useState(false);
+
+  const handleTabScroll = useCallback(() => {
+    if (tabScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabScrollRef.current;
+      setShowLeftShadow(scrollLeft > 2);
+      setShowRightShadow(scrollLeft < scrollWidth - clientWidth - 2);
+    }
+  }, []);
+
+  // Main scroll and resize observer triggers
+  useEffect(() => {
+    const el = tabScrollRef.current;
+    if (el) {
+      handleTabScroll();
+      const observer = new ResizeObserver(() => handleTabScroll());
+      observer.observe(el);
+      el.addEventListener('scroll', handleTabScroll);
+      return () => {
+        observer.disconnect();
+        el.removeEventListener('scroll', handleTabScroll);
+      };
+    }
+  }, [handleTabScroll]);
 
   // Parse medical warnings (Lidocaine allergy, diabetes, hypertension)
   const medicalAlerts = useMemo(() => {
@@ -174,6 +208,8 @@ export default function PatientProfile() {
   const [payments, setPayments] = useState([]);
   const [plans, setPlans] = useState([]);
   const [planStageFilter, setPlanStageFilter] = useState('all');
+  const [paymentSubTab, setPaymentSubTab] = useState('registry'); // registry or installments
+  const [mediaSubTab, setMediaSubTab] = useState('photos'); // photos or xrays
 
   const filteredPlans = useMemo(() => {
     if (!plans) return [];
@@ -272,6 +308,7 @@ export default function PatientProfile() {
   const [editSelectedTooth, setEditSelectedTooth] = useState(null);
   const [pendingToothEdits, setPendingToothEdits] = useState({});
   const [chartSaving, setChartSaving] = useState(false);
+  const [showLocalActions, setShowLocalActions] = useState(false);
 
   // Modals
   const [apptModalOpen, setApptModalOpen] = useState(false);
@@ -301,6 +338,8 @@ export default function PatientProfile() {
   const urlTab = new URLSearchParams(location.search).get('tab');
   const [activeTab, setActiveTab] = useState(urlTab || 'info');
   const [subSection, setSubSection] = useState('dental');
+  const [toothSearchQuery, setToothSearchQuery] = useState('');
+  const [treatmentStatusFilter, setTreatmentStatusFilter] = useState('all'); // 'all', 'completed', 'in_progress', 'planned'
   const [chartView, setChartView] = useState('teeth'); // 'teeth', 'maxilla', 'mandible', 'occlusion'
   const [showOcclusal, setShowOcclusal] = useState(true);
   const [occlusionNotes, setOcclusionNotes] = useState('');
@@ -1057,7 +1096,32 @@ export default function PatientProfile() {
         }
         return tp;
       }));
-      setPayments(paymentsRes || []);
+
+      // Auto-sanitize legacy linked plan payments (remove old dummy discount payments & fix undiscounted debt payments in DB)
+      const rawPays = paymentsRes || [];
+      const sanitizedPays = [];
+      for (const p of rawPays) {
+        const notesLower = (p.notes || '').toLowerCase();
+        const pType = (p.type || '').toLowerCase();
+        
+        // Agar bu reja bilan bog'liq eski soxta "Discount" to'lovi bo'lsa, DB dan tozalaymiz
+        if (pType === 'discount' && (p.plan_id || notesLower.includes('linked to plan') || notesLower.includes('avtomatik chegirma') || notesLower.includes('chegirma 30%'))) {
+          base44.entities.Payment.delete(p.id).catch(() => {});
+          continue;
+        }
+
+        // Agar bu reja bilan bog'liq eski "Debt" to'lovi bo'lsa va uning narxi rejaning haqiqiy chegirmali narxidan farq qilsa, DB ni to'g'rilaymiz
+        if (pType === 'debt' && (p.plan_id || notesLower.includes('linked to plan'))) {
+          const matchedPlan = rawPlans.find(pl => (p.plan_id && pl.id === p.plan_id) || (p.notes && p.notes.includes(pl.id)));
+          if (matchedPlan && matchedPlan.total_price && Number(p.amount) !== Number(matchedPlan.total_price)) {
+            p.amount = Number(matchedPlan.total_price);
+            base44.entities.Payment.update(p.id, { amount: Number(matchedPlan.total_price) }).catch(() => {});
+          }
+        }
+
+        sanitizedPays.push(p);
+      }
+      setPayments(sanitizedPays);
 
       // ── Unblock UI: hide skeleton now, render with partial data ──
       setLoading(false);
@@ -1142,14 +1206,14 @@ export default function PatientProfile() {
       if (combined.includes('missing tooth') || combined.includes('missing') || combined.includes('all teeth missing')) {
         return 'missing';
       }
-      if (combined.includes('extracted') || combined.includes('sug\'urilgan')) {
+      if (combined.includes('extracted') || combined.includes('sug\'urilgan') || combined.includes('olingan')) {
         return 'extracted';
       }
       
       // Restorations (treatments)
       if (combined.includes('implant')) return 'implant';
-      if (combined.includes('crown') || combined.includes('toj')) return 'crown';
-      if (combined.includes('veneer')) return 'veneer';
+      if (combined.includes('crown') || combined.includes('toj') || combined.includes('karonka')) return 'crown';
+      if (combined.includes('veneer') || combined.includes('vinir')) return 'veneer';
       if (combined.includes('filling') || combined.includes('plomba') || combined.includes('cervical filling') || combined.includes('davolangan')) return 'completed';
 
       // Lesions (conditions)
@@ -1161,7 +1225,7 @@ export default function PatientProfile() {
       if (combined.includes('periodontitis') || combined.includes('gingivitis') || combined.includes('calculus')) {
         return 'in_progress';
       }
-      if (combined.includes('canal') || combined.includes('pulpit') || combined.includes('endo') || combined.includes('apical') || combined.includes('sealed')) {
+      if (combined.includes('canal') || combined.includes('pulpit') || combined.includes('endo') || combined.includes('apical') || combined.includes('sealed') || combined.includes('ildiz')) {
         return 'in_progress';
       }
 
@@ -1172,11 +1236,12 @@ export default function PatientProfile() {
       return null;
     };
 
-    // 1. Treatment plans
+    // 1. Group services from treatment plans by toothId
+    const planToothServices = {};
     plans?.forEach(plan => {
       const planServices = plan.services || [];
       const planTooth = String(plan.tooth_number || '').trim();
-      const planStatus = plan.status;
+      const planStatus = String(plan.status || '').trim().toLowerCase();
       
       const servicesToProcess = planServices.length > 0 
         ? planServices 
@@ -1191,45 +1256,110 @@ export default function PatientProfile() {
         teethTokens.forEach(toothFdi => {
           const toothId = getInternalId(toothFdi);
           if (!toothId) return;
-          
-          const isCompleted = service.completed || service.status === 'completed' || planStatus === 'Completed';
-          const isInProgress = service.status === 'in_progress' || planStatus === 'In Progress';
-          const svcName = String(service.service_name || plan.name || '').toLowerCase();
 
-          let derivedCondition = null;
-          let derivedTreatment = service.service_name || plan.name;
-          let derivedStatus = isCompleted ? 'completed' : (isInProgress ? 'in_progress' : 'planned');
-
-          if (svcName.includes('olish') || svcName.includes('sug\'urish') || svcName.includes('ekstraks') || svcName.includes('extraction') || svcName.includes('olindi')) {
-            derivedStatus = 'extracted';
-            derivedTreatment = "Tish olingan";
-          } else if (svcName.includes('endo') || svcName.includes('kanal') || svcName.includes('pulpit')) {
-            derivedCondition = 'Pulpit';
-            derivedTreatment = 'Kanal';
-          } else if (svcName.includes('plomba') || svcName.includes('restavratsiya') || svcName.includes('vinir')) {
-            derivedTreatment = 'Restavratsiya';
-          } else if (svcName.includes('karonka') || svcName.includes('toj') || svcName.includes('crown') || svcName.includes('protez') || svcName.includes('metallokeramika')) {
-            derivedStatus = 'crown';
-            derivedTreatment = 'Toj';
-          } else if (svcName.includes('kariyes') || svcName.includes('caries') || svcName.includes('karies')) {
-            derivedStatus = 'caries';
-            derivedCondition = 'Kariyes';
+          if (!planToothServices[toothId]) {
+            planToothServices[toothId] = [];
           }
-
-          toothStatusMap[toothId] = {
-            status: derivedStatus,
-            condition: derivedCondition,
-            treatment: derivedTreatment,
-            serviceName: service.service_name || plan.name,
-            color: derivedStatus === 'completed' ? 'bg-emerald-500' : (derivedStatus === 'in_progress' ? 'bg-amber-500' : (derivedStatus === 'caries' ? 'bg-rose-500' : 'bg-blue-500')),
-            icon: derivedStatus === 'completed' ? '✅' : (derivedStatus === 'in_progress' ? '💉' : '📋'),
-            date: service.completion_date || plan.updated_at || plan.created_date
-          };
+          planToothServices[toothId].push({
+            service,
+            plan,
+            planStatus
+          });
         });
       });
     });
 
-    // 2. Implantlar holatini qo'shish
+    // Evaluate plan treatments for each tooth with dental clinical hierarchy
+    Object.entries(planToothServices).forEach(([toothId, items]) => {
+      const hasImplantSvc = items.some(it => {
+        const name = String(it.service.service_name || it.plan.name || '').toLowerCase();
+        return name.includes('implant');
+      });
+      const hasCrownSvc = items.some(it => {
+        const name = String(it.service.service_name || it.plan.name || '').toLowerCase();
+        return name.includes('karonka') || name.includes('toj') || name.includes('crown') || name.includes('metallokeramika') || name.includes('tsirkon') || name.includes('protez');
+      });
+      const hasVeneerSvc = items.some(it => {
+        const name = String(it.service.service_name || it.plan.name || '').toLowerCase();
+        return name.includes('vinir') || name.includes('veneer');
+      });
+      const hasFillingSvc = items.some(it => {
+        const name = String(it.service.service_name || it.plan.name || '').toLowerCase();
+        return name.includes('plomba') || name.includes('restavratsiya') || name.includes('filling') || name.includes('kompozit');
+      });
+      const hasEndoSvc = items.some(it => {
+        const name = String(it.service.service_name || it.plan.name || '').toLowerCase();
+        return name.includes('endo') || name.includes('kanal') || name.includes('pulpit') || name.includes('depulpats');
+      });
+      const hasExtractionSvc = items.some(it => {
+        const name = String(it.service.service_name || it.plan.name || '').toLowerCase();
+        return name.includes('olish') || name.includes('sug\'urish') || name.includes('ekstraks') || name.includes('extraction') || name.includes('olindi');
+      });
+      const hasCariesSvc = items.some(it => {
+        const name = String(it.service.service_name || it.plan.name || '').toLowerCase();
+        return name.includes('kariyes') || name.includes('caries') || name.includes('karies');
+      });
+
+      const anyCompleted = items.some(it => 
+        Boolean(
+          it.service.completed || 
+          it.service.status === 'completed' || 
+          it.service.payment_status === 'paid' || 
+          it.planStatus === 'completed' || 
+          it.planStatus === 'bajarildi'
+        )
+      );
+      const anyInProgress = items.some(it => 
+        Boolean(
+          it.service.status === 'in_progress' || 
+          it.planStatus === 'in progress' || 
+          it.planStatus === 'inprogress' || 
+          it.planStatus === 'jarayonda'
+        )
+      );
+
+      const treatmentsList = [];
+      const conditionsList = [];
+
+      if (hasExtractionSvc) treatmentsList.push("Tish olingan");
+      if (hasImplantSvc) treatmentsList.push("Implant");
+      if (hasCrownSvc) treatmentsList.push("Toj");
+      if (hasVeneerSvc) treatmentsList.push("Vinir");
+      if (hasFillingSvc) treatmentsList.push("Plomba");
+      if (hasEndoSvc) {
+        conditionsList.push("Pulpit");
+        treatmentsList.push("Kanal");
+      }
+      if (hasCariesSvc) conditionsList.push("Kariyes");
+      if (anyCompleted && treatmentsList.length === 0) treatmentsList.push("Davolangan");
+
+      let derivedStatus = 'planned';
+      if (hasImplantSvc) derivedStatus = 'implant';
+      else if (hasCrownSvc) derivedStatus = 'crown';
+      else if (hasVeneerSvc) derivedStatus = 'veneer';
+      else if (hasFillingSvc) derivedStatus = 'completed';
+      else if (hasEndoSvc) derivedStatus = anyCompleted ? 'completed' : 'in_progress';
+      else if (hasExtractionSvc) derivedStatus = 'extracted';
+      else if (hasCariesSvc) derivedStatus = 'caries';
+      else if (anyCompleted) derivedStatus = 'completed';
+      else if (anyInProgress) derivedStatus = 'in_progress';
+
+      toothStatusMap[toothId] = {
+        status: derivedStatus,
+        isExtracted: hasExtractionSvc,
+        hasImplant: hasImplantSvc,
+        condition: conditionsList[0] || null,
+        conditions: conditionsList,
+        treatment: treatmentsList[0] || 'Davolangan',
+        treatments: treatmentsList,
+        serviceName: treatmentsList.join(', '),
+        color: derivedStatus === 'completed' ? 'bg-emerald-500' : (derivedStatus === 'implant' ? 'bg-indigo-600' : (derivedStatus === 'extracted' ? 'bg-slate-400' : (derivedStatus === 'in_progress' ? 'bg-amber-500' : (derivedStatus === 'caries' ? 'bg-rose-500' : 'bg-blue-500')))),
+        icon: derivedStatus === 'completed' ? '✅' : (derivedStatus === 'implant' ? '🔩' : (derivedStatus === 'extracted' ? '❌' : (derivedStatus === 'in_progress' ? '💉' : '📋'))),
+        date: items[0]?.service?.completion_date || items[0]?.plan?.updated_at || items[0]?.plan?.created_date
+      };
+    });
+
+    // 2. Implantlar jadvalidan qo'shish
     implants?.forEach(imp => {
       const tn = imp.tooth_numbers;
       const toothNums = Array.isArray(tn) ? tn : (typeof tn === 'string' ? tn.split(',').map(s=>s.trim()) : (imp.tooth_number ? [imp.tooth_number] : []));
@@ -1248,7 +1378,7 @@ export default function PatientProfile() {
       });
     });
 
-    // 3. Saved Tooth Records (Supabase)
+    // 3. Saved Tooth Records
     toothRecords?.forEach(rec => {
       const num = rec.tooth_number;
       if (!num) return;
@@ -1269,7 +1399,7 @@ export default function PatientProfile() {
       }
     });
 
-    // 4. Pending edits (during Edit Mode)
+    // 4. Pending edits
     if (chartEditMode) {
       Object.entries(pendingToothEdits).forEach(([fdi, editData]) => {
         const internalId = getInternalId(fdi);
@@ -1304,10 +1434,8 @@ export default function PatientProfile() {
 
   const toothStatuses = useMemo(() => getToothStatuses(), [plans, implants, toothRecords, pendingToothEdits, chartEditMode]);
   
-  // Tanlangan tishlar - faqat davolangan yoki rejalashtirilgan tishlar
   const treatedTeeth = useMemo(() => Object.keys(toothStatuses), [toothStatuses]);
 
-  // Barcha tishlar uchun to'liq va aniq xizmatlar ro'yxatini shakllantirish
   const getTeethDetailedServices = () => {
     const toothServicesMap = {};
 
@@ -1333,7 +1461,7 @@ export default function PatientProfile() {
 
       const servicesToProcess = planServices.length > 0 
         ? planServices 
-        : (planTooth ? [{ service_name: plan.name || plan.title, status: plan.status }] : []);
+        : (planTooth ? [{ service_name: plan.name || plan.title, status: plan.status, price: plan.total_price }] : []);
 
       servicesToProcess.forEach(service => {
         let toothFdiRaw = String(service.tooth_number || service.tooth_id || planTooth || '').trim();
@@ -1365,14 +1493,27 @@ export default function PatientProfile() {
             toothServicesMap[fdiNumber] = [];
           }
 
-          const isCompleted = service.completed || service.status === 'completed' || planStatus === 'Completed';
-          const isInProgress = service.status === 'in_progress' || planStatus === 'In Progress';
+          const planStatusLower = String(planStatus || '').trim().toLowerCase();
+          const isCompleted = Boolean(
+            service.completed || 
+            service.status === 'completed' || 
+            service.payment_status === 'paid' || 
+            planStatusLower === 'completed' || 
+            planStatusLower === 'bajarildi'
+          );
+          const isInProgress = Boolean(
+            service.status === 'in_progress' || 
+            planStatusLower === 'in progress' || 
+            planStatusLower === 'inprogress' || 
+            planStatusLower === 'jarayonda'
+          );
           
           toothServicesMap[fdiNumber].push({
-            id: service.id || service.service_id || Math.random().toString(),
+            id: service.id || service.service_id || `${plan.id || ''}-${service.service_name || ''}-${Math.random()}`,
             name: service.service_name || plan.name || plan.title,
-            price: service.price,
+            price: service.price !== undefined ? service.price : null,
             status: isCompleted ? 'completed' : (isInProgress ? 'in_progress' : 'planned'),
+            isCompleted: isCompleted,
             date: service.completion_date || plan.updated_at || plan.created_date,
             planName: plan.name || plan.title,
             toothId
@@ -1412,9 +1553,10 @@ export default function PatientProfile() {
 
         toothServicesMap[fdiNumber].push({
           id: imp.id,
-          name: `${imp.firma || ''} Implant (${imp.brend || ''})`,
+          name: `${imp.firma || ''} Implant (${imp.brend || ''})`.trim(),
           price: null,
-          status: 'implant',
+          status: 'completed',
+          isCompleted: true,
           date: imp.placement_date,
           planName: 'Implantatsiya',
           toothId
@@ -1426,6 +1568,55 @@ export default function PatientProfile() {
   };
 
   const teethDetailedServices = useMemo(() => getTeethDetailedServices(), [plans, implants]);
+
+  const treatmentStats = useMemo(() => {
+    const allServices = Object.values(teethDetailedServices).flat();
+    const completed = allServices.filter(s => s.status === 'completed' || s.isCompleted).length;
+    const inProgress = allServices.filter(s => s.status === 'in_progress' && !s.isCompleted).length;
+    const planned = allServices.filter(s => s.status === 'planned' && !s.isCompleted).length;
+    const total = allServices.length;
+
+    return { completed, inProgress, planned, total };
+  }, [teethDetailedServices]);
+
+  const filteredTeethDetailedServices = useMemo(() => {
+    let source = teethDetailedServices;
+
+    // Filter by treatment status if selected
+    if (typeof treatmentStatusFilter !== 'undefined' && treatmentStatusFilter !== 'all') {
+      const filtered = {};
+      Object.entries(source).forEach(([fdiNumber, services]) => {
+        const matching = services.filter(s => {
+          if (treatmentStatusFilter === 'completed') return s.status === 'completed' || s.isCompleted;
+          if (treatmentStatusFilter === 'in_progress') return s.status === 'in_progress' && !s.isCompleted;
+          if (treatmentStatusFilter === 'planned') return s.status === 'planned' && !s.isCompleted;
+          return true;
+        });
+        if (matching.length > 0) {
+          filtered[fdiNumber] = matching;
+        }
+      });
+      source = filtered;
+    }
+
+    if (!toothSearchQuery?.trim()) return source;
+    const q = toothSearchQuery.toLowerCase().trim().replace(/^#/, '');
+    const result = {};
+    Object.entries(source).forEach(([fdiNumber, services]) => {
+      const fdiMatch = String(fdiNumber).toLowerCase().includes(q);
+      const matchingServices = services.filter(s => 
+        String(s.name || '').toLowerCase().includes(q) ||
+        String(s.planName || '').toLowerCase().includes(q) ||
+        String(s.status || '').toLowerCase().includes(q)
+      );
+      if (fdiMatch) {
+        result[fdiNumber] = services;
+      } else if (matchingServices.length > 0) {
+        result[fdiNumber] = matchingServices;
+      }
+    });
+    return result;
+  }, [teethDetailedServices, toothSearchQuery]);
 
   useEffect(() => { load(); }, [id]);
 
@@ -1533,23 +1724,33 @@ export default function PatientProfile() {
       .filter(p => p.type?.toLowerCase() === 'discount')
       .reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
 
-    // Agar Debt paymentlari mavjud bo'lsa (payment-based hisob):
-    //   qarz = Debt - Income - Discount
-    // Agar Debt paymentlari yo'q bo'lsa (plan-based hisob):
-    //   qarz = totalPlansPrice - Income
+    // Chegirma summasini hisoblash (rejalardan yoki to'lovlardan)
+    const planDiscountsTotal = plansList.reduce((sum, plan) => {
+      const amt = Number(plan.discount_amount) || 0;
+      if (amt > 0) return sum + amt;
+      const pct = Number(plan.discount_percent) || 0;
+      if (pct > 0 && plan.total_price) {
+        const original = Math.round(plan.total_price / (1 - pct / 100));
+        return sum + (original - plan.total_price);
+      }
+      return sum;
+    }, 0);
+
+    const effectiveTotalDiscount = planDiscountsTotal > 0 ? planDiscountsTotal : totalDiscounts;
+
+    // Qarzdorlik hisoblash:
+    // Reja mavjud bo'lsa: qarz = sum(plan.total_price) - totalIncomes
+    // Agar alohida qarzlar bo'lsa: qarz = (totalDebts + totalRefunds) - (totalIncomes + totalDiscounts)
     let calculatedDebt = 0;
     let calculatedPrepayment = 0;
 
-    if (totalDebts > 0) {
-      // Debt payment mavjud — payment-based hisob (eng aniq)
-      // Debt = chegirmali narx, shuning uchun Discount ni ham ayiramiz
-      const net = totalIncomes + totalDiscounts - totalDebts - totalRefunds;
+    if (plansList.length > 0) {
+      const totalPlansPrice = plansList.reduce((sum, plan) => sum + (Number(plan.total_price) || 0), 0);
+      const net = totalIncomes - totalPlansPrice - totalRefunds;
       calculatedDebt = net < 0 ? Math.abs(net) : 0;
       calculatedPrepayment = net > 0 ? net : 0;
-    } else if (plansList.length > 0) {
-      // Debt payment yo'q — plan.total_price (chegirmali) asosida hisob
-      const totalPlansPrice = plansList.reduce((sum, plan) => sum + (Number(plan.total_price) || 0), 0);
-      const net = totalIncomes + totalDiscounts - totalPlansPrice;
+    } else if (totalDebts > 0) {
+      const net = totalIncomes + totalDiscounts - totalDebts - totalRefunds;
       calculatedDebt = net < 0 ? Math.abs(net) : 0;
       calculatedPrepayment = net > 0 ? net : 0;
     } else {
@@ -1559,17 +1760,26 @@ export default function PatientProfile() {
     }
 
     // Chegirma foizini hisoblash
-    const totalOriginalPlansPrice = plansList.reduce((sum, plan) =>
-      sum + (Number(plan.total_price) || 0) + (Number(plan.discount_amount) || 0), 0);
+    const totalOriginalPlansPrice = plansList.reduce((sum, plan) => {
+      const pTotal = Number(plan.total_price) || 0;
+      const dAmt = Number(plan.discount_amount) || 0;
+      if (dAmt > 0) return sum + pTotal + dAmt;
+      const pct = Number(plan.discount_percent) || 0;
+      if (pct > 0 && pTotal > 0) {
+        return sum + Math.round(pTotal / (1 - pct / 100));
+      }
+      return sum + pTotal;
+    }, 0);
+
     const discountPercent = totalOriginalPlansPrice > 0
-      ? Math.round((totalDiscounts / totalOriginalPlansPrice) * 100)
+      ? Math.round((effectiveTotalDiscount / totalOriginalPlansPrice) * 100)
       : 0;
 
     return {
       totalPaid: totalIncomes,
       totalDebt: calculatedDebt,
       totalPrepayment: calculatedPrepayment,
-      totalDiscount: totalDiscounts,
+      totalDiscount: effectiveTotalDiscount,
       discountPercent
     };
   }, [payments, plans]);
@@ -1946,19 +2156,35 @@ export default function PatientProfile() {
     // 3. To'lovlar (Payments)
     (payments || []).forEach(pay => {
       const notesLower = (pay.notes || '').toLowerCase();
-      const isPlanPayment = !!(pay.plan_id || notesLower.includes('linked to plan') || notesLower.includes('reja to\'lov') || notesLower.includes('muddatli') || notesLower.includes('boshlang\'ich to\'lov'));
-      const isExpense = pay.type === 'Expense';
+      const pType = (pay.type || '').toLowerCase();
+
+      // Davolash rejasiga biriktirilgan ichki qarz (Debt) yoki avtomatik chegirma (Discount) yozuvlarini
+      // to'lovlar lentasida dublikat qilib chiqarmaymiz, chunki rejaning o'zi yuqorida chegirmali yakuniy narxi bilan ko'rsatiladi.
+      const isLinkedPlanInternal = (pType === 'debt' || pType === 'discount') && 
+        (pay.plan_id || notesLower.includes('linked to plan') || notesLower.includes('reja:') || notesLower.includes('avtomatik chegirma') || notesLower.includes('reja yangilandi'));
+      
+      if (isLinkedPlanInternal) {
+        return;
+      }
+
+      const isPlanPayment = !!(pay.plan_id || notesLower.includes('reja to\'lov') || notesLower.includes('muddatli') || notesLower.includes('boshlang\'ich to\'lov'));
+      const isExpense = pType === 'expense';
+      const isDiscount = pType === 'discount' || Number(pay.amount) < 0;
+      const isRefund = pType === 'refund';
+
       items.push({
         id: `pay-${pay.id}`,
         type: 'payment',
         date: pay.date ? new Date(pay.date) : new Date(),
         dateStr: pay.date ? pay.date.split('T')[0] : '',
         time: pay.date && pay.date.includes('T') ? pay.date.split('T')[1].substring(0, 5) : '',
-        title: isPlanPayment ? "Reja narxi (to'lov kutilmoqda)" : isExpense ? "Xarajat" : "To'lov qabul qilindi",
+        title: isDiscount ? "Chegirma berildi" : isRefund ? "To'lov qaytarildi" : isPlanPayment ? "Reja to'lovi" : isExpense ? "Xarajat" : "To'lov qabul qilindi",
         price: pay.amount,
-        color: isPlanPayment ? 'amber' : isExpense ? 'rose' : 'emerald',
+        color: isDiscount ? 'purple' : isRefund ? 'indigo' : isPlanPayment ? 'amber' : isExpense ? 'rose' : 'emerald',
         isPlanPayment,
         isExpense,
+        isDiscount,
+        isRefund,
         rawData: pay
       });
     });
@@ -1973,6 +2199,7 @@ export default function PatientProfile() {
     'missing': '#ef4444',
     "yo'q": '#ef4444',
     "sug'urilgan": '#ef4444',
+    "tish olingan": '#94a3b8',
     'cavity': '#3b82f6',
     'kariyes': '#3b82f6',
     'caries': '#3b82f6',
@@ -1990,7 +2217,9 @@ export default function PatientProfile() {
     'crown': '#a855f7',
     'toj': '#a855f7',
     'veneer': '#06b6d4',
+    'vinir': '#06b6d4',
     'implant': '#f97316',
+    'implantat': '#f97316',
     'davolangan': '#10b981',
     'completed': '#10b981',
     'jarayonda': '#f59e0b',
@@ -2042,17 +2271,27 @@ export default function PatientProfile() {
         fdi = toothId;
       }
 
-      const cond = statusObj.condition;
-      const treat = statusObj.treatment;
+      // 1. All conditions
+      const conds = Array.isArray(statusObj.conditions) && statusObj.conditions.length > 0
+        ? statusObj.conditions
+        : (statusObj.condition ? [statusObj.condition] : []);
+      conds.forEach(cond => {
+        if (cond && cond !== 'Healthy' && cond !== 'Healthy periodontium' && cond !== "Sog'lom" && cond !== "Sog'lom parodont") {
+          if (!groups[cond]) groups[cond] = [];
+          if (!groups[cond].includes(fdi)) groups[cond].push(fdi);
+        }
+      });
 
-      if (cond && cond !== 'Healthy' && cond !== 'Healthy periodontium') {
-        if (!groups[cond]) groups[cond] = [];
-        if (!groups[cond].includes(fdi)) groups[cond].push(fdi);
-      }
-      if (treat) {
-        if (!groups[treat]) groups[treat] = [];
-        if (!groups[treat].includes(fdi)) groups[treat].push(fdi);
-      }
+      // 2. All treatments (including both Tish olingan and Implant)
+      const treats = Array.isArray(statusObj.treatments) && statusObj.treatments.length > 0
+        ? statusObj.treatments
+        : (statusObj.treatment ? [statusObj.treatment] : []);
+      treats.forEach(treat => {
+        if (treat && treat !== 'Healthy' && treat !== "Sog'lom") {
+          if (!groups[treat]) groups[treat] = [];
+          if (!groups[treat].includes(fdi)) groups[treat].push(fdi);
+        }
+      });
     });
 
     const list = [];
@@ -2061,16 +2300,6 @@ export default function PatientProfile() {
       list.push({ name: translateDiagnostic(name), teeth: teeth.join(', '), color: getConditionColor(name) });
     });
 
-    if (list.length === 0) {
-      return [
-        { name: translateDiagnostic('Missing tooth'), teeth: '18, 28, 38, 48', color: '#ef4444' },
-        { name: translateDiagnostic('Cavity'), teeth: '16, 27, 47, 46', color: '#3b82f6' },
-        { name: translateDiagnostic('Secondary cavity'), teeth: '11, 26, 36, 46', color: '#f97316' },
-        { name: translateDiagnostic('Fissure pigmentation (initial caries)'), teeth: '37, 47', color: '#92400e' },
-        { name: translateDiagnostic('Canal partially sealed'), teeth: '11', color: '#f43f5e' },
-        { name: translateDiagnostic('Dental calculus'), teeth: '31, 32, 42, 41', color: '#d97706' },
-      ];
-    }
     return list;
   }, [toothStatuses, language, translateDiagnostic]);
 
@@ -2331,23 +2560,24 @@ export default function PatientProfile() {
         )}
         
         {/* Patient Identity Row */}
-        <div className="px-4 pt-3 pb-0 flex flex-col lg:flex-row lg:items-end justify-between gap-0">
-          {/* Left: Avatar + Patient Info (BClinic style) */}
-          <div className="flex items-end gap-4">
-            {/* Back Button — always goes to patients list */}
+        {/* ══ BCLINIC HEADER (Top Row) ══ */}
+        <div className="bg-white px-4 pt-3 pb-2 flex items-center justify-between gap-4 border-b border-[#f1f3f4]/60 print:hidden">
+          {/* Left: Avatar + Patient Info */}
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Back Button */}
             <button
               onClick={() => navigate('/patients')}
-              className="mb-2 w-9 h-9 shrink-0 rounded-xl bg-[#ff6d00]/10 hover:bg-[#ff6d00]/20 border border-[#ff6d00]/20 flex items-center justify-center transition-all active:scale-95 group"
+              className="w-9 h-9 shrink-0 rounded-xl bg-[#ff6d00]/10 hover:bg-[#ff6d00]/20 border border-[#ff6d00]/20 flex items-center justify-center transition-all active:scale-95 group"
               title="Bemorlar ro'yxatiga qaytish"
             >
               <ArrowLeft className="w-4 h-4 text-[#ff6d00] group-hover:scale-110 transition-transform" />
             </button>
-            {/* Allergiya badge top-left */}
+            
+            {/* Avatar Upload */}
             <div className="relative">
               {medicalAlerts && medicalAlerts.length > 0 && (
                 <div className="absolute -top-2 -left-1 z-10 flex items-center gap-1 bg-gradient-to-r from-red-500 to-rose-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-md animate-bounce border-none">
                   <span className="font-[1000]">{medicalAlerts.length}</span>
-                  <span>{t('patientProfile.warning') || 'Xavf!'}</span>
                 </div>
               )}
               <div
@@ -2358,116 +2588,96 @@ export default function PatientProfile() {
                   <img
                     src={patient.photo_url}
                     alt={patient.full_name}
-                    className="w-14 h-14 rounded-md object-cover border-2 border-[#e8eaed]"
+                    className="w-11 h-11 rounded-xl object-cover border border-[#e8eaed]"
                   />
                 ) : (
                   <div
-                    className="w-14 h-14 rounded-md flex items-center justify-center text-white text-xl font-black border-2 border-[#e8eaed]"
+                    className="w-11 h-11 rounded-xl flex items-center justify-center text-white text-base font-black border border-[#e8eaed]"
                     style={{ background: 'linear-gradient(135deg,#1a73e8 0%,#0d5db8 100%)' }}
                   >
                     {getInitials(patient.full_name)}
-                  </div>
-                )}
-                <div className="absolute inset-0 rounded-md bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Camera className="w-4 h-4 text-white" />
-                </div>
-                {photoUploading && (
-                  <div className="absolute inset-0 rounded-md bg-black/50 flex items-center justify-center">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   </div>
                 )}
               </div>
               <input id="avatar-upload-input" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             </div>
 
-            {/* Name + age + phone */}
-            <div className="pb-2">
-              <div className="flex items-baseline gap-2">
-                <h1 className="text-[15px] font-bold text-[#202124] leading-tight">
+            {/* Name + phone */}
+            <div className="min-w-0">
+              <div className="flex items-baseline gap-1.5 flex-wrap">
+                <h1 className="text-[14px] font-bold text-[#202124] leading-tight truncate max-w-[150px] sm:max-w-none">
                   {patient.full_name}
                 </h1>
                 {age !== null && (
-                  <span className="text-[13px] text-[#5f6368] font-normal">{age} yosh</span>
+                  <span className="text-[10px] text-[#5f6368] font-normal shrink-0">{age} yosh</span>
                 )}
               </div>
-              <div className="text-[12px] text-[#5f6368] mt-0.5 flex items-center gap-2.5 flex-wrap">
-                <span className="font-bold text-[#5f6368] text-xs">{formatPhone(patient.phone)}</span>
-                {patient.phone && (
-                  <div className="flex items-center gap-2 ml-1">
-                    <a
-                      href={`tel:+${patient.phone.replace(/\D/g, '').startsWith('998') ? patient.phone.replace(/\D/g, '') : '998' + patient.phone.replace(/\D/g, '')}`}
-                      className="w-8 h-8 flex items-center justify-center bg-[#1499AD]/5 hover:bg-[#1499AD] text-[#1499AD] hover:text-white rounded-full transition-all border border-[#1499AD]/15 shadow-sm active:scale-95"
-                      title="Qo'ng'iroq qilish"
-                    >
-                      <Phone className="w-3.5 h-3.5" />
-                    </a>
-                    <a
-                      href={`https://t.me/+${patient.phone.replace(/\D/g, '').startsWith('998') ? patient.phone.replace(/\D/g, '') : '998' + patient.phone.replace(/\D/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-8 h-8 flex items-center justify-center bg-sky-50 hover:bg-sky-500 text-sky-500 hover:text-white rounded-full transition-all border border-sky-100 shadow-sm active:scale-95"
-                      title="Telegram orqali yozish"
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="translate-x-[-1px] translate-y-[0px]">
-                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                      </svg>
-                    </a>
-                  </div>
+              <div className="text-[10px] text-[#5f6368] mt-0.5">
+                {patient.phone ? (
+                  <a
+                    href={`tel:+${patient.phone.replace(/\D/g, '').startsWith('998') ? patient.phone.replace(/\D/g, '') : '998' + patient.phone.replace(/\D/g, '')}`}
+                    className="font-bold text-[#1499AD] hover:underline flex items-center gap-1 bg-[#1499AD]/5 px-2.5 py-1 rounded-full border border-[#1499AD]/10 w-fit"
+                  >
+                    <Phone className="w-2.5 h-2.5" />
+                    {formatPhone(patient.phone)}
+                  </a>
+                ) : (
+                  <span className="font-bold text-slate-400">—</span>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Right side: Tabs + action icons */}
-          <div className="flex flex-col items-start lg:items-end gap-0 w-full lg:w-auto lg:flex-1 min-w-0">
-            {/* Top-right action icons */}
-            <div className="flex items-center gap-3 mb-2 text-[#5f6368] self-end lg:self-auto">
-              <button onClick={() => setApptModalOpen(true)} className="w-8 h-8 flex items-center justify-center hover:bg-[#f1f3f4] rounded-full transition-colors" title="Qo'shish">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-              </button>
-              <button onClick={generatePDF} className="w-8 h-8 flex items-center justify-center hover:bg-[#f1f3f4] rounded-full transition-colors" title="Rasm yuklash">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              </button>
-            </div>
+          {/* Right side: Top action icons */}
+          <div className="flex items-center gap-1.5 text-[#5f6368] shrink-0">
+            <button onClick={() => setApptModalOpen(true)} className="w-8 h-8 flex items-center justify-center hover:bg-[#f1f3f4] rounded-full transition-colors" title="Qo'shish">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            </button>
+            <button onClick={generatePDF} className="w-8 h-8 flex items-center justify-center hover:bg-[#f1f3f4] rounded-full transition-colors" title="Rasm yuklash">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </button>
+          </div>
+        </div>
 
-            {/* Main Tab Navigation (BClinic style) */}
-            <div className="overflow-x-auto no-scrollbar w-full">
-              <div className="flex items-end min-w-max border-b border-[#e8eaed] w-full">
+        {/* ══ BCLINIC TAB BAR ══ */}
+        <div className="w-full bg-white print:hidden">
+          <div className="relative w-full overflow-hidden">
+            {/* Left Shadow */}
+            <div 
+              className={cn(
+                "absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-white to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                showLeftShadow ? "opacity-100" : "opacity-0"
+              )} 
+            />
+            {/* Right Shadow */}
+            <div 
+              className={cn(
+                "absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white to-transparent pointer-events-none z-10 transition-opacity duration-300",
+                showRightShadow ? "opacity-100" : "opacity-0"
+              )} 
+            />
+
+            <div 
+              ref={tabScrollRef}
+              className="overflow-x-auto no-scrollbar w-full"
+            >
+              <div className="flex items-end min-w-max px-4 w-full">
                 {[
-                  { id: 'notes',        label: t('patientProfile.tabs.notes') },
-                  { id: 'appointments', label: t('patientProfile.tabs.appointments') },
-                  { id: 'treatments',   label: t('patientProfile.tabs.treatments') },
                   { id: 'info',         label: t('patientProfile.tabs.info') },
+                  { id: 'treatments',   label: t('patientProfile.tabs.treatments') },
+                  { id: 'appointments', label: t('patientProfile.tabs.appointments') },
                   { id: 'payments',     label: t('patientProfile.tabs.payments') },
-                ].map(tabItem => (
-                  <button
-                    key={tabItem.id}
-                    onClick={() => setActiveTab(tabItem.id)}
-                    className={`px-4 py-2.5 text-[13px] whitespace-nowrap transition-all border-b-2 ${
-                      activeTab === tabItem.id
-                        ? 'border-[#1a73e8] text-[#1a73e8] font-semibold'
-                        : 'border-transparent text-[#5f6368] hover:text-[#202124] font-normal'
-                    }`}
-                  >
-                    {tabItem.label}
-                  </button>
-                ))}
-                {/* Extra tabs */}
-                {[
-                  { id: 'installments', label: t('patientProfile.tabs.installments') },
+                  { id: 'notes',        label: t('patientProfile.tabs.notes') },
                   { id: 'implants',     label: t('patientProfile.tabs.implants') },
                   { id: 'photos',       label: t('patientProfile.tabs.photos') },
-                  { id: 'xrays',        label: t('patientProfile.tabs.xrays') },
-                  { id: 'teeth',        label: t('patientProfile.tabs.teeth') },
                 ].map(tabItem => (
                   <button
                     key={tabItem.id}
                     onClick={() => setActiveTab(tabItem.id)}
-                    className={`px-4 py-2.5 text-[13px] whitespace-nowrap transition-all border-b-2 ${
+                    className={`px-3.5 py-2.5 text-[13px] whitespace-nowrap transition-all border-b-2 font-medium cursor-pointer ${
                       activeTab === tabItem.id
-                        ? 'border-[#1a73e8] text-[#1a73e8] font-semibold'
-                        : 'border-transparent text-[#9aa0a6] hover:text-[#5f6368] font-normal text-[12px]'
+                        ? 'border-[#1a73e8] text-[#1a73e8] font-bold'
+                        : 'border-transparent text-[#5f6368] hover:text-[#202124]'
                     }`}
                   >
                     {tabItem.label}
@@ -2478,51 +2688,6 @@ export default function PatientProfile() {
           </div>
         </div>
 
-        {/* ══ BCLINIC SUB-NAVBAR ══ */}
-        {activeTab === 'info' && (
-          <div className="bg-white border-t border-[#e8eaed] px-4 py-2 flex items-center gap-4 overflow-x-auto no-scrollbar">
-            {/* Search */}
-            <div className="relative flex-shrink-0">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9aa0a6]" />
-              <input
-                type="text"
-                placeholder="Qidiruv"
-                className="pl-8 pr-3 h-7 bg-[#f1f3f4] border-none rounded text-[12px] text-[#5f6368] focus:outline-none focus:ring-1 focus:ring-[#1a73e8] w-32"
-              />
-            </div>
-
-            <div className="flex items-center gap-1 text-[12px] text-[#5f6368] whitespace-nowrap">
-              <button 
-                onClick={() => { setActiveTab('info'); setSubSection('dental'); }} 
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded transition-colors",
-                  activeTab === 'info' && subSection === 'dental' ? "bg-[#e8f0fe] text-[#1a73e8] font-bold" : "hover:bg-[#f1f3f4]"
-                )}
-              >
-                Tish jadvali
-              </button>
-              <button 
-                onClick={() => { setActiveTab('info'); setSubSection('psr'); }} 
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded transition-colors",
-                  activeTab === 'info' && subSection === 'psr' ? "bg-[#e8f0fe] text-[#1a73e8] font-bold" : "hover:bg-[#f1f3f4]"
-                )}
-              >
-                PSR <span className="text-[10px] opacity-75">Periodontal skrining</span>
-              </button>
-              <button 
-                onClick={() => { setActiveTab('info'); setSubSection('perio'); }} 
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded transition-colors",
-                  activeTab === 'info' && subSection === 'perio' ? "bg-[#e8f0fe] text-[#1a73e8] font-bold" : "hover:bg-[#f1f3f4]"
-                )}
-              >
-                Perio diagrammasi
-              </button>
-            </div>
-          </div>
-        )}
-
       </div>
 
       {/* ══ BCLINIC PAGE BODY ══ */}
@@ -2532,181 +2697,279 @@ export default function PatientProfile() {
 
           {/* MAIN TAB CONTENT */}
           <div className="min-w-0 space-y-0">
-        {/* MUDDATLI TO'LOVLAR (Installments) */}
-        <TabsContent value="installments" className="outline-none space-y-6">
-          {activeTab === 'installments' && (
-          <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
-            <div className="p-6 border-b border-slate-50 flex items-center justify-between">
-              <h3 className="font-black text-slate-900 flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-pink-50 flex items-center justify-center">
-                  <Calendar className="w-4 h-4 text-pink-600" />
-                </div>
-                Muddatli to'lovlar rejasi
-              </h3>
-            </div>
-            
-            <div className="p-6 space-y-8">
-              {installmentPlans.length === 0 ? (
-                <EmptyState title="Muddatli to'lovlar yo'q" description="Ushbu bemorda faol rassrochka rejalari topilmadi" />
-              ) : (
-                installmentPlans.map(plan => {
-                  const inst = plan.installment_plan;
-                  const paidMonths = inst.paid_months || [];
-                  
-                  return (
-                    <div key={plan.id} className="bg-slate-50/50 border border-slate-100 rounded-[2.5rem] p-6 lg:p-8">
-                       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
-                          <div className="flex items-center gap-4">
-                             <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-pink-500 shadow-sm">
-                                <ClipboardList className="w-7 h-7" />
-                             </div>
-                             <div>
-                                <h4 className="text-sm font-black text-slate-800 tracking-tight uppercase leading-snug">{formatPlanName(plan.name)}</h4>
-                                <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mt-1">Jami: {plan.total_price?.toLocaleString()} so'm | {inst.months} oy</p>
-                             </div>
-                          </div>
-                          <div className="flex items-center gap-6 bg-white px-6 py-4 rounded-3xl shadow-sm border border-slate-50">
-                             <div className="text-center">
-                                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Boshlang'ich</p>
-                                <p className="text-sm font-black text-slate-700">{inst.advance_payment?.toLocaleString()} so'm</p>
-                             </div>
-                             <div className="w-px h-8 bg-slate-100" />
-                             <div className="text-center">
-                                <p className="text-[10px] font-black text-pink-400 uppercase tracking-widest mb-1">Oylik summa</p>
-                                <p className="text-sm font-black text-pink-600">{inst.monthly_amount?.toLocaleString()} so'm</p>
-                             </div>
-                          </div>
-                       </div>
 
-                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                          {Array.from({ length: inst.months }).map((_, i) => {
-                             const targetAmount = getInstallmentMonthTarget(plan, i);
-                             const paidAmount = getInstallmentMonthPaid(plan, i);
-                             const remainingAmount = getInstallmentMonthRemaining(plan, i);
-                             const isPaid = remainingAmount <= 0 || paidMonths.includes(i);
-                             const isPartial = paidAmount > 0 && !isPaid;
-                             const date = new Date(inst.start_date || plan.created_date);
-                             date.setMonth(date.getMonth() + i);
-                             
-                             return (
-                               <div
-                                 key={i}
-                                 role="button"
-                                 tabIndex={0}
-                                 onClick={() => (isPaid || isPartial ? openInstallmentHistoryModal(plan, i) : openInstallmentPaymentModal(plan, i))}
-                                 onKeyDown={(e) => {
-                                   if (e.key === 'Enter' || e.key === ' ') {
-                                     e.preventDefault();
-                                     (isPaid || isPartial ? openInstallmentHistoryModal(plan, i) : openInstallmentPaymentModal(plan, i));
-                                   }
-                                 }}
-                                 className={`p-5 rounded-[1.75rem] border-2 transition-all flex flex-col justify-between min-h-[186px] cursor-pointer ${
-                                 isPaid ? 'bg-emerald-50 border-emerald-100' : isPartial ? 'bg-amber-50/40 border-amber-200' : 'bg-white border-slate-100 hover:border-pink-100'
-                               }`}>
-                                  <div className="flex justify-between items-start">
-                                     <div className="flex flex-col">
-                                        <span className={`text-[10px] font-black uppercase tracking-widest ${
-                                          isPaid ? 'text-emerald-400' : isPartial ? 'text-amber-500' : 'text-slate-300'
-                                        }`}>{i + 1}-oy</span>
-                                        <span className="text-[11px] font-bold text-slate-500 uppercase">{date.toLocaleDateString('uz-UZ', { month: 'long', year: 'numeric' })}</span>
-                                     </div>
-                                     <div className={`px-2 py-1 rounded-full text-[9px] font-black uppercase ${
-                                       isPaid ? 'bg-emerald-500 text-white' : isPartial ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
-                                     }`}>
-                                       {isPaid ? "To'langan" : isPartial ? 'Qisman' : 'Kutilmoqda'}
-                                     </div>
-                                  </div>
-
-                                  <div className="space-y-2 mt-4">
-                                     <div className="flex items-center justify-between text-[11px] font-bold">
-                                       <span className="text-slate-400">Oy summasi</span>
-                                       <span className={isPaid ? 'text-emerald-600' : 'text-slate-800'}>{targetAmount.toLocaleString()} so'm</span>
-                                     </div>
-                                     <div className="flex items-center justify-between text-[11px] font-bold">
-                                       <span className="text-slate-400">To'langan</span>
-                                       <span className={paidAmount > 0 ? 'text-emerald-600' : 'text-slate-500'}>{paidAmount.toLocaleString()} so'm</span>
-                                     </div>
-                                     <div className="flex items-center justify-between text-[11px] font-bold">
-                                       <span className="text-slate-400">Qolgan</span>
-                                       <span className={remainingAmount > 0 ? 'text-rose-500' : 'text-emerald-600'}>{remainingAmount.toLocaleString()} so'm</span>
-                                     </div>
-                                  </div>
-
-                                 <div className="flex items-end justify-between gap-4 mt-4">
-                                     {isPaid ? (
-                                       <span className="inline-flex items-center gap-1 text-emerald-600 text-sm font-black">
-                                         <CheckCircle2 className="w-4 h-4" /> Yopilgan
-                                       </span>
-                                     ) : (
-                                       <span className="text-[10px] font-black tracking-tight text-slate-500">
-                                         {isPartial ? "Qolganini to'lashingiz mumkin" : "Summa kiriting va to'lang"}
-                                       </span>
-                                     )}
-                                     {!isPaid && (
-                                       <div className="flex flex-col items-end">
-                                         <Button 
-                                           onClick={(e) => { e.stopPropagation(); handlePayInstallment(plan, i); }}
-                                           size="sm" 
-                                           className="h-9 px-4 rounded-xl bg-pink-500 hover:bg-pink-600 text-white font-black uppercase text-[10px] tracking-tight shadow-lg shadow-pink-500/20 border-none"
-                                         >
-                                           To'lash
-                                         </Button>
-                                         {(() => {
-                                           const partialPaymentsRaw = Array.isArray(inst?.partial_payments) ? inst.partial_payments : [];
-                                           const monthPayments = partialPaymentsRaw
-                                             .filter(p => Number(p.month_index) === Number(i))
-                                             .sort((a, b) => new Date(a?.date || 0).getTime() - new Date(b?.date || 0).getTime());
-                                           const lastPay = monthPayments.length > 0 ? monthPayments[monthPayments.length - 1] : null;
-                                           const docName = lastPay?.doctor_id
-                                             ? (doctors.find(d => d.id === lastPay.doctor_id)?.name || doctors.find(d => d.id === lastPay.doctor_id)?.full_name || '')
-                                             : '';
-                                           if (!docName) return null;
-                                           return (
-                                             <span className="mt-1 text-[8px] font-black text-slate-400 uppercase tracking-widest text-right">
-                                               {docName} muddatli to'lov
-                                             </span>
-                                           );
-                                         })()}
-                                       </div>
-                                     )}
-                                  </div>
-                               </div>
-                             );
-                          })}
-                       </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-          )}
-        </TabsContent>
-
-        {/* REYESTR (Payments / To'lovlar tarixi) */}
+        {/* REYESTR / MUDDATLI TO'LOVLAR (Combined Payments Tab) */}
         <TabsContent value="payments" className="outline-none space-y-6">
           {activeTab === 'payments' && (
-          <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm p-6">
-            <div className="border-b border-slate-50 flex items-center justify-between pb-4 mb-6">
-              <h3 className="font-black text-slate-900 flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
-                  <CreditCard className="w-4 h-4 text-emerald-600" />
+            <>
+              {/* Pill Switcher */}
+              <div className="flex justify-center mb-6">
+                <div className="inline-flex p-1 bg-slate-100 rounded-full border border-slate-200/50 gap-0.5 shadow-inner">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentSubTab('registry')}
+                    className={cn(
+                      "px-5 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer border-none",
+                      paymentSubTab === 'registry'
+                        ? "bg-white text-slate-800 shadow-sm border border-slate-200/20"
+                        : "bg-transparent text-slate-500 hover:text-slate-700"
+                    )}
+                  >
+                    To'lovlar Tarixi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentSubTab('installments')}
+                    className={cn(
+                      "px-5 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer border-none",
+                      paymentSubTab === 'installments'
+                        ? "bg-white text-slate-800 shadow-sm border border-slate-200/20"
+                        : "bg-transparent text-slate-500 hover:text-slate-700"
+                    )}
+                  >
+                    Muddatli To'lovlar
+                  </button>
                 </div>
-                Bemor to'lovlar reyestri
-              </h3>
-            </div>
-            <PatientPayments payments={payments} />
-          </div>
+              </div>
+
+              {paymentSubTab === 'registry' ? (
+                <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm p-6">
+                  <div className="border-b border-slate-50 flex items-center justify-between pb-4 mb-6">
+                    <h3 className="font-black text-slate-900 flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+                        <CreditCard className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      Bemor to'lovlar reyestri
+                    </h3>
+                  </div>
+                  <PatientPayments payments={payments} />
+                </div>
+              ) : (
+                <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm p-6">
+                  <div className="border-b border-slate-50 flex items-center justify-between pb-4 mb-6">
+                    <h3 className="font-black text-slate-900 flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-pink-50 flex items-center justify-center">
+                        <Calendar className="w-4 h-4 text-pink-600" />
+                      </div>
+                      Muddatli to'lovlar rejasi
+                    </h3>
+                  </div>
+                  
+                  <div className="space-y-8">
+                    {installmentPlans.length === 0 ? (
+                      <EmptyState title="Muddatli to'lovlar yo'q" description="Ushbu bemorda faol rassrochka rejalari topilmadi" />
+                    ) : (
+                      installmentPlans.map(plan => {
+                        const inst = plan.installment_plan;
+                        const paidMonths = inst.paid_months || [];
+                        
+                        return (
+                          <div key={plan.id} className="bg-slate-50/50 border border-slate-100 rounded-[2.5rem] p-6 lg:p-8">
+                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+                                <div className="flex items-center gap-4">
+                                   <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-pink-500 shadow-sm">
+                                      <ClipboardList className="w-7 h-7" />
+                                   </div>
+                                   <div>
+                                      <h4 className="text-sm font-black text-slate-800 tracking-tight uppercase leading-snug">{formatPlanName(plan.name)}</h4>
+                                      <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mt-1">Jami: {plan.total_price?.toLocaleString()} so'm | {inst.months} oy</p>
+                                   </div>
+                                </div>
+                                <div className="flex items-center gap-6 bg-white px-6 py-4 rounded-3xl shadow-sm border border-slate-50">
+                                   <div className="text-center">
+                                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Boshlang'ich</p>
+                                      <p className="text-sm font-black text-slate-700">{inst.advance_payment?.toLocaleString()} so'm</p>
+                                   </div>
+                                   <div className="w-px h-8 bg-slate-100" />
+                                   <div className="text-center">
+                                      <p className="text-[10px] font-black text-pink-400 uppercase tracking-widest mb-1">Oylik summa</p>
+                                      <p className="text-sm font-black text-pink-600">{inst.monthly_amount?.toLocaleString()} so'm</p>
+                                   </div>
+                                </div>
+                             </div>
+
+                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {Array.from({ length: inst.months }).map((_, i) => {
+                                   const targetAmount = getInstallmentMonthTarget(plan, i);
+                                   const paidAmount = getInstallmentMonthPaid(plan, i);
+                                   const remainingAmount = getInstallmentMonthRemaining(plan, i);
+                                   const isPaid = remainingAmount <= 0 || paidMonths.includes(i);
+                                   const isPartial = paidAmount > 0 && !isPaid;
+                                   const date = new Date(inst.start_date || plan.created_date);
+                                   date.setMonth(date.getMonth() + i);
+                                   
+                                   return (
+                                     <div
+                                       key={i}
+                                       role="button"
+                                       tabIndex={0}
+                                       onClick={() => (isPaid || isPartial ? openInstallmentHistoryModal(plan, i) : openInstallmentPaymentModal(plan, i))}
+                                       onKeyDown={(e) => {
+                                         if (e.key === 'Enter' || e.key === ' ') {
+                                           e.preventDefault();
+                                           (isPaid || isPartial ? openInstallmentHistoryModal(plan, i) : openInstallmentPaymentModal(plan, i));
+                                         }
+                                       }}
+                                       className={`p-5 rounded-[1.75rem] border-2 transition-all flex flex-col justify-between min-h-[186px] cursor-pointer ${
+                                       isPaid ? 'bg-emerald-50 border-emerald-100' : isPartial ? 'bg-amber-50/40 border-amber-200' : 'bg-white border-slate-100 hover:border-pink-100'
+                                     }`}>
+                                        <div className="flex justify-between items-start">
+                                           <div className="flex flex-col">
+                                              <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                                isPaid ? 'text-emerald-400' : isPartial ? 'text-amber-500' : 'text-slate-300'
+                                              }`}>{i + 1}-oy</span>
+                                              <span className="text-[11px] font-bold text-slate-500 uppercase">{date.toLocaleDateString('uz-UZ', { month: 'long', year: 'numeric' })}</span>
+                                           </div>
+                                           <div className={`px-2 py-1 rounded-full text-[9px] font-black uppercase ${
+                                             isPaid ? 'bg-emerald-500 text-white' : isPartial ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+                                           }`}>
+                                             {isPaid ? "To'langan" : isPartial ? 'Qisman' : 'Kutilmoqda'}
+                                           </div>
+                                        </div>
+
+                                        <div className="space-y-2 mt-4">
+                                           <div className="flex items-center justify-between text-[11px] font-bold">
+                                             <span className="text-slate-400">Oy summasi</span>
+                                             <span className={isPaid ? 'text-emerald-600' : 'text-slate-800'}>{targetAmount.toLocaleString()} so'm</span>
+                                           </div>
+                                           <div className="flex items-center justify-between text-[11px] font-bold">
+                                             <span className="text-slate-400">To'langan</span>
+                                             <span className={paidAmount > 0 ? 'text-emerald-600' : 'text-slate-500'}>{paidAmount.toLocaleString()} so'm</span>
+                                           </div>
+                                           <div className="flex items-center justify-between text-[11px] font-bold">
+                                             <span className="text-slate-400">Qolgan</span>
+                                             <span className={remainingAmount > 0 ? 'text-rose-500' : 'text-emerald-600'}>{remainingAmount.toLocaleString()} so'm</span>
+                                           </div>
+                                        </div>
+
+                                       <div className="flex items-end justify-between gap-4 mt-4">
+                                           {isPaid ? (
+                                             <span className="inline-flex items-center gap-1 text-emerald-600 text-sm font-black">
+                                               <CheckCircle2 className="w-4 h-4" /> Yopilgan
+                                             </span>
+                                           ) : (
+                                             <span className="text-[10px] font-black tracking-tight text-slate-500">
+                                               {isPartial ? "Qolganini to'lashingiz mumkin" : "Summa kiriting va to'lang"}
+                                             </span>
+                                           )}
+                                           {!isPaid && (
+                                             <div className="flex flex-col items-end">
+                                               <Button 
+                                                 onClick={(e) => { e.stopPropagation(); handlePayInstallment(plan, i); }}
+                                                 size="sm" 
+                                                 className="h-9 px-4 rounded-xl bg-pink-500 hover:bg-pink-600 text-white font-black uppercase text-[10px] tracking-tight shadow-lg shadow-pink-500/20 border-none"
+                                               >
+                                                 To'lash
+                                               </Button>
+                                               {(() => {
+                                                 const partialPaymentsRaw = Array.isArray(inst?.partial_payments) ? inst.partial_payments : [];
+                                                 const monthPayments = partialPaymentsRaw
+                                                   .filter(p => Number(p.month_index) === Number(i))
+                                                   .sort((a, b) => new Date(a?.date || 0).getTime() - new Date(b?.date || 0).getTime());
+                                                 const lastPay = monthPayments.length > 0 ? monthPayments[monthPayments.length - 1] : null;
+                                                 const docName = lastPay?.doctor_id
+                                                   ? (doctors.find(d => d.id === lastPay.doctor_id)?.name || doctors.find(d => d.id === lastPay.doctor_id)?.full_name || '')
+                                                   : '';
+                                                 if (!docName) return null;
+                                                 return (
+                                                   <span className="mt-1 text-[8px] font-black text-slate-400 uppercase tracking-widest text-right">
+                                                     {docName} muddatli to'lov
+                                                   </span>
+                                                 );
+                                               })()}
+                                             </div>
+                                           )}
+                                        </div>
+                                     </div>
+                                   );
+                                })}
+                             </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 
-        {/* DAVOLASH — BClinic uslubi */}
-        <TabsContent value="info" className="outline-none space-y-3">
+        {/* DAVOLASH — Tish xaritasi va formulasi */}
+        <TabsContent value="info" className="outline-none space-y-4">
           {activeTab === 'info' && (
             <>
+              {/* ══ SUB-SECTIONS SWITCHER & REAL SEARCH BAR ══ */}
+              <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                {/* Segmented Pill Selector */}
+                <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200/60 gap-1 overflow-x-auto no-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => setSubSection('dental')}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-none whitespace-nowrap",
+                      subSection === 'dental'
+                        ? "bg-white text-[#1a73e8] shadow-sm font-black"
+                        : "text-slate-500 hover:text-slate-800"
+                    )}
+                  >
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>{t('patientProfile.tishFormulasi')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubSection('psr')}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-none whitespace-nowrap",
+                      subSection === 'psr'
+                        ? "bg-white text-[#1a73e8] shadow-sm font-black"
+                        : "text-slate-500 hover:text-slate-800"
+                    )}
+                  >
+                    <span>📊 {t('patientProfile.psrSkrining')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubSection('perio')}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-none whitespace-nowrap",
+                      subSection === 'perio'
+                        ? "bg-white text-[#1a73e8] shadow-sm font-black"
+                        : "text-slate-500 hover:text-slate-800"
+                    )}
+                  >
+                    <span>📋 {t('patientProfile.perioDiagrammasi')}</span>
+                  </button>
+                </div>
+
+                {/* Real, interactive Search */}
+                {subSection === 'dental' && (
+                  <div className="relative flex-1 sm:max-w-xs">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={toothSearchQuery}
+                      onChange={(e) => setToothSearchQuery(e.target.value)}
+                      placeholder={t('patientProfile.searchTeethOrTreatment')}
+                      className="w-full pl-9 pr-8 h-9 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200/80 focus:border-[#1a73e8] rounded-xl text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1a73e8]/15 transition-all"
+                    />
+                    {toothSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setToothSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-slate-200 text-slate-500 hover:bg-slate-300 flex items-center justify-center text-[10px] cursor-pointer"
+                        title="Tozalash"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
           {subSection === 'psr' ? (
             /* 1. PSR (Periodontal Screening & Recording) Screen */
-            <div className="bg-white border border-[#e8eaed] rounded-lg shadow-sm overflow-hidden p-6">
+            <div className="bg-white border border-[#e8eaed] rounded-2xl shadow-sm overflow-hidden p-6 pb-28 md:pb-6">
               <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
                 <div>
                   <h3 className="text-base font-bold text-slate-800">PSR (Periodontal Screening & Recording)</h3>
@@ -2715,16 +2978,16 @@ export default function PatientProfile() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setSubSection('dental')}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all"
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
                   >
-                    Orqaga (Tish jadvali)
+                    ← Orqaga (Tish formulasi)
                   </button>
                   <button
                     onClick={() => {
                       localStorage.setItem(`psr_scores_${patient.id}`, JSON.stringify(psrScores));
                       toast.success("PSR indekslari muvaffaqiyatli saqlandi!");
                     }}
-                    className="px-4 py-2 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/10 border-none"
+                    className="px-4 py-2 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/10 border-none cursor-pointer"
                   >
                     Saqlash
                   </button>
@@ -2802,7 +3065,7 @@ export default function PatientProfile() {
             </div>
           ) : subSection === 'perio' ? (
             /* 2. Perio Chart Screen */
-            <div className="bg-white border border-[#e8eaed] rounded-lg shadow-sm overflow-hidden p-6">
+            <div className="bg-white border border-[#e8eaed] rounded-2xl shadow-sm overflow-hidden p-6 pb-28 md:pb-6">
               <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
                 <div>
                   <h3 className="text-base font-bold text-slate-800">Parodontal xarita (Perio Chart)</h3>
@@ -2811,16 +3074,16 @@ export default function PatientProfile() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setSubSection('dental')}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all"
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all cursor-pointer"
                   >
-                    Orqaga (Tish jadvali)
+                    ← Orqaga (Tish formulasi)
                   </button>
                   <button
                     onClick={() => {
                       localStorage.setItem(`perio_chart_${patient.id}`, JSON.stringify(perioData));
                       toast.success("Perio diagrammasi muvaffaqiyatli saqlandi!");
                     }}
-                    className="px-4 py-2 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/10 border-none"
+                    className="px-4 py-2 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/10 border-none cursor-pointer"
                   >
                     Saqlash
                   </button>
@@ -3121,8 +3384,8 @@ export default function PatientProfile() {
               {/* Tooth Chart + Legend Side by Side inside the wide full-width card */}
               <div className="flex flex-col lg:flex-row gap-0">
                 {/* Dental Chart */}
-                <div className="flex-1 p-4 overflow-x-auto no-scrollbar min-w-0">
-                  <div className="min-w-[760px]">
+                <div className="flex-1 p-2 sm:p-4 overflow-x-auto no-scrollbar min-w-0 w-full flex justify-center">
+                  <div className="w-full flex justify-center">
                     <ProfessionalOdontogram 
                       selectedTeeth={odontogramSelectedTeeth} 
                       onChange={stableOnOdontogramChange} 
@@ -3131,6 +3394,7 @@ export default function PatientProfile() {
                       toothStatuses={toothStatuses}
                       patientType={patientType}
                       onPatientTypeChange={setPatientType}
+                      patientAge={age}
                       chartView={chartView}
                       showOcclusal={showOcclusal}
                       psrScores={psrScores}
@@ -3144,7 +3408,7 @@ export default function PatientProfile() {
 
                 {/* Right legend panel — BClinic uslubi / Edit panel */}
                 <div className={cn(
-                  "shrink-0 border-t lg:border-t-0 lg:border-l border-[#e8eaed] p-4 bg-white transition-all duration-300",
+                  "shrink-0 border-t lg:border-t-0 lg:border-l border-[#e8eaed] p-3 sm:p-4 bg-white transition-all duration-300",
                   chartEditMode ? "lg:w-[480px] bg-slate-50/50" : "lg:w-64"
                 )}>
                   {chartEditMode ? (
@@ -3630,6 +3894,209 @@ export default function PatientProfile() {
             </div>
           )}
 
+            {/* Tooth-level treatments and plans */}
+            <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm mt-6">
+              <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-emerald-600" />
+                Davolash tarixi va rejalashtirilgan ishlar
+              </h3>
+              
+              {/* Statistika — Bajarildi / Jarayonda / Rejalashtirilgan */}
+              {treatmentStats.total > 0 && (
+                <div className="grid grid-cols-3 gap-3 mb-6">
+                  <button
+                    type="button"
+                    onClick={() => setTreatmentStatusFilter(prev => prev === 'completed' ? 'all' : 'completed')}
+                    className={cn(
+                      "rounded-2xl p-3.5 border transition-all text-left cursor-pointer",
+                      treatmentStatusFilter === 'completed'
+                        ? "bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-500/20 scale-[1.02]"
+                        : "bg-emerald-50/80 hover:bg-emerald-100/70 border-emerald-200/80 text-emerald-800"
+                    )}
+                  >
+                    <div className={cn("text-2xl font-black", treatmentStatusFilter === 'completed' ? "text-white" : "text-emerald-700")}>
+                      {treatmentStats.completed}
+                    </div>
+                    <div className={cn("text-xs font-bold mt-0.5 flex items-center justify-between", treatmentStatusFilter === 'completed' ? "text-emerald-100" : "text-emerald-600")}>
+                      <span>Bajarildi ✅</span>
+                      {treatmentStatusFilter === 'completed' && <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-medium">Faol</span>}
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTreatmentStatusFilter(prev => prev === 'in_progress' ? 'all' : 'in_progress')}
+                    className={cn(
+                      "rounded-2xl p-3.5 border transition-all text-left cursor-pointer",
+                      treatmentStatusFilter === 'in_progress'
+                        ? "bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/20 scale-[1.02]"
+                        : "bg-amber-50/80 hover:bg-amber-100/70 border-amber-200/80 text-amber-800"
+                    )}
+                  >
+                    <div className={cn("text-2xl font-black", treatmentStatusFilter === 'in_progress' ? "text-white" : "text-amber-700")}>
+                      {treatmentStats.inProgress}
+                    </div>
+                    <div className={cn("text-xs font-bold mt-0.5 flex items-center justify-between", treatmentStatusFilter === 'in_progress' ? "text-amber-100" : "text-amber-600")}>
+                      <span>Jarayonda 🩹</span>
+                      {treatmentStatusFilter === 'in_progress' && <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-medium">Faol</span>}
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTreatmentStatusFilter(prev => prev === 'planned' ? 'all' : 'planned')}
+                    className={cn(
+                      "rounded-2xl p-3.5 border transition-all text-left cursor-pointer",
+                      treatmentStatusFilter === 'planned'
+                        ? "bg-blue-500 text-white border-blue-600 shadow-md shadow-blue-500/20 scale-[1.02]"
+                        : "bg-blue-50/80 hover:bg-blue-100/70 border-blue-200/80 text-blue-800"
+                    )}
+                  >
+                    <div className={cn("text-2xl font-black", treatmentStatusFilter === 'planned' ? "text-white" : "text-blue-700")}>
+                      {treatmentStats.planned}
+                    </div>
+                    <div className={cn("text-xs font-bold mt-0.5 flex items-center justify-between", treatmentStatusFilter === 'planned' ? "text-blue-100" : "text-blue-600")}>
+                      <span>Rejalashtirilgan 📋</span>
+                      {treatmentStatusFilter === 'planned' && <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-medium">Faol</span>}
+                    </div>
+                  </button>
+                </div>
+              )}
+
+              {/* Muolajalar tarixi va rejalari (Tishlar kesimida) */}
+              {Object.keys(filteredTeethDetailedServices).length > 0 ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+                    <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-emerald-500" /> Tishlar bo'yicha batafsil ro'yxat
+                    </h4>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {treatmentStatusFilter !== 'all' && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs bg-indigo-50 text-indigo-700 font-bold px-2.5 py-1 rounded-lg border border-indigo-100 flex items-center gap-1">
+                            Status: {treatmentStatusFilter === 'completed' ? 'Bajarilgan ishlar' : treatmentStatusFilter === 'in_progress' ? 'Jarayondagi ishlar' : 'Rejadagi ishlar'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setTreatmentStatusFilter('all')}
+                            className="text-[11px] text-slate-400 hover:text-slate-600 underline cursor-pointer"
+                          >
+                            Barchasi
+                          </button>
+                        </div>
+                      )}
+                      {toothSearchQuery && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs bg-blue-50 text-[#1a73e8] font-bold px-2.5 py-1 rounded-lg border border-blue-100">
+                            "{toothSearchQuery}" bo'yicha: {Object.keys(filteredTeethDetailedServices).length} ta tish topildi
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setToothSearchQuery('')}
+                            className="text-[11px] text-slate-400 hover:text-slate-600 underline cursor-pointer"
+                          >
+                            Qidiruvni tozalash
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {Object.entries(filteredTeethDetailedServices).map(([fdiNumber, services]) => {
+                      const hasCompleted = services.some(s => s.status === 'completed');
+                      const hasInProgress = services.some(s => s.status === 'in_progress');
+                      const hasImplant = services.some(s => s.status === 'implant');
+                      
+                      const statusColorClass = hasCompleted ? 'border-l-[3px] border-l-emerald-500' :
+                                               hasInProgress ? 'border-l-[3px] border-l-amber-500' :
+                                               hasImplant ? 'border-l-[3px] border-l-indigo-500' :
+                                               'border-l-[3px] border-l-blue-500';
+
+                      return (
+                        <div 
+                          key={fdiNumber} 
+                          onClick={() => {
+                            setSelectedTooth({ id: services[0]?.toothId, fdi: fdiNumber });
+                            setHistoryModalOpen(true);
+                          }}
+                          className={`bg-white hover:bg-slate-50/80 rounded-xl p-3 border border-slate-100 shadow-sm transition-all duration-200 cursor-pointer hover:border-slate-200 flex flex-col justify-between ${statusColorClass}`}
+                        >
+                          <div>
+                            {/* Card Header */}
+                            <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-slate-100">
+                              <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                                <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10px] flex items-center justify-center font-bold">
+                                  #{fdiNumber}
+                                </span>
+                                Tish
+                              </span>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                {services.length} ta amal
+                              </span>
+                            </div>
+
+                            {/* Services List inside this Tooth */}
+                            <div className="divide-y divide-slate-100">
+                              {services.map((svc) => (
+                                <div key={svc.id} className="py-2 first:pt-0 last:pb-0 flex flex-col gap-1">
+                                  <div className="flex justify-between items-start gap-1.5">
+                                    <span className="text-[11px] font-bold text-slate-700 leading-snug truncate flex-1" title={svc.name}>
+                                      {svc.name}
+                                    </span>
+                                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider shrink-0 ${
+                                      svc.status === 'completed' ? 'bg-emerald-50 text-emerald-600' :
+                                      svc.status === 'in_progress' ? 'bg-amber-50 text-amber-600' :
+                                      svc.status === 'implant' ? 'bg-indigo-50 text-indigo-600' :
+                                      'bg-blue-50 text-blue-600'
+                                    }`}>
+                                      {svc.status === 'completed' ? "Bajarildi" :
+                                       svc.status === 'in_progress' ? "Jarayonda" :
+                                       svc.status === 'implant' ? "Implant" :
+                                       "Reja"}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center justify-between text-[9px] text-slate-400">
+                                    <span>
+                                      {svc.date ? new Date(svc.date).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit' }) : '—'}
+                                    </span>
+                                    {svc.price !== null && svc.price !== undefined && (
+                                      <span className="font-black text-emerald-600">
+                                        {svc.price.toLocaleString()} so'm
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : Object.keys(teethDetailedServices).length > 0 && toothSearchQuery ? (
+                <div className="text-center py-10 text-slate-500 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <Search className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                  <p className="text-xs font-bold text-slate-600">"{toothSearchQuery}" bo'yicha hech qanday tish yoki muolaja topilmadi</p>
+                  <button
+                    type="button"
+                    onClick={() => setToothSearchQuery('')}
+                    className="mt-2 text-xs text-[#1a73e8] hover:underline font-bold cursor-pointer"
+                  >
+                    Qidiruvni tozalash
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-slate-500">
+                  <Activity className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                  <p className="text-sm font-bold">Hali davolash yoki tashxis tarixi yo'q</p>
+                  <p className="text-xs text-slate-400 mt-1">Bemorda davolash rejasi tuzilganidan keyin ma'lumotlar bu yerda ko'rinadi</p>
+                </div>
+              )}
+            </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             {/* LEFT & CENTER COLUMN — 2/3 width */}
             <div className="lg:col-span-2 space-y-3">
@@ -3721,9 +4188,8 @@ export default function PatientProfile() {
                           const raw = item.rawData;
                           const docName = raw.doctor_name || raw.doctor || (doctors && doctors.find(d => d.id === raw.doctor_id)?.name) || null;
                           const teeth = (raw.tooth_numbers || [raw.tooth_number]).filter(Boolean);
-                          const hasDiscount = raw.discount_amount > 0 || raw.discount_percent > 0;
-                          const originalPrice = raw.original_price || raw.total_price;
-                          const discountedPrice = raw.total_price;
+                          const hasDiscount = (Number(raw.discount_amount) > 0) || (Number(raw.discount_percent) > 0);
+                          const discountedPrice = Number(raw.total_price) || 0;
                           return (
                             <div className="space-y-2">
                               {/* Plan name */}
@@ -3756,19 +4222,19 @@ export default function PatientProfile() {
                                   </span>
                                 )}
                               </div>
-                              {/* Price block */}
+                              {/* Price block - faqat chegirmali yakuniy narx ko'rsatiladi */}
                               {discountedPrice > 0 && (
-                                <div className="flex items-center gap-3 mt-1 p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                                <div className="flex items-center justify-between flex-wrap gap-2 mt-1 p-2.5 bg-emerald-50/80 rounded-xl border border-emerald-100">
                                   <div>
-                                    <div className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wide">Narx</div>
-                                    <div className="text-[13px] font-black text-emerald-700">{discountedPrice.toLocaleString()} so'm</div>
+                                    <div className="text-[10px] text-emerald-600 font-bold uppercase tracking-wide">Narx (Chegirma bilan)</div>
+                                    <div className="text-[14px] font-black text-emerald-700">{discountedPrice.toLocaleString()} so'm</div>
                                   </div>
-                                  {hasDiscount && originalPrice && originalPrice !== discountedPrice && (
-                                    <div className="ml-2">
-                                      <div className="text-[10px] text-orange-500 font-semibold uppercase tracking-wide">Chegirma</div>
-                                      <div className="text-[11px] font-bold text-orange-500">
+                                  {hasDiscount && (
+                                    <div className="bg-white px-2.5 py-1 rounded-lg border border-orange-200 shadow-2xs text-right">
+                                      <div className="text-[9px] text-orange-500 font-bold uppercase tracking-wide">Chegirma qo'llangan</div>
+                                      <div className="text-[11px] font-black text-orange-600">
                                         {raw.discount_percent ? `-${raw.discount_percent}%` : ''}
-                                        {raw.discount_amount ? ` -${raw.discount_amount.toLocaleString()} so'm` : ''}
+                                        {raw.discount_amount ? ` (${Number(raw.discount_amount).toLocaleString()} so'm)` : ''}
                                       </div>
                                     </div>
                                   )}
@@ -3781,10 +4247,13 @@ export default function PatientProfile() {
                         {/* ── PAYMENT ── */}
                         {item.type === 'payment' && (() => {
                           const raw = item.rawData;
-                          const amount = raw.amount || 0;
-                          const isDiscount = amount < 0;
+                          const amount = Math.abs(Number(raw.amount) || 0);
+                          const pType = (raw.type || '').toLowerCase();
+                          const isDiscount = item.isDiscount || pType === 'discount' || Number(raw.amount) < 0;
+                          const isRefund = item.isRefund || pType === 'refund';
+                          const isExp = item.isExpense || pType === 'expense';
                           const isPlan = item.isPlanPayment;
-                          const isExp = item.isExpense;
+                          const isDebt = pType === 'debt';
                           const docName = raw.doctor_name || (doctors && doctors.find(d => d.id === raw.doctor_id)?.name) || null;
                           const methodLabel =
                             raw.method === 'Cash' ? 'Naqd' :
@@ -3792,18 +4261,16 @@ export default function PatientProfile() {
                             raw.method === 'Transfer' ? "O'tkazma" :
                             raw.method || '—';
 
-                          // Determine visual style
-                          // Auto-applied discounts (negative plan-linked) → also show as pending
-                          const isAutoDiscount = isDiscount && (item.isPlanPayment || (raw.notes || '').toLowerCase().includes('chegirma'));
-                          const style = (isPlan && !isDiscount)
-                            ? { bg: 'bg-amber-50', border: 'border-amber-200', iconBg: 'bg-amber-100', icon: '🕐', labelColor: 'text-amber-600', amtColor: 'text-amber-700', label: "Reja narxi — to'lov kutilmoqda", showBadge: true }
-                            : isAutoDiscount
-                              ? { bg: 'bg-amber-50', border: 'border-amber-200', iconBg: 'bg-amber-100', icon: '🏷️', labelColor: 'text-amber-600', amtColor: 'text-amber-700', label: 'Chegirma qo\'llangan — to\'lov kutilmoqda', showBadge: true }
-                              : isDiscount
-                                ? { bg: 'bg-orange-50', border: 'border-orange-100', iconBg: 'bg-orange-100', icon: '🏷️', labelColor: 'text-orange-500', amtColor: 'text-orange-600', label: 'Chegirma / Qaytarildi', showBadge: false }
-                                : isExp
-                                  ? { bg: 'bg-rose-50', border: 'border-rose-100', iconBg: 'bg-rose-100', icon: '💸', labelColor: 'text-rose-500', amtColor: 'text-rose-600', label: 'Xarajat', showBadge: false }
-                                  : { bg: 'bg-emerald-50', border: 'border-emerald-100', iconBg: 'bg-emerald-100', icon: '💰', labelColor: 'text-emerald-600', amtColor: 'text-emerald-700', label: "To'lov qabul qilindi", showBadge: false };
+                          // Chegirmalar hech qachon "to'lov kutilmoqda" yoki "To'lanmagan" deb ko'rsatilmaydi!
+                          const style = isDiscount
+                            ? { bg: 'bg-purple-50', border: 'border-purple-200', iconBg: 'bg-purple-100', icon: '🏷️', labelColor: 'text-purple-700', amtColor: 'text-purple-800', label: 'Chegirma berildi', showBadge: false, prefix: '−' }
+                            : isRefund
+                              ? { bg: 'bg-indigo-50', border: 'border-indigo-100', iconBg: 'bg-indigo-100', icon: '↩️', labelColor: 'text-indigo-600', amtColor: 'text-indigo-700', label: 'To\'lov qaytarildi', showBadge: false, prefix: '−' }
+                              : isExp
+                                ? { bg: 'bg-rose-50', border: 'border-rose-100', iconBg: 'bg-rose-100', icon: '💸', labelColor: 'text-rose-600', amtColor: 'text-rose-700', label: 'Xarajat', showBadge: false, prefix: '−' }
+                                : isDebt
+                                  ? { bg: 'bg-amber-50', border: 'border-amber-200', iconBg: 'bg-amber-100', icon: '🕐', labelColor: 'text-amber-700', amtColor: 'text-amber-800', label: 'Qarzdorlik yozuvi', showBadge: true, prefix: '' }
+                                  : { bg: 'bg-emerald-50', border: 'border-emerald-100', iconBg: 'bg-emerald-100', icon: '💰', labelColor: 'text-emerald-700', amtColor: 'text-emerald-800', label: "To'lov qabul qilindi", showBadge: false, prefix: '+' };
 
                           return (
                             <div className="space-y-2">
@@ -3817,7 +4284,7 @@ export default function PatientProfile() {
                                     {style.label}
                                   </div>
                                   <div className={`text-[15px] font-black ${style.amtColor}`}>
-                                    {isDiscount ? '−' : isPlan ? '' : '+'}{Math.abs(amount).toLocaleString()} so'm
+                                    {style.prefix}{amount.toLocaleString()} so'm
                                   </div>
                                 </div>
                                 {style.showBadge && (
@@ -3828,7 +4295,7 @@ export default function PatientProfile() {
                               </div>
                               {/* Info chips */}
                               <div className="flex flex-wrap gap-1.5">
-                                {!isPlan && (
+                                {!isPlan && !isDiscount && !isDebt && (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200">
                                     💳 {methodLabel}
                                   </span>
@@ -4100,7 +4567,7 @@ export default function PatientProfile() {
                     <p className="text-[14px] font-medium text-[#5f6368]">Hozircha uchrashuvlar yo'q</p>
                     <button
                       onClick={() => setApptModalOpen(true)}
-                      className="px-5 py-2 bg-[#4285f4] text-white text-[13px] font-medium rounded hover:bg-[#3367d6] transition-colors"
+                      className="hidden lg:inline-block px-5 py-2 bg-[#4285f4] text-white text-[13px] font-medium rounded hover:bg-[#3367d6] transition-colors"
                     >
                       Uchrashuv belgilash
                     </button>
@@ -4193,7 +4660,7 @@ export default function PatientProfile() {
                   ))}
 
                   {/* Bottom action buttons — ClinicCard style */}
-                  <div className="flex gap-0 mt-0">
+                  <div className="hidden lg:flex gap-0 mt-0">
                     <button
                       onClick={() => setApptModalOpen(true)}
                       className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#4285f4] hover:bg-[#3367d6] text-white text-[13px] font-medium transition-colors"
@@ -4209,7 +4676,7 @@ export default function PatientProfile() {
                       Ism qo'shish
                     </button>
                   </div>
-                  <div className="">
+                  <div className="hidden lg:block">
                     <button 
                       onClick={() => setNoteModalOpen(true)}
                       className="w-full flex items-center justify-center gap-2 py-3 bg-[#fbbc04] hover:bg-[#f5a623] text-white text-[13px] font-medium transition-colors"
@@ -4252,7 +4719,7 @@ export default function PatientProfile() {
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" strokeWidth="2"><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M19 4h-3M5 4H2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"/></svg>
                     </div>
                     <p className="text-[12px] text-[#9aa0a6]">Davolash rejalari yo'q</p>
-                    <button onClick={() => setTreatmentModalOpen(true)} className="px-4 py-1.5 bg-[#4285f4] text-white text-[12px] rounded hover:bg-[#3367d6] transition-colors">
+                    <button onClick={() => setTreatmentModalOpen(true)} className="hidden lg:inline-block px-4 py-1.5 bg-[#4285f4] text-white text-[12px] rounded hover:bg-[#3367d6] transition-colors">
                       Reja qo'shish
                     </button>
                   </div>
@@ -4499,8 +4966,8 @@ export default function PatientProfile() {
                 <span className="text-[10px] text-slate-400 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded font-medium">Rangli flat ko'rinish</span>
               </div>
               
-              <div className="border border-slate-100 rounded-2xl overflow-x-auto bg-slate-50/50 p-4 no-scrollbar">
-                <div className="min-w-[760px] mx-auto">
+              <div className="border border-slate-100 rounded-2xl overflow-x-auto bg-slate-50/50 p-4 no-scrollbar w-full flex justify-center">
+                <div className="lg:min-w-[760px] w-full mx-auto flex justify-center">
                   <ProfessionalOdontogram 
                     selectedTeeth={odontogramEmptySelectedTeeth} 
                     onChange={stableOnOdontogramChange} 
@@ -4509,6 +4976,7 @@ export default function PatientProfile() {
                     toothStatuses={toothStatuses}
                     patientType={patientType}
                     onPatientTypeChange={setPatientType}
+                    patientAge={age}
                     chartView={chartView}
                     showOcclusal={showOcclusal}
                     psrScores={psrScores}
@@ -4826,145 +5294,7 @@ export default function PatientProfile() {
           )}
         </TabsContent>
 
-        {/* TISHLAR — DENTAL CHART */}
-        <TabsContent value="teeth" className="space-y-6 outline-none">
-          {activeTab === 'teeth' && (
-          <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
-            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-emerald-600" />
-              Davolash tarixi
-            </h3>
-            
-            {/* Statistika */}
-            {treatedTeeth.length > 0 && (
-              <div className="grid grid-cols-3 gap-3 mb-6">
-                <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
-                  <div className="text-2xl font-bold text-emerald-700">
-                    {Object.values(toothStatuses).filter(s => s.status === 'completed').length}
-                  </div>
-                  <div className="text-xs text-emerald-600 font-medium">Bajarildi ✅</div>
-                </div>
-                <div className="bg-amber-50 rounded-xl p-3 border border-amber-200">
-                  <div className="text-2xl font-bold text-amber-700">
-                    {Object.values(toothStatuses).filter(s => s.status === 'in_progress').length}
-                  </div>
-                  <div className="text-xs text-amber-600 font-medium">Jarayonda 💉</div>
-                </div>
-                <div className="bg-blue-50 rounded-xl p-3 border border-blue-200">
-                  <div className="text-2xl font-bold text-blue-700">
-                    {Object.values(toothStatuses).filter(s => s.status === 'planned').length}
-                  </div>
-                  <div className="text-xs text-blue-600 font-medium">Rejalashtirilgan 📋</div>
-                </div>
-              </div>
-            )}
-            
-            {/* Tish diagrammasi */}
-            <div className="overflow-x-auto no-scrollbar min-w-0 mt-6">
-              <div className="min-w-[760px]">
-                <ProfessionalOdontogram 
-                  selectedTeeth={odontogramEmptySelectedTeeth} 
-                  onChange={stableOnOdontogramChange} 
-                  onToothClick={handleNotesToothClick}
-                  multi={true}
-                  toothStatuses={toothStatuses}
-                  patientType={patientType}
-                  onPatientTypeChange={setPatientType}
-                />
-            </div>
-          </div>
-            
-            {/* Muolajalar tarixi va rejalari (Tishlar kesimida) */}
-            {Object.keys(teethDetailedServices).length > 0 ? (
-              <div className="mt-8 space-y-6">
-                <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-3 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-500" /> Tishlar bo'yicha muolajalar va rejalashtirilgan ishlar
-                </h4>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {Object.entries(teethDetailedServices).map(([fdiNumber, services]) => {
-                    const hasCompleted = services.some(s => s.status === 'completed');
-                    const hasInProgress = services.some(s => s.status === 'in_progress');
-                    const hasImplant = services.some(s => s.status === 'implant');
-                    
-                    const statusColorClass = hasCompleted ? 'border-l-[3px] border-l-emerald-500' :
-                                             hasInProgress ? 'border-l-[3px] border-l-amber-500' :
-                                             hasImplant ? 'border-l-[3px] border-l-indigo-500' :
-                                             'border-l-[3px] border-l-blue-500';
 
-                    return (
-                      <div 
-                        key={fdiNumber} 
-                        onClick={() => {
-                          setSelectedTooth({ id: services[0]?.toothId, fdi: fdiNumber });
-                          setHistoryModalOpen(true);
-                        }}
-                        className={`bg-white hover:bg-slate-50/80 rounded-xl p-3 border border-slate-100 shadow-sm transition-all duration-200 cursor-pointer hover:border-slate-200 flex flex-col justify-between ${statusColorClass}`}
-                      >
-                        <div>
-                          {/* Card Header */}
-                          <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-slate-100">
-                            <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                              <span className="w-5 h-5 rounded bg-slate-900 text-white text-[10px] flex items-center justify-center font-bold">
-                                #{fdiNumber}
-                              </span>
-                              Tish
-                            </span>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                              {services.length} ta amal
-                            </span>
-                          </div>
-
-                          {/* Services List inside this Tooth */}
-                          <div className="divide-y divide-slate-100">
-                            {services.map((svc) => (
-                              <div key={svc.id} className="py-2 first:pt-0 last:pb-0 flex flex-col gap-1">
-                                <div className="flex justify-between items-start gap-1.5">
-                                  <span className="text-[11px] font-bold text-slate-700 leading-snug truncate flex-1" title={svc.name}>
-                                    {svc.name}
-                                  </span>
-                                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider shrink-0 ${
-                                    svc.status === 'completed' ? 'bg-emerald-50 text-emerald-600' :
-                                    svc.status === 'in_progress' ? 'bg-amber-50 text-amber-600' :
-                                    svc.status === 'implant' ? 'bg-indigo-50 text-indigo-600' :
-                                    'bg-blue-50 text-blue-600'
-                                  }`}>
-                                    {svc.status === 'completed' ? "Bajarildi" :
-                                     svc.status === 'in_progress' ? "Jarayonda" :
-                                     svc.status === 'implant' ? "Implant" :
-                                     "Reja"}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center justify-between text-[9px] text-slate-400">
-                                  <span>
-                                    {svc.date ? new Date(svc.date).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit' }) : '—'}
-                                  </span>
-                                  {svc.price !== null && svc.price !== undefined && (
-                                    <span className="font-black text-emerald-600">
-                                      {svc.price.toLocaleString()} so'm
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-16 text-slate-500">
-                <Activity className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                <p className="text-sm font-bold">Hali davolash yoki tashxis tarixi yo'q</p>
-                <p className="text-xs text-slate-400 mt-1">Bemorda davolash rejasi tuzilganidan keyin ma'lumotlar bu yerda ko'rinadi</p>
-              </div>
-            )}
-          </div>
-          )}
-        </TabsContent>
         </div>{/* end min-w-0 */}
       </Tabs>
       </div>{/* end max-w-7xl */}
@@ -5937,55 +6267,69 @@ export default function PatientProfile() {
         />
       )}
 
-      {/* FAB - Contextual Add Button */}
-      <div className="fixed bottom-24 right-6 left-6 flex justify-center z-40 lg:hidden">
-        {(() => {
-          let label = "";
-          let icon = null;
-          let onClick = null;
-          
-          switch(activeTab) {
-            case 'info':
-            case 'appointments':
-              label = "Uchrashuv";
-              icon = <Calendar className="w-5 h-5" />;
-              onClick = () => setApptModalOpen(true);
-              break;
-            case 'treatments':
-              label = "Davolash";
-              icon = <Activity className="w-5 h-5" />;
-              onClick = () => setTreatmentModalOpen(true);
-              break;
-            case 'payments':
-              label = "To'lov";
-              icon = <DollarSign className="w-5 h-5" />;
-              onClick = openPayModal;
-              break;
-            case 'implants':
-              label = "Implant";
-              icon = <Tooth className="w-5 h-5" />;
-              onClick = () => setImplantModalOpen(true);
-              break;
-            case 'notes':
-              label = "Zametka";
-              icon = <MessageSquare className="w-5 h-5" />;
-              onClick = () => setNoteModalOpen(true);
-              break;
-            default:
-              return null;
-          }
-          
-          return (
-            <Button 
-              onClick={onClick}
-              className="h-14 px-10 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-black flex items-center justify-center shadow-2xl shadow-slate-900/40 border-none animate-in fade-in slide-in-from-bottom-4 duration-500"
-            >
-              <span className="uppercase text-[11px] tracking-widest flex items-center">
-                {label} qoshish
-              </span>
-            </Button>
-          );
-        })()}
+      {/* Local FAB - Contextual Add Button for BClinic Mobile */}
+      <div className="fixed bottom-24 right-5 z-40 lg:hidden">
+        {/* local actions popup speed dial */}
+        <AnimatePresence>
+          {showLocalActions && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowLocalActions(false)}
+                className="fixed inset-0 bg-black/40 backdrop-blur-[2px] -z-10"
+              />
+              
+              {/* Actions list */}
+              <motion.div
+                initial={{ opacity: 0, y: 30, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 30, scale: 0.9 }}
+                className="absolute bottom-[4.5rem] right-0 flex flex-col gap-2.5 items-end min-w-max"
+              >
+                {[
+                  { label: "Uchrashuv belgilash", icon: Calendar, color: 'from-[#ff6d00] to-[#e65100]', onClick: () => { setApptModalOpen(true); setShowLocalActions(false); } },
+                  { label: "To'lov qabul qilish", icon: DollarSign, color: 'from-emerald-500 to-teal-600', onClick: () => { openPayModal(); setShowLocalActions(false); } },
+                  { label: "Eslatma yozish", icon: MessageSquare, color: 'from-amber-500 to-orange-600', onClick: () => { setNoteModalOpen(true); setShowLocalActions(false); } },
+                  { label: "Davolash rejasi", icon: Activity, color: 'from-[#1499AD] to-[#0E7A8A]', onClick: () => { setTreatmentModalOpen(true); setShowLocalActions(false); } },
+                ].map((item, idx) => {
+                  const IconComp = item.icon;
+                  return (
+                    <motion.button
+                      key={idx}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={item.onClick}
+                      className="flex items-center gap-2.5 bg-white border border-slate-100 pl-3.5 pr-2 py-1.5 rounded-2xl shadow-xl active:scale-95 cursor-pointer"
+                    >
+                      <span className="text-[10px] font-black text-slate-700 tracking-tight uppercase">{item.label}</span>
+                      <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center text-white shadow-md`}>
+                        <IconComp className="w-4 h-4 text-white" />
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Circular FAB Button */}
+        <motion.button
+          whileTap={{ scale: 0.92 }}
+          onClick={() => setShowLocalActions(!showLocalActions)}
+          className="bg-gradient-to-br from-[#1499AD] to-[#0E7A8A] rounded-full shadow-xl shadow-[#1499AD]/40 flex items-center justify-center text-white border-[3px] border-white z-50 relative cursor-pointer"
+          style={{ width: 52, height: 52 }}
+        >
+          <motion.div
+            animate={{ rotate: showLocalActions ? 45 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center justify-center"
+          >
+            <Plus className="w-6 h-6 text-white stroke-[2.5]" />
+          </motion.div>
+        </motion.button>
       </div>
 
       <TreatmentPlanModal 
@@ -6007,16 +6351,16 @@ export default function PatientProfile() {
       />
 
       <Dialog open={noteModalOpen} onOpenChange={setNoteModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-[2.5rem] p-8">
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] p-6 rounded-[2.5rem] border-none shadow-2xl flex flex-col overflow-visible">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black uppercase tracking-tight">Eslatma qo'shish</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-4">
+          <div className="space-y-4 pt-4 overflow-y-auto max-h-[60vh] pb-2 no-scrollbar">
             <Textarea 
               value={newNoteContent}
               onChange={e => setNewNoteContent(e.target.value)}
               placeholder="Bemor uchun eslatmani kiriting..."
-              className="min-h-[120px] rounded-2xl border-slate-100 bg-slate-50 font-medium"
+              className="min-h-[120px] rounded-2xl border-slate-100 bg-slate-50 font-medium text-xs px-4"
             />
             <div className="flex gap-3 pt-2">
               <Button variant="ghost" className="flex-1 h-12 rounded-2xl font-bold text-slate-400" onClick={() => setNoteModalOpen(false)}>Bekor qilish</Button>
@@ -6033,33 +6377,33 @@ export default function PatientProfile() {
       </Dialog>
 
       <Dialog open={manualLogModalOpen} onOpenChange={setManualLogModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-[2.5rem] p-8 border-none shadow-2xl">
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] p-6 rounded-[2.5rem] border-none shadow-2xl flex flex-col overflow-visible">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black uppercase tracking-tight">Muolaja / Tarix qo'shish</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-4">
+          <div className="space-y-4 pt-4 overflow-y-auto max-h-[60vh] pb-2 no-scrollbar">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Muolaja, holat yoki tashxis tafsilotlari</Label>
-              <Textarea 
-                value={manualLog.content}
-                onChange={e => setManualLog(prev => ({ ...prev, content: e.target.value }))}
-                placeholder="Muolajani yozing (masalan, 36-tish kariesi davolandi, plomba qo'yildi)..."
-                className="min-h-[100px] rounded-2xl border-slate-100 bg-slate-50 font-medium"
-              />
+               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Muolaja, holat yoki tashxis tafsilotlari</Label>
+               <Textarea 
+                 value={manualLog.content}
+                 onChange={e => setManualLog(prev => ({ ...prev, content: e.target.value }))}
+                 placeholder="Muolajani yozing (masalan, 36-tish kariesi davolandi, plomba qo'yildi)..."
+                 className="min-h-[100px] rounded-2xl border-slate-100 bg-slate-50 font-medium text-xs px-4"
+               />
             </div>
             
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mas'ul Shifokor</Label>
-              <select
-                value={manualLog.doctor}
-                onChange={e => setManualLog(prev => ({ ...prev, doctor: e.target.value }))}
-                className="h-12 w-full text-xs rounded-xl border border-slate-200 bg-slate-50 px-3 focus:outline-none cursor-pointer font-bold"
-              >
-                {doctors.map(d => (
-                  <option key={d.id} value={d.name}>{d.name}</option>
-                ))}
-                {doctors.length === 0 && <option value="Navbatchi shifokor">Navbatchi shifokor</option>}
-              </select>
+               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mas'ul Shifokor</Label>
+               <select
+                 value={manualLog.doctor}
+                 onChange={e => setManualLog(prev => ({ ...prev, doctor: e.target.value }))}
+                 className="h-12 w-full text-xs rounded-xl border border-slate-200 bg-slate-50 px-3 focus:outline-none cursor-pointer font-bold"
+               >
+                 {doctors.map(d => (
+                   <option key={d.id} value={d.name}>{d.name}</option>
+                 ))}
+                 {doctors.length === 0 && <option value="Navbatchi shifokor">Navbatchi shifokor</option>}
+               </select>
             </div>
 
             <div className="flex gap-3 pt-2">

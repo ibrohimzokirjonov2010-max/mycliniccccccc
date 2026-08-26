@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Search, Image as ImageIcon, Sparkles, X, ChevronRight, ChevronLeft, ArrowLeft, Pen, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
-import { cn } from '@/lib/utils';
 import { base44 } from '@/api/base44Client';
 import { db } from '@/api/supabaseClient';
 import { toast } from 'sonner';
@@ -63,6 +62,12 @@ export default function MobileCases() {
   const [dbDoctors, setDbDoctors] = useState([]);
   const [customTags, setCustomTags] = useState([]);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    const handleOpen = () => setIsModalOpen(true);
+    window.addEventListener('open-cases-upload', handleOpen);
+    return () => window.removeEventListener('open-cases-upload', handleOpen);
+  }, []);
 
   React.useEffect(() => {
     async function loadData() {
@@ -241,15 +246,7 @@ export default function MobileCases() {
       </div>
       )}
 
-      {/* FLOATING ACTION BUTTON (FAB) */}
-      <div className="fixed bottom-24 right-4 z-40">
-         <button 
-           onClick={() => setIsModalOpen(true)}
-           className="w-14 h-14 bg-gradient-to-br from-[#1499AD] to-[#0E7A8A] rounded-full flex items-center justify-center text-white shadow-[0_8px_30px_rgb(20,153,173,0.3)] active:scale-95 transition-transform"
-         >
-           <Camera className="w-6 h-6" />
-         </button>
-      </div>
+
 
       {/* BEFORE/AFTER MOBILE VIEWER */}
       <AnimatePresence>
@@ -671,166 +668,193 @@ function MobileUploadModal({ isOpen, onClose, onSave, existingTags = [], patient
     const phoneStr = p.phone || '';
     const searchStr = patientSearch.toLowerCase();
     return nameStr.includes(searchStr) || phoneStr.includes(searchStr);
-  }).slice(0, 15);
+  });
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: "100%" }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: "100%" }}
-      className="fixed inset-0 z-[60] bg-white flex flex-col"
-    >
-      <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-white">
-        <button onClick={onClose} className="text-slate-400 font-bold p-2 -ml-2">BEKOR</button>
-        <span className="text-slate-900 font-black text-xs uppercase tracking-[0.2em]">Yangi Keys Qo'shish</span>
-        <button onClick={handleSave} className="text-[#1499AD] font-black uppercase p-3 bg-[#1499AD]/10 rounded-xl text-xs tracking-widest">SAQLASH</button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-5 space-y-8 pb-32 bg-slate-50/30">
-        
-        {/* Upload Buttons */}
-        <div className="grid grid-cols-2 gap-4">
-          <label className="aspect-square bg-white border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center justify-center gap-3 relative overflow-hidden transition-colors hover:border-[#1499AD]">
-             <input type="file" accept="image/*" className="hidden" capture="environment" onChange={(e) => handleImageUpload(e, 'before')} />
-             {beforeImg ? (
-                <img src={beforeImg} alt="Before" className="w-full h-full object-cover" />
-             ) : (
-               <>
-                 <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center text-slate-300">
-                   <Camera className="w-6 h-6" />
-                 </div>
-                 <div className="text-center">
-                   <div className="text-slate-400 font-black text-[10px] uppercase tracking-widest">"Oldin" rasm</div>
-                 </div>
-               </>
-             )}
-          </label>
-
-          <label className="aspect-square bg-white border-2 border-dashed border-emerald-200 rounded-[2rem] flex flex-col items-center justify-center gap-3 relative overflow-hidden transition-colors hover:border-emerald-500">
-             <input type="file" accept="image/*" className="hidden" capture="environment" onChange={(e) => handleImageUpload(e, 'after')} />
-             {afterImg ? (
-                <img src={afterImg} alt="After" className="w-full h-full object-cover" />
-             ) : (
-               <>
-                 <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-400">
-                   <Sparkles className="w-6 h-6" />
-                 </div>
-                 <div className="text-center">
-                   <div className="text-emerald-500 font-black text-[10px] uppercase tracking-widest">"Keyin" rasm</div>
-                 </div>
-               </>
-             )}
-          </label>
-        </div>
-
-        {/* Shifokor */}
-        <div>
-           <label className="text-slate-400 text-[10px] font-black uppercase tracking-[0.1em] ml-1 mb-3 block">Davolovchi Shifokor</label>
-           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-             {doctors.length > 0 ? doctors.map(doc => (
-               <button 
-                 key={doc}
-                 onClick={() => setSelectedDoctor(doc)}
-                 className={`shrink-0 px-5 py-3 rounded-2xl text-[11px] font-black whitespace-nowrap transition-all border ${selectedDoctor === doc ? 'bg-[#1499AD] border-[#1499AD] text-white shadow-lg shadow-[#1499AD]/20' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600'}`}
-               >
-                 {doc}
-               </button>
-             )) : (
-                 <span className="text-slate-500 text-[10px] py-1 block italic">Shifokorlar mavjud emas</span>
-             )}
-           </div>
-        </div>
-
-        {/* Bemor */}
-        <div className="relative">
-           <label className="text-slate-400 text-[10px] font-black uppercase tracking-[0.1em] ml-1 mb-3 block">Bemorni tanlash</label>
-           
-           {selectedPatient ? (
-              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 p-5 rounded-[2rem]">
-                <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 bg-emerald-500 text-white rounded-full flex items-center justify-center font-black text-lg shadow-md shadow-emerald-500/30">
-                      { (selectedPatient.full_name || selectedPatient.name)[0] }
-                   </div>
-                   <div>
-                     <div className="text-slate-800 font-black text-sm">{selectedPatient.full_name || selectedPatient.name}</div>
-                     <div className="text-emerald-600 text-xs font-bold mt-0.5">{selectedPatient.phone || "Telefon kiritilmagan"}</div>
-                   </div>
-                </div>
-                <button onClick={() => setSelectedPatient(null)} className="text-slate-300 bg-white p-2 rounded-xl shadow-sm border border-slate-100">
-                  <X className="w-5 h-5" />
-                </button>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-md w-[92vw] max-h-[85vh] p-0 border-none rounded-[2rem] bg-white outline-none overflow-hidden flex flex-col shadow-2xl !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
+        {/* Green Gradient Header */}
+        <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-4 flex items-center justify-between shrink-0 text-white rounded-t-[2rem]">
+           <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm">
+                 <Camera className="w-5 h-5 text-white" />
               </div>
-           ) : (
-              <div className="relative">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
-                <Input 
-                  value={patientSearch}
-                  onChange={e => {
-                    setPatientSearch(e.target.value);
-                    setShowPatientDropdown(true);
-                  }}
-                  onFocus={() => setShowPatientDropdown(true)}
-                  placeholder="Bemorning ismi yoki raqami..." 
-                  className="bg-white border-slate-200 text-slate-800 placeholder:text-slate-300 h-16 pl-14 rounded-[2rem] focus:ring-0 focus:border-[#1499AD]" 
-                />
-                
-                {showPatientDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-[2rem] shadow-2xl shadow-slate-200/50 max-h-60 overflow-y-auto no-scrollbar z-20">
-                    {filteredPatients.length > 0 ? (
-                      filteredPatients.map(p => (
-                        <div 
-                          key={p.id} 
-                          onClick={() => {
-                            setSelectedPatient(p);
-                            setShowPatientDropdown(false);
-                          }}
-                          className="p-5 border-b border-slate-50 cursor-pointer flex justify-between items-center active:bg-slate-50"
-                        >
-                          <div className="flex flex-col">
-                             <span className="text-slate-800 text-sm font-black">{p.full_name || p.name}</span>
-                             <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">{p.phone || "—"}</span>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-slate-300" />
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-10 text-slate-400 text-sm text-center font-bold">Bemor topilmadi...</div>
-                    )}
+              <div>
+                 <h2 className="text-[15px] font-black text-white uppercase leading-none tracking-tight">Yangi Keys Qo'shish</h2>
+                 <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Dental System</p>
+              </div>
+           </div>
+           <button 
+              onClick={onClose} 
+              className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center active:scale-90 transition-all border-none cursor-pointer"
+           >
+              <X className="w-4 h-4" />
+           </button>
+        </div>
+
+        {/* Form Body */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50/30 no-scrollbar">
+          
+          {/* Upload Buttons */}
+          <div className="grid grid-cols-2 gap-4">
+            <label className="h-32 bg-white border-2 border-dashed border-slate-200 rounded-[1.5rem] flex flex-col items-center justify-center gap-2 relative overflow-hidden transition-colors hover:border-[#1499AD] cursor-pointer">
+               <input type="file" accept="image/*" className="hidden" capture="environment" onChange={(e) => handleImageUpload(e, 'before')} />
+               {beforeImg ? (
+                  <img src={beforeImg} alt="Before" className="w-full h-full object-cover" />
+               ) : (
+                 <>
+                   <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-300">
+                     <Camera className="w-5 h-5" />
+                   </div>
+                   <div className="text-center">
+                     <div className="text-slate-400 font-black text-[9px] uppercase tracking-widest">"Oldin" rasm</div>
+                   </div>
+                 </>
+               )}
+            </label>
+
+            <label className="h-32 bg-white border-2 border-dashed border-emerald-200 rounded-[1.5rem] flex flex-col items-center justify-center gap-2 relative overflow-hidden transition-colors hover:border-emerald-500 cursor-pointer">
+               <input type="file" accept="image/*" className="hidden" capture="environment" onChange={(e) => handleImageUpload(e, 'after')} />
+               {afterImg ? (
+                  <img src={afterImg} alt="After" className="w-full h-full object-cover" />
+               ) : (
+                 <>
+                   <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-400">
+                     <Sparkles className="w-5 h-5" />
+                   </div>
+                   <div className="text-center">
+                     <div className="text-emerald-500 font-black text-[9px] uppercase tracking-widest">"Keyin" rasm</div>
+                   </div>
+                 </>
+               )}
+            </label>
+          </div>
+
+          {/* Shifokor */}
+          <div>
+             <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-2 block">Davolovchi Shifokor</label>
+             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+               {doctors.length > 0 ? doctors.map(doc => (
+                 <button 
+                   key={doc}
+                   onClick={() => setSelectedDoctor(doc)}
+                   className={`shrink-0 px-4 py-2.5 rounded-xl text-[10px] font-black whitespace-nowrap transition-all border ${selectedDoctor === doc ? 'bg-[#1499AD] border-[#1499AD] text-white shadow-md' : 'bg-white border-slate-200 text-slate-400'}`}
+                 >
+                   {doc}
+                 </button>
+               )) : (
+                   <span className="text-slate-500 text-[9px] py-1 block italic">Shifokorlar mavjud emas</span>
+               )}
+             </div>
+          </div>
+
+          {/* Bemor */}
+          <div className="relative">
+             <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-2 block">Bemorni tanlash</label>
+             
+             {selectedPatient ? (
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 p-4 rounded-[1.5rem]">
+                  <div className="flex items-center gap-3">
+                     <div className="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center font-black text-sm shadow-md">
+                        { (selectedPatient.full_name || selectedPatient.name)[0] }
+                     </div>
+                     <div>
+                       <div className="text-slate-800 font-black text-xs leading-none">{selectedPatient.full_name || selectedPatient.name}</div>
+                       <div className="text-emerald-600 text-[10px] font-bold mt-1">{selectedPatient.phone || "Telefon kiritilmagan"}</div>
+                     </div>
                   </div>
-                )}
-              </div>
-           )}
-        </div>
-
-        {/* Kategoriyalar (Tags) */}
-        <div>
-           <label className="text-slate-400 text-[10px] font-black uppercase tracking-[0.1em] ml-1 mb-3 block">Kategoriya / Teglar</label>
-           <div className="flex flex-wrap gap-2">
-             {existingTags.length > 0 ? existingTags.map(tag => (
-               <button
-                 key={tag}
-                 onClick={() => toggleTag(tag)}
-                 className={`px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all border ${selectedTags.includes(tag) ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600'}`}
-               >
-                 {tag}
-               </button>
-             )) : (
-               <span className="text-slate-500 text-xs">Kategoriyalar mavjud emas</span>
+                  <button onClick={() => setSelectedPatient(null)} className="text-slate-350 bg-white p-1.5 rounded-lg shadow-sm border border-slate-100 cursor-pointer">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+             ) : (
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                  <Input 
+                    value={patientSearch}
+                    onChange={e => {
+                      setPatientSearch(e.target.value);
+                      setShowPatientDropdown(true);
+                    }}
+                    onFocus={() => setShowPatientDropdown(true)}
+                    placeholder="Bemorning ismi yoki raqami..." 
+                    className="bg-white border-slate-200 text-slate-800 placeholder:text-slate-300 h-12 pl-11 rounded-xl text-xs focus:ring-0 focus:border-[#1499AD]" 
+                  />
+                  
+                  {showPatientDropdown && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-xl shadow-2xl max-h-48 overflow-y-auto no-scrollbar z-20">
+                      {filteredPatients.length > 0 ? (
+                        filteredPatients.map(p => (
+                          <div 
+                            key={p.id} 
+                            onClick={() => {
+                              setSelectedPatient(p);
+                              setShowPatientDropdown(false);
+                            }}
+                            className="p-3.5 border-b border-slate-50 cursor-pointer flex justify-between items-center active:bg-slate-50"
+                          >
+                            <div className="flex flex-col">
+                               <span className="text-slate-800 text-xs font-black">{p.full_name || p.name}</span>
+                               <span className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mt-0.5">{p.phone || "—"}</span>
+                            </div>
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-8 text-slate-400 text-xs text-center font-bold">Bemor topilmadi...</div>
+                      )}
+                    </div>
+                  )}
+                </div>
              )}
-           </div>
+          </div>
+
+          {/* Kategoriyalar (Tags) */}
+          <div>
+             <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-2 block">Kategoriya / Teglar</label>
+             <div className="flex flex-wrap gap-1.5">
+               {existingTags.length > 0 ? existingTags.map(tag => (
+                 <button
+                   key={tag}
+                   onClick={() => toggleTag(tag)}
+                   className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border ${selectedTags.includes(tag) ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-200 text-slate-400'}`}
+                 >
+                   {tag}
+                 </button>
+               )) : (
+                 <span className="text-slate-400 text-[10px] italic">Kategoriyalar mavjud emas</span>
+               )}
+             </div>
+          </div>
+
+          <div>
+            <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-2 block">Batafsil Izoh (ixtiyoriy)</label>
+            <textarea 
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              className="w-full bg-white border border-slate-200 p-3.5 rounded-[1.5rem] text-slate-800 placeholder:text-slate-300 min-h-[90px] outline-none focus:border-[#1499AD] text-xs leading-relaxed resize-none" 
+              placeholder="Bajarilgan ishlar haqida batafsil ma'lumot..."
+            />
+          </div>
+
         </div>
 
-        <div>
-          <label className="text-slate-400 text-[10px] font-black uppercase tracking-[0.1em] ml-1 mb-3 block">Batafsil Izoh (ixtiyoriy)</label>
-          <textarea 
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            className="w-full bg-white border border-slate-200 p-5 rounded-[2rem] text-slate-800 placeholder:text-slate-300 min-h-[140px] outline-none focus:border-[#1499AD] text-sm leading-relaxed" 
-            placeholder="Bajarilgan ishlar haqida batafsil ma'lumot..."
-          />
+        {/* Footer Actions */}
+        <div className="px-5 py-4 bg-slate-50 border-t border-slate-100 flex gap-3 shrink-0">
+           <button 
+              onClick={onClose} 
+              className="flex-1 h-11 rounded-xl border border-slate-200 font-bold text-xs uppercase tracking-wider text-slate-500 bg-white cursor-pointer"
+           >
+              Bekor qilish
+           </button>
+           <button 
+              onClick={handleSave} 
+              className="flex-1 h-11 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black uppercase tracking-wider text-xs shadow-md border-none transition-all cursor-pointer"
+           >
+              Saqlash
+           </button>
         </div>
-
-      </div>
-    </motion.div>
-  )
+      </DialogContent>
+    </Dialog>
+  );
 }

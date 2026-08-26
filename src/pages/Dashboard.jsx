@@ -1,23 +1,20 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { 
   CalendarDays, Users, Clock, DollarSign, 
-  AlertTriangle, Bell, TrendingUp, Activity, 
+  AlertTriangle, TrendingUp, Activity, 
   Zap, CheckCircle2,
-  ChevronRight, Calendar, Heart, Shield
+  ChevronRight, Calendar, Heart
 } from 'lucide-react';
-import { Tooth } from '@/components/ui/Icons';
 import EmptyState from '@/components/ui/EmptyState';
-import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { 
   XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
   AreaChart, Area
 } from 'recharts';
-import { motion, AnimatePresence } from 'framer-motion';
-import { runSeeder } from '../utils/seedData';
+import { motion } from 'framer-motion';
 import { fetchDashboardStats } from '../utils/dashboardUtils';
 import { formatCurrency } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -167,19 +164,6 @@ export default function Dashboard() {
         </div>
         
         <div className="flex items-center gap-4">
-          <motion.button
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={async () => {
-              await runSeeder();
-              refetch();
-            }}
-            className="flex items-center gap-3 px-6 py-3.5 bg-white text-slate-400 border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:text-[#1499AD] transition-all group shadow-sm"
-          >
-            <Shield className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-            VODIY-DEV MODE
-          </motion.button>
-          
           <Link to="/appointments">
             <motion.button
               whileHover={{ scale: 1.05, y: -2 }}
@@ -202,19 +186,26 @@ export default function Dashboard() {
           { title: t('dashboard.newPatients'), value: stats.newPatients, icon: Users, color: 'from-slate-700 to-slate-900', trend: stats.newPatientsTrend || '0%' }
         ].map((stat, i) => {
           const isNegative = stat.trend?.startsWith('-');
+          const isNeutral = stat.trend === '0%' || stat.trend === '—';
+          const trendClass = isNeutral
+            ? "bg-slate-50 text-slate-500"
+            : isNegative
+              ? "bg-rose-50 text-rose-600"
+              : "bg-emerald-50 text-emerald-600";
+          
           return (
             <motion.div
               key={i}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="premium-card p-4 border-none flex flex-col justify-between group hover:shadow-2xl transition-all"
+              transition={{ delay: Math.min(i, 4) * 0.02 }}
+              className="premium-card p-4 border-none flex flex-col justify-between group hover:shadow-2xl transition-all content-visibility-auto"
             >
               <div className="flex items-center justify-between mb-3">
                   <div className={`p-2.5 rounded-xl bg-gradient-to-br ${stat.color} text-white shadow-lg shadow-black/5 group-hover:scale-110 transition-transform`}>
                       <stat.icon className="w-4 h-4" />
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-[10px] font-black ${isNegative ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600"}`}>
+                  <div className={`px-3 py-1 rounded-full text-[10px] font-black ${trendClass}`}>
                       {stat.trend}
                   </div>
               </div>
@@ -371,7 +362,7 @@ export default function Dashboard() {
           <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{t('dashboard.recentActivity')}</h3>
-              <p className="text-[10px] font-black text-[#1499AD] uppercase tracking-[0.2em] mt-1.5 underline-offset-4 decoration-2">Oxirgi harakatlar</p>
+              <p className="text-[10px] font-black text-[#1499AD] uppercase tracking-[0.2em] mt-1.5">Oxirgi harakatlar — kim, nima, qachon</p>
             </div>
             <div className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-[#1499AD]">
                 <Activity className="w-4 h-4" />
@@ -382,43 +373,127 @@ export default function Dashboard() {
             {recentActivity.length > 0 ? (
               recentActivity.map((item, index) => {
                 const isPayment = item.activityType === 'payment';
+                const patientName = item.patient_name
+                  || patients.find(p => String(p.id) === String(item.patient_id))?.full_name
+                  || 'Noma\'lum bemor';
+
+                // ── Payment context ─────────────────────────────────────────
+                const payType = (item.type || 'income').toLowerCase();
+                let payBadgeLabel = 'Daromad';
+                let payBadgeClass = 'bg-emerald-50 text-emerald-700';
+                let payIcon = <DollarSign className="w-4 h-4" />;
+                let iconBg = 'bg-emerald-50 text-emerald-600';
+                if (payType === 'debt') {
+                  payBadgeLabel = 'Qarz';
+                  payBadgeClass = 'bg-rose-50 text-rose-600';
+                  payIcon = <AlertTriangle className="w-4 h-4" />;
+                  iconBg = 'bg-rose-50 text-rose-500';
+                } else if (payType === 'refund') {
+                  payBadgeLabel = 'Qaytarildi';
+                  payBadgeClass = 'bg-amber-50 text-amber-700';
+                  payIcon = <Zap className="w-4 h-4" />;
+                  iconBg = 'bg-amber-50 text-amber-600';
+                } else if (payType === 'expense') {
+                  payBadgeLabel = 'Xarajat';
+                  payBadgeClass = 'bg-slate-100 text-slate-500';
+                  payIcon = <DollarSign className="w-4 h-4" />;
+                  iconBg = 'bg-slate-100 text-slate-500';
+                }
+
+                // ── Appointment context ──────────────────────────────────────
+                const apptStatus = (item.status || 'scheduled').toLowerCase();
+                let apptBadgeLabel = 'Rejalashtirilgan';
+                let apptBadgeClass = 'bg-blue-50 text-blue-600';
+                let apptIconBg = 'bg-blue-50 text-blue-600';
+                if (apptStatus === 'completed') {
+                  apptBadgeLabel = 'Bajarildi';
+                  apptBadgeClass = 'bg-emerald-50 text-emerald-700';
+                  apptIconBg = 'bg-emerald-50 text-emerald-600';
+                } else if (apptStatus === 'cancelled') {
+                  apptBadgeLabel = 'Bekor qilindi';
+                  apptBadgeClass = 'bg-rose-50 text-rose-600';
+                  apptIconBg = 'bg-rose-50 text-rose-500';
+                } else if (apptStatus === 'no-show' || apptStatus === 'noshow') {
+                  apptBadgeLabel = 'Kelmadi';
+                  apptBadgeClass = 'bg-amber-50 text-amber-700';
+                  apptIconBg = 'bg-amber-50 text-amber-600';
+                } else if (apptStatus === 'waiting') {
+                  apptBadgeLabel = 'Kutmoqda';
+                  apptBadgeClass = 'bg-indigo-50 text-indigo-600';
+                  apptIconBg = 'bg-indigo-50 text-indigo-600';
+                }
+
                 return (
                   <motion.div 
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 + 0.6 }}
+                    transition={{ delay: Math.min(index, 6) * 0.02 + 0.1 }}
                     key={index} 
-                    className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50/50 transition-all cursor-pointer group"
+                    className="flex items-start gap-3 px-5 py-3.5 hover:bg-slate-50/50 transition-all cursor-pointer group content-visibility-auto"
                   >
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all group-hover:scale-110 shadow-sm ${
-                      isPayment ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
-                    }`}>
-                      {isPayment ? <DollarSign className="w-4 h-4" /> : <Calendar className="w-4 h-4" />}
+                    {/* Icon */}
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 transition-all group-hover:scale-110 shadow-sm ${isPayment ? iconBg : apptIconBg}`}>
+                      {isPayment ? payIcon : <Calendar className="w-4 h-4" />}
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-4">
-                        <p className="text-base font-black text-slate-900 truncate tracking-tight uppercase">
-                          {isPayment 
-                            ? (item.patient_name || t('payments.income')) 
-                            : (item.patient_name || patients.find(p => String(p.id) === String(item.patient_id))?.full_name || 'Noma\'lum Bemor')}
+                      {/* Row 1: Patient name + date */}
+                      <div className="flex items-center justify-between gap-4 mb-1">
+                        <p className="text-[13px] font-black text-slate-900 truncate tracking-tight uppercase leading-tight">
+                          {patientName}
                         </p>
-                        <span className="text-[11px] font-black text-slate-400 whitespace-nowrap uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-lg">
+                        <span className="text-[10px] font-black text-slate-400 whitespace-nowrap uppercase tracking-widest bg-slate-100 px-2.5 py-1 rounded-lg flex-shrink-0">
                           {item.time || formatActivityDate(item.date)}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 mt-1.5">
-                        <p className={`text-xs font-black tracking-wide uppercase ${
-                          isPayment ? 'text-emerald-500' : 'text-[#1499AD]'
-                        }`}>
-                          {isPayment ? formatCurrency(item.amount) : (item.service_name || t('appointments.title'))}
-                        </p>
-                        <span className="w-0.5 h-0.5 rounded-full bg-slate-300" />
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">TIZIM</span>
+
+                      {/* Row 2: Action description */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Type badge */}
+                        <span className={`text-[9.5px] font-[900] uppercase tracking-wider px-2 py-0.5 rounded-md ${isPayment ? payBadgeClass : apptBadgeClass}`}>
+                          {isPayment ? payBadgeLabel : apptBadgeLabel}
+                        </span>
+
+                        {/* Payment: amount */}
+                        {isPayment && (
+                          <span className={`text-[11px] font-black tracking-wide ${payType === 'debt' ? 'text-rose-500' : payType === 'refund' ? 'text-amber-600' : 'text-emerald-600'}`}>
+                            {payType === 'debt' ? '−' : payType === 'refund' ? '↩ ' : '+'}{formatCurrency(item.amount)}
+                          </span>
+                        )}
+
+                        {/* Payment: category (service name) */}
+                        {isPayment && item.category && (
+                          <>
+                            <span className="w-0.5 h-0.5 rounded-full bg-slate-300 flex-shrink-0" />
+                            <span className="text-[10px] font-bold text-slate-500 truncate max-w-[120px]">
+                              {item.category}
+                            </span>
+                          </>
+                        )}
+
+                        {/* Appointment: service */}
+                        {!isPayment && item.service_name && (
+                          <>
+                            <span className="w-0.5 h-0.5 rounded-full bg-slate-300 flex-shrink-0" />
+                            <span className="text-[10px] font-bold text-slate-500 truncate max-w-[120px]">
+                              {item.service_name}
+                            </span>
+                          </>
+                        )}
+
+                        {/* Doctor name */}
+                        {item.doctor_name && (
+                          <>
+                            <span className="w-0.5 h-0.5 rounded-full bg-slate-300 flex-shrink-0" />
+                            <span className="text-[10px] font-bold text-[#1499AD] truncate max-w-[100px]">
+                              Dr. {item.doctor_name}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                     
-                    <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-slate-900 transition-colors" />
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 transition-colors flex-shrink-0 mt-2" />
                   </motion.div>
                 );
               })
@@ -455,26 +530,55 @@ export default function Dashboard() {
             </motion.div>
           )}
 
-          {/* Quick Actions */}
+          {/* Today's Appointment Breakdown - Transparent, Real Data */}
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.8 }}
             className="premium-card p-4 bg-white"
           >
-            <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#1499AD] mb-3">{t('dashboard.quickActions')}</h4>
+            <div className="flex items-center justify-between mb-1">
+              <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#1499AD]">Bugungi qabullar</h4>
+              <span className="text-[10px] font-black text-slate-300 uppercase tracking-wider bg-slate-50 px-2 py-1 rounded-lg">
+                {today}
+              </span>
+            </div>
+            <p className="text-[9.5px] text-slate-400 font-bold uppercase tracking-wider mb-3">
+              Bugungi sana bo'yicha holat
+            </p>
             <div className="space-y-2">
               {[
-                  { label: t('appointments.completed'), value: appointments.filter(a => a.status === 'Completed').length, icon: CheckCircle2, color: 'emerald' },
-                  { label: t('appointments.waiting'), value: appointments.filter(a => a.status === 'Waiting').length, icon: Clock, color: 'blue' },
-                  { label: t('navigation.recalls'), value: stats.pendingRecalls, icon: Bell, color: 'amber' }
+                { 
+                  label: 'Bajarildi', 
+                  sublabel: 'Bugun yakunlangan', 
+                  value: stats.todayCompleted ?? 0, 
+                  icon: CheckCircle2, 
+                  color: 'emerald' 
+                },
+                { 
+                  label: 'Navbatda', 
+                  sublabel: 'Kelishi kutilmoqda', 
+                  value: stats.todayWaiting ?? 0, 
+                  icon: Clock, 
+                  color: 'blue' 
+                },
+                { 
+                  label: 'Kelmadi', 
+                  sublabel: 'No-Show bugun', 
+                  value: stats.todayNoShow ?? 0, 
+                  icon: AlertTriangle, 
+                  color: 'rose' 
+                },
               ].map((action, i) => (
                 <div key={i} className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-50 transition-all hover:bg-slate-50">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-${action.color}-600 bg-white shadow-sm`}>
-                      <action.icon className="w-5 h-5" />
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-${action.color}-600 bg-white shadow-sm`}>
+                      <action.icon className="w-4 h-4" />
                     </div>
-                    <span className="text-xs font-black text-slate-600 uppercase tracking-tight">{action.label}</span>
+                    <div>
+                      <span className="text-[11px] font-black text-slate-700 uppercase tracking-tight block leading-tight">{action.label}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{action.sublabel}</span>
+                    </div>
                   </div>
                   <span className="text-lg font-black text-slate-900 leading-none">{action.value}</span>
                 </div>
@@ -482,18 +586,30 @@ export default function Dashboard() {
             </div>
             
             <div className="mt-4 pt-3 border-t border-slate-50">
-              <div className="flex items-center justify-between text-slate-400 mb-4">
-                <span className="text-[11px] font-black uppercase tracking-[0.2em]">Efficiency</span>
-                <span className="text-base font-black text-[#1499AD]">98%</span>
+              <div className="flex items-center justify-between text-slate-400 mb-2">
+                <div>
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 block">Samaradorlik</span>
+                  <span className="text-[9px] font-bold text-slate-400 tracking-wide">Bajarildi / (Bajarildi + Kelmadi)</span>
+                </div>
+                <span className="text-base font-black text-[#1499AD]">
+                  {stats.realEfficiency !== null && stats.realEfficiency !== undefined
+                    ? `${stats.realEfficiency}%`
+                    : '—'}
+                </span>
               </div>
               <div className="h-3 bg-slate-100 rounded-full overflow-hidden p-0.5">
                 <motion.div 
                    initial={{ width: 0 }}
-                   animate={{ width: '98%' }}
+                   animate={{ width: stats.realEfficiency !== null && stats.realEfficiency !== undefined ? `${stats.realEfficiency}%` : '0%' }}
                    transition={{ duration: 1.5, ease: "circOut" }}
                    className="h-full bg-[#1499AD] rounded-full shadow-[0_0_15px_rgba(20,153,173,0.3)]"
                 />
               </div>
+              {(stats.realEfficiency === null || stats.realEfficiency === undefined) && (
+                <p className="text-[9px] text-slate-400 font-bold mt-1.5 text-center">
+                  Bugun qabul yakunlanmagan — hisob yo'q
+                </p>
+              )}
             </div>
           </motion.div>
         </div>

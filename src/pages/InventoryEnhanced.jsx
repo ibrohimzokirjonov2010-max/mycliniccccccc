@@ -27,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import {
   Package,
   AlertTriangle,
@@ -151,7 +151,6 @@ const UNITS = [
  */
 export default function InventoryEnhanced() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // State
@@ -234,7 +233,7 @@ export default function InventoryEnhanced() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
-      toast({ title: 'Mahsulot qoshildi', description: 'Yangi mahsulot muvaffaqiyatli qoshildi' });
+      toast.success('Mahsulot qoshildi', { description: 'Yangi mahsulot muvaffaqiyatli qoshildi' });
       setIsAddDialogOpen(false);
       setNewItem({
         name: '', category: '', description: '', barcode: '', quantity: 0,
@@ -244,7 +243,7 @@ export default function InventoryEnhanced() {
       });
     },
     onError: (error) => {
-      toast({ title: 'Xatolik', description: error.message, variant: 'destructive' });
+      toast.error('Xatolik', { description: error.message });
     }
   });
 
@@ -261,7 +260,7 @@ export default function InventoryEnhanced() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stockMovements'] });
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
-      toast({ title: 'Harakat qayd etildi', description: 'Ombor harakati muvaffaqiyatli saqlandi' });
+      toast.success('Harakat qayd etildi', { description: 'Ombor harakati muvaffaqiyatli saqlandi' });
       setIsMovementDialogOpen(false);
       setMovementQuantity('');
       setMovementReason('');
@@ -280,7 +279,7 @@ export default function InventoryEnhanced() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lowStockAlerts'] });
-      toast({ title: 'Bildirishnoma oqib olindi' });
+      toast.success('Bildirishnoma oqib olindi');
     }
   });
 
@@ -298,11 +297,11 @@ export default function InventoryEnhanced() {
    */
   const handleCreateItem = useCallback(() => {
     if (!newItem.name || !newItem.category) {
-      toast({ title: 'Xatolik', description: 'Nomi va kategoriyani kiriting', variant: 'destructive' });
+      toast.error('Xatolik', { description: 'Nomi va kategoriyani kiriting' });
       return;
     }
     createItem.mutate({ ...newItem, status: 'active' });
-  }, [newItem, createItem, toast]);
+  }, [newItem, createItem]);
 
   /**
    * Handle stock movement recording

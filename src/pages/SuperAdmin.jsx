@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
   Building2, Plus, Trash2, Edit2, ShieldCheck,
-  Search, 
-  Key, CalendarDays, Lock, User, UserPlus, ArrowRight, Loader2, LogOut,
-  TrendingUp, Users, CreditCard, AlertCircle, Sparkles, Zap,
+  Search, CalendarDays, Lock, User, UserPlus, ArrowRight, Loader2, LogOut,
+  TrendingUp, Users, CreditCard, AlertCircle, Zap,
   Image as ImageIcon, Link as LinkIcon, Clock, BarChart3, Eye, MousePointer, Upload, X
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -17,8 +16,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import { 
   getAllAds, 
   saveAd, 
-  deleteAd, 
-  getAdStats 
+  deleteAd 
 } from '@/utils/adManager';
 import { uploadImage, formatFileSize } from '@/utils/imageUpload';
 import { 
@@ -28,10 +26,7 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Cell
+  ResponsiveContainer
 } from 'recharts';
 
 const SUPER_ADMIN = { username: 'admin', password: 'admin123' };

@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, CalendarDays, Clock, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Clock, AlertCircle } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { cn } from '@/lib/utils';
 import { AppointmentQuickView } from './DoctorDayGrid';

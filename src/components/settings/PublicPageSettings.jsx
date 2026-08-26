@@ -1,19 +1,20 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { 
   Globe, Copy, ExternalLink, Send, 
   MessageCircle, Instagram, MapPin, 
-  Clock, FileText, Sparkles, QrCode,
-  Download, CheckCircle2, AlertCircle,
-  Smartphone, Monitor, Info
+  Clock,
+  Download, AlertCircle,
+  Smartphone, Monitor
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function PublicPageSettings() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [clinic, setClinic] = useState(null);
@@ -60,7 +61,7 @@ export default function PublicPageSettings() {
 
   const handleSave = async () => {
     if (!slug) {
-      toast.error('Iltimos, avval slug kiriting');
+      toast.error(t('settings.publicPage.errorSlug') || 'Iltimos, avval slug kiriting');
       return;
     }
     
@@ -77,9 +78,9 @@ export default function PublicPageSettings() {
         whatsapp_link: socialLinks.whatsapp,
         yandex_map_link: socialLinks.yandexMap
       });
-      toast.success('Professional sahifa sozlamalari saqlandi');
+      toast.success(t('settings.publicPage.successSave') || 'Professional sahifa sozlamalari saqlandi');
     } catch (err) {
-      toast.error('Saqlashda xatolik yuz berdi');
+      toast.error(t('settings.publicPage.errorSave') || 'Saqlashda xatolik yuz berdi');
     } finally {
       setSaving(false);
     }
@@ -88,7 +89,7 @@ export default function PublicPageSettings() {
   const copyLink = () => {
     const link = `https://shifocrm.uz/p/${slug}`;
     navigator.clipboard.writeText(link);
-    toast.success('Havola nusxalandi');
+    toast.success(t('settings.publicPage.linkCopied') || 'Havola nusxalandi');
   };
 
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`https://shifocrm.uz/p/${slug}`)}`;
@@ -106,8 +107,8 @@ export default function PublicPageSettings() {
                 <Globe className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-lg">Ommaviy sahifa sozlamalari</h3>
-                <p className="text-xs text-slate-500 font-medium tracking-wide">Bemorlar uchun klinika tashrif qog'ozi</p>
+                <h3 className="font-bold text-slate-900 text-lg">{t('settings.publicPage.title') || "Ommaviy sahifa sozlamalari"}</h3>
+                <p className="text-xs text-slate-500 font-medium tracking-wide">{t('settings.publicPage.subtitle') || "Bemorlar uchun klinika tashrif qog'ozi"}</p>
               </div>
             </div>
             <div 
@@ -120,7 +121,7 @@ export default function PublicPageSettings() {
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Havola manzili (slug)</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('settings.publicPage.linkAddress') || "Havola manzili (slug)"}</label>
               <div className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">crm.uz/p/</div>
                 <Input 
@@ -133,31 +134,31 @@ export default function PublicPageSettings() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Klinika haqida tavsif</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('settings.publicPage.description') || "Klinika haqida tavsif"}</label>
               <Textarea 
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Xizmatlaringiz haqida..."
+                placeholder={t('settings.publicPage.descriptionPlaceholder') || "Xizmatlaringiz haqida..."}
                 className="min-h-[100px] rounded-xl border-slate-200 focus:border-[#1499AD] transition-all p-4 resize-none"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Manzil</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('settings.publicPage.address') || "Manzil"}</label>
                 <Input 
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Shahar, ko'cha..."
+                  placeholder={t('settings.publicPage.addressPlaceholder') || "Shahar, ko'cha..."}
                   className="h-12 rounded-xl border-slate-200"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ish vaqti</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('settings.publicPage.workingHours') || "Ish vaqti"}</label>
                 <Input 
                   value={workingHours}
                   onChange={(e) => setWorkingHours(e.target.value)}
-                  placeholder="09:00 - 18:00"
+                  placeholder={t('settings.publicPage.workingHoursPlaceholder') || "09:00 - 18:00"}
                   className="h-12 rounded-xl border-slate-200"
                 />
               </div>
@@ -209,7 +210,7 @@ export default function PublicPageSettings() {
                disabled={saving}
                className="flex-1 h-12 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all"
             >
-              {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+              {saving ? (t('settings.publicPage.saving') || 'Saqlanmoqda...') : (t('settings.publicPage.save') || 'Saqlash')}
             </Button>
             <Button 
                variant="outline"
@@ -217,7 +218,7 @@ export default function PublicPageSettings() {
                className="px-6 h-12 rounded-xl font-bold border-slate-200"
             >
               <ExternalLink className="w-4 h-4 mr-2" />
-              Ochish
+              {t('settings.publicPage.open') || "Ochish"}
             </Button>
             <Button 
                variant="outline"
@@ -225,16 +226,16 @@ export default function PublicPageSettings() {
                className="px-6 h-12 rounded-xl font-bold border-slate-200"
             >
               <Copy className="w-4 h-4 mr-2" />
-              Nusxalash
+              {t('settings.publicPage.copy') || "Nusxalash"}
             </Button>
           </div>
         </div>
 
         <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-bold text-slate-900">QR Kod</h3>
+              <h3 className="font-bold text-slate-900">{t('settings.publicPage.qrCode') || "QR Kod"}</h3>
               <Button size="sm" variant="ghost" className="text-[#1499AD]" onClick={() => window.open(qrImageUrl, '_blank')}>
-                <Download className="w-4 h-4 mr-2" /> Yuklab olish
+                <Download className="w-4 h-4 mr-2" /> {t('settings.publicPage.download') || "Yuklab olish"}
               </Button>
            </div>
            
@@ -247,9 +248,9 @@ export default function PublicPageSettings() {
                 )}
               </div>
               <div className="flex-1 space-y-2">
-                 <p className="text-sm font-bold text-slate-700">Klinika foyesiga qo'ying</p>
+                 <p className="text-sm font-bold text-slate-700">{t('settings.publicPage.lobbyPlacement') || "Klinika foyesiga qo'ying"}</p>
                  <p className="text-xs text-slate-500 leading-relaxed">
-                   Bemorlar QR kodni skanerlash orqali klinikangiz haqida ma'lumot olishadi va online yozilishadi.
+                   {t('settings.publicPage.qrDesc') || "Bemorlar QR kodni skanerlash orqali klinikangiz haqida ma'lumot olishadi va online yozilishadi."}
                  </p>
               </div>
            </div>
@@ -260,7 +261,7 @@ export default function PublicPageSettings() {
       <div className="hidden lg:block relative">
          <div className="sticky top-8">
             <div className="flex items-center justify-between mb-4">
-               <h3 className="font-bold text-slate-900">Jonli ko'rinish</h3>
+               <h3 className="font-bold text-slate-900">{t('settings.publicPage.livePreview') || "Jonli ko'rinish"}</h3>
                <div className="flex bg-slate-100 p-1 rounded-lg">
                   <button 
                     onClick={() => setPreviewMode('mobile')}
@@ -286,15 +287,15 @@ export default function PublicPageSettings() {
                      </div>
                      <h4 className="font-black text-lg">{clinic?.name || 'Klinika Nomi'}</h4>
                      <p className="text-xs text-white/70 mt-1 flex items-center justify-center gap-1">
-                        <MapPin className="w-3 h-3" /> {address || 'Manzil'}
+                        <MapPin className="w-3 h-3" /> {address || t('settings.publicPage.defaultAddress') || 'Manzil'}
                      </p>
                   </div>
 
                   <div className="p-6 space-y-6">
                      <div className="bg-white p-4 rounded-2xl shadow-sm space-y-2">
-                        <h5 className="font-black text-[10px] text-slate-400 uppercase tracking-widest">Klinika haqida</h5>
+                        <h5 className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{t('settings.publicPage.aboutClinic') || "Klinika haqida"}</h5>
                         <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                           {description || 'Sizning klinikangiz haqida ajoyib tavsif bu yerda paydo bo\'ladi...'}
+                           {description || t('settings.publicPage.defaultDesc') || 'Sizning klinikangiz haqida ajoyib tavsif bu yerda paydo bo\'ladi...'}
                         </p>
                      </div>
 
@@ -302,22 +303,22 @@ export default function PublicPageSettings() {
                         <div className="bg-white p-4 rounded-2xl shadow-sm flex items-center gap-3">
                            <Clock className="w-5 h-5 text-indigo-500" />
                            <div>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase">Ish vaqti</p>
-                              <p className="text-xs font-bold text-slate-800">{workingHours || 'Du-Sha: 09:00 - 18:00'}</p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase">{t('settings.publicPage.workingHours') || "Ish vaqti"}</p>
+                              <p className="text-xs font-bold text-slate-800">{workingHours || t('settings.publicPage.defaultWorkingHours') || 'Du-Sha: 09:00 - 18:00'}</p>
                            </div>
                         </div>
 
                         <div className="bg-white p-4 rounded-2xl shadow-sm flex items-center gap-3">
                            <MapPin className="w-5 h-5 text-rose-500" />
                            <div>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase">Manzil</p>
-                              <p className="text-xs font-bold text-slate-800 leading-tight">{address || 'Klinika manzili...'}</p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase">{t('settings.publicPage.address') || "Manzil"}</p>
+                              <p className="text-xs font-bold text-slate-800 leading-tight">{address || t('settings.publicPage.defaultAddress') || 'Klinika manzili...'}</p>
                            </div>
                         </div>
                      </div>
 
                      <Button className="w-full h-12 bg-slate-900 rounded-xl font-bold">
-                        ONLINE YOZILISH
+                        {t('settings.publicPage.onlineAppointment') || "ONLINE YOZILISH"}
                      </Button>
 
                      <div className="flex justify-center gap-4 pt-4 border-t border-slate-100">

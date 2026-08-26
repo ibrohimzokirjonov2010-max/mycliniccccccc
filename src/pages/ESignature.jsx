@@ -27,7 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import {
   FileSignature,
   Pen,
@@ -432,7 +432,6 @@ FormPreview.displayName = 'FormPreview';
  */
 export default function ESignature() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // State
@@ -472,17 +471,14 @@ export default function ESignature() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['signatures'] });
-      toast({
-        title: 'Imzo saqlandi',
+      toast.success('Imzo saqlandi', {
         description: 'Elektron imzo muvaffaqiyatli saqlandi'
       });
       resetForm();
     },
     onError: (error) => {
-      toast({
-        title: 'Xatolik',
-        description: error.message || 'Imzoni saqlashda xatolik yuz berdi',
-        variant: 'destructive'
+      toast.error('Xatolik', {
+        description: error.message || 'Imzoni saqlashda xatolik yuz berdi'
       });
     }
   });
@@ -499,8 +495,7 @@ export default function ESignature() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['signatures'] });
-      toast({
-        title: 'Imzo bekor qilindi',
+      toast.success('Imzo bekor qilindi', {
         description: 'Elektron imzo muvaffaqiyatli bekor qilindi'
       });
     }
@@ -549,35 +544,33 @@ export default function ESignature() {
    */
   const validateForm = useCallback(() => {
     if (!selectedTemplate) {
-      toast({ title: 'Xatolik', description: 'Forma turini tanlang', variant: 'destructive' });
+      toast.error('Xatolik', { description: 'Forma turini tanlang' });
       return false;
     }
     if (!selectedPatient) {
-      toast({ title: 'Xatolik', description: 'Bemorni tanlang', variant: 'destructive' });
+      toast.error('Xatolik', { description: 'Bemorni tanlang' });
       return false;
     }
     if (!signatureData) {
-      toast({ title: 'Xatolik', description: 'Imzo qo\'ying', variant: 'destructive' });
+      toast.error('Xatolik', { description: 'Imzo qo\'ying' });
       return false;
     }
 
     const missingFields = selectedTemplate.requiredFields.filter(field => !formData[field]);
     if (missingFields.length > 0) {
-      toast({ 
-        title: 'Xatolik', 
-        description: `Quyidagi maydonlarni to'ldiring: ${missingFields.join(', ')}`, 
-        variant: 'destructive' 
+      toast.error('Xatolik', { 
+        description: `Quyidagi maydonlarni to'ldiring: ${missingFields.join(', ')}` 
       });
       return false;
     }
 
     if (selectedTemplate.requiresWitness && !witnessSignature) {
-      toast({ title: 'Xatolik', description: 'Guvoh imzosi talab qilinadi', variant: 'destructive' });
+      toast.error('Xatolik', { description: 'Guvoh imzosi talab qilinadi' });
       return false;
     }
 
     return true;
-  }, [selectedTemplate, selectedPatient, signatureData, formData, witnessSignature, toast]);
+  }, [selectedTemplate, selectedPatient, signatureData, formData, witnessSignature]);
 
   /**
    * Handle form submission
@@ -670,7 +663,7 @@ export default function ESignature() {
     `);
     printWindow.document.close();
     printWindow.print();
-  }, [toast]);
+  }, []);
 
   // Filter signatures
   const filteredSignatures = useMemo(() => {

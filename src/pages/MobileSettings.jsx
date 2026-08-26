@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useTranslation } from '@/i18n/LanguageContext';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { notificationStore } from '@/lib/notificationStore';
 
 export default function MobileSettings() {
@@ -233,6 +233,50 @@ export default function MobileSettings() {
               </div>
             </div>
             <LanguageSwitcher />
+          </div>
+        </motion.div>
+
+        {/* SMS Sozlamalari */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          className="bg-white rounded-2xl shadow-sm border overflow-hidden"
+        >
+          <button
+            onClick={() => navigate('/sms-settings')}
+            className="w-full flex items-center justify-between p-4 active:bg-slate-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                <Bell className="w-5 h-5 text-purple-600" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-bold text-slate-800">SMS Sozlamalari</h3>
+                <p className="text-xs text-slate-400">Avtomatik xabar yuborish sozlamalari</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full">Eskiz.com</span>
+              <CheckCircle2 className="w-4 h-4 text-slate-300" />
+            </div>
+          </button>
+          <div className="border-t border-slate-50">
+            <button
+              onClick={() => navigate('/sent-messages')}
+              className="w-full flex items-center justify-between p-4 active:bg-slate-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-blue-500" />
+                </div>
+                <div className="text-left">
+                  <h3 className="font-bold text-slate-800">Yuborilgan xabarlar</h3>
+                  <p className="text-xs text-slate-400">SMS va Telegram xabarlar tarixi</p>
+                </div>
+              </div>
+              <CheckCircle2 className="w-4 h-4 text-slate-300" />
+            </button>
           </div>
         </motion.div>
 

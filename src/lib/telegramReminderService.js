@@ -11,12 +11,12 @@
  */
 
 const BOT_TOKEN = '8878208387:AAEdKJKfUkevXREmWGi41B-0IBYzL6sB1Zk';
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://epmemjirbqamqfvblaie.supabase.co';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zvyggjldzkxwufpnaatr.supabase.co';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Service role key — eslatma flaglarini yozish uchun
 // Bu frontend'da ishlatish uchun — faqat RLS disable bo'lganda ishlaydi
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwbWVtamlyYnFhbXFmdmJsYWllIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjY2Nzg1MywiZXhwIjoyMDk4MjQzODUzfQ.c-IAn9cW2loUK4nwCJh6PnPuzpIq4DayGBA_ssDupYs';
+const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2eWdnamxkemt4d3VmcG5hYXRyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzQxODc1MCwiZXhwIjoyMTAyOTk0NzUwfQ.t73j6MB8IvYmksHNzGziM_WSDTxILQ1tslP0pDuiw1Q';
 
 const TASHKENT_OFFSET = 5; // UTC+5
 

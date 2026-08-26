@@ -5,7 +5,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import { 
   Wallet, Search, User, Phone, 
   MessageSquare, ChevronRight,
-  TrendingDown, Users, CreditCard,
+  TrendingDown, CreditCard,
   ArrowUpRight, Copy, Check,
   AlertCircle, Filter
 } from 'lucide-react';
@@ -15,7 +15,7 @@ import EmptyState from '../components/ui/EmptyState';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatPhone } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 const formatCurrency = (val) => new Intl.NumberFormat('uz-UZ', { style: 'currency', currency: 'UZS', maximumFractionDigits: 0 }).format(val);
 
@@ -243,11 +243,11 @@ export default function Debts() {
                 <table className="w-full text-left border-collapse table-fixed min-w-[850px]">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-100">
-                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[28%] min-w-[200px]">Bemor</th>
-                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[16%] min-w-[120px]">Qarz miqdori</th>
-                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[24%] min-w-[170px]">To'lov ulushi</th>
-                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[16%] min-w-[120px]">Aloqa holati</th>
-                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right w-[16%] min-w-[130px]">Amallar</th>
+                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[28%] min-w-[200px]">{t('debts.table.patient') || 'Bemor'}</th>
+                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[16%] min-w-[120px]">{t('debts.table.debtAmount') || 'Qarz miqdori'}</th>
+                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[24%] min-w-[170px]">{t('debts.table.paymentShare') || 'To\'lov ulushi'}</th>
+                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[16%] min-w-[120px]">{t('debts.table.communicationStatus') || 'Aloqa holati'}</th>
+                      <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right w-[16%] min-w-[130px]">{t('debts.table.actions') || 'Amallar'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -273,8 +273,8 @@ export default function Debts() {
                               >
                                 {p.full_name}
                               </p>
-                              <p className="text-[10.5px] font-medium text-slate-550 mt-0.5 truncate flex items-center gap-1.5 leading-none">
-                                <span>{p.phone ? formatPhone(p.phone) : 'Telefon kiritilmagan'}</span>
+                              <p className="text-[10.5px] font-medium text-slate-555 mt-0.5 truncate flex items-center gap-1.5 leading-none">
+                                <span>{p.phone ? formatPhone(p.phone) : (t('debts.noPhone') || 'Telefon kiritilmagan')}</span>
                                 {p.phone && (
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); handleCopy(p.phone, p.id); }}
@@ -295,7 +295,7 @@ export default function Debts() {
                         </td>
                         <td className="px-4 py-2.5 w-[24%] min-w-[170px]">
                           <div className="flex justify-between items-center text-[10px] font-semibold text-slate-500 mb-1">
-                            <span className="text-emerald-600">Yopilgan: {formatCurrency(p.real_paid || 0).replace(" so'm", "")}</span>
+                            <span className="text-emerald-600">{t('debts.table.paidLabel') || 'Yopilgan:'} {formatCurrency(p.real_paid || 0).replace(" so'm", "")}</span>
                             <span className="text-slate-400 font-bold">{Math.round((p.real_paid / (p.real_debt + p.real_paid)) * 100 || 0)}%</span>
                           </div>
                           <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-100">
@@ -309,11 +309,11 @@ export default function Debts() {
                           {p.telegram_chat_id ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-[9.5px] font-bold text-blue-600">
                               <span className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
-                              Telegram faol
+                              {t('debts.telegramActive') || 'Telegram faol'}
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50 border border-slate-105 text-[9.5px] font-bold text-slate-400">
-                              Telegram yo'q
+                              {t('debts.telegramNone') || 'Telegram yo\'q'}
                             </span>
                           )}
                         </td>
@@ -325,7 +325,7 @@ export default function Debts() {
                                 size="icon"
                                 className="h-7.5 w-7.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 transition-colors shrink-0"
                                 onClick={() => handleCall(p.phone)}
-                                title="Qo'ng'iroq qilish"
+                                title={t('recall.makeCall') || "Qo'ng'iroq qilish"}
                               >
                                 <Phone className="w-3.5 h-3.5" />
                               </Button>
@@ -335,7 +335,7 @@ export default function Debts() {
                               size="icon"
                               className="h-7.5 w-7.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors shrink-0 p-0"
                               onClick={() => handleSendReminder(p)}
-                              title="SMS / Telegram eslatma yuborish"
+                              title={t('debts.sendReminderTooltip') || "SMS / Telegram eslatma yuborish"}
                             >
                               <MessageSquare className="w-3.5 h-3.5" />
                             </Button>
@@ -344,7 +344,7 @@ export default function Debts() {
                               size="icon"
                               className="h-7.5 w-7.5 rounded-lg bg-slate-50 text-slate-450 hover:bg-slate-900 hover:text-white transition-all shrink-0 p-0 cursor-pointer"
                               onClick={() => navigate(`/patients/${p.id}`)}
-                              title="Bemor profili"
+                              title={t('debts.patientProfileTooltip') || "Bemor profili"}
                             >
                               <ChevronRight className="w-3.5 h-3.5" />
                             </Button>
@@ -366,8 +366,8 @@ export default function Debts() {
                     layout
                     initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="bg-white border border-slate-100 rounded-xl p-3.5 shadow-sm relative overflow-hidden group"
+                    transition={{ delay: Math.min(index, 6) * 0.02 }}
+                    className="bg-white border border-slate-100 rounded-xl p-3.5 shadow-sm relative overflow-hidden group content-visibility-auto"
                   >
                     <div className="flex items-start justify-between mb-3 gap-2">
                       <div className="flex items-center gap-3 min-w-0">
@@ -383,11 +383,11 @@ export default function Debts() {
                         </div>
                         <div className="min-w-0">
                           <h3 className="text-sm font-bold text-slate-800 tracking-tight truncate max-w-[150px]">{p.full_name}</h3>
-                          <p className="text-[10px] text-slate-400 font-mono mt-0.5">{p.phone ? formatPhone(p.phone) : 'Telefon kiritilmagan'}</p>
+                          <p className="text-[10px] text-slate-400 font-mono mt-0.5">{p.phone ? formatPhone(p.phone) : (t('debts.noPhone') || 'Telefon kiritilmagan')}</p>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 leading-none">To'lanishi kerak</p>
+                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 leading-none">{t('debts.table.toPay') || 'To\'lanishi kerak'}</p>
                         <p className={`text-sm font-black tracking-tight ${p.real_debt > 5000000 ? 'text-rose-650' : 'text-amber-650'}`}>
                           {formatCurrency(p.real_debt || 0).replace(" so'm", "")} <span className="text-[8px] opacity-60">UZS</span>
                         </p>
@@ -403,7 +403,7 @@ export default function Debts() {
                           />
                         </div>
                         <div className="flex items-center justify-between text-[9px] font-bold">
-                          <span className="text-emerald-600">Yopilgan: {formatCurrency(p.real_paid || 0).replace(" so'm", "")}</span>
+                          <span className="text-emerald-600">{t('debts.table.paidLabel') || 'Yopilgan:'} {formatCurrency(p.real_paid || 0).replace(" so'm", "")}</span>
                           <span className="text-slate-400">{Math.round((p.real_paid / (p.real_debt + p.real_paid)) * 100 || 0)}%</span>
                         </div>
                       </div>
@@ -415,21 +415,21 @@ export default function Debts() {
                         onClick={() => handleCall(p.phone)}
                         className="h-9 rounded-lg border-slate-100 bg-white text-slate-700 font-bold text-[10px] gap-1 hover:bg-slate-50 p-0 border cursor-pointer"
                       >
-                        <Phone className="w-3.5 h-3.5 text-emerald-500" /> Aloqa
+                        <Phone className="w-3.5 h-3.5 text-emerald-500" /> {t('debts.table.contact') || 'Aloqa'}
                       </Button>
                       <Button 
                         variant="outline"
                         onClick={() => handleSendReminder(p)}
                         className="h-9 rounded-lg bg-white border-slate-100 text-slate-700 font-bold text-[10px] gap-1 hover:bg-slate-50 p-0 border cursor-pointer"
                       >
-                        <MessageSquare className="w-3.5 h-3.5 text-blue-500" /> Eslatish
+                        <MessageSquare className="w-3.5 h-3.5 text-blue-500" /> {t('debts.table.remind') || 'Eslatish'}
                       </Button>
                       <Button 
                         variant="outline"
                         onClick={() => navigate(`/patients/${p.id}`)}
                         className="h-9 rounded-lg bg-white border-slate-100 text-slate-700 font-bold text-[10px] gap-1 hover:bg-slate-50 p-0 border cursor-pointer"
                       >
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" /> Profil
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400" /> {t('debts.table.profile') || 'Profil'}
                       </Button>
                     </div>
                   </motion.div>

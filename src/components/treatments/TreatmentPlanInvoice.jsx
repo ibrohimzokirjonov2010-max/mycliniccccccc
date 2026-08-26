@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Printer, Download, X, Phone, MapPin, CheckCircle2, Send, MessageCircle } from 'lucide-react';
+import { Printer, Download, CheckCircle2, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -17,7 +17,7 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
       const items = item.items || [item];
       return items.map(s => ({
         ...s,
-        tooth_id: item.tooth_id,
+        tooth_id: item.tooth_id || item.tooth || s.tooth_id || s.tooth || 'general',
         parent_idx: idx
       }));
     });
@@ -54,7 +54,7 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
         <div className="flex flex-col h-full overflow-hidden">
           
           {/* Header UI (sticky, no-print) */}
-          <div className="bg-white px-5 py-3 shrink-0 z-20 border-b border-slate-100 flex items-center justify-between no-print">
+          <div className="bg-white px-5 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3 shrink-0 z-20 border-b border-slate-100 flex items-center justify-between no-print">
              <div className="flex items-center gap-2.5">
                <button onClick={onClose} className="w-8 h-8 bg-slate-50 rounded-lg flex items-center justify-center text-slate-500 active:scale-90 transition-all border-none">
                  <ArrowLeft className="w-4 h-4" />

@@ -1,17 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, Search, Phone, Edit2, Trash2, MessageCircle, Users, UserPlus, Filter, Calendar, TrendingUp, MoreVertical, Mail, MapPin, Clock, ChevronRight, X, User } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Users, UserPlus, Filter, TrendingUp, Clock, ChevronRight, User } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import StatusBadge from '../components/ui/StatusBadge';
 import EmptyState from '../components/ui/EmptyState';
 import PatientModal from '../components/patients/PatientModal';
 import NewPatientFlow from '../components/patients/NewPatientFlow';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-import { cn, formatPhone } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { formatPhone } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import {
   AlertDialog,
@@ -19,8 +17,6 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
@@ -170,7 +166,7 @@ export default function Patients() {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [hasMore]);
 
   const handleDelete = () => {
@@ -189,7 +185,7 @@ export default function Patients() {
             <div className="flex items-center gap-2 mt-1">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{stats?.total || 0} {t('patients.patientList')}</span>
                 <span className="w-1 h-1 rounded-full bg-slate-200" />
-                <span className="text-[10px] font-bold text-[#1499AD] uppercase tracking-wider">Bemorlar bazasi</span>
+                <span className="text-[10px] font-bold text-[#1499AD] uppercase tracking-wider">{t('patients.database')}</span>
             </div>
           </div>
         </motion.div>
@@ -207,9 +203,9 @@ export default function Patients() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: t('patients.totalVisits'), value: stats?.total || 0, color: 'text-blue-600', bg: 'bg-blue-50/50', icon: Users },
-          { label: 'Yangi bemorlar', value: stats?.new || 0, color: 'text-emerald-600', bg: 'bg-emerald-50/50', icon: UserPlus },
-          { label: 'Faol davolanish', value: stats?.active || 0, color: 'text-[#1499AD]', bg: 'bg-[#1499AD]/5', icon: Clock },
-          { label: 'Umumiy qarz', value: stats?.debt?.toLocaleString() || 0, color: 'text-rose-600', bg: 'bg-rose-50/50', icon: TrendingUp, isCurrency: true }
+          { label: t('patients.newPatients'), value: stats?.new || 0, color: 'text-emerald-600', bg: 'bg-emerald-50/50', icon: UserPlus },
+          { label: t('patients.activeTreatment'), value: stats?.active || 0, color: 'text-[#1499AD]', bg: 'bg-[#1499AD]/5', icon: Clock },
+          { label: t('patients.totalDebt'), value: stats?.debt?.toLocaleString() || 0, color: 'text-rose-600', bg: 'bg-rose-50/50', icon: TrendingUp, isCurrency: true }
         ].map((stat, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
             className="bg-white rounded-xl p-3 border border-slate-100 shadow-sm hover:shadow-md transition-all group"
@@ -238,7 +234,7 @@ export default function Patients() {
           />
         </div>
         <button className="h-10 px-5 bg-white border border-slate-200 rounded-xl flex items-center gap-2 text-[11px] font-bold text-slate-600 uppercase tracking-wider hover:border-[#1499AD] transition-all">
-            <Filter className="w-4 h-4" /> Filterlash
+            <Filter className="w-4 h-4" /> {t('patients.filter')}
         </button>
       </div>
 
@@ -250,7 +246,7 @@ export default function Patients() {
              </div>
            ) : patients.length === 0 ? (
              <div className="w-full py-24 bg-white rounded-[3rem] text-center shadow-xl border border-slate-50">
-                <EmptyState icon={Users} title="Bemorlar topilmadi" />
+                <EmptyState icon={Users} title={t('patients.notFound')} />
              </div>
            ) : (
              <div className="space-y-6">
@@ -260,13 +256,13 @@ export default function Patients() {
                       <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
                           <tr className="bg-slate-50/50 border-b">
-                             <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Bemor Ismi</th>
-                             <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Telefon</th>
-                             <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Manzil</th>
-                             <th className="px-4 py-3 text-[10px] font-black text-rose-500 uppercase tracking-widest">Qarz</th>
-                             <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">To'langan</th>
-                             <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Oxirgi tashrif</th>
-                             <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Amallar</th>
+                             <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('patients.fullName')}</th>
+                             <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('common.phone')}</th>
+                             <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('common.address')}</th>
+                             <th className="px-4 py-3 text-[10px] font-black text-rose-500 uppercase tracking-widest">{t('patients.totalDebt')}</th>
+                             <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('patients.totalPaid')}</th>
+                             <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('patients.lastVisit')}</th>
+                             <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">{t('common.actions')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -288,7 +284,7 @@ export default function Patients() {
                                     <p className="text-sm font-black text-slate-900 group-hover:text-[#1499AD] uppercase tracking-tight">{p.full_name}</p>
                                     <div className="flex items-center gap-1.5 mt-0.5">
                                        <StatusBadge status={p.status || 'New'} size="xs" />
-                                       {(p.total_debt || 0) > 0 && <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100/50">Qarzdor</span>}
+                                       {(p.total_debt || 0) > 0 && <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100/50">{t('patients.debtor')}</span>}
                                     </div>
                                     </div>
                                  </div>
@@ -300,10 +296,10 @@ export default function Patients() {
                                  <span className="text-[11px] font-medium text-slate-500 truncate max-w-[150px]">{p.address || p.region || '—'}</span>
                               </td>
                               <td className="px-4 py-2.5 text-[12px] font-black text-rose-600">
-                                 {p.total_debt?.toLocaleString() || 0} <span className="text-[9px] opacity-60">so'm</span>
+                                 {p.total_debt?.toLocaleString() || 0} <span className="text-[9px] opacity-60">{t('common.currency')}</span>
                               </td>
                               <td className="px-4 py-2.5 text-[12px] font-black text-emerald-600">
-                                 {p.total_paid?.toLocaleString() || 0} <span className="text-[9px] opacity-60">so'm</span>
+                                 {p.total_paid?.toLocaleString() || 0} <span className="text-[9px] opacity-60">{t('common.currency')}</span>
                               </td>
                               <td className="px-4 py-2.5 text-[11px] text-slate-500">
                                 {p.last_visit ? new Date(p.last_visit).toLocaleDateString() : "—"}
@@ -340,7 +336,7 @@ export default function Patients() {
                                      <h3 className="text-[14px] font-bold text-slate-900 truncate group-hover:text-[#1499AD]">{p.full_name}</h3>
                                      <div className="flex items-center gap-2 mt-1">
                                          <StatusBadge status={p.status || 'New'} size="xs" />
-                                         {(p.total_debt || 0) > 0 && <span className="text-[9px] font-bold text-rose-500">Qarz bor</span>}
+                                         {(p.total_debt || 0) > 0 && <span className="text-[9px] font-bold text-rose-500">{t('patients.hasDebt')}</span>}
                                      </div>
                                  </div>
                              </div>
@@ -349,8 +345,8 @@ export default function Patients() {
                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
                              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg">{formatPhone(p.phone)}</div>
                              <div className="text-right flex flex-col items-end">
-                                <div className="text-rose-500">{p.total_debt?.toLocaleString()} so'm Qarz</div>
-                                <div className="text-[8px] text-slate-400 font-medium">Reg: {new Date(p.created_at || p.created_date).toLocaleDateString()}</div>
+                                <div className="text-rose-500">{p.total_debt?.toLocaleString()} {t('common.currency')} {t('patients.hasDebt').toLowerCase()}</div>
+                                <div className="text-[8px] text-slate-400 font-medium">{t('patients.registered')} {new Date(p.created_at || p.created_date).toLocaleDateString()}</div>
                              </div>
                          </div>
                       </motion.div>
@@ -367,7 +363,7 @@ export default function Patients() {
                         transition={{ repeat: Infinity, duration: 1, ease: "linear" }} 
                         className="w-4 h-4 border-2 border-slate-200 border-t-[#1499AD] rounded-full" 
                       />
-                      Bemorlar yuklanmoqda...
+                      {t('patients.loading')}
                     </div>
                   )}
                 </div>
@@ -387,11 +383,11 @@ export default function Patients() {
         <AlertDialogContent className="rounded-[3rem] p-0 overflow-hidden border-none bg-white max-w-sm">
           <div className="bg-rose-500 p-10 flex items-center justify-center text-white"><Trash2 className="w-16 h-16" /></div>
           <div className="p-10 text-center">
-            <AlertDialogTitle className="text-2xl font-black text-slate-900 uppercase mb-4">O'chirilsinmi?</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm font-bold text-slate-500">Barcha ma'lumotlar butunlay o'chib ketadi.</AlertDialogDescription>
+            <AlertDialogTitle className="text-2xl font-black text-slate-900 uppercase mb-4">{t('patients.deleteConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-bold text-slate-500">{t('patients.deleteConfirmDesc')}</AlertDialogDescription>
             <div className="flex gap-4 mt-10">
-                <AlertDialogCancel className="flex-1 h-16 rounded-2xl border-2 border-slate-100 font-black uppercase text-[11px]">Yo'q</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="flex-1 h-16 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-black uppercase text-[11px]">Ha, o'chirilsin</AlertDialogAction>
+                <AlertDialogCancel className="flex-1 h-16 rounded-2xl border-2 border-slate-100 font-black uppercase text-[11px]">{t('common.no')}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="flex-1 h-16 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-black uppercase text-[11px]">{t('patients.confirmDeleteAction')}</AlertDialogAction>
             </div>
           </div>
         </AlertDialogContent>
