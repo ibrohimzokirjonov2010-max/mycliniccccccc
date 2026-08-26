@@ -6,12 +6,16 @@ import { Label } from '@/components/ui/label';
 import { 
   Settings as SettingsIcon, User, Plus, Trash2, 
   Globe, ImagePlus, Layout as LayoutIcon, ShieldCheck,
-  Users, Languages, Clock
+  Users, Languages, Clock, Pencil
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Dialog, DialogContent, DialogHeader, 
+  DialogTitle, DialogFooter 
+} from "@/components/ui/dialog";
 import PublicPageSettings from '@/components/settings/PublicPageSettings';
 import WebsiteIntegrationSettings from '@/components/settings/WebsiteIntegrationSettings';
 
@@ -43,6 +47,18 @@ export default function Settings() {
   // Ish vaqtlarini sozlash uchun state'lar
   const [editingScheduleDoctorId, setEditingScheduleDoctorId] = useState(null);
   const [currentSchedule, setCurrentSchedule] = useState({});
+
+  // Shifokor ma'lumotlarini tahrirlash state'lari
+  const [editingDoctor, setEditingDoctor] = useState(null);
+  const [editDoctorForm, setEditDoctorForm] = useState({
+    name: '',
+    specialty: 'Stomatolog',
+    commission_rate: 40,
+    username: '',
+    password: '',
+    phone: ''
+  });
+  const [savingDoctor, setSavingDoctor] = useState(false);
 
   const load = async () => {
     try {
@@ -124,6 +140,54 @@ export default function Settings() {
       } catch (e) {
         toast.error("O'chirishda xatolik yuz berdi");
       }
+    }
+  };
+
+  const handleOpenEditDoctor = (doctor) => {
+    setEditingDoctor(doctor);
+    setEditDoctorForm({
+      name: doctor.name || doctor.full_name || '',
+      specialty: doctor.specialty || 'Stomatolog',
+      commission_rate: doctor.commission_rate ?? doctor.commission ?? 40,
+      username: doctor.username || (doctor.name || '').toLowerCase().replace(/\s+/g, '.'),
+      password: doctor.password || '',
+      phone: doctor.phone || ''
+    });
+  };
+
+  const handleSaveDoctor = async (e) => {
+    if (e) e.preventDefault();
+    if (!editDoctorForm.name.trim()) {
+      toast.error(t('settings.staff.errorEnterName') || 'Ism kiriting!');
+      return;
+    }
+    if (!editDoctorForm.password || editDoctorForm.password.length < 4) {
+      toast.error(t('settings.staff.errorMinPassword') || 'Parol kamida 4 ta belgidan iborat bo\'lishi kerak!');
+      return;
+    }
+
+    setSavingDoctor(true);
+    try {
+      const cleanUsername = editDoctorForm.username.trim().toLowerCase().replace(/\s+/g, '.') || editDoctorForm.name.trim().toLowerCase().replace(/\s+/g, '.');
+      const updatedData = {
+        name: editDoctorForm.name.trim(),
+        full_name: editDoctorForm.name.trim(),
+        specialty: editDoctorForm.specialty.trim() || 'Stomatolog',
+        commission_rate: Number(editDoctorForm.commission_rate || 0),
+        username: cleanUsername,
+        password: editDoctorForm.password,
+        phone: editDoctorForm.phone?.trim() || ''
+      };
+
+      await base44.auth.updateUser(editingDoctor.id, updatedData);
+      toast.success(t('settings.staff.doctorUpdated') || "Shifokor ma'lumotlari muvaffaqiyatli yangilandi!");
+      setEditingDoctor(null);
+      await load();
+    } catch (error) {
+      console.error('Update doctor error:', error);
+      toast.error('Xatolik yuz berdi: ' + (error.message || ''));
+    } finally {
+      setSavingDoctor(false);
     }
   };
 
@@ -395,6 +459,16 @@ export default function Settings() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
+                            title={t('common.edit') || "Tahrirlash"}
+                            onClick={() => handleOpenEditDoctor(doctor)}
+                            className="text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title={t('settings.staff.settingWorkingHours') || "Ish vaqtlari"}
                             onClick={() => {
                               if (isEditingSchedule) {
                                 setEditingScheduleDoctorId(null);
@@ -407,7 +481,13 @@ export default function Settings() {
                           >
                             <Clock className="w-5 h-5" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteStaff(doctor.id)} className="text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title={t('common.delete') || "O'chirish"}
+                            onClick={() => deleteStaff(doctor.id)} 
+                            className="text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                          >
                             <Trash2 className="w-5 h-5" />
                           </Button>
                         </div>
@@ -564,6 +644,131 @@ export default function Settings() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* ✏️ Shifokor ma'lumotlarini tahrirlash dialogi */}
+      <Dialog open={!!editingDoctor} onOpenChange={(open) => { if (!open) setEditingDoctor(null); }}>
+        <DialogContent className="sm:max-w-[480px] rounded-3xl p-6 bg-white border border-slate-100 shadow-2xl">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center font-bold text-emerald-700 text-lg shadow-sm">
+                {editDoctorForm.name?.[0]?.toUpperCase() || 'D'}
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-black text-slate-900 tracking-tight">
+                  {t('settings.staff.editDoctor') || "Shifokor ma'lumotlarini tahrirlash"}
+                </DialogTitle>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  {t('settings.staff.editDoctorSubtitle') || "Shifokor ma'lumotlari, login va parolini o'zgartirish"}
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveDoctor} className="space-y-4 pt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">
+                  {t('settings.staff.fullName') || "To'liq ismi"} *
+                </Label>
+                <Input 
+                  placeholder="Dr. Alisher" 
+                  value={editDoctorForm.name}
+                  onChange={e => setEditDoctorForm({ ...editDoctorForm, name: e.target.value })}
+                  className="h-11 rounded-xl border-slate-200 font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">
+                  {t('settings.staff.role') || "Lavozimi"}
+                </Label>
+                <Input 
+                  placeholder="Stomatolog" 
+                  value={editDoctorForm.specialty}
+                  onChange={e => setEditDoctorForm({ ...editDoctorForm, specialty: e.target.value })}
+                  className="h-11 rounded-xl border-slate-200 font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">
+                  {t('settings.staff.loginUsername') || "Login"} *
+                </Label>
+                <Input 
+                  placeholder="dr_alisher" 
+                  value={editDoctorForm.username}
+                  onChange={e => setEditDoctorForm({ ...editDoctorForm, username: e.target.value })}
+                  className="h-11 rounded-xl border-slate-200 font-mono text-sm"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">
+                  {t('settings.staff.passwordLogin') || "Parol (login parol)"} *
+                </Label>
+                <Input 
+                  type="text"
+                  placeholder="doctor2024" 
+                  value={editDoctorForm.password}
+                  onChange={e => setEditDoctorForm({ ...editDoctorForm, password: e.target.value })}
+                  className="h-11 rounded-xl border-slate-200 font-mono text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">
+                  {t('settings.staff.share') || "Ulush (%)"}
+                </Label>
+                <Input 
+                  type="number"
+                  placeholder="40" 
+                  value={editDoctorForm.commission_rate === 0 || editDoctorForm.commission_rate === '' ? '' : editDoctorForm.commission_rate}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setEditDoctorForm({ ...editDoctorForm, commission_rate: val === '' ? '' : Number(val) });
+                  }}
+                  className="h-11 rounded-xl border-slate-200 font-medium"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">
+                  {t('settings.staff.phone') || "Telefon raqami"}
+                </Label>
+                <Input 
+                  type="tel"
+                  placeholder="+998..." 
+                  value={editDoctorForm.phone}
+                  onChange={e => setEditDoctorForm({ ...editDoctorForm, phone: e.target.value })}
+                  className="h-11 rounded-xl border-slate-200 font-medium"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="pt-4 flex gap-2 sm:justify-end">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setEditingDoctor(null)}
+                className="h-11 rounded-xl px-5 font-bold border-slate-200"
+              >
+                {t('common.cancel') || "Bekor qilish"}
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={savingDoctor}
+                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold shadow-md shadow-emerald-200"
+              >
+                {savingDoctor ? (t('settings.publicPage.saving') || "Saqlanmoqda...") : (t('settings.clinic.save') || "Saqlash")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -107,6 +107,21 @@ const fdiToInternal = (fdi) => {
   return `${qMap[quad]}${num}${suffix}`;
 };
 
+const getCategoryName = (cat) => {
+  if (!cat) return '';
+  const c = cat.toUpperCase();
+  if (c === 'TERAPIYA( ENDO +PLOMBA)') return 'Terapiya';
+  if (c === 'ORTOPEDIYA') return 'Ortopediya';
+  if (c === 'ESTETIK STOMATOLOGIYA') return 'Estetika';
+  if (c === 'XIRURGIYA') return 'Xirurgiya';
+  if (c === 'ORTODONTIYA') return 'Ortodontiya';
+  if (c === 'GIGIENA VA PROFILAKTIKA') return 'Gigiyena';
+  if (c === 'BOLALAR STOMATOLOGIYASI') return 'Pediatriya';
+  if (c === 'IMPLANTATSIYA') return 'Implantatsiya';
+  if (c === 'ENDODONTIYA') return 'Endodontiya';
+  return cat;
+};
+
 const CategoryAccordion = ({ title, services, activeTooth, toothData, toggleService, isBulkMode, selectedTeeth }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(true);
@@ -543,7 +558,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         })
         .catch(err => console.error("Failed to load doctors:", err));
 
-      base44.entities.Service.filter({ is_active: true }, 'name', 100).then(data => {
+      base44.entities.Service.filter({ is_active: true }, 'name', 500).then(data => {
         const seen = new Map();
         (data || []).forEach(s => {
           const key = s.name?.toLowerCase().trim();
@@ -1743,7 +1758,23 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                           if (!grouped[cat]) grouped[cat] = [];
                           grouped[cat].push(svc);
                         });
-                        return Object.entries(grouped).map(([cat, svcs]) => (
+
+                        const savedOrder = localStorage.getItem('service_category_order');
+                        let order = [];
+                        if (savedOrder) {
+                          try { order = JSON.parse(savedOrder); } catch (e) {}
+                        }
+                        const entries = Object.entries(grouped);
+                        entries.sort(([a], [b]) => {
+                          const ai = order.indexOf(a);
+                          const bi = order.indexOf(b);
+                          if (ai !== -1 && bi !== -1) return ai - bi;
+                          if (ai !== -1) return -1;
+                          if (bi !== -1) return 1;
+                          return a.localeCompare(b);
+                        });
+
+                        return entries.map(([cat, svcs]) => (
                           <CategoryAccordion key={cat} title={cat} services={svcs}
                             activeTooth={activeTooth} toothData={toothData} toggleService={toggleToothService}
                             isBulkMode={isBulkMode} selectedTeeth={planForm.tooth_numbers} />
@@ -1900,30 +1931,18 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   <div className="flex-1 overflow-y-auto px-4 py-3 bg-[#f8fafc] space-y-2.5 min-h-0">
                     {(() => {
                       const filtered = services.filter(s => {
-                        const cat = (s.category || autoCategorize(s.name)).toLowerCase();
+                        const cat = (s.category || autoCategorize(s.name)).toLowerCase().trim();
                         const q = serviceSearch.trim().toLowerCase();
                         const qMatch = !q || (s.name || '').toLowerCase().includes(q);
                         if (!qMatch) return false;
                         
-                        if (selectedCategory === "terapiya") {
-                          return cat.includes('terapiya') || cat.includes('endodontiya');
+                        if (!selectedCategory || selectedCategory === "" || selectedCategory === "all" || selectedCategory === "barchasi") {
+                          return true;
                         }
-                        if (selectedCategory === "ortopediya") {
-                          return cat.includes('ortopediya');
-                        }
-                        if (selectedCategory === "estetika") {
-                          return cat.includes('estetik') || cat.includes('esthetics');
-                        }
-                        if (selectedCategory === "xirurgiya") {
-                          return cat.includes('xirurgiya');
-                        }
-                        if (selectedCategory === "ortodontiya") {
-                          return cat.includes('ortodontiya');
-                        }
-                        if (selectedCategory === "implantatsiya") {
-                          return cat.includes('implantat') || cat.includes('implantatsiya');
-                        }
-                        return true;
+                        
+                        const sel = selectedCategory.toLowerCase().trim();
+                        const selName = getCategoryName(selectedCategory).toLowerCase().trim();
+                        return cat === sel || cat === selName || (cat.includes(sel) && sel.length > 3) || (sel.includes(cat) && cat.length > 3);
                       });
                       
                       if (filtered.length === 0) {

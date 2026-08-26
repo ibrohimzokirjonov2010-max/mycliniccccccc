@@ -71,15 +71,15 @@ const autoCategorize = (name) => {
 const getCategoryName = (cat) => {
   if (!cat) return '';
   const c = cat.toUpperCase();
-  if (c.includes('TERAPIYA') || c.includes('THERAPY')) return 'Terapiya';
-  if (c.includes('ORTOPEDIYA') || c.includes('ORTHOPEDICS')) return 'Ortopediya';
-  if (c.includes('ESTETIK') || c.includes('ESTHETICS')) return 'Estetika';
-  if (c.includes('XIRURGIYA') || c.includes('SURGERY')) return 'Xirurgiya';
-  if (c.includes('ORTODONTIYA') || c.includes('ORTHODONTICS')) return 'Ortodontiya';
-  if (c.includes('GIGIENA') || c.includes('HYGIENE')) return 'Gigiyena';
-  if (c.includes('BOLALAR') || c.includes('PEDIATRICS')) return 'Pediatriya';
-  if (c.includes('IMPLANTATSIYA') || c.includes('IMPLANT')) return 'Implantatsiya';
-  if (c.includes('ENDODONTIYA') || c.includes('ENDODONTICS')) return 'Endodontiya';
+  if (c === 'TERAPIYA( ENDO +PLOMBA)') return 'Terapiya';
+  if (c === 'ORTOPEDIYA') return 'Ortopediya';
+  if (c === 'ESTETIK STOMATOLOGIYA') return 'Estetika';
+  if (c === 'XIRURGIYA') return 'Xirurgiya';
+  if (c === 'ORTODONTIYA') return 'Ortodontiya';
+  if (c === 'GIGIENA VA PROFILAKTIKA') return 'Gigiyena';
+  if (c === 'BOLALAR STOMATOLOGIYASI') return 'Pediatriya';
+  if (c === 'IMPLANTATSIYA') return 'Implantatsiya';
+  if (c === 'ENDODONTIYA') return 'Endodontiya';
   return cat;
 };
 
@@ -218,19 +218,25 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   }, [step]);
 
   useEffect(() => {
-    if (services && services.length > 0) {
-      const cats = new Set();
-      ALLOWED_CATEGORIES.forEach(c => cats.add(c));
-      services.forEach(s => {
-        const cat = s.category || autoCategorize(s.name);
-        if (cat && cat !== 'Barchasi' && cat !== 'Asosiy') cats.add(cat);
-      });
-      const catList = Array.from(cats);
-      setAvailableCategories(catList);
-      if (!selectedCategory && catList.length > 0) {
-        setSelectedCategory(catList[0]);
+    const savedOrder = localStorage.getItem('service_category_order');
+    let order = [];
+    if (savedOrder) {
+      try {
+        order = JSON.parse(savedOrder);
+      } catch (e) {
+        order = [...ALLOWED_CATEGORIES];
       }
+    } else {
+      order = [...ALLOWED_CATEGORIES];
     }
+    const cats = new Set(order);
+    (services || []).forEach(s => {
+      const cat = s.category || autoCategorize(s.name);
+      if (cat && cat !== 'Barchasi' && cat !== 'Asosiy') cats.add(cat);
+    });
+    ALLOWED_CATEGORIES.forEach(c => cats.add(c));
+    const catList = Array.from(cats);
+    setAvailableCategories(catList);
   }, [services]);
 
   useEffect(() => {
@@ -1082,7 +1088,23 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                         if (!grouped[cat]) grouped[cat] = [];
                                         grouped[cat].push(svc);
                                     });
-                                    return Object.entries(grouped).map(([cat, svcs]) => (
+
+                                    const savedOrder = localStorage.getItem('service_category_order');
+                                    let order = [];
+                                    if (savedOrder) {
+                                      try { order = JSON.parse(savedOrder); } catch (e) {}
+                                    }
+                                    const entries = Object.entries(grouped);
+                                    entries.sort(([a], [b]) => {
+                                      const ai = order.indexOf(a);
+                                      const bi = order.indexOf(b);
+                                      if (ai !== -1 && bi !== -1) return ai - bi;
+                                      if (ai !== -1) return -1;
+                                      if (bi !== -1) return 1;
+                                      return a.localeCompare(b);
+                                    });
+
+                                    return entries.map(([cat, svcs]) => (
                                         <CategoryAccordion key={cat} title={cat} services={svcs}
                                             activeTooth={activeTooth} toothData={toothData} toggleService={toggleService} />
                                     ));
@@ -1270,30 +1292,18 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                         <div className="flex-1 overflow-y-auto px-4 py-3 bg-[#f8fafc] space-y-2.5 min-h-0">
                           {(() => {
                             const filtered = services.filter(s => {
-                              const cat = (s.category || autoCategorize(s.name)).toLowerCase();
+                              const cat = (s.category || autoCategorize(s.name)).toLowerCase().trim();
                               const q = serviceSearch.trim().toLowerCase();
                               const qMatch = !q || (s.name || '').toLowerCase().includes(q);
                               if (!qMatch) return false;
                               
-                              if (selectedCategory === "terapiya") {
-                                return cat.includes('terapiya') || cat.includes('endodontiya');
+                              if (!selectedCategory || selectedCategory === "" || selectedCategory === "all" || selectedCategory === "barchasi") {
+                                return true;
                               }
-                              if (selectedCategory === "ortopediya") {
-                                return cat.includes('ortopediya');
-                              }
-                              if (selectedCategory === "estetika") {
-                                return cat.includes('estetik') || cat.includes('esthetics');
-                              }
-                              if (selectedCategory === "xirurgiya") {
-                                return cat.includes('xirurgiya');
-                              }
-                              if (selectedCategory === "ortodontiya") {
-                                return cat.includes('ortodontiya');
-                              }
-                              if (selectedCategory === "implantatsiya") {
-                                return cat.includes('implantat') || cat.includes('implantatsiya');
-                              }
-                              return true;
+                              
+                              const sel = selectedCategory.toLowerCase().trim();
+                              const selName = getCategoryName(selectedCategory).toLowerCase().trim();
+                              return cat === sel || cat === selName || (cat.includes(sel) && sel.length > 3) || (sel.includes(cat) && cat.length > 3);
                             });
                             
                             if (filtered.length === 0) {

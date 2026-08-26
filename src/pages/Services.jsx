@@ -38,7 +38,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const ALLOWED_CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   'TERAPIYA( ENDO +PLOMBA)',
   'ORTOPEDIYA',
   'XIRURGIYA',
@@ -62,7 +62,7 @@ const CATEGORY_MAP = {
   'ENDODONTIYA': { icon: Activity, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-100' }
 };
 
-const getCategoryStyle = (cat) => CATEGORY_MAP[cat] || CATEGORY_MAP['TERAPIYA( ENDO +PLOMBA)'];
+const getCategoryStyle = (cat) => CATEGORY_MAP[cat] || { icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100' };
 
 const autoCategorize = (name) => {
   const n = name?.toLowerCase() || '';
@@ -85,13 +85,13 @@ function ToothButton({ num, selected, onClick }) {
       onClick={onClick}
       title={`Tish ${num}`}
       className={classNames(
-        "w-8 h-9 rounded-lg text-[10px] font-black transition-all border-2 flex flex-col items-center justify-center gap-0.5",
+        "w-6.5 h-7.5 sm:w-7 sm:h-8 rounded-md text-[10px] font-bold transition-all border flex flex-col items-center justify-center cursor-pointer select-none active:scale-95",
         selected
-          ? "bg-[#1499AD] border-[#1499AD] text-white shadow-lg shadow-[#1499AD]/30 scale-110"
-          : "bg-white border-slate-200 text-slate-500 hover:border-[#1499AD]/50 hover:text-[#1499AD]"
+          ? "bg-[#1499AD] border-[#1499AD] text-white shadow-xs scale-105 z-10"
+          : "bg-white border-slate-200 text-slate-700 hover:border-[#1499AD]/60 hover:text-[#1499AD] hover:bg-[#1499AD]/5"
       )}
     >
-      <span className="text-[9px] leading-none">{num}</span>
+      <span className="leading-none">{num}</span>
     </button>
   );
 }
@@ -306,20 +306,16 @@ export default function Services() {
         base44.entities.ServiceCategory.list('name', 100)
       ]);
       // De-duplicate services by name only (case-insensitive, trimmed)
-      // This catches duplicates with different subcategories or capitalization
       const seen = new Map();
       (svcData || []).forEach(s => {
         const key = s.name?.toLowerCase().trim();
         if (!key) return;
-        // Prefer services that have a valid ALLOWED_CATEGORIES category
         if (!seen.has(key)) {
           seen.set(key, s);
         } else {
           const existing = seen.get(key);
-          const existingIsValid = ALLOWED_CATEGORIES.includes(existing.category);
-          const currentIsValid = ALLOWED_CATEGORIES.includes(s.category);
-          if (!existingIsValid && currentIsValid) {
-            seen.set(key, s); // prefer valid category
+          if (!existing.category && s.category) {
+            seen.set(key, s);
           }
         }
       });
@@ -336,21 +332,25 @@ export default function Services() {
 
   useEffect(() => {
     const savedOrder = localStorage.getItem('service_category_order');
+    let order = [];
     if (savedOrder) {
       try {
-        const parsed = JSON.parse(savedOrder);
-        const merged = [...parsed];
-        ALLOWED_CATEGORIES.forEach(cat => {
-          if (!merged.includes(cat)) merged.push(cat);
-        });
-        setCategoryOrder(merged.filter(cat => ALLOWED_CATEGORIES.includes(cat)));
+        order = JSON.parse(savedOrder);
       } catch (e) {
-        setCategoryOrder([...ALLOWED_CATEGORIES]);
+        order = [...DEFAULT_CATEGORIES];
       }
     } else {
-      setCategoryOrder([...ALLOWED_CATEGORIES]);
+      order = [...DEFAULT_CATEGORIES];
     }
-  }, []);
+    const merged = new Set(order);
+    DEFAULT_CATEGORIES.forEach(cat => merged.add(cat));
+    (dbCategories || []).forEach(c => c.name && merged.add(c.name));
+    (services || []).forEach(s => {
+      const cat = s.category || autoCategorize(s.name);
+      if (cat) merged.add(cat);
+    });
+    setCategoryOrder(Array.from(merged));
+  }, [dbCategories, services]);
 
   const handleReorder = (newOrder) => {
     setCategoryOrder(newOrder);
@@ -367,16 +367,16 @@ export default function Services() {
         tooth_numbers: editService.tooth_numbers || []
       });
     } else if (!modalOpen) {
-      setForm({ name: '', category: 'TERAPIYA( ENDO +PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false, description: '', tooth_numbers: [] });
+      setForm({ name: '', category: categoryOrder[0] || 'TERAPIYA( ENDO +PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false, description: '', tooth_numbers: [] });
     }
-  }, [editService, modalOpen]);
+  }, [editService, modalOpen, categoryOrder]);
 
   const filtered = useMemo(() => {
     return services.filter(s => {
       const matchesSearch = s.name?.toLowerCase().includes(search.toLowerCase()) || 
                            s.category?.toLowerCase().includes(search.toLowerCase());
       if (selectedCategory === 'all') return matchesSearch;
-      const displayCategory = ALLOWED_CATEGORIES.includes(s.category) ? s.category : autoCategorize(s.name);
+      const displayCategory = s.category || autoCategorize(s.name);
       return matchesSearch && displayCategory === selectedCategory;
     });
   }, [services, search, selectedCategory]);
@@ -384,7 +384,7 @@ export default function Services() {
   const grouped = useMemo(() => {
     const groups = {};
     filtered.forEach(s => {
-      const cat = ALLOWED_CATEGORIES.includes(s.category) ? s.category : autoCategorize(s.name);
+      const cat = s.category || autoCategorize(s.name);
       if (!groups[cat]) groups[cat] = [];
       groups[cat].push(s);
     });
@@ -421,9 +421,9 @@ export default function Services() {
       total: services.length,
       active: services.filter(s => s.is_active !== false).length,
       avgPrice: services.length > 0 ? services.reduce((sum, s) => sum + (Number(s.price) || 0), 0) / services.length : 0,
-      categories: ALLOWED_CATEGORIES.length
+      categories: categoryOrder.length
     };
-  }, [services]);
+  }, [services, categoryOrder]);
 
   const handleSaveService = async () => {
     if (!form.name || !form.price) return;
@@ -655,177 +655,279 @@ export default function Services() {
 
       {/* Add/Edit Modal */}
       <Dialog open={modalOpen} onOpenChange={() => { setModalOpen(false); setEditService(null); }}>
-        <DialogContent className="sm:max-w-2xl p-10 rounded-[48px] border-none shadow-2xl bg-white">
-          <DialogHeader className="mb-10 text-center">
-            <DialogTitle className="text-3xl font-black text-slate-900 uppercase tracking-tighter">
+        <DialogContent className="sm:max-w-xl max-h-[88vh] overflow-y-auto p-5 sm:p-6 rounded-[28px] border-none shadow-2xl bg-white flex flex-col no-scrollbar">
+          <DialogHeader className="mb-3 text-center">
+            <DialogTitle className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight">
               {editService ? (t('services.modals.editTitle') || 'XIZMATNI TAHRIRLASH') : (t('services.modals.addTitle') || 'YANGI XIZMAT QO\'SHISH')}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-8">
-            <div className="grid grid-cols-2 gap-8"><div className="space-y-3"><Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">{t('services.modals.name')} *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="h-15 rounded-[24px] border-none bg-slate-50 font-black text-slate-900 px-6 text-lg" /></div><div className="space-y-3"><Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">{t('services.modals.category')}</Label><Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}><SelectTrigger className="h-15 rounded-[24px] border-none bg-slate-50 font-black px-6 text-lg"><SelectValue /></SelectTrigger><SelectContent>{categoryOrder.map(cat => (<SelectItem key={cat} value={cat}>{cat}</SelectItem>))}</SelectContent></Select></div></div>
-            <div className="grid grid-cols-2 gap-8">
-              <div className="space-y-3">
-                <Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">{t('services.modals.basePrice') || 'ASOSIY NARX'} (UZS) *</Label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={form.price === '' || form.price === 0 ? '' : Number(form.price).toLocaleString('uz-UZ')}
-                  onChange={e => {
-                    const raw = e.target.value.replace(/\s/g, '').replace(/,/g, '').replace(/\./g, '').replace(/'/g, '');
-                    if (raw === '') setForm({ ...form, price: '' });
-                    else if (/^\d+$/.test(raw)) setForm({ ...form, price: raw });
-                  }}
-                  onKeyDown={e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                  onWheel={e => e.target.blur()}
-                  placeholder="0"
-                  className="w-full h-14 rounded-[24px] border-none bg-slate-50 font-black text-2xl tracking-tighter px-6 outline-none focus:ring-2 focus:ring-slate-200"
+          
+          <div className="space-y-3.5">
+            {/* Row 1: Nomi & Kategoriya */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">{t('services.modals.name')} *</Label>
+                <Input 
+                  value={form.name} 
+                  onChange={e => setForm({ ...form, name: e.target.value })} 
+                  placeholder="Masalan: Tish tozalash (Air Flow)"
+                  className="h-10 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-900 px-3 text-sm focus:bg-white focus:ring-1 focus:ring-[#1499AD]" 
                 />
               </div>
-              <div className="space-y-3">
-                <Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">{t('services.modals.minPrice') || 'MINIMAL NARX'} (UZS)</Label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={form.min_price === '' || !form.min_price ? '' : Number(form.min_price).toLocaleString('uz-UZ')}
-                  onChange={e => {
-                    const raw = e.target.value.replace(/\s/g, '').replace(/,/g, '').replace(/\./g, '').replace(/'/g, '');
-                    if (raw === '') setForm({ ...form, min_price: '' });
-                    else if (/^\d+$/.test(raw)) setForm({ ...form, min_price: raw });
-                  }}
-                  onKeyDown={e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                  onWheel={e => e.target.blur()}
-                  placeholder={t('services.modals.minPricePlaceholder') || 'Chegirma chegarasi'}
-                  className="w-full h-14 rounded-[24px] border-none bg-slate-50 font-black text-2xl tracking-tighter px-6 outline-none focus:ring-2 focus:ring-slate-200"
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">{t('services.modals.category')}</Label>
+                <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
+                  <SelectTrigger className="h-10 rounded-xl border border-slate-200 bg-slate-50 font-bold px-3 text-sm focus:bg-white focus:ring-1 focus:ring-[#1499AD]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-56">
+                    {categoryOrder.map(cat => (
+                      <SelectItem key={cat} value={cat} className="font-bold cursor-pointer py-2 text-xs">{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Row 2: Asosiy narx & Minimal narx */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">{t('services.modals.basePrice') || 'ASOSIY NARX'} (UZS) *</Label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.price === '' || form.price === 0 ? '' : Number(form.price).toLocaleString('uz-UZ')}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/\s/g, '').replace(/,/g, '').replace(/\./g, '').replace(/'/g, '');
+                      if (raw === '') setForm({ ...form, price: '' });
+                      else if (/^\d+$/.test(raw)) setForm({ ...form, price: raw });
+                    }}
+                    onKeyDown={e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                    onWheel={e => e.target.blur()}
+                    placeholder="150 000"
+                    className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 font-black text-base tracking-tight px-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#1499AD]/30"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">UZS</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">{t('services.modals.minPrice') || 'MINIMAL NARX'} (UZS)</Label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.min_price === '' || !form.min_price ? '' : Number(form.min_price).toLocaleString('uz-UZ')}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/\s/g, '').replace(/,/g, '').replace(/\./g, '').replace(/'/g, '');
+                      if (raw === '') setForm({ ...form, min_price: '' });
+                      else if (/^\d+$/.test(raw)) setForm({ ...form, min_price: raw });
+                    }}
+                    onKeyDown={e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                    onWheel={e => e.target.blur()}
+                    placeholder={t('services.modals.minPricePlaceholder') || 'Chegirma chegarasi'}
+                    className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 font-black text-base tracking-tight px-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#1499AD]/30"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">UZS</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 3: Davomiyligi & Tavsif */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">{t('services.modals.durationMinutes') || 'DAVOMIYLIGI'} (MIN)</Label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.duration || ''}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/\D/g, '');
+                      setForm({ ...form, duration: raw });
+                    }}
+                    onKeyDown={e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                    onWheel={e => e.target.blur()}
+                    placeholder="30"
+                    className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 font-black text-base tracking-tight px-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#1499AD]/30"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">min</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">{t('services.modals.projectDescription') || 'LOYIHA TAVSIFI'}</Label>
+                <Input 
+                  value={form.description} 
+                  onChange={e => setForm({ ...form, description: e.target.value })} 
+                  placeholder={t('services.modals.descriptionPlaceholder') || "Qisqacha ma'lumot..."} 
+                  className="h-10 rounded-xl border border-slate-200 bg-slate-50 font-bold px-3 text-sm focus:bg-white focus:ring-1 focus:ring-[#1499AD]" 
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-8">
-              <div className="space-y-3">
-                <Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">{t('services.modals.durationMinutes') || 'DAVOMIYLIGI'} (MIN)</Label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={form.duration || ''}
-                  onChange={e => {
-                    const raw = e.target.value.replace(/\D/g, '');
-                    setForm({ ...form, duration: raw });
-                  }}
-                  onKeyDown={e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                  onWheel={e => e.target.blur()}
-                  placeholder="30"
-                  className="w-full h-14 rounded-[24px] border-none bg-slate-50 font-black text-2xl tracking-tighter px-6 outline-none focus:ring-2 focus:ring-slate-200"
+
+            {/* Switches Card */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+              <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-100">
+                <div>
+                  <Label className="font-bold text-[11px] uppercase tracking-wider text-slate-800 block cursor-pointer">
+                    {t('services.modals.activeState') || 'AKTIV HOLAT'}
+                  </Label>
+                  <p className="text-[9px] text-slate-400 font-medium leading-none mt-0.5">Xizmat ro'yxatda faol bo'ladi</p>
+                </div>
+                <Switch checked={form.is_active} onCheckedChange={v => setForm({ ...form, is_active: v })} />
+              </div>
+
+              <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-100">
+                <div>
+                  <Label className="font-bold text-[11px] uppercase tracking-wider text-slate-800 block cursor-pointer">
+                    {t('services.modals.toothSelection') || 'TISH TANLASH'}
+                  </Label>
+                  <p className="text-[9px] text-slate-400 font-medium leading-none mt-0.5">Muayyan tishlarga bog'lash</p>
+                </div>
+                <Switch 
+                  checked={form.requires_tooth} 
+                  onCheckedChange={v => setForm({ ...form, requires_tooth: v, tooth_numbers: v ? (form.tooth_numbers || []) : [] })} 
                 />
-              </div>
-              <div className="space-y-3">
-                <Label className="text-[13px] font-black text-slate-500 uppercase tracking-widest">{t('services.modals.projectDescription') || 'LOYIHA TAVSIFI'}</Label>
-                <Input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder={t('services.modals.descriptionPlaceholder') || "Qisqacha ma'lumot..."} className="h-15 rounded-[24px] border-none bg-slate-50 font-bold px-6" />
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-8 bg-slate-900 rounded-[36px] text-white">
-              <div className="flex items-center gap-8">
-                <div className="flex items-center gap-3">
-                  <Switch checked={form.is_active} onCheckedChange={v => setForm({ ...form, is_active: v })} />
-                  <Label className="font-black text-sm uppercase tracking-widest">{t('services.modals.activeState') || 'AKTIV HOLAT'}</Label>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Switch checked={form.requires_tooth} onCheckedChange={v => setForm({ ...form, requires_tooth: v, tooth_numbers: v ? (form.tooth_numbers || []) : [] })} />
-                  <Label className="font-black text-sm uppercase tracking-widest">{t('services.modals.toothSelection') || 'TISH TANLASH'}</Label>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <Button variant="ghost" onClick={() => setModalOpen(false)} className="text-slate-400">
-                  {t('common.cancel') || 'BEKOR QILISH'}
-                </Button>
-                <Button onClick={handleSaveService} className="h-14 rounded-2xl bg-white text-slate-900 font-black px-10">
-                  {t('common.save') || 'SAQLASH'}
-                </Button>
               </div>
             </div>
 
             {/* ✅ Tish diagrammasi — faqat "TISH TANLASH" yoqilganda */}
             {form.requires_tooth && (
-              <div className="bg-slate-50 rounded-[28px] p-6 border border-slate-100 space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-[13px] font-black text-slate-600 uppercase tracking-widest">
-                    {t('services.modals.selectTeeth') || 'Tegishli tishlarni belgilang'}
+              <div className="bg-slate-50/80 rounded-xl p-3 border border-[#1499AD]/20 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <Label className="text-[11px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>🦷 {t('services.modals.selectTeeth') || 'Tegishli tishlarni belgilang'}</span>
                   </Label>
-                  {(form.tooth_numbers || []).length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-[#1499AD] bg-[#1499AD]/10 px-3 py-1 rounded-full">
-                        {t('common.selected') || 'Tanlangan'}: {(form.tooth_numbers || []).join(', ')}
+                  {(form.tooth_numbers || []).length > 0 ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-black text-[#1499AD] bg-[#1499AD]/10 px-2 py-0.5 rounded-full border border-[#1499AD]/20">
+                        {t('common.selected') || 'Tanlangan'}: {(form.tooth_numbers || []).map(Number).sort((a,b)=>a-b).join(', ')} ({(form.tooth_numbers || []).length} ta)
                       </span>
                       <button
+                        type="button"
                         onClick={() => setForm({ ...form, tooth_numbers: [] })}
-                        className="text-xs font-black text-rose-400 hover:text-rose-600 transition-colors"
+                        className="text-[10px] font-black text-rose-500 hover:text-rose-700 px-1.5 py-0.5 rounded hover:bg-rose-50 transition-colors"
                       >
                         {t('common.clear') || 'Tozalash'}
                       </button>
                     </div>
+                  ) : (
+                    <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                      Hech qaysi tish tanlanmagan
+                    </span>
                   )}
                 </div>
 
                 {/* FDI tish sxemasi */}
-                <div className="space-y-1">
+                <div className="p-2 bg-white rounded-lg border border-slate-200/80 space-y-1 shadow-xs overflow-x-auto">
+                  <div className="text-[8px] font-black text-slate-400 uppercase tracking-wider text-center">Yuqori jag' (Tepa)</div>
                   {/* Yuqori o'ng (18-11) va Yuqori chap (21-28) */}
-                  <div className="flex justify-center gap-1">
+                  <div className="flex justify-center items-center gap-0.5 min-w-max">
                     {[18,17,16,15,14,13,12,11].map(n => (
-                      <ToothButton key={n} num={n} selected={(form.tooth_numbers||[]).includes(n)}
+                      <ToothButton 
+                        key={n} 
+                        num={n} 
+                        selected={(form.tooth_numbers||[]).map(Number).includes(Number(n))}
                         onClick={() => {
-                          const cur = form.tooth_numbers || [];
-                          setForm({ ...form, tooth_numbers: cur.includes(n) ? cur.filter(x=>x!==n) : [...cur, n] });
-                        }} />
+                          const cur = (form.tooth_numbers || []).map(Number);
+                          const num = Number(n);
+                          setForm({ ...form, tooth_numbers: cur.includes(num) ? cur.filter(x=>x!==num) : [...cur, num] });
+                        }} 
+                      />
                     ))}
-                    <div className="w-px bg-slate-200 mx-1" />
+                    <div className="w-0.5 h-6 bg-slate-300 mx-1 rounded-full" />
                     {[21,22,23,24,25,26,27,28].map(n => (
-                      <ToothButton key={n} num={n} selected={(form.tooth_numbers||[]).includes(n)}
+                      <ToothButton 
+                        key={n} 
+                        num={n} 
+                        selected={(form.tooth_numbers||[]).map(Number).includes(Number(n))}
                         onClick={() => {
-                          const cur = form.tooth_numbers || [];
-                          setForm({ ...form, tooth_numbers: cur.includes(n) ? cur.filter(x=>x!==n) : [...cur, n] });
-                        }} />
+                          const cur = (form.tooth_numbers || []).map(Number);
+                          const num = Number(n);
+                          setForm({ ...form, tooth_numbers: cur.includes(num) ? cur.filter(x=>x!==num) : [...cur, num] });
+                        }} 
+                      />
                     ))}
                   </div>
+
                   {/* Ajratuvchi chiziq */}
-                  <div className="flex justify-center">
-                    <div className="w-full h-px bg-slate-200 my-1" />
+                  <div className="flex items-center justify-center my-0.5">
+                    <div className="w-full h-px bg-slate-100" />
                   </div>
+
+                  <div className="text-[8px] font-black text-slate-400 uppercase tracking-wider text-center">Pastki jag' (Past)</div>
                   {/* Pastki o'ng (48-41) va Pastki chap (31-38) */}
-                  <div className="flex justify-center gap-1">
+                  <div className="flex justify-center items-center gap-0.5 min-w-max">
                     {[48,47,46,45,44,43,42,41].map(n => (
-                      <ToothButton key={n} num={n} selected={(form.tooth_numbers||[]).includes(n)}
+                      <ToothButton 
+                        key={n} 
+                        num={n} 
+                        selected={(form.tooth_numbers||[]).map(Number).includes(Number(n))}
                         onClick={() => {
-                          const cur = form.tooth_numbers || [];
-                          setForm({ ...form, tooth_numbers: cur.includes(n) ? cur.filter(x=>x!==n) : [...cur, n] });
-                        }} />
+                          const cur = (form.tooth_numbers || []).map(Number);
+                          const num = Number(n);
+                          setForm({ ...form, tooth_numbers: cur.includes(num) ? cur.filter(x=>x!==num) : [...cur, num] });
+                        }} 
+                      />
                     ))}
-                    <div className="w-px bg-slate-200 mx-1" />
+                    <div className="w-0.5 h-6 bg-slate-300 mx-1 rounded-full" />
                     {[31,32,33,34,35,36,37,38].map(n => (
-                      <ToothButton key={n} num={n} selected={(form.tooth_numbers||[]).includes(n)}
+                      <ToothButton 
+                        key={n} 
+                        num={n} 
+                        selected={(form.tooth_numbers||[]).map(Number).includes(Number(n))}
                         onClick={() => {
-                          const cur = form.tooth_numbers || [];
-                          setForm({ ...form, tooth_numbers: cur.includes(n) ? cur.filter(x=>x!==n) : [...cur, n] });
-                        }} />
+                          const cur = (form.tooth_numbers || []).map(Number);
+                          const num = Number(n);
+                          setForm({ ...form, tooth_numbers: cur.includes(num) ? cur.filter(x=>x!==num) : [...cur, num] });
+                        }} 
+                      />
                     ))}
                   </div>
                 </div>
 
                 {/* Tez tanlash tugmalari */}
-                <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
-                  <span className="text-[10px] font-black text-slate-400 uppercase self-center">Tez tanlash:</span>
+                <div className="flex flex-wrap items-center gap-1 pt-1.5 border-t border-slate-200/60">
+                  <span className="text-[9px] font-black text-slate-400 uppercase self-center mr-0.5">Tez tanlash:</span>
                   {[
-                    { label: 'Barcha tishlar', nums: [11,12,13,14,15,16,17,18,21,22,23,24,25,26,27,28,31,32,33,34,35,36,37,38,41,42,43,44,45,46,47,48] },
+                    { label: 'Barchasi (32)', nums: [11,12,13,14,15,16,17,18,21,22,23,24,25,26,27,28,31,32,33,34,35,36,37,38,41,42,43,44,45,46,47,48] },
                     { label: 'Yuqori', nums: [11,12,13,14,15,16,17,18,21,22,23,24,25,26,27,28] },
                     { label: 'Pastki', nums: [31,32,33,34,35,36,37,38,41,42,43,44,45,46,47,48] },
                     { label: 'O\'ng', nums: [11,12,13,14,15,16,17,18,41,42,43,44,45,46,47,48] },
                     { label: 'Chap', nums: [21,22,23,24,25,26,27,28,31,32,33,34,35,36,37,38] },
                   ].map(({ label, nums }) => (
-                    <button key={label} onClick={() => setForm({ ...form, tooth_numbers: nums })}
-                      className="text-[10px] font-black text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-xl hover:border-[#1499AD] hover:text-[#1499AD] transition-all">
+                    <button 
+                      type="button"
+                      key={label} 
+                      onClick={() => setForm({ ...form, tooth_numbers: nums })}
+                      className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-lg hover:border-[#1499AD] hover:text-[#1499AD] hover:bg-[#1499AD]/5 transition-all shadow-xs cursor-pointer active:scale-95"
+                    >
                       {label}
                     </button>
                   ))}
                 </div>
               </div>
             )}
+
+            {/* Footer Action Buttons */}
+            <div className="pt-2.5 border-t border-slate-100 flex items-center justify-end gap-2.5">
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={() => { setModalOpen(false); setEditService(null); }} 
+                className="h-10 rounded-xl px-5 font-bold text-xs text-slate-600 border-slate-200 hover:bg-slate-50"
+              >
+                {t('common.cancel') || 'Bekor qilish'}
+              </Button>
+              <Button 
+                type="button"
+                onClick={handleSaveService} 
+                disabled={saving || !form.name || !form.price}
+                className="h-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-6 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+              >
+                {saving ? (t('settings.publicPage.saving') || 'Saqlanmoqda...') : (t('common.save') || 'Saqlash')}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -845,7 +947,19 @@ export default function Services() {
               </Label>
               <Input value={renamingCat.new} onChange={e => setRenamingCat({ ...renamingCat, new: e.target.value })} className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-lg px-6" />
             </div>
-            <Button onClick={() => { if (!renamingCat.new) return; const newOrder = categoryOrder.map(c => c === renamingCat.old ? renamingCat.new : c); handleReorder(newOrder); setCatEditOpen(false); }} className="w-full h-15 rounded-2xl bg-slate-900 text-white font-black">
+            <Button onClick={async () => { 
+              if (!renamingCat.new || !renamingCat.new.trim()) return; 
+              const newName = renamingCat.new.trim();
+              const oldName = renamingCat.old;
+              const newOrder = categoryOrder.map(c => c === oldName ? newName : c); 
+              handleReorder(newOrder); 
+              const svcsToUpdate = services.filter(s => s.category === oldName);
+              svcsToUpdate.forEach(s => {
+                base44.entities.Service.update(s.id, { category: newName }).catch(console.error);
+              });
+              setCatEditOpen(false); 
+              loadData();
+            }} className="w-full h-15 rounded-2xl bg-slate-900 text-white font-black">
               {t('services.categoryModals.saveChanges') || 'O\'ZGARTIRISHNI SAQLASH'}
             </Button>
           </div>
@@ -866,7 +980,16 @@ export default function Services() {
             <Button variant="ghost" onClick={() => setCatToDelete(null)} className="flex-1 h-14 rounded-2xl font-black text-slate-400">
               {t('common.cancel') || 'BEKOR QILISH'}
             </Button>
-            <Button onClick={() => { const newOrder = categoryOrder.filter(c => c !== catToDelete); handleReorder(newOrder); setCatToDelete(null); }} className="flex-1 h-14 rounded-2xl bg-rose-500 text-white font-black">
+            <Button onClick={async () => { 
+              const newOrder = categoryOrder.filter(c => c !== catToDelete); 
+              handleReorder(newOrder); 
+              const catObj = dbCategories.find(c => c.name === catToDelete);
+              if (catObj?.id) {
+                base44.entities.ServiceCategory.delete(catObj.id).catch(console.error);
+              }
+              setCatToDelete(null); 
+              loadData();
+            }} className="flex-1 h-14 rounded-2xl bg-rose-500 text-white font-black">
               {t('services.categoryModals.yesDelete') || 'HA, O\'CHIRILSIN'}
             </Button>
           </div>
@@ -888,7 +1011,21 @@ export default function Services() {
               </Label>
               <Input value={newCatName} onChange={e => setNewCatName(e.target.value)} className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-lg px-6" placeholder={t('services.categoryModals.placeholder') || 'Masalan: GNATOLOGIYA'} />
             </div>
-            <Button onClick={() => { if (!newCatName) return; const newOrder = [newCatName, ...categoryOrder]; handleReorder(newOrder); setForm({ ...form, category: newCatName }); setNewCatName(''); setNewCatModalOpen(false); }} className="w-full h-15 rounded-2xl bg-slate-900 text-white font-black uppercase tracking-widest shadow-2xl">
+            <Button onClick={async () => { 
+              if (!newCatName || !newCatName.trim()) return; 
+              const trimmed = newCatName.trim();
+              const newOrder = [trimmed, ...categoryOrder.filter(c => c !== trimmed)]; 
+              handleReorder(newOrder); 
+              try {
+                await base44.entities.ServiceCategory.create({ name: trimmed });
+              } catch (e) {
+                console.error('Failed to create ServiceCategory in DB:', e);
+              }
+              setForm({ ...form, category: trimmed }); 
+              setNewCatName(''); 
+              setNewCatModalOpen(false); 
+              loadData();
+            }} className="w-full h-15 rounded-2xl bg-slate-900 text-white font-black uppercase tracking-widest shadow-2xl">
               {t('services.categoryModals.addCategory') || 'BO\'LIMNI QO\'SHISH'}
             </Button>
           </div>

@@ -52,7 +52,7 @@ export default function TreatmentPlans() {
   // ── React Query: Services (initial load) ──────────────────────────────────
   const { data: rawServices = [] } = useQuery({
     queryKey: QUERY_KEYS.services,
-    queryFn: () => base44.entities.Service.list('name', 100),
+    queryFn: () => base44.entities.Service.list('name', 500),
     staleTime: 10 * 60 * 1000,
   });
 

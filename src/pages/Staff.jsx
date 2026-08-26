@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
   Users, UserPlus, Trash2, Shield, 
   Search, Filter,
-  TrendingUp, Star
+  TrendingUp, Star, Pencil
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,18 @@ export default function Staff() {
     role: 'doctor', 
     commission: 30 
   });
+
+  const [editingStaff, setEditingStaff] = useState(null);
+  const [editStaffForm, setEditStaffForm] = useState({
+    full_name: '',
+    username: '',
+    password: '',
+    phone: '',
+    specialty: 'Stomatolog',
+    role: 'doctor',
+    commission: 30
+  });
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -128,11 +140,56 @@ export default function Staff() {
     if (!confirm(t('staff.deleteConfirm', { name }))) return;
     
     try {
-      await base44.entities.User.delete(id);
+      await base44.auth.deleteUser(id);
       toast.success(t('staff.deleteSuccess'));
       loadData();
     } catch (error) {
       toast.error(t('common.error'));
+    }
+  };
+
+  const handleOpenEditStaff = (user) => {
+    setEditingStaff(user);
+    setEditStaffForm({
+      full_name: user.full_name || user.name || '',
+      username: user.username || '',
+      password: user.password || '',
+      phone: user.phone || '',
+      specialty: user.specialty || 'Stomatolog',
+      role: user.role || 'doctor',
+      commission: user.commission_rate ?? user.commission ?? 30
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateStaff = async (e) => {
+    e.preventDefault();
+    if (!editStaffForm.full_name || !editStaffForm.username) {
+      toast.error(t('staff.fillAll'));
+      return;
+    }
+
+    try {
+      const cleanUsername = editStaffForm.username.toLowerCase().replace(/\s+/g, '');
+      const updatedData = {
+        name: editStaffForm.full_name.trim(),
+        full_name: editStaffForm.full_name.trim(),
+        username: cleanUsername,
+        password: editStaffForm.password,
+        phone: editStaffForm.phone?.trim() || '',
+        specialty: editStaffForm.specialty?.trim() || 'Stomatolog',
+        role: editStaffForm.role || 'doctor',
+        commission_rate: Number(editStaffForm.commission || 0)
+      };
+
+      await base44.auth.updateUser(editingStaff.id, updatedData);
+      toast.success(t('settings.staff.doctorUpdated') || "Xodim ma'lumotlari muvaffaqiyatli yangilandi!");
+      setIsEditModalOpen(false);
+      setEditingStaff(null);
+      loadData();
+    } catch (error) {
+      console.error('Update staff error:', error);
+      toast.error(error.message || t('common.error'));
     }
   };
 
@@ -366,14 +423,24 @@ export default function Staff() {
                       <p className="text-xs text-slate-500">@{user.username}</p>
                     </div>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => handleDeleteStaff(user.id, user.full_name || user.name)}
-                    className="text-slate-300 hover:text-red-500 rounded-xl"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleOpenEditStaff(user)}
+                      className="text-slate-400 hover:text-emerald-600 rounded-xl"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleDeleteStaff(user.id, user.full_name || user.name)}
+                      className="text-slate-300 hover:text-red-500 rounded-xl"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-1">
@@ -464,14 +531,24 @@ export default function Staff() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => handleDeleteStaff(user.id, user.full_name || user.name)}
-                        className="text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleOpenEditStaff(user)}
+                          className="text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleDeleteStaff(user.id, user.full_name || user.name)}
+                          className="text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </td>
                   </motion.tr>
                 ))}
@@ -489,6 +566,124 @@ export default function Staff() {
           )}
         </div>
       </div>
+
+      {/* ✏️ Xodim / Shifokor ma'lumotlarini tahrirlash dialogi */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-[450px] rounded-3xl p-6">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center font-bold text-emerald-700 text-lg">
+                {editStaffForm.full_name?.[0]?.toUpperCase() || 'D'}
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-black tracking-tight">
+                  {t('settings.staff.editDoctor') || "Xodim ma'lumotlarini tahrirlash"}
+                </DialogTitle>
+                <p className="text-xs text-slate-500 font-medium">
+                  {t('settings.staff.editDoctorSubtitle') || "Ma'lumotlar, login va parolni yangilash"}
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdateStaff} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-600">{t('staff.full_name')} *</Label>
+              <Input 
+                placeholder="Dr. Alisher Toshmatov" 
+                value={editStaffForm.full_name}
+                onChange={e => setEditStaffForm({ ...editStaffForm, full_name: e.target.value })}
+                className="rounded-xl h-11"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-600">{t('staff.phone')}</Label>
+                <Input 
+                  placeholder="+998 90 123 45 67" 
+                  value={editStaffForm.phone}
+                  onChange={e => setEditStaffForm({ ...editStaffForm, phone: e.target.value })}
+                  className="rounded-xl h-11"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-600">{t('staff.specialty')}</Label>
+                <Input 
+                  placeholder="Stomatolog" 
+                  value={editStaffForm.specialty}
+                  onChange={e => setEditStaffForm({ ...editStaffForm, specialty: e.target.value })}
+                  className="rounded-xl h-11"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-600">{t('staff.username')} *</Label>
+                <Input 
+                  placeholder="alisher_dr" 
+                  value={editStaffForm.username}
+                  onChange={e => setEditStaffForm({ ...editStaffForm, username: e.target.value })}
+                  className="rounded-xl h-11 font-mono text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-600">{t('staff.password')}</Label>
+                <Input 
+                  type="text"
+                  placeholder="••••••" 
+                  value={editStaffForm.password}
+                  onChange={e => setEditStaffForm({ ...editStaffForm, password: e.target.value })}
+                  className="rounded-xl h-11 font-mono text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-600">{t('staff.role')}</Label>
+                <select 
+                  className="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                  value={editStaffForm.role}
+                  onChange={e => setEditStaffForm({ ...editStaffForm, role: e.target.value })}
+                >
+                  <option value="doctor">{t('staff.roles.doctor')}</option>
+                  <option value="admin">{t('staff.roles.admin')}</option>
+                  <option value="receptionist">{t('staff.roles.receptionist')}</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-600">{t('staff.commission_rate')} (%)</Label>
+                <Input 
+                  type="number"
+                  value={editStaffForm.commission}
+                  onChange={e => setEditStaffForm({ ...editStaffForm, commission: e.target.value })}
+                  onWheel={e => e.target.blur()}
+                  className="rounded-xl h-11"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="pt-4 flex gap-2 sm:justify-end">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsEditModalOpen(false)}
+                className="h-11 rounded-xl px-5 font-bold"
+              >
+                {t('common.cancel') || "Bekor qilish"}
+              </Button>
+              <Button 
+                type="submit" 
+                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold uppercase tracking-widest shadow-md shadow-emerald-200"
+              >
+                {t('common.save') || "Saqlash"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

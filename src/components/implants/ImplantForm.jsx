@@ -134,6 +134,7 @@ export default function ImplantForm({ open, onClose, patients, services, implant
   const [step, setStep] = useState(1);
   const [newPatientOpen, setNewPatientOpen] = useState(false);
   const [localPatients, setLocalPatients] = useState(patients);
+  const [doctors, setDoctors] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [hoveredTooth, setHoveredTooth] = useState(null);
   
@@ -148,6 +149,35 @@ export default function ImplantForm({ open, onClose, patients, services, implant
   useEffect(() => {
     setLocalPatients(patients);
   }, [patients]);
+
+  // Klinikadagi shifokorlarni yuklash
+  useEffect(() => {
+    if (!open) return;
+    const loadClinicDoctors = async () => {
+      try {
+        let docList = [];
+        const allUsers = await base44.entities.User.list('name', 100);
+        if (Array.isArray(allUsers) && allUsers.length > 0) {
+          docList = allUsers.filter(u => u.role === 'doctor' || u.role === 'admin' || !u.role);
+        }
+        const local = JSON.parse(localStorage.getItem('system_users') || '[]');
+        if (Array.isArray(local) && local.length > 0) {
+          local.forEach(lu => {
+            const luName = lu.full_name || lu.name;
+            if (luName && !docList.some(d => (d.full_name || d.name) === luName || d.id === lu.id)) {
+              docList.push(lu);
+            }
+          });
+        }
+        setDoctors(docList);
+      } catch (err) {
+        console.error('Failed to load clinic doctors:', err);
+        const local = JSON.parse(localStorage.getItem('system_users') || '[]');
+        setDoctors(local);
+      }
+    };
+    loadClinicDoctors();
+  }, [open]);
 
   // Initialize form when modal opens
   useEffect(() => {
@@ -468,8 +498,16 @@ export default function ImplantForm({ open, onClose, patients, services, implant
    * Handle form save
    */
   const handleSave = async () => {
-    if (!form.patient_name || form.tooth_numbers.length === 0) {
-      alert(t('implants.form.validationAlert'));
+    if (!form.patient_name) {
+      alert("Iltimos, avval bemorni tanlang!");
+      return;
+    }
+    if (!form.doctor || !form.doctor.trim()) {
+      alert("Iltimos, mas'ul shifokorni tanlang! Shifokor bo'limi to'ldirilmagan.");
+      return;
+    }
+    if (!form.tooth_numbers || form.tooth_numbers.length === 0) {
+      alert("Iltimos, implant o'rnatiladigan tish(lar)ni belgilang!");
       return;
     }
 
@@ -820,17 +858,64 @@ export default function ImplantForm({ open, onClose, patients, services, implant
         </div>
       </div>
 
-      <div className="bg-muted/30 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-border/50">
-        <Label className="text-[10px] sm:text-xs font-bold text-muted-foreground mb-1 block">Shifokor</Label>
-        <div className="relative">
-          <Stethoscope className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 h-4 text-muted-foreground" />
-          <Input
-            className="pl-9 sm:pl-10 bg-background border-border/60 h-10 sm:h-11 rounded-lg sm:rounded-xl text-xs sm:text-sm"
-            value={form.doctor}
-            onChange={e => setField('doctor', e.target.value)}
-            placeholder="Mas'ul shifokor"
-          />
+      <div className="bg-muted/30 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-border/50 space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-[10px] sm:text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <Stethoscope className="w-3.5 h-3.5 text-primary" /> Mas'ul shifokor *
+          </Label>
+          {!form.doctor ? (
+            <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full animate-pulse border border-rose-200">
+              * Shifokorni tanlang
+            </span>
+          ) : (
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+              <Check className="w-3 h-3 stroke-[3]" /> Tanlandi
+            </span>
+          )}
         </div>
+
+        <Select 
+          value={form.doctor || ''} 
+          onValueChange={v => setField('doctor', v)}
+        >
+          <SelectTrigger className={`w-full bg-background h-10 sm:h-12 rounded-xl text-xs sm:text-sm font-bold border transition-all ${
+            !form.doctor 
+              ? 'border-amber-400 bg-amber-50/30 ring-1 ring-amber-300' 
+              : 'border-border/60 hover:border-primary'
+          }`}>
+            <div className="flex items-center gap-2.5 truncate">
+              <div className="w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Stethoscope className="w-3.5 h-3.5" />
+              </div>
+              <SelectValue placeholder="Klinikadagi mas'ul shifokorni tanlang..." />
+            </div>
+          </SelectTrigger>
+          <SelectContent className="rounded-2xl shadow-2xl border-slate-200 max-h-64 p-1">
+            {doctors.length === 0 ? (
+              <div className="p-4 text-center text-xs text-slate-400 font-bold">
+                Hozircha klinikada shifokorlar mavjud emas
+              </div>
+            ) : (
+              doctors.map(d => {
+                const docName = d.full_name || d.name || d.username;
+                const specialty = d.specialty || (d.role === 'admin' ? 'Bosh shifokor / Admin' : 'Shifokor-implantolog');
+                return (
+                  <SelectItem key={d.id || docName} value={docName} className="cursor-pointer py-2.5 rounded-xl">
+                    <div className="flex items-center gap-2.5 font-bold text-xs sm:text-sm text-slate-800">
+                      <div className="w-7 h-7 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center text-[12px] font-black shrink-0">
+                        👨‍⚕️
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <span className="leading-tight">{docName}</span>
+                        <span className="text-[10px] font-medium text-slate-400">{specialty}</span>
+                      </div>
+                    </div>
+                  </SelectItem>
+                );
+              })
+            )}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Tanlangan tishlar uchun implant ma'lumotlari kartalari (Step 1 ga qaytarildi) */}
@@ -906,7 +991,7 @@ export default function ImplantForm({ open, onClose, patients, services, implant
                         </h4>
                         {data ? (
                           <p className="text-amber-700 font-bold uppercase tracking-widest text-[10px] sm:text-xs truncate">
-                            {data.firma} | {data.diameter && data.length ? `${data.diameter}x${data.length}` : '?'} | {data.torque ? `${data.torque}NCM` : '?NCM'}
+                            {(data.firma === 'Boshqa' ? (data.firma_custom || 'Boshqa') : data.firma)} | {data.diameter && data.length ? `${data.diameter}x${data.length}` : '?'} | {data.torque ? `${data.torque}NCM` : '?NCM'}
                           </p>
                         ) : (
                           <p className="text-amber-500/70 font-bold text-[10px] sm:text-xs">
@@ -942,9 +1027,26 @@ export default function ImplantForm({ open, onClose, patients, services, implant
           Bekor qilish
         </Button>
         <Button
-          onClick={() => setStep(2)}
-          disabled={!isStep1Valid}
-          className="h-10 sm:h-12 px-6 sm:px-8 rounded-xl sm:rounded-2xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95 text-xs sm:text-sm"
+          onClick={() => {
+            if (!form.patient_name) {
+              alert("Iltimos, avval bemorni tanlang!");
+              return;
+            }
+            if (!form.doctor || !form.doctor.trim()) {
+              alert("Iltimos, mas'ul shifokorni tanlang! Shifokor maydoni to'ldirilmagan.");
+              return;
+            }
+            if (!form.tooth_numbers || form.tooth_numbers.length === 0) {
+              alert("Iltimos, implant o'rnatiladigan tish(lar)ni diagrammada belgilang!");
+              return;
+            }
+            setStep(2);
+          }}
+          className={`h-10 sm:h-12 px-6 sm:px-8 rounded-xl sm:rounded-2xl transition-all active:scale-95 text-xs sm:text-sm font-black ${
+            isStep1Valid 
+              ? 'bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 cursor-pointer' 
+              : 'bg-amber-500 hover:bg-amber-600 text-white shadow-md cursor-pointer'
+          }`}
         >
           Keyingisi <Calendar className="w-3.5 h-3.5 sm:w-4 h-4 ml-2" />
         </Button>

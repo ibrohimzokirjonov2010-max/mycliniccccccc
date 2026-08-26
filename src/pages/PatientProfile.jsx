@@ -1128,7 +1128,7 @@ export default function PatientProfile() {
 
       // ── PHASE 2: Secondary data — load in background, no skeleton ──
       const [svcsRes, implantsRes, toothRes, doctorsRes] = await Promise.all([
-        servicesCache ? Promise.resolve(servicesCache) : base44.entities.Service.filter({ is_active: true }, 'name', 100),
+        servicesCache ? Promise.resolve(servicesCache) : base44.entities.Service.filter({ is_active: true }, 'name', 500),
         base44.entities.Implant.filter({ patient_id: id }),
         base44.entities.ToothRecord.filter({ patient_id: id }, '-created_date', 100),
         doctorsCache ? Promise.resolve(doctorsCache) : base44.entities.User.filter({ role: 'doctor' }, 'name'),

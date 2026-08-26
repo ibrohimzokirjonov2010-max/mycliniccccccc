@@ -30,12 +30,28 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
   const handleSave = () => {
-    if (!form.firma || !form.brend) { alert('Firma va Brend majburiy!'); return; }
-    onSave(toothId, form);
+    if (form.firma === 'Boshqa' && !form.firma_custom?.trim()) {
+      alert('Iltimos, firma / brend nomini kiriting!');
+      return;
+    }
+    if (!form.firma) {
+      alert('Iltimos, implant firmasini tanlang!');
+      return;
+    }
+
+    const finalCustom = form.firma === 'Boshqa' ? form.firma_custom.trim() : '';
+    const finalBrend = form.brend?.trim() || (form.firma === 'Boshqa' ? finalCustom : (form.firma || 'Standart'));
+
+    onSave(toothId, {
+      ...form,
+      firma_custom: finalCustom,
+      brend: finalBrend
+    });
     onClose();
   };
 
-  const isValid = form.firma && form.brend;
+  const isFirmaValid = form.firma === 'Boshqa' ? !!form.firma_custom?.trim() : !!form.firma;
+  const isValid = isFirmaValid;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -71,35 +87,65 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
 
           {/* Firma */}
           <div>
-            <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-1.5 block">Implant Firmasi *</label>
-            <Select value={form.firma} onValueChange={v => set('firma', v)}>
-              <SelectTrigger className="bg-white border-slate-200 h-10 rounded-xl shadow-sm font-bold text-sm focus:ring-emerald-400">
-                <SelectValue />
+            <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-1.5 block">
+              Implant Firmasi *
+            </label>
+            <Select 
+              value={form.firma} 
+              onValueChange={v => {
+                setForm(prev => ({
+                  ...prev,
+                  firma: v,
+                  firma_custom: v === 'Boshqa' ? prev.firma_custom : '',
+                  brend: v === 'Boshqa' ? (prev.firma_custom || prev.brend) : prev.brend
+                }));
+              }}
+            >
+              <SelectTrigger className="bg-white border-slate-200 h-11 rounded-xl shadow-sm font-bold text-sm focus:ring-emerald-400">
+                <SelectValue placeholder="Implant firmasini tanlang" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-xl border-slate-200 shadow-xl">
                 {FIRMALAR.map(f => (
-                  <SelectItem key={f} value={f} className="font-bold">{f}</SelectItem>
+                  <SelectItem key={f} value={f} className="font-bold cursor-pointer py-2.5">
+                    {f}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
             {form.firma === 'Boshqa' && (
-              <Input
-                className="mt-2 bg-white border-slate-200 h-10 rounded-xl font-medium text-sm"
-                value={form.firma_custom}
-                onChange={e => set('firma_custom', e.target.value)}
-                placeholder="Firma nomini kiriting"
-              />
+              <div className="mt-2.5 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                <label className="text-emerald-700 text-[9px] font-black uppercase tracking-wider ml-1 block flex items-center gap-1">
+                  <span>✍️ Brend / Firma nomini kiriting *</span>
+                </label>
+                <Input
+                  autoFocus
+                  className="bg-emerald-50/60 border-emerald-300 focus:border-emerald-500 focus-visible:ring-emerald-400 h-10 rounded-xl font-bold text-slate-800 text-sm placeholder:text-slate-400 shadow-sm"
+                  value={form.firma_custom}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setForm(prev => ({
+                      ...prev,
+                      firma_custom: val,
+                      brend: prev.brend && prev.brend !== prev.firma_custom ? prev.brend : val
+                    }));
+                  }}
+                  placeholder="Masalan: Dentium, Megagen, Bredent, Neodent..."
+                />
+              </div>
             )}
           </div>
 
           {/* Brend */}
           <div>
-            <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-1.5 block">Brend / Model *</label>
+            <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-1.5 block">
+              Brend / Model (ixtiyoriy)
+            </label>
             <Input
               className="bg-white border-slate-200 h-10 rounded-xl font-medium text-sm focus-visible:ring-emerald-400"
               value={form.brend}
               onChange={e => set('brend', e.target.value)}
-              placeholder="Masalan: Replace CC, TSIII, SLA..."
+              placeholder={form.firma === 'Boshqa' ? "Masalan: SuperLine, AnyRidge..." : "Masalan: Replace CC, TSIII, SLA..."}
             />
           </div>
 

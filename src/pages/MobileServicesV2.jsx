@@ -72,7 +72,7 @@ export default function MobileServicesV2() {
   const [renamingCat, setRenamingCat] = useState({ old: '', new: '' });
 
   const [form, setForm] = useState({ 
-    name: '', category: 'TERAPIYA( ENDO +PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false 
+    name: '', category: 'TERAPIYA( ENDO +PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false, tooth_numbers: []
   });
 
   const loadServices = async () => {
@@ -121,10 +121,11 @@ export default function MobileServicesV2() {
         name: editService.name, category: editService.category, 
         price: editService.price, duration: editService.duration, 
         is_active: editService.is_active !== false,
-        requires_tooth: editService.requires_tooth || false
+        requires_tooth: editService.requires_tooth || false,
+        tooth_numbers: editService.tooth_numbers || []
       });
     } else {
-      setForm({ name: '', category: 'TERAPIYA( ENDO +PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false });
+      setForm({ name: '', category: 'TERAPIYA( ENDO +PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false, tooth_numbers: [] });
     }
   }, [editService, modalOpen]);
 
@@ -455,8 +456,136 @@ export default function MobileServicesV2() {
                     <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-wider font-mono">Tish raqamini kiritish</p>
                   </div>
                 </div>
-                <Switch checked={form.requires_tooth} onCheckedChange={v => setForm({ ...form, requires_tooth: v })} />
+                <Switch 
+                  checked={form.requires_tooth} 
+                  onCheckedChange={v => setForm({ ...form, requires_tooth: v, tooth_numbers: v ? (form.tooth_numbers || []) : [] })} 
+                />
               </div>
+
+              {form.requires_tooth && (
+                <div className="p-3 bg-slate-50 border-t border-slate-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-slate-700 uppercase tracking-wider">Tishlarni belgilang</p>
+                    {(form.tooth_numbers || []).length > 0 && (
+                      <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                        {(form.tooth_numbers || []).length} ta tanlandi
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 space-y-1.5 overflow-x-auto">
+                    <div className="flex justify-center items-center gap-1 min-w-max">
+                      {[18,17,16,15,14,13,12,11].map(n => {
+                        const sel = (form.tooth_numbers || []).map(Number).includes(Number(n));
+                        return (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => {
+                              const cur = (form.tooth_numbers || []).map(Number);
+                              const num = Number(n);
+                              setForm({ ...form, tooth_numbers: cur.includes(num) ? cur.filter(x => x !== num) : [...cur, num] });
+                            }}
+                            className={`w-7 h-8 rounded-lg text-[10px] font-black border transition-all ${
+                              sel ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-600'
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        );
+                      })}
+                      <div className="w-px h-6 bg-slate-300 mx-1" />
+                      {[21,22,23,24,25,26,27,28].map(n => {
+                        const sel = (form.tooth_numbers || []).map(Number).includes(Number(n));
+                        return (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => {
+                              const cur = (form.tooth_numbers || []).map(Number);
+                              const num = Number(n);
+                              setForm({ ...form, tooth_numbers: cur.includes(num) ? cur.filter(x => x !== num) : [...cur, num] });
+                            }}
+                            className={`w-7 h-8 rounded-lg text-[10px] font-black border transition-all ${
+                              sel ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-600'
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex justify-center items-center gap-1 min-w-max pt-1 border-t border-slate-100">
+                      {[48,47,46,45,44,43,42,41].map(n => {
+                        const sel = (form.tooth_numbers || []).map(Number).includes(Number(n));
+                        return (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => {
+                              const cur = (form.tooth_numbers || []).map(Number);
+                              const num = Number(n);
+                              setForm({ ...form, tooth_numbers: cur.includes(num) ? cur.filter(x => x !== num) : [...cur, num] });
+                            }}
+                            className={`w-7 h-8 rounded-lg text-[10px] font-black border transition-all ${
+                              sel ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-600'
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        );
+                      })}
+                      <div className="w-px h-6 bg-slate-300 mx-1" />
+                      {[31,32,33,34,35,36,37,38].map(n => {
+                        const sel = (form.tooth_numbers || []).map(Number).includes(Number(n));
+                        return (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => {
+                              const cur = (form.tooth_numbers || []).map(Number);
+                              const num = Number(n);
+                              setForm({ ...form, tooth_numbers: cur.includes(num) ? cur.filter(x => x !== num) : [...cur, num] });
+                            }}
+                            className={`w-7 h-8 rounded-lg text-[10px] font-black border transition-all ${
+                              sel ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-600'
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {[
+                      { label: 'Barchasi', nums: [11,12,13,14,15,16,17,18,21,22,23,24,25,26,27,28,31,32,33,34,35,36,37,38,41,42,43,44,45,46,47,48] },
+                      { label: 'Yuqori', nums: [11,12,13,14,15,16,17,18,21,22,23,24,25,26,27,28] },
+                      { label: 'Pastki', nums: [31,32,33,34,35,36,37,38,41,42,43,44,45,46,47,48] },
+                    ].map(({ label, nums }) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => setForm({ ...form, tooth_numbers: nums })}
+                        className="text-[9px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-lg"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                    {(form.tooth_numbers || []).length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, tooth_numbers: [] })}
+                        className="text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-lg ml-auto"
+                      >
+                        Tozalash
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

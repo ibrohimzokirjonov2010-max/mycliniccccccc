@@ -2076,54 +2076,52 @@ export const base44 = {
 
     // Update user
     updateUser: async (id, data) => {
-      if (!import.meta.env.VITE_SUPABASE_URL) {
-        const users = await base44.auth.getAllUsers();
-        const index = users.findIndex(u => u.id === id);
-        if (index >= 0) {
-          users[index] = { ...users[index], ...data };
-          await base44.auth.saveUsers(users);
-          return users[index];
-        }
-        return null;
-      }
-      
+      // 1. Update in localStorage system_users
       try {
-        const updatedUser = await db.users.update(id, data);
-        console.log('✅ User updated in Supabase:', id);
-        return updatedUser;
-      } catch (error) {
-        console.error('Error updating user in Supabase:', error);
-        // Fallback to localStorage
-        const users = await base44.auth.getAllUsers();
-        const index = users.findIndex(u => u.id === id);
-        if (index >= 0) {
-          users[index] = { ...users[index], ...data };
-          await base44.auth.saveUsers(users);
-          return users[index];
+        const stored = localStorage.getItem('system_users');
+        if (stored) {
+          const users = JSON.parse(stored);
+          const index = users.findIndex(u => u.id === id);
+          if (index >= 0) {
+            users[index] = { ...users[index], ...data };
+            localStorage.setItem('system_users', JSON.stringify(users));
+          }
         }
-        return null;
+      } catch (e) {
+        console.error('Update system_users in localStorage failed:', e);
+      }
+
+      // 2. Update via User entity loader (Supabase + local cache)
+      try {
+        const updatedUser = await base44.entities.User.update(id, data);
+        console.log('✅ User updated:', id);
+        return updatedUser || data;
+      } catch (error) {
+        console.error('Error updating user in entity loader:', error);
+        return data;
       }
     },
 
     // Delete user
     deleteUser: async (id) => {
-      if (!import.meta.env.VITE_SUPABASE_URL) {
-        let users = await base44.auth.getAllUsers();
-        users = users.filter(u => u.id !== id);
-        await base44.auth.saveUsers(users);
-        return true;
-      }
-      
+      // 1. Delete from localStorage system_users
       try {
-        await db.users.delete(id);
-        console.log('✅ User deleted from Supabase:', id);
+        const stored = localStorage.getItem('system_users');
+        if (stored) {
+          let users = JSON.parse(stored).filter(u => u.id !== id);
+          localStorage.setItem('system_users', JSON.stringify(users));
+        }
+      } catch (e) {
+        console.error('Delete from system_users in localStorage failed:', e);
+      }
+
+      // 2. Delete via User entity loader
+      try {
+        await base44.entities.User.delete(id);
+        console.log('✅ User deleted:', id);
         return true;
       } catch (error) {
-        console.error('Error deleting user from Supabase:', error);
-        // Fallback to localStorage
-        let users = await base44.auth.getAllUsers();
-        users = users.filter(u => u.id !== id);
-        await base44.auth.saveUsers(users);
+        console.error('Error deleting user in entity loader:', error);
         return true;
       }
     },
