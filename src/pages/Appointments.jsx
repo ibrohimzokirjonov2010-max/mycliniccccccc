@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { cn } from '@/lib/utils';
 import { QUERY_KEYS } from '@/lib/queryKeys';
+import { useAuth } from '@/lib/AuthContext';
 
 // ── Appointment date/time normalizer (shared helper) ─────────────────────────
 const normalizeAppt = (a) => {
@@ -34,6 +35,7 @@ const normalizeAppt = (a) => {
 
 export default function Appointments() {
   const { t } = useTranslation();
+  const { user, isDoctor } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -50,6 +52,12 @@ export default function Appointments() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [viewDate, setViewDate] = useState(new Date().toISOString().split('T')[0]);
   const [activeTab, setActiveTab] = useState('grid');
+
+  useEffect(() => {
+    if (isDoctor && user?.id) {
+      setSelectedDoctorId(user.id);
+    }
+  }, [isDoctor, user]);
 
   // Debounce search
   useEffect(() => {
@@ -121,7 +129,7 @@ export default function Appointments() {
 
   // Doctors derived from users
   const doctors = useMemo(() => {
-    return (rawUsers || []).filter(u => {
+    let list = (rawUsers || []).filter(u => {
       if (u.role !== 'doctor' && u.role !== 'admin') return false;
       if (!u.name) return false;
       const hasAppointments = appointments.some(a => String(a.doctor_id) === String(u.id));
@@ -129,7 +137,11 @@ export default function Appointments() {
       const lowerName = u.name.toLowerCase();
       return lowerName !== 'shifokor' && lowerName !== 'admin';
     });
-  }, [rawUsers, appointments]);
+    if (isDoctor && user?.id) {
+      list = list.filter(d => String(d.id) === String(user.id) || (d.name && d.name === user.name));
+    }
+    return list;
+  }, [rawUsers, appointments, isDoctor, user]);
 
   // ── Real-time: Supabase → invalidate React Query cache ─────────────────────
 
@@ -156,7 +168,7 @@ export default function Appointments() {
     setEditAppt(null);
     setPrefillDate(date || '');
     setPrefillTime(time || '');
-    setPrefillDoctorId(doctorId || null);
+    setPrefillDoctorId(isDoctor ? user?.id : (doctorId || null));
     setModalOpen(true);
   };
 
@@ -195,6 +207,10 @@ export default function Appointments() {
   const filteredAppointments = useMemo(() => {
     let result = appointments;
     
+    if (isDoctor && user?.id) {
+      result = result.filter(a => String(a.doctor_id) === String(user.id) || (a.doctor_name || '').toLowerCase() === (user.name || '').toLowerCase());
+    }
+
     // In grid view, we show all doctors in columns, so we shouldn't filter the data 
     // by a single doctor unless we're in list or calendar view where only one doctor's data is shown.
     if (activeTab !== 'grid' && selectedDoctorId !== null) {
@@ -224,6 +240,24 @@ export default function Appointments() {
 
     return result;
   }, [appointments, selectedDoctorId, doctors, debouncedSearch, patients, activeTab]);
+
+  // Enriched appointments with patient photos and details
+  const enrichedAppointments = useMemo(() => {
+    return filteredAppointments.map(a => {
+      const patientObj = patients.find(p => 
+        (a.patient_id && String(p.id) === String(a.patient_id)) || 
+        (p.full_name && a.patient_name && p.full_name.toLowerCase().trim() === a.patient_name.toLowerCase().trim()) ||
+        (p.name && a.patient_name && p.name.toLowerCase().trim() === a.patient_name.toLowerCase().trim())
+      );
+      const photo = patientObj?.photo_url || patientObj?.photo || patientObj?.avatar_url || patientObj?.avatar || patientObj?.image_url || patientObj?.image || a.patient_photo || a.photo || a.photo_url || a.avatar_url || '';
+      return {
+        ...a,
+        patient_name: a.patient_name || patientObj?.full_name || patientObj?.name || 'Noma\'lum',
+        patient_photo: photo,
+        patient_phone: a.patient_phone || patientObj?.phone || ''
+      };
+    });
+  }, [filteredAppointments, patients]);
 
   const otherDayMatchesCount = useMemo(() => {
     if (!debouncedSearch.trim()) return 0;
@@ -370,20 +404,30 @@ export default function Appointments() {
                 {t('appointments.allDoctors') || 'Barchasi'}
               </button>
 
-              {doctors.map((doc) => (
-                <button
-                  key={doc.id}
-                  onClick={() => setSelectedDoctorId(doc.id)}
-                  className={cn(
-                    "px-5 h-10 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest whitespace-nowrap shrink-0",
-                    String(selectedDoctorId) === String(doc.id)
-                      ? "bg-[#1499AD] border-[#1499AD] text-white shadow-lg shadow-[#1499AD]/20"
-                      : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 shadow-sm"
-                  )}
-                >
-                  {doc.name}
-                </button>
-              ))}
+              {doctors.map((doc) => {
+                const avatarUrl = doc.avatar_url || doc.photo || doc.avatar || doc.image;
+                return (
+                  <button
+                    key={doc.id}
+                    onClick={() => setSelectedDoctorId(doc.id)}
+                    className={cn(
+                      "px-3.5 h-10 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest whitespace-nowrap shrink-0 flex items-center gap-2",
+                      String(selectedDoctorId) === String(doc.id)
+                        ? "bg-[#1499AD] border-[#1499AD] text-white shadow-lg shadow-[#1499AD]/20"
+                        : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 shadow-sm"
+                    )}
+                  >
+                    <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 bg-slate-100 flex items-center justify-center border border-slate-200/50">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt={doc.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-[9px] font-black text-slate-600">{(doc.name || doc.full_name)?.charAt(0)}</span>
+                      )}
+                    </div>
+                    <span>{doc.name}</span>
+                  </button>
+                );
+              })}
             </div>
           </motion.div>
         )}
@@ -413,10 +457,7 @@ export default function Appointments() {
                   <DoctorDayGrid 
                     viewDate={viewDate}
                     onViewDateChange={setViewDate}
-                    appointments={filteredAppointments.map(a => ({
-                      ...a,
-                      patient_name: a.patient_name || patients.find(p => String(p.id) === String(a.patient_id))?.full_name || 'Noma\'lum'
-                    }))}
+                    appointments={enrichedAppointments}
                     doctors={doctors}
                     onSlotClick={openNewAppt}
                     onEditClick={openEditAppt}
@@ -432,10 +473,7 @@ export default function Appointments() {
                   <CalendarView 
                     currentDate={new Date(viewDate)}
                     onDateChange={(d) => setViewDate(d.toISOString().split('T')[0])}
-                    appointments={filteredAppointments.map(a => ({
-                      ...a,
-                      patient_name: a.patient_name || patients.find(p => String(p.id) === String(a.patient_id))?.full_name || 'Noma\'lum'
-                    }))} 
+                    appointments={enrichedAppointments} 
                     onSlotClick={openNewAppt} 
                     onEditClick={openEditAppt} 
                   />

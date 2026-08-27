@@ -5060,9 +5060,26 @@ export default function PatientProfile() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {plans.map((plan) => {
                   const planServices = plan.services || [];
-                  const planTotal = planServices.reduce((s, sv) => s + (Number(sv.price) || 0), 0) || Number(plan.total_price) || 0;
+                  const servicesSum = planServices.reduce((s, sv) => s + (Number(sv.price) || 0), 0);
+                  const explicitDiscount = Number(plan.discount_amount) || 0;
+                  const currentPrice = Number(plan.total_price) || 0;
+                  
+                  // Chegirma miqdori
+                  const discountAmt = explicitDiscount > 0 
+                    ? explicitDiscount 
+                    : (servicesSum > currentPrice && currentPrice > 0 ? servicesSum - currentPrice : 0);
+                    
+                  // Chegirma foizi
+                  const discountPct = Number(plan.discount_percent) || Number(plan.discount) || (servicesSum > 0 && discountAmt > 0 ? Math.round((discountAmt / servicesSum) * 100) : 0);
+                  
+                  // Asl narx (chegirmasiz)
+                  const originalTotal = servicesSum > 0 ? servicesSum : (currentPrice + discountAmt);
+                  
+                  // Chegirmali yakuniy summa
+                  const finalTotal = currentPrice > 0 ? currentPrice : Math.max(0, originalTotal - discountAmt);
+                  
                   const planPaid = Number(plan.paid_amount) || 0;
-                  const planRemaining = planTotal - planPaid;
+                  const planRemaining = Math.max(0, finalTotal - planPaid);
                   
                   return (
                     <div key={plan.id} className="border border-slate-100 rounded-2xl p-4 bg-slate-50/30 hover:shadow-sm transition-all flex flex-col justify-between">
@@ -5075,10 +5092,37 @@ export default function PatientProfile() {
                             {planRemaining <= 0 ? "To'langan" : planPaid > 0 ? 'Qisman' : 'Kutilmoqda'}
                           </span>
                         </div>
-                        <div className="space-y-1 text-[11px] font-bold text-slate-500 my-3">
-                          <div className="flex justify-between"><span>Jami summa:</span> <span className="text-slate-900">{planTotal.toLocaleString()} so'm</span></div>
-                          <div className="flex justify-between"><span>To'langan:</span> <span className="text-emerald-600">{planPaid.toLocaleString()} so'm</span></div>
-                          <div className="flex justify-between"><span>Qolgan:</span> <span className="text-rose-500">{planRemaining.toLocaleString()} so'm</span></div>
+                        <div className="space-y-1.5 text-[11px] font-bold text-slate-500 my-3">
+                          <div className="flex justify-between items-center">
+                            <span>Jami summa:</span>
+                            <span className={discountAmt > 0 ? "text-slate-400 line-through font-medium" : "text-slate-900 font-bold"}>
+                              {originalTotal.toLocaleString()} so'm
+                            </span>
+                          </div>
+
+                          {discountAmt > 0 && (
+                            <div className="flex justify-between items-center text-rose-500 font-bold">
+                              <span>Chegirma {discountPct > 0 ? `(${discountPct}%):` : ':'}</span>
+                              <span>- {discountAmt.toLocaleString()} so'm</span>
+                            </div>
+                          )}
+
+                          {discountAmt > 0 && (
+                            <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                              <span className="text-slate-700 font-black">Chegirmali summa:</span>
+                              <span className="text-slate-900 font-black">{finalTotal.toLocaleString()} so'm</span>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between items-center">
+                            <span>To'langan:</span>
+                            <span className="text-emerald-600 font-black">{planPaid.toLocaleString()} so'm</span>
+                          </div>
+
+                          <div className="flex justify-between items-center pt-1 border-t border-dashed border-slate-200">
+                            <span className="text-slate-800 font-black">Qolgan:</span>
+                            <span className="text-rose-600 font-black">{planRemaining.toLocaleString()} so'm</span>
+                          </div>
                         </div>
                       </div>
                       <button
@@ -5309,6 +5353,7 @@ export default function PatientProfile() {
         allAppointments={appointments}
         prefillPatientId={id}
         prefillPatientName={patient?.full_name}
+        prefillDoctorId={patient?.main_treatment_provider || ''}
         prefillDate=""
         prefillTime=""
         onSaved={load}

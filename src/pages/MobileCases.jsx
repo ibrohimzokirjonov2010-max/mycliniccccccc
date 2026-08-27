@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Search, Image as ImageIcon, Sparkles, X, ChevronRight, ChevronLeft, ArrowLeft, Pen, Trash2 } from 'lucide-react';
+import { Camera, Search, Image as ImageIcon, Sparkles, X, ChevronRight, ChevronLeft, ArrowLeft, Pen, Trash2, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
@@ -170,6 +170,16 @@ export default function MobileCases() {
             className="w-full bg-slate-100 border-none pl-10 h-12 rounded-2xl text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-[#1499AD]/20"
           />
         </div>
+      </div>
+
+      {/* Memory Warning Banner */}
+      <div className="mx-4 mt-3 bg-rose-50/95 border border-rose-200/80 rounded-2xl p-3 flex items-center gap-2.5 shadow-xs">
+        <div className="w-7 h-7 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+          <AlertCircle className="w-4 h-4" />
+        </div>
+        <p className="text-[11px] font-black text-rose-600 tracking-tight leading-snug">
+          Iltimos xotira to'lmasligi uchun sifatli rasmlarni yuklang
+        </p>
       </div>
 
       {/* FILTER TAGS */}

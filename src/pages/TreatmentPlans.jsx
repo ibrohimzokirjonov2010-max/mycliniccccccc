@@ -22,10 +22,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function TreatmentPlans() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user, isDoctor } = useAuth();
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
@@ -37,8 +39,14 @@ export default function TreatmentPlans() {
 
   // ── React Query: Treatment plans ──────────────────────────────────────────
   const { data: rawPlans = [], isFetching: plansFetching } = useQuery({
-    queryKey: QUERY_KEYS.treatmentPlans,
-    queryFn: () => base44.entities.TreatmentPlan.list('-created_date', 50),
+    queryKey: ['treatmentPlans', isDoctor, user?.id],
+    queryFn: async () => {
+      if (isDoctor && user?.id) {
+        const docPlans = await base44.entities.TreatmentPlan.filter({ doctor_id: user.id }, '-created_date', 50).catch(() => []);
+        return docPlans || [];
+      }
+      return await base44.entities.TreatmentPlan.list('-created_date', 50);
+    },
     staleTime: 3 * 60 * 1000,
   });
 
@@ -114,10 +122,13 @@ export default function TreatmentPlans() {
     }
   };
 
-  const filtered = plans.filter(p =>
-    p.name?.toLowerCase().includes(search.toLowerCase()) ||
-    p.patient_name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = plans.filter(p => {
+    if (isDoctor && String(p.doctor_id) !== String(user?.id) && (p.doctor_name || '').toLowerCase() !== (user?.name || '').toLowerCase()) {
+      return false;
+    }
+    return p.name?.toLowerCase().includes(search.toLowerCase()) ||
+      p.patient_name?.toLowerCase().includes(search.toLowerCase());
+  });
 
   // Stats — support both English and Uzbek status values
   const inProgressCount = plans.filter(p => p.status === 'Jarayonda' || p.status === 'In Progress' || p.status === 'InProgress').length;

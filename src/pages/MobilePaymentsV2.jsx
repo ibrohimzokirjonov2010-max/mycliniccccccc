@@ -226,6 +226,82 @@ export default function MobilePaymentsV2() {
     fetchAllPatientPayments();
     return () => { active = false; };
   }, [payments]);
+
+  const [selectedPaymentPatientData, setSelectedPaymentPatientData] = useState(null);
+
+  useEffect(() => {
+    if (!selectedPayment?.patient_id) {
+      setSelectedPaymentPatientData(null);
+      return;
+    }
+    let isMounted = true;
+    (async () => {
+      try {
+        const [allPays, allPlans] = await Promise.all([
+          base44.entities.Payment.filter({ patient_id: selectedPayment.patient_id }, 'date', 5000),
+          base44.entities.TreatmentPlan.filter({ patient_id: selectedPayment.patient_id }, '-created_date', 100).catch(() => [])
+        ]);
+        if (!isMounted) return;
+        const paysList = allPays || [];
+        const plansList = allPlans || [];
+
+        const getPlanOriginalPrice = (plan) => {
+          if (!plan) return 0;
+          const sSum = (plan.services || []).reduce((acc, item) => {
+            if (item.price) return acc + (Number(item.price) || 0);
+            if (item.items && Array.isArray(item.items)) {
+              return acc + item.items.reduce((iAcc, i) => iAcc + (Number(i.price) || 0), 0);
+            }
+            return acc;
+          }, 0);
+          const dAmt = Number(plan.discount_amount) || 0;
+          const pTot = Number(plan.total_price) || 0;
+          const pct = Number(plan.discount_percent) || 0;
+          if (sSum > 0 && sSum >= pTot) return sSum;
+          if (dAmt > 0) return pTot + dAmt;
+          if (pct > 0 && pTot > 0 && pct < 100) return Math.round(pTot / (1 - pct / 100));
+          return pTot || sSum;
+        };
+
+        const linkedPlan = plansList.find(pl => (selectedPayment.plan_id && pl.id === selectedPayment.plan_id) || (selectedPayment.notes && selectedPayment.notes.includes(pl.id)));
+        const targetPlans = linkedPlan ? [linkedPlan] : plansList;
+
+        let originalPrice = 0;
+        let finalPlanTotal = 0;
+        let discountAmount = 0;
+        let discountPercent = 0;
+
+        if (targetPlans.length > 0) {
+          originalPrice = targetPlans.reduce((sum, pl) => sum + getPlanOriginalPrice(pl), 0);
+          finalPlanTotal = targetPlans.reduce((sum, pl) => sum + (Number(pl.total_price) || getPlanOriginalPrice(pl)), 0);
+          discountAmount = Math.max(0, originalPrice - finalPlanTotal);
+          if (discountAmount === 0) {
+            discountAmount = targetPlans.reduce((sum, pl) => sum + (Number(pl.discount_amount) || 0), 0);
+            if (discountAmount > 0) originalPrice = finalPlanTotal + discountAmount;
+          }
+          discountPercent = originalPrice > 0 ? Math.round((discountAmount / originalPrice) * 100) : (targetPlans[0]?.discount_percent || 0);
+        } else {
+          const totalDebts = paysList.filter(pay => pay.type?.toLowerCase() === 'debt').reduce((s, pay) => s + (Number(pay.amount) || 0), 0);
+          const totalDiscountPayments = paysList.filter(pay => pay.type?.toLowerCase() === 'discount').reduce((s, pay) => s + Math.abs(Number(pay.amount) || 0), 0);
+          originalPrice = totalDebts > 0 ? totalDebts + totalDiscountPayments : (Number(selectedPayment.amount) || 0);
+          discountAmount = totalDiscountPayments;
+          finalPlanTotal = Math.max(0, originalPrice - discountAmount);
+          discountPercent = originalPrice > 0 ? Math.round((discountAmount / originalPrice) * 100) : 0;
+        }
+
+        setSelectedPaymentPatientData({
+          originalPrice,
+          finalPlanTotal,
+          totalDiscount: discountAmount,
+          discountPercent,
+        });
+      } catch (err) {
+        console.error('Error loading mobile payment patient data:', err);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, [selectedPayment]);
+
   const [patientPlans, setPatientPlans] = useState([]);
   const [patientAllPlans, setPatientAllPlans] = useState([]);
   const [patientPayments, setPatientPayments] = useState([]);
@@ -625,7 +701,7 @@ export default function MobilePaymentsV2() {
         }
       }
 
-      const selectedDocId = isDoctor ? user.id : formData.doctor_id;
+      const selectedDocId = isDoctor ? user.id : (formData.doctor_id || patient?.main_treatment_provider || null);
       const selectedDoc = doctors.find(d => d.id === selectedDocId);
       
       await base44.entities.Payment.create({
@@ -1032,8 +1108,15 @@ export default function MobilePaymentsV2() {
                           <PatientSelect 
                             patients={patients}
                             value={formData.patient_id}
-                            onChange={(id) => {
-                              setFormData({...formData, patient_id: id});
+                            initialName={location.state?.prefillPatientName || ''}
+                            onChange={(id, pat) => {
+                              const p = pat || patients.find(x => x.id === id);
+                              const assignedDocId = isDoctor ? user?.id : (p?.main_treatment_provider || formData.doctor_id || '');
+                              setFormData(prev => ({
+                                ...prev, 
+                                patient_id: id, 
+                                doctor_id: assignedDocId
+                              }));
                               setSelectedPlanId('');
                             }}
                             inputClassName="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold text-xs"
@@ -1421,47 +1504,39 @@ onClose={() => { setShowPlanInvoiceModal(false); setSelectedPlanForInvoice(null)
                       </div>
                     </div>
 
-                    {/* Sana + Usul */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3">
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Sana</p>
-                        <p className="text-[13px] font-[900] text-slate-800">{dateStr}</p>
-                        {timeStr && <p className="text-[10px] text-slate-500 font-medium mt-0.5">🕐 {timeStr}</p>}
-                      </div>
-                      <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3">
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">To'lov usuli</p>
-                        <p className="text-[13px] font-[900] text-slate-800">{getPaymentMethodLabel(sp.method)}</p>
-                      </div>
-                    </div>
+                    {/* 4 Financial Cards: Reja (asl narxi), Qo'llanilgan chegirma, Chegirmali jami summa, Qolgan qarz */}
+                    {(() => {
+                      const origPrice = selectedPaymentPatientData?.originalPrice ?? (Number(pat?.total_debt) + Number(pat?.total_paid) || rawAmt);
+                      const discAmt = selectedPaymentPatientData?.totalDiscount ?? 0;
+                      const discPct = selectedPaymentPatientData?.discountPercent ?? (origPrice > 0 && discAmt > 0 ? Math.round((discAmt / origPrice) * 100) : 0);
+                      const finTotal = selectedPaymentPatientData?.finalPlanTotal ?? Math.max(0, origPrice - discAmt);
+                      const qarzVal = qarzAtTime != null ? Number(qarzAtTime) : (Number(pat?.total_debt) || 0);
+
+                      return (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Reja (asl narxi)</p>
+                            <p className="text-[12px] font-[900] text-slate-800">{origPrice.toLocaleString()} UZS</p>
+                          </div>
+                          <div className="rounded-2xl bg-purple-50/60 border border-purple-100 p-3">
+                            <p className="text-[8px] font-black text-purple-500 uppercase tracking-widest mb-1">Qo'llanilgan chegirma</p>
+                            <p className="text-[12px] font-[900] text-purple-700">{discPct}% ({discAmt.toLocaleString()} UZS)</p>
+                          </div>
+                          <div className="rounded-2xl bg-blue-50/60 border border-blue-100 p-3">
+                            <p className="text-[8px] font-black text-blue-500 uppercase tracking-widest mb-1">Chegirmali jami summa</p>
+                            <p className="text-[12px] font-[900] text-blue-700">{finTotal.toLocaleString()} UZS</p>
+                          </div>
+                          <div className={`rounded-2xl border p-3 ${qarzVal > 0 ? 'bg-rose-50 border-rose-100' : 'bg-emerald-50 border-emerald-100'}`}>
+                            <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${qarzVal > 0 ? 'text-rose-400' : 'text-emerald-500'}`}>Qolgan qarz</p>
+                            <p className={`text-[12px] font-[900] ${qarzVal > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+                              {qarzVal > 0 ? `${qarzVal.toLocaleString()} UZS` : "✓ To'liq yopilgan"}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Xizmat */}
-                    {procedures.length > 0 && (
-                      <div className="rounded-2xl border border-slate-100 overflow-hidden">
-                        <div className="px-4 py-2 bg-slate-50 border-b border-slate-100">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Xizmat / Kategoriya</p>
-                        </div>
-                        <div className="px-4 py-3 space-y-1.5">
-                          {procedures.map((proc, idx) => (
-                            <div key={idx} className="flex items-start gap-2">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
-                              <span className="text-[12px] font-bold text-slate-800 break-words leading-5">{proc}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Bu to'lovdan keyingi qarz */}
-                    {qarzAtTime != null && (
-                      <div className={`rounded-2xl border p-3 ${Number(qarzAtTime) > 0 ? 'bg-rose-50 border-rose-100' : 'bg-emerald-50 border-emerald-100'}`}>
-                        <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${Number(qarzAtTime) > 0 ? 'text-rose-400' : 'text-emerald-500'}`}>
-                          Bu to'lovdan keyingi qarz
-                        </p>
-                        <p className={`text-[15px] font-[900] ${Number(qarzAtTime) > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
-                          {Number(qarzAtTime) > 0 ? `${Number(qarzAtTime).toLocaleString()} UZS` : "✓ To'liq yopilgan"}
-                        </p>
-                      </div>
-                    )}
 
                     {/* Jami to'langan + Hozirgi qarz */}
                     {pat && (() => {

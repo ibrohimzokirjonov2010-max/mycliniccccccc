@@ -142,8 +142,10 @@ export default function AppointmentModal({
         tooth_number: appointment.tooth_number || '',
       });
     } else {
-      // Find doctor name if prefillDoctorId is provided and doctors are loaded
-      const foundDoc = doctors.find(d => String(d.id) === String(prefillDoctorId));
+      // Find doctor name if prefillDoctorId is provided or patient has assigned doctor
+      const assignedDocFromPatient = patients.find(p => p.id === prefillPatientId)?.main_treatment_provider;
+      const targetDocId = prefillDoctorId || assignedDocFromPatient || '';
+      const foundDoc = doctors.find(d => String(d.id) === String(targetDocId));
       
       // Auto-fill current date and exact time for new appointments
       const now = new Date();
@@ -155,7 +157,7 @@ export default function AppointmentModal({
       setForm({
         patient_id: prefillPatientId || '', 
         patient_name: prefillPatientName || '', 
-        doctor_id: prefillDoctorId || '',
+        doctor_id: targetDocId,
         doctor_name: foundDoc?.name || '',
         date: prefillDate || autoDate, 
         time: prefillTime || autoTime,
@@ -556,7 +558,17 @@ export default function AppointmentModal({
                 patients={patients}
                 value={form.patient_id}
                 initialName={form.patient_name}
-                onChange={(id, p) => setForm(prev => ({ ...prev, patient_id: id, patient_name: p?.full_name || '' }))}
+                onChange={(id, p) => {
+                  const assignedDocId = p?.main_treatment_provider || form.doctor_id;
+                  const foundDoc = doctors.find(doc => doc.id === assignedDocId);
+                  setForm(prev => ({ 
+                    ...prev, 
+                    patient_id: id, 
+                    patient_name: p?.full_name || '',
+                    doctor_id: assignedDocId || prev.doctor_id,
+                    doctor_name: foundDoc?.name || prev.doctor_name
+                  }));
+                }}
                 onAddPatient={() => setShowNewPatient(true)}
                 error={showValidation && !form.patient_id}
               />

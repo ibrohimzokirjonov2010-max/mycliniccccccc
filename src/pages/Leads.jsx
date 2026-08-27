@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import StatusBadge from '../components/ui/StatusBadge';
 import EmptyState from '../components/ui/EmptyState';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -22,8 +21,13 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
 import LeadQuickView from '../components/marketing/LeadQuickView';
-import { useRef, useState, useEffect } from 'react';
-import { Search, Phone, Edit2, Trash2, MessageCircle, TrendingUp, Target, Calendar, UserPlus, Filter, Zap, Upload, Bell } from 'lucide-react';
+import { useRef, useState, useEffect, useMemo } from 'react';
+import { 
+  Search, Phone, Edit2, Trash2, MessageCircle, TrendingUp, Target, 
+  Calendar, UserPlus, Filter, Zap, Upload, Bell, Download, 
+  FileSpreadsheet, Instagram, Send, Facebook, Globe, Copy, Check,
+  ExternalLink, UserCheck, CheckCircle2, MoreHorizontal, LayoutGrid, Table
+} from 'lucide-react';
 
 export default function Leads() {
   const { t, currentLanguage } = useTranslation();
@@ -33,7 +37,8 @@ export default function Leads() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editLead, setEditLead] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
-  const [view, setView] = useState('kanban');
+  const [view, setView] = useState('table'); // Default to Excel Table as requested
+  const [statusFilter, setStatusFilter] = useState('all');
   const [form, setForm] = useState({ name: '', phone: '', visit_date: '', source: 'Call', status: 'new', notes: '' });
   const [selectedLead, setSelectedLead] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -87,7 +92,7 @@ export default function Leads() {
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 400);
+    const timer = setTimeout(() => setDebouncedSearch(search), 350);
     return () => clearTimeout(timer);
   }, [search]);
 
@@ -101,16 +106,20 @@ export default function Leads() {
     staleTime: 30000,
   });
 
-  const filtered = leads;
+  const filtered = useMemo(() => {
+    if (statusFilter === 'all') return leads;
+    return leads.filter(l => (l.status?.toLowerCase() || 'new') === statusFilter);
+  }, [leads, statusFilter]);
 
   const { data: stats } = useQuery({
     queryKey: ['leads-stats', leads],
     queryFn: () => {
       const total = leads.length;
-      const newLeads = leads.filter(l => l.status?.toLowerCase() === 'new').length;
+      const newLeads = leads.filter(l => (l.status?.toLowerCase() || 'new') === 'new').length;
       const contacted = leads.filter(l => l.status?.toLowerCase() === 'contacted').length;
+      const qualified = leads.filter(l => l.status?.toLowerCase() === 'qualified' || l.status?.toLowerCase() === 'interested').length;
       const converted = leads.filter(l => l.status?.toLowerCase() === 'converted').length;
-      return { total, new: newLeads, contacted, converted };
+      return { total, new: newLeads, contacted, qualified, converted };
     },
     enabled: !!leads,
   });
@@ -127,7 +136,7 @@ export default function Leads() {
       return { previousLeads };
     },
     onError: (err, variables, context) => {
-      queryClient.setQueryData(['leads'], context.previousLeads);
+      queryClient.setQueryData(['leads'], context?.previousLeads);
       toast.error("Xatolik yuz berdi");
     },
     onSettled: () => {
@@ -161,11 +170,11 @@ export default function Leads() {
         phone: editLead.phone || '', 
         visit_date: editLead.visit_date || '', 
         source: editLead.source || 'Call', 
-        status: editLead.status || 'New', 
+        status: editLead.status || 'new', 
         notes: editLead.notes || '' 
       });
     } else {
-      setForm({ name: '', phone: '', visit_date: '', source: 'Call', status: 'New', notes: '' });
+      setForm({ name: '', phone: '', visit_date: '', source: 'Call', status: 'new', notes: '' });
     }
   }, [editLead, modalOpen]);
 
@@ -179,54 +188,178 @@ export default function Leads() {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return '—';
     const localeStr = currentLanguage === 'uz' ? 'uz-UZ' : currentLanguage === 'ru' ? 'ru-RU' : 'en-US';
-    return date.toLocaleDateString(localeStr, { day: 'numeric', month: 'long', year: 'numeric' });
+    return date.toLocaleDateString(localeStr, { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-   const onDragEnd = async (result) => {
-     const { destination, source, draggableId } = result;
- 
-     if (!destination) return;
-     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
- 
-     const newStatus = destination.droppableId;
-     const leadId = draggableId;
- 
-     updateMutation.mutate({ id: leadId, data: { status: newStatus.toLowerCase() } });
-   };
- 
-   const handleDelete = () => {
-     if (deleteId) deleteMutation.mutate(deleteId);
-   };
+  const onDragEnd = async (result) => {
+    const { destination, source, draggableId } = result;
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+    const newStatus = destination.droppableId;
+    const leadId = draggableId;
+    updateMutation.mutate({ id: leadId, data: { status: newStatus.toLowerCase() } });
+  };
 
-  const getSourceIcon = (source) => {
-    switch(source) {
-      case 'Telegram': return '💬';
-      case 'Instagram': return '📷';
-      case 'Website': return '🌐';
-      case 'Call': return '📞';
-      default: return '📋';
+  const handleDelete = () => {
+    if (deleteId) deleteMutation.mutate(deleteId);
+  };
+
+  // ─── Real Brand Source Icons & Badges ─────────────────────────────────
+  const getSourceMeta = (source) => {
+    const s = String(source || '').toLowerCase();
+    if (s.includes('instagram') || s.includes('insta')) {
+      return {
+        label: 'Instagram',
+        icon: Instagram,
+        bg: 'bg-pink-50 text-pink-700 border-pink-200/80',
+        iconBg: 'bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] text-white',
+      };
     }
+    if (s.includes('telegram') || s.includes('tg')) {
+      return {
+        label: 'Telegram',
+        icon: Send,
+        bg: 'bg-sky-50 text-sky-700 border-sky-200/80',
+        iconBg: 'bg-[#229ED9] text-white',
+      };
+    }
+    if (s.includes('facebook') || s.includes('fb')) {
+      return {
+        label: 'Facebook',
+        icon: Facebook,
+        bg: 'bg-blue-50 text-blue-700 border-blue-200/80',
+        iconBg: 'bg-[#1877F2] text-white',
+      };
+    }
+    if (s.includes('call') || s.includes('phone') || s.includes('telefon') || s.includes('qo\'ng\'iroq')) {
+      return {
+        label: 'Telefon',
+        icon: Phone,
+        bg: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+        iconBg: 'bg-emerald-600 text-white',
+      };
+    }
+    if (s.includes('website') || s.includes('sayt') || s.includes('web') || s.includes('google')) {
+      return {
+        label: 'Veb-sayt',
+        icon: Globe,
+        bg: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
+        iconBg: 'bg-indigo-600 text-white',
+      };
+    }
+    if (s.includes('import') || s.includes('csv') || s.includes('excel')) {
+      return {
+        label: 'Excel Import',
+        icon: FileSpreadsheet,
+        bg: 'bg-teal-50 text-teal-700 border-teal-200/80',
+        iconBg: 'bg-[#107C41] text-white',
+      };
+    }
+    return {
+      label: source || 'Boshqa',
+      icon: Target,
+      bg: 'bg-slate-100 text-slate-700 border-slate-200',
+      iconBg: 'bg-slate-600 text-white',
+    };
   };
 
-  const getStatusColor = (status) => {
-    const s = status?.toLowerCase();
+  const renderSourceBadge = (source) => {
+    const meta = getSourceMeta(source);
+    const Icon = meta.icon;
+    return (
+      <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold border shadow-2xs ${meta.bg} whitespace-nowrap`}>
+        <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 ${meta.iconBg}`}>
+          <Icon className="w-2 h-2" />
+        </span>
+        <span className="truncate max-w-[130px]">{source || meta.label}</span>
+      </div>
+    );
+  };
+
+  const renderStatusBadge = (status) => {
+    const s = String(status || 'new').toLowerCase();
     switch(s) {
-      case 'new': return 'from-blue-500 to-cyan-500';
-      case 'contacted': return 'from-purple-500 to-pink-500';
-      case 'interested': return 'from-amber-500 to-orange-500';
-      case 'converted': return 'from-emerald-500 to-green-500';
-      case 'lost': return 'from-slate-400 to-gray-500';
-      default: return 'from-blue-500 to-indigo-500';
+      case 'new':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/80 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+            Yangi
+          </span>
+        );
+      case 'contacted':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200/80 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+            Bog'lanildi
+          </span>
+        );
+      case 'qualified':
+      case 'interested':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/80 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            Qiziqqan
+          </span>
+        );
+      case 'converted':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/80 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Bemor
+          </span>
+        );
+      case 'lost':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+            Rad etildi
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-slate-50 text-slate-700 border border-slate-200 whitespace-nowrap">
+            {status}
+          </span>
+        );
     }
   };
 
-  const updateLeadStatus = async (leadId, newStatus) => {
-    try {
-      await base44.entities.Lead.update(leadId, { status: newStatus.toLowerCase() });
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-    } catch (error) {
-      console.error('Update status error:', error);
+  const getInitials = (name) => {
+    if (!name) return 'L';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
     }
+    return name.slice(0, 2).toUpperCase();
+  };
+
+  // ─── Export to Excel (CSV with UTF-8 BOM) ─────────────────────────────
+  const exportToExcel = () => {
+    if (!filtered || filtered.length === 0) {
+      toast.error("Eksport qilish uchun lidlar topilmadi");
+      return;
+    }
+    const headers = ["№", "Ism", "Telefon", "Tashrif Sanasi", "Manba", "Status", "Izoh"];
+    const rows = filtered.map((l, index) => [
+      index + 1,
+      `"${(l.name || '').replace(/"/g, '""')}"`,
+      `"${(l.phone || '').replace(/"/g, '""')}"`,
+      `"${(formatDate(l.visit_date || l.created_date) || '').replace(/"/g, '""')}"`,
+      `"${(l.source || '').replace(/"/g, '""')}"`,
+      `"${(l.status || '').replace(/"/g, '""')}"`,
+      `"${(l.notes || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Lidlar_Baza_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Excel (CSV) fayli muvaffaqiyatli yuklab olindi!");
   };
 
   const handleFileUpload = async (e) => {
@@ -238,13 +371,11 @@ export default function Leads() {
     reader.onload = async (event) => {
       try {
         const text = event.target.result;
-        // Oddiy CSV parser (ismlar, telefonlar)
         const rows = text.split('\n').map(row => row.trim()).filter(row => row);
-        if (rows.length < 2) return toast.error("Fayl bo'sh kompyuterga oxshaydi");
+        if (rows.length < 2) return toast.error("Fayl bo'sh ko'rinadi");
         
         const headers = rows[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
         
-        // Ism va telefon uchun ruscha, inglizcha va o'zbekcha so'zlarni qidirish
         let nameIdx = headers.findIndex(h => h === 'full_name' || h === 'name' || h === 'first_name' || h.includes('ism') || h.includes('имя'));
         let phoneIdx = headers.findIndex(h => h === 'phone_number' || h === 'phone' || h.includes('telefon') || h.includes('raqam') || h.includes('телефон') || h.includes('номер'));
         
@@ -294,7 +425,7 @@ export default function Leads() {
          toast.error("Import qilishda xatolik yuz berdi. Fayl formatini tekshiring.");
       } finally {
          setIsImporting(false);
-         if (fileInputRef.current) fileInputRef.current.value = ''; // Qayta tozalash
+         if (fileInputRef.current) fileInputRef.current.value = '';
       }
     };
     reader.readAsText(file);
@@ -304,19 +435,27 @@ export default function Leads() {
 
   return (
     <div className="space-y-3">
-      {/* Header Section */}
+      {/* ─── Compact Header Section ──────────────────────────────────────── */}
       <motion.div 
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col lg:flex-row lg:items-center justify-between gap-3"
+        className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs"
       >
-        <div>
-          <h1 className="text-xl premium-title">
-            {t('leads.title') || 'Lidlar'}
-          </h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-0.5 ml-1">{t('leads.subtitle') || 'Potentsial bemorlar va ularni boshqarish'}</p>
-        </div>
         <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-[#1499AD] flex items-center justify-center text-white shadow-xs shrink-0">
+            <Target className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-lg font-black text-slate-900 leading-tight">
+              {t('leads.title') || 'Lidlar Boshqaruvi'}
+            </h1>
+            <p className="text-[11px] font-medium text-slate-500">
+              {t('leads.subtitle') || 'Potentsial mijozlar, target arizalari va murojaatlar'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
           <input 
             type="file" 
             accept=".csv" 
@@ -325,158 +464,425 @@ export default function Leads() {
             className="hidden" 
           />
           <Button 
+            variant="outline"
+            size="sm"
             onClick={() => fileInputRef.current?.click()}
             disabled={isImporting}
-            className="bg-white border-2 border-purple-200 text-purple-600 hover:bg-purple-50 shadow-sm rounded-2xl h-14 px-6 font-black uppercase tracking-widest text-[10px]"
+            className="h-9 px-3 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border-slate-200 rounded-lg shadow-2xs"
           >
-            <Upload className="w-4 h-4 mr-2" /> 
-            {isImporting ? t('common.saving') || 'Yuklanmoqda...' : t('leads.csvImport') || 'CSV Import'}
+            <Upload className="w-3.5 h-3.5 mr-1.5 text-slate-500" /> 
+            {isImporting ? 'Yuklanmoqda...' : 'CSV Import'}
           </Button>
 
           <Button 
-            className="bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-lg shadow-blue-500/20 rounded-2xl h-14 px-6 font-black uppercase tracking-widest text-[10px] border-none"
+            variant="outline"
+            size="sm"
+            onClick={exportToExcel}
+            className="h-9 px-3 text-xs font-bold text-emerald-700 bg-emerald-50/70 hover:bg-emerald-100 border-emerald-200 rounded-lg shadow-2xs"
+          >
+            <Download className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+            Excel Eksport
+          </Button>
+
+          <Button 
+            size="sm"
+            className="bg-[#0088cc] hover:bg-[#0077b5] text-white rounded-lg h-9 px-3 text-xs font-bold shadow-2xs border-none"
             asChild
           >
             <a href={`https://t.me/${botUsername}?start=admin_${clinicId}`} target="_blank" rel="noopener noreferrer">
-              <Bell className="w-4 h-4 mr-2" /> {t('leads.telegramNotification') || 'Telegram bildirishnoma'}
+              <Bell className="w-3.5 h-3.5 mr-1.5" /> Telegram Bot
             </a>
           </Button>
 
           <Button 
+            size="sm"
             onClick={() => { setEditLead(null); setModalOpen(true); }}
-            className="bg-[#1499AD] hover:bg-[#0E7A8A] text-white shadow-lg shadow-[#1499AD]/20 rounded-2xl h-14 px-8 font-black uppercase tracking-widest text-xs border-none"
+            className="bg-[#1499AD] hover:bg-[#0E7A8A] text-white rounded-lg h-9 px-4 text-xs font-bold shadow-2xs border-none"
           >
-            <UserPlus className="w-4 h-4 mr-2" /> {t('leads.newLead') || 'Yangi lead'}
+            <UserPlus className="w-3.5 h-3.5 mr-1.5" /> {t('leads.newLead') || 'Yangi lead'}
           </Button>
         </div>
       </motion.div>
 
-      {/* Stats Cards */}
+      {/* ─── Compact Stats Cards ────────────────────────────────────────── */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        transition={{ delay: 0.05 }}
+        className="grid grid-cols-2 lg:grid-cols-4 gap-3"
       >
-        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-3xl font-bold text-blue-900 mt-1">{stats?.total || 0}</p>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Target className="w-6 h-6 text-white" />
-            </div>
+        <div 
+          onClick={() => setStatusFilter('all')}
+          className={`cursor-pointer bg-white border rounded-xl p-3 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between ${statusFilter === 'all' ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200/80'}`}
+        >
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Jami Lidlar</p>
+            <p className="text-2xl font-black text-slate-900 mt-0.5 font-mono">{stats?.total || 0}</p>
+          </div>
+          <div className="w-9 h-9 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center border border-blue-100 shadow-2xs">
+            <Target className="w-4.5 h-4.5" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-purple-600 uppercase tracking-wider">
-                {t('leads.columns.new') || kanbanColumns.find(c => c.id === 'new')?.title || 'Yangi'}
-              </p>
-              <p className="text-3xl font-bold text-purple-900 mt-1">{stats?.new || 0}</p>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Zap className="w-6 h-6 text-white" />
-            </div>
+        <div 
+          onClick={() => setStatusFilter('new')}
+          className={`cursor-pointer bg-white border rounded-xl p-3 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between ${statusFilter === 'new' ? 'border-purple-500 ring-2 ring-purple-100' : 'border-slate-200/80'}`}
+        >
+          <div>
+            <p className="text-[11px] font-bold text-purple-600 uppercase tracking-wider">{t('leads.columns.new') || 'Yangi'}</p>
+            <p className="text-2xl font-black text-purple-950 mt-0.5 font-mono">{stats?.new || 0}</p>
+          </div>
+          <div className="w-9 h-9 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center border border-purple-100 shadow-2xs">
+            <Zap className="w-4.5 h-4.5" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider">
-                {t('leads.columns.contacted') || kanbanColumns.find(c => c.id === 'contacted')?.title || 'Bog\'lanildi'}
-              </p>
-              <p className="text-3xl font-bold text-amber-900 mt-1">{stats?.contacted || 0}</p>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Phone className="w-6 h-6 text-white" />
-            </div>
+        <div 
+          onClick={() => setStatusFilter('contacted')}
+          className={`cursor-pointer bg-white border rounded-xl p-3 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between ${statusFilter === 'contacted' ? 'border-amber-500 ring-2 ring-amber-100' : 'border-slate-200/80'}`}
+        >
+          <div>
+            <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">{t('leads.columns.contacted') || 'Bog\'lanildi'}</p>
+            <p className="text-2xl font-black text-amber-950 mt-0.5 font-mono">{stats?.contacted || 0}</p>
+          </div>
+          <div className="w-9 h-9 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center border border-amber-100 shadow-2xs">
+            <Phone className="w-4.5 h-4.5" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">
-                {t('leads.columns.converted') || kanbanColumns.find(c => c.id === 'converted')?.title || 'Konvertatsiya'}
-              </p>
-              <p className="text-3xl font-bold text-emerald-900 mt-1">{stats?.converted || 0}</p>
-            </div>
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl flex items-center justify-center shadow-lg">
-              <TrendingUp className="w-6 h-6 text-white" />
-            </div>
+        <div 
+          onClick={() => setStatusFilter('converted')}
+          className={`cursor-pointer bg-white border rounded-xl p-3 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between ${statusFilter === 'converted' ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200/80'}`}
+        >
+          <div>
+            <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">{t('leads.columns.converted') || 'Bemor (Konvertatsiya)'}</p>
+            <p className="text-2xl font-black text-emerald-950 mt-0.5 font-mono">{stats?.converted || 0}</p>
+          </div>
+          <div className="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center border border-emerald-100 shadow-2xs">
+            <TrendingUp className="w-4.5 h-4.5" />
           </div>
         </div>
       </motion.div>
 
-      {/* View Toggle */}
-      <div className="flex items-center justify-between pb-2">
-        <div className="flex bg-slate-100 p-1 rounded-xl">
-          <button 
-            onClick={() => setView('kanban')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${view === 'kanban' ? 'bg-white shadow-md text-purple-600' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            📋 {t('leads.viewKanban') || 'Kanban'}
-          </button>
-          <button 
-            onClick={() => setView('table')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${view === 'table' ? 'bg-white shadow-md text-purple-600' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            📑 {t('leads.viewTable') || 'Jadval'}
-          </button>
-        </div>
-      </div>
-
-      {/* Search and Filters */}
+      {/* ─── Search, Tabs & View Switcher ─────────────────────────────────── */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="flex flex-col sm:flex-row gap-3"
+        transition={{ delay: 0.1 }}
+        className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs"
       >
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+        {/* Search Input */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input 
             placeholder={t('leads.searchPlaceholder') || "Ism yoki telefon raqami bo'yicha qidirish..."} 
             value={search} 
             onChange={e => setSearch(e.target.value)} 
-            className="pl-12 h-12 rounded-xl border-2 focus:border-purple-500 transition-colors" 
+            className="pl-9 pr-3 h-9 text-xs rounded-lg border-slate-200 focus:border-cyan-500 transition-colors bg-slate-50/50" 
           />
+          {search && (
+            <button 
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+            >
+              ✕
+            </button>
+          )}
         </div>
-        <Button variant="outline" className="h-12 rounded-xl border-2">
-          <Filter className="w-4 h-4 mr-2" /> {t('common.filter') || 'Filtr'}
-        </Button>
+
+        {/* Status Filter Badges */}
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+          {[
+            { id: 'all', label: 'Barchasi', count: stats?.total || 0 },
+            { id: 'new', label: 'Yangi', count: stats?.new || 0 },
+            { id: 'contacted', label: 'Bog\'lanildi', count: stats?.contacted || 0 },
+            { id: 'converted', label: 'Bemor', count: stats?.converted || 0 },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                statusFilter === tab.id 
+                  ? 'bg-slate-900 text-white shadow-2xs' 
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span className={`text-[10px] font-mono px-1 rounded ${statusFilter === tab.id ? 'bg-white/20 text-white' : 'bg-white text-slate-700'}`}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* View Toggle */}
+        <div className="flex bg-slate-100 p-0.5 rounded-lg shrink-0">
+          <button 
+            onClick={() => setView('table')}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
+              view === 'table' ? 'bg-white shadow-xs text-emerald-700' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Excel Jadval</span>
+          </button>
+          <button 
+            onClick={() => setView('kanban')}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
+              view === 'kanban' ? 'bg-white shadow-xs text-purple-600' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5 text-purple-500" />
+            <span>Kanban</span>
+          </button>
+        </div>
       </motion.div>
 
-      {/* Content Section */}
+      {/* ─── Excel Table View ────────────────────────────────────────────── */}
+      {view === 'table' && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col"
+        >
+          {/* Table Control Header */}
+          <div className="bg-slate-50/90 border-b border-slate-200 px-3.5 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                Lidlar Ma'lumotlar Jadvali
+              </span>
+              <span className="text-slate-300">|</span>
+              <span className="text-slate-500 text-[11px]">
+                Ko'rsatilyapti: <strong className="text-slate-800 font-mono">{filtered.length}</strong> ta qator
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mr-1">
+                Grid: Excel Rejim
+              </span>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="p-6 space-y-2">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="h-10 bg-slate-100 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <EmptyState 
+              icon={<Target className="w-12 h-12 text-slate-300" />}
+              title="Lidlar topilmadi" 
+              description={search ? "Qidiruv so'zini o'zgartiring" : "Yangi lead qo'shing yoki CSV yuklang"}
+              action={
+                !search && (
+                  <Button onClick={() => { setEditLead(null); setModalOpen(true); }} className="mt-3 bg-[#1499AD] text-white">
+                    <UserPlus className="w-4 h-4 mr-2" /> Birinchi leadni qo'shish
+                  </Button>
+                )
+              }
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-100/90 text-slate-600 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider select-none">
+                    <th className="py-2.5 px-3 w-12 text-center border-r border-slate-200/80">#</th>
+                    <th className="py-2.5 px-3 min-w-[200px] border-r border-slate-200/80">Mijoz / Bemor Ismi</th>
+                    <th className="py-2.5 px-3 min-w-[170px] whitespace-nowrap border-r border-slate-200/80">Aloqa (Telefon)</th>
+                    <th className="py-2.5 px-3 min-w-[130px] whitespace-nowrap border-r border-slate-200/80">Manba</th>
+                    <th className="py-2.5 px-3 min-w-[130px] whitespace-nowrap border-r border-slate-200/80">Tashrif Sanasi</th>
+                    <th className="py-2.5 px-3 min-w-[120px] whitespace-nowrap border-r border-slate-200/80">Status</th>
+                    <th className="py-2.5 px-3 min-w-[180px] max-w-[260px] border-r border-slate-200/80">Izoh / Ma'lumot</th>
+                    <th className="py-2.5 px-3 text-right min-w-[130px]">Amallar</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 text-xs">
+                  {filtered.map((l, index) => {
+                    const initials = getInitials(l.name);
+                    return (
+                      <tr 
+                        key={l.id} 
+                        onClick={() => setSelectedLead(l)}
+                        className="hover:bg-sky-50/60 transition-colors cursor-pointer group odd:bg-white even:bg-slate-50/40"
+                      >
+                        {/* # */}
+                        <td className="py-2.5 px-3 text-center font-mono text-[11px] font-bold text-slate-400 border-r border-slate-200/60 group-hover:text-slate-700">
+                          {index + 1}
+                        </td>
+
+                        {/* Name */}
+                        <td className="py-2.5 px-3 border-r border-slate-200/60">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-300/70 shadow-2xs group-hover:scale-105 group-hover:border-purple-300 group-hover:bg-purple-50 group-hover:text-purple-700 transition-all">
+                              {initials}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-900 text-[13px] leading-tight group-hover:text-purple-600 transition-colors truncate">
+                                {l.name}
+                              </p>
+                              {l.interest ? (
+                                <p className="text-[10px] text-purple-600 font-semibold truncate mt-0.5">
+                                  {l.interest}
+                                </p>
+                              ) : l.notes ? (
+                                <p className="text-[10px] text-slate-400 truncate mt-0.5 max-w-[180px]">
+                                  {l.notes}
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Phone - STRICTLY NON-WRAPPING */}
+                        <td className="py-2.5 px-3 whitespace-nowrap border-r border-slate-200/60">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[13px] font-bold text-slate-800 tracking-tight whitespace-nowrap">
+                              {l.phone || '—'}
+                            </span>
+                            {l.phone && (
+                              <button 
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(l.phone);
+                                  toast.success("Raqam nusxalandi!");
+                                }}
+                                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-700 transition-opacity p-1 rounded hover:bg-slate-200/60"
+                                title="Nusxalash"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Source with realistic badge */}
+                        <td className="py-2.5 px-3 whitespace-nowrap border-r border-slate-200/60">
+                          {renderSourceBadge(l.source)}
+                        </td>
+
+                        {/* Visit Date */}
+                        <td className="py-2.5 px-3 whitespace-nowrap border-r border-slate-200/60">
+                          <div className="flex items-center gap-1.5 text-slate-600 font-medium text-[11px]">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span>{formatDate(l.visit_date || l.created_date)}</span>
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td className="py-2.5 px-3 whitespace-nowrap border-r border-slate-200/60">
+                          {renderStatusBadge(l.status)}
+                        </td>
+
+                        {/* Notes */}
+                        <td className="py-2.5 px-3 border-r border-slate-200/60">
+                          <p className="text-[11px] text-slate-500 truncate max-w-[240px] italic">
+                            {l.notes || <span className="text-slate-300 not-italic">—</span>}
+                          </p>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-2.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1">
+                            {l.phone && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/70 rounded-md transition-all"
+                                onClick={() => window.open(`tel:${l.phone}`, '_self')}
+                                title="Qo'ng'iroq qilish"
+                              >
+                                <Phone className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                            {l.phone && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-sky-600 hover:text-sky-700 hover:bg-sky-100/70 rounded-md transition-all"
+                                onClick={() => {
+                                  const phone = l.phone?.replace(/\D/g, '');
+                                  if (phone) window.open(`https://t.me/+${phone}`, '_blank');
+                                }}
+                                title="Telegramda yozish"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-100/70 rounded-md transition-all"
+                              onClick={() => { setEditLead(l); setModalOpen(true); }}
+                              title="Tahrirlash"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-100/70 rounded-md transition-all"
+                              onClick={() => setDeleteId(l.id)}
+                              title="O'chirish"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Excel Status Bar Footer */}
+          <div className="bg-slate-100/90 border-t border-slate-200 px-4 py-2 flex flex-wrap items-center justify-between text-[11px] font-medium text-slate-600">
+            <div className="flex items-center gap-4">
+              <span>Jami qatorlar: <strong className="text-slate-900 font-mono">{filtered.length}</strong></span>
+              <span className="text-slate-300">|</span>
+              <span>Yangi: <strong className="text-blue-600 font-mono">{stats?.new || 0}</strong></span>
+              <span>Bog'lanildi: <strong className="text-purple-600 font-mono">{stats?.contacted || 0}</strong></span>
+              <span>Bemor: <strong className="text-emerald-600 font-mono">{stats?.converted || 0}</strong></span>
+            </div>
+            <div className="text-slate-400 text-[10px] hidden sm:block">
+              💡 Qator ustiga bosib batafsil ko'rish yoki bemorga o'tkazish mumkin
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ─── Kanban View ─────────────────────────────────────────────────── */}
       {view === 'kanban' && !isLoading && (
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex gap-6 overflow-x-auto pb-8 custom-scrollbar min-h-[calc(100vh-400px)]">
+          <div className="flex gap-4 overflow-x-auto pb-6 custom-scrollbar min-h-[calc(100vh-380px)]">
             {columns.map(col => {
               const colLeads = filtered.filter(l => (l.status?.toLowerCase() || 'new') === col.id);
               
               return (
-                <div key={col.id} className="flex-shrink-0 w-80 flex flex-col gap-4">
+                <div key={col.id} className="flex-shrink-0 w-80 flex flex-col gap-3">
                   {/* Column Header */}
-                  <div className="flex items-center justify-between px-4 py-3 bg-white/50 backdrop-blur-sm rounded-2xl border-2 border-slate-100 shadow-sm sticky top-0 z-10">
+                  <div className="flex items-center justify-between px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs sticky top-0 z-10">
                     <div className="flex items-center gap-2 group/header">
                       <Popover>
                         <PopoverTrigger asChild>
                           <button 
-                            className={`w-5 h-5 rounded-full ${col.color} shadow-sm hover:scale-125 transition-transform cursor-pointer border-2 border-white`}
+                            className={`w-4 h-4 rounded-full ${col.color} shadow-2xs hover:scale-125 transition-transform cursor-pointer border-2 border-white`}
                             title="Rangni o'zgartirish"
                           />
                         </PopoverTrigger>
-                        <PopoverContent className="w-48 p-3 rounded-2xl shadow-2xl border-slate-100">
+                        <PopoverContent className="w-48 p-3 rounded-xl shadow-2xl border-slate-100">
                           <div className="grid grid-cols-4 gap-2">
                             {PREMIUM_COLORS.map((colorObj) => (
                               <button
                                 key={colorObj.name}
                                 onClick={() => updateColumnColor(col.id, colorObj)}
-                                className={`w-8 h-8 rounded-full ${colorObj.name} ${col.color === colorObj.name ? 'ring-2 ring-offset-2 ring-slate-900 scale-110' : 'hover:scale-110'} transition-all`}
+                                className={`w-7 h-7 rounded-full ${colorObj.name} ${col.color === colorObj.name ? 'ring-2 ring-offset-2 ring-slate-900 scale-110' : 'hover:scale-110'} transition-all`}
                               />
                             ))}
                           </div>
@@ -489,19 +895,21 @@ export default function Leads() {
                           onBlur={() => updateColumnTitle(col.id, editingTitle)}
                           onKeyDown={(e) => e.key === 'Enter' && updateColumnTitle(col.id, editingTitle)}
                           autoFocus
-                          className="h-7 py-0 px-2 text-sm font-bold w-32 rounded-lg border-purple-200"
+                          className="h-7 py-0 px-2 text-xs font-bold w-28 rounded-lg border-purple-200"
                         />
                       ) : (
                         <div 
                            className="flex items-center gap-1.5 cursor-pointer" 
                            onClick={() => { setEditingColId(col.id); setEditingTitle(col.title); }}
                         >
-                          <span className="text-sm font-bold text-slate-700 hover:text-purple-600 transition-colors uppercase tracking-tight">{t(`leads.columns.${col.id}`) || col.title}</span>
+                          <span className="text-xs font-bold text-slate-800 hover:text-purple-600 transition-colors uppercase tracking-tight">
+                            {t(`leads.columns.${col.id}`) || col.title}
+                          </span>
                           <Edit2 className="w-3 h-3 text-slate-300 opacity-0 group-hover/header:opacity-100 transition-opacity" />
                         </div>
                       )}
                     </div>
-                    <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full font-mono">
                       {colLeads.length}
                     </span>
                   </div>
@@ -512,84 +920,99 @@ export default function Leads() {
                       <div
                         {...provided.droppableProps}
                         ref={provided.innerRef}
-                        className={`flex-1 flex flex-col gap-3 p-1 transition-colors rounded-3xl min-h-[200px] ${snapshot.isDraggingOver ? 'bg-slate-50/50 ring-2 ring-purple-100 ring-inset' : ''}`}
+                        className={`flex-1 flex flex-col gap-2.5 p-1 transition-colors rounded-2xl min-h-[160px] ${snapshot.isDraggingOver ? 'bg-slate-100/70 ring-2 ring-purple-200 ring-inset' : ''}`}
                       >
-                        {colLeads.map((l, index) => (
-                          <Draggable key={l.id} draggableId={l.id} index={index}>
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                style={{
-                                  ...provided.draggableProps.style,
-                                  transform: snapshot.isDragging ? provided.draggableProps.style?.transform : 'none'
-                                }}
-                                className={`
-                                  bg-white p-5 rounded-2xl border-2 
-                                  ${snapshot.isDragging ? 'border-purple-500 shadow-2xl z-50 ring-4 ring-purple-500/10' : 'border-slate-100 shadow-sm hover:border-purple-200 hover:shadow-md'} 
-                                  transition-all group cursor-grab active:cursor-grabbing
-                                `}
-                                onClick={() => setSelectedLead(l)}
-                              >
-                                <div className="flex items-start justify-between mb-4">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-2xl bg-slate-50 w-10 h-10 flex items-center justify-center rounded-xl border border-slate-100 group-hover:scale-110 transition-transform">
-                                      {getSourceIcon(l.source)}
-                                    </span>
-                                    <div>
-                                      <p className="font-bold text-slate-900 leading-tight group-hover:text-purple-600 transition-colors uppercase text-sm">{l.name}</p>
-                                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mt-0.5">
-                                        <Phone className="w-3 h-3 text-emerald-500" /> {l.phone}
-                                      </p>
+                        {colLeads.map((l, index) => {
+                          const meta = getSourceMeta(l.source);
+                          const SourceIcon = meta.icon;
+                          return (
+                            <Draggable key={l.id} draggableId={l.id} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  style={{
+                                    ...provided.draggableProps.style,
+                                    transform: snapshot.isDragging ? provided.draggableProps.style?.transform : 'none'
+                                  }}
+                                  className={`
+                                    bg-white p-3.5 rounded-xl border 
+                                    ${snapshot.isDragging ? 'border-purple-500 shadow-xl z-50 ring-4 ring-purple-500/10' : 'border-slate-200/80 shadow-2xs hover:border-purple-300 hover:shadow-xs'} 
+                                    transition-all group cursor-grab active:cursor-grabbing
+                                  `}
+                                  onClick={() => setSelectedLead(l)}
+                                >
+                                  <div className="flex items-start justify-between gap-2 mb-2.5">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-2xs ${meta.iconBg}`}>
+                                        <SourceIcon className="w-3.5 h-3.5" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="font-bold text-slate-900 leading-tight group-hover:text-purple-600 transition-colors uppercase text-xs truncate">
+                                          {l.name}
+                                        </p>
+                                        <p className="text-[11px] font-mono font-bold text-slate-600 flex items-center gap-1 mt-0.5 whitespace-nowrap">
+                                          <Phone className="w-2.5 h-2.5 text-emerald-500 shrink-0" /> {l.phone}
+                                        </p>
+                                      </div>
                                     </div>
-                                  </div>
-                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button 
-                                      className="p-2 hover:bg-red-50 rounded-xl text-slate-300 hover:text-red-500 transition-colors"
+                                      className="p-1 hover:bg-rose-50 rounded-md text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all shrink-0"
                                       onClick={(e) => { e.stopPropagation(); setDeleteId(l.id); }}
                                     >
-                                      <Trash2 className="w-4 h-4" />
+                                      <Trash2 className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
-                                </div>
-                                
-                                {l.notes && (
-                                  <div className="relative mb-4">
-                                    <p className="text-[12px] text-slate-500 line-clamp-2 italic bg-slate-50 p-3 rounded-xl border border-slate-100/50">
-                                      "{l.notes}"
-                                    </p>
-                                  </div>
-                                )}
+                                  
+                                  {l.notes && (
+                                    <div className="mb-2.5">
+                                      <p className="text-[11px] text-slate-500 line-clamp-2 italic bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                        "{l.notes}"
+                                      </p>
+                                    </div>
+                                  )}
 
-                                <div className="pt-4 border-t border-slate-50 flex items-center justify-between">
-                                  <div className="flex flex-col">
-                                    <span className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] mb-0.5">{t('leads.created') || 'Yaratildi'}</span>
-                                    <span className="text-[10px] font-bold text-slate-500">
+                                  <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                                    <span className="text-slate-400 font-medium">
                                       {formatDate(l.created_date || l.visit_date)}
                                     </span>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <button 
-                                      className="w-9 h-9 flex items-center justify-center bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-500/20 hover:scale-110 transition-transform"
-                                      onClick={(e) => { e.stopPropagation(); window.open(`tel:${l.phone}`, '_self'); }}
-                                    >
-                                      <Phone className="w-4 h-4" />
-                                    </button>
+                                    <div className="flex items-center gap-1">
+                                      {l.phone && (
+                                        <button 
+                                          className="w-7 h-7 flex items-center justify-center bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+                                          onClick={(e) => { e.stopPropagation(); window.open(`tel:${l.phone}`, '_self'); }}
+                                          title="Qo'ng'iroq qilish"
+                                        >
+                                          <Phone className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                      {l.phone && (
+                                        <button 
+                                          className="w-7 h-7 flex items-center justify-center bg-sky-50 text-sky-600 hover:bg-sky-100 border border-sky-200 rounded-lg transition-colors"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const phone = l.phone?.replace(/\D/g, '');
+                                            if (phone) window.open(`https://t.me/+${phone}`, '_blank');
+                                          }}
+                                          title="Telegram"
+                                        >
+                                          <Send className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
+                              )}
+                            </Draggable>
+                          );
+                        })}
                         {provided.placeholder}
                         
                         {colLeads.length === 0 && (
-                          <div className="border-2 border-dashed border-slate-100 rounded-3xl p-8 flex flex-col items-center justify-center text-center">
-                            <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mb-2">
-                              <Target className="w-6 h-6 text-slate-200" />
-                            </div>
-                              <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{t('common.noData') || "Ma'lumot yo'q"}</p>
+                          <div className="border border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center text-center">
+                            <Target className="w-5 h-5 text-slate-300 mb-1" />
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('common.noData') || "Bo'sh"}</p>
                           </div>
                         )}
                       </div>
@@ -602,265 +1025,160 @@ export default function Leads() {
         </DragDropContext>
       )}
 
-      {(view === 'table' || isLoading) && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl border-2 border-slate-200 shadow-lg overflow-hidden"
-        >
-        {isLoading ? (
-          <div className="p-8 space-y-4">
-            {[1,2,3,4,5].map(i => (
-              <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <EmptyState 
-            icon={<Target className="w-16 h-16" />}
-            title="Lead topilmadi" 
-            description={search ? "Qidiruv so'zini o'zgartiring" : "Yangi lead qo'shing"}
-            action={
-              !search && (
-                <Button onClick={() => { setEditLead(null); setModalOpen(true); }} className="mt-4">
-                  <UserPlus className="w-4 h-4 mr-2" /> Birinchi leadni qo'shish
-                </Button>
-              )
-            }
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b-2 border-slate-200 bg-gradient-to-r from-slate-50 to-purple-50">
-                  <th className="text-left text-xs font-bold text-slate-600 uppercase tracking-wider px-6 py-4">Ism</th>
-                  <th className="text-left text-xs font-bold text-slate-600 uppercase tracking-wider px-6 py-4 hidden md:table-cell">Aloqa</th>
-                  <th className="text-left text-xs font-bold text-slate-600 uppercase tracking-wider px-6 py-4 hidden lg:table-cell">Tashrif sanasi</th>
-                  <th className="text-left text-xs font-bold text-slate-600 uppercase tracking-wider px-6 py-4">Manba</th>
-                  <th className="text-left text-xs font-bold text-slate-600 uppercase tracking-wider px-6 py-4">Status</th>
-                  <th className="text-right text-xs font-bold text-slate-600 uppercase tracking-wider px-6 py-4">Amallar</th>
-                </tr>
-              </thead>
-              <tbody>
-                <AnimatePresence>
-                  {filtered.map((l, index) => (
-                    <motion.tr 
-                      key={l.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ delay: Math.min(index, 6) * 0.02 }}
-                      className="border-b border-slate-100 last:border-0 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-pink-50/50 cursor-pointer transition-all group"
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 bg-gradient-to-br ${getStatusColor(l.status)} rounded-full flex items-center justify-center text-xl flex-shrink-0 shadow-md group-hover:scale-110 transition-transform`}>
-                            {getSourceIcon(l.source)}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-900">{l.name}</p>
-                            {l.notes && (
-                              <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{l.notes}</p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 hidden md:table-cell">
-                        <div className="space-y-1">
-                          {l.phone && (
-                            <p className="text-sm text-slate-700 font-medium flex items-center gap-2">
-                              <Phone className="w-3.5 h-3.5 text-purple-500" /> {l.phone}
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600 hidden lg:table-cell">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-slate-400" />
-                          {formatDate(l.visit_date)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <StatusBadge status={l.source} type="source" />
-                      </td>
-                      <td className="px-6 py-4">
-                        <StatusBadge status={l.status} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-9 w-9 text-green-600 hover:text-green-700 hover:bg-green-100 rounded-lg transition-all" 
-                            onClick={() => window.open(`tel:${l.phone}`, '_self')}
-                            title="Qo'ng'iroq qilish"
-                          >
-                            <Phone className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-9 w-9 text-blue-500 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-all" 
-                            onClick={() => {
-                              const phone = l.phone?.replace(/\D/g, '');
-                              if (phone) {
-                                window.open(`https://t.me/+${phone}`, '_blank');
-                              }
-                            }}
-                            title="Telegramda yozish"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-9 w-9 text-amber-600 hover:text-amber-700 hover:bg-amber-100 rounded-lg transition-all" 
-                            onClick={() => { setEditLead(l); setModalOpen(true); }}
-                            title="Tahrirlash"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-9 w-9 text-red-600 hover:text-red-700 hover:bg-red-100 rounded-lg transition-all" 
-                            onClick={() => setDeleteId(l.id)}
-                            title="O'chirish"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
-              </tbody>
-            </table>
-          </div>
-        )}
-      </motion.div>
-    )}
-
-      {/* Add/Edit Modal */}
+      {/* ─── Add/Edit Modal ──────────────────────────────────────────────── */}
       <Dialog open={modalOpen} onOpenChange={() => { setModalOpen(false); setEditLead(null); }}>
         <DialogContent className="sm:max-w-lg rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              {editLead ? t('leads.editLead') || "Lead tahrirlash" : t('leads.newLeadModalTitle') || "Yangi lead qo'shish"}
+            <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
+                <Target className="w-4 h-4" />
+              </div>
+              <span>{editLead ? (t('leads.editLead') || "Lead tahrirlash") : (t('leads.newLeadModalTitle') || "Yangi lead qo'shish")}</span>
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 mt-4">
+          <div className="space-y-3.5 mt-3 text-xs">
             <div>
-              <Label className="text-sm font-semibold">{t('common.name') || 'Ism'} *</Label>
+              <Label className="text-xs font-bold text-slate-700">{t('common.name') || 'Ism va Familiya'} *</Label>
               <Input 
                 value={form.name} 
                 onChange={e => setForm({ ...form, name: e.target.value })} 
-                className="mt-1.5 h-11 rounded-xl border-2 focus:border-purple-500"
-                placeholder={t('common.name') || "Bemor ismi"}
+                className="mt-1 h-9 rounded-lg border-slate-200 focus:border-purple-500 text-xs"
+                placeholder={t('common.name') || "Masalan: Alisher Vohidov"}
               />
             </div>
             <div>
-              <Label className="text-sm font-semibold">{t('common.phone') || 'Telefon'} *</Label>
+              <Label className="text-xs font-bold text-slate-700">{t('common.phone') || 'Telefon raqami'} *</Label>
               <Input 
                 value={form.phone} 
                 onChange={e => setForm({ ...form, phone: e.target.value })} 
-                className="mt-1.5 h-11 rounded-xl border-2 focus:border-purple-500"
-                placeholder="+998 XX XXX XX XX"
+                className="mt-1 h-9 rounded-lg border-slate-200 focus:border-purple-500 font-mono text-xs"
+                placeholder="+998 90 123 45 67"
               />
             </div>
-            <div>
-              <Label className="text-sm font-semibold">{t('leads.visitDate') || 'Tashrif sanasi'}</Label>
-              <Input 
-                type="date" 
-                value={form.visit_date} 
-                onChange={e => setForm({ ...form, visit_date: e.target.value })} 
-                className="mt-1.5 h-11 rounded-xl border-2 focus:border-purple-500"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs font-bold text-slate-700">{t('leads.visitDate') || 'Tashrif sanasi'}</Label>
+                <Input 
+                  type="date" 
+                  value={form.visit_date} 
+                  onChange={e => setForm({ ...form, visit_date: e.target.value })} 
+                  className="mt-1 h-9 rounded-lg border-slate-200 focus:border-purple-500 text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-bold text-slate-700">{t('leads.source') || 'Manba'}</Label>
+                <Select value={form.source} onValueChange={v => setForm({ ...form, source: v })}>
+                  <SelectTrigger className="mt-1 h-9 rounded-lg border-slate-200 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[
+                      { value: 'Instagram', label: 'Instagram', icon: Instagram, color: 'text-pink-500' },
+                      { value: 'Telegram', label: 'Telegram', icon: Send, color: 'text-sky-500' },
+                      { value: 'Facebook', label: 'Facebook', icon: Facebook, color: 'text-blue-500' },
+                      { value: 'Call', label: 'Telefon (Call)', icon: Phone, color: 'text-emerald-500' },
+                      { value: 'Website', label: 'Veb-sayt', icon: Globe, color: 'text-indigo-500' },
+                      { value: 'Import', label: 'Excel Import', icon: FileSpreadsheet, color: 'text-teal-600' },
+                      { value: 'Other', label: 'Boshqa', icon: Target, color: 'text-slate-500' }
+                    ].map(item => {
+                      const Icon = item.icon;
+                      return (
+                        <SelectItem key={item.value} value={item.value}>
+                          <div className="flex items-center gap-2">
+                            <Icon className={`w-3.5 h-3.5 ${item.color}`} />
+                            <span>{item.label}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
-              <Label className="text-sm font-semibold">{t('leads.source') || 'Manba'}</Label>
-              <Select value={form.source} onValueChange={v => setForm({ ...form, source: v })}>
-                <SelectTrigger className="mt-1.5 h-11 rounded-xl border-2"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {['Telegram', 'Instagram', 'Website', 'Call', 'Other'].map(s => (
-                    <SelectItem key={s} value={s}>{getSourceIcon(s)} {s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-sm font-semibold">Status</Label>
+              <Label className="text-xs font-bold text-slate-700">Status</Label>
               <Select value={form.status?.toLowerCase()} onValueChange={v => setForm({ ...form, status: v })}>
-                <SelectTrigger className="mt-1.5 h-11 rounded-xl border-2"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1 h-9 rounded-lg border-slate-200 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {['new', 'contacted', 'qualified', 'converted', 'lost'].map(s => (
-                    <SelectItem key={s} value={s} className="uppercase text-xs font-bold tracking-widest">{s}</SelectItem>
+                  {[
+                    { id: 'new', label: 'Yangi' },
+                    { id: 'contacted', label: 'Bog\'lanildi' },
+                    { id: 'qualified', label: 'Qiziqqan' },
+                    { id: 'converted', label: 'Bemor (Konvertatsiya)' },
+                    { id: 'lost', label: 'Rad etilgan' }
+                  ].map(s => (
+                    <SelectItem key={s.id} value={s.id} className="text-xs font-semibold">{s.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label className="text-sm font-semibold">{t('common.notes') || 'Izohlar'}</Label>
+              <Label className="text-xs font-bold text-slate-700">{t('common.notes') || 'Izohlar'}</Label>
               <Textarea 
                 value={form.notes} 
                 onChange={e => setForm({ ...form, notes: e.target.value })} 
-                rows={3}
-                className="mt-1.5 rounded-xl border-2 focus:border-purple-500"
+                rows={2}
+                className="mt-1 rounded-lg border-slate-200 focus:border-purple-500 text-xs"
                 placeholder={t('leads.notesPlaceholder') || "Qo'shimcha ma'lumotlar..."}
               />
             </div>
 
             {/* Custom Ad Form Questions */}
             {editLead?.form_data && Object.keys(editLead.form_data).length > 0 && (
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mt-2">
-                <div className="flex items-center gap-2 mb-3">
-                  <Target className="w-4 h-4 text-purple-500" />
-                  <span className="text-xs font-black uppercase tracking-widest text-slate-700">{t('leads.fbFormResponses') || 'Facebook Form Javoblari'}</span>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 mt-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-3.5 h-3.5 text-purple-600" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700">{t('leads.fbFormResponses') || 'Target Form Javoblari'}</span>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {Object.entries(editLead.form_data).map(([question, answer], idx) => (
-                    <div key={idx} className="space-y-1">
+                    <div key={idx} className="space-y-0.5">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{question.replace(/_/g, ' ')}</p>
-                      <p className="text-sm font-semibold text-slate-900">{answer}</p>
+                      <p className="text-xs font-semibold text-slate-900">{answer}</p>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-            <div className="flex justify-end gap-2 pt-4">
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
               <Button 
                 variant="outline" 
+                size="sm"
                 onClick={() => { setModalOpen(false); setEditLead(null); }}
-                className="rounded-xl"
+                className="rounded-lg text-xs"
               >
                 {t('common.cancel') || 'Bekor qilish'}
               </Button>
               <Button 
+                size="sm"
                 onClick={handleSave} 
                 disabled={saveMutation.isPending || !form.name || !form.phone} 
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl"
+                className="bg-[#1499AD] hover:bg-[#0E7A8A] text-white rounded-lg text-xs font-bold px-4"
               >
-                {saveMutation.isPending ? t('common.saving') || 'Saqlanmoqda...' : t('common.save') || 'Saqlash'}
+                {saveMutation.isPending ? 'Saqlanmoqda...' : 'Saqlash'}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* ─── Delete Confirmation ─────────────────────────────────────────── */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl">Leadni o'chirish</AlertDialogTitle>
-            <AlertDialogDescription>Haqiqatan ham bu leadni o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi.</AlertDialogDescription>
+            <AlertDialogTitle className="text-lg font-bold">Leadni o'chirish</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              Haqiqatan ham bu leadni o'chirmoqchimisiz? Ushbu amalni qaytarib bo'lmaydi.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl">Bekor qilish</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 rounded-xl">O'chirish</AlertDialogAction>
+            <AlertDialogCancel className="rounded-lg text-xs">Bekor qilish</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold">
+              O'chirish
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* ─── Quick View Modal ────────────────────────────────────────────── */}
       <LeadQuickView 
         lead={selectedLead} 
         isOpen={!!selectedLead} 

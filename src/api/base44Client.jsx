@@ -150,6 +150,7 @@ class HybridEntityLoader {
       'Recall': 'recalls',
       'Lead': 'leads',
       'Implant': 'implants',
+      'ImplantBrand': 'implants',
       'Technician': 'technicians',
       'TechnicianJob': 'technicians',
       'Inventory': 'inventory',
@@ -164,6 +165,9 @@ class HybridEntityLoader {
   }
 
   _techFields() {
+    if (this.entityName === 'ImplantBrand') {
+      return ['name', 'code', 'initial_stock', 'added_stock', 'country', 'model', 'notes', 'price', 'is_active', 'created_date', 'clinic_id'];
+    }
     if (this.entityName === 'TreatmentPlan') {
       return ['name', 'patient_name', 'status', 'priority', 'tooth_number', 'services', 'total_price', 'start_date', 'notes', 'installment_plan', 'paid_amount', 'doctor_id', 'doctor_name'];
     }
@@ -714,6 +718,16 @@ class HybridEntityLoader {
     // Determine timestamp column (User and Clinic tables typically use created_at)
     const timestampCol = (this.entityName === 'User' || this.entityName === 'Clinic') ? 'created_at' : 'created_date';
 
+    // Sanitize numeric fields for implants to avoid 22P02 Postgres errors
+    if (tableName === 'implants') {
+      if (cleanPayload.reminder_months === 'custom' || (typeof cleanPayload.reminder_months === 'string' && isNaN(Number(cleanPayload.reminder_months)))) {
+        cleanPayload.reminder_months = null;
+      } else if (cleanPayload.reminder_months != null) {
+        const parsed = parseInt(cleanPayload.reminder_months, 10);
+        cleanPayload.reminder_months = isNaN(parsed) ? null : parsed;
+      }
+    }
+
     // NOTES-ENCODING: pack ALL tech fields into notes for guaranteed Supabase persistence
     // This solves the issue when columns are not yet in Supabase schema
     cleanPayload = this._encodeNotes(cleanPayload);
@@ -882,6 +896,16 @@ class HybridEntityLoader {
           }
         } catch (preserveError) {
           console.warn(`⚠️ [${this.entityName}] Existing tech data could not be merged before update:`, preserveError?.message || preserveError);
+        }
+      }
+
+      // Sanitize numeric fields for implants to avoid 22P02 Postgres errors
+      if (tableName === 'implants') {
+        if (cleanPayload.reminder_months === 'custom' || (typeof cleanPayload.reminder_months === 'string' && isNaN(Number(cleanPayload.reminder_months)))) {
+          cleanPayload.reminder_months = null;
+        } else if (cleanPayload.reminder_months != null) {
+          const parsed = parseInt(cleanPayload.reminder_months, 10);
+          cleanPayload.reminder_months = isNaN(parsed) ? null : parsed;
         }
       }
 

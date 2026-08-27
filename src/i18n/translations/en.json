@@ -24,6 +24,9 @@
     "telegramNone": "No Telegram",
     "sendReminderTooltip": "Send reminder via SMS / Telegram",
     "patientProfileTooltip": "Patient Profile",
+    "pay": "Payment",
+    "payDebt": "Accept Payment",
+    "payTooltip": "Accept Debt Payment",
     "table": {
       "patient": "Patient",
       "debtAmount": "Debt Amount",
@@ -366,6 +369,8 @@
       "cardNumberPlaceholder": "043/u medical card",
       "registrationDate": "Registration Date",
       "saveError": "Error saving patient",
+      "errorDoctorRequired": "Selecting a doctor is required! Treatment plan cannot be created without a doctor.",
+      "errorLastNameRequired": "Please enter last name",
       "doctorSignature": "Doctor Signature",
       "stage": "Stage",
       "date": "Date",
@@ -1010,6 +1015,9 @@
     "searchHint": "Search by patient name or category...",
     "details": "Payment Details",
     "patientAndDoctorInfo": "Patient & Doctor Information",
+    "planOriginalPrice": "Plan (Original Price)",
+    "appliedDiscount": "Applied Discount",
+    "totalAfterDiscount": "Total with Discount",
     "remainingDebt": "Remaining Debt",
     "history": "Payment History",
     "receiveAmount": "Receive Payment",
@@ -2155,6 +2163,58 @@
       "promptNewCategory": "New category:",
       "errorSelectPatient": "Please select a patient",
       "errorUploadAfterImage": "Please upload at least the \"After\" photo"
+    }
+  },
+  "recall": {
+    "title": "Recall System",
+    "subtitle": "Automatic reminders to recall patients",
+    "newRecall": "New Recall",
+    "addNew": "New Recall",
+    "settings": "Settings",
+    "month": "month",
+    "months": "months",
+    "year": "year",
+    "priority": "Priority",
+    "empty": "No recalls",
+    "emptyDesc": "Click the button to add a new recall",
+    "searchPlaceholder": "Search (name, phone)...",
+    "stats": {
+      "total": "Total recalls",
+      "pending": "Pending",
+      "sent": "Sent"
+    },
+    "filters": {
+      "label": "Filter",
+      "all": "All",
+      "urgent": "Urgent",
+      "today": "Today",
+      "week": "This week"
+    },
+    "modal": {
+      "newTitle": "New Recall",
+      "patient": "Patient *",
+      "startDate": "Start date *",
+      "date": "Recall date *",
+      "time": "Time",
+      "rule": "Automatic period",
+      "reason": "Treatment type",
+      "notes": "Notes",
+      "channels": "Reminder channels",
+      "autoCalculated": "Date calculated automatically",
+      "creating": "Saving...",
+      "placeholderTreatment": "E.g.: Composite filling"
+    },
+    "table": {
+      "patient": "Patient",
+      "recallDate": "Date",
+      "reason": "Type / Notes",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "bulkActions": {
+      "selected": "recalls selected",
+      "send": "Send",
+      "cancel": "Cancel"
     }
   }
 }

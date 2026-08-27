@@ -25,11 +25,14 @@ import { toast } from 'sonner';
  * RECALL_RULES - Avtomatik recall qoidalar
  */
 const RECALL_RULES = [
+  { value: '1_month', label: '1 oy', days: 30, icon: '📅' },
   { value: '3_months', label: '3 oy', days: 90, icon: '📅' },
   { value: '6_months', label: '6 oy', days: 180, icon: '📅' },
   { value: '1_year', label: '1 yil', days: 365, icon: '📅' },
-  { value: 'custom', label: 'Boshqa', days: 0, icon: '⚙️' },
+  { value: 'custom', label: 'Boshqa (Kalendar orqali)', days: 0, icon: '🗓️' },
 ];
+
+const getTodayDateStr = () => new Date().toISOString().split('T')[0];
 
 /**
  * REMINDER_TIMING - Eslatma vaqt rejimlari
@@ -62,29 +65,52 @@ const RECALL_STATUSES = {
 
 /**
  * RecallSystem Page - Professional Healthcare CRM
- * 
- * Enhanced with:
- * - Clear recall lifecycle (Draft → Scheduled → Pending → Sent → Completed)
- * - Smart automation and bulk actions
- * - Real-time feedback and delivery tracking
- * - Priority management and intelligent filtering
  */
 export default function RecallSystem() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   
-  const getRuleLabel = (value, defaultLabel) => {
-    switch (value) {
-      case '3_months':
-        return `3 ${t('recall.months') || 'oy'}`;
-      case '6_months':
-        return `6 ${t('recall.months') || 'oy'}`;
-      case '1_year':
-        return `1 ${t('recall.year') || 'yil'}`;
-      case 'custom':
-        return t('common.other') || t('recall.sort.custom') || 'Boshqa';
-      default:
-        return defaultLabel;
+  const getRuleLabel = (value) => {
+    if (language === 'ru') {
+      switch (value) {
+        case '1_month': return '1 месяц';
+        case '3_months': return '3 месяца';
+        case '6_months': return '6 месяцев';
+        case '1_year': return '1 год';
+        case 'custom': return 'Другое (Выбрать дату)';
+        default: return value;
+      }
     }
+    if (language === 'en') {
+      switch (value) {
+        case '1_month': return '1 month';
+        case '3_months': return '3 months';
+        case '6_months': return '6 months';
+        case '1_year': return '1 year';
+        case 'custom': return 'Custom (From calendar)';
+        default: return value;
+      }
+    }
+    switch (value) {
+      case '1_month': return '1 oy';
+      case '3_months': return '3 oy';
+      case '6_months': return '6 oy';
+      case '1_year': return '1 yil';
+      case 'custom': return 'Boshqa (Kalendar orqali)';
+      default: return value;
+    }
+  };
+
+  /**
+   * Calculate recall date based on rule
+   */
+  const calculateRecallDate = (ruleValue, fromDate = new Date()) => {
+    const rule = RECALL_RULES.find(r => r.value === ruleValue);
+    if (!rule || rule.days === 0) return null;
+    
+    const date = new Date(fromDate || new Date());
+    if (isNaN(date.getTime())) return null;
+    date.setDate(date.getDate() + rule.days);
+    return date.toISOString().split('T')[0];
   };
   
   // Data states
@@ -106,20 +132,24 @@ export default function RecallSystem() {
   const [sortBy, setSortBy] = useState('date_asc'); // date_asc, date_desc, priority
 
   // Form states
-  const [form, setForm] = useState({
-    patient_id: '',
-    patient_name: '',
-    recall_date: '',
-    recall_time: '09:00',
-    reason: '',
-    status: 'Pending',
-    notes: '',
-    send_telegram: true,
-    send_sms: false,
-    telegram_chat_id: '',
-    phone: '',
-    recall_rule: '6_months', // Default 6 oy
-    treatment_type: '' // Davolash turi
+  const [form, setForm] = useState(() => {
+    const today = getTodayDateStr();
+    return {
+      patient_id: '',
+      patient_name: '',
+      start_date: today, // Boshlang'ich sana
+      recall_date: calculateRecallDate('3_months', today) || today,
+      recall_time: '09:00',
+      reason: '',
+      status: 'Pending',
+      notes: '',
+      send_telegram: true,
+      send_sms: false,
+      telegram_chat_id: '',
+      phone: '',
+      recall_rule: '3_months',
+      treatment_type: ''
+    };
   });
   
   // Settings states
@@ -280,18 +310,6 @@ export default function RecallSystem() {
       return recallDate >= today && recallDate <= nextWeek && r.status !== 'Completed';
     });
   }, [filteredRecalls]);
-
-  /**
-   * Calculate recall date based on rule
-   */
-  const calculateRecallDate = (ruleValue, fromDate = new Date()) => {
-    const rule = RECALL_RULES.find(r => r.value === ruleValue);
-    if (!rule || rule.days === 0) return null;
-    
-    const date = new Date(fromDate);
-    date.setDate(date.getDate() + rule.days);
-    return date.toISOString().split('T')[0];
-  };
 
   /**
    * Auto-create recall from treatment completion
@@ -586,16 +604,42 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
     setSendModalOpen(true);
   }, []);
 
+  const handleOpenNewModal = () => {
+    const today = getTodayDateStr();
+    const rule = '3_months';
+    const autoDate = calculateRecallDate(rule, today);
+    setForm({
+      patient_id: '',
+      patient_name: '',
+      start_date: today,
+      recall_date: autoDate || today,
+      recall_time: '09:00',
+      reason: '',
+      status: 'Pending',
+      notes: '',
+      send_telegram: true,
+      send_sms: false,
+      telegram_chat_id: '',
+      phone: '',
+      recall_rule: rule,
+      treatment_type: ''
+    });
+    setModalOpen(true);
+  };
+
   return (
-    <div className="space-y-4.5 px-4 pb-24 sm:px-0 sm:pb-6">
+    <div className="space-y-4 pb-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4.5 rounded-2xl border border-slate-100 shadow-sm">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('recall.title') || 'Recall Tizimi'}</h1>
-          <p className="text-[10.5px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">
+          <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">
+            {t('recall.title') || 'Recall Tizimi'}
+          </h1>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
             {t('recall.subtitle') || 'Avtomatik eslatmalar bilan bemorlarni qayta chaqirish'}
           </p>
         </div>
+        
         <div className="flex gap-2 shrink-0">
           <Button 
             variant="outline" 
@@ -608,8 +652,8 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
           </Button>
           <Button 
             size="sm"
-            onClick={() => setModalOpen(true)} 
-            className="bg-[#10b981] hover:bg-[#10b981]/90 gap-1.5 h-9 rounded-xl text-xs font-bold text-white shadow-md shadow-emerald-500/10 border-none"
+            onClick={handleOpenNewModal} 
+            className="bg-[#10b981] hover:bg-[#10b981]/90 gap-1.5 h-9 rounded-xl text-xs font-bold text-white shadow-md shadow-emerald-500/10 border-none cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             {t('recall.newRecall') || t('recall.addNew') || 'Yangi recall'}
@@ -804,54 +848,104 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
               </Select>
             </div>
             
+            {/* 1. Boshlang'ich sana va Vaqt */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>{t('recall.modal.date') || 'Recall sanasi *'}</Label>
+                <Label className="text-xs font-bold text-slate-700">Boshlang'ich sana *</Label>
                 <Input 
                   type="date" 
-                  value={form.recall_date} 
-                  onChange={e => setForm({ ...form, recall_date: e.target.value })} 
+                  value={form.start_date || getTodayDateStr()} 
+                  onChange={e => {
+                    const newStart = e.target.value;
+                    const newRecall = form.recall_rule !== 'custom' 
+                      ? calculateRecallDate(form.recall_rule, newStart) 
+                      : form.recall_date;
+                    setForm({ 
+                      ...form, 
+                      start_date: newStart,
+                      recall_date: newRecall || form.recall_date
+                    });
+                  }} 
+                  className="h-10 rounded-xl bg-slate-50 border-slate-200 font-bold text-xs"
                 />
+                <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">Avtomatik bugungi sana</span>
               </div>
               <div>
-                <Label>{t('recall.modal.time') || 'Vaqt'}</Label>
+                <Label className="text-xs font-bold text-slate-700">{t('recall.modal.time') || 'Vaqt'}</Label>
                 <Input 
                   type="time" 
                   value={form.recall_time} 
                   onChange={e => setForm({ ...form, recall_time: e.target.value })} 
+                  className="h-10 rounded-xl bg-slate-50 border-slate-200 font-bold text-xs"
                 />
               </div>
             </div>
             
-            {/* Auto Recall Rule */}
-            <div>
-              <Label>{t('recall.modal.rule') || 'Avtomatik recall qoidasi'}</Label>
-              <Select 
-                value={form.recall_rule} 
-                onValueChange={v => {
-                  const newDate = calculateRecallDate(v);
-                  setForm({ 
-                    ...form, 
-                    recall_rule: v,
-                    recall_date: newDate || form.recall_date
-                  });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {RECALL_RULES.map(rule => (
-                    <SelectItem key={rule.value} value={rule.value}>
-                      {rule.icon} {getRuleLabel(rule.value, rule.label)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-slate-400 mt-1">
-                {form.recall_rule !== 'custom' && `${t('recall.modal.autoCalculated') || 'Sana avtomatik hisoblandi'}: ${calculateRecallDate(form.recall_rule)}`}
-              </p>
+            {/* 2. Avtomatik davr & Eslatma (Recall) sanasi */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs font-bold text-slate-700">{t('recall.modal.rule') || 'Avtomatik davr'}</Label>
+                <Select 
+                  value={form.recall_rule} 
+                  onValueChange={v => {
+                    if (v === 'custom') {
+                      setForm({ ...form, recall_rule: 'custom' });
+                    } else {
+                      const newDate = calculateRecallDate(v, form.start_date || getTodayDateStr());
+                      setForm({ 
+                        ...form, 
+                        recall_rule: v,
+                        recall_date: newDate || form.recall_date
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-10 rounded-xl bg-slate-50 border-slate-200 font-bold text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-150 shadow-xl">
+                    {RECALL_RULES.map(rule => (
+                      <SelectItem key={rule.value} value={rule.value} className="font-bold text-xs py-2">
+                        {rule.icon} {getRuleLabel(rule.value, rule.label)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-slate-700">{t('recall.modal.date') || 'Eslatma sanasi *'}</Label>
+                  {form.recall_rule === 'custom' && (
+                    <span className="text-[9px] font-bold text-amber-600">Kalendardan</span>
+                  )}
+                </div>
+                <Input 
+                  type="date" 
+                  value={form.recall_date} 
+                  onChange={e => {
+                    setForm({ 
+                      ...form, 
+                      recall_date: e.target.value,
+                      recall_rule: 'custom'
+                    });
+                  }} 
+                  className="h-10 rounded-xl bg-white border-[#1499AD]/40 focus:border-[#1499AD] font-bold text-xs text-[#1499AD]"
+                />
+              </div>
             </div>
+
+            {/* Info Badge */}
+            {form.recall_rule !== 'custom' ? (
+              <p className="text-[11px] text-[#1499AD] font-semibold bg-[#1499AD]/5 px-3 py-2 rounded-xl border border-[#1499AD]/10 flex items-center justify-between">
+                <span>📅 Hisoblangan sana: <strong>{form.recall_date}</strong></span>
+                <span className="text-[10px] text-slate-400 font-normal">(Kalendardan o'zgartirishingiz mumkin)</span>
+              </p>
+            ) : (
+              <p className="text-[11px] text-amber-700 font-semibold bg-amber-50 px-3 py-2 rounded-xl border border-amber-100 flex items-center gap-1.5">
+                <span>🗓️ Kalendar orqali maxsus sana belgilandi: <strong>{form.recall_date}</strong></span>
+              </p>
+            )}
 
             <div>
               <Label>{t('recall.modal.reason') || 'Davolash turi'}</Label>

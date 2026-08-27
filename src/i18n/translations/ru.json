@@ -24,6 +24,9 @@
     "telegramNone": "Нет Telegram",
     "sendReminderTooltip": "Отправить напоминание по SMS / Telegram",
     "patientProfileTooltip": "Профиль пациента",
+    "pay": "Оплата",
+    "payDebt": "Принять оплату",
+    "payTooltip": "Принять оплату задолженности",
     "table": {
       "patient": "Пациент",
       "debtAmount": "Сумма долга",
@@ -384,6 +387,8 @@
       "cardNumberPlaceholder": "043/у медицинская карта",
       "registrationDate": "Дата регистрации",
       "saveError": "Ошибка при сохранении пациента",
+      "errorDoctorRequired": "Выбор врача обязателен! Без выбора врача составление плана невозможно.",
+      "errorLastNameRequired": "Введите фамилию",
       "doctorSignature": "Подпись врача",
       "stage": "Этап",
       "date": "Дата",
@@ -1027,6 +1032,9 @@
     "searchHint": "Поиск по имени пациента или категории...",
     "details": "Детали платежа",
     "patientAndDoctorInfo": "Информация о пациенте и враче",
+    "planOriginalPrice": "План (исходная цена)",
+    "appliedDiscount": "Примененная скидка",
+    "totalAfterDiscount": "Итого со скидкой",
     "remainingDebt": "Оставшийся долг",
     "history": "История платежей",
     "amount": "Сумма платежа",
@@ -2140,6 +2148,58 @@
       "promptNewCategory": "Новая категория:",
       "errorSelectPatient": "Пожалуйста, выберите пациента",
       "errorUploadAfterImage": "Пожалуйста, загрузите хотя бы фото «После»"
+    }
+  },
+  "recall": {
+    "title": "Система Recall",
+    "subtitle": "Автоматический повторный вызов пациентов с напоминаниями",
+    "newRecall": "Новый Recall",
+    "addNew": "Новый Recall",
+    "settings": "Настройки",
+    "month": "мес",
+    "months": "мес",
+    "year": "год",
+    "priority": "Важность",
+    "empty": "Нет записей recall",
+    "emptyDesc": "Нажмите кнопку, чтобы добавить новый recall",
+    "searchPlaceholder": "Поиск (имя, телефон)...",
+    "stats": {
+      "total": "Всего recall",
+      "pending": "Ожидающие",
+      "sent": "Отправленные"
+    },
+    "filters": {
+      "label": "Фильтр",
+      "all": "Все",
+      "urgent": "Срочные",
+      "today": "Сегодня",
+      "week": "На этой неделе"
+    },
+    "modal": {
+      "newTitle": "Новый Recall",
+      "patient": "Пациент *",
+      "startDate": "Начальная дата *",
+      "date": "Дата напоминания *",
+      "time": "Время",
+      "rule": "Автоматический период",
+      "reason": "Вид лечения",
+      "notes": "Примечания",
+      "channels": "Каналы напоминания",
+      "autoCalculated": "Дата рассчитана автоматически",
+      "creating": "Сохранение...",
+      "placeholderTreatment": "Например: Установка пломбы"
+    },
+    "table": {
+      "patient": "Пациент",
+      "recallDate": "Дата",
+      "reason": "Тип / Описание",
+      "status": "Статус",
+      "actions": "Действия"
+    },
+    "bulkActions": {
+      "selected": "выбрано recall",
+      "send": "Отправить",
+      "cancel": "Отмена"
     }
   }
 }

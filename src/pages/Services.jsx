@@ -5,7 +5,7 @@ import {
   Sparkles, Filter, TrendingUp, DollarSign, ListFilter,
   BarChart3, Settings2, CheckCircle2, ChevronRight, Pencil, Check, GripVertical
 } from 'lucide-react';
-import { cn as classNames } from '@/lib/utils';
+import { cn, cn as classNames } from '@/lib/utils';
 import { base44, DEFAULT_SERVICES_DATA } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 const DEFAULT_CATEGORIES = [
   'TERAPIYA( ENDO +PLOMBA)',
+  'RESTAVRATSIYA',
   'ORTOPEDIYA',
   'XIRURGIYA',
   'ORTODONTIYA',
@@ -52,6 +53,7 @@ const DEFAULT_CATEGORIES = [
 
 const CATEGORY_MAP = {
   'TERAPIYA( ENDO +PLOMBA)': { icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+  'RESTAVRATSIYA': { icon: Sparkles, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
   'XIRURGIYA': { icon: Scissors, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100' },
   'ORTOPEDIYA': { icon: Layers, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-100' },
   'ORTODONTIYA': { icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
@@ -486,7 +488,7 @@ export default function Services() {
           { label: t('services.stats.total'), value: stats.total, icon: ListFilter, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: t('services.stats.active'), value: stats.active, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: t('services.stats.avgPrice'), value: `${(Math.round(stats.avgPrice / 1000) * 1000).toLocaleString()} UZS`, icon: DollarSign, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: t('services.categories') || 'BO\'LIMLAR', value: categoryOrder.length, icon: BarChart3, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: (!t('services.categories') || t('services.categories').toUpperCase().startsWith('SERVICES.')) ? 'Bo\'limlar' : t('services.categories'), value: categoryOrder.length, icon: BarChart3, color: 'text-purple-600', bg: 'bg-purple-50' },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3 group hover:shadow-md transition-all">
             <div className={`w-9 h-9 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0`}><stat.icon className="w-4 h-4" /></div>
@@ -592,7 +594,7 @@ export default function Services() {
                     {reorderingCat === catName && (
                       <div className="px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-2">
                         <GripVertical className="w-4 h-4" />
-                        Kartochkalarni sudrab joyini o'zgartiring. Tugatgach ✅ tugmasini bosing.
+                        Nuqtani ushlab joyini o'zgartiring. Tugatgach ✅ tugmasini bosing.
                       </div>
                     )}
                     {/* ✅ DnD Kit — drag & drop grid */}
@@ -801,14 +803,14 @@ export default function Services() {
                   {(form.tooth_numbers || []).length > 0 ? (
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-black text-[#1499AD] bg-[#1499AD]/10 px-2 py-0.5 rounded-full border border-[#1499AD]/20">
-                        {t('common.selected') || 'Tanlangan'}: {(form.tooth_numbers || []).map(Number).sort((a,b)=>a-b).join(', ')} ({(form.tooth_numbers || []).length} ta)
+                        {(!t('common.selected') || t('common.selected').startsWith('common.')) ? 'Tanlangan' : t('common.selected')}: {(form.tooth_numbers || []).map(Number).sort((a,b)=>a-b).join(', ')} ({(form.tooth_numbers || []).length} ta)
                       </span>
                       <button
                         type="button"
                         onClick={() => setForm({ ...form, tooth_numbers: [] })}
-                        className="text-[10px] font-black text-rose-500 hover:text-rose-700 px-1.5 py-0.5 rounded hover:bg-rose-50 transition-colors"
+                        className="text-[10px] font-black text-rose-500 hover:text-rose-700 px-1.5 py-0.5 rounded hover:bg-rose-50 transition-colors cursor-pointer"
                       >
-                        {t('common.clear') || 'Tozalash'}
+                        {(!t('common.clear') || t('common.clear').startsWith('common.')) ? 'Tozalash' : t('common.clear')}
                       </button>
                     </div>
                   ) : (
@@ -819,8 +821,12 @@ export default function Services() {
                 </div>
 
                 {/* FDI tish sxemasi */}
-                <div className="p-2 bg-white rounded-lg border border-slate-200/80 space-y-1 shadow-xs overflow-x-auto">
-                  <div className="text-[8px] font-black text-slate-400 uppercase tracking-wider text-center">Yuqori jag' (Tepa)</div>
+                <div className="p-2.5 bg-white rounded-xl border border-slate-200/80 space-y-1.5 shadow-xs overflow-x-auto">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Yuqori o'ng (18-11)</span>
+                    <span className="text-[9px] font-black text-[#1499AD] uppercase tracking-wider">▲ Yuqori jag' (Tepa)</span>
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Yuqori chap (21-28)</span>
+                  </div>
                   {/* Yuqori o'ng (18-11) va Yuqori chap (21-28) */}
                   <div className="flex justify-center items-center gap-0.5 min-w-max">
                     {[18,17,16,15,14,13,12,11].map(n => (
@@ -851,11 +857,15 @@ export default function Services() {
                   </div>
 
                   {/* Ajratuvchi chiziq */}
-                  <div className="flex items-center justify-center my-0.5">
+                  <div className="flex items-center justify-center my-1">
                     <div className="w-full h-px bg-slate-100" />
                   </div>
 
-                  <div className="text-[8px] font-black text-slate-400 uppercase tracking-wider text-center">Pastki jag' (Past)</div>
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Pastki o'ng (48-41)</span>
+                    <span className="text-[9px] font-black text-[#1499AD] uppercase tracking-wider">▼ Pastki jag' (Past)</span>
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Pastki chap (31-38)</span>
+                  </div>
                   {/* Pastki o'ng (48-41) va Pastki chap (31-38) */}
                   <div className="flex justify-center items-center gap-0.5 min-w-max">
                     {[48,47,46,45,44,43,42,41].map(n => (
@@ -887,24 +897,44 @@ export default function Services() {
                 </div>
 
                 {/* Tez tanlash tugmalari */}
-                <div className="flex flex-wrap items-center gap-1 pt-1.5 border-t border-slate-200/60">
+                <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-200/60">
                   <span className="text-[9px] font-black text-slate-400 uppercase self-center mr-0.5">Tez tanlash:</span>
                   {[
                     { label: 'Barchasi (32)', nums: [11,12,13,14,15,16,17,18,21,22,23,24,25,26,27,28,31,32,33,34,35,36,37,38,41,42,43,44,45,46,47,48] },
-                    { label: 'Yuqori', nums: [11,12,13,14,15,16,17,18,21,22,23,24,25,26,27,28] },
-                    { label: 'Pastki', nums: [31,32,33,34,35,36,37,38,41,42,43,44,45,46,47,48] },
-                    { label: 'O\'ng', nums: [11,12,13,14,15,16,17,18,41,42,43,44,45,46,47,48] },
-                    { label: 'Chap', nums: [21,22,23,24,25,26,27,28,31,32,33,34,35,36,37,38] },
-                  ].map(({ label, nums }) => (
-                    <button 
-                      type="button"
-                      key={label} 
-                      onClick={() => setForm({ ...form, tooth_numbers: nums })}
-                      className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-lg hover:border-[#1499AD] hover:text-[#1499AD] hover:bg-[#1499AD]/5 transition-all shadow-xs cursor-pointer active:scale-95"
-                    >
-                      {label}
-                    </button>
-                  ))}
+                    { label: 'Yuqori (16)', nums: [11,12,13,14,15,16,17,18,21,22,23,24,25,26,27,28] },
+                    { label: 'Pastki (16)', nums: [31,32,33,34,35,36,37,38,41,42,43,44,45,46,47,48] },
+                    { label: 'Yuqori o\'ng (11-18)', nums: [11,12,13,14,15,16,17,18] },
+                    { label: 'Yuqori chap (21-28)', nums: [21,22,23,24,25,26,27,28] },
+                    { label: 'Pastki chap (31-38)', nums: [31,32,33,34,35,36,37,38] },
+                    { label: 'Pastki o\'ng (41-48)', nums: [41,42,43,44,45,46,47,48] },
+                    { label: 'O\'ng tomon', nums: [11,12,13,14,15,16,17,18,41,42,43,44,45,46,47,48] },
+                    { label: 'Chap tomon', nums: [21,22,23,24,25,26,27,28,31,32,33,34,35,36,37,38] },
+                  ].map(({ label, nums }) => {
+                    const curTeeth = (form.tooth_numbers || []).map(Number);
+                    const isActive = nums.length > 0 && nums.every(n => curTeeth.includes(n));
+                    return (
+                      <button 
+                        type="button"
+                        key={label} 
+                        onClick={() => {
+                          if (isActive) {
+                            setForm({ ...form, tooth_numbers: curTeeth.filter(n => !nums.includes(n)) });
+                          } else {
+                            const combined = Array.from(new Set([...curTeeth, ...nums]));
+                            setForm({ ...form, tooth_numbers: combined });
+                          }
+                        }}
+                        className={cn(
+                          "text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all shadow-xs cursor-pointer active:scale-95 border",
+                          isActive 
+                            ? "bg-[#1499AD] text-white border-[#1499AD] shadow-sm font-black" 
+                            : "bg-white text-slate-700 border-slate-200 hover:border-[#1499AD] hover:text-[#1499AD] hover:bg-[#1499AD]/5"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

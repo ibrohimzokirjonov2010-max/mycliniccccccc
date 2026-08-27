@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Printer, Download, CheckCircle2, MessageCircle } from 'lucide-react';
@@ -8,18 +8,25 @@ import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function TreatmentPlanInvoice({ open, onClose, plan }) {
   const { t } = useTranslation();
-  const [discountPercent, setDiscountPercent] = useState(0);
 
   // Flatten the plan services list
   const flatServices = useMemo(() => {
     if (!plan) return [];
     return (plan.services || []).flatMap((item, idx) => {
       const items = item.items || [item];
-      return items.map(s => ({
-        ...s,
-        tooth_id: item.tooth_id || item.tooth || s.tooth_id || s.tooth || 'general',
-        parent_idx: idx
-      }));
+      return items.map(s => {
+        const rawToothId = item.tooth_id || item.tooth || s.tooth_id || s.tooth || 'general';
+        const isGeneral = !rawToothId || rawToothId === 'general' || rawToothId === 'Umumiy';
+        // Xizmat nomidan '#general' prefiksini olib tashlash
+        const rawName = s.service_name || '';
+        const cleanName = rawName.replace(/^#general/i, '').trim();
+        return {
+          ...s,
+          service_name: cleanName || rawName,
+          tooth_id: isGeneral ? null : rawToothId,
+          parent_idx: idx
+        };
+      });
     });
   }, [plan?.services]);
 
@@ -36,15 +43,16 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
 
   if (!plan) return null;
 
-  const subtotal = plan.total_price || 0;
-  const discountAmount = (subtotal * discountPercent) / 100;
-  const planDiscount = Number(plan.discount_amount) || 0;
-  
-  // Use either selected discountPercent or saved discount_amount
-  const activeDiscountAmount = discountPercent > 0 ? discountAmount : planDiscount;
-  const total = subtotal - activeDiscountAmount;
+  // plan.total_price = ALLAQACHON chegirmali summa (e.g., 4,179,000)
+  // plan.discount_amount = chegirma miqdori (e.g., 1,791,000)
+  // Asl (chegirmasiz) summa = total_price + discount_amount
+  const savedDiscountAmount = Number(plan.discount_amount) || 0;
+  const discountPercent = Number(plan.discount_percent) || 0;
+  const subtotal = (plan.total_price || 0) + savedDiscountAmount; // Asl narx (chegirmasiz)
+  const activeDiscountAmount = savedDiscountAmount;               // Chegirma miqdori
+  const finalTotal = plan.total_price || 0;                       // Chegirmali yakuniy summa
   const paid = Number(plan.paid_amount) || 0;
-  const remaining = Math.max(0, total - paid);
+  const remaining = Math.max(0, finalTotal - paid);
 
   const handlePrint = () => { window.print(); };
 
@@ -66,26 +74,6 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar pb-24">
              
-             {/* Discount Selector (no-print) */}
-             <div className="bg-white rounded-2xl p-4.5 border border-slate-100 shadow-sm no-print">
-                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Chegirma qo'shish:</h4>
-                <div className="grid grid-cols-4 gap-2">
-                   {[0, 10, 20, 30].map(pct => (
-                      <button 
-                         key={pct}
-                         onClick={() => setDiscountPercent(pct)}
-                         className={`py-3 rounded-xl text-[11px] font-black tracking-tight transition-all border-none ${
-                            discountPercent === pct 
-                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
-                            : 'bg-slate-50 text-slate-400 hover:bg-slate-100/50 hover:text-slate-600'
-                         }`}
-                      >
-                         {pct === 0 ? "Yo'q" : `${pct}%`}
-                      </button>
-                   ))}
-                </div>
-             </div>
-
              {/* The Premium Receipt Container */}
              <div id="standalone-invoice-receipt" className="bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden relative">
                 
@@ -215,7 +203,7 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
                                 <div key={i} className="grid grid-cols-[auto_1fr_auto] gap-3 items-center px-3 py-2 bg-white hover:bg-slate-50/50 transition-colors">
                                     <div className="w-6 h-6 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
                                         <span className="text-[8px] font-black text-blue-600">
-                                            {s.tooth_id ? `#${s.tooth_id}` : 'Umumiy'}
+                                            {s.tooth_id ? `#${s.tooth_id}` : '—'}
                                         </span>
                                     </div>
                                     <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight truncate mr-2">{s.service_name}</span>
@@ -295,7 +283,7 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
                                         {paid > 0 ? "Qolgan qarz" : "To'lov uchun jami"}
                                     </p>
                                     <h3 className="text-2xl font-[950] text-white tracking-tighter tabular-nums leading-tight">
-                                        {formatCurrency(paid > 0 ? remaining : total)}
+                                        {formatCurrency(paid > 0 ? remaining : finalTotal)}
                                     </h3>
                                 </div>
                                 <div className="px-3 py-1.5 bg-emerald-500/15 border border-emerald-500/25 rounded-lg flex items-center gap-1.5 self-start sm:self-auto">

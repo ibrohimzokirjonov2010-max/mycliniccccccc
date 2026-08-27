@@ -1,13 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, X } from 'lucide-react';
+import { Check, X, Box, Plus, Package } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { getOrSeedImplantBrands, calculateBrandStockStats } from './ImplantBrandsModal';
 
-const FIRMALAR = ['Nobel', 'Osstem', 'Straumann', 'Nucleoss', 'Boshqa'];
 const BONE_TYPES = ['D1', 'D2', 'D3', 'D4'];
 
 export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, onSave, existingData }) {
+  const [brands, setBrands] = useState([]);
+  const [implants, setImplants] = useState([]);
+  const [loadingBrands, setLoadingBrands] = useState(false);
+  const [quickNewBrand, setQuickNewBrand] = useState(false);
+  const [newBrandStock, setNewBrandStock] = useState(100);
+
   const [form, setForm] = useState({
     firma: 'Osstem', firma_custom: '', brend: '',
     diameter: '', length: '', lot_number: '',
@@ -16,20 +23,51 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
   });
 
   useEffect(() => {
-    if (existingData) setForm(existingData);
-    else resetForm();
-  }, [open, existingData]);
+    async function load() {
+      if (!open) return;
+      try {
+        setLoadingBrands(true);
+        const [bList, impList] = await Promise.all([
+          getOrSeedImplantBrands(),
+          base44.entities.Implant.list('-placement_date', 500).catch(() => [])
+        ]);
+        setBrands(bList || []);
+        setImplants(impList || []);
+      } catch (err) {
+        console.error('Error loading implant brands in modal:', err);
+      } finally {
+        setLoadingBrands(false);
+      }
+    }
+    load();
+  }, [open]);
 
-  const resetForm = () => setForm({
-    firma: 'Osstem', firma_custom: '', brend: '',
-    diameter: '', length: '', lot_number: '',
-    torque: '', isq: '', bone_type: 'D2',
-    implant_type: 'Bone level', notes: ''
-  });
+  const brandsWithStats = useMemo(() => {
+    return calculateBrandStockStats(brands, implants);
+  }, [brands, implants]);
+
+  useEffect(() => {
+    if (existingData) {
+      setForm(existingData);
+    } else {
+      resetForm();
+    }
+  }, [open, existingData, brands]);
+
+  const resetForm = () => {
+    const defaultFirma = brands.length > 0 ? brands[0].name : 'Osstem';
+    setForm({
+      firma: defaultFirma, firma_custom: '', brend: '',
+      diameter: '', length: '', lot_number: '',
+      torque: '', isq: '', bone_type: 'D2',
+      implant_type: 'Bone level', notes: ''
+    });
+    setQuickNewBrand(false);
+  };
 
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (form.firma === 'Boshqa' && !form.firma_custom?.trim()) {
       alert('Iltimos, firma / brend nomini kiriting!');
       return;
@@ -39,11 +77,32 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
       return;
     }
 
-    const finalCustom = form.firma === 'Boshqa' ? form.firma_custom.trim() : '';
-    const finalBrend = form.brend?.trim() || (form.firma === 'Boshqa' ? finalCustom : (form.firma || 'Standart'));
+    let finalFirma = form.firma;
+    let finalCustom = form.firma === 'Boshqa' ? form.firma_custom.trim() : '';
+    let finalBrend = form.brend?.trim() || (form.firma === 'Boshqa' ? finalCustom : (form.firma || 'Standart'));
+
+    // If user added a new brand via "Boshqa" or quick add, create it in ImplantBrand entity
+    if (form.firma === 'Boshqa' && finalCustom) {
+      finalFirma = finalCustom;
+      try {
+        const exists = brands.find(b => b.name?.toLowerCase() === finalCustom.toLowerCase());
+        if (!exists) {
+          await base44.entities.ImplantBrand.create({
+            name: finalCustom,
+            initial_stock: Math.max(1, parseInt(newBrandStock, 10) || 50),
+            added_stock: 0,
+            created_date: new Date().toISOString(),
+            is_active: true
+          });
+        }
+      } catch (e) {
+        console.warn('Brand create background error:', e);
+      }
+    }
 
     onSave(toothId, {
       ...form,
+      firma: finalFirma,
       firma_custom: finalCustom,
       brend: finalBrend
     });
@@ -85,11 +144,31 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
         {/* Form Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
 
-          {/* Firma */}
+          {/* Firma (Loaded strictly from Brands section with stock!) */}
           <div>
-            <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-1.5 block">
-              Implant Firmasi *
-            </label>
+            <div className="flex items-center justify-between ml-1 mb-1.5">
+              <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] block">
+                Implant Firmasi *
+              </label>
+              {form.firma && form.firma !== 'Boshqa' && (
+                (() => {
+                  const curr = brandsWithStats.find(b => b.name === form.firma);
+                  if (!curr) return null;
+                  return (
+                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                      curr.is_out_of_stock 
+                        ? 'bg-rose-100 text-rose-700' 
+                        : curr.is_low_stock 
+                          ? 'bg-amber-100 text-amber-800' 
+                          : 'bg-emerald-100 text-emerald-800'
+                    }`}>
+                      {curr.remaining_stock} ta qoldi
+                    </span>
+                  );
+                })()
+              )}
+            </div>
+
             <Select 
               value={form.firma} 
               onValueChange={v => {
@@ -104,34 +183,64 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
               <SelectTrigger className="bg-white border-slate-200 h-11 rounded-xl shadow-sm font-bold text-sm focus:ring-emerald-400">
                 <SelectValue placeholder="Implant firmasini tanlang" />
               </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200 shadow-xl">
-                {FIRMALAR.map(f => (
-                  <SelectItem key={f} value={f} className="font-bold cursor-pointer py-2.5">
-                    {f}
+              <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-64">
+                {brandsWithStats.map(b => (
+                  <SelectItem key={b.id || b.name} value={b.name} className="font-bold cursor-pointer py-2.5">
+                    <div className="flex items-center justify-between w-full gap-3">
+                      <span>{b.name}</span>
+                      <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
+                        b.remaining_stock <= 0 
+                          ? 'bg-rose-100 text-rose-600' 
+                          : b.remaining_stock <= 5 
+                            ? 'bg-amber-100 text-amber-700' 
+                            : 'bg-emerald-50 text-emerald-700'
+                      }`}>
+                        {b.remaining_stock > 0 ? `${b.remaining_stock} ta qoldi` : 'Tugagan! (0 ta)'}
+                      </span>
+                    </div>
                   </SelectItem>
                 ))}
+                <SelectItem value="Boshqa" className="font-bold text-indigo-600 cursor-pointer py-2.5 border-t border-slate-100">
+                  + Yangi brend / Boshqa firma...
+                </SelectItem>
               </SelectContent>
             </Select>
 
             {form.firma === 'Boshqa' && (
-              <div className="mt-2.5 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                <label className="text-emerald-700 text-[9px] font-black uppercase tracking-wider ml-1 block flex items-center gap-1">
-                  <span>✍️ Brend / Firma nomini kiriting *</span>
-                </label>
-                <Input
-                  autoFocus
-                  className="bg-emerald-50/60 border-emerald-300 focus:border-emerald-500 focus-visible:ring-emerald-400 h-10 rounded-xl font-bold text-slate-800 text-sm placeholder:text-slate-400 shadow-sm"
-                  value={form.firma_custom}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setForm(prev => ({
-                      ...prev,
-                      firma_custom: val,
-                      brend: prev.brend && prev.brend !== prev.firma_custom ? prev.brend : val
-                    }));
-                  }}
-                  placeholder="Masalan: Dentium, Megagen, Bredent, Neodent..."
-                />
+              <div className="mt-2.5 space-y-2 bg-emerald-50/70 p-3 rounded-2xl border border-emerald-200 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div>
+                  <label className="text-emerald-800 text-[9px] font-black uppercase tracking-wider block mb-1">
+                    ✍️ Yangi Brend / Firma nomini kiriting *
+                  </label>
+                  <Input
+                    autoFocus
+                    className="bg-white border-emerald-300 focus:border-emerald-500 focus-visible:ring-emerald-400 h-10 rounded-xl font-bold text-slate-800 text-sm placeholder:text-slate-400 shadow-sm"
+                    value={form.firma_custom}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setForm(prev => ({
+                        ...prev,
+                        firma_custom: val,
+                        brend: prev.brend && prev.brend !== prev.firma_custom ? prev.brend : val
+                      }));
+                    }}
+                    placeholder="Masalan: Dentium, Megagen, Bredent, Neodent..."
+                  />
+                </div>
+
+                <div>
+                  <label className="text-emerald-800 text-[9px] font-black uppercase tracking-wider block mb-1">
+                    📦 Boshlang'ich Zaxira Soni (dona)
+                  </label>
+                  <Input
+                    type="number"
+                    min="1"
+                    className="bg-white border-emerald-300 h-9 rounded-xl font-black text-slate-900 text-sm"
+                    value={newBrandStock}
+                    onChange={e => setNewBrandStock(e.target.value)}
+                    placeholder="100"
+                  />
+                </div>
               </div>
             )}
           </div>

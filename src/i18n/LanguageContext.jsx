@@ -13,7 +13,7 @@ export const LanguageProvider = ({ children }) => {
   });
 
   // t() function depends on language so components always get correct translations
-  const t = useCallback((key, params) => {
+  const t = useCallback((key, params, fallback) => {
     const dict = translations[language] || translations['uz'];
     const keys = key.split('.');
     let value = dict;
@@ -21,15 +21,16 @@ export const LanguageProvider = ({ children }) => {
       value = value?.[k];
       if (value === undefined) break;
     }
-    let result = value ?? key;
+    const defaultVal = typeof params === 'string' ? params : fallback;
+    let result = value !== undefined ? value : (defaultVal !== undefined ? defaultVal : key);
     // SAFETY GUARD: if result is an object (not a primitive), return the key string
     // This prevents "Objects are not valid as React child" crashes when a translation
     // key points to a nested object instead of a leaf string.
     if (result !== null && typeof result === 'object' && !Array.isArray(result)) {
-      return key;
+      return defaultVal || key;
     }
     // String interpolation: t('key', { name: 'Ali' }) → "Salom {{name}}" → "Salom Ali"
-    if (params && typeof result === 'string') {
+    if (params && typeof params === 'object' && typeof result === 'string') {
       Object.entries(params).forEach(([k, v]) => {
         result = result.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
       });

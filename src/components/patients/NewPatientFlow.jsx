@@ -488,7 +488,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   const normalizedLastName = capitalizeName((patientForm.last_name || '').trim());
   const normalizedPatientName = `${normalizedLastName} ${normalizedFirstName}`.trim();
   const normalizedPatientPhone = (patientForm.phone || '').replace(/\D/g, '');
-  const canProceedPatientStep = normalizedFirstName.length > 0 && normalizedLastName.length > 0 && normalizedPatientPhone.length >= 9;
+  const canProceedPatientStep = normalizedFirstName.length > 0 && 
+    normalizedLastName.length > 0 && 
+    normalizedPatientPhone.length >= 9 && 
+    !!patientForm.main_treatment_provider;
 
   const createdPlanAdvanceTotal = useMemo(() => {
     if (createdPlan?.allPlansObjects?.length) {
@@ -667,6 +670,25 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     return teethSum + toothTotal('general');
   }, [planForm.tooth_numbers, toothTotal]);
 
+  // receiptServicesTotal = asl xizmat narxlari yig'indisi (chegirmasiz)
+  // Bu qiymat chekda "Xizmatlar" qatorida ko'rsatiladi
+  // Muhim: createdPlan.total_price allaqachon chegirmali bo'lishi mumkin,
+  // shuning uchun uni EMAS, balki services yig'indisini yoki grandTotal ni ishlatamiz
+  const receiptServicesTotal = useMemo(() => {
+    if (createdPlan?.services?.length > 0) {
+      const fromServices = createdPlan.services.reduce((s, svc) => s + (Number(svc.price) || 0), 0);
+      if (fromServices > 0) return fromServices;
+    }
+    // allPlansObjects dan original narxni tiklash (total_price + discount_amount)
+    if (createdPlan?.allPlansObjects?.length > 0) {
+      const fromPlans = createdPlan.allPlansObjects.reduce(
+        (s, p) => s + (Number(p.total_price) || 0) + (Number(p.discount_amount) || 0), 0
+      );
+      if (fromPlans > 0) return fromPlans;
+    }
+    return grandTotal || 0;
+  }, [createdPlan, grandTotal]);
+
   const receiptBaseTotal = Number(createdPlan?.total_price || grandTotal || 0);
   const customDiscountPercentValue = Math.max(0, Math.min(100, Number(customDiscountAmount) || 0));
   const customDiscountPreviewAmount = Math.round((receiptBaseTotal * customDiscountPercentValue) / 100);
@@ -727,16 +749,20 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   }, []);
 
   const handleSavePatient = useCallback(async () => {
-    if (!canProceedPatientStep) {
-      if (!normalizedLastName) {
-        toast.error(t('patients.wizard.errorLastNameRequired'));
-        return;
-      }
-      if (!normalizedFirstName) {
-        toast.error(t('patients.errorNameRequired'));
-        return;
-      }
-      toast.error(t('patients.errorPhoneRequired'));
+    if (!normalizedLastName) {
+      toast.error(t('patients.wizard.errorLastNameRequired') || "Familiyani kiriting");
+      return;
+    }
+    if (!normalizedFirstName) {
+      toast.error(t('patients.errorNameRequired') || "Ismni kiriting");
+      return;
+    }
+    if (normalizedPatientPhone.length < 9) {
+      toast.error(t('patients.errorPhoneRequired') || "Telefon raqamini to'liq kiriting");
+      return;
+    }
+    if (!patientForm.main_treatment_provider) {
+      toast.error(t('patients.wizard.errorDoctorRequired') || "Shifokorni tanlash majburiy! Shifokor tanlanmasa reja tuzib bo'lmaydi.");
       return;
     }
     if (patientForm.address && !validateAddress(patientForm.address)) {
@@ -818,6 +844,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
    * Davolash rejasini yaratadi, to'lovni (qarz) qo'shadi va bemor statistikani yangilaydi
    */
   const handleSavePlan = useCallback(async () => {
+    if (!patientForm.main_treatment_provider) {
+      toast.error(t('patients.wizard.errorDoctorRequired') || "Shifokorni tanlash majburiy! Shifokor tanlanmasa reja tuzib bo'lmaydi.");
+      return;
+    }
     setSaving(true);
     setSavingError(null);
     let teethList = [...planForm.tooth_numbers];
@@ -911,19 +941,19 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       const linkedContext = `Linked to Plan: ${plan.id}`;
 
       // 2. Create single Payment (Debt) for the combined plan
-      if (price > 0) {
+      if (planFinalPrice > 0) {
         await base44.entities.Payment.create({
           patient_id: createdPatient.id,
           patient_name: createdPatient.full_name,
           doctor_id: patientForm.main_treatment_provider || '',
           type: 'Debt',
           category: displayCategory,
-          amount: price,
+          amount: planFinalPrice,
           method: '—',
           date: today,
           notes: linkedContext,
         });
-        totalDebt += price;
+        totalDebt += planFinalPrice;
       }
 
       // 3. Create single Payment (Income) for advance payment if set
@@ -955,7 +985,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         
         await base44.entities.Patient.update(createdPatient.id, {
           total_paid: paid, 
-          total_debt: Math.max(0, debt + discount - paid - refund),
+          total_debt: Math.max(0, debt - paid + refund - discount),
         });
         
         toast.success(t('patients.wizard.planCreatedWithDebt', { amount: totalDebt.toLocaleString() }));
@@ -1009,7 +1039,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   }, [
     planForm, toothData, createdPatient, onSaved,
     isInstallment, installmentMonths, installmentAdvance, 
-    installmentStartDate, installmentDay, installmentServiceKeys, installmentTotal, allSelectedServices
+    installmentStartDate, installmentDay, installmentServiceKeys, installmentTotal, allSelectedServices,
+    discountPercent  // MUHIM: chegirma noto'g'ri saqlanmasligi uchun qo'shildi (stale closure bug fix)
   ]);
 
   /**
@@ -1432,9 +1463,13 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                   {/* Main treatment provider */}
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('common.doctor')}</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+                      {t('common.doctor')} <span className="text-red-500 font-bold">*</span>
+                    </label>
                     <Select value={patientForm.main_treatment_provider} onValueChange={v => setPatientForm({ ...patientForm, main_treatment_provider: v })}>
-                      <SelectTrigger className="h-9 rounded-lg border-slate-200 text-sm w-full"><SelectValue placeholder={t('common.select')} /></SelectTrigger>
+                      <SelectTrigger className="h-9 rounded-lg border-slate-200 text-sm w-full font-medium">
+                        <SelectValue placeholder={t('common.select')} />
+                      </SelectTrigger>
                       <SelectContent className="max-h-[200px]">
                         {doctors.map(d => (
                           <SelectItem key={d.id} value={d.id || d.name}>{d.name}</SelectItem>
@@ -2378,10 +2413,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     {(() => {
                       let rows = [];
                       (createdPlan?.services || []).forEach((s, i) => {
+                        // '#general' prefiksini olib tashlash
+                        const cleanName = (s.service_name || '').replace(/^#general/i, '').trim();
                         rows.push({ 
                           key: i, 
-                          name: s.service_name, 
-                          tooth: s.tooth_number ? t('patients.fdiTooth', { number: s.tooth_number }) : 'Umumiy', 
+                          name: cleanName || s.service_name, 
+                          tooth: s.tooth_number ? t('patients.fdiTooth', { number: s.tooth_number }) : null, 
                           price: s.price 
                         });
                       });
@@ -2411,7 +2448,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   <div className="mt-2 sm:mt-4 flex flex-col items-end gap-1.5 pt-2">
                     <div className="flex items-center justify-between w-full sm:w-64 mb-1">
                       <span className="text-[12px] sm:text-sm text-slate-500 font-medium">{t('patients.wizard.services')}:</span>
-                      <span className="text-[13px] sm:text-sm font-bold text-slate-800">{(createdPlan?.total_price || grandTotal || 0).toLocaleString()} {t('common.currency')}</span>
+                      {/* receiptServicesTotal = original (chegirmasiz) narx */}
+                      <span className="text-[13px] sm:text-sm font-bold text-slate-800">{receiptServicesTotal.toLocaleString()} {t('common.currency')}</span>
                     </div>
                     {appliedDiscountAmount > 0 && (
                       <div className="flex items-center justify-between w-full sm:w-64 mb-1">
@@ -2449,11 +2487,13 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     <div className="text-left sm:text-right z-10 w-full sm:w-auto flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start -mt-1 sm:mt-0">
                       {appliedDiscountAmount > 0 && (
                         <p className="text-[12px] text-slate-400 line-through font-medium sm:mb-1 opacity-80">
-                          {(createdPlan?.total_price || grandTotal || 0).toLocaleString()}
+                          {receiptServicesTotal.toLocaleString()}
                         </p>
                       )}
+                      {/* Chegirmali to'lov: receiptServicesTotal - discount - advance */}
+                      {/* MUHIM: createdPlan.total_price allaqachon chegirmali, shuning uchun uni ishlatmaymiz */}
                       <p className="text-2xl sm:text-3xl font-black text-white">
-                        {((createdPlan?.total_price || grandTotal || 0) - appliedDiscountAmount - createdPlanAdvanceTotal).toLocaleString()} 
+                        {Math.max(0, receiptServicesTotal - appliedDiscountAmount - createdPlanAdvanceTotal).toLocaleString()} 
                         <span className="text-sm font-medium text-slate-400 ml-1">{t('common.currency')}</span>
                       </p>
                     </div>
@@ -2503,7 +2543,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         <div>
                           <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">{t('common.total')}</p>
                           <p className="text-[13px] font-black text-slate-800">
-                            {((createdPlan?.total_price || grandTotal || 0) - appliedDiscountAmount).toLocaleString()} <span className="text-[10px] opacity-50">{t('common.currency')}</span>
+                            {Math.max(0, receiptServicesTotal - appliedDiscountAmount).toLocaleString()} <span className="text-[10px] opacity-50">{t('common.currency')}</span>
                           </p>
                         </div>
                         <div>
@@ -2515,7 +2555,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         <div>
                           <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">{t('patients.wizard.remainingDebt')}</p>
                           <p className="text-[13px] font-black text-rose-600">
-                            {((createdPlan?.total_price || grandTotal || 0) - createdPlanAdvanceTotal - appliedDiscountAmount).toLocaleString()} <span className="text-[10px] opacity-50">{t('common.currency')}</span>
+                            {Math.max(0, receiptServicesTotal - createdPlanAdvanceTotal - appliedDiscountAmount).toLocaleString()} <span className="text-[10px] opacity-50">{t('common.currency')}</span>
                           </p>
                         </div>
                       </div>
@@ -2531,7 +2571,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                           </thead>
                           <tbody>
                             {(() => {
-                              const totalToPay = (createdPlan?.total_price || grandTotal || 0) - createdPlanAdvanceTotal - appliedDiscountAmount;
+                              const totalToPay = Math.max(0, receiptServicesTotal - createdPlanAdvanceTotal - appliedDiscountAmount);
                               const standardMonthly = Math.floor(totalToPay / installmentMonths);
                               const remainder = totalToPay - (standardMonthly * installmentMonths);
 

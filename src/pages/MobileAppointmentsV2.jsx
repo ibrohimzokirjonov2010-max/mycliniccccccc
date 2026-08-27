@@ -13,6 +13,7 @@ import AppointmentTreatmentModal from '@/components/appointments/AppointmentTrea
 import AppointmentConfirmationBadge from '@/components/appointments/AppointmentConfirmationBadge';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useAuth } from '@/lib/AuthContext';
 
 /**
  * Premium SaaS Mobile Appointments
@@ -22,6 +23,7 @@ export default function MobileAppointmentsV2() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
+  const { user, isDoctor } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
   const [services, setServices] = useState([]);
@@ -109,11 +111,14 @@ export default function MobileAppointmentsV2() {
       setAppointments(normalizedApps);
       setPatients(pats);
       setServices(servs);
-      const filteredDocs = users.filter(u => u.role === 'doctor' || u.role === 'admin');
+      const filteredDocs = isDoctor && user?.id
+        ? users.filter(u => String(u.id) === String(user.id) || u.name === user.name)
+        : users.filter(u => u.role === 'doctor' || u.role === 'admin');
       setDoctors(filteredDocs);
       
       // Keep mobile view pinned to a real doctor selection
       setSelectedDoctorId((prevSelectedDoctorId) => {
+        if (isDoctor && user?.id) return user.id;
         if (filteredDocs.length === 0) return null;
         const hasSelectedDoctor = filteredDocs.some((doc) => String(doc.id) === String(prevSelectedDoctorId));
         return hasSelectedDoctor ? prevSelectedDoctorId : filteredDocs[0].id;
@@ -125,7 +130,7 @@ export default function MobileAppointmentsV2() {
       if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
       setLoading(false);
     }
-  }, []);
+  }, [isDoctor, user]);
 
   const handleSearchResultClick = useCallback((app) => {
     if (!app.date) return;

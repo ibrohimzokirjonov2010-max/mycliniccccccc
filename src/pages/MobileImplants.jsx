@@ -11,7 +11,9 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import ImplantForm, { EXTRA_SERVICES } from '@/components/implants/ImplantForm';
+import ImplantBrandsModal, { getOrSeedImplantBrands, calculateBrandStockStats } from '@/components/implants/ImplantBrandsModal';
 import { useFeature } from '@/hooks/useFeature';
+import { Package } from 'lucide-react';
 import Paywall from '@/components/layout/Paywall';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
@@ -427,6 +429,8 @@ export default function MobileImplants() {
   const [implants, setImplants] = useState([]);
   const [patients, setPatients] = useState([]);
   const [services, setServices] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [brandsModalOpen, setBrandsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const hasLoadedInitial = useRef(false);
   const loadingTimerRef = useRef(null);
@@ -449,14 +453,16 @@ export default function MobileImplants() {
       if (!hasLoadedInitial.current) {
         loadingTimerRef.current = setTimeout(() => setLoading(true), 150);
       }
-      const [imps, pats, svcs] = await Promise.all([
+      const [imps, pats, svcs, brnds] = await Promise.all([
         base44.entities.Implant.list('-placement_date', 100),
         base44.entities.Patient.list('full_name', 100),
         base44.entities.Service.filter({ is_active: true }, 'name', 100),
+        getOrSeedImplantBrands(),
       ]);
-      setImplants(imps);
-      setPatients(pats);
-      setServices(svcs);
+      setImplants(imps || []);
+      setPatients(pats || []);
+      setServices(svcs || []);
+      setBrands(brnds || []);
       hasLoadedInitial.current = true;
     } catch (err) {
       console.error('Failed to load implants:', err);
@@ -748,49 +754,92 @@ export default function MobileImplants() {
               <StatCard value={stats.needsControl.length} label="Nazorat kerak" icon={Bell} color="text-amber-600"  bg="bg-amber-50"  delay={0.20} />
             </div>
 
-            {/* Brand Performance */}
+            {/* Brand Performance & Stock */}
             <motion.div
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-              className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm"
+              className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3"
             >
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-7 h-7 rounded-xl bg-indigo-50 flex items-center justify-center">
-                  <Target className="w-3.5 h-3.5 text-indigo-600" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-indigo-50 flex items-center justify-center">
+                    <Target className="w-3.5 h-3.5 text-indigo-600" />
+                  </div>
+                  <h3 className="text-xs font-[900] text-slate-900 uppercase tracking-tight">Brendlar & Zaxira</h3>
                 </div>
-                <h3 className="text-xs font-[900] text-slate-900 uppercase tracking-tight">Brendlar tahlili</h3>
+                <button
+                  type="button"
+                  onClick={() => setBrandsModalOpen(true)}
+                  className="px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 font-black text-[10px] uppercase tracking-wider flex items-center gap-1 border border-indigo-200/50"
+                >
+                  <Package className="w-3 h-3" />
+                  Boshqarish
+                </button>
               </div>
-              {stats.topBrands.length === 0 ? (
-                <p className="text-center text-[11px] font-bold text-slate-400 py-6">Ma'lumot yo'q</p>
-              ) : (
-                <div className="space-y-3">
-                  {stats.topBrands.map(([brand, count], idx) => {
-                    const pct = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
-                    const col = BRAND_COLORS[idx % BRAND_COLORS.length];
-                    return (
-                      <div key={brand}>
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full ${col.dot}`} />
-                            <span className="text-xs font-[900] text-slate-800 uppercase tracking-wide">{brand}</span>
+
+              {(() => {
+                const brandsWithStats = calculateBrandStockStats(brands, implants);
+                const placedBrands = brandsWithStats.filter(b => b.used_count > 0).sort((a, b) => b.used_count - a.used_count);
+
+                if (placedBrands.length === 0) {
+                  return (
+                    <div className="py-6 text-center space-y-1">
+                      <p className="text-xs font-bold text-slate-500">Hozircha implant o'rnatilmagan</p>
+                      <p className="text-[10px] text-slate-400">Implant o'rnatilgach, ulushi shu yerda ko'rsatiladi.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    {placedBrands.map((brand, idx) => {
+                      const col = BRAND_COLORS[idx % BRAND_COLORS.length];
+                      const sharePct = stats.total > 0 ? Math.round((brand.used_count / stats.total) * 100) : 0;
+
+                      return (
+                        <div key={brand.id || brand.name} className="p-1.5 rounded-xl">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className={`w-2 h-2 rounded-full ${col.dot} shrink-0`} />
+                              <span className="text-xs font-[900] text-slate-800 uppercase tracking-wide truncate">{brand.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className={`text-[10px] font-black ${col.text} ${col.bg} px-1.5 py-0.5 rounded-md`}>
+                                {sharePct}%
+                              </span>
+                              <span className="text-xs font-black text-slate-900">{brand.used_count} ta</span>
+                              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
+                                brand.is_out_of_stock 
+                                  ? 'bg-rose-100 text-rose-700' 
+                                  : brand.is_low_stock 
+                                    ? 'bg-amber-100 text-amber-800' 
+                                    : 'bg-emerald-50 text-emerald-700'
+                              }`}>
+                                {brand.remaining_stock} ta qoldi
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <span className={`text-[10px] font-bold ${col.text} ${col.bg} px-1.5 py-0.5 rounded-md`}>{pct}%</span>
-                            <span className="text-xs font-[900] text-slate-900">{count}</span>
+                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${sharePct}%` }}
+                              transition={{ duration: 0.8, delay: idx * 0.1, ease: 'easeOut' }}
+                              className={`h-full bg-gradient-to-r ${col.bar} rounded-full`}
+                            />
                           </div>
                         </div>
-                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${pct}%` }}
-                            transition={{ duration: 0.8, delay: idx * 0.1, ease: 'easeOut' }}
-                            className={`h-full bg-gradient-to-r ${col.bar} rounded-full`}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              <button
+                type="button"
+                onClick={() => setBrandsModalOpen(true)}
+                className="w-full pt-2 border-t border-slate-100 text-center text-xs font-black text-indigo-600 tracking-tight"
+              >
+                Barcha brendlarni ko'rish va zaxira kiritish ({brands.length}) →
+              </button>
             </motion.div>
 
             {/* Lifecycle Distribution */}
@@ -865,6 +914,14 @@ export default function MobileImplants() {
         patients={patients}
         services={services}
         onSaved={() => { load(); setAddOpen(false); toast.success('Implant qo\'shildi!'); }}
+      />
+
+      {/* ── Brands & Stock Management Modal ── */}
+      <ImplantBrandsModal
+        open={brandsModalOpen}
+        onClose={() => setBrandsModalOpen(false)}
+        implants={implants}
+        onBrandsUpdated={load}
       />
     </div>
   );

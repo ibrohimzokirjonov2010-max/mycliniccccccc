@@ -1,9 +1,12 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Wallet, CheckCircle2, FlaskConical, X, Phone, Calendar, Stethoscope, CreditCard, FileText, History, Receipt, Edit3, UserCircle } from 'lucide-react';
+import { Clock, Wallet, CheckCircle2, FlaskConical, X, Phone, Calendar, Stethoscope, CreditCard, FileText, History, Receipt, Edit3, UserCircle, Camera, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { base44 } from '@/api/base44Client';
+import { compressImage } from '@/utils/imageUpload';
+import { toast } from 'sonner';
 import AppointmentConfirmationBadge from './AppointmentConfirmationBadge';
 
 
@@ -196,6 +199,56 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
 
   const a = appointment;
   const initials = (a.patient_name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const [currentPhoto, setCurrentPhoto] = useState(
+    a.patient_photo || a.photo_url || a.photo || a.avatar_url || a.avatar || a.image || ''
+  );
+
+  useEffect(() => {
+    let photo = a.patient_photo || a.photo_url || a.photo || a.avatar_url || a.avatar || a.image || '';
+    if (photo) {
+      setCurrentPhoto(photo);
+      return;
+    }
+    
+    // Asynchronous fallback lookup by patient_id or patient_name
+    if (a.patient_id) {
+      base44.entities.Patient.get(a.patient_id)
+        .then(p => {
+          const pPhoto = p?.photo_url || p?.photo || p?.avatar_url || p?.avatar || p?.image_url || p?.image;
+          if (pPhoto) setCurrentPhoto(pPhoto);
+        })
+        .catch(() => {});
+    } else if (a.patient_name) {
+      base44.entities.Patient.list('full_name', 100)
+        .then(pats => {
+          const found = (pats || []).find(p => 
+            (p.full_name && p.full_name.toLowerCase().trim() === a.patient_name.toLowerCase().trim()) ||
+            (p.name && p.name.toLowerCase().trim() === a.patient_name.toLowerCase().trim())
+          );
+          const pPhoto = found?.photo_url || found?.photo || found?.avatar_url || found?.avatar;
+          if (pPhoto) setCurrentPhoto(pPhoto);
+        })
+        .catch(() => {});
+    }
+  }, [a.patient_photo, a.photo_url, a.photo, a.avatar_url, a.patient_id, a.patient_name]);
+
+  const handleQuickPatientPhotoUpload = async (e) => {
+    e.stopPropagation();
+    const file = e.target.files?.[0];
+    if (!file || !a.patient_id) return;
+    try {
+      toast.loading("Bemor rasmi yuklanmoqda...", { id: "quick-patient-photo" });
+      const compressed = await compressImage(file, { maxWidth: 500, maxHeight: 500, quality: 0.8 });
+      await base44.entities.Patient.update(a.patient_id, { photo_url: compressed, photo: compressed });
+      setCurrentPhoto(compressed);
+      a.patient_photo = compressed;
+      a.photo_url = compressed;
+      toast.success("Bemor rasmi saqlandi!", { id: "quick-patient-photo" });
+    } catch (err) {
+      console.error("Failed to upload quick patient photo:", err);
+      toast.error("Rasm yuklashda xatolik yuz berdi", { id: "quick-patient-photo" });
+    }
+  };
   
   // Vaqt oxirini hisoblash
   const endTime = (() => {
@@ -253,14 +306,39 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
         
         {/* Header */}
         <div className="flex items-start gap-3 p-4 border-b border-slate-100">
-          {/* Avatar — bosganda profil sahifasiga o'tadi */}
-          <button
-            onClick={goToProfile}
-            title="Bemor profiliga o'tish"
-            className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#1499AD] to-[#0d7a8a] flex items-center justify-center text-white font-black text-lg shadow-md shrink-0 border-none cursor-pointer hover:opacity-90 hover:scale-105 transition-all active:scale-95"
-          >
-            {initials}
-          </button>
+          {/* Avatar — bosganda profil sahifasiga o'tadi yoki tezkor rasm yuklaydi */}
+          <div className="relative group/patient-avatar shrink-0">
+            <button
+              onClick={goToProfile}
+              title="Bemor profiliga o'tish"
+              className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#1499AD] to-[#0d7a8a] flex items-center justify-center text-white font-black text-lg shadow-md shrink-0 border-none cursor-pointer hover:opacity-90 hover:scale-105 transition-all active:scale-95 overflow-hidden p-0"
+            >
+              {currentPhoto ? (
+                <img 
+                  src={currentPhoto} 
+                  alt={a.patient_name} 
+                  className="w-full h-full object-cover" 
+                />
+              ) : (
+                initials
+              )}
+            </button>
+            
+            {/* Quick photo upload button */}
+            <label 
+              onClick={(e) => e.stopPropagation()} 
+              className="absolute inset-0 bg-slate-900/60 text-white rounded-xl flex items-center justify-center opacity-0 group-hover/patient-avatar:opacity-100 transition-opacity cursor-pointer shadow-md"
+              title="Bemor rasmini yuklash / almashtirish"
+            >
+              <Camera className="w-4 h-4 text-white" />
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleQuickPatientPhotoUpload} 
+              />
+            </label>
+          </div>
 
           <div className="flex-1 min-w-0">
             {/* Navbat raqami + ism — bosganda profil sahifasiga o'tadi */}
@@ -531,18 +609,36 @@ export default function DoctorDayGrid({
           <div className="flex items-center justify-center border-r border-slate-300 bg-slate-50 text-slate-400">
             <Clock className="w-4 h-4 stroke-[2.5]" />
           </div>
-          {doctors.map((doc) => (
-            <div key={doc.id} className="p-3 border-r border-slate-300 last:border-0 flex flex-col items-center group relative bg-white overflow-hidden">
-              <div className="w-full text-center overflow-x-auto no-scrollbar">
-                <h4 className="text-[12px] font-black text-slate-800 tracking-tight leading-none mb-1 uppercase whitespace-nowrap text-center px-1 inline-block">
-                  {doc.name}
-                </h4>
+          {doctors.map((doc) => {
+            const avatarUrl = doc.avatar_url || doc.photo || doc.avatar || doc.image;
+            return (
+              <div key={doc.id} className="py-2 px-3 border-r border-slate-300 last:border-0 flex items-center justify-center gap-2.5 group relative bg-white overflow-hidden">
+                {/* Doctor Avatar / Photo */}
+                <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200/80 shadow-xs flex items-center justify-center overflow-hidden shrink-0">
+                  {avatarUrl ? (
+                    <img 
+                      src={avatarUrl} 
+                      alt={doc.name} 
+                      className="w-full h-full object-cover" 
+                    />
+                  ) : (
+                    <span className="text-xs font-black text-slate-600 uppercase">
+                      {(doc.name || doc.full_name)?.charAt(0)}
+                    </span>
+                  )}
+                </div>
+
+                <div className="min-w-0 text-left">
+                  <h4 className="text-[11px] font-black text-slate-900 tracking-tight leading-tight uppercase truncate max-w-[135px]">
+                    {doc.name}
+                  </h4>
+                  <p className="text-[8px] font-bold text-[#1499AD] uppercase tracking-wider opacity-80 truncate max-w-[135px]">
+                    {doc.specialty || t('staff.roles.doctor')}
+                  </p>
+                </div>
               </div>
-              <p className="text-[8px] font-bold text-[#1499AD] uppercase tracking-widest opacity-60 truncate w-full text-center">
-                {doc.specialty || t('staff.roles.doctor')}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div ref={gridRef} className="flex-1 overflow-y-auto no-scrollbar scroll-smooth bg-white">
@@ -583,10 +679,19 @@ export default function DoctorDayGrid({
                           >
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-black truncate leading-none uppercase tracking-tight text-slate-900">
-                                {appointment.patient_name}
-                              </span>
-                              <div className="flex items-center gap-0.5 opacity-40 group-hover/card:opacity-100 transition-opacity">
+                              <div className="flex items-center gap-1.5 min-w-0 max-w-[85%]">
+                                {(appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url) && (
+                                  <img 
+                                    src={appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url} 
+                                    alt={appointment.patient_name} 
+                                    className="w-4 h-4 rounded-full object-cover shrink-0 border border-white/80 shadow-xs" 
+                                  />
+                                )}
+                                <span className="text-[11px] font-black truncate leading-none uppercase tracking-tight text-slate-900">
+                                  {appointment.patient_name}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-0.5 opacity-40 group-hover/card:opacity-100 transition-opacity shrink-0">
                                 {appointment.is_paid ? <Wallet className="w-2.5 h-2.5 text-emerald-600" /> : <Clock className="w-2.5 h-2.5" />}
                               </div>
                             </div>

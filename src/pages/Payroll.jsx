@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   DollarSign, Users, TrendingUp, Calendar, Download, 
   Plus, Search, ChevronDown, Trash2,
-  Activity, ArrowRight, Shield
+  Activity, ArrowRight, Shield, Percent,
+  Camera, Upload, ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
+import { compressImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,6 +58,7 @@ export default function Payroll() {
   const [selectedMonth, setSelectedMonth] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
   const [selectedDoctor, setSelectedDoctor] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [doctorPeriodFilters, setDoctorPeriodFilters] = useState({});
   
   // Modal states
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -69,10 +72,53 @@ export default function Payroll() {
     password: '',
     phone: '',
     specialization: 'Stomatolog',
+    salary_type: 'percentage', // 'percentage' (Foizga) | 'fixed' (Oylikka)
     base_salary: '',
     commission_rate: '30',
-    role: 'doctor'
+    role: 'doctor',
+    avatar_url: ''
   });
+
+  /**
+   * Handle avatar upload for new doctor form
+   */
+  const handleDoctorAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      toast.loading("Rasm tayyorlanmoqda...", { id: "avatar-upload" });
+      const compressed = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.8 });
+      setNewDoctorForm(prev => ({ ...prev, avatar_url: compressed }));
+      toast.success("Rasm tanlandi!", { id: "avatar-upload" });
+    } catch (err) {
+      console.error("Avatar upload error:", err);
+      toast.error("Rasm yuklashda xatolik yuz berdi", { id: "avatar-upload" });
+    }
+  };
+
+  /**
+   * Handle avatar upload for existing doctor
+   */
+  const handleExistingDoctorAvatarUpload = async (doctorId, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      toast.loading("Shifokor rasmi yangilanmoqda...", { id: "doctor-avatar-update" });
+      const compressed = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.8 });
+      
+      // Update entity in base44
+      await base44.entities.User.update(doctorId, { avatar_url: compressed });
+      
+      // Update state
+      setDoctors(prev => prev.map(d => String(d.id) === String(doctorId) ? { ...d, avatar_url: compressed } : d));
+      toast.success("Shifokor rasmi saqlandi!", { id: "doctor-avatar-update" });
+    } catch (err) {
+      console.error("Failed to update doctor avatar:", err);
+      toast.error("Rasm saqlashda xatolik yuz berdi", { id: "doctor-avatar-update" });
+    }
+  };
 
   /**
    * Load all data
@@ -87,48 +133,37 @@ export default function Payroll() {
         base44.entities.TreatmentPlan.filter({ status: 'Completed' }, '-updated_date', 100), // ⚡
         base44.entities.Payment.filter({ type: 'Income' }, '-date', 100)  // ⚡
       ]);
-      // Include all staff roles in the payroll view if they have salaries or commissions
-      const staffUsers = users.filter(u => ['doctor', 'admin', 'receptionist'].includes(u.role || ''));
-      
-      // Also check the auth system_users localStorage (fallback storage for users)
-      try {
-        const clinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
-        const sysUsersRaw = localStorage.getItem('system_users');
-        const mockUsersRaw = localStorage.getItem(`mock_db_${clinicId}_User`);
-        const sysUsers = sysUsersRaw ? JSON.parse(sysUsersRaw) : [];
-        const mockUsers = mockUsersRaw ? JSON.parse(mockUsersRaw) : [];
-        
-        [...sysUsers, ...mockUsers].forEach(lu => {
-          const isStaff = ['doctor', 'admin', 'receptionist'].includes(lu.role || '');
-          const isThisClinic = lu.clinic_id === clinicId;
-          const alreadyInList = staffUsers.find(u => u.id === lu.id);
-          if (isStaff && isThisClinic && !alreadyInList) {
-            staffUsers.push(lu);
-          }
-        });
-      } catch (e) { /* ignore localStorage errors */ }
-      
-      // Merge with any locally-added doctors that may not be in Supabase yet
-      if (Array.isArray(preserveDoctors) && preserveDoctors.length > 0) {
-        preserveDoctors.forEach(pd => {
-          if (!staffUsers.find(u => u.id === pd.id)) {
-            staffUsers.push(pd);
-          }
-        });
-      }
-      
-      setDoctors(staffUsers);
-      setServices(svcs);
-      setTreatments(treats);
-      setPayments(pays);
+
+      // Filter doctors from users
+      const currentClinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
+      const doctorUsers = (users || []).filter(u => 
+        (u.role === 'doctor' || u.role === 'admin' || (u.specialty && u.specialty !== 'receptionist')) &&
+        (u.clinic_id === currentClinicId || !u.clinic_id)
+      );
+
+      // Merge with preserved doctors (to prevent UI flicker after add)
+      const mergedDoctors = [...doctorUsers];
+      preserveDoctors.forEach(pd => {
+        if (!mergedDoctors.some(d => d.id === pd.id)) {
+          mergedDoctors.push(pd);
+        }
+      });
+
+      setDoctors(mergedDoctors);
+      setServices(svcs || []);
+      setTreatments(treats || []);
+      setPayments(pays || []);
     } catch (error) {
-      console.error('Failed to load payroll data:', error);
+      console.error('Error loading payroll data:', error);
+      toast.error(t('common.errorLoading'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const [addingDoctor, setAddingDoctor] = useState(false);
 
@@ -154,6 +189,11 @@ export default function Payroll() {
 
       const savedName = newDoctorForm.full_name.trim();
 
+      const isPercentage = newDoctorForm.salary_type === 'percentage';
+      const baseSalaryVal = isPercentage ? 0 : Number(newDoctorForm.base_salary || 0);
+      const commissionRateVal = isPercentage ? Number(newDoctorForm.commission_rate || 0) : 0;
+      const avatarVal = newDoctorForm.avatar_url || '';
+
       const newUser = await base44.entities.User.create({
         id: 'usr-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
         name: savedName,
@@ -164,8 +204,10 @@ export default function Payroll() {
         clinic_id: clinicId,
         phone: newDoctorForm.phone || '',
         specialty: newDoctorForm.specialization || 'Stomatolog',
-        base_salary: Number(newDoctorForm.base_salary || 0),
-        commission_rate: Number(newDoctorForm.commission_rate || 30)
+        salary_type: newDoctorForm.salary_type || 'percentage',
+        base_salary: baseSalaryVal,
+        commission_rate: commissionRateVal,
+        avatar_url: avatarVal
       });
 
       // Optimistic update - add to list immediately
@@ -177,8 +219,10 @@ export default function Payroll() {
         clinic_id: clinicId,
         phone: newDoctorForm.phone || '',
         specialty: newDoctorForm.specialization || 'Stomatolog',
-        base_salary: Number(newDoctorForm.base_salary || 0),
-        commission_rate: Number(newDoctorForm.commission_rate || 30),
+        salary_type: newDoctorForm.salary_type || 'percentage',
+        base_salary: baseSalaryVal,
+        commission_rate: commissionRateVal,
+        avatar_url: avatarVal,
         ...(newUser || {})
       };
       setDoctors(prev => {
@@ -194,9 +238,11 @@ export default function Payroll() {
         password: '',
         phone: '',
         specialization: 'Stomatolog',
+        salary_type: 'percentage',
         base_salary: '',
         commission_rate: '30',
-        role: 'doctor'
+        role: 'doctor',
+        avatar_url: ''
       });
 
       setCredentialsModal({
@@ -252,35 +298,56 @@ export default function Payroll() {
   }, []);
 
   /**
-   * Calculate doctor earnings
+   * Calculate doctor earnings with active period support
    */
   const calculateDoctorEarnings = useCallback((doctorId) => {
-    const { startDate, endDate } = getMonthRange(selectedMonth);
-    const doctorObj = doctors.find(d => d.id === doctorId);
-    
-    // Filter payments by doctor and month
+    const doctorObj = doctors.find(d => String(d.id) === String(doctorId));
+    const activeFilter = doctorPeriodFilters[doctorId] || { mode: 'month' };
+
+    let startDate, endDate;
+    const now = new Date();
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+    if (activeFilter.mode === 'week') {
+      const startOfWeek = new Date(now);
+      const day = startOfWeek.getDay() || 7;
+      startOfWeek.setDate(now.getDate() - day + 1);
+      startOfWeek.setHours(0, 0, 0, 0);
+      startDate = startOfWeek;
+      endDate = todayEnd;
+    } else if (activeFilter.mode === 'year') {
+      startDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0);
+      endDate = todayEnd;
+    } else if (activeFilter.mode === 'custom' && activeFilter.startDate && activeFilter.endDate) {
+      startDate = new Date(activeFilter.startDate + 'T00:00:00');
+      endDate = new Date(activeFilter.endDate + 'T23:59:59');
+    } else {
+      // Default 'month'
+      const range = getMonthRange(selectedMonth);
+      startDate = range.startDate;
+      endDate = range.endDate;
+    }
+
+    // Filter payments for active period
     const doctorPayments = payments.filter(p => {
       if (!p.doctor_id) return false;
-      const paymentDate = new Date(p.date || p.created_date);
-      // Ensure we are comparing dates correctly
+      const paymentDate = new Date(p.date || p.created_date || p.created_at);
       const pDateTime = paymentDate.getTime();
       const sDateTime = startDate.getTime();
       const eDateTime = endDate.getTime();
       
-      const isInMonth = pDateTime >= sDateTime && pDateTime <= eDateTime;
-      // Match by doctor_id (string comparison)
+      const isInPeriod = pDateTime >= sDateTime && pDateTime <= eDateTime;
       const isDoctor = String(p.doctor_id) === String(doctorId);
       const isIncome = (p.type || '').toLowerCase() === 'income';
       
-      return isDoctor && isInMonth && isIncome;
+      return isDoctor && isInPeriod && isIncome;
     });
 
     // Calculate earnings per payment category
     const earnings = doctorPayments.reduce((acc, pay) => {
-      // Use payment's saved commission rate or fallback to doctor's current rate
-      const commissionRate = pay.commission_rate || doctorObj?.commission_rate || doctorObj?.commission || 30;
+      const commissionRate = pay.commission_rate || doctorObj?.commission_rate || doctorObj?.commission || (doctorObj?.salary_type === 'fixed' ? 0 : 30);
       const commission = (pay.amount || 0) * (commissionRate / 100);
-      const category = pay.category || 'To\'lovlar';
+      const category = pay.category || 'Davolash';
       
       if (!acc[category]) {
         acc[category] = {
@@ -301,7 +368,7 @@ export default function Payroll() {
     const totalRevenue = Object.values(earnings).reduce((sum, e) => sum + e.totalRevenue, 0);
     const totalCommission = Object.values(earnings).reduce((sum, e) => sum + e.totalCommission, 0);
 
-    const now = new Date();
+    // Summary reference values for Week, Month, Year
     const startOfWeek = new Date(now);
     const day = startOfWeek.getDay() || 7; 
     startOfWeek.setDate(now.getDate() - day + 1);
@@ -316,8 +383,8 @@ export default function Payroll() {
 
     payments.forEach(p => {
       if (String(p.doctor_id) !== String(doctorId) || (p.type || '').toLowerCase() !== 'income') return;
-      const paymentDate = new Date(p.date || p.created_date).getTime();
-      const commissionRate = p.commission_rate || doctorObj?.commission_rate || doctorObj?.commission || 30;
+      const paymentDate = new Date(p.date || p.created_date || p.created_at).getTime();
+      const commissionRate = p.commission_rate || doctorObj?.commission_rate || doctorObj?.commission || (doctorObj?.salary_type === 'fixed' ? 0 : 30);
       const commission = (p.amount || 0) * (commissionRate / 100);
 
       if (paymentDate >= startOfWeek.getTime()) weeklyCommission += commission;
@@ -325,18 +392,29 @@ export default function Payroll() {
       if (paymentDate >= startOfYear.getTime()) yearlyCommission += commission;
     });
 
-    const baseSalary = doctorObj?.base_salary || 0;
+    const baseSalary = Number(doctorObj?.base_salary || 0);
+    const isFixed = doctorObj?.salary_type === 'fixed' || (baseSalary > 0 && !doctorObj?.commission_rate);
+    const daysDiff = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+    const proportionalSalary = Math.round((baseSalary / 30) * Math.min(daysDiff, 30));
+
+    const totalSalaryForActivePeriod = isFixed
+      ? (activeFilter.mode === 'month' ? baseSalary : proportionalSalary)
+      : totalCommission;
 
     return {
       treatments: doctorPayments.length,
       earnings,
       totalRevenue,
       totalCommission,
+      totalSalary: totalSalaryForActivePeriod,
       weeklyTotal: (baseSalary / 4) + weeklyCommission,
       monthlyTotal: baseSalary + currentMonthCommission,
-      yearlyTotal: baseSalary * (now.getMonth() + 1) + yearlyCommission
+      yearlyTotal: baseSalary * (now.getMonth() + 1) + yearlyCommission,
+      activeFilter,
+      startDate,
+      endDate
     };
-  }, [payments, doctors, selectedMonth, getMonthRange]);
+  }, [payments, doctors, selectedMonth, getMonthRange, doctorPeriodFilters]);
 
   /**
    * Get all doctors payroll data
@@ -347,8 +425,7 @@ export default function Payroll() {
       return {
         ...doctor,
         ...earnings,
-        baseSalary: doctor.base_salary || 0,
-        totalSalary: (doctor.base_salary || 0) + earnings.totalCommission
+        baseSalary: doctor.base_salary || 0
       };
     }).filter(d => {
       if (selectedDoctor !== 'all' && d.id !== selectedDoctor) return false;
@@ -529,13 +606,49 @@ export default function Payroll() {
                     onClick={() => setExpandedDoctor(expandedDoctor === doctor.id ? null : doctor.id)}
                   >
                     <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-base font-black shadow-sm transition-all duration-500 shrink-0 ${expandedDoctor === doctor.id ? 'bg-[#00D084] text-white rotate-3 scale-105' : 'bg-slate-100 text-slate-500'}`}>
-                        {(doctor.name || doctor.full_name)?.charAt(0)}
+                      <div className="relative group/avatar shrink-0">
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-base font-black shadow-sm transition-all duration-300 overflow-hidden ${expandedDoctor === doctor.id ? 'bg-[#00D084] text-white ring-2 ring-emerald-400' : 'bg-slate-100 text-slate-500'}`}>
+                          {(doctor.avatar_url || doctor.photo || doctor.avatar || doctor.image) ? (
+                            <img 
+                              src={doctor.avatar_url || doctor.photo || doctor.avatar || doctor.image} 
+                              alt={doctor.name || doctor.full_name} 
+                              className="w-full h-full object-cover" 
+                            />
+                          ) : (
+                            (doctor.name || doctor.full_name)?.charAt(0)
+                          )}
+                        </div>
+                        {/* Instant photo update on hover/click */}
+                        <label 
+                          onClick={(e) => e.stopPropagation()} 
+                          className="absolute inset-0 bg-slate-900/60 text-white rounded-xl flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity cursor-pointer shadow-md"
+                          title="Rasmni yuklash / o'zgartirish"
+                        >
+                          <Camera className="w-4 h-4 text-white" />
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => handleExistingDoctorAvatarUpload(doctor.id, e)} 
+                          />
+                        </label>
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-black text-slate-900 tracking-tight truncate">{doctor.name || doctor.full_name}</h3>
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{doctor.specialty || 'Stomatolog'}</span>
+                          <span className="text-slate-300">•</span>
+                          {doctor.salary_type === 'fixed' || (Number(doctor.base_salary) > 0 && !Number(doctor.commission_rate)) ? (
+                            <div className="flex items-center gap-1 text-[10px] font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100/80">
+                              <DollarSign className="w-2.5 h-2.5 text-purple-600" />
+                              <span>Oylik: {formatCurrency(doctor.base_salary)}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100/80">
+                              <Percent className="w-2.5 h-2.5 text-emerald-600" />
+                              <span>{doctor.commission_rate || doctor.commission || 30}% foizda</span>
+                            </div>
+                          )}
                           <span className="text-slate-300">•</span>
                           <div className="flex items-center gap-1 text-[10px] font-black text-blue-600 bg-blue-50/50 px-1.5 py-0.5 rounded-md">
                             <Activity className="w-2.5 h-2.5" />
@@ -601,19 +714,184 @@ export default function Payroll() {
                         exit={{ height: 0, opacity: 0 }}
                         className="border-t border-slate-50 bg-slate-50/40"
                       >
-                        <div className="p-5 sm:p-6 space-y-6">
-                          {/* Mini Stats Grid */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            {[
-                              { label: t('payroll.weekly'), value: doctor.weeklyTotal, color: "text-blue-600", bg: "bg-blue-50" },
-                              { label: t('payroll.monthly'), value: doctor.monthlyTotal, color: "text-emerald-600", bg: "bg-emerald-50" },
-                              { label: t('payroll.yearly'), value: doctor.yearlyTotal, color: "text-purple-600", bg: "bg-purple-50" },
-                            ].map(b => (
-                              <div key={b.label} className={`${b.bg} rounded-2xl p-4 border border-white/50 shadow-sm flex flex-col items-center justify-center text-center`}>
-                                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${b.color} opacity-60`}>{b.label}</p>
-                                <p className={`text-base font-black ${b.color}`}>{formatCurrency(b.value, t('common.currency'))}</p>
+                        <div className="p-5 sm:p-6 space-y-4">
+                          
+                          {/* Interactive Period Selector Tabs / Cards */}
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Hisoblash davrini tanlang:
+                              </span>
+                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                                {doctor.activeFilter?.mode === 'week' ? "Joriy hafta bo'yicha" :
+                                 doctor.activeFilter?.mode === 'year' ? "Joriy yil bo'yicha" :
+                                 doctor.activeFilter?.mode === 'custom' ? "Maxsus sana oralig'i" : "Joriy oy bo'yicha"}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                              {/* 1. Joriy Hafta */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDoctorPeriodFilters(prev => ({
+                                    ...prev,
+                                    [doctor.id]: { mode: 'week' }
+                                  }));
+                                }}
+                                className={`rounded-2xl p-3 border text-center transition-all cursor-pointer ${
+                                  (doctor.activeFilter?.mode === 'week')
+                                    ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20 scale-[1.02]'
+                                    : 'bg-blue-50/70 hover:bg-blue-100/70 text-blue-700 border-blue-100/80'
+                                }`}
+                              >
+                                <p className={`text-[10px] font-black uppercase tracking-widest mb-0.5 ${doctor.activeFilter?.mode === 'week' ? 'text-blue-100' : 'text-blue-500'}`}>
+                                  Joriy Hafta
+                                </p>
+                                <p className="text-sm sm:text-base font-black">
+                                  {formatCurrency(doctor.weeklyTotal, t('common.currency'))}
+                                </p>
+                              </button>
+
+                              {/* 2. Joriy Oy */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDoctorPeriodFilters(prev => ({
+                                    ...prev,
+                                    [doctor.id]: { mode: 'month' }
+                                  }));
+                                }}
+                                className={`rounded-2xl p-3 border text-center transition-all cursor-pointer ${
+                                  (!doctor.activeFilter?.mode || doctor.activeFilter?.mode === 'month')
+                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-500/20 scale-[1.02]'
+                                    : 'bg-emerald-50/70 hover:bg-emerald-100/70 text-emerald-700 border-emerald-100/80'
+                                }`}
+                              >
+                                <p className={`text-[10px] font-black uppercase tracking-widest mb-0.5 ${(!doctor.activeFilter?.mode || doctor.activeFilter?.mode === 'month') ? 'text-emerald-100' : 'text-emerald-500'}`}>
+                                  Joriy Oy
+                                </p>
+                                <p className="text-sm sm:text-base font-black">
+                                  {formatCurrency(doctor.monthlyTotal, t('common.currency'))}
+                                </p>
+                              </button>
+
+                              {/* 3. Joriy Yil */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDoctorPeriodFilters(prev => ({
+                                    ...prev,
+                                    [doctor.id]: { mode: 'year' }
+                                  }));
+                                }}
+                                className={`rounded-2xl p-3 border text-center transition-all cursor-pointer ${
+                                  (doctor.activeFilter?.mode === 'year')
+                                    ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-500/20 scale-[1.02]'
+                                    : 'bg-purple-50/70 hover:bg-purple-100/70 text-purple-700 border-purple-100/80'
+                                }`}
+                              >
+                                <p className={`text-[10px] font-black uppercase tracking-widest mb-0.5 ${doctor.activeFilter?.mode === 'year' ? 'text-purple-100' : 'text-purple-500'}`}>
+                                  Joriy Yil
+                                </p>
+                                <p className="text-sm sm:text-base font-black">
+                                  {formatCurrency(doctor.yearlyTotal, t('common.currency'))}
+                                </p>
+                              </button>
+
+                              {/* 4. Maxsus sana oralig'i / Kalendar */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const now = new Date();
+                                  const defaultStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+                                  const defaultEnd = now.toISOString().split('T')[0];
+                                  setDoctorPeriodFilters(prev => ({
+                                    ...prev,
+                                    [doctor.id]: {
+                                      mode: 'custom',
+                                      startDate: prev[doctor.id]?.startDate || defaultStart,
+                                      endDate: prev[doctor.id]?.endDate || defaultEnd
+                                    }
+                                  }));
+                                }}
+                                className={`rounded-2xl p-3 border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
+                                  (doctor.activeFilter?.mode === 'custom')
+                                    ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-[1.02]'
+                                    : 'bg-white hover:bg-slate-100/70 text-slate-700 border-slate-200 shadow-xs'
+                                }`}
+                              >
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <Calendar className="w-3 h-3 text-[#1499AD]" />
+                                  <p className={`text-[10px] font-black uppercase tracking-widest ${doctor.activeFilter?.mode === 'custom' ? 'text-slate-300' : 'text-slate-500'}`}>
+                                    Sana oralig'i
+                                  </p>
+                                </div>
+                                <p className="text-xs sm:text-sm font-black">
+                                  {doctor.activeFilter?.mode === 'custom' ? formatCurrency(doctor.totalSalary, t('common.currency')) : "Kalendardan tanlash"}
+                                </p>
+                              </button>
+                            </div>
+
+                            {/* Custom Date Range Picker bar */}
+                            {doctor.activeFilter?.mode === 'custom' && (
+                              <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in-50 duration-200">
+                                <div className="flex items-center gap-2 text-xs font-black text-slate-700">
+                                  <Calendar className="w-4 h-4 text-[#1499AD]" />
+                                  <span>Oraliq sanani belgilang:</span>
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Dan:</span>
+                                    <input
+                                      type="date"
+                                      value={doctor.activeFilter?.startDate || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setDoctorPeriodFilters(prev => ({
+                                          ...prev,
+                                          [doctor.id]: {
+                                            ...(prev[doctor.id] || {}),
+                                            mode: 'custom',
+                                            startDate: val
+                                          }
+                                        }));
+                                      }}
+                                      className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer"
+                                    />
+                                  </div>
+
+                                  <span className="text-slate-300 font-bold">—</span>
+
+                                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Gacha:</span>
+                                    <input
+                                      type="date"
+                                      value={doctor.activeFilter?.endDate || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setDoctorPeriodFilters(prev => ({
+                                          ...prev,
+                                          [doctor.id]: {
+                                            ...(prev[doctor.id] || {}),
+                                            mode: 'custom',
+                                            endDate: val
+                                          }
+                                        }));
+                                      }}
+                                      className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer"
+                                    />
+                                  </div>
+
+                                  <div className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-xl text-xs font-black border border-emerald-100 flex items-center gap-1.5 shadow-xs">
+                                    <span>{doctor.treatments} ta ish</span>
+                                    <span className="text-slate-300">•</span>
+                                    <span>Jami: {formatCurrency(doctor.totalSalary, t('common.currency'))}</span>
+                                  </div>
+                                </div>
                               </div>
-                            ))}
+                            )}
                           </div>
 
                           {/* Detail View Container */}
@@ -682,6 +960,47 @@ export default function Payroll() {
             <DialogTitle className="text-xl font-black">{t('payroll.addDoctor')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Doctor Photo / Avatar Upload */}
+            <div className="flex items-center gap-3.5 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+              <div className="relative w-14 h-14 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-center overflow-hidden shrink-0 group">
+                {newDoctorForm.avatar_url ? (
+                  <>
+                    <img 
+                      src={newDoctorForm.avatar_url} 
+                      alt="Shifokor rasmi" 
+                      className="w-full h-full object-cover" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNewDoctorForm(prev => ({ ...prev, avatar_url: '' }))}
+                      className="absolute inset-0 bg-rose-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      title="O'chirish"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <Camera className="w-6 h-6 text-slate-300 group-hover:text-emerald-500 transition-colors" />
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <label className="text-xs font-bold text-slate-700 block mb-0.5">Shifokor rasmi (Avatar)</label>
+                <p className="text-[10px] text-slate-400 font-medium mb-1.5 truncate">Shifokor profil fotosuratini yuklang</p>
+                
+                <label className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 hover:border-emerald-500 rounded-xl text-xs font-bold text-slate-700 hover:text-emerald-600 shadow-xs transition-all cursor-pointer">
+                  <Upload className="w-3 h-3" />
+                  <span>{newDoctorForm.avatar_url ? "Rasmni almashtirish" : "Rasm tanlash"}</span>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleDoctorAvatarUpload} 
+                  />
+                </label>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t('staff.full_name')}</Label>
@@ -703,38 +1022,89 @@ export default function Payroll() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label>{t('staff.specialty')}</Label>
+                <Label className="text-xs font-bold text-slate-700">{t('staff.specialty')}</Label>
                 <Input 
                   value={newDoctorForm.specialization}
                   onChange={e => setNewDoctorForm({...newDoctorForm, specialization: e.target.value})}
-                  placeholder="Ortodont"
-                  className="rounded-xl"
+                  placeholder="Masalan: Stomatolog, Ortodont, Jarroh..."
+                  className="rounded-xl h-11 font-bold"
                 />
               </div>
+
+              {/* Daromad toifasi (Foizga / Oylikka) */}
               <div className="space-y-2">
-                <Label>{t('staff.base_salary')}</Label>
-                <Input 
-                  type="number"
-                  value={newDoctorForm.base_salary}
-                  onChange={e => setNewDoctorForm({...newDoctorForm, base_salary: e.target.value})}
-                  onWheel={e => e.target.blur()}
-                  placeholder="0"
-                  className="rounded-xl"
-                />
+                <Label className="text-xs font-bold text-slate-700">Daromad toifasi (Turi) *</Label>
+                <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/60">
+                  <button
+                    type="button"
+                    onClick={() => setNewDoctorForm({ ...newDoctorForm, salary_type: 'percentage', base_salary: '' })}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      newDoctorForm.salary_type === 'percentage'
+                        ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-slate-200/80 scale-[1.02]'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <Percent className="w-3.5 h-3.5" />
+                    <span>1. Foizga (%)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewDoctorForm({ ...newDoctorForm, salary_type: 'fixed', commission_rate: '' })}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      newDoctorForm.salary_type === 'fixed'
+                        ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-slate-200/80 scale-[1.02]'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <DollarSign className="w-3.5 h-3.5" />
+                    <span>2. Oylikka (so'm)</span>
+                  </button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>{t('staff.commission_rate')}</Label>
-                <Input 
-                  type="number"
-                  value={newDoctorForm.commission_rate}
-                  onChange={e => setNewDoctorForm({...newDoctorForm, commission_rate: e.target.value})}
-                  onWheel={e => e.target.blur()}
-                  placeholder="30"
-                  className="rounded-xl"
-                />
-              </div>
+
+              {/* Dynamic Field based on Daromad toifasi */}
+              {newDoctorForm.salary_type === 'percentage' ? (
+                <div className="space-y-1.5 animate-in fade-in-50 duration-200">
+                  <Label className="text-xs font-bold text-slate-700">{t('staff.commission_rate')} (%) *</Label>
+                  <div className="relative">
+                    <Input 
+                      type="number"
+                      value={newDoctorForm.commission_rate}
+                      onChange={e => setNewDoctorForm({...newDoctorForm, commission_rate: e.target.value})}
+                      onWheel={e => e.target.blur()}
+                      placeholder="30"
+                      className="rounded-xl h-11 pr-8 font-bold text-sm"
+                      autoFocus
+                    />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">%</span>
+                  </div>
+                  <p className="text-[10px] font-medium text-slate-400">Har bir bajarilgan davolash / to'lovdan shifokor oladigan komissiya ulushi</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5 animate-in fade-in-50 duration-200">
+                  <Label className="text-xs font-bold text-slate-700">Oylik maosh (so'm) *</Label>
+                  <div className="relative">
+                    <Input 
+                      type="text"
+                      inputMode="numeric"
+                      value={newDoctorForm.base_salary === '' ? '' : Number(newDoctorForm.base_salary).toLocaleString('uz-UZ')}
+                      onChange={e => {
+                        const raw = e.target.value.replace(/\s/g, '').replace(/,/g, '').replace(/\./g, '');
+                        if (raw === '') setNewDoctorForm({ ...newDoctorForm, base_salary: '' });
+                        else if (/^\d+$/.test(raw)) setNewDoctorForm({ ...newDoctorForm, base_salary: Number(raw) });
+                      }}
+                      onWheel={e => e.target.blur()}
+                      placeholder="Masalan: 5 000 000"
+                      className="rounded-xl h-11 pr-12 font-bold text-sm"
+                      autoFocus
+                    />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">UZS</span>
+                  </div>
+                  <p className="text-[10px] font-medium text-slate-400">Har oy to'lanadigan qat'iy belgilangan oylik ish haqi miqdori</p>
+                </div>
+              )}
             </div>
             <div className="flex gap-2 pt-2">
               <Button variant="outline" onClick={() => setAddDoctorOpen(false)} className="flex-1" disabled={addingDoctor}>

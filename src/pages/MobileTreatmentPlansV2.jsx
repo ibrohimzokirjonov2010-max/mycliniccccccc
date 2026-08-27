@@ -16,6 +16,7 @@ import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/i18n/LanguageContext';
 import PatientSelect from '@/components/patients/PatientSelect';
+import { useAuth } from '@/lib/AuthContext';
 
 // Internal tish ID ('ur6') ni FDI raqamga ('16') aylantirish
 const idToFdi = (idStr) => {
@@ -133,19 +134,12 @@ export default function MobileTreatmentPlansV2() {
   useEffect(() => {
     if (selectedPlan && showDetailModal) {
       const completed = [];
-      const svcs = selectedPlan.services || [];
-      svcs.forEach((item, i) => {
-        if (item.items) {
-          item.items.forEach((s, sI) => {
-            if (s.status === 'completed') {
-              completed.push(`${i}-${sI}`);
-            }
-          });
-        } else {
-          if (item.status === 'completed') {
-            completed.push(`${i}`);
+      (selectedPlan.services || []).forEach(toothGroup => {
+        (toothGroup.items || []).forEach(item => {
+          if (item.status === 'Completed') {
+            completed.push(`${toothGroup.tooth_id}_${item.service_id}`);
           }
-        }
+        });
       });
       setCompletedServices(completed);
     } else {
@@ -156,14 +150,15 @@ export default function MobileTreatmentPlansV2() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
+      const planFilter = isDoctor && user?.id ? { doctor_id: user.id } : {};
       const [pl, pa, se] = await Promise.all([
-        base44.entities.TreatmentPlan.list('-created_date', 100),
+        isDoctor && user?.id ? base44.entities.TreatmentPlan.filter(planFilter, '-created_date', 100) : base44.entities.TreatmentPlan.list('-created_date', 100),
         base44.entities.Patient.list('-created_date', 50),
         base44.entities.Service.list('name', 500)
       ]);
       setPlans(pl || []); setPatients(pa || []); setServices(se || []);
     } catch (e) { console.error(e); } finally { setLoading(false); }
-  }, []);
+  }, [isDoctor, user]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -178,6 +173,7 @@ export default function MobileTreatmentPlansV2() {
     setSaving(true);
     try {
       const p = patients.find(x => x.id === formData.patient_id);
+      const targetDoctorId = isDoctor ? user.id : (p?.main_treatment_provider || formData.doctor_id || '');
       const allSvcNames = Object.values(toothServices).flat().map(it => services.find(x => x.id === it.service_id)?.name).filter(Boolean);
       const MAX_SHOW = 2;
       const compactName = allSvcNames.length > MAX_SHOW
@@ -188,6 +184,8 @@ export default function MobileTreatmentPlansV2() {
           ...formData, 
           name: formData.name || compactName || (t ? t('patientProfile.treatmentPlanSingular') : 'Davolash rejasi'),
           patient_name: p?.full_name || '', 
+          doctor_id: targetDoctorId,
+          doctor_name: isDoctor ? (user.name || '') : '',
           total_price: Number(formData.total_price) || 0,
           services: Object.entries(toothServices).map(([tId, svcs]) => ({
               tooth_id: tId,

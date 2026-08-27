@@ -561,19 +561,39 @@ export default function MobileServicesV2() {
 
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {[
-                      { label: 'Barchasi', nums: [11,12,13,14,15,16,17,18,21,22,23,24,25,26,27,28,31,32,33,34,35,36,37,38,41,42,43,44,45,46,47,48] },
+                      { label: 'Barchasi (32)', nums: [11,12,13,14,15,16,17,18,21,22,23,24,25,26,27,28,31,32,33,34,35,36,37,38,41,42,43,44,45,46,47,48] },
                       { label: 'Yuqori', nums: [11,12,13,14,15,16,17,18,21,22,23,24,25,26,27,28] },
                       { label: 'Pastki', nums: [31,32,33,34,35,36,37,38,41,42,43,44,45,46,47,48] },
-                    ].map(({ label, nums }) => (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={() => setForm({ ...form, tooth_numbers: nums })}
-                        className="text-[9px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-lg"
-                      >
-                        {label}
-                      </button>
-                    ))}
+                      { label: 'Yuqori o\'ng', nums: [11,12,13,14,15,16,17,18] },
+                      { label: 'Yuqori chap', nums: [21,22,23,24,25,26,27,28] },
+                      { label: 'Pastki chap', nums: [31,32,33,34,35,36,37,38] },
+                      { label: 'Pastki o\'ng', nums: [41,42,43,44,45,46,47,48] },
+                    ].map(({ label, nums }) => {
+                      const curTeeth = (form.tooth_numbers || []).map(Number);
+                      const isActive = nums.length > 0 && nums.every(n => curTeeth.includes(n));
+                      return (
+                        <button
+                          key={label}
+                          type="button"
+                          onClick={() => {
+                            if (isActive) {
+                              setForm({ ...form, tooth_numbers: curTeeth.filter(n => !nums.includes(n)) });
+                            } else {
+                              const combined = Array.from(new Set([...curTeeth, ...nums]));
+                              setForm({ ...form, tooth_numbers: combined });
+                            }
+                          }}
+                          className={cn(
+                            "text-[9px] font-bold px-2 py-1 rounded-lg border transition-all",
+                            isActive 
+                              ? "bg-[#1499AD] text-white border-[#1499AD] font-black"
+                              : "bg-white text-slate-600 border-slate-200"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
                     {(form.tooth_numbers || []).length > 0 && (
                       <button
                         type="button"

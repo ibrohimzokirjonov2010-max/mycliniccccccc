@@ -12,6 +12,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+const DEFAULT_INVENTORY_CATEGORIES = [
+  'Restavratsiya',
+  'Plomba materiallari',
+  'Anesteziya',
+  'Endodontiya',
+  'Ortopediya',
+  'Xirurgiya',
+  'Ortodontiya',
+  'Asboblar',
+  'Bir martalik (Sarf)',
+  'Dezinseksiya',
+  'Boshqa'
+];
+
 export default function MobileInventoryV2() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,10 +35,24 @@ export default function MobileInventoryV2() {
   const [editingItem, setEditingItem] = useState(null);
   const [saving, setSaving] = useState(false);
   
+  // Categories state
+  const [categories, setCategories] = useState(() => {
+    try {
+      const saved = localStorage.getItem('inventory_categories');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_INVENTORY_CATEGORIES;
+  });
+  const [inlineNewCat, setInlineNewCat] = useState('');
+  const [isAddingInlineCat, setIsAddingInlineCat] = useState(false);
+  
   // Form state
   const [formData, setFormData] = useState({
     name: '',
-    category: 'Materials',
+    category: 'Restavratsiya',
     quantity: '',
     min_quantity: '10',
     unit: 'pcs',
@@ -395,22 +423,83 @@ export default function MobileInventoryV2() {
 
               {/* Category */}
               <div>
-                <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Kategoriya</Label>
-                <Select 
-                  value={formData.category} 
-                  onValueChange={(v) => setFormData({...formData, category: v})}
-                >
-                  <SelectTrigger className="h-10 rounded-xl bg-slate-50 border-none font-bold text-slate-800 text-xs focus:ring-emerald-500/10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-none shadow-2xl">
-                    <SelectItem value="Materials" className="font-bold py-2 focus:bg-slate-50 text-xs">Materiallar</SelectItem>
-                    <SelectItem value="Instruments" className="font-bold py-2 focus:bg-slate-50 text-xs">Asbob-uskunalar</SelectItem>
-                    <SelectItem value="Medications" className="font-bold py-2 focus:bg-slate-50 text-xs">Dori-darmonlar</SelectItem>
-                    <SelectItem value="Equipment" className="font-bold py-2 focus:bg-slate-50 text-xs">Uskunalar</SelectItem>
-                    <SelectItem value="Consumables" className="font-bold py-2 focus:bg-slate-50 text-xs">Sarflanuvchi</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between ml-1 mb-1.5">
+                  <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Kategoriya / Bo'lim</Label>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingInlineCat(!isAddingInlineCat)}
+                    className="text-[9px] font-bold text-emerald-600 hover:underline cursor-pointer flex items-center gap-0.5"
+                  >
+                    <Plus className="w-3 h-3" />
+                    {isAddingInlineCat ? 'Tanlash' : '+ Yangi bo\'lim'}
+                  </button>
+                </div>
+
+                {isAddingInlineCat ? (
+                  <div className="flex items-center gap-1.5">
+                    <Input 
+                      value={inlineNewCat} 
+                      onChange={e => setInlineNewCat(e.target.value)} 
+                      placeholder="Bo'lim nomi (masalan: Restavratsiya)..." 
+                      className="h-10 rounded-xl bg-slate-50 border-none font-bold text-slate-800 text-xs px-3"
+                      autoFocus
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const trimmed = inlineNewCat.trim();
+                        if (trimmed) {
+                          if (!categories.includes(trimmed)) {
+                            const upd = [...categories, trimmed];
+                            setCategories(upd);
+                            try { localStorage.setItem('inventory_categories', JSON.stringify(upd)); } catch {}
+                          }
+                          setFormData({ ...formData, category: trimmed });
+                          setInlineNewCat('');
+                          setIsAddingInlineCat(false);
+                        }
+                      }}
+                      className="h-10 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shrink-0"
+                    >
+                      Qo'shish
+                    </Button>
+                  </div>
+                ) : (
+                  <Select 
+                    value={formData.category} 
+                    onValueChange={(v) => {
+                      if (v === '__ADD_NEW__') {
+                        setIsAddingInlineCat(true);
+                      } else {
+                        setFormData({...formData, category: v});
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-10 rounded-xl bg-slate-50 border-none font-bold text-slate-800 text-xs focus:ring-emerald-500/10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-none shadow-2xl max-h-56">
+                      {Array.from(new Set([...categories, ...items.map(i => i.category).filter(Boolean)])).map(cat => (
+                        <SelectItem key={cat} value={cat} className="font-bold py-2 focus:bg-slate-50 text-xs">
+                          {cat}
+                        </SelectItem>
+                      ))}
+                      <div className="p-1 border-t border-slate-100 mt-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsAddingInlineCat(true);
+                          }}
+                          className="w-full py-1 px-2 text-left text-xs font-bold text-emerald-600 hover:bg-emerald-50 rounded-lg flex items-center gap-1 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          + Yangi bo'lim
+                        </button>
+                      </div>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               {/* Quantity & Unit */}

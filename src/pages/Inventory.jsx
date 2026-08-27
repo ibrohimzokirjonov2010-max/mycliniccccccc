@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Package, Edit2, Trash2, AlertOctagon, CircleDollarSign, Layers, ShoppingBag, BarChart3 } from 'lucide-react';
+import { Plus, Search, Package, Edit2, Trash2, AlertOctagon, CircleDollarSign, Layers, ShoppingBag, BarChart3, FolderPlus, Tag, Folder, Sparkles, Check } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -14,16 +14,25 @@ import {
   AlertDialogDescription, AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
+import { toast } from 'sonner';
+
+const DEFAULT_INVENTORY_CATEGORIES = [
+  'Restavratsiya',
+  'Plomba materiallari',
+  'Anesteziya',
+  'Endodontiya',
+  'Ortopediya',
+  'Xirurgiya',
+  'Ortodontiya',
+  'Asboblar',
+  'Bir martalik (Sarf)',
+  'Dezinseksiya',
+  'Boshqa'
+];
 
 /**
- * Inventory Page - Premium Modernization
- * 
- * Features:
- * - Glassmorphism design system
- * - Real-time stock indicators
- * - Enhanced mobile card experience
- * - Smooth framer-motion transitions
+ * Inventory Page - Premium Modernization with Category Management
  */
 export default function Inventory() {
   const { t } = useTranslation();
@@ -31,6 +40,24 @@ export default function Inventory() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Categories state
+  const [categories, setCategories] = useState(() => {
+    try {
+      const saved = localStorage.getItem('inventory_categories');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_INVENTORY_CATEGORIES;
+  });
+
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [newCatModalOpen, setNewCatModalOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [inlineNewCat, setInlineNewCat] = useState('');
+  const [isAddingInlineCat, setIsAddingInlineCat] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -43,7 +70,7 @@ export default function Inventory() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
-  const [form, setForm] = useState({ name: '', category: '', unit: '', quantity: 0, min_quantity: 5, price_per_unit: 0 });
+  const [form, setForm] = useState({ name: '', category: 'Restavratsiya', unit: 'dona', quantity: 0, min_quantity: 5, price_per_unit: 0 });
   const [saving, setSaving] = useState(false);
   const isMobile = useIsMobile(1024);
 
@@ -66,22 +93,59 @@ export default function Inventory() {
 
   useEffect(() => { load(); }, [debouncedSearch]);
 
+  // All distinct categories combined
+  const allCategories = useMemo(() => {
+    const fromItems = items.map(i => i.category).filter(Boolean);
+    return Array.from(new Set([...categories, ...fromItems]));
+  }, [categories, items]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = { all: items.length };
+    items.forEach(item => {
+      const cat = item.category || 'Boshqa';
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return counts;
+  }, [items]);
+
+  const handleAddCategory = (catNameInput) => {
+    const trimmed = (catNameInput || newCatName).trim();
+    if (!trimmed) return;
+    if (!categories.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+      const updated = [...categories, trimmed];
+      setCategories(updated);
+      try {
+        localStorage.setItem('inventory_categories', JSON.stringify(updated));
+      } catch {}
+      toast.success(`"${trimmed}" bo'limi yaratildi!`);
+    }
+    setNewCatName('');
+    setNewCatModalOpen(false);
+    setSelectedCategory(trimmed);
+    return trimmed;
+  };
+
   useEffect(() => {
     if (editItem) {
       setForm({ 
         name: editItem.name || '', 
-        category: editItem.category || '', 
-        unit: editItem.unit || '', 
+        category: editItem.category || (allCategories[0] || 'Restavratsiya'), 
+        unit: editItem.unit || 'dona', 
         quantity: editItem.quantity || 0, 
         min_quantity: editItem.min_quantity || 5, 
         price_per_unit: editItem.price_per_unit || 0 
       });
     } else {
-      setForm({ name: '', category: '', unit: '', quantity: 0, min_quantity: 5, price_per_unit: 0 });
+      setForm({ name: '', category: selectedCategory !== 'all' ? selectedCategory : (allCategories[0] || 'Restavratsiya'), unit: 'dona', quantity: 0, min_quantity: 5, price_per_unit: 0 });
     }
-  }, [editItem, modalOpen]);
+    setIsAddingInlineCat(false);
+    setInlineNewCat('');
+  }, [editItem, modalOpen, selectedCategory]);
 
-  const filtered = items;
+  const filtered = useMemo(() => {
+    if (selectedCategory === 'all') return items;
+    return items.filter(i => (i.category || 'Boshqa').toLowerCase() === selectedCategory.toLowerCase());
+  }, [items, selectedCategory]);
   
   const lowStock = items.filter(i => (i.quantity || 0) <= (i.min_quantity || 0));
   
@@ -89,9 +153,10 @@ export default function Inventory() {
     return {
       totalItems: items.length,
       lowStockCount: lowStock.length,
-      totalValue: items.reduce((sum, item) => sum + ((item.quantity || 0) * (item.price_per_unit || 0)), 0)
+      totalValue: items.reduce((sum, item) => sum + ((item.quantity || 0) * (item.price_per_unit || 0)), 0),
+      totalCategories: allCategories.length
     };
-  }, [items, lowStock]);
+  }, [items, lowStock, allCategories]);
 
   const handleSave = async () => {
     if (!form.name) return;
@@ -105,8 +170,10 @@ export default function Inventory() {
       setModalOpen(false);
       setEditItem(null);
       load();
+      toast.success(editItem ? "Mahsulot yangilandi!" : "Yangi mahsulot saqlandi!");
     } catch (error) {
       console.error('Save error:', error);
+      toast.error("Saqlashda xatolik yuz berdi");
     } finally {
       setSaving(false);
     }
@@ -117,8 +184,10 @@ export default function Inventory() {
       await base44.entities.Inventory.delete(deleteId);
       setDeleteId(null);
       load();
+      toast.success("Mahsulot o'chirildi!");
     } catch (error) {
       console.error('Delete error:', error);
+      toast.error("O'chirishda xatolik");
     }
   };
 
@@ -229,11 +298,69 @@ export default function Inventory() {
           />
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button className="h-11 px-5 bg-white border border-slate-100 rounded-xl flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:border-blue-500 transition-all group shrink-0 cursor-pointer">
+            <button 
+              onClick={() => setNewCatModalOpen(true)}
+              className="h-11 px-4 bg-white border border-slate-200 rounded-xl flex items-center gap-2 text-[10px] font-black text-[#1499AD] uppercase tracking-widest hover:border-[#1499AD] hover:bg-[#1499AD]/5 transition-all group shrink-0 cursor-pointer shadow-xs"
+            >
+                <FolderPlus className="w-3.5 h-3.5" />
+                + Yangi bo'lim
+            </button>
+            <button className="h-11 px-4 bg-white border border-slate-100 rounded-xl flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:border-blue-500 transition-all group shrink-0 cursor-pointer">
                 <BarChart3 className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-500" />
                 Hisobot
             </button>
         </div>
+      </div>
+
+      {/* Category Filter Pills */}
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 px-0.5">
+        <button
+          type="button"
+          onClick={() => setSelectedCategory('all')}
+          className={cn(
+            "px-3.5 h-9 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all border shrink-0 flex items-center gap-1.5 cursor-pointer",
+            selectedCategory === 'all'
+              ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+              : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+          )}
+        >
+          <span>Barchasi</span>
+          <span className={cn("text-[9px] px-1.5 py-0.5 rounded-md", selectedCategory === 'all' ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500")}>
+            {categoryCounts.all || 0}
+          </span>
+        </button>
+
+        {allCategories.map((cat) => {
+          const count = categoryCounts[cat] || 0;
+          const isSelected = selectedCategory.toLowerCase() === cat.toLowerCase();
+          return (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setSelectedCategory(cat)}
+              className={cn(
+                "px-3.5 h-9 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all border shrink-0 flex items-center gap-1.5 cursor-pointer",
+                isSelected
+                  ? "bg-[#1499AD] text-white border-[#1499AD] shadow-sm font-black"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-[#1499AD]/40 hover:text-[#1499AD]"
+              )}
+            >
+              <span>{cat}</span>
+              <span className={cn("text-[9px] px-1.5 py-0.5 rounded-md", isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500")}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={() => setNewCatModalOpen(true)}
+          className="px-3 h-9 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all border border-dashed border-slate-300 hover:border-[#1499AD] text-slate-500 hover:text-[#1499AD] bg-slate-50/50 hover:bg-[#1499AD]/5 shrink-0 flex items-center gap-1 cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Bo'lim qo'shish</span>
+        </button>
       </div>
 
       {/* Main Content View */}
@@ -413,28 +540,82 @@ export default function Inventory() {
                             />
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-4">
                               <div className="space-y-1.5">
-                                <Label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] ml-4">{t('inventory.modal.categoryLabel') || 'Kategoriya'}</Label>
-                                <Select 
-                                  value={form.category} 
-                                  onValueChange={v => setForm({ ...form, category: v })}
-                                >
-                                  <SelectTrigger className="h-11 rounded-xl border-none bg-slate-50 px-5 font-bold text-slate-900 text-xs shadow-none">
-                                    <SelectValue placeholder={t('inventory.modal.categoryPlaceholder') || 'Tanlang...'} />
-                                  </SelectTrigger>
-                                  <SelectContent className="rounded-xl border-none shadow-xl">
-                                    <SelectItem value="Anesteziya" className="font-bold py-2 text-xs">Anesteziya</SelectItem>
-                                    <SelectItem value="Plomba materiallari" className="font-bold py-2 text-xs">Plomba materiallari</SelectItem>
-                                    <SelectItem value="Asboblar" className="font-bold py-2 text-xs">Asboblar</SelectItem>
-                                    <SelectItem value="Bir martalik (Sarf)" className="font-bold py-2 text-xs">Bir martalik (Sarf)</SelectItem>
-                                    <SelectItem value="Xirurgiya" className="font-bold py-2 text-xs">Xirurgiya</SelectItem>
-                                    <SelectItem value="Ortodontiya" className="font-bold py-2 text-xs">Ortodontiya</SelectItem>
-                                    <SelectItem value="Dezinseksiya" className="font-bold py-2 text-xs">Dezinseksiya</SelectItem>
-                                    <SelectItem value="Boshqa" className="font-bold py-2 text-xs">Boshqa</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                                <div className="flex items-center justify-between ml-4">
+                                  <Label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">{t('inventory.modal.categoryLabel') || 'Kategoriya / Bo\'lim'}</Label>
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsAddingInlineCat(!isAddingInlineCat)}
+                                    className="text-[9px] font-bold text-[#1499AD] hover:underline cursor-pointer flex items-center gap-0.5"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    {isAddingInlineCat ? 'Tanlash' : 'Yangi bo\'lim'}
+                                  </button>
+                                </div>
+                                
+                                {isAddingInlineCat ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <Input 
+                                      value={inlineNewCat} 
+                                      onChange={e => setInlineNewCat(e.target.value)} 
+                                      placeholder="Bo'lim nomi (masalan: Restavratsiya)..." 
+                                      className="h-11 rounded-xl border-none bg-slate-50 px-4 font-bold text-slate-900 text-xs focus:ring-2 focus:ring-blue-500/10"
+                                      autoFocus
+                                    />
+                                    <Button
+                                      type="button"
+                                      onClick={() => {
+                                        if (inlineNewCat.trim()) {
+                                          handleAddCategory(inlineNewCat);
+                                          setForm({ ...form, category: inlineNewCat.trim() });
+                                          setInlineNewCat('');
+                                          setIsAddingInlineCat(false);
+                                        }
+                                      }}
+                                      className="h-11 px-4 rounded-xl bg-[#1499AD] hover:bg-[#0E7A8A] text-white font-bold text-xs shrink-0"
+                                    >
+                                      Qo'shish
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Select 
+                                    value={form.category} 
+                                    onValueChange={v => {
+                                      if (v === '__ADD_NEW__') {
+                                        setIsAddingInlineCat(true);
+                                      } else {
+                                        setForm({ ...form, category: v });
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="h-11 rounded-xl border-none bg-slate-50 px-5 font-bold text-slate-900 text-xs shadow-none">
+                                      <SelectValue placeholder={t('inventory.modal.categoryPlaceholder') || 'Bo\'limni tanlang...'} />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-none shadow-xl max-h-60">
+                                      {allCategories.map((cat) => (
+                                        <SelectItem key={cat} value={cat} className="font-bold py-2 text-xs">
+                                          {cat}
+                                        </SelectItem>
+                                      ))}
+                                      <div className="p-1 border-t border-slate-100 mt-1">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsAddingInlineCat(true);
+                                          }}
+                                          className="w-full py-1.5 px-2 text-left text-xs font-bold text-[#1499AD] hover:bg-[#1499AD]/10 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                                        >
+                                          <Plus className="w-3.5 h-3.5" />
+                                          + Yangi bo'lim yaratish
+                                        </button>
+                                      </div>
+                                    </SelectContent>
+                                  </Select>
+                                )}
                               </div>
+
                               <div className="space-y-1.5">
                                 <Label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] ml-4">{t('inventory.modal.unitLabel') || 'Birlik'}</Label>
                                 <Input 
@@ -515,6 +696,60 @@ export default function Inventory() {
                   </Button>
               </div>
           </DialogContent>
+      </Dialog>
+
+      {/* New Category Dialog */}
+      <Dialog open={newCatModalOpen} onOpenChange={setNewCatModalOpen}>
+        <DialogContent className="sm:max-w-md p-6 rounded-3xl bg-white border-none shadow-2xl">
+          <DialogHeader className="mb-4">
+            <div className="w-10 h-10 rounded-2xl bg-[#1499AD]/10 text-[#1499AD] flex items-center justify-center mb-2">
+              <FolderPlus className="w-5 h-5" />
+            </div>
+            <DialogTitle className="text-lg font-black text-slate-900 uppercase">
+              Yangi bo'lim (kategoriya) yaratish
+            </DialogTitle>
+            <p className="text-xs text-slate-400 font-bold">
+              Ombordagi materiallarni guruhlash uchun yangi bo'lim nomini kiriting (masalan: Restavratsiya, Plomba va h.k.)
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">Bo'lim nomi</Label>
+              <Input
+                value={newCatName}
+                onChange={e => setNewCatName(e.target.value)}
+                placeholder="Masalan: Restavratsiya..."
+                className="h-11 rounded-xl bg-slate-50 border-none px-4 font-bold text-slate-900 text-xs"
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && newCatName.trim()) {
+                    handleAddCategory();
+                  }
+                }}
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setNewCatModalOpen(false); setNewCatName(''); }}
+                className="h-10 rounded-xl px-4 font-bold text-xs"
+              >
+                Bekor qilish
+              </Button>
+              <Button
+                type="button"
+                onClick={() => handleAddCategory()}
+                disabled={!newCatName.trim()}
+                className="h-10 rounded-xl px-5 bg-[#1499AD] hover:bg-[#0E7A8A] text-white font-bold text-xs"
+              >
+                Yaratish
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
       </Dialog>
 
       {/* Delete Dialog */}

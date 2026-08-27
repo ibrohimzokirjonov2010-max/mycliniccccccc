@@ -37,14 +37,23 @@ export default function MobileRecall() {
   const { t } = useTranslation();
   const [recalls, setRecalls] = useState([]);
   const [patients, setPatients] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newRecall, setNewRecall] = useState({
-    patient_id: '',
-    type: 'checkup',
-    recall_date: '',
-    notes: ''
+  const getTodayStr = () => new Date().toISOString().split('T')[0];
+  const calcDate = (months, baseDate = getTodayStr()) => {
+    const d = new Date(baseDate || new Date());
+    if (isNaN(d.getTime())) return getTodayStr();
+    d.setMonth(d.getMonth() + months);
+    return d.toISOString().split('T')[0];
+  };
+
+  const [newRecall, setNewRecall] = useState(() => {
+    const today = getTodayStr();
+    return {
+      patient_id: '',
+      type: 'checkup',
+      start_date: today,
+      recall_date: calcDate(3, today),
+      notes: ''
+    };
   });
 
   const loadData = useCallback(async () => {
@@ -253,29 +262,59 @@ export default function MobileRecall() {
                         </div>
                      </div>
 
-                     <div className="space-y-4">
+                     <div className="space-y-3">
+                        {/* Boshlang'ich sana */}
                         <div>
-                           <Label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-1">Tashrif sanasi</Label>
-                           <div className="grid grid-cols-4 gap-1.5 mt-2 mb-3">
-                              {[1, 2, 3, 6].map(m => (
+                           <Label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-1">Boshlang'ich sana</Label>
+                           <Input 
+                             type="date"
+                             value={newRecall.start_date || getTodayStr()}
+                             onChange={e => {
+                               const newStart = e.target.value;
+                               setNewRecall({
+                                 ...newRecall, 
+                                 start_date: newStart,
+                                 recall_date: calcDate(3, newStart)
+                               });
+                             }}
+                             className="h-10 rounded-xl bg-slate-50 border-none font-semibold text-slate-800 text-sm mt-1"
+                           />
+                           <span className="text-[9px] text-slate-400 font-semibold ml-1">Avtomatik bugungi sana</span>
+                        </div>
+
+                        {/* Avtomatik davr tezkor tanlash */}
+                        <div>
+                           <Label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-1">Avtomatik davr</Label>
+                           <div className="grid grid-cols-4 gap-1.5 mt-1 mb-2">
+                              {[1, 3, 6, 12].map(m => (
                                 <button
                                   key={m}
+                                  type="button"
                                   onClick={() => {
-                                    const d = new Date();
-                                    d.setMonth(d.getMonth() + m);
-                                    setNewRecall({...newRecall, recall_date: d.toISOString().split('T')[0]});
+                                    setNewRecall({
+                                      ...newRecall, 
+                                      recall_date: calcDate(m, newRecall.start_date || getTodayStr())
+                                    });
                                   }}
-                                  className="h-8.5 rounded-lg bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-wider hover:bg-slate-100 active:scale-95 transition-all"
+                                  className="h-8 rounded-lg bg-slate-100 text-slate-700 text-[10px] font-bold uppercase tracking-wider hover:bg-[#1499AD]/10 hover:text-[#1499AD] active:scale-95 transition-all border-none cursor-pointer"
                                 >
-                                  {m} Oy
+                                  {m === 12 ? '1 Yil' : `${m} Oy`}
                                 </button>
                               ))}
+                           </div>
+                        </div>
+
+                        {/* Eslatma (Recall) sanasi */}
+                        <div>
+                           <div className="flex items-center justify-between ml-1">
+                              <Label className="text-[9px] font-bold text-slate-700 uppercase tracking-wider">Eslatma (Recall) sanasi</Label>
+                              <span className="text-[9px] font-bold text-[#1499AD]">Kalendardan o'zgartirish mumkin</span>
                            </div>
                            <Input 
                              type="date"
                              value={newRecall.recall_date}
                              onChange={e => setNewRecall({...newRecall, recall_date: e.target.value})}
-                             className="h-10 rounded-xl bg-slate-50 border-none font-semibold text-slate-800 text-sm"
+                             className="h-10 rounded-xl bg-white border border-[#1499AD]/40 focus:border-[#1499AD] font-bold text-[#1499AD] text-sm mt-1"
                            />
                         </div>
 
@@ -285,7 +324,7 @@ export default function MobileRecall() {
                              placeholder="Qo'shimcha..."
                              value={newRecall.notes}
                              onChange={e => setNewRecall({...newRecall, notes: e.target.value})}
-                             className="h-10 rounded-xl bg-slate-50 border-none font-semibold text-slate-800 text-sm"
+                             className="h-10 rounded-xl bg-slate-50 border-none font-semibold text-slate-800 text-sm mt-1"
                            />
                         </div>
                      </div>

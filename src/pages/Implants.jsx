@@ -12,7 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImplantForm, { EXTRA_SERVICES } from '../components/implants/ImplantForm';
+import ImplantBrandsModal, { getOrSeedImplantBrands, calculateBrandStockStats } from '@/components/implants/ImplantBrandsModal';
 import { useFeature } from '@/hooks/useFeature';
+import { Package, Settings2 } from 'lucide-react';
 import Paywall from '@/components/layout/Paywall';
 import { useTranslation } from '@/i18n/LanguageContext';
 
@@ -84,6 +86,8 @@ export default function Implants() {
   const [implants, setImplants] = useState([]);
   const [patients, setPatients] = useState([]);
   const [services, setServices] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [brandsModalOpen, setBrandsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -95,16 +99,18 @@ export default function Implants() {
   const load = async () => {
     try {
       setLoading(true);
-      const [imps, pats, svcs] = await Promise.all([
-        base44.entities.Implant.list('-placement_date', 50),  // ⚡ tez
-        base44.entities.Patient.list('full_name', 50),          // ⚡ tez
+      const [imps, pats, svcs, brnds] = await Promise.all([
+        base44.entities.Implant.list('-placement_date', 100),
+        base44.entities.Patient.list('full_name', 100),
         base44.entities.Service.filter({ is_active: true }, 'name', 100),
+        getOrSeedImplantBrands(),
       ]);
-      setImplants(imps);
-      setPatients(pats);
-      setServices(svcs);
+      setImplants(imps || []);
+      setPatients(pats || []);
+      setServices(svcs || []);
+      setBrands(brnds || []);
     } catch (error) {
-      console.error('Error loading implants:', error);
+      console.error('Error loading implants and brands:', error);
     } finally {
       setLoading(false);
     }
@@ -323,77 +329,126 @@ export default function Implants() {
 
               {/* Main Analysis Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Brand Performance */}
+                {/* Brand Performance & Stock */}
                 <motion.div 
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm shadow-slate-200/40"
+                  className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm shadow-slate-200/40 space-y-4"
                 >
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
                         <Target className="w-5 h-5" />
                       </div>
                       <div>
-                        <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">{t('implants.analysis.brands')}</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{totalCount} ta implant</p>
+                        <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">Brendlar Ulushi & Zaxira</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                          {totalCount} ta implant o'rnatilgan
+                        </p>
                       </div>
                     </div>
-                    {topBrands.length > 0 && (
-                      <span className="text-[10px] font-[900] text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg uppercase tracking-wider">
-                        {topBrands.length} brend
-                      </span>
-                    )}
+                    
+                    <Button
+                      size="sm"
+                      onClick={() => setBrandsModalOpen(true)}
+                      className="h-8 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black text-[10px] uppercase tracking-wider gap-1 border border-indigo-200/60 cursor-pointer"
+                    >
+                      <Package className="w-3 h-3" />
+                      Brendlar & Zaxira
+                    </Button>
                   </div>
                   
-                  {topBrands.length === 0 ? (
-                    <div className="py-10 text-center text-slate-400 font-bold text-xs uppercase tracking-widest">{t('common.noData')}</div>
-                  ) : (
-                    <div className="space-y-4">
-                      {(() => {
-                        const BRAND_COLORS = [
-                          { bar: 'from-indigo-500 to-blue-500', bg: 'bg-indigo-50', text: 'text-indigo-600', dot: 'bg-indigo-500' },
-                          { bar: 'from-violet-500 to-purple-500', bg: 'bg-violet-50', text: 'text-violet-600', dot: 'bg-violet-500' },
-                          { bar: 'from-teal-500 to-emerald-500', bg: 'bg-teal-50', text: 'text-teal-600', dot: 'bg-teal-500' },
-                          { bar: 'from-amber-500 to-orange-500', bg: 'bg-amber-50', text: 'text-amber-600', dot: 'bg-amber-500' },
-                        ];
-                        return topBrands.map(([brand, count], idx) => {
-                          const pct = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
+                  {(() => {
+                    const brandsWithStats = calculateBrandStockStats(brands, implants);
+                    const placedBrands = brandsWithStats.filter(b => b.used_count > 0).sort((a, b) => b.used_count - a.used_count);
+                    const BRAND_COLORS = [
+                      { bar: 'from-indigo-500 to-blue-500', bg: 'bg-indigo-50', text: 'text-indigo-600', dot: 'bg-indigo-500' },
+                      { bar: 'from-violet-500 to-purple-500', bg: 'bg-violet-50', text: 'text-violet-600', dot: 'bg-violet-500' },
+                      { bar: 'from-teal-500 to-emerald-500', bg: 'bg-teal-50', text: 'text-teal-600', dot: 'bg-teal-500' },
+                      { bar: 'from-amber-500 to-orange-500', bg: 'bg-amber-50', text: 'text-amber-600', dot: 'bg-amber-500' },
+                    ];
+
+                    if (placedBrands.length === 0) {
+                      return (
+                        <div className="py-8 text-center space-y-2 border border-dashed border-slate-200 rounded-2xl p-4">
+                          <Package className="w-8 h-8 text-slate-300 mx-auto" />
+                          <p className="text-xs font-bold text-slate-500">Hozircha implant o'rnatilmagan</p>
+                          <p className="text-[10.5px] text-slate-400 max-w-xs mx-auto">
+                            Bemorlarga implant o'rnatilgach, brendlar bo'yicha real ulush va zaxira sarfi shu yerda avtomatik ko'rsatiladi.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-3.5">
+                        {placedBrands.map((brand, idx) => {
                           const col = BRAND_COLORS[idx % BRAND_COLORS.length];
+                          const sharePct = totalCount > 0 ? Math.round((brand.used_count / totalCount) * 100) : 0;
+
                           return (
-                            <div key={brand} className="group">
+                            <div key={brand.id || brand.name} className="group p-2.5 rounded-xl hover:bg-slate-50/70 transition-colors">
                               <div className="flex justify-between items-center mb-1.5">
                                 <div className="flex items-center gap-2">
                                   <span className={`w-2 h-2 rounded-full ${col.dot} flex-shrink-0`} />
-                                  <span className="text-xs font-[900] text-slate-800 uppercase tracking-wide">{brand}</span>
+                                  <span className="text-xs font-[900] text-slate-800 uppercase tracking-wide">
+                                    {brand.name}
+                                  </span>
+                                  {brand.country && (
+                                    <span className="text-[9px] font-bold text-slate-400">
+                                      ({brand.country})
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className={`text-[10px] font-bold ${col.text} ${col.bg} px-2 py-0.5 rounded-md`}>{pct}%</span>
-                                  <span className="text-xs font-[900] text-slate-900 w-5 text-right">{count}</span>
-                                  <span className="text-[10px] text-slate-400 font-bold">ta</span>
+                                  <span className={`text-[10px] font-black ${col.text} ${col.bg} px-2 py-0.5 rounded-md`}>
+                                    {sharePct}%
+                                  </span>
+                                  <span className="text-xs font-black text-slate-900">
+                                    {brand.used_count} ta
+                                  </span>
+                                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ml-1 ${
+                                    brand.is_out_of_stock 
+                                      ? 'bg-rose-100 text-rose-700' 
+                                      : brand.is_low_stock 
+                                        ? 'bg-amber-100 text-amber-800' 
+                                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                                  }`}>
+                                    {brand.remaining_stock} ta qoldi
+                                  </span>
                                 </div>
                               </div>
-                              <div className="h-2 bg-slate-50 rounded-full overflow-hidden border border-slate-100">
+                              <div className="h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-100">
                                 <motion.div
                                   initial={{ width: 0 }}
-                                  animate={{ width: `${pct}%` }}
-                                  transition={{ duration: 0.9, delay: idx * 0.12, ease: 'easeOut' }}
+                                  animate={{ width: `${sharePct}%` }}
+                                  transition={{ duration: 0.9, delay: idx * 0.1, ease: 'easeOut' }}
                                   className={`h-full bg-gradient-to-r ${col.bar} rounded-full shadow-sm`}
                                 />
                               </div>
                             </div>
                           );
-                        });
-                      })()}
-                    </div>
-                  )}
+                        })}
+                      </div>
+                    );
+                  })()}
 
-                  {topBrands.length > 0 && (
-                    <div className="mt-5 pt-4 border-t border-slate-50 flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Eng ko'p ishlatiladigan</span>
-                      <span className="text-xs font-[900] text-slate-900">{topBrands[0]?.[0]}</span>
-                    </div>
-                  )}
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      {(() => {
+                        const brandsWithStats = calculateBrandStockStats(brands, implants);
+                        const placedBrands = brandsWithStats.filter(b => b.used_count > 0).sort((a, b) => b.used_count - a.used_count);
+                        return placedBrands[0] ? `Eng ko'p ishlatiladigan: ${placedBrands[0].name}` : `Jami ${brands.length} ta brend omborda`;
+                      })()}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setBrandsModalOpen(true)}
+                      className="text-xs font-black text-indigo-600 hover:text-indigo-800 tracking-tight flex items-center gap-1 cursor-pointer"
+                    >
+                      Barcha brendlar & Zaxira boshqaruvi ({brands.length}) →
+                    </button>
+                  </div>
                 </motion.div>
 
                 {/* Lifecycle Status */}
@@ -695,6 +750,14 @@ export default function Implants() {
         patients={patients}
         services={services}
         onSaved={() => { load(); setTab('list'); }}
+      />
+
+      {/* Brands & Stock Management Modal */}
+      <ImplantBrandsModal
+        open={brandsModalOpen}
+        onClose={() => setBrandsModalOpen(false)}
+        implants={implants}
+        onBrandsUpdated={load}
       />
     </div>
   );

@@ -12,6 +12,7 @@ import { formatCurrency, capitalizeName } from '@/lib/utils';
 import NewPatientFlow from '@/components/patients/NewPatientFlow';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/AuthContext';
 
 /**
  * Premium SaaS Mobile Patients List
@@ -21,6 +22,7 @@ export default function MobilePatientsV2() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
+  const { user, isDoctor } = useAuth();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(false);
   const loadingTimerRef = useRef(null);
@@ -45,10 +47,17 @@ export default function MobilePatientsV2() {
           setLoading(true);
         }, 150);
       }
-      const data = await base44.entities.Patient.list('-created_date', 100);
-      setPatients(data);
-      const count = await base44.entities.Patient.count();
-      setTotalCount(count);
+      let data = [];
+      if (isDoctor && user?.id) {
+        data = await base44.entities.Patient.filter({ main_treatment_provider: user.id }, '-created_date', 100);
+        if (data.length === 0 && user.name) {
+          data = await base44.entities.Patient.filter({ main_treatment_provider: user.name }, '-created_date', 100);
+        }
+      } else {
+        data = await base44.entities.Patient.list('-created_date', 100);
+      }
+      setPatients(data || []);
+      setTotalCount((data || []).length);
       hasLoadedInitial.current = true;
     } catch (error) {
       console.error('Failed to load patients:', error);
@@ -57,7 +66,7 @@ export default function MobilePatientsV2() {
       if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
       setLoading(false);
     }
-  }, []);
+  }, [isDoctor, user]);
 
   useEffect(() => {
     loadPatients();

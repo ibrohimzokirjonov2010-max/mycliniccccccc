@@ -27,9 +27,9 @@ const LIFECYCLE_STATUSES = [
   "failure"
 ];
 const REMINDER_OPTIONS = [
-  { label: '1 oy', value: 1 },
-  { label: '2 oy', value: 2 },
-  { label: '3 oy', value: 3 }
+  { label: '1 oy', sub: "1 oydan so'ng", value: 1 },
+  { label: '2 oy', sub: "2 oydan so'ng", value: 2 },
+  { label: '3 oy', sub: "3 oydan so'ng", value: 3 },
 ];
 
 export const EXTRA_SERVICES = [
@@ -575,8 +575,22 @@ export default function ImplantForm({ open, onClose, patients, services, implant
           notes: mergedNotes,
         };
 
+        // Calculate safe integer reminder_months for PostgreSQL
+        let safeReminderMonths = 1;
+        if (typeof form.reminder_months === 'number') {
+          safeReminderMonths = form.reminder_months;
+        } else if (typeof form.reminder_months === 'string' && !isNaN(parseInt(form.reminder_months, 10)) && form.reminder_months !== 'custom') {
+          safeReminderMonths = parseInt(form.reminder_months, 10);
+        } else if (form.reminder_date && form.placement_date) {
+          const pDate = new Date(form.placement_date);
+          const rDate = new Date(form.reminder_date);
+          const diffMonths = (rDate.getFullYear() - pDate.getFullYear()) * 12 + (rDate.getMonth() - pDate.getMonth());
+          safeReminderMonths = Math.max(1, diffMonths || 1);
+        }
+
         const data = {
           ...form,
+          reminder_months: safeReminderMonths,
           // Asosiy maydonlar
           tooth_number: fdiNumber,
           tooth_id: toothId,
@@ -878,36 +892,94 @@ export default function ImplantForm({ open, onClose, patients, services, implant
           value={form.doctor || ''} 
           onValueChange={v => setField('doctor', v)}
         >
-          <SelectTrigger className={`w-full bg-background h-10 sm:h-12 rounded-xl text-xs sm:text-sm font-bold border transition-all ${
+          <SelectTrigger className={`w-full bg-white h-11 rounded-xl text-xs sm:text-sm font-bold border transition-all ${
             !form.doctor 
               ? 'border-amber-400 bg-amber-50/30 ring-1 ring-amber-300' 
-              : 'border-border/60 hover:border-primary'
+              : 'border-slate-200 hover:border-emerald-500'
           }`}>
-            <div className="flex items-center gap-2.5 truncate">
-              <div className="w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <Stethoscope className="w-3.5 h-3.5" />
-              </div>
-              <SelectValue placeholder="Klinikadagi mas'ul shifokorni tanlang..." />
-            </div>
+            {(() => {
+              const selDoc = doctors.find(d => (d.full_name || d.name || d.username) === form.doctor);
+              if (selDoc) {
+                const docName = selDoc.full_name || selDoc.name || selDoc.username;
+                const specialty = selDoc.specialty || (selDoc.role === 'admin' ? 'Bosh shifokor / Admin' : 'Stomatolog-implantolog');
+                const photo = selDoc.avatar_url || selDoc.photo || selDoc.image || selDoc.profile_image;
+                const initials = docName.split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'DR';
+                const gradients = ['from-emerald-500 to-teal-600', 'from-blue-500 to-indigo-600', 'from-violet-500 to-purple-600', 'from-cyan-500 to-blue-600', 'from-amber-500 to-orange-600'];
+                const grad = gradients[((docName.charCodeAt(0) || 0) + (docName.charCodeAt(1) || 0)) % gradients.length];
+
+                return (
+                  <div className="flex items-center gap-2.5 min-w-0 text-left">
+                    {photo ? (
+                      <img src={photo} alt={docName} className="w-6 h-6 rounded-full object-cover border border-slate-200 shadow-xs shrink-0" />
+                    ) : (
+                      <div className={`w-6 h-6 rounded-full bg-gradient-to-br ${grad} text-white flex items-center justify-center text-[9px] font-black shadow-xs shrink-0`}>
+                        {initials}
+                      </div>
+                    )}
+                    <span className="text-xs font-black text-slate-800 truncate">{docName}</span>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60 shrink-0">
+                      {specialty}
+                    </span>
+                  </div>
+                );
+              }
+              return (
+                <div className="flex items-center gap-2 text-slate-400 font-medium text-xs truncate">
+                  <div className="w-5 h-5 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Stethoscope className="w-3 h-3" />
+                  </div>
+                  <SelectValue placeholder="Klinikadagi mas'ul shifokorni tanlang..." />
+                </div>
+              );
+            })()}
           </SelectTrigger>
-          <SelectContent className="rounded-2xl shadow-2xl border-slate-200 max-h-64 p-1">
+          <SelectContent className="rounded-2xl shadow-xl border-slate-200 max-h-56 p-1 bg-white">
             {doctors.length === 0 ? (
-              <div className="p-4 text-center text-xs text-slate-400 font-bold">
+              <div className="p-3 text-center text-xs text-slate-400 font-bold">
                 Hozircha klinikada shifokorlar mavjud emas
               </div>
             ) : (
               doctors.map(d => {
                 const docName = d.full_name || d.name || d.username;
-                const specialty = d.specialty || (d.role === 'admin' ? 'Bosh shifokor / Admin' : 'Shifokor-implantolog');
+                const specialty = d.specialty || (d.role === 'admin' ? 'Bosh shifokor / Admin' : 'Stomatolog');
+                const photo = d.avatar_url || d.photo || d.image || d.profile_image;
+                const initials = docName.split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'DR';
+                const gradients = ['from-emerald-500 to-teal-600', 'from-blue-500 to-indigo-600', 'from-violet-500 to-purple-600', 'from-cyan-500 to-blue-600', 'from-amber-500 to-orange-600'];
+                const grad = gradients[((docName.charCodeAt(0) || 0) + (docName.charCodeAt(1) || 0)) % gradients.length];
+                const isSelected = form.doctor === docName;
+
                 return (
-                  <SelectItem key={d.id || docName} value={docName} className="cursor-pointer py-2.5 rounded-xl">
-                    <div className="flex items-center gap-2.5 font-bold text-xs sm:text-sm text-slate-800">
-                      <div className="w-7 h-7 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center text-[12px] font-black shrink-0">
-                        👨‍⚕️
-                      </div>
-                      <div className="flex flex-col text-left">
-                        <span className="leading-tight">{docName}</span>
-                        <span className="text-[10px] font-medium text-slate-400">{specialty}</span>
+                  <SelectItem 
+                    key={d.id || docName} 
+                    value={docName} 
+                    className="cursor-pointer py-1.5 px-2.5 rounded-xl hover:bg-slate-50 focus:bg-emerald-50/60 transition-colors my-0.5"
+                  >
+                    <div className="flex items-center gap-2.5 w-full">
+                      {photo ? (
+                        <img 
+                          src={photo} 
+                          alt={docName} 
+                          className="w-7 h-7 rounded-full object-cover border border-slate-200 shadow-xs shrink-0" 
+                        />
+                      ) : (
+                        <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${grad} text-white flex items-center justify-center text-[10px] font-black shadow-xs shrink-0 border border-white/50`}>
+                          {initials}
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between flex-1 min-w-0">
+                        <div className="flex flex-col text-left min-w-0">
+                          <span className={`text-xs font-black truncate leading-tight ${isSelected ? 'text-emerald-700' : 'text-slate-800'}`}>
+                            {docName}
+                          </span>
+                          <span className="text-[9.5px] font-bold text-slate-400 truncate mt-0.5">
+                            {specialty}
+                          </span>
+                        </div>
+                        {d.role === 'admin' && (
+                          <span className="text-[8.5px] font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded uppercase tracking-wider ml-2 shrink-0">
+                            Admin
+                          </span>
+                        )}
                       </div>
                     </div>
                   </SelectItem>
@@ -1113,7 +1185,7 @@ export default function ImplantForm({ open, onClose, patients, services, implant
     <div className="space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
       <div className="bg-muted/30 p-4 sm:p-5 rounded-2xl border border-border/50 shadow-sm space-y-4">
         <Label className="text-[10px] sm:text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
-          <Calendar className="w-3.5 h-3.5 text-primary" /> {t('implants.form.reminders')}
+          <Calendar className="w-3.5 h-3.5 text-emerald-600" /> Nazorat / Eslatma Davri
         </Label>
         
         <div className="grid grid-cols-4 gap-2 sm:gap-3">
@@ -1122,43 +1194,45 @@ export default function ImplantForm({ open, onClose, patients, services, implant
               key={opt.value}
               type="button"
               onClick={() => handleReminderMonths(opt.value)}
-              className={`flex flex-col items-center justify-center p-2 sm:p-4 rounded-xl border-2 transition-all active:scale-95 ${
+              className={`flex flex-col items-center justify-center p-2.5 sm:p-4 rounded-xl border-2 transition-all active:scale-95 cursor-pointer ${
                 form.reminder_months === opt.value
-                  ? 'bg-primary/5 border-primary text-primary shadow-md shadow-primary/5'
-                  : 'bg-white border-slate-100 text-slate-500 hover:border-slate-300'
+                  ? 'bg-emerald-50/60 border-emerald-500 text-emerald-800 shadow-sm shadow-emerald-500/10'
+                  : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300'
               }`}
             >
-              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center mb-1.5 transition-colors ${
-                form.reminder_months === opt.value ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-1.5 transition-colors ${
+                form.reminder_months === opt.value ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'
               }`}>
-                <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Calendar className="w-4 h-4" />
               </div>
-              <span className="text-[10px] sm:text-xs font-black">{t(`common.months.${opt.value}`) || opt.label}</span>
-              <span className="text-[8px] sm:text-[9px] font-bold opacity-60 mt-0.5">{t('recall.type')}</span>
+              <span className="text-[11px] sm:text-xs font-black">{opt.label}</span>
+              <span className="text-[8.5px] sm:text-[9.5px] font-bold text-slate-400 mt-0.5">{opt.sub}</span>
             </button>
           ))}
           <button
-              type="button"
-              onClick={() => handleReminderMonths('custom')}
-              className={`flex flex-col items-center justify-center p-2 sm:p-4 rounded-xl border-2 transition-all active:scale-95 ${
-                form.reminder_months === 'custom'
-                  ? 'bg-primary/5 border-primary text-primary shadow-md shadow-primary/5'
-                  : 'bg-white border-slate-100 text-slate-500 hover:border-slate-300'
-              }`}
-            >
-              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center mb-1.5 transition-colors ${
-                form.reminder_months === 'custom' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'
-              }`}>
-                <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-              </div>
-              <span className="text-[10px] sm:text-xs font-black leading-tight">{t('common.other')}</span>
-              <span className="text-[8px] sm:text-[9px] font-bold opacity-60 mt-0.5">{t('implants.form.selectDate')}</span>
+            type="button"
+            onClick={() => handleReminderMonths('custom')}
+            className={`flex flex-col items-center justify-center p-2.5 sm:p-4 rounded-xl border-2 transition-all active:scale-95 cursor-pointer ${
+              form.reminder_months === 'custom'
+                ? 'bg-emerald-50/60 border-emerald-500 text-emerald-800 shadow-sm shadow-emerald-500/10'
+                : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300'
+            }`}
+          >
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-1.5 transition-colors ${
+              form.reminder_months === 'custom' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'
+            }`}>
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <span className="text-[11px] sm:text-xs font-black leading-tight">Boshqa</span>
+            <span className="text-[8.5px] sm:text-[9.5px] font-bold text-slate-400 mt-0.5">Sana tanlash</span>
           </button>
         </div>
 
         {form.reminder_months === 'custom' && (
-          <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100 space-y-2 mt-3 animate-in fade-in slide-in-from-top-2">
-            <Label className="text-[10px] sm:text-[11px] font-black text-emerald-700 uppercase">{t('implants.form.customReminderDate')}</Label>
+          <div className="bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-100 space-y-2 mt-3 animate-in fade-in slide-in-from-top-2">
+            <Label className="text-[10px] sm:text-[11px] font-black text-emerald-700 uppercase">
+              Nazorat/Eslatma sanasini tanlang
+            </Label>
             <Input 
               type="date" 
               className="bg-white border-emerald-200 text-emerald-800 shadow-sm focus-visible:ring-emerald-500 font-bold"
@@ -1169,18 +1243,20 @@ export default function ImplantForm({ open, onClose, patients, services, implant
         )}
 
         {form.reminder_date && form.reminder_months !== 'custom' && (
-          <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600">
+          <div className="bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200/80 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-lg flex items-center justify-center shrink-0">
                 <Check className="w-4 h-4 stroke-[3]" />
               </div>
               <div>
-                <div className="text-[9px] font-bold text-emerald-600 uppercase">{t('recall.scheduledDate')}</div>
-                <div className="text-xs font-black text-slate-700">{form.reminder_date}</div>
+                <div className="text-[9.5px] font-black text-emerald-700 uppercase tracking-wider">
+                  Rejalashtirilgan nazorat sanasi
+                </div>
+                <div className="text-xs font-black text-slate-900">{form.reminder_date}</div>
               </div>
             </div>
-            <div className="text-[10px] font-bold text-emerald-600">
-              {form.reminder_months} {t('recall.months')}
+            <div className="text-[11px] font-black text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-lg">
+              {form.reminder_months} oy
             </div>
           </div>
         )}

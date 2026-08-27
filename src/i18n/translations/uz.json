@@ -24,6 +24,9 @@
     "telegramNone": "Telegram yo'q",
     "sendReminderTooltip": "SMS / Telegram eslatma yuborish",
     "patientProfileTooltip": "Bemor profili",
+    "pay": "To'lov",
+    "payDebt": "To'lov qilish",
+    "payTooltip": "To'lov qabul qilish / To'lash",
     "table": {
       "patient": "Bemor",
       "debtAmount": "Qarz miqdori",
@@ -385,6 +388,8 @@
       "cardNumberPlaceholder": "043/u tibbiy karta",
       "registrationDate": "Ro'yxat sanasi",
       "saveError": "Bemor saqlashda xatolik",
+      "errorDoctorRequired": "Shifokorni tanlash majburiy! Shifokor tanlanmasa reja tuzib bo'lmaydi.",
+      "errorLastNameRequired": "Familiyani kiriting",
       "doctorSignature": "Shifokor imzosi",
       "stage": "Bosqich",
       "date": "Sana",
@@ -1029,6 +1034,9 @@
     "searchHint": "Bemor nomi yoki kategoriya bo'yicha qidirish...",
     "details": "To'lov tafsilotlari",
     "patientAndDoctorInfo": "Bemor va shifokor ma'lumotlari",
+    "planOriginalPrice": "Reja (asl narxi)",
+    "appliedDiscount": "Qo'llanilgan chegirma",
+    "totalAfterDiscount": "Chegirmali jami summa",
     "remainingDebt": "Qolgan qarz",
     "history": "To'lovlar tarixi",
     "receiveAmount": "Mablag' qabul qilish",
@@ -2178,6 +2186,58 @@
       "promptNewCategory": "Yangi kategoriya:",
       "errorSelectPatient": "Iltimos bemorni tanlang",
       "errorUploadAfterImage": "Kamida 'Keyin' rasmini yuklang"
+    }
+  },
+  "recall": {
+    "title": "Recall Tizimi",
+    "subtitle": "Avtomatik eslatmalar bilan bemorlarni qayta chaqirish",
+    "newRecall": "Yangi recall",
+    "addNew": "Yangi recall",
+    "settings": "Sozlamalar",
+    "month": "oy",
+    "months": "oy",
+    "year": "yil",
+    "priority": "Muhimlik",
+    "empty": "Recall yo'q",
+    "emptyDesc": "Yangi recall qo'shish uchun tugmani bosing",
+    "searchPlaceholder": "Qidirish (ism, telefon)...",
+    "stats": {
+      "total": "Jami recalllar",
+      "pending": "Kutilayotgan",
+      "sent": "Yuborilgan"
+    },
+    "filters": {
+      "label": "Filtrlash",
+      "all": "Barchasi",
+      "urgent": "Dolzarb",
+      "today": "Bugun",
+      "week": "Bu hafta"
+    },
+    "modal": {
+      "newTitle": "Yangi Recall",
+      "patient": "Bemor *",
+      "startDate": "Boshlang'ich sana *",
+      "date": "Eslatma sanasi *",
+      "time": "Vaqt",
+      "rule": "Avtomatik davr",
+      "reason": "Davolash turi",
+      "notes": "Izohlar",
+      "channels": "Eslatma kanallari",
+      "autoCalculated": "Sana avtomatik hisoblandi",
+      "creating": "Saqlanmoqda...",
+      "placeholderTreatment": "Masalan: Plomba qo'yish"
+    },
+    "table": {
+      "patient": "Bemor",
+      "recallDate": "Sana",
+      "reason": "Turi / Izoh",
+      "status": "Status",
+      "actions": "Amallar"
+    },
+    "bulkActions": {
+      "selected": "ta recall tanlandi",
+      "send": "Yuborish",
+      "cancel": "Bekor"
     }
   }
 }

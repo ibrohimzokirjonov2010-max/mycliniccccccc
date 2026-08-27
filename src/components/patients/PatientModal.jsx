@@ -34,6 +34,7 @@ const PATIENT_SOURCES = [
  */
 export default function PatientModal({ open, onClose, patient, onSaved }) {
   const { t } = useTranslation();
+  const [doctors, setDoctors] = useState([]);
   const [form, setForm] = useState({
     full_name: '',
     phone: '',
@@ -42,10 +43,25 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
     address: '',
     status: 'new',
     source: '',
-    important_info: ''
+    important_info: '',
+    main_treatment_provider: ''
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  /**
+   * Fetch doctors list
+   */
+  useEffect(() => {
+    if (open) {
+      base44.entities.User.list('name', 50)
+        .then(users => {
+          const docList = (users || []).filter(u => u.role?.toLowerCase() === 'doctor' || u.role?.toLowerCase() === 'admin');
+          setDoctors(docList);
+        })
+        .catch(err => console.error('Failed to load doctors in PatientModal:', err));
+    }
+  }, [open]);
 
   /**
    * Reset form when dialog opens or patient changes
@@ -61,7 +77,8 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
           address: patient.address || '',
           status: patient.status?.toLowerCase() || 'new',
           source: patient.source || '',
-          important_info: patient.important_info || ''
+          important_info: patient.important_info || '',
+          main_treatment_provider: patient.main_treatment_provider || ''
         });
       } else {
         setForm({
@@ -72,7 +89,8 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
           address: '',
           status: 'new',
           source: '',
-          important_info: ''
+          important_info: '',
+          main_treatment_provider: ''
         });
       }
       setError(null);
@@ -109,6 +127,10 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
       setError(t('patients.errorPhoneRequired'));
       return false;
     }
+    if (!form.main_treatment_provider) {
+      setError(t('patients.wizard.errorDoctorRequired') || "Shifokorni tanlash majburiy!");
+      return false;
+    }
     if (form.address && !validateAddress(form.address)) {
       setError(t('patients.addressError'));
       return false;
@@ -133,7 +155,8 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
         phone: form.phone.replace(/\D/g, ''), // Save only digits
         gender: form.gender.toLowerCase(),    // Match DB constraints (male/female)
         status: form.status,                   // Keep display case, base44Client will handle normalization
-        important_info: form.important_info
+        important_info: form.important_info,
+        main_treatment_provider: form.main_treatment_provider
       };
 
       let savedPatient;
@@ -304,6 +327,28 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
               disabled={saving}
               className="text-rose-600 placeholder-rose-300 font-semibold"
             />
+          </div>
+
+          {/* Doctor (Mandatory) */}
+          <div>
+            <Label className="flex items-center gap-1">
+              <span>{t('common.doctor')}</span>
+              <span className="text-red-500 font-bold">*</span>
+            </Label>
+            <Select
+              value={form.main_treatment_provider}
+              onValueChange={v => handleChange('main_treatment_provider', v)}
+              disabled={saving}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t('common.select') || "Shifokorni tanlang"} />
+              </SelectTrigger>
+              <SelectContent>
+                {doctors.map(d => (
+                  <SelectItem key={d.id} value={d.id || d.name}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Source */}

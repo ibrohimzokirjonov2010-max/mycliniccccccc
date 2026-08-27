@@ -20,12 +20,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function Patients() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const { user, isDoctor } = useAuth();
   const isMobile = useIsMobile(1024);
   
   const [search, setSearch] = useState('');
@@ -53,9 +55,20 @@ export default function Patients() {
 
   // ─── Queries (TanStack Query) ──────────────────────────────────────────
   const { data: patientsData, isLoading, isFetching } = useQuery({
-    queryKey: ['patients', debouncedSearch, page],
+    queryKey: ['patients', debouncedSearch, page, isDoctor, user?.id],
     queryFn: async () => {
       const offset = page * PAGE_SIZE;
+      if (isDoctor && user?.id) {
+        let list = await base44.entities.Patient.filter({ main_treatment_provider: user.id }, '-created_date', PAGE_SIZE, offset).catch(() => []);
+        if (list.length === 0 && user.name) {
+          list = await base44.entities.Patient.filter({ main_treatment_provider: user.name }, '-created_date', PAGE_SIZE, offset).catch(() => []);
+        }
+        if (debouncedSearch) {
+          const q = debouncedSearch.toLowerCase();
+          return (list || []).filter(p => p.full_name?.toLowerCase().includes(q) || p.phone?.includes(q));
+        }
+        return list || [];
+      }
       if (debouncedSearch) {
         return await base44.entities.Patient.search(debouncedSearch, PAGE_SIZE, offset);
       }

@@ -193,6 +193,41 @@ export default function Payments() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // ── Open and prefill modal from location.state (e.g. from Debts or Appointments) ──
+  useEffect(() => {
+    if (location.state?.openAddModal) {
+      const pId = location.state.prefillPatient || '';
+      const pName = location.state.prefillPatientName || '';
+      const pAmount = location.state.prefillAmount !== undefined && location.state.prefillAmount !== null && location.state.prefillAmount !== '' ? location.state.prefillAmount : '';
+      const pDoc = location.state.prefillDoctor || '';
+      const pNotes = location.state.prefillNotes || '';
+      const pCat = location.state.prefillCategory || '';
+
+      const now = new Date();
+      const tzOffset = now.getTimezoneOffset() * 60000;
+      const localISOTime = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
+      const localDate = new Date(now.getTime() - tzOffset).toISOString().split('T')[0];
+
+      setForm({
+        patient_id: pId,
+        patient_name: pName,
+        service_name: pCat,
+        amount: pAmount,
+        notes: pNotes,
+        type: 'Income',
+        method: 'Cash',
+        doctor_id: isDoctor ? user?.id : pDoc,
+        created_at: localISOTime,
+        date: localDate
+      });
+
+      setModalOpen(true);
+
+      // Clean up history state so page refresh doesn't reopen modal endlessly
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, isDoctor, user]);
+
   // Responsive check
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -206,9 +241,17 @@ export default function Payments() {
     data: paymentsPageData,
     isFetching: paymentsFetching,
   } = useQuery({
-    queryKey: QUERY_KEYS.payments(debouncedSearch, page),
+    queryKey: ['payments', debouncedSearch, page, isDoctor, user?.id],
     queryFn: async () => {
       const offset = page * PAGE_SIZE;
+      if (isDoctor && user?.id) {
+        const pays = await base44.entities.Payment.filter({ doctor_id: user.id }, '-date', PAGE_SIZE, offset).catch(() => []);
+        if (debouncedSearch) {
+          const q = debouncedSearch.toLowerCase();
+          return (pays || []).filter(p => p.patient_name?.toLowerCase().includes(q) || p.service_name?.toLowerCase().includes(q));
+        }
+        return pays || [];
+      }
       const pays = debouncedSearch
         ? await base44.entities.Payment.search(debouncedSearch, PAGE_SIZE, offset)
         : await base44.entities.Payment.list('-date', PAGE_SIZE, offset);
@@ -301,6 +344,13 @@ export default function Payments() {
     enabled: !!user,
     staleTime: 10 * 60 * 1000,
   });
+  const { data: allTreatmentPlans = [] } = useQuery({
+    queryKey: ['allTreatmentPlansForPayments'],
+    queryFn: () => base44.entities.TreatmentPlan.list('-created_date', 300),
+    enabled: !!user,
+    staleTime: 3 * 60 * 1000,
+  });
+
   // Seed patients/doctors from query cache on first load
   useEffect(() => {
     if (initialPatients.length > 0 && patients.length === 0) setPatients(initialPatients);
@@ -320,11 +370,69 @@ export default function Payments() {
     setLoadingHistory(true);
     try {
       const history = await base44.entities.Payment.filter({ patient_id: patientId }, '-date', 1000);
-      setPatientPaymentsHistory(history || []);
+      // Faqat haqiqiy to'lov operatsiyalarini ko'rsatamiz (ichki reja qarzlari dublikat bo'lib chiqmasligi uchun)
+      const actualHistory = (history || []).filter(pay => {
+        const notesLower = (pay.notes || '').toLowerCase();
+        const pType = (pay.type || '').toLowerCase();
+        const isLinkedPlanInternal = (pType === 'debt' || pType === 'discount') && 
+          (pay.plan_id || notesLower.includes('linked to plan') || notesLower.includes('reja:') || notesLower.includes('avtomatik chegirma') || notesLower.includes('reja yangilandi'));
+        if (isLinkedPlanInternal) return false;
+        return true;
+      });
+      setPatientPaymentsHistory(actualHistory);
     } catch (err) {
       console.error('Failed to load patient payments history:', err);
     } finally {
       setLoadingHistory(false);
+    }
+  };
+
+  const handlePatientSelect = async (patientId) => {
+    if (!patientId) {
+      setForm(prev => ({ ...prev, patient_id: '', patient_name: '', doctor_id: isDoctor ? user?.id : '' }));
+      setPatientServices([]);
+      setSelectedServiceId('');
+      setPatientPlans([]);
+      setRealPatientDebt(null);
+      return;
+    }
+    const patient = patients.find(p => p.id === patientId);
+    const assignedDocId = isDoctor ? user?.id : (patient?.main_treatment_provider || form.doctor_id || '');
+    setForm(prev => ({
+      ...prev,
+      patient_id: patientId,
+      patient_name: patient?.full_name || '',
+      doctor_id: assignedDocId,
+    }));
+
+    // Bemorning oxirgi to'lovidagi haqiqiy qoldiq qarzini hisoblash
+    setLoadingDebt(true);
+    try {
+      const [pays, plans] = await Promise.all([
+        base44.entities.Payment.filter({ patient_id: patientId }, '-date', 1000),
+        base44.entities.TreatmentPlan.filter({ patient_id: patientId }, '-created_date', 50).catch(() => [])
+      ]);
+      setPatientPlans(plans || []);
+      const totalPlansPrice = (plans || []).reduce((sum, pl) => sum + (Number(pl.total_price) || 0), 0);
+
+      const totalIncomes = (pays || []).filter(p => p.type?.toLowerCase() === 'income').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+      const totalDebts = (pays || []).filter(p => p.type?.toLowerCase() === 'debt').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+      const totalRefunds = (pays || []).filter(p => p.type?.toLowerCase() === 'refund').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+      const totalDiscounts = (pays || []).filter(p => p.type?.toLowerCase() === 'discount').reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
+
+      let calcDebt = 0;
+      if (totalPlansPrice > 0) {
+        calcDebt = Math.max(0, (totalPlansPrice + totalRefunds) - (totalIncomes + totalDiscounts));
+      } else if (totalDebts > 0) {
+        calcDebt = Math.max(0, (totalDebts + totalRefunds) - (totalIncomes + totalDiscounts));
+      } else {
+        calcDebt = Math.max(0, (patient?.total_debt || 0));
+      }
+      setRealPatientDebt(calcDebt);
+    } catch {
+      setRealPatientDebt(patient?.total_debt ?? 0);
+    } finally {
+      setLoadingDebt(false);
     }
   };
 
@@ -358,7 +466,11 @@ export default function Payments() {
       .filter(p => {
         if (!p.id || seen.has(p.id)) return false;
         seen.add(p.id);
-        return true;
+        const notesLower = (p.notes || '').toLowerCase();
+        const pType = (p.type || '').toLowerCase();
+        const isLinkedPlanInternal = (pType === 'debt' || pType === 'discount') && 
+          (p.plan_id || notesLower.includes('linked to plan') || notesLower.includes('reja:') || notesLower.includes('avtomatik chegirma') || notesLower.includes('reja yangilandi'));
+        return !isLinkedPlanInternal;
       })
       .sort((a, b) => {
         const ta = a.created_date || a.created_at || a.date || '';
@@ -368,16 +480,20 @@ export default function Payments() {
   })();
 
   const displayPayments = filteredPayments.filter(p => {
+    if (isDoctor && String(p.doctor_id) !== String(user?.id)) return false;
     const t = String(p.type || 'Income').toLowerCase();
-    // Show all payment types — Income, Expense, Refund, Debt, Discount
-    // Hiding Debt caused the table to appear empty when most payments were of type Debt
-    return t === 'income' || t === 'expense' || t === 'refund' || t === 'debt' || t === 'discount';
+    const notesLower = (p.notes || '').toLowerCase();
+    const isLinkedPlanInternal = (t === 'debt' || t === 'discount') && 
+      (p.plan_id || notesLower.includes('linked to plan') || notesLower.includes('reja:') || notesLower.includes('avtomatik chegirma') || notesLower.includes('reja yangilandi'));
+    if (isLinkedPlanInternal) return false;
+    return t === 'income' || t === 'expense' || t === 'refund';
   });
 
-  // Calculate patient balances from already-loaded payments (no extra API calls)
+  // Calculate patient balances from already-loaded payments and plans (accounting for discounts)
   useEffect(() => {
     if (!payments.length) {
       setPatientBalances({});
+      setPatientCurrentTotals({});
       return;
     }
 
@@ -394,12 +510,15 @@ export default function Payments() {
 
     for (const [patientId, patPays] of Object.entries(byPatient)) {
       const sorted = [...patPays].sort((a, b) => {
-        const ta = a.created_date || a.created_at || a.date || '';
-        const tb = b.created_date || b.created_at || b.date || '';
+        const ta = a.created_date || a.created_at || (a.date ? a.date + 'T00:00:00' : '') || '';
+        const tb = b.created_date || b.created_at || (b.date ? b.date + 'T00:00:00' : '') || '';
         return ta.localeCompare(tb);
       });
 
-      let runningDebt = 0;
+      const plansForPatient = (allTreatmentPlans || []).filter(pl => pl.patient_id === patientId);
+      const totalPlansPrice = plansForPatient.reduce((sum, pl) => sum + (Number(pl.total_price) || 0), 0);
+
+      let runningDebt = totalPlansPrice > 0 ? totalPlansPrice : 0;
       let runningPaid = 0;
       let runningDiscount = 0;
 
@@ -407,15 +526,22 @@ export default function Payments() {
         const type = String(payment.type || 'Income').toLowerCase();
         const rawAmount = Number(payment.amount) || 0;
         const amount = Math.abs(rawAmount);
+        const notesLower = (payment.notes || '').toLowerCase();
+        const isLinkedPlanInternal = (type === 'debt' || type === 'discount') && 
+          (payment.plan_id || notesLower.includes('linked to plan') || notesLower.includes('reja:') || notesLower.includes('avtomatik chegirma') || notesLower.includes('reja yangilandi'));
 
         if (type === 'income') {
           runningPaid += amount;
-          runningDebt -= amount;
+          runningDebt = Math.max(0, runningDebt - amount);
         } else if (type === 'debt') {
-          runningDebt += amount;
+          if (totalPlansPrice === 0 || !isLinkedPlanInternal) {
+            runningDebt += amount;
+          }
         } else if (type === 'discount') {
-          runningDiscount += amount;
-          runningDebt -= amount;
+          if (totalPlansPrice === 0 || !isLinkedPlanInternal) {
+            runningDiscount += amount;
+            runningDebt = Math.max(0, runningDebt - amount);
+          }
         } else if (type === 'refund') {
           runningDebt += amount;
           runningPaid = Math.max(0, runningPaid - amount);
@@ -436,7 +562,7 @@ export default function Payments() {
 
     setPatientBalances(balancesMap);
     setPatientCurrentTotals(totalsMap);
-  }, [payments]);
+  }, [payments, allTreatmentPlans]);
 
 
   const resetModal = () => {
@@ -511,6 +637,11 @@ export default function Payments() {
     const validCategories = ['Treatment', 'Consultation', 'Implant', 'Crown', 'Bridge', 'Whitening', 'Orthodontics', 'Surgery', 'X-Ray', 'Lab Fee', 'Material', 'Equipment', 'Salary', 'Rent', 'Utilities', 'Marketing', 'Other'];
     const finalCategory = validCategories.includes(form.category) ? form.category : 'Treatment';
 
+    const selectedPatObj = patients.find(p => p.id === savedPatientId);
+    const finalDoctorId = isDoctor 
+      ? user.id 
+      : (form.doctor_id || selectedPatObj?.main_treatment_provider || '');
+
     const nowISO = new Date().toISOString();
     const payload = {
       patient_id: savedPatientId,
@@ -523,7 +654,7 @@ export default function Payments() {
       created_at: nowISO,
       service_name: form.service_name || '',
       notes: form.notes || '',
-      doctor_id: isDoctor ? user.id : (form.doctor_id || ''),
+      doctor_id: finalDoctorId,
     };
 
     try {
@@ -709,7 +840,7 @@ export default function Payments() {
     setNewPatientOpen(false);
   };
 
-  // To'lov tafsiloti dialogini ochish — real qarzni DB dan hisoblaydi
+  // To'lov tafsiloti dialogini ochish — real qarz va reja moliyasini DB dan hisoblaydi
   const openPaymentDetail = async (p) => {
     setSelectedPayment(p);
     setSelectedPaymentDebt(null); // yuklanmoqda
@@ -723,39 +854,94 @@ export default function Payments() {
       const paysList = allPays || [];
       const plansList = allPlans || [];
 
-      // Vaqt bo'yicha tartiblash
+      // Helper function for original price of a single plan (without discount)
+      const getPlanOriginalPrice = (plan) => {
+        if (!plan) return 0;
+        const sSum = (plan.services || []).reduce((acc, item) => {
+          if (item.price) return acc + (Number(item.price) || 0);
+          if (item.items && Array.isArray(item.items)) {
+            return acc + item.items.reduce((iAcc, i) => iAcc + (Number(i.price) || 0), 0);
+          }
+          return acc;
+        }, 0);
+        const dAmt = Number(plan.discount_amount) || 0;
+        const pTot = Number(plan.total_price) || 0;
+        const pct = Number(plan.discount_percent) || 0;
+
+        if (sSum > 0 && sSum >= pTot) return sSum;
+        if (dAmt > 0) return pTot + dAmt;
+        if (pct > 0 && pTot > 0 && pct < 100) return Math.round(pTot / (1 - pct / 100));
+        return pTot || sSum;
+      };
+
+      // Matched linked plan or all plans
+      const linkedPlan = plansList.find(pl => (p.plan_id && pl.id === p.plan_id) || (p.notes && p.notes.includes(pl.id)));
+      const targetPlans = linkedPlan ? [linkedPlan] : plansList;
+
+      // 1. Reja chegirmasiz asl narxi, chegirma va chegirmali jami summa
+      let originalPrice = 0;
+      let finalPlanTotal = 0;
+      let discountAmount = 0;
+      let discountPercent = 0;
+
+      if (targetPlans.length > 0) {
+        originalPrice = targetPlans.reduce((sum, pl) => sum + getPlanOriginalPrice(pl), 0);
+        finalPlanTotal = targetPlans.reduce((sum, pl) => sum + (Number(pl.total_price) || getPlanOriginalPrice(pl)), 0);
+        discountAmount = Math.max(0, originalPrice - finalPlanTotal);
+        if (discountAmount === 0) {
+          discountAmount = targetPlans.reduce((sum, pl) => sum + (Number(pl.discount_amount) || 0), 0);
+          if (discountAmount > 0) originalPrice = finalPlanTotal + discountAmount;
+        }
+        discountPercent = originalPrice > 0 ? Math.round((discountAmount / originalPrice) * 100) : (targetPlans[0]?.discount_percent || 0);
+      } else {
+        const totalDebts = paysList.filter(pay => pay.type?.toLowerCase() === 'debt').reduce((s, pay) => s + (Number(pay.amount) || 0), 0);
+        const totalDiscountPayments = paysList.filter(pay => pay.type?.toLowerCase() === 'discount').reduce((s, pay) => s + Math.abs(Number(pay.amount) || 0), 0);
+        originalPrice = totalDebts > 0 ? totalDebts + totalDiscountPayments : (Number(p.amount) || 0);
+        discountAmount = totalDiscountPayments;
+        finalPlanTotal = Math.max(0, originalPrice - discountAmount);
+        discountPercent = originalPrice > 0 ? Math.round((discountAmount / originalPrice) * 100) : 0;
+      }
+
+      // 2. Running balance — shu to'lov paytidagi qoldiq qarz
       const sorted = [...paysList].sort((a, b) => {
         const ta = a.created_date || a.created_at || (a.date ? a.date + 'T00:00:00' : '');
         const tb = b.created_date || b.created_at || (b.date ? b.date + 'T00:00:00' : '');
         return ta.localeCompare(tb);
       });
 
-      // 1. Running balance — shu to'lov paytidagi qoldiq qarz
-      let runDebt = 0;
+      const totalPlansPrice = plansList.reduce((sum, pl) => sum + (Number(pl.total_price) || 0), 0);
+      const totalDebts = paysList.filter(pay => pay.type?.toLowerCase() === 'debt').reduce((s, pay) => s + (Number(pay.amount) || 0), 0);
+      const initialObligation = totalPlansPrice > 0 ? totalPlansPrice : totalDebts;
+
+      let cumIncomes = 0;
+      let cumDiscounts = 0;
+      let cumRefunds = 0;
+      let cumDebts = 0;
+
       for (const pay of sorted) {
         const type = (pay.type || 'income').toLowerCase();
         const amt = Math.abs(Number(pay.amount) || 0);
-        if (type === 'income') runDebt -= amt;
-        else if (type === 'debt') runDebt += amt;
-        else if (type === 'discount') runDebt -= amt;
-        else if (type === 'refund') runDebt += amt;
-        if (pay.id === p.id) break; // shu to'lovdan keyin to'xtaymiz
+        if (type === 'income') cumIncomes += amt;
+        else if (type === 'refund') cumRefunds += amt;
+        else if (type === 'discount' && totalPlansPrice === 0) cumDiscounts += amt;
+        else if (type === 'debt' && totalPlansPrice === 0) cumDebts += amt;
+        if (pay.id === p.id) break; // shu to'lovgacha
       }
-      setSelectedPaymentDebt(Math.max(0, runDebt));
 
-      // 2. Bemorning barcha to'lov va rejalaridan real-time hisob-kitob (PatientProfile bilan 100% bir xil formula)
+      const debtAtThisTime = Math.max(0, (initialObligation + cumRefunds + cumDebts) - (cumIncomes + cumDiscounts));
+      setSelectedPaymentDebt(debtAtThisTime);
+
+      // 3. Bemorning barcha to'lov va rejalaridan umumiy real-time hisob-kitob
       const totalIncomes = paysList.filter(pay => pay.type?.toLowerCase() === 'income').reduce((s, pay) => s + (Number(pay.amount) || 0), 0);
       const totalDiscounts = paysList.filter(pay => pay.type?.toLowerCase() === 'discount').reduce((s, pay) => s + Math.abs(Number(pay.amount) || 0), 0);
       const totalRefunds = paysList.filter(pay => pay.type?.toLowerCase() === 'refund').reduce((s, pay) => s + (Number(pay.amount) || 0), 0);
-      const totalDebts = paysList.filter(pay => pay.type?.toLowerCase() === 'debt').reduce((s, pay) => s + (Number(pay.amount) || 0), 0);
-      const totalPlansPrice = plansList.reduce((sum, pl) => sum + (Number(pl.total_price) || 0), 0);
 
       let currentDebt = 0;
-      if (totalDebts > 0) {
-        const net = totalIncomes + totalDiscounts - totalDebts - totalRefunds;
+      if (totalPlansPrice > 0) {
+        const net = totalIncomes - totalPlansPrice - totalRefunds;
         currentDebt = net < 0 ? Math.abs(net) : 0;
-      } else if (totalPlansPrice > 0) {
-        const net = totalIncomes + totalDiscounts - totalPlansPrice;
+      } else if (totalDebts > 0) {
+        const net = totalIncomes + totalDiscounts - totalDebts - totalRefunds;
         currentDebt = net < 0 ? Math.abs(net) : 0;
       } else {
         const net = totalIncomes - totalRefunds;
@@ -765,7 +951,10 @@ export default function Payments() {
       setSelectedPaymentPatientData({
         totalPaid: totalIncomes,
         currentDebt: currentDebt,
-        totalDiscount: totalDiscounts,
+        totalDiscount: discountAmount > 0 ? discountAmount : totalDiscounts,
+        discountPercent: discountPercent,
+        originalPrice: originalPrice,
+        finalPlanTotal: finalPlanTotal,
         totalDebts: totalDebts > 0 ? totalDebts : totalPlansPrice,
       });
 
@@ -899,6 +1088,15 @@ export default function Payments() {
           }
 
           setRealPatientDebt(realDebt);
+
+          // If amount is not explicitly set, auto-fill with real debt
+          setForm(prev => {
+            if (prev.amount === '' || prev.amount === 0 || prev.amount === undefined || prev.amount === null) {
+              return { ...prev, amount: realDebt > 0 ? realDebt : prev.amount };
+            }
+            return prev;
+          });
+
           const pat = patients.find(p => p.id === form.patient_id);
           if (pat && Number(pat.total_debt) !== realDebt) {
             base44.entities.Patient.update(form.patient_id, { total_debt: realDebt, total_paid: totalIncomes }).catch(() => {});
@@ -1363,7 +1561,16 @@ export default function Payments() {
                      <PatientSelect 
                        patients={patients}
                        value={form.patient_id} 
-                       onChange={(id, pat) => setForm({ ...form, patient_id: id, patient_name: pat?.full_name || '' })} 
+                       initialName={form.patient_name}
+                       onChange={(id, pat) => {
+                          const assignedDocId = isDoctor ? user?.id : (pat?.main_treatment_provider || form.doctor_id || '');
+                          setForm(prev => ({ 
+                            ...prev, 
+                            patient_id: id, 
+                            patient_name: pat?.full_name || '',
+                            doctor_id: assignedDocId
+                          }));
+                       }} 
                        inputClassName="h-11 rounded-xl border-none bg-slate-50 px-5 font-black text-slate-900 text-sm"
                      />
                    </div>
@@ -1387,21 +1594,38 @@ export default function Payments() {
                             const total = Number(plan.total_price) || 0;
                             const remaining = Math.max(0, total - paid);
                             return (
-                              <div key={plan.id} className="flex items-center justify-between bg-slate-50/50 hover:bg-slate-50 rounded-lg px-2.5 py-1.5 border border-slate-100 transition-all duration-200">
+                              <div 
+                                key={plan.id} 
+                                onClick={() => {
+                                  setForm(prev => ({
+                                    ...prev,
+                                    amount: remaining > 0 ? remaining : prev.amount,
+                                    service_name: `Reja: ${plan.name}`
+                                  }));
+                                  toast.info(`${plan.name} tanlandi (${remaining.toLocaleString()} UZS)`);
+                                }}
+                                className="flex items-center justify-between bg-slate-50/70 hover:bg-emerald-50/60 hover:border-emerald-200 cursor-pointer rounded-lg px-2.5 py-1.5 border border-slate-100 transition-all duration-200 group"
+                                title="Ushbu reja summasini to'lovga kiritish"
+                              >
                                 <div className="flex-1 min-w-0 mr-2">
-                                  <p className="text-[11px] font-black text-slate-800 truncate leading-snug">{plan.name || (t ? t('patientProfile.treatmentPlanSingular') : 'Davolash rejasi')}</p>
+                                  <p className="text-[11px] font-black text-slate-800 group-hover:text-emerald-700 truncate leading-snug">{plan.name || (t ? t('patientProfile.treatmentPlanSingular') : 'Davolash rejasi')}</p>
                                   <p className="text-[10px] text-slate-500 font-medium leading-none mt-0.5">
                                     {t('common.debt') || 'Qarz'}: <span className={remaining > 0 ? 'text-rose-600 font-black' : 'text-emerald-600 font-black'}>{remaining.toLocaleString()} {t('common.currency')}</span>
                                   </p>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => { setSelectedPlanForInvoice(plan); setShowPlanInvoiceModal(true); }}
-                                  className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 border border-blue-100 text-blue-600 text-[9px] font-black uppercase tracking-wide hover:bg-blue-100 active:scale-95 transition-all"
-                                >
-                                  <FileText className="w-2.5 h-2.5" />
-                                  {t('common.invoice') || 'Faktura'}
-                                </button>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className="text-[8px] font-black uppercase text-emerald-600 bg-emerald-100/60 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                    Tanlash
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setSelectedPlanForInvoice(plan); setShowPlanInvoiceModal(true); }}
+                                    className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 border border-blue-100 text-blue-600 text-[9px] font-black uppercase tracking-wide hover:bg-blue-100 active:scale-95 transition-all"
+                                  >
+                                    <FileText className="w-2.5 h-2.5" />
+                                    {t('common.invoice') || 'Faktura'}
+                                  </button>
+                                </div>
                               </div>
                             );
                           })}
@@ -1509,24 +1733,37 @@ export default function Payments() {
                         const noDebtWarning = !loadingDebt && debt === 0 && isIncomeType;
                         return (
                           <div className="mt-1 space-y-1.5">
-                            <div className="flex items-center justify-between px-4">
+                            <div className="flex items-center justify-between px-2">
                               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Bemor qarzi:</span>
                               {loadingDebt ? (
                                 <span className="text-[9px] font-black text-slate-300 uppercase">Hisoblanmoqda...</span>
                               ) : (
-                                <span className={`text-xs font-black ${debt > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                  {debt > 0 ? `${debt.toLocaleString()} UZS` : '✓ Qarz yo\'q'}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-xs font-black ${debt > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                    {debt > 0 ? `${debt.toLocaleString()} UZS` : '✓ Qarz yo\'q'}
+                                  </span>
+                                  {debt > 0 && Number(form.amount) !== debt && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setForm(prev => ({ ...prev, amount: debt }));
+                                        toast.success(`Qarz summasi (${debt.toLocaleString()} UZS) kiritildi`);
+                                      }}
+                                      className="text-[9px] font-black text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded-md border border-emerald-300 transition-colors uppercase tracking-wider cursor-pointer active:scale-95"
+                                    >
+                                      Qarzni qo'yish
+                                    </button>
+                                  )}
+                                </div>
                               )}
                             </div>
                             {/* Ogohlantirish — qarz yo'q bemorga Income to'lov */}
                             {noDebtWarning && (
-                              <div className="mx-4 flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+                              <div className="mx-2 flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl">
                                 <span className="text-amber-500 text-sm mt-0.5">⚠️</span>
                                 <div>
                                   <p className="text-[10px] font-black text-amber-700 uppercase tracking-wider">Diqqat!</p>
                                   <p className="text-[10px] font-bold text-amber-600">Bu bemorning qarzi yo'q. Kirim to'lov qilish mumkin emas.</p>
-                                  <p className="text-[9px] text-amber-500 mt-0.5">Chiqim, chegirma yoki boshqa tur tanlang.</p>
                                 </div>
                               </div>
                             )}
@@ -1721,8 +1958,17 @@ export default function Payments() {
                 <p className="text-[9px] font-black text-white/50 uppercase tracking-[0.3em] mb-1">{t('payments.details') || "To'lov tafsilotlari"}</p>
                 <h2 className="text-2xl sm:text-3xl font-[900] tracking-tight">{paymentAmount < 0 ? '' : '+'}{paymentAmount.toLocaleString()} <span className="text-sm font-bold text-white/60">UZS</span></h2>
                 <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${typeColor}`}>{typeLabel}</span>
-                  {isInstallment && <span className="inline-flex items-center gap-1 text-[9px] font-black text-blue-100 bg-white/10 px-2 py-0.5 rounded-full"><Calendar className="w-2.5 h-2.5" />{t('payments.installment') || "Muddatli to'lov"}</span>}
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase border ${typeColor}`}>{typeLabel}</span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-white/15 text-white border border-white/20">
+                    {methodLabel}
+                  </span>
+                  {hasValidDate && (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-white/80 bg-white/10 px-2.5 py-0.5 rounded-full">
+                      <Clock className="w-2.5 h-2.5" />
+                      {format(dt, 'dd MMMM yyyy, HH:mm')}
+                    </span>
+                  )}
+                  {isInstallment && <span className="inline-flex items-center gap-1 text-[9px] font-black text-blue-100 bg-white/15 px-2.5 py-0.5 rounded-full"><Calendar className="w-2.5 h-2.5" />{t('payments.installment') || "Muddatli to'lov"}</span>}
                 </div>
               </div>
 
@@ -1752,34 +1998,49 @@ export default function Payments() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('payments.type') || "To'lov turi"}</p>
-                    <p className="text-[12px] font-[900] text-slate-800">{typeLabel}</p>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('payments.method') || "To'lov usuli"}</p>
-                    <p className="text-[12px] font-[900] text-slate-800">{methodLabel}</p>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('payments.date') || "Sana"}</p>
-                    <p className="text-[12px] font-[900] text-slate-800">
-                      {hasValidDate ? format(dt, 'dd MMMM yyyy') : (sp.date ? format(new Date(sp.date), 'dd MMMM yyyy') : '—')}
-                    </p>
-                    {hasValidDate && (
-                      <p className="text-[10px] font-bold text-slate-500 mt-1 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {format(dt, 'HH:mm')}
-                      </p>
-                    )}
-                  </div>
-                  <div className="p-3 rounded-2xl bg-rose-50 border border-rose-100">
-                    <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">{t('payments.remainingDebt') || 'Qolgan qarz'}</p>
-                    <p className={`text-[13px] font-[900] ${debtAtPaymentTime > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                      {debtAtPaymentTime > 0 ? `${debtAtPaymentTime.toLocaleString()} ${t('common.currency') || 'so\'m'}` : (t('payments.fullyPaid') || "To'liq yopilgan")}
-                    </p>
-                  </div>
-                </div>
+                {/* 4 CARDS: Reja chegirmasiz asl narxi, Qo'llanilgan chegirma, Chegirmali jami summa, Qolgan qarz */}
+                {(() => {
+                  const origPrice = selectedPaymentPatientData?.originalPrice ?? (Number(pat?.total_debt) + Number(pat?.total_paid) || paymentAmount);
+                  const discAmt = selectedPaymentPatientData?.totalDiscount ?? 0;
+                  const discPct = selectedPaymentPatientData?.discountPercent ?? (origPrice > 0 && discAmt > 0 ? Math.round((discAmt / origPrice) * 100) : 0);
+                  const finTotal = selectedPaymentPatientData?.finalPlanTotal ?? Math.max(0, origPrice - discAmt);
+
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                      {/* 1. Reja chegirmasiz narxi */}
+                      <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-xs">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{t('payments.planOriginalPrice') || "Reja (asl narxi)"}</p>
+                        <p className="text-[13px] sm:text-[14px] font-[900] text-slate-800 tracking-tight">
+                          {origPrice.toLocaleString()} <span className="text-[10px] font-bold text-slate-500">{t('common.currency') || "so'm"}</span>
+                        </p>
+                      </div>
+
+                      {/* 2. Qo'llanilgan chegirma foizi va summasi */}
+                      <div className="p-3.5 rounded-2xl bg-purple-50/60 border border-purple-100 shadow-xs">
+                        <p className="text-[9px] font-black text-purple-500 uppercase tracking-widest mb-1.5">{t('payments.appliedDiscount') || "Qo'llanilgan chegirma"}</p>
+                        <p className="text-[13px] sm:text-[14px] font-[900] text-purple-700 tracking-tight">
+                          {discPct}% <span className="text-[10px] font-bold text-purple-600/80">({discAmt.toLocaleString()} {t('common.currency') || "so'm"})</span>
+                        </p>
+                      </div>
+
+                      {/* 3. Jamida chegirmani ayirilgani summasi */}
+                      <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100 shadow-xs">
+                        <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1.5">{t('payments.totalAfterDiscount') || "Chegirmali jami summa"}</p>
+                        <p className="text-[13px] sm:text-[14px] font-[900] text-blue-700 tracking-tight">
+                          {finTotal.toLocaleString()} <span className="text-[10px] font-bold text-blue-600/80">{t('common.currency') || "so'm"}</span>
+                        </p>
+                      </div>
+
+                      {/* 4. Qolgan qarzi to'lov ma'lumotiga qarab */}
+                      <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-100 shadow-xs">
+                        <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1.5">{t('payments.remainingDebt') || 'Qolgan qarz'}</p>
+                        <p className={`text-[13px] sm:text-[14px] font-[900] tracking-tight ${debtAtPaymentTime > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                          {debtAtPaymentTime > 0 ? `${debtAtPaymentTime.toLocaleString()} ${t('common.currency') || 'so\'m'}` : (t('payments.fullyPaid') || "To'liq yopilgan")}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {pat && (() => {
                   const patTotals = patientCurrentTotals[sp.patient_id];

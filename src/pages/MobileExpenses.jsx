@@ -6,28 +6,76 @@ import {
   MoreHorizontal, ShoppingCart, Car, Wrench, 
   Zap, Building2, ChevronRight, Activity,
   Filter, FileText, ArrowUpRight, ArrowDownRight,
-  ChevronLeft, X, Trash2
+  ChevronLeft, X, Trash2, Pencil, Sparkles, Package, Coffee, Briefcase, Stethoscope, Gift, Tag, Utensils, Truck, Heart, Shield, Laptop, Check
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 
-const EXPENSE_CATEGORIES = [
-  { value: 'rent', label: 'Arenda', icon: Building2, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-  { value: 'utilities', label: 'Kommunal', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-100' },
-  { value: 'materials', label: 'Materiallar', icon: ShoppingCart, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-100' },
-  { value: 'transport', label: 'Transport', icon: Car, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100' },
-  { value: 'equipment', label: 'Uskunalar', icon: Wrench, color: 'text-orange-500', bg: 'bg-orange-50', border: 'border-orange-100' },
-  { value: 'salary', label: 'Ish haqi', icon: DollarSign, color: 'text-rose-500', bg: 'bg-rose-50', border: 'border-rose-100' },
-  { value: 'other', label: 'Boshqa', icon: MoreHorizontal, color: 'text-slate-500', bg: 'bg-slate-50', border: 'border-slate-100' },
+// Available icons dictionary for category selection
+const AVAILABLE_ICONS = [
+  { name: 'DollarSign', icon: DollarSign, label: 'Pul / Ish haqi' },
+  { name: 'ShoppingCart', icon: ShoppingCart, label: 'Materiallar / Xarid' },
+  { name: 'Wrench', icon: Wrench, label: 'Laboratoriya / Ta\'mirlash' },
+  { name: 'Building2', icon: Building2, label: 'Bino / Arenda' },
+  { name: 'Zap', icon: Zap, label: 'Elektr / Kommunal' },
+  { name: 'TrendingUp', icon: TrendingUp, label: 'Marketing / Reklama' },
+  { name: 'Stethoscope', icon: Stethoscope, label: 'Tibbiyot / Jihozlar' },
+  { name: 'Sparkles', icon: Sparkles, label: 'Gigiyena / Tozalik' },
+  { name: 'Package', icon: Package, label: 'Ombor / Mahsulot' },
+  { name: 'Coffee', icon: Coffee, label: 'Oziq-ovqat / Choyxona' },
+  { name: 'Briefcase', icon: Briefcase, label: 'Ofis / Biznes' },
+  { name: 'Car', icon: Car, label: 'Transport / Yoqilg\'i' },
+  { name: 'Truck', icon: Truck, label: 'Yetkazib berish' },
+  { name: 'Utensils', icon: Utensils, label: 'Oshxona' },
+  { name: 'Gift', icon: Gift, label: 'Bonus / Sovg\'a' },
+  { name: 'Shield', icon: Shield, label: 'Xavfsizlik / Sug\'urta' },
+  { name: 'Laptop', icon: Laptop, label: 'IT / Texnika' },
+  { name: 'Activity', icon: Activity, label: 'Xizmatlar' },
+  { name: 'Tag', icon: Tag, label: 'Boshqa xarajat' },
+  { name: 'MoreHorizontal', icon: MoreHorizontal, label: 'Boshqa' },
 ];
+
+const COLOR_OPTIONS = [
+  { value: 'bg-emerald-100 text-emerald-700', label: 'Yashil', bg: 'bg-emerald-50', color: 'text-emerald-600', border: 'border-emerald-100' },
+  { value: 'bg-blue-100 text-blue-700', label: 'Ko\'k', bg: 'bg-blue-50', color: 'text-blue-600', border: 'border-blue-100' },
+  { value: 'bg-purple-100 text-purple-700', label: 'Binafsha', bg: 'bg-purple-50', color: 'text-purple-600', border: 'border-purple-100' },
+  { value: 'bg-indigo-100 text-indigo-700', label: 'To\'q ko\'k', bg: 'bg-indigo-50', color: 'text-indigo-600', border: 'border-indigo-100' },
+  { value: 'bg-amber-100 text-amber-700', label: 'Sariq', bg: 'bg-amber-50', color: 'text-amber-600', border: 'border-amber-100' },
+  { value: 'bg-rose-100 text-rose-700', label: 'Qizil', bg: 'bg-rose-50', color: 'text-rose-600', border: 'border-rose-100' },
+  { value: 'bg-cyan-100 text-cyan-700', label: 'Moviy', bg: 'bg-cyan-50', color: 'text-cyan-600', border: 'border-cyan-100' },
+  { value: 'bg-slate-100 text-slate-700', label: 'Kulrang', bg: 'bg-slate-50', color: 'text-slate-600', border: 'border-slate-100' },
+];
+
+const DEFAULT_CATEGORIES = [
+  { id: 'salary', value: 'salary', label: 'Ish haqi', icon: 'DollarSign', color: 'bg-emerald-100 text-emerald-700', isSystem: true },
+  { id: 'materials', value: 'materials', label: 'Materiallar', icon: 'ShoppingCart', color: 'bg-blue-100 text-blue-700', isSystem: true },
+  { id: 'lab', value: 'lab', label: 'Laboratoriya', icon: 'Wrench', color: 'bg-purple-100 text-purple-700', isSystem: true },
+  { id: 'rent', value: 'rent', label: 'Arenda', icon: 'Building2', color: 'bg-indigo-100 text-indigo-700', isSystem: true },
+  { id: 'utilities', value: 'utilities', label: 'Kommunal', icon: 'Zap', color: 'bg-amber-100 text-amber-700', isSystem: true },
+  { id: 'marketing', label: 'Reklama/Marketing', value: 'marketing', icon: 'TrendingUp', color: 'bg-rose-100 text-rose-700', isSystem: true },
+  { id: 'other', value: 'other', label: 'Boshqa', icon: 'MoreHorizontal', color: 'bg-slate-100 text-slate-700', isSystem: true },
+];
+
+const loadSavedCategories = () => {
+  try {
+    const raw = localStorage.getItem('myclinic_expense_categories');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.error(e);
+  }
+  return DEFAULT_CATEGORIES;
+};
 
 const formatCompactCurrency = (value) => {
   if (value >= 1_000_000) {
@@ -48,12 +96,116 @@ export default function MobileExpenses() {
   const [search, setSearch] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
 
+  // Category state with localStorage persistence
+  const [categories, setCategories] = useState(loadSavedCategories);
+  const [catModalOpen, setCatModalOpen] = useState(false);
+  const [editingCat, setEditingCat] = useState(null);
+  const [catForm, setCatForm] = useState({
+    label: '',
+    icon: 'Tag',
+    color: 'bg-blue-100 text-blue-700'
+  });
+
+  const saveCategoriesToStorage = (newCats) => {
+    setCategories(newCats);
+    try {
+      localStorage.setItem('myclinic_expense_categories', JSON.stringify(newCats));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const openAddCategory = () => {
+    setEditingCat(null);
+    setCatForm({
+      label: '',
+      icon: 'Tag',
+      color: 'bg-blue-100 text-blue-700'
+    });
+    setCatModalOpen(true);
+  };
+
+  const openEditCategory = (cat) => {
+    setEditingCat(cat);
+    setCatForm({
+      label: cat.label,
+      icon: cat.icon || 'MoreHorizontal',
+      color: cat.color || 'bg-slate-100 text-slate-700'
+    });
+    setCatModalOpen(true);
+  };
+
+  const handleSaveCategory = () => {
+    if (!catForm.label.trim()) {
+      toast.error("Iltimos, kategoriya nomini kiriting");
+      return;
+    }
+    if (editingCat) {
+      const updated = categories.map(c => {
+        if ((c.value && c.value === editingCat.value) || (c.id && c.id === editingCat.id)) {
+          return {
+            ...c,
+            label: catForm.label.trim(),
+            icon: catForm.icon,
+            color: catForm.color
+          };
+        }
+        return c;
+      });
+      saveCategoriesToStorage(updated);
+      toast.success("Kategoriya yangilandi!");
+    } else {
+      const newId = 'cat_' + Date.now();
+      const newCat = {
+        id: newId,
+        value: newId,
+        label: catForm.label.trim(),
+        icon: catForm.icon,
+        color: catForm.color,
+        isCustom: true
+      };
+      const nonOther = categories.filter(c => c.value !== 'other' && c.id !== 'other');
+      const otherCat = categories.find(c => c.value === 'other' || c.id === 'other') || DEFAULT_CATEGORIES.find(c => c.value === 'other');
+      const updated = otherCat ? [...nonOther, newCat, otherCat] : [...nonOther, newCat];
+      saveCategoriesToStorage(updated);
+      toast.success("Yangi kategoriya qo'shildi!");
+    }
+    setCatModalOpen(false);
+  };
+
+  const handleDeleteCategory = (catToDelete) => {
+    if (!confirm(`"${catToDelete.label}" kategoriyasini o'chirishni tasdiqlaysizmi?`)) return;
+    const updated = categories.filter(c => (c.value || c.id) !== (catToDelete.value || catToDelete.id));
+    saveCategoriesToStorage(updated);
+    toast.success("Kategoriya o'chirildi!");
+    setCatModalOpen(false);
+  };
+
+  const EXPENSE_CATEGORIES = useMemo(() => {
+    const nonOther = categories.filter(c => c.value !== 'other' && c.id !== 'other');
+    const otherCat = categories.find(c => c.value === 'other' || c.id === 'other') || DEFAULT_CATEGORIES.find(c => c.value === 'other');
+    const sorted = otherCat ? [...nonOther, otherCat] : nonOther;
+
+    return sorted.map(c => {
+      const found = AVAILABLE_ICONS.find(i => i.name === c.icon);
+      const colorFound = COLOR_OPTIONS.find(co => co.value === c.color);
+      return {
+        ...c,
+        icon: found ? found.icon : MoreHorizontal,
+        bg: colorFound?.bg || 'bg-slate-50',
+        color: colorFound?.color || 'text-slate-600',
+        border: colorFound?.border || 'border-slate-100'
+      };
+    });
+  }, [categories]);
+
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     category: 'other',
+    custom_category: '',
     amount: '',
     description: '',
     date: new Date().toISOString().split('T')[0],
@@ -133,15 +285,27 @@ export default function MobileExpenses() {
     if (!form.amount || !form.date) return;
     setSaving(true);
     try {
+      const payload = {
+        ...form,
+        custom_category: form.category === 'other' ? (form.custom_category || '').trim() : ''
+      };
       if (editingExpense) {
-        await base44.entities.Expense.update(editingExpense.id, form);
+        await base44.entities.Expense.update(editingExpense.id, payload);
         toast.success("Xarajat tahrirlandi!");
       } else {
-        await base44.entities.Expense.create(form);
+        await base44.entities.Expense.create(payload);
         toast.success("Xarajat muvaffaqiyatli qo'shildi!");
       }
       setModalOpen(false);
       setEditingExpense(null);
+      setForm({
+        category: 'other',
+        custom_category: '',
+        amount: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0],
+        receipt_url: ''
+      });
       await loadData();
     } catch (error) {
       toast.error('Xatolik yuz berdi');
@@ -280,17 +444,43 @@ export default function MobileExpenses() {
 
         {/* Categories Analysis horizontal analytics scroll bar */}
         <div className="px-4 mt-5 w-full overflow-hidden">
-            <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2.5 ml-1">Kategoriyalar tahlili</h3>
+            <div className="flex items-center justify-between mb-2.5 px-1">
+              <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Kategoriyalar tahlili</h3>
+              <button 
+                type="button"
+                onClick={openAddCategory}
+                className="text-[9px] font-black text-[#1499AD] uppercase tracking-wider flex items-center gap-1 hover:underline active:scale-95 transition-all"
+              >
+                <Plus className="w-3 h-3" /> Bo'lim qo'shish
+              </button>
+            </div>
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 px-0.5 scroll-smooth w-full">
                {EXPENSE_CATEGORIES.map(cat => {
                   const totalSpent = categoryTotals[cat.value] || 0;
+                  const IconComp = cat.icon || MoreHorizontal;
                   return (
-                    <div key={cat.value} className="bg-white rounded-2xl p-2.5 border border-slate-100 shadow-sm min-w-[95px] flex flex-col items-center gap-1.5 text-center active:scale-95 transition-all shrink-0">
-                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${cat.bg} ${cat.color} border ${cat.border}`}>
-                          <cat.icon className="w-3.5 h-3.5" />
+                    <div 
+                      key={cat.id || cat.value} 
+                      className="bg-white rounded-2xl p-2.5 border border-slate-100 shadow-sm min-w-[100px] flex flex-col items-center gap-1 text-center active:scale-95 transition-all shrink-0 relative group"
+                    >
+                       <div className="w-full flex items-center justify-between">
+                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${cat.bg} ${cat.color} border ${cat.border}`}>
+                            <IconComp className="w-3.5 h-3.5" />
+                         </div>
+                         <button
+                           type="button"
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             openEditCategory(cat);
+                           }}
+                           className="w-6 h-6 rounded-md bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 active:scale-90 transition-all cursor-pointer"
+                           title="Tahrirlash"
+                         >
+                           <Pencil className="w-3 h-3" />
+                         </button>
                        </div>
-                       <div className="min-w-0 w-full">
-                          <span className="text-[8px] font-black uppercase text-slate-700 tracking-tighter block truncate leading-none">{cat.label}</span>
+                       <div className="min-w-0 w-full mt-1">
+                          <span className="text-[8px] font-black uppercase text-slate-700 tracking-tighter block truncate leading-none" title={cat.label}>{cat.label}</span>
                           <span className={`text-[9px] font-black block mt-1 leading-none ${totalSpent > 0 ? 'text-rose-500 font-extrabold' : 'text-slate-400 font-bold'}`}>
                              {totalSpent > 0 ? formatCompactCurrency(totalSpent) : '0 UZS'}
                           </span>
@@ -298,6 +488,18 @@ export default function MobileExpenses() {
                     </div>
                   );
                })}
+
+               {/* + Yangi bo'lim qo'shish tugmasi */}
+               <button
+                 type="button"
+                 onClick={openAddCategory}
+                 className="bg-slate-50 border-2 border-dashed border-slate-200 hover:border-[#1499AD] rounded-2xl p-2.5 min-w-[90px] flex flex-col items-center justify-center gap-1 text-center shrink-0 active:scale-95 transition-all cursor-pointer group"
+               >
+                 <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-[#1499AD] group-hover:border-[#1499AD]">
+                   <Plus className="w-3.5 h-3.5" />
+                 </div>
+                 <span className="text-[8px] font-black uppercase text-slate-500 group-hover:text-[#1499AD] tracking-tight">+ Bo'lim</span>
+               </button>
             </div>
         </div>
 
@@ -327,6 +529,16 @@ export default function MobileExpenses() {
                 <AnimatePresence mode="popLayout">
                    {filteredExpenses.map((expense, index) => {
                       const cat = EXPENSE_CATEGORIES.find(c => c.value === expense.category) || EXPENSE_CATEGORIES[6];
+                      const displayLabel = (expense.category === 'other' && expense.custom_category)
+                        ? expense.custom_category
+                        : (cat.label || expense.custom_category || expense.category);
+                      
+                      const dateObj = expense.date ? new Date(expense.date) : null;
+                      const monthsUz = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
+                      const formattedDateText = (dateObj && !isNaN(dateObj.getTime()))
+                        ? `${dateObj.getDate()}-${monthsUz[dateObj.getMonth()]}, ${dateObj.getFullYear()}`
+                        : (expense.date || '—');
+
                       return (
                          <motion.div
                            key={expense.id}
@@ -344,18 +556,18 @@ export default function MobileExpenses() {
                             <div className="flex-1 min-w-0">
                                <div className="flex items-center justify-between mb-0.5">
                                   <h4 className="text-xs font-bold text-slate-800 truncate tracking-tight">
-                                     {expense.description || cat.label}
+                                     {expense.description || displayLabel}
                                   </h4>
                                   <p className="text-xs font-black text-rose-500 tracking-tight whitespace-nowrap">
                                      -{formatCurrency(expense.amount || 0)}
                                   </p>
                                </div>
                                <div className="flex items-center gap-1.5 leading-none">
-                                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
-                                     {formatDate(expense.date)}
+                                  <p className="text-[9px] font-bold text-slate-400">
+                                     {formattedDateText}
                                   </p>
                                   <div className="w-0.5 h-0.5 rounded-full bg-slate-200" />
-                                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{cat.label}</p>
+                                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{displayLabel}</p>
                                 </div>
                             </div>
                          </motion.div>
@@ -418,6 +630,19 @@ export default function MobileExpenses() {
                         </SelectContent>
                      </Select>
                   </div>
+
+                  {form.category === 'other' && (
+                    <div className="animate-in fade-in-50 duration-200">
+                      <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Kategoriya nomi</Label>
+                      <Input 
+                        value={form.custom_category || ''}
+                        onChange={e => setForm({ ...form, custom_category: e.target.value })}
+                        placeholder="Masalan: Ofis jihozlari, Kantselyariya..."
+                        className="h-10 rounded-xl bg-slate-50 border-none font-bold text-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/10"
+                        autoFocus
+                      />
+                    </div>
+                  )}
                   
                   <div>
                      <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Summa (UZS)</Label>
@@ -474,6 +699,123 @@ export default function MobileExpenses() {
                     className="h-10 flex-[2] rounded-xl font-black uppercase text-xs tracking-wider border-none shadow-md bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white active:scale-95 transition-all"
                   >
                      {saving ? '...' : 'Saqlash'}
+                  </Button>
+               </div>
+            </DialogContent>
+         </Dialog>
+
+         {/* Add / Edit Category Dialog Modal */}
+         <Dialog open={catModalOpen} onOpenChange={setCatModalOpen}>
+            <DialogContent 
+              className="w-[92vw] max-w-sm max-h-[85vh] p-0 border-none rounded-[2rem] bg-white outline-none overflow-hidden flex flex-col shadow-2xl !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]"
+              aria-describedby={undefined}
+            >
+               <div className="bg-gradient-to-br from-[#1499AD] to-[#0E7A8A] px-5 py-4 flex items-center justify-between shrink-0 text-white rounded-t-[2rem]">
+                 <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm">
+                      <Pencil className="w-4.5 h-4.5 stroke-[2.5]" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-[14px] font-black text-white uppercase tracking-tight leading-none">
+                         {editingCat ? "Bo'limni tahrirlash" : "Yangi bo'lim"}
+                      </DialogTitle>
+                      <p className="text-[8px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Xarajat bo'limi</p>
+                    </div>
+                 </div>
+                 <button 
+                    onClick={() => setCatModalOpen(false)}
+                    className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-90 border-none cursor-pointer"
+                 >
+                    <X className="w-4 h-4" />
+                 </button>
+               </div>
+
+               <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
+                  <div>
+                    <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">
+                      Bo'lim nomi <span className="text-red-500">*</span>
+                    </Label>
+                    <Input 
+                      value={catForm.label}
+                      onChange={e => setCatForm({ ...catForm, label: e.target.value })}
+                      placeholder="Masalan: Kantselyariya, Transport..."
+                      className="h-10 rounded-xl bg-slate-50 border-none font-bold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/20"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">
+                      Ikonkani tanlang
+                    </Label>
+                    <div className="grid grid-cols-5 gap-2 max-h-36 overflow-y-auto p-1.5 bg-slate-50 rounded-xl">
+                      {AVAILABLE_ICONS.map(item => {
+                        const Icon = item.icon;
+                        const isSelected = catForm.icon === item.name;
+                        return (
+                          <button
+                            key={item.name}
+                            type="button"
+                            onClick={() => setCatForm({ ...catForm, icon: item.name })}
+                            title={item.label}
+                            className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all cursor-pointer ${
+                              isSelected 
+                                ? 'bg-[#1499AD] text-white shadow-md scale-105' 
+                                : 'bg-white text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">
+                      Rang mavzusi
+                    </Label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {COLOR_OPTIONS.map(color => {
+                        const isSelected = catForm.color === color.value;
+                        return (
+                          <button
+                            key={color.value}
+                            type="button"
+                            onClick={() => setCatForm({ ...catForm, color: color.value })}
+                            className={`${color.value} px-2 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center justify-between border ${
+                              isSelected ? 'ring-2 ring-[#1499AD] shadow-sm' : 'border-transparent opacity-80'
+                            }`}
+                          >
+                            <span className="truncate">{color.label}</span>
+                            {isSelected && <Check className="w-3 h-3 shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+               </div>
+
+               <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center gap-2 shrink-0 rounded-b-[2rem]">
+                  {editingCat && !editingCat.isSystem && (
+                     <button 
+                        type="button"
+                        onClick={() => handleDeleteCategory(editingCat)}
+                        className="w-10 h-10 bg-rose-50 border border-rose-100 text-rose-500 rounded-xl flex items-center justify-center shrink-0 active:scale-95 active:bg-rose-100 transition-all cursor-pointer"
+                        title="O'chirish"
+                     >
+                        <Trash2 className="w-4 h-4" />
+                     </button>
+                  )}
+                  <Button variant="ghost" onClick={() => setCatModalOpen(false)} className="h-10 flex-1 rounded-xl font-bold uppercase text-[10px] tracking-wider text-slate-400 hover:bg-slate-100 px-4 border-none">
+                     Bekor
+                  </Button>
+                  <Button 
+                    type="button"
+                    onClick={handleSaveCategory}
+                    className="h-10 flex-[2] rounded-xl font-black uppercase text-xs tracking-wider border-none shadow-md bg-[#1499AD] hover:bg-[#0E7A8A] text-white active:scale-95 transition-all"
+                  >
+                     Saqlash
                   </Button>
                </div>
             </DialogContent>
