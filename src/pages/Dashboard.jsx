@@ -304,37 +304,39 @@ export default function Dashboard() {
           
           <div className="h-[220px] relative">
             {appointmentDistribution.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie 
-                    data={appointmentDistribution} 
-                    cx="50%" 
-                    cy="50%" 
-                    innerRadius={75} 
-                    outerRadius={100} 
-                    paddingAngle={8}
-                    dataKey="value"
-                    strokeWidth={0}
-                  >
-                    {appointmentDistribution.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie 
+                      data={appointmentDistribution} 
+                      cx="50%" 
+                      cy="50%" 
+                      innerRadius={75} 
+                      outerRadius={100} 
+                      paddingAngle={8}
+                      dataKey="value"
+                      strokeWidth={0}
+                    >
+                      {appointmentDistribution.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-4xl font-[900] text-slate-900">{appointments.length}</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('appointments.title')}</span>
+                </div>
+              </>
             ) : (
               <div className="h-full flex items-center justify-center">
                 <EmptyState icon={CalendarDays} title={t('common.noData')} />
               </div>
             )}
-            
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-4xl font-[900] text-slate-900">{appointments.length}</span>
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('appointments.title')}</span>
-            </div>
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-2">

@@ -4,10 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, TrendingDown,
   Plus, Search, FileText, Stethoscope, X, User, Clock, Calendar,
-  Check, CreditCard, AlertTriangle
+  Check, CreditCard, AlertTriangle, Receipt, Camera, ImagePlus, Eye, Trash2, Download, Loader2
 } from 'lucide-react';
 import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import { base44 } from '@/api/base44Client';
+import { compressImage, validateImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import { cn } from '@/lib/utils';
@@ -138,8 +139,14 @@ export default function MobilePaymentsV2() {
   const loadStats = useCallback(async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const allPays = await base44.entities.Payment.list('-date', 500, 0);
-      const incomePays = (allPays || []).filter(p => !p.type || p.type?.toLowerCase() === 'income');
+      const allPays = isDoctor && user?.id
+        ? await base44.entities.Payment.filter({ doctor_id: user.id }, '-date', 500, 0).catch(() => [])
+        : await base44.entities.Payment.list('-date', 500, 0);
+      const filteredStats = (allPays || []).filter(p => {
+        if (isDoctor && user?.id && String(p.doctor_id) !== String(user.id)) return false;
+        return true;
+      });
+      const incomePays = filteredStats.filter(p => !p.type || p.type?.toLowerCase() === 'income');
 
       const totalRevenue = incomePays.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
       const monthRevenue = incomePays
@@ -153,7 +160,7 @@ export default function MobilePaymentsV2() {
     } catch (err) {
       console.error('Stats load error:', err);
     }
-  }, []);
+  }, [isDoctor, user]);
 
   // Calculate running balances for all displayed patients' payments
   useEffect(() => {
@@ -335,7 +342,8 @@ export default function MobilePaymentsV2() {
         method: 'Cash',
         category: prefillCategory,
         date: getLocalDatetimeString(),
-        notes: prefillNotes
+        notes: prefillNotes,
+        receipt_url: ''
       });
       setSelectedPlanId('');
       setSelectedPlanServiceIds([]);
@@ -360,8 +368,12 @@ export default function MobilePaymentsV2() {
     method: 'Cash',
     category: 'Treatment',
     date: getLocalDatetimeString(),
-    notes: ''
+    notes: '',
+    receipt_url: ''
   });
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [previewReceiptUrl, setPreviewReceiptUrl] = useState(null);
+  const receiptFileInputRef = useRef(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -715,6 +727,7 @@ export default function MobilePaymentsV2() {
         category: formData.category,
         date: formData.date,
         notes: formData.notes,
+        receipt_url: formData.receipt_url || null,
         debt_amount: formData.patient_id ? newDebt : null
       });
 
@@ -867,14 +880,26 @@ export default function MobilePaymentsV2() {
           {/* Left info block */}
           <div className="flex-1 min-w-0 space-y-0.5">
 
-            {/* Row 1: patient name + type badge */}
+            {/* Row 1: patient name + type badge + Chek badge */}
             <div className="flex items-center gap-1.5 leading-none">
-              <span className="text-[13px] font-bold text-slate-900 truncate max-w-[160px]">
+              <span className="text-[13px] font-bold text-slate-900 truncate max-w-[150px]">
                 {payment.patient_name || '—'}
               </span>
               <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wide ${style.bg} ${style.text}`}>
                 {style.label}
               </span>
+              {(payment.receipt_url || payment.receipt_image || payment.check_image) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPreviewReceiptUrl(payment.receipt_url || payment.receipt_image || payment.check_image);
+                  }}
+                  className="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wide bg-blue-100 text-blue-700 hover:bg-blue-200 flex items-center gap-0.5 shadow-xs active:scale-90 transition-transform"
+                >
+                  <Receipt className="w-2.5 h-2.5" /> Chek
+                </button>
+              )}
             </div>
 
             {/* Row 2: service / category */}
@@ -1182,7 +1207,8 @@ export default function MobilePaymentsV2() {
                                         <p className="text-[12px] font-black text-slate-800 truncate">{plan.name || (t ? t('patientProfile.treatmentPlanSingular') : 'Davolash rejasi')}</p>
                                       </div>
                                       <p className="text-[10px] text-slate-500 font-bold mt-0.5">
-                                        {t('common.debt') || 'Qarz'}: <span className={remaining > 0 ? 'text-rose-600 font-extrabold' : 'text-emerald-600 font-extrabold'}>{remaining.toLocaleString()} {t('common.currency')}</span>
+                                        Muolaja narhi to'liq:&nbsp;
+                                        <span className="text-slate-700 font-extrabold">{total.toLocaleString()} {t('common.currency') || "so'm"}</span>
                                       </p>
                                     </div>
                                     <button
@@ -1359,16 +1385,119 @@ export default function MobilePaymentsV2() {
                       />
                     </div>
 
-                    {/* Notes */}
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('payments.notes')}</Label>
-                      <Input
-                        placeholder={t('payments.notes') + "..."}
-                        value={formData.notes}
-                        onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                        className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-medium text-xs px-4"
-                      />
-                    </div>
+                    {/* Agar Karta, Click yoki Payme tanlansa — Chek yuklash joyi chiqadi */}
+                    {['Card', 'Click', 'Payme'].includes(formData.method) ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1 flex items-center gap-1.5">
+                            <Receipt className="w-3.5 h-3.5 text-emerald-600" />
+                            Chek / Kvitansiya rasmi (ixtiyoriy)
+                          </Label>
+                          {formData.receipt_url && (
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, receipt_url: '' })}
+                              className="text-[10px] font-bold text-rose-500 hover:underline flex items-center gap-0.5 cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" /> O'chirish
+                            </button>
+                          )}
+                        </div>
+
+                        <input
+                          type="file"
+                          ref={receiptFileInputRef}
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const validation = validateImage(file, { maxSizeMB: 10 });
+                            if (!validation.valid) {
+                              toast.error(validation.error);
+                              return;
+                            }
+                            try {
+                              setUploadingReceipt(true);
+                              const compressed = await compressImage(file, { maxWidth: 1200, maxHeight: 1600, quality: 0.8 });
+                              setFormData(prev => ({ ...prev, receipt_url: compressed }));
+                              toast.success("Chek rasmi yuklandi!");
+                            } catch (err) {
+                              console.error('Receipt upload error:', err);
+                              toast.error('Chek yuklashda xatolik yuz berdi');
+                            } finally {
+                              setUploadingReceipt(false);
+                              if (receiptFileInputRef.current) receiptFileInputRef.current.value = '';
+                            }
+                          }}
+                        />
+
+                        {formData.receipt_url ? (
+                          <div className="relative rounded-2xl border border-emerald-200 bg-emerald-50/50 p-2.5 flex items-center gap-3">
+                            <div 
+                              onClick={() => setPreviewReceiptUrl(formData.receipt_url)}
+                              className="w-14 h-14 rounded-xl overflow-hidden bg-slate-200 cursor-pointer shrink-0 border border-emerald-300 relative group"
+                            >
+                              <img src={formData.receipt_url} alt="Chek" className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                <Eye className="w-4 h-4 text-white" />
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-emerald-900 truncate">Chek rasmi biriktirildi ✓</p>
+                              <p className="text-[10px] text-emerald-600 font-medium mt-0.5">Ustiga bosib ko'rishingiz mumkin</p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => receiptFileInputRef.current?.click()}
+                              className="h-8 rounded-xl text-[10px] font-bold border-emerald-200 text-emerald-700 bg-white"
+                            >
+                              Almashtirish
+                            </Button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => receiptFileInputRef.current?.click()}
+                            disabled={uploadingReceipt}
+                            className="w-full py-4 px-4 rounded-2xl border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/30 transition-all flex flex-col items-center justify-center gap-1.5 text-slate-500 group cursor-pointer"
+                          >
+                            <div className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-slate-400 group-hover:text-emerald-600 transition-colors">
+                              {uploadingReceipt ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
+                            </div>
+                            <span className="text-xs font-bold text-slate-700 group-hover:text-emerald-700">
+                              {uploadingReceipt ? "Yuklanmoqda..." : "Chek yoki skrinshot yuklash"}
+                            </span>
+                            <span className="text-[10px] font-medium text-slate-400">
+                              Galereyadan tanlash yoki rasmga olish (ixtiyoriy)
+                            </span>
+                          </button>
+                        )}
+
+                        {/* Qo'shimcha ixtiyoriy izoh */}
+                        <div className="pt-1">
+                          <Input
+                            placeholder="Qo'shimcha izoh (ixtiyoriy)..."
+                            value={formData.notes}
+                            onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                            className="h-11 rounded-2xl border-slate-100 bg-slate-50 font-medium text-xs px-3.5"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      /* Notes (Naqd uchun) */
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('payments.notes')}</Label>
+                        <Input
+                          placeholder={t('payments.notes') + "..."}
+                          value={formData.notes}
+                          onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                          className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-medium text-xs px-4"
+                        />
+                      </div>
+                    )}
 
                     {/* Action buttons */}
                     <div className="flex gap-3 pt-3">
@@ -1560,6 +1689,35 @@ onClose={() => { setShowPlanInvoiceModal(false); setSelectedPlanForInvoice(null)
                       );
                     })()}
 
+                    {/* Chek rasmi */}
+                    {(sp.receipt_url || sp.receipt_image || sp.check_image) && (
+                      <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-3.5 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-1.5">
+                            <Receipt className="w-3.5 h-3.5 text-blue-600" /> To'lov cheki / Kvitansiya
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewReceiptUrl(sp.receipt_url || sp.receipt_image || sp.check_image)}
+                            className="text-[10px] font-bold text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <Eye className="w-3 h-3" /> Kattalashtirish
+                          </button>
+                        </div>
+                        <div 
+                          onClick={() => setPreviewReceiptUrl(sp.receipt_url || sp.receipt_image || sp.check_image)}
+                          className="w-full h-44 rounded-xl overflow-hidden bg-slate-900/5 border border-blue-200 cursor-pointer relative group flex items-center justify-center"
+                        >
+                          <img src={sp.receipt_url || sp.receipt_image || sp.check_image} alt="To'lov cheki" className="w-full h-full object-contain" />
+                          <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <span className="bg-slate-900/90 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                              <Eye className="w-3.5 h-3.5" /> Chekni to'liq ko'rish
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Izoh */}
                     {sp.notes && (
                       <div className="rounded-2xl bg-blue-50 border border-blue-100 p-3">
@@ -1583,6 +1741,49 @@ onClose={() => { setShowPlanInvoiceModal(false); setSelectedPlanForInvoice(null)
                 </div>
               );
             })()}
+          </DialogContent>
+        </Dialog>
+
+        {/* Fullscreen Receipt Lightbox */}
+        <Dialog open={!!previewReceiptUrl} onOpenChange={(open) => !open && setPreviewReceiptUrl(null)}>
+          <DialogContent className="max-w-2xl w-[95vw] max-h-[92vh] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-slate-950 flex flex-col [&>button]:hidden">
+            <div className="p-3.5 px-5 bg-slate-900 text-white flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-emerald-400" /> To'lov cheki / Kvitansiya
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewReceiptUrl(null)}
+                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-black/40 min-h-[300px]">
+              {previewReceiptUrl && (
+                <img 
+                  src={previewReceiptUrl} 
+                  alt="Chek" 
+                  className="max-h-[72vh] max-w-full object-contain rounded-xl shadow-2xl" 
+                />
+              )}
+            </div>
+            <div className="p-3.5 px-5 bg-slate-900 flex justify-end gap-2">
+              <a
+                href={previewReceiptUrl}
+                download="tolov_cheki.jpg"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" /> Yuklab olish
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewReceiptUrl(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition-colors"
+              >
+                Yopish
+              </button>
+            </div>
           </DialogContent>
         </Dialog>
 

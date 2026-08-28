@@ -8,6 +8,7 @@ import {
   Stethoscope, Heart, ArrowUpRight
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,6 +36,7 @@ const STATUS_CONFIG = {
 export default function MobileRecall() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user, isDoctor } = useAuth();
   const [recalls, setRecalls] = useState([]);
   const [patients, setPatients] = useState([]);
   const getTodayStr = () => new Date().toISOString().split('T')[0];
@@ -60,10 +62,21 @@ export default function MobileRecall() {
     try {
       setLoading(true);
       const [recallsData, patientsData] = await Promise.all([
-        base44.entities.Recall?.list('-recall_date', 100) || Promise.resolve([]),
-        base44.entities.Patient.list('full_name', 50)   // ⚡ tez
+        base44.entities.Recall?.list('-recall_date', 200) || Promise.resolve([]),
+        base44.entities.Patient.list('full_name', 100)   // ⚡ tez
       ]);
-      setRecalls(recallsData || []);
+      
+      // Doktor bo'lsa faqat o'ziga tayinlangan eslashmalarni ko'rsin
+      let filteredRecalls = recallsData || [];
+      if (isDoctor && user?.id) {
+        filteredRecalls = filteredRecalls.filter(r =>
+          String(r.doctor_id) === String(user.id) ||
+          String(r.created_by_id) === String(user.id) ||
+          String(r.doctor_name || '').toLowerCase() === String(user.name || '').toLowerCase()
+        );
+      }
+      
+      setRecalls(filteredRecalls);
       setPatients(patientsData || []);
     } catch (err) {
       console.error('Recall load error:', err);
@@ -71,7 +84,7 @@ export default function MobileRecall() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isDoctor, user?.id]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

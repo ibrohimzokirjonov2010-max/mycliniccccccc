@@ -10,6 +10,7 @@ import { Calendar, X, Loader2 } from 'lucide-react';
 import PatientModal from '../patients/PatientModal';
 import PatientSelect from '../patients/PatientSelect';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/AuthContext';
 
 const durations = [15, 30, 45, 60, 90, 120];
 const appointmentStatuses = ['Scheduled', 'Waiting', 'In Progress', 'Completed', 'Cancelled', 'No-Show'];
@@ -71,6 +72,7 @@ export default function AppointmentModal({
   onSaved 
 }) {
   const { t } = useTranslation();
+  const { user, isDoctor } = useAuth();
   const [doctors, setDoctors] = useState([]);
   const [form, setForm] = useState({
     patient_id: '', 
@@ -144,8 +146,9 @@ export default function AppointmentModal({
     } else {
       // Find doctor name if prefillDoctorId is provided or patient has assigned doctor
       const assignedDocFromPatient = patients.find(p => p.id === prefillPatientId)?.main_treatment_provider;
-      const targetDocId = prefillDoctorId || assignedDocFromPatient || '';
+      const targetDocId = isDoctor && user?.id ? user.id : (prefillDoctorId || assignedDocFromPatient || '');
       const foundDoc = doctors.find(d => String(d.id) === String(targetDocId));
+      const targetDocName = isDoctor && user?.name ? user.name : (foundDoc?.name || '');
       
       // Auto-fill current date and exact time for new appointments
       const now = new Date();
@@ -158,7 +161,7 @@ export default function AppointmentModal({
         patient_id: prefillPatientId || '', 
         patient_name: prefillPatientName || '', 
         doctor_id: targetDocId,
-        doctor_name: foundDoc?.name || '',
+        doctor_name: targetDocName,
         date: prefillDate || autoDate, 
         time: prefillTime || autoTime,
         duration: 30,
@@ -559,14 +562,14 @@ export default function AppointmentModal({
                 value={form.patient_id}
                 initialName={form.patient_name}
                 onChange={(id, p) => {
-                  const assignedDocId = p?.main_treatment_provider || form.doctor_id;
+                  const assignedDocId = isDoctor && user?.id ? user.id : (p?.main_treatment_provider || form.doctor_id);
                   const foundDoc = doctors.find(doc => doc.id === assignedDocId);
                   setForm(prev => ({ 
                     ...prev, 
                     patient_id: id, 
                     patient_name: p?.full_name || '',
                     doctor_id: assignedDocId || prev.doctor_id,
-                    doctor_name: foundDoc?.name || prev.doctor_name
+                    doctor_name: isDoctor && user?.name ? user.name : (foundDoc?.name || prev.doctor_name)
                   }));
                 }}
                 onAddPatient={() => setShowNewPatient(true)}
@@ -585,7 +588,8 @@ export default function AppointmentModal({
                   {t('appointments.doctor')} <span className="text-red-500 font-black ml-0.5">*</span>
                 </Label>
                 <Select 
-                  value={form.doctor_id} 
+                  disabled={isDoctor}
+                  value={isDoctor && user?.id ? user.id : form.doctor_id} 
                   onValueChange={id => {
                     const d = doctors.find(doc => doc.id === id);
                     setForm(prev => ({ ...prev, doctor_id: id, doctor_name: d?.name || '' }));

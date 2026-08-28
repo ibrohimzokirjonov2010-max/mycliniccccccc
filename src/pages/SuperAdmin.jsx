@@ -3,13 +3,16 @@ import {
   Building2, Plus, Trash2, Edit2, ShieldCheck,
   Search, CalendarDays, Lock, User, UserPlus, ArrowRight, Loader2, LogOut,
   TrendingUp, Users, CreditCard, AlertCircle, Zap,
-  Image as ImageIcon, Link as LinkIcon, Clock, BarChart3, Eye, MousePointer, Upload, X
+  Image as ImageIcon, Link as LinkIcon, Clock, BarChart3, Eye, EyeOff, MousePointer, 
+  Upload, X, Copy, Check, ExternalLink, RefreshCw, Download, Filter, 
+  ChevronRight, Stethoscope, Briefcase, Database, Activity, Sparkles, 
+  CheckCircle2, AlertTriangle, KeyRound, ArrowUpRight, DollarSign, CalendarCheck
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -26,151 +29,27 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer
+  ResponsiveContainer,
+  BarChart,
+  Bar
 } from 'recharts';
 
 const SUPER_ADMIN = { username: 'admin', password: 'admin123' };
 
 // Animated Background Component
 const AnimatedBackground = () => (
-  <div className="fixed inset-0 overflow-hidden pointer-events-none">
-    {[...Array(15)].map((_, i) => (
-      <motion.div
-        key={i}
-        className="absolute w-1 h-1 bg-white/20 rounded-full"
-        initial={{ x: Math.random() * 100 + '%', y: Math.random() * 100 + '%' }}
-        animate={{ y: [null, '-20%', '20%'], opacity: [0.2, 0.6, 0.2] }}
-        transition={{ duration: 4 + Math.random() * 3, repeat: Infinity, delay: Math.random() * 2 }}
-      />
-    ))}
-    <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-indigo-600/10 blur-[150px]" />
-    <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-cyan-600/10 blur-[150px]" />
+  <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+    <div className="absolute top-[-10%] left-[-5%] w-[45%] h-[45%] rounded-full bg-indigo-600/10 blur-[130px]" />
+    <div className="absolute bottom-[-10%] right-[-5%] w-[45%] h-[45%] rounded-full bg-cyan-600/10 blur-[130px]" />
+    <div className="absolute top-[40%] right-[20%] w-[30%] h-[30%] rounded-full bg-purple-600/5 blur-[100px]" />
   </div>
 );
 
-// Enhanced Stat Card
-const EnhancedStatCard = ({ icon, title, value, subtitle, trend, trendUp, alert, color, delay }) => {
-  const colors = { 
-    indigo: 'from-indigo-600 to-indigo-400', 
-    emerald: 'from-emerald-600 to-emerald-400', 
-    amber: 'from-amber-600 to-amber-400', 
-    cyan: 'from-cyan-600 to-cyan-400' 
-  };
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      transition={{ delay, duration: 0.5 }}
-      className="group relative overflow-hidden rounded-3xl bg-white/[0.03] border border-white/[0.08] p-6 hover:bg-white/[0.05] transition-all hover:border-white/[0.15] hover:shadow-2xl hover:shadow-indigo-500/10"
-    >
-      <div className="absolute top-0 right-0 -mr-6 -mt-6 w-24 h-24 bg-current opacity-[0.03] blur-3xl group-hover:opacity-[0.07] transition-opacity" />
-      <div className="relative z-10 text-slate-100">
-        <div className="flex items-start justify-between mb-5">
-          <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${colors[color]} flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300`}>
-            <div className="text-white drop-shadow-md">{icon}</div>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            {trend && (
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black tracking-tight ${trendUp ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                {trendUp ? <TrendingUp className="w-3 h-3" /> : <TrendingUp className="w-3 h-3 rotate-180" />}
-                {trend}
-              </div>
-            )}
-            {alert && <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_10px_rgba(245,158,11,0.5)]" />}
-          </div>
-        </div>
-        <div>
-          <p className="text-3xl font-black text-white tracking-tight">{value}</p>
-          <p className="text-[10px] font-black text-slate-500 uppercase mt-1.5 tracking-widest">{title}</p>
-          {subtitle && <p className="text-[11px] text-slate-400/80 mt-1.5 font-medium">{subtitle}</p>}
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-// Skeleton Loader Component
-const SkeletonRow = () => (
-  <div className="flex items-center gap-4 px-6 py-5 border-b border-white/[0.04]">
-    <div className="w-12 h-12 rounded-2xl bg-white/[0.05] animate-pulse" />
-    <div className="flex-1 space-y-2">
-      <div className="h-4 w-32 bg-white/[0.05] rounded animate-pulse" />
-      <div className="h-3 w-48 bg-white/[0.05] rounded animate-pulse" />
-    </div>
-    <div className="h-4 w-24 bg-white/[0.05] rounded animate-pulse" />
-    <div className="h-4 w-20 bg-white/[0.05] rounded animate-pulse" />
-    <div className="h-4 w-28 bg-white/[0.05] rounded animate-pulse" />
-  </div>
-);
-
-const ChartCard = ({ title, data, color }) => {
-  const colors = {
-    indigo: { stroke: '#6366f1', fill: 'rgba(99, 102, 241, 0.1)' },
-    cyan: { stroke: '#06b6d4', fill: 'rgba(6, 182, 212, 0.1)' }
-  };
-  const activeColor = colors[color] || colors.indigo;
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="col-span-full lg:col-span-2 bg-white/[0.03] border border-white/[0.08] rounded-[2rem] p-8"
-    >
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h3 className="text-xl font-black text-white tracking-tight">{title}</h3>
-          <p className="text-xs text-slate-500 font-bold uppercase mt-1 tracking-widest">Oxirgi 6 oylik dinamika</p>
-        </div>
-        <div className="p-2 bg-white/[0.05] border border-white/[0.08] rounded-xl">
-          <TrendingUp className={`w-5 h-5 text-${color}-400`} />
-        </div>
-      </div>
-      <div className="h-[240px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data}>
-            <defs>
-              <linearGradient id={`color${color}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={activeColor.stroke} stopOpacity={0.3}/>
-                <stop offset="95%" stopColor={activeColor.stroke} stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-            <XAxis 
-              dataKey="name" 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
-              dy={10}
-            />
-            <YAxis 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
-            />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#0f0f16', 
-                border: '1px solid rgba(255,255,255,0.1)', 
-                borderRadius: '16px',
-                fontSize: '12px',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
-              }}
-              itemStyle={{ color: '#fff', fontWeight: 700 }}
-              cursor={{ stroke: 'white', strokeOpacity: 0.1 }}
-            />
-            <Area 
-              type="monotone" 
-              dataKey="value" 
-              stroke={activeColor.stroke} 
-              strokeWidth={4}
-              fillOpacity={1} 
-              fill={`url(#color${color})`} 
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-    </motion.div>
-  );
+// Copy helper function
+const copyToClipboard = (text, label) => {
+  if (!text) return;
+  navigator.clipboard.writeText(text);
+  toast.success(`📋 ${label} nusxalandi: ${text}`);
 };
 
 export default function SuperAdmin() {
@@ -178,20 +57,43 @@ export default function SuperAdmin() {
   const [clinics, setClinics] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // Tab Management: 'clinics' | 'users' | 'ads' | 'billing' | 'system'
+  const [activeTab, setActiveTab] = useState('clinics');
+  
+  // UI Controls
   const [search, setSearch] = useState('');
+  const [userSearch, setUserSearch] = useState('');
+  const [clinicStatusFilter, setClinicStatusFilter] = useState('all'); // all, active, expiring, inactive
+  const [clinicPlanFilter, setClinicPlanFilter] = useState('all'); // all, basic, pro
+  const [userRoleFilter, setUserRoleFilter] = useState('all'); // all, admin, doctor, receptionist
+  const [userClinicFilter, setUserClinicFilter] = useState('all');
+  const [showCharts, setShowCharts] = useState(true);
+  const [revealedPasswords, setRevealedPasswords] = useState({}); // { id: boolean }
+
+  // Modals state
   const [modalOpen, setModalOpen] = useState(false);
   const [userModalOpen, setUserModalOpen] = useState(false);
+  const [renewModalOpen, setRenewModalOpen] = useState(false);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [adModalOpen, setAdModalOpen] = useState(false);
+
+  // Selected Entities for editing / details
   const [editingClinic, setEditClinic] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
-  const [selectedClinicId, setSelectedClinicId] = useState('');
+  const [selectedClinicForDetail, setSelectedClinicForDetail] = useState(null);
+  const [renewingClinic, setRenewingClinic] = useState(null);
+  const [renewMonths, setRenewMonths] = useState(1);
+  const [selectedClinicIdForUser, setSelectedClinicIdForUser] = useState('');
+
+  // Authentication State
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginLoading, setLoginLoading] = useState(false);
-  
-  // Advertisement Management State
-  const [activeTab, setActiveTab] = useState('clinics'); // 'clinics' or 'ads'
+
+  // Advertisements State
   const [ads, setAds] = useState([]);
-  const [adModalOpen, setAdModalOpen] = useState(false);
   const [editingAd, setEditingAd] = useState(null);
   const [adForm, setAdForm] = useState({
     title: '',
@@ -205,14 +107,24 @@ export default function SuperAdmin() {
   });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  
+
+  // Clinic Form
   const [form, setForm] = useState({ 
     id: '', name: '', password: '', 
     monthly_fee: 189000, plan: 'pro', status: 'Active', 
     expires_at: '', last_payment_date: '',
     admin_username: '', admin_password: '', admin_name: ''
   });
-  const [userForm, setUserForm] = useState({ clinic_id: '', username: '', password: '', name: '', role: 'doctor' });
+
+  // User Form
+  const [userForm, setUserForm] = useState({ 
+    clinic_id: '', username: '', password: '', name: '', role: 'doctor', commission_rate: 0 
+  });
+
+  // Toggle show/hide password
+  const togglePasswordVisibility = (id) => {
+    setRevealedPasswords(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   useEffect(() => {
     const auth = localStorage.getItem('admin_auth');
@@ -242,7 +154,7 @@ export default function SuperAdmin() {
         const adminUser = {
           id: 'admin-1',
           username: SUPER_ADMIN.username,
-          name: 'Administrator',
+          name: 'Super Administrator',
           role: 'admin'
         };
         localStorage.setItem('admin_auth', JSON.stringify({
@@ -252,9 +164,11 @@ export default function SuperAdmin() {
         setIsLoggedIn(true);
         toast.success(t('superAdmin.welcome'));
         loadClinics();
-      } else { toast.error(t('login.invalidCredentials')); }
+      } else { 
+        toast.error(t('login.invalidCredentials')); 
+      }
       setLoginLoading(false);
-    }, 800);
+    }, 600);
   };
 
   const handleLogout = () => {
@@ -266,15 +180,15 @@ export default function SuperAdmin() {
 
   const loadClinics = async () => {
     setLoading(true);
+    setRefreshing(true);
     try {
       const data = await base44.clinic.getAll();
       
-      // Professional Data consistency check (Migration)
-      // Narxiga qarab tarifni to'g'irlash
+      // Data consistency check for plans & fees
       let hasChanges = false;
-      const fixedData = data.map(c => {
+      const fixedData = (data || []).map(c => {
         const fee = Number(c.monthly_fee);
-        let correctPlan = c.plan;
+        let correctPlan = c.plan || 'pro';
         
         if (fee === 99000 && c.plan !== 'basic') {
           correctPlan = 'basic';
@@ -288,247 +202,213 @@ export default function SuperAdmin() {
       });
 
       if (hasChanges) {
-        console.log('🔄 Data inconsistency fixed: plans synced with fees');
         await base44.clinic.saveAll(fixedData);
         setClinics(fixedData);
       } else {
-        setClinics(data);
+        setClinics(fixedData);
       }
 
+      // Fetch all users
       const allUsers = await base44.auth.getAllUsers();
-      setUsers(allUsers);
+      setUsers(allUsers || []);
+
       // Load advertisements
       const allAds = await getAllAds();
-      setAds(allAds);
+      setAds(allAds || []);
       
-      // Group users by clinic internally for optimized access
-      const usersByClinic = {};
-      allUsers.forEach(u => {
-        if (!usersByClinic[u.clinic_id]) {
-          usersByClinic[u.clinic_id] = [];
-        }
-        usersByClinic[u.clinic_id].push({
-          username: u.username,
-          name: u.name,
-          role: u.role
-        });
-      });
     } catch (error) {
       console.error('Error loading clinics:', error);
-      toast.error('Klinikalarni yuklashda xatolik');
+      toast.error('Klinikalarni yuklashda xatolik yuz berdi');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
+  // Switch / Impersonate Clinic directly
+  const handleImpersonateClinic = (clinic) => {
+    const clinicUsers = users.filter(u => u.clinic_id?.toLowerCase() === clinic.id?.toLowerCase());
+    const adminUser = clinicUsers.find(u => u.role === 'admin') || clinicUsers[0];
+    
+    localStorage.setItem('current_clinic_id', clinic.id);
+    localStorage.setItem('clinic_id', clinic.id);
+    localStorage.setItem('clinic_plan', (clinic.plan || 'pro').toLowerCase());
+    
+    if (adminUser) {
+      localStorage.setItem('user_id', adminUser.id);
+      localStorage.setItem('user_name', adminUser.name);
+      localStorage.setItem('user_role', adminUser.role);
+      localStorage.setItem('user_data', JSON.stringify(adminUser));
+    } else {
+      localStorage.setItem('user_id', 'admin-impersonate');
+      localStorage.setItem('user_name', `${clinic.name} Admin`);
+      localStorage.setItem('user_role', 'admin');
+    }
+    localStorage.setItem('is_authenticated', 'true');
+    
+    toast.success(`'${clinic.name}' klinikasiga kirilmoqda...`);
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 400);
+  };
+
+  // Quick Subscription Renew Action
+  const handleOpenRenewModal = (clinic) => {
+    setRenewingClinic(clinic);
+    setRenewMonths(1);
+    setRenewModalOpen(true);
+  };
+
+  const handleConfirmRenew = async () => {
+    if (!renewingClinic) return;
+    
+    try {
+      const currentExpiry = renewingClinic.expires_at ? new Date(renewingClinic.expires_at) : new Date();
+      const baseDate = currentExpiry > new Date() ? currentExpiry : new Date();
+      baseDate.setDate(baseDate.getDate() + (renewMonths * 30));
+      
+      const newExpiryStr = baseDate.toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
+      
+      const updatedClinics = clinics.map(c => c.id === renewingClinic.id ? {
+        ...c,
+        expires_at: newExpiryStr,
+        last_payment_date: todayStr,
+        status: 'Active'
+      } : c);
+      
+      await base44.clinic.saveAll(updatedClinics);
+      setClinics(updatedClinics);
+      setRenewModalOpen(false);
+      setRenewingClinic(null);
+      toast.success(`✅ '${renewingClinic.name}' obunasi ${renewMonths * 30} kunga uzaytirildi (${newExpiryStr} gacha)`);
+    } catch (err) {
+      toast.error('Obunani uzaytirishda xatolik yuz berdi');
+    }
+  };
+
+  // Full System Backup Export (JSON)
+  const handleExportBackup = () => {
+    const backupData = {
+      appName: 'MyClinic Dental CRM',
+      exportDate: new Date().toISOString(),
+      version: '2.5.0',
+      totalClinics: clinics.length,
+      totalUsers: users.length,
+      clinics: clinics,
+      users: users,
+      ads: ads,
+    };
+    
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `myclinic_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('💾 Tizim zaxira nusxasi (backup) muvaffaqiyatli yuklab olindi!');
+  };
+
   // User management functions
-  const handleAddUser = (clinicId) => {
-    setSelectedClinicId(clinicId);
-    setUserForm({ clinic_id: clinicId, username: '', password: '', name: '', role: 'doctor' });
+  const handleAddUser = (clinicId = '') => {
+    setSelectedClinicIdForUser(clinicId || clinics[0]?.id || '');
+    setUserForm({ 
+      clinic_id: clinicId || clinics[0]?.id || '', 
+      username: '', 
+      password: Math.random().toString(36).substring(2, 8), 
+      name: '', 
+      role: 'doctor',
+      commission_rate: 0 
+    });
     setEditingUser(null);
     setUserModalOpen(true);
   };
 
   const handleEditUser = (user) => {
     setEditingUser(user);
-    setUserForm({ clinic_id: user.clinic_id, username: user.username, password: user.password, name: user.name, role: user.role });
+    setUserForm({ 
+      clinic_id: user.clinic_id || '', 
+      username: user.username || '', 
+      password: user.password || '', 
+      name: user.name || '', 
+      role: user.role || 'doctor',
+      commission_rate: user.commission_rate || 0 
+    });
     setUserModalOpen(true);
   };
 
-  const handleDeleteUser = (userId) => {
-    if (confirm('Foydalanuvchini o\'chirishni xohlaysizmi?')) {
-      base44.auth.deleteUser(userId);
-      setUsers(base44.auth.getAllUsers());
-      toast.success('Foydalanuvchi o\'chirildi');
+  const handleDeleteUser = async (userId) => {
+    if (confirm('Haqiqatdan ham bu foydalanuvchini o\'chirib tashlamoqchimisiz?')) {
+      await base44.auth.deleteUser(userId);
+      const updated = await base44.auth.getAllUsers();
+      setUsers(updated);
+      toast.success('Foydalanuvchi tizimdan o\'chirildi');
     }
   };
 
   const handleUserSubmit = async (e) => {
     e.preventDefault();
-    if (!userForm.username || !userForm.password || !userForm.name) {
-      toast.error('Barcha maydonlarni to\'ldiring');
+    if (!userForm.username || !userForm.password || !userForm.name || !userForm.clinic_id) {
+      toast.error('Barcha majburiy maydonlarni to\'ldiring!');
       return;
     }
     
     try {
       if (editingUser) {
         await base44.auth.updateUser(editingUser.id, userForm);
-        toast.success('Foydalanuvchi yangilandi');
+        toast.success('Foydalanuvchi muvaffaqiyatli yangilandi');
       } else {
-        // Check if username exists for this clinic
-        const existingUser = users.find(u => u.clinic_id === userForm.clinic_id && u.username === userForm.username);
+        const existingUser = users.find(u => 
+          u.clinic_id?.toLowerCase() === userForm.clinic_id?.toLowerCase() && 
+          u.username?.toLowerCase() === userForm.username?.toLowerCase()
+        );
         if (existingUser) {
-          toast.error('Bu login allaqachon mavjud!');
+          toast.error('Bu login ushbu klinikada allaqachon mavjud!');
           return;
         }
         await base44.auth.addUser(userForm);
-        toast.success('Yangi foydalanuvchi qo\'shildi');
-        console.log('✅ New user added:', userForm);
+        toast.success('✅ Yangi foydalanuvchi qo\'shildi');
       }
       
-      // Refresh users list
       const updatedUsers = await base44.auth.getAllUsers();
       setUsers(updatedUsers);
-      console.log('📊 Total users in system:', updatedUsers.length);
-      
       setUserModalOpen(false);
-      setUserForm({ clinic_id: '', username: '', password: '', name: '', role: 'doctor' });
       setEditingUser(null);
     } catch (error) {
       console.error('Error saving user:', error);
-      toast.error('Foydalanuvchini saqlashda xatolik');
+      toast.error('Foydalanuvchini saqlashda xatolik yuz berdi');
     }
   };
 
   const getClinicUsers = (clinicId) => {
-    return users.filter(u => u.clinic_id === clinicId);
+    if (!clinicId) return [];
+    return users.filter(u => u.clinic_id?.toLowerCase() === clinicId.toLowerCase());
   };
 
-  const filteredClinics = clinics.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.id.toLowerCase().includes(search.toLowerCase()));
+  // Helper date calculations
+  const getTimeRemaining = (expiryDateStr) => {
+    if (!expiryDateStr) return { text: 'Noma\'lum', color: 'text-slate-500', bg: 'bg-slate-500/10 border-slate-500/20', isUrgent: false };
+    const expiry = new Date(expiryDateStr);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const diffTime = expiry - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  const stats = useMemo(() => {
-    let totalRevenue = 0;
-    clinics.forEach(c => { if (c.status === 'Active') totalRevenue += Number(c.monthly_fee || 0); });
+    if (diffDays < 0) return { text: 'Muddati tugagan', color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/30', isUrgent: true, days: diffDays };
+    if (diffDays === 0) return { text: 'Bugun tugaydi', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30', isUrgent: true, days: 0 };
+    if (diffDays <= 7) return { text: `${diffDays} kun qoldi`, color: 'text-amber-300', bg: 'bg-amber-500/10 border-amber-500/20', isUrgent: true, days: diffDays };
+    if (diffDays <= 30) return { text: `${diffDays} kun qoldi`, color: 'text-cyan-300', bg: 'bg-cyan-500/10 border-cyan-500/20', isUrgent: false, days: diffDays };
     
-    // Mock growth data for charts (in a real app this would come from the database)
-    const revenueData = [
-      { name: 'Yan', value: totalRevenue * 0.7 },
-      { name: 'Feb', value: totalRevenue * 0.75 },
-      { name: 'Mar', value: totalRevenue * 0.82 },
-      { name: 'Apr', value: totalRevenue * 0.88 },
-      { name: 'May', value: totalRevenue * 0.95 },
-      { name: 'Iyun', value: totalRevenue },
-    ];
-
-    const clinicGrowth = [
-      { name: 'Yan', value: Math.round(clinics.length * 0.6) },
-      { name: 'Feb', value: Math.round(clinics.length * 0.65) },
-      { name: 'Mar', value: Math.round(clinics.length * 0.72) },
-      { name: 'Apr', value: Math.round(clinics.length * 0.85) },
-      { name: 'May', value: Math.round(clinics.length * 0.92) },
-      { name: 'Iyun', value: clinics.length },
-    ];
-
+    const months = Math.floor(diffDays / 30);
+    const remainingDays = diffDays % 30;
     return { 
-      total: clinics.length, 
-      active: clinics.filter(c => c.status === 'Active').length, 
-      expiring: clinics.filter(c => { 
-        const diff = (new Date(c.expires_at) - new Date()) / (1000 * 60 * 60 * 24); 
-        return diff <= 15 && diff > 0; 
-      }).length, 
-      mrr: totalRevenue,
-      revenueData,
-      clinicGrowth
+      text: `${months} oy${remainingDays > 0 ? ` ${remainingDays} k` : ''}`, 
+      color: 'text-emerald-400', 
+      bg: 'bg-emerald-500/10 border-emerald-500/20',
+      isUrgent: false,
+      days: diffDays
     };
-  }, [clinics]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Robust validation
-    if (!form.id || !form.name || !form.password) { 
-      toast.error('Barcha maydonlarni to\'ldiring!'); 
-      return; 
-    }
-
-    // ID validation (only letters, numbers, underscores)
-    if (!/^[a-zA-Z0-9_]+$/.test(form.id)) {
-      toast.error('ID faqat lotin harflari, sonlar va _ belgisidan iborat bo\'lishi shart!');
-      return;
-    }
-    
-    try {
-      if (editingClinic) {
-        // Update existing clinic
-        const updatedClinic = { ...editingClinic, ...form };
-        const newClinics = clinics.map(c => c.id === editingClinic.id ? updatedClinic : c);
-        await base44.clinic.saveAll(newClinics);
-        setClinics(newClinics);
-        toast.success('✅ Klinika muvaffaqiyatli tahrirlandi');
-      } else {
-        // Create new clinic
-        if (clinics.find(c => c.id === form.id)) { 
-          toast.error('Bu ID bilan klinika allaqachon mavjud!'); 
-          return; 
-        }
-        const newClinic = { 
-          ...form, 
-          status: form.status || 'Active',
-          created_at: new Date().toISOString() 
-        };
-
-        // Prepare Admin Data
-        const adminUsername = (form.admin_username || form.id).trim();
-        const adminPassword = (form.admin_password || form.password).trim();
-        const adminNameValue = form.admin_name || (form.name + ' Admin');
-
-        try {
-          // Creates clinic + admin user atomically (localStorage-first, Supabase as backup)
-          await base44.clinic.createClinic(newClinic, {
-            id: 'user-' + Math.random().toString(36).substring(2, 11),
-            name: adminNameValue,
-            username: adminUsername,
-            password: adminPassword,
-            clinic_id: form.id,
-            role: 'admin',
-            commission_rate: 0
-          });
-          
-          console.log('🎉 Clinic + Admin created successfully!');
-          console.log('📋 Login credentials:');
-          console.log(`   Clinic ID: ${form.id}`);
-          console.log(`   Username:  ${adminUsername}`);
-          console.log(`   Password:  ${adminPassword}`);
-
-          toast.success(`✅ '${newClinic.name}' yaratildi!\nLogin: ${adminUsername} | Parol: ${adminPassword}`);
-        } catch (innerErr) {
-          console.error('Clinic creation failed:', innerErr);
-          toast.error(`❌ Xatolik: ${innerErr.message}`);
-          return;
-        }
-      }
-      setModalOpen(false);
-      resetForm();
-      // Reload fresh data to reflect changes
-      await loadClinics();
-    } catch (error) {
-      console.error('Klinika saqlashda xatolik:', error);
-      const errorMsg = error.message || 'Klinikani saqlab bo\'lmadi';
-      toast.error(`❌ Xatolik: ${errorMsg}`);
-    }
-  };
-
-  const handleDelete = (id) => {
-    if (confirm('Haqiqatdan ham bu klinikani o\'chirib tashlamoqchimisiz?')) {
-      const newClinics = clinics.filter(c => c.id !== id);
-      base44.clinic.saveAll(newClinics);
-      setClinics(newClinics);
-      toast.success('Klinika o\'chirildi');
-    }
-  };
-
-  const markAsPaid = (id) => {
-    if (confirm('Bu oyni to\'langan deb belgilaysizmi?')) {
-      const today = new Date().toISOString().split('T')[0];
-      const newClinics = clinics.map(c => c.id === id ? { ...c, last_payment_date: today } : c);
-      base44.clinic.saveAll(newClinics);
-      setClinics(newClinics);
-      toast.success('To\'lov qabul qilindi');
-    }
-  };
-
-  const resetForm = (clinic = null) => {
-    if (clinic) {
-      setForm({ ...clinic, password: clinic.password || '', plan: clinic.plan || 'pro' });
-    } else {
-      setForm({
-        id: '', name: '', password: '', 
-        monthly_fee: 189000, plan: 'pro', status: 'Active', 
-        expires_at: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
-        last_payment_date: new Date().toISOString().split('T')[0]
-      });
-    }
-    setEditClinic(clinic);
   };
 
   const isPaymentOverdue = (lastPaymentStr) => {
@@ -538,32 +418,202 @@ export default function SuperAdmin() {
     return Math.ceil(Math.abs(today - lastPayment) / (1000 * 60 * 60 * 24)) > 30;
   };
 
-  const getTimeRemaining = (expiryDateStr) => {
-    if (!expiryDateStr) return { text: 'Noma\'lum', color: 'text-slate-500' };
-    const expiry = new Date(expiryDateStr);
-    const today = new Date();
-    const diffTime = expiry - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  // Comprehensive System Statistics
+  const stats = useMemo(() => {
+    let totalRevenue = 0;
+    let basicCount = 0;
+    let proCount = 0;
 
-    if (diffDays < 0) return { text: 'Muddati tugagan', color: 'text-rose-500' };
-    if (diffDays === 0) return { text: 'Bugun tugaydi', color: 'text-amber-500 font-bold animate-pulse' };
-    if (diffDays === 1) return { text: '1 kun qoldi', color: 'text-amber-500 font-bold' };
-    if (diffDays <= 7) return { text: `${diffDays} kun qoldi`, color: 'text-amber-400 font-bold' };
-    if (diffDays <= 30) return { text: `${diffDays} kun qoldi`, color: 'text-blue-400' };
+    clinics.forEach(c => { 
+      if (c.status === 'Active') {
+        totalRevenue += Number(c.monthly_fee || 0);
+      }
+      if (c.plan === 'basic') basicCount++;
+      else proCount++;
+    });
+
+    const doctorsCount = users.filter(u => u.role === 'doctor').length;
+    const adminUsersCount = users.filter(u => u.role === 'admin').length;
+    const receptionistCount = users.filter(u => u.role === 'receptionist').length;
+
+    const expiringSoonClinics = clinics.filter(c => {
+      const timeInfo = getTimeRemaining(c.expires_at);
+      return timeInfo.isUrgent && timeInfo.days >= 0;
+    });
+
+    const expiredClinics = clinics.filter(c => {
+      const timeInfo = getTimeRemaining(c.expires_at);
+      return timeInfo.days < 0;
+    });
+
+    // Trend simulation
+    const revenueData = [
+      { name: 'Mar', value: Math.round(totalRevenue * 0.75) },
+      { name: 'Apr', value: Math.round(totalRevenue * 0.82) },
+      { name: 'May', value: Math.round(totalRevenue * 0.9) },
+      { name: 'Iyun', value: Math.round(totalRevenue * 0.95) },
+      { name: 'Iyul', value: Math.round(totalRevenue * 0.98) },
+      { name: 'Avg', value: totalRevenue },
+    ];
+
+    const clinicGrowth = [
+      { name: 'Mar', clinics: Math.max(1, clinics.length - 2), users: Math.max(2, users.length - 4) },
+      { name: 'Apr', clinics: Math.max(1, clinics.length - 1), users: Math.max(3, users.length - 3) },
+      { name: 'May', clinics: Math.max(1, clinics.length - 1), users: Math.max(4, users.length - 2) },
+      { name: 'Iyun', clinics: clinics.length, users: Math.max(5, users.length - 1) },
+      { name: 'Iyul', clinics: clinics.length, users: users.length },
+      { name: 'Avg', clinics: clinics.length, users: users.length },
+    ];
+
+    return { 
+      total: clinics.length, 
+      active: clinics.filter(c => c.status === 'Active').length, 
+      inactive: clinics.filter(c => c.status !== 'Active').length,
+      expiring: expiringSoonClinics.length,
+      expired: expiredClinics.length,
+      mrr: totalRevenue,
+      basicCount,
+      proCount,
+      totalUsers: users.length,
+      doctorsCount,
+      adminUsersCount,
+      receptionistCount,
+      revenueData,
+      clinicGrowth
+    };
+  }, [clinics, users]);
+
+  // Filtered Clinics
+  const filteredClinics = useMemo(() => {
+    return clinics.filter(c => {
+      const matchesSearch = 
+        c.name?.toLowerCase().includes(search.toLowerCase()) || 
+        c.id?.toLowerCase().includes(search.toLowerCase());
+      
+      const timeInfo = getTimeRemaining(c.expires_at);
+      let matchesStatus = true;
+      if (clinicStatusFilter === 'active') matchesStatus = c.status === 'Active' && timeInfo.days >= 0;
+      if (clinicStatusFilter === 'expiring') matchesStatus = timeInfo.isUrgent && timeInfo.days >= 0;
+      if (clinicStatusFilter === 'expired') matchesStatus = timeInfo.days < 0 || c.status !== 'Active';
+
+      let matchesPlan = true;
+      if (clinicPlanFilter === 'basic') matchesPlan = c.plan === 'basic';
+      if (clinicPlanFilter === 'pro') matchesPlan = c.plan !== 'basic';
+
+      return matchesSearch && matchesStatus && matchesPlan;
+    });
+  }, [clinics, search, clinicStatusFilter, clinicPlanFilter]);
+
+  // Filtered Users
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => {
+      const matchesSearch = 
+        u.name?.toLowerCase().includes(userSearch.toLowerCase()) || 
+        u.username?.toLowerCase().includes(userSearch.toLowerCase()) ||
+        u.clinic_id?.toLowerCase().includes(userSearch.toLowerCase());
+
+      let matchesRole = true;
+      if (userRoleFilter !== 'all') matchesRole = u.role === userRoleFilter;
+
+      let matchesClinic = true;
+      if (userClinicFilter !== 'all') matchesClinic = u.clinic_id?.toLowerCase() === userClinicFilter.toLowerCase();
+
+      return matchesSearch && matchesRole && matchesClinic;
+    });
+  }, [users, userSearch, userRoleFilter, userClinicFilter]);
+
+  // Clinic Submit
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     
-    const months = Math.floor(diffDays / 30);
-    if (months > 0) {
-      const remainingDays = diffDays % 30;
-      return { 
-        text: `${months} oy${remainingDays > 0 ? ` ${remainingDays} kun` : ''} qoldi`, 
-        color: 'text-emerald-400/80' 
-      };
+    if (!form.id || !form.name || !form.password) { 
+      toast.error('Barcha majburiy maydonlarni to\'ldiring!'); 
+      return; 
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(form.id)) {
+      toast.error('Klinika ID faqat lotin harflari, sonlar va _ belgisidan iborat bo\'lishi shart!');
+      return;
     }
     
-    return { text: `${diffDays} kun qoldi`, color: 'text-emerald-400/80' };
+    try {
+      if (editingClinic) {
+        const updatedClinic = { ...editingClinic, ...form };
+        const newClinics = clinics.map(c => c.id === editingClinic.id ? updatedClinic : c);
+        await base44.clinic.saveAll(newClinics);
+        setClinics(newClinics);
+        toast.success('✅ Klinika ma\'lumotlari tahrirlandi');
+      } else {
+        if (clinics.find(c => c.id.toLowerCase() === form.id.toLowerCase())) { 
+          toast.error('Ushbu ID bilan klinika allaqachon mavjud!'); 
+          return; 
+        }
+        
+        const newClinic = { 
+          ...form, 
+          status: form.status || 'Active',
+          created_at: new Date().toISOString() 
+        };
+
+        const adminUsername = (form.admin_username || form.id).trim();
+        const adminPassword = (form.admin_password || form.password).trim();
+        const adminNameValue = form.admin_name || (form.name + ' Admin');
+
+        await base44.clinic.createClinic(newClinic, {
+          id: 'user-' + Math.random().toString(36).substring(2, 11),
+          name: adminNameValue,
+          username: adminUsername,
+          password: adminPassword,
+          clinic_id: form.id,
+          role: 'admin',
+          commission_rate: 0
+        });
+
+        toast.success(`🎉 '${newClinic.name}' muvaffaqiyatli yaratildi!\nAdmin: ${adminUsername} | Parol: ${adminPassword}`);
+      }
+      
+      setModalOpen(false);
+      resetForm();
+      await loadClinics();
+    } catch (error) {
+      console.error('Klinika saqlashda xatolik:', error);
+      toast.error(`❌ Xatolik: ${error.message || 'Saqlab bo\'lmadi'}`);
+    }
   };
 
-  // Advertisement Management Functions
+  const handleDelete = async (id) => {
+    if (confirm('Haqiqatdan ham bu klinikani va unga tegishli barcha ma\'lumotlarni o\'chirmoqchimisiz?')) {
+      const newClinics = clinics.filter(c => c.id !== id);
+      await base44.clinic.saveAll(newClinics);
+      setClinics(newClinics);
+      toast.success('Klinika o\'chirildi');
+    }
+  };
+
+  const markAsPaid = async (id) => {
+    const today = new Date().toISOString().split('T')[0];
+    const newClinics = clinics.map(c => c.id === id ? { ...c, last_payment_date: today } : c);
+    await base44.clinic.saveAll(newClinics);
+    setClinics(newClinics);
+    toast.success('To\'lov qabul qilindi');
+  };
+
+  const resetForm = (clinic = null) => {
+    if (clinic) {
+      setForm({ ...clinic, password: clinic.password || '', plan: clinic.plan || 'pro' });
+    } else {
+      setForm({
+        id: '', name: '', password: Math.random().toString(36).substring(2, 8), 
+        monthly_fee: 189000, plan: 'pro', status: 'Active', 
+        expires_at: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+        last_payment_date: new Date().toISOString().split('T')[0],
+        admin_username: '', admin_password: '', admin_name: ''
+      });
+    }
+    setEditClinic(clinic);
+  };
+
+  // Advertisement Management
   const handleAddAd = () => {
     setEditingAd(null);
     setAdForm({
@@ -624,7 +674,7 @@ export default function SuperAdmin() {
       setEditingAd(null);
     } catch (error) {
       console.error('Ad save error:', error);
-      toast.error('Reklamani saqlashda xatolik');
+      toast.error('Reklamani saqlashda xatolik yuz berdi');
     }
   };
 
@@ -632,30 +682,21 @@ export default function SuperAdmin() {
     try {
       await saveAd({ ...ad, enabled: !ad.enabled, id: ad.id });
       setAds(await getAllAds());
-      toast.success(ad.enabled ? 'Reklama o\'chirildi' : 'Reklama yoqildi');
+      toast.success(ad.enabled ? 'Reklama o\'chirildi' : 'Reklama faollashtirildi');
     } catch (error) {
       toast.error('Statusni o\'zgartirishda xatolik');
     }
   };
 
-  // Stats calculated from state
   const adStats = useMemo(() => {
     const totalAds = ads.length;
     const activeAds = ads.filter(a => a.enabled).length;
     const totalImpressions = ads.reduce((sum, ad) => sum + (ad.impressions || 0), 0);
     const totalClicks = ads.reduce((sum, ad) => sum + (ad.clicks || 0), 0);
     const ctr = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : 0;
-    return { 
-      totalAds, 
-      activeAds, 
-      inactiveAds: totalAds - activeAds, 
-      totalImpressions, 
-      totalClicks, 
-      ctr 
-    };
+    return { totalAds, activeAds, inactiveAds: totalAds - activeAds, totalImpressions, totalClicks, ctr };
   }, [ads]);
 
-  // Image Upload Handler
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -689,133 +730,79 @@ export default function SuperAdmin() {
   const removeImage = () => {
     setAdForm({ ...adForm, image_url: '' });
     setSelectedFile(null);
-    // Reset file input
     const fileInput = document.getElementById('ad-image-upload');
     if (fileInput) fileInput.value = '';
   };
 
-  // Login Page
+  // Login Screen
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-[#050508] flex items-center justify-center p-4 font-sans relative overflow-hidden">
-        {/* Cinematic Background */}
-        <div className="fixed inset-0 z-0">
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-600/20 blur-[120px] animate-pulse" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-cyan-600/20 blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-        </div>
-
+      <div className="min-h-screen bg-[#07080d] flex items-center justify-center p-4 font-sans relative overflow-hidden">
+        <AnimatedBackground />
+        
         <motion.div 
-          initial={{ opacity: 0, y: 30 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="relative z-10 w-full max-w-[460px]"
+          initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+          animate={{ opacity: 1, scale: 1, y: 0 }} 
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="relative z-10 w-full max-w-[420px]"
         >
-          {/* Glass Card */}
-          <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-30 transition duration-1000 group-hover:duration-200" />
-            <div className="relative bg-[#0d0d12]/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] overflow-hidden">
-              
-              {/* Internal Glow */}
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
+          <div className="relative bg-[#0d0f18]/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400" />
+            
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-indigo-500 via-purple-600 to-cyan-500 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/20 border border-white/20">
+                <ShieldCheck className="w-9 h-9 text-white drop-shadow" />
+              </div>
+              <h1 className="text-2xl font-black text-white tracking-tight">Nexus SuperAdmin</h1>
+              <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.25em] mt-1">Tizim Boshqaruv Markazi</p>
+            </div>
 
-              <div className="text-center mb-10">
-                <motion.div 
-                  initial={{ scale: 0.8, opacity: 0 }} 
-                  animate={{ scale: 1, opacity: 1 }} 
-                  transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
-                  className="relative w-24 h-24 mx-auto mb-8"
-                >
-                  <div className="absolute inset-0 bg-indigo-500 rounded-3xl blur-2xl opacity-20 animate-pulse" />
-                  <div className="relative w-full h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-500 rounded-[1.5rem] flex items-center justify-center shadow-2xl border border-white/20">
-                    <ShieldCheck className="w-12 h-12 text-white drop-shadow-lg" />
-                  </div>
-                </motion.div>
-                
-                <motion.h1 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
-                  transition={{ delay: 0.4 }}
-                  className="text-4xl font-black text-white mb-3 tracking-tighter"
-                >
-                  NexusOS<span className="text-indigo-500">.</span>
-                </motion.h1>
-                <motion.p 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }} 
-                  transition={{ delay: 0.5 }}
-                  className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.3em]"
-                >
-                  Super Admin Gateway
-                </motion.p>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">Login</Label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Input 
+                    value={loginForm.username} 
+                    onChange={e => setLoginForm({...loginForm, username: e.target.value})} 
+                    placeholder="admin" 
+                    className="h-11 pl-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-sm focus:border-indigo-500" 
+                  />
+                </div>
               </div>
 
-              <form onSubmit={handleLogin} className="space-y-6">
-                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.6 }} className="space-y-2">
-                  <Label className="text-[10px] font-black text-slate-500 uppercase ml-2 tracking-widest">{t('common.username')}</Label>
-                  <div className="relative group/input">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within/input:text-indigo-400 transition-colors" />
-                    <Input 
-                      value={loginForm.username} 
-                      onChange={e => setLoginForm({...loginForm, username: e.target.value})} 
-                      placeholder="admin" 
-                      className="h-14 pl-12 bg-white/[0.03] border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-700" 
-                    />
-                  </div>
-                </motion.div>
-
-                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.7 }} className="space-y-2">
-                  <Label className="text-[10px] font-black text-slate-500 uppercase ml-2 tracking-widest">{t('common.password')}</Label>
-                  <div className="relative group/input">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within/input:text-indigo-400 transition-colors" />
-                    <Input 
-                      type="password" 
-                      value={loginForm.password} 
-                      onChange={e => setLoginForm({...loginForm, password: e.target.value})} 
-                      placeholder="••••••••" 
-                      className="h-14 pl-12 bg-white/[0.03] border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-700" 
-                    />
-                  </div>
-                </motion.div>
-
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  transition={{ delay: 0.8 }}
-                  className="pt-4"
-                >
-                  <Button 
-                    type="submit" 
-                    disabled={loginLoading} 
-                    className="group w-full h-15 bg-white text-black hover:bg-indigo-50 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all active:scale-[0.98] overflow-hidden relative"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-cyan-500 opacity-0 group-hover:opacity-10 transition-opacity" />
-                    {loginLoading ? (
-                      <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
-                    ) : (
-                      <span className="flex items-center justify-center gap-3">
-                        {t('login.loginButton')} 
-                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                      </span>
-                    )}
-                  </Button>
-                </motion.div>
-              </form>
-
-              <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                transition={{ delay: 1 }}
-                className="mt-10 pt-8 border-t border-white/5"
-              >
-                <div className="flex items-center justify-between px-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">System Secure</span>
-                  </div>
-                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">NexusOS v2.4</span>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">Parol</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <Input 
+                    type="password" 
+                    value={loginForm.password} 
+                    onChange={e => setLoginForm({...loginForm, password: e.target.value})} 
+                    placeholder="••••••••" 
+                    className="h-11 pl-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-sm focus:border-indigo-500" 
+                  />
                 </div>
-              </motion.div>
+              </div>
+
+              <Button 
+                type="submit" 
+                disabled={loginLoading} 
+                className="w-full h-12 mt-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 hover:opacity-95 text-white rounded-xl font-bold tracking-wide shadow-lg shadow-indigo-500/25 transition-all"
+              >
+                {loginLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    Tizimga Kirish <ArrowRight className="w-4 h-4" />
+                  </span>
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between text-[10px] font-bold text-slate-500">
+              <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" /> Xavfsiz Shifrlangan Tizim</span>
+              <span>v2.5.0</span>
             </div>
           </div>
         </motion.div>
@@ -823,479 +810,1254 @@ export default function SuperAdmin() {
     );
   }
 
-  // Dashboard
+  // Super Admin Main Dashboard
   return (
-    <div className="min-h-screen bg-[#0a0a0f] font-sans text-slate-200">
+    <div className="min-h-screen bg-[#08090e] font-sans text-slate-100 relative">
       <AnimatedBackground />
-      <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`, backgroundSize: '50px 50px' }} />
-      <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="sticky top-0 z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/[0.06]">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-10">
-          <div className="flex items-center justify-between h-16 md:h-20">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
-                <ShieldCheck className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-black text-white">{t('superAdmin.title')}</h1>
-                <p className="text-[10px] text-slate-500 font-bold uppercase">{t('superAdmin.subtitle')}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/[0.06]">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs text-slate-400">{t('common.active')}</span>
-              </div>
-              <Button 
-                onClick={() => {
-                  console.log('\n========== ALL USERS IN SYSTEM ==========');
-                  console.log('🏢 Total Clinics:', clinics.length);
-                  console.log('🏢 Clinics:', clinics.map(c => `${c.id} (${c.name})`));
-                  console.log('📊 Total Users:', users.length);
-                  console.log('\n👥 User List:');
-                  users.forEach((u, i) => {
-                    console.log(`${i + 1}. [${u.clinic_id}] ${u.username} - ${u.name} (${u.role})`);
-                  });
-                  console.log('\n=========================================\n');
-                  alert(`Jami klinikalar: ${clinics.length}\nJami foydalanuvchilar: ${users.length}\n\nTo'liq ro'yxat uchun browser console ni oching (F12)`);
-                }}
-                variant="ghost" 
-                size="sm" 
-                className="text-slate-400 hover:text-blue-400"
-              >
-                <Users className="w-4 h-4 mr-2" />
-                Foydalanuvchilar
-              </Button>
-              <Button onClick={handleLogout} variant="ghost" size="sm" className="text-slate-400 hover:text-rose-400"><LogOut className="w-4 h-4" /></Button>
-            </div>
-          </div>
-        </div>
-      </motion.header>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-10 py-6 md:py-10">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      {/* Top Navbar */}
+      <header className="sticky top-0 z-40 bg-[#08090e]/85 backdrop-blur-xl border-b border-white/[0.07] px-4 md:px-8 py-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          
+          {/* Logo & Status */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 border border-white/20 flex-shrink-0">
+              <ShieldCheck className="w-6 h-6 text-white" />
+            </div>
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-4">
-                <Zap className="w-3.5 h-3.5 text-indigo-400" />
-                <span className="text-[10px] font-bold text-indigo-300 uppercase">{t('superAdmin.title')}</span>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-black text-white tracking-tight">SuperAdmin Nexus</h1>
+                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  Global
+                </span>
               </div>
-              <h2 className="text-2xl md:text-4xl font-black text-white">{t('superAdmin.title')}</h2>
-              <p className="text-sm text-slate-400 mt-2">{t('superAdmin.subtitle')}</p>
+              <p className="text-[10px] text-slate-400 font-medium">Barcha klinikalar va foydalanuvchilar boshqaruvi</p>
             </div>
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}>
-              {activeTab === 'clinics' ? (
-                <Button onClick={() => { resetForm(); setModalOpen(true); }} className="bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 text-white rounded-xl px-6 h-12 font-bold shadow-lg hover:scale-[1.02] transition-all">
-                  <Plus className="w-5 h-5 mr-2" /> {t('superAdmin.addClinic')}
-                </Button>
-              ) : (
-                <Button onClick={handleAddAd} className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl px-6 h-12 font-bold shadow-lg hover:scale-[1.02] transition-all">
-                  <Plus className="w-5 h-5 mr-2" /> Reklama Qo'shish
-                </Button>
-              )}
-            </motion.div>
           </div>
-        </motion.div>
 
-        {/* Tab Navigation */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-          <div className="flex gap-2 p-1 bg-white/[0.03] border border-white/[0.06] rounded-xl w-fit">
+          {/* Quick Stats Pill (Desktop) */}
+          <div className="hidden lg:flex items-center gap-3 px-3 py-1.5 bg-white/[0.03] border border-white/[0.06] rounded-xl text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-slate-400">Faol:</span>
+              <strong className="text-white">{stats.active}/{stats.total} klinika</strong>
+            </div>
+            <span className="text-slate-600">|</span>
+            <div className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="text-slate-400">Xodimlar:</span>
+              <strong className="text-white">{stats.totalUsers}</strong>
+            </div>
+            <span className="text-slate-600">|</span>
+            <div className="flex items-center gap-1.5">
+              <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-slate-400">MRR:</span>
+              <strong className="text-emerald-400">{(stats.mrr / 1000).toLocaleString()}k UZS</strong>
+            </div>
+          </div>
+
+          {/* Right Action Buttons */}
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={loadClinics} 
+              variant="outline" 
+              size="sm" 
+              disabled={refreshing}
+              className="h-9 px-3 bg-white/[0.04] border-white/10 hover:bg-white/[0.08] text-slate-300 rounded-xl text-xs"
+              title="Yangilash"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-cyan-400' : ''}`} />
+              <span className="hidden sm:inline ml-1.5">Yangilash</span>
+            </Button>
+
+            <Button 
+              onClick={handleExportBackup} 
+              variant="outline" 
+              size="sm" 
+              className="h-9 px-3 bg-white/[0.04] border-white/10 hover:bg-white/[0.08] text-slate-300 rounded-xl text-xs"
+              title="Tizim zaxirasini yuklab olish"
+            >
+              <Download className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="hidden sm:inline ml-1.5">Backup JSON</span>
+            </Button>
+
+            <Button 
+              onClick={handleLogout} 
+              variant="ghost" 
+              size="sm" 
+              className="h-9 px-3 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 rounded-xl text-xs"
+              title="Tizimdan chiqish"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline ml-1.5">Chiqish</span>
+            </Button>
+          </div>
+
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="max-w-7xl mx-auto px-4 md:px-8 py-5 space-y-6">
+        
+        {/* TOP KPI CARDS - Highly Compact & Information-Dense */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          
+          {/* Card 1: Klinikalar */}
+          <div className="bg-gradient-to-b from-indigo-950/40 to-slate-900/40 border border-indigo-500/20 rounded-2xl p-4 relative overflow-hidden group hover:border-indigo-500/40 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider">Jami Klinikalar</span>
+              <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                <Building2 className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl md:text-3xl font-black text-white">{stats.total}</span>
+              <span className="text-xs text-emerald-400 font-bold">({stats.active} faol)</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/5">
+              <span>PRO: <strong className="text-white">{stats.proCount}</strong></span>
+              <span>BASIC: <strong className="text-white">{stats.basicCount}</strong></span>
+            </div>
+          </div>
+
+          {/* Card 2: Foydalanuvchilar */}
+          <div className="bg-gradient-to-b from-cyan-950/40 to-slate-900/40 border border-cyan-500/20 rounded-2xl p-4 relative overflow-hidden group hover:border-cyan-500/40 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-cyan-300 uppercase tracking-wider">Foydalanuvchilar</span>
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                <Users className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl md:text-3xl font-black text-white">{stats.totalUsers}</span>
+              <span className="text-xs text-slate-400 font-medium">xodim</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/5">
+              <span>Shifokor: <strong className="text-cyan-300">{stats.doctorsCount}</strong></span>
+              <span>Admin: <strong className="text-indigo-300">{stats.adminUsersCount}</strong></span>
+            </div>
+          </div>
+
+          {/* Card 3: Obunalar & Muddatlar */}
+          <div className="bg-gradient-to-b from-amber-950/40 to-slate-900/40 border border-amber-500/20 rounded-2xl p-4 relative overflow-hidden group hover:border-amber-500/40 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider">Obunalar Holati</span>
+              <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                <CalendarDays className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl md:text-3xl font-black text-white">{stats.active}</span>
+              {stats.expiring > 0 ? (
+                <span className="text-xs text-amber-400 font-bold animate-pulse">({stats.expiring} tugamoqda)</span>
+              ) : (
+                <span className="text-xs text-emerald-400 font-medium">Barchasi joyida</span>
+              )}
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/5">
+              <span>Muddati o'tgan: <strong className={stats.expired > 0 ? 'text-rose-400' : 'text-slate-400'}>{stats.expired}</strong></span>
+              <span className="text-amber-400 font-bold">&lt;15 kun: {stats.expiring}</span>
+            </div>
+          </div>
+
+          {/* Card 4: Oylik MRR */}
+          <div className="bg-gradient-to-b from-emerald-950/40 to-slate-900/40 border border-emerald-500/20 rounded-2xl p-4 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Oylik MRR Daromad</span>
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <CreditCard className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl md:text-3xl font-black text-white">{stats.mrr?.toLocaleString()}</span>
+              <span className="text-xs text-slate-400">UZS</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/5">
+              <span>Yillik prognoz:</span>
+              <strong className="text-emerald-300">{((stats.mrr * 12) / 1000000).toFixed(1)}M UZS</strong>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Analytics Dinamikasi (Compact & Collapsible) */}
+        <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-indigo-400" />
+              <h3 className="text-xs font-black text-white uppercase tracking-wider">O'sish va Daromad Dinamikasi</h3>
+            </div>
+            <button 
+              onClick={() => setShowCharts(!showCharts)}
+              className="text-[11px] text-slate-400 hover:text-white underline decoration-dotted"
+            >
+              {showCharts ? 'Grafiklarni yashirish' : 'Grafiklarni ko\'rsatish'}
+            </button>
+          </div>
+
+          {showCharts && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
+              {/* Chart 1: MRR Daromad */}
+              <div className="bg-black/20 border border-white/5 rounded-xl p-3.5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold text-slate-300">Oylik Daromad Dinamikasi (UZS)</span>
+                  <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3" /> +15.4%
+                  </span>
+                </div>
+                <div className="h-[140px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={stats.revenueData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 9 }} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#0f111a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }} 
+                        formatter={(val) => [`${Number(val).toLocaleString()} UZS`, 'MRR']}
+                      />
+                      <Area type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2.5} fillOpacity={1} fill="url(#revenueGrad)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Chart 2: Klinikalar va Xodimlar */}
+              <div className="bg-black/20 border border-white/5 rounded-xl p-3.5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold text-slate-300">Klinikalar va Foydalanuvchilar O'sishi</span>
+                  <span className="text-[10px] text-cyan-400 font-bold flex items-center gap-1">
+                    <Activity className="w-3 h-3" /> Faol o'sish
+                  </span>
+                </div>
+                <div className="h-[140px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.clinicGrowth} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 9 }} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#0f111a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }} 
+                      />
+                      <Bar dataKey="clinics" name="Klinikalar" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="users" name="Foydalanuvchilar" fill="#818cf8" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* PRIMARY TAB NAVIGATION BAR */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-1 border-b border-white/[0.08]">
+          
+          {/* Tabs */}
+          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-white/[0.03] border border-white/[0.07] rounded-xl">
             <button
               onClick={() => setActiveTab('clinics')}
-              className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'clinics'
-                  ? 'bg-gradient-to-r from-indigo-500 to-cyan-500 text-white shadow-lg'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <span className="flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
-                Klinikalar
-              </span>
+              <Building2 className="w-3.5 h-3.5" />
+              <span>Klinikalar</span>
+              <span className="px-1.5 py-0.2 bg-black/30 rounded-full text-[10px]">{clinics.length}</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                activeTab === 'users'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Foydalanuvchilar</span>
+              <span className="px-1.5 py-0.2 bg-black/30 rounded-full text-[10px]">{users.length}</span>
+            </button>
+
             <button
               onClick={() => setActiveTab('ads')}
-              className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'ads'
-                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              <span className="flex items-center gap-2">
-                <ImageIcon className="w-4 h-4" />
-                Reklamalar
-              </span>
+              <ImageIcon className="w-3.5 h-3.5" />
+              <span>Reklamalar</span>
+              <span className="px-1.5 py-0.2 bg-black/30 rounded-full text-[10px]">{ads.length}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('billing')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                activeTab === 'billing'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              <span>To'lovlar & Tariflar</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('system')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                activeTab === 'system'
+                  ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+              }`}
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>Tizim & Zaxira</span>
             </button>
           </div>
-        </motion.div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 mb-8">
-          <EnhancedStatCard icon={<Building2 className="w-5 h-5" />} title={t('superAdmin.totalClinics')} value={stats.total} trend="+12%" trendUp={true} color="indigo" delay={0.1} />
-          <EnhancedStatCard icon={<Users className="w-5 h-5" />} title={t('superAdmin.activeClinics')} value={stats.active} subtitle={`${stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}%`} color="emerald" delay={0.2} />
-          <EnhancedStatCard icon={<AlertCircle className="w-5 h-5" />} title={t('superAdmin.expiringSoon')} value={stats.expiring} alert={stats.expiring > 0} color="amber" delay={0.3} />
-          <EnhancedStatCard icon={<CreditCard className="w-5 h-5" />} title={t('superAdmin.monthlyRevenue')} value={`${(stats.mrr / 1000000).toFixed(1)}M`} subtitle="UZS (MRR)" color="cyan" delay={0.4} />
-        </div>
+          {/* Tab Primary Action */}
+          <div>
+            {activeTab === 'clinics' && (
+              <Button 
+                onClick={() => { resetForm(); setModalOpen(true); }} 
+                className="h-9 px-4 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:opacity-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-500/20"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1.5" /> Yangi Klinika
+              </Button>
+            )}
 
-        {activeTab === 'clinics' && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
-            <ChartCard title="Daromad Dinamikasi" data={stats.revenueData} color="indigo" />
-            <ChartCard title="Klinikalar O'sishi" data={stats.clinicGrowth} color="cyan" />
-          </div>
-        )}
+            {activeTab === 'users' && (
+              <Button 
+                onClick={() => handleAddUser()} 
+                className="h-9 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-cyan-500/20"
+              >
+                <UserPlus className="w-3.5 h-3.5 mr-1.5" /> Yangi Foydalanuvchi
+              </Button>
+            )}
 
-        {/* Clinics Table - only shown when clinics tab is active */}
-        {activeTab === 'clinics' && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-2xl overflow-hidden">
-          <div className="p-4 md:p-6 border-b border-white/[0.06] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <h2 className="text-lg font-bold text-white">{t('superAdmin.clinics')}</h2>
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input placeholder={t('common.search')} value={search} onChange={e => setSearch(e.target.value)} className="h-12 pl-12 bg-white/[0.03] border-white/[0.08] rounded-xl text-white" />
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left hidden lg:table">
-              <thead>
-                <tr className="bg-white/[0.02]">
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase">{t('superAdmin.clinicName')}</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase">{t('common.password')}</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase">{t('common.status')}</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase">{t('payments.title')}</th>
-                  <th className="px-6 py-4 text-right"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04]">
-                {loading ? (
-                  [...Array(5)].map((_, i) => <SkeletonRow key={i} />)
-                ) : (
-                <AnimatePresence>
-                  {filteredClinics.map((c, i) => {
-                    const overdue = isPaymentOverdue(c.last_payment_date);
-                    const clinicUsers = getClinicUsers(c.id);
-                    return (
-                      <motion.tr key={c.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ delay: i * 0.05 }} className="hover:bg-white/[0.02] group">
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center font-black text-indigo-300">{c.name.charAt(0).toUpperCase()}</div>
-                            <div>
-                              <p className="font-bold text-white flex items-center gap-2">{c.name} {overdue && <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}</p>
-                              <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-0.5">ID: {c.id}</div>
-                              {c.plan === 'basic' ? (
-                                <div className="bg-slate-800 text-slate-300 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg mt-1 inline-flex items-center">
-                                  BASIC
-                                </div>
-                              ) : (
-                                <div className="bg-blue-600 outline outline-1 outline-blue-400 text-white text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg mt-1 inline-flex items-center">
-                                  PRO
-                                </div>
-                              )}
-                              {/* Users list for this clinic */}
-                              {clinicUsers.length > 0 && (
-                                <div className="mt-1 flex flex-wrap gap-1">
-                                  {clinicUsers.map(u => (
-                                    <span key={u.id} className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                                      {u.username} ({u.role})
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5"><span className="font-mono text-xs text-slate-400 bg-white/[0.05] px-3 py-1.5 rounded-lg">{c.password}</span></td>
-                        <td className="px-6 py-5">
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${c.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>{c.status}</span>
-                          <div className="mt-1.5 space-y-1">
-                            <p className="text-xs text-slate-500 flex items-center gap-1.5 block">
-                              <CalendarDays className="w-3.5 h-3.5 opacity-50" />
-                              {c.expires_at}
-                            </p>
-                            <p className={`text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${getTimeRemaining(c.expires_at).color}`}>
-                              <Clock className="w-3 h-3" />
-                              {getTimeRemaining(c.expires_at).text}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <p className="font-bold text-white">{c.monthly_fee?.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span></p>
-                          <p className={`text-xs ${overdue ? 'text-rose-400' : 'text-emerald-400'}`}>Oxirgi: {c.last_payment_date || "Yo'q"}</p>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="outline" size="sm" onClick={() => handleAddUser(c.id)} className="bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20">
-                              <UserPlus className="w-4 h-4 mr-1" /> User
-                            </Button>
-                            {overdue && <Button variant="outline" size="sm" onClick={() => markAsPaid(c.id)} className="bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20">{t('payments.title')}</Button>}
-                            <Button variant="ghost" size="icon" onClick={() => { setEditClinic(c); setForm({...c, monthly_fee: c.monthly_fee || 0}); setModalOpen(true); }} className="bg-white/[0.05] hover:bg-white/10 text-slate-300"><Edit2 className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400"><Trash2 className="w-4 h-4" /></Button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    );
-                  })}
-                </AnimatePresence>
-              )}
-              </tbody>
-            </table>
-
-            {/* Mobile View */}
-            <div className="lg:hidden flex flex-col divide-y divide-white/[0.04]">
-              <AnimatePresence>
-                {filteredClinics.map((c, i) => {
-                  const overdue = isPaymentOverdue(c.last_payment_date);
-                  const clinicUsers = getClinicUsers(c.id);
-                  return (
-                    <motion.div key={c.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: i * 0.05 }} className="p-4">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 flex items-center justify-center font-black text-indigo-300">{c.name.charAt(0).toUpperCase()}</div>
-                        <div className="flex-1">
-                          <p className="font-bold text-white flex items-center gap-2">{c.name} {overdue && <span className="w-2 h-2 rounded-full bg-rose-500" />}</p>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-[10px] text-slate-500 uppercase">{c.id}</span>
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${c.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>{c.status}</span>
-                          </div>
-                          <div className="mt-2 flex items-center gap-2">
-                             <p className={`text-[10px] font-bold px-2 py-0.5 rounded bg-white/5 border border-white/5 ${getTimeRemaining(c.expires_at).color}`}>
-                               {getTimeRemaining(c.expires_at).text}
-                             </p>
-                          </div>
-                          {clinicUsers.length > 0 && (
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              {clinicUsers.map(u => (
-                                <span key={u.id} className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400">
-                                  {u.username}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-white">{c.monthly_fee?.toLocaleString()}</p>
-                          <p className="text-[10px] text-slate-500">UZS/oy</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-end gap-2 mt-3">
-                        <Button variant="outline" size="sm" onClick={() => handleAddUser(c.id)} className="bg-blue-500/10 border-blue-500/20 text-blue-400"><UserPlus className="w-3 h-3 mr-1"/>User</Button>
-                        {overdue && <Button variant="outline" size="sm" onClick={() => markAsPaid(c.id)} className="bg-emerald-500/10 border-emerald-500/20 text-emerald-400 flex-1">To'lov Qabul</Button>}
-                        <Button variant="ghost" size="icon" onClick={() => { setEditClinic(c); setForm({...c, monthly_fee: c.monthly_fee || 0}); setModalOpen(true); }} className="bg-white/[0.05] text-slate-300"><Edit2 className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)} className="bg-rose-500/10 text-rose-400"><Trash2 className="w-4 h-4" /></Button>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </div>
-
-            {filteredClinics.length === 0 && (
-              <div className="p-12 text-center text-slate-500">
-                <Building2 className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                <p>Hech qanday klinika topilmadi</p>
-              </div>
+            {activeTab === 'ads' && (
+              <Button 
+                onClick={handleAddAd} 
+                className="h-9 px-4 bg-gradient-to-r from-purple-500 to-pink-600 hover:opacity-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-purple-500/20"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1.5" /> Reklama Qo'shish
+              </Button>
             )}
           </div>
-        </motion.div>
-        )}
 
-        {/* Advertisement Management Section */}
-        {activeTab === 'ads' && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-2xl overflow-hidden">
-            {/* Ad Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-6 border-b border-white/[0.06]">
-              <div className="p-4 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20">
-                <div className="flex items-center gap-3 mb-2">
-                  <ImageIcon className="w-5 h-5 text-blue-400" />
-                  <span className="text-xs font-bold text-slate-400 uppercase">Jami Reklamalar</span>
-                </div>
-                <p className="text-2xl font-black text-white">{adStats.totalAds}</p>
+        </div>
+
+        {/* ════════════════════ TAB 1: KLINIKALAR ════════════════════ */}
+        {activeTab === 'clinics' && (
+          <div className="space-y-4">
+            
+            {/* Filter Bar */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white/[0.02] border border-white/[0.06] p-3 rounded-2xl">
+              
+              {/* Search */}
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input 
+                  placeholder="Klinika nomi yoki ID bo'yicha qidirish..." 
+                  value={search} 
+                  onChange={e => setSearch(e.target.value)} 
+                  className="h-10 pl-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs placeholder:text-slate-500" 
+                />
+                {search && (
+                  <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
-              <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
-                <div className="flex items-center gap-3 mb-2">
-                  <Eye className="w-5 h-5 text-emerald-400" />
-                  <span className="text-xs font-bold text-slate-400 uppercase">Faol</span>
+
+              {/* Status and Plan Filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1 bg-black/20 p-1 rounded-xl border border-white/5 text-xs">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase px-2">Holat:</span>
+                  <button 
+                    onClick={() => setClinicStatusFilter('all')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${clinicStatusFilter === 'all' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Barchasi ({clinics.length})
+                  </button>
+                  <button 
+                    onClick={() => setClinicStatusFilter('active')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${clinicStatusFilter === 'active' ? 'bg-emerald-500/20 text-emerald-300' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Faol ({stats.active})
+                  </button>
+                  <button 
+                    onClick={() => setClinicStatusFilter('expiring')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${clinicStatusFilter === 'expiring' ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Tugayotgan ({stats.expiring})
+                  </button>
+                  <button 
+                    onClick={() => setClinicStatusFilter('expired')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${clinicStatusFilter === 'expired' ? 'bg-rose-500/20 text-rose-300' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Tugagan ({stats.expired})
+                  </button>
                 </div>
-                <p className="text-2xl font-black text-white">{adStats.activeAds}</p>
+
+                <div className="flex items-center gap-1 bg-black/20 p-1 rounded-xl border border-white/5 text-xs">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase px-2">Ta'rif:</span>
+                  <button 
+                    onClick={() => setClinicPlanFilter('all')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${clinicPlanFilter === 'all' ? 'bg-white/10 text-white' : 'text-slate-400'}`}
+                  >
+                    Barchasi
+                  </button>
+                  <button 
+                    onClick={() => setClinicPlanFilter('pro')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${clinicPlanFilter === 'pro' ? 'bg-indigo-500/20 text-indigo-300' : 'text-slate-400'}`}
+                  >
+                    PRO
+                  </button>
+                  <button 
+                    onClick={() => setClinicPlanFilter('basic')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${clinicPlanFilter === 'basic' ? 'bg-slate-700 text-slate-200' : 'text-slate-400'}`}
+                  >
+                    BASIC
+                  </button>
+                </div>
               </div>
-              <div className="p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
-                <div className="flex items-center gap-3 mb-2">
-                  <MousePointer className="w-5 h-5 text-purple-400" />
-                  <span className="text-xs font-bold text-slate-400 uppercase">Clicklar</span>
-                </div>
-                <p className="text-2xl font-black text-white">{adStats.totalClicks}</p>
-              </div>
-              <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20">
-                <div className="flex items-center gap-3 mb-2">
-                  <BarChart3 className="w-5 h-5 text-amber-400" />
-                  <span className="text-xs font-bold text-slate-400 uppercase">CTR</span>
-                </div>
-                <p className="text-2xl font-black text-white">{adStats.ctr}%</p>
+
+            </div>
+
+            {/* Clinics Table */}
+            <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-white/[0.03] border-b border-white/[0.06] text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                      <th className="py-3 px-4">Klinika Nomi & ID</th>
+                      <th className="py-3 px-4">Ta'rif</th>
+                      <th className="py-3 px-4">Xodimlar</th>
+                      <th className="py-3 px-4">Parol</th>
+                      <th className="py-3 px-4">Obuna Muddati</th>
+                      <th className="py-3 px-4">Oylik To'lov</th>
+                      <th className="py-3 px-4 text-right">Tezkor Amallar</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04] text-xs">
+                    {loading ? (
+                      [...Array(4)].map((_, i) => (
+                        <tr key={i} className="animate-pulse">
+                          <td colSpan={7} className="py-4 px-4">
+                            <div className="h-4 bg-white/5 rounded w-3/4"></div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : filteredClinics.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-slate-500">
+                          <Building2 className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                          <p className="text-sm font-semibold">Mos keluvchi klinika topilmadi</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredClinics.map((c) => {
+                        const timeInfo = getTimeRemaining(c.expires_at);
+                        const overdue = isPaymentOverdue(c.last_payment_date);
+                        const clinicUsers = getClinicUsers(c.id);
+                        const isPassRevealed = revealedPasswords[c.id];
+
+                        return (
+                          <tr key={c.id} className="hover:bg-white/[0.03] transition-colors group">
+                            
+                            {/* 1. Name & ID */}
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center font-black text-indigo-300 text-sm flex-shrink-0">
+                                  {c.name?.charAt(0).toUpperCase() || 'K'}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-bold text-white truncate">{c.name}</span>
+                                    {c.status === 'Active' && timeInfo.days >= 0 ? (
+                                      <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" title="Faol" />
+                                    ) : (
+                                      <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse flex-shrink-0" title="Nofaol / Tugagan" />
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
+                                    <span className="font-mono text-slate-400">ID: {c.id}</span>
+                                    <button 
+                                      onClick={() => copyToClipboard(c.id, 'Klinika ID')}
+                                      className="p-0.5 hover:text-white transition-colors" 
+                                      title="ID nusxalash"
+                                    >
+                                      <Copy className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* 2. Plan */}
+                            <td className="py-3.5 px-4">
+                              {c.plan === 'basic' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-[10px] font-black uppercase tracking-wider border border-slate-700">
+                                  ⭐ BASIC
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-black uppercase tracking-wider border border-indigo-500/30">
+                                  🚀 PRO
+                                </span>
+                              )}
+                            </td>
+
+                            {/* 3. Users count */}
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-1.5">
+                                <button 
+                                  onClick={() => {
+                                    setSelectedClinicForDetail(c);
+                                    setDetailModalOpen(true);
+                                  }}
+                                  className="flex items-center gap-1 px-2 py-0.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 rounded-lg text-slate-300 font-bold text-[11px] transition-colors"
+                                  title="Xodimlar ro'yxatini ko'rish"
+                                >
+                                  <Users className="w-3 h-3 text-cyan-400" />
+                                  <span>{clinicUsers.length} xodim</span>
+                                </button>
+                                <button 
+                                  onClick={() => handleAddUser(c.id)}
+                                  className="p-1 hover:bg-cyan-500/20 rounded-md text-cyan-400 transition-colors"
+                                  title="Ushbu klinikaga xodim qo'shish"
+                                >
+                                  <UserPlus className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+
+                            {/* 4. Password */}
+                            <td className="py-3.5 px-4 font-mono">
+                              <div className="flex items-center gap-1.5 bg-white/[0.03] border border-white/5 px-2.5 py-1 rounded-lg w-fit">
+                                <span className="text-[11px] text-slate-300">
+                                  {isPassRevealed ? c.password : '••••••'}
+                                </span>
+                                <button 
+                                  onClick={() => togglePasswordVisibility(c.id)} 
+                                  className="text-slate-400 hover:text-white p-0.5"
+                                  title={isPassRevealed ? "Yashirish" : "Ko'rsatish"}
+                                >
+                                  {isPassRevealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                </button>
+                                <button 
+                                  onClick={() => copyToClipboard(c.password, 'Parol')} 
+                                  className="text-slate-400 hover:text-white p-0.5"
+                                  title="Parolni nusxalash"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </td>
+
+                            {/* 5. Expiry Date */}
+                            <td className="py-3.5 px-4">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 text-slate-300 text-[11px]">
+                                  <CalendarDays className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>{c.expires_at || "Belgilanmagan"}</span>
+                                </div>
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${timeInfo.bg} ${timeInfo.color}`}>
+                                  <Clock className="w-2.5 h-2.5" />
+                                  {timeInfo.text}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* 6. Monthly Fee */}
+                            <td className="py-3.5 px-4">
+                              <div>
+                                <p className="font-bold text-white text-xs">{c.monthly_fee?.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">UZS</span></p>
+                                <p className={`text-[10px] ${overdue ? 'text-rose-400 font-bold' : 'text-emerald-400'}`}>
+                                  Oxirgi: {c.last_payment_date || "To'lanmagan"}
+                                </p>
+                              </div>
+                            </td>
+
+                            {/* 7. Action Buttons */}
+                            <td className="py-3.5 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                
+                                {/* Impersonate / Enter Clinic */}
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleImpersonateClinic(c)}
+                                  className="h-8 px-2.5 bg-indigo-500/10 border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 text-xs font-bold rounded-lg"
+                                  title="Klinika boshqaruviga kirish"
+                                >
+                                  <KeyRound className="w-3.5 h-3.5 mr-1 text-indigo-400" />
+                                  <span>Kirish</span>
+                                </Button>
+
+                                {/* Quick Extend (+1 Oy) */}
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleOpenRenewModal(c)}
+                                  className="h-8 px-2 bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 text-xs font-bold rounded-lg"
+                                  title="Obunani uzaytirish"
+                                >
+                                  <CalendarCheck className="w-3.5 h-3.5 mr-1 text-emerald-400" />
+                                  <span>+Muddat</span>
+                                </Button>
+
+                                {/* Edit */}
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => { resetForm(c); setModalOpen(true); }} 
+                                  className="h-8 w-8 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg"
+                                  title="Tahrirlash"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </Button>
+
+                                {/* Delete */}
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleDelete(c.id)} 
+                                  className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg"
+                                  title="O'chirish"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+
+                              </div>
+                            </td>
+
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            {/* Ads List */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left hidden lg:table">
-                <thead>
-                  <tr className="bg-white/[0.02]">
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase">Reklama</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase">Link</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase">Vaqt</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase">Statistika</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase">Holat</th>
-                    <th className="px-6 py-4 text-right"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.04]">
-                  <AnimatePresence>
-                    {ads.map((ad, i) => (
-                      <motion.tr key={ad.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ delay: i * 0.05 }} className="hover:bg-white/[0.02] group">
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-4">
-                            {ad.image_url ? (
-                              <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/5 border border-white/10">
-                                <img src={ad.image_url} alt={ad.title} className="w-full h-full object-cover" />
-                              </div>
-                            ) : (
-                              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center">
-                                <ImageIcon className="w-6 h-6 text-blue-400" />
-                              </div>
-                            )}
-                            <div>
-                              <p className="font-bold text-white">{ad.title}</p>
-                              {ad.description && <p className="text-xs text-slate-400 mt-1 line-clamp-1">{ad.description}</p>}
-                              {ad.cta_text && <p className="text-[10px] text-blue-400 mt-1 font-bold uppercase">{ad.cta_text}</p>}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          {ad.link_url ? (
-                            <a href={ad.link_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
-                              <LinkIcon className="w-3.5 h-3.5" />
-                              Ochish
-                            </a>
-                          ) : (
-                            <span className="text-xs text-slate-500">Link yo'q</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-2 text-xs text-slate-400">
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>{ad.start_time || '08:00'} - {ad.end_time || '22:00'}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="space-y-1">
-                            <p className="text-xs text-slate-400">Impressions: <span className="text-white font-bold">{ad.impressions || 0}</span></p>
-                            <p className="text-xs text-slate-400">Clicks: <span className="text-white font-bold">{ad.clicks || 0}</span></p>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${
-                            ad.enabled 
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                              : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
-                          }`}>
-                            {ad.enabled ? 'Faol' : 'Nofaol'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="outline" size="sm" onClick={() => toggleAdStatus(ad)} className={`${
-                              ad.enabled 
-                                ? 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20' 
-                                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
-                            }`}>
-                              {ad.enabled ? "O'chirish" : 'Yoqish'}
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleEditAd(ad)} className="bg-white/[0.05] hover:bg-white/10 text-slate-300"><Edit2 className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteAd(ad.id)} className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400"><Trash2 className="w-4 h-4" /></Button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </tbody>
-              </table>
+          </div>
+        )}
 
-              {/* Mobile View for Ads */}
-              <div className="lg:hidden flex flex-col divide-y divide-white/[0.04]">
-                <AnimatePresence>
-                  {ads.map((ad, i) => (
-                    <motion.div key={ad.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: i * 0.05 }} className="p-4">
-                      <div className="flex items-start gap-4">
-                        {ad.image_url ? (
-                          <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/5 border border-white/10 flex-shrink-0">
-                            <img src={ad.image_url} alt={ad.title} className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center flex-shrink-0">
-                            <ImageIcon className="w-6 h-6 text-blue-400" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-white truncate">{ad.title}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
-                              ad.enabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'
-                            }`}>
-                              {ad.enabled ? 'Faol' : 'Nofaol'}
-                            </span>
-                            <span className="text-[10px] text-slate-500">{ad.start_time || '08:00'} - {ad.end_time || '22:00'}</span>
-                          </div>
-                          <div className="flex items-center gap-3 mt-2 text-[10px] text-slate-400">
-                            <span>Impressions: {ad.impressions || 0}</span>
-                            <span>Clicks: {ad.clicks || 0}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-end gap-2 mt-3">
-                        <Button variant="outline" size="sm" onClick={() => toggleAdStatus(ad)} className={`${
-                          ad.enabled 
-                            ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
-                            : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                        }`}>
-                          {ad.enabled ? "O'chirish" : 'Yoqish'}
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleEditAd(ad)} className="bg-white/[0.05] text-slate-300"><Edit2 className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteAd(ad.id)} className="bg-rose-500/10 text-rose-400"><Trash2 className="w-4 h-4" /></Button>
-                      </div>
-                    </motion.div>
+        {/* ════════════════════ TAB 2: FOYDALANUVCHILAR (USERS) ════════════════════ */}
+        {activeTab === 'users' && (
+          <div className="space-y-4">
+            
+            {/* User Quick Stats Pills */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-white/[0.02] border border-white/[0.06] p-3 rounded-xl flex items-center justify-between">
+                <span className="text-xs text-slate-400">Jami Foydalanuvchilar:</span>
+                <strong className="text-white text-base">{users.length}</strong>
+              </div>
+              <div className="bg-white/[0.02] border border-white/[0.06] p-3 rounded-xl flex items-center justify-between">
+                <span className="text-xs text-cyan-400">Shifokorlar:</span>
+                <strong className="text-cyan-300 text-base">{stats.doctorsCount}</strong>
+              </div>
+              <div className="bg-white/[0.02] border border-white/[0.06] p-3 rounded-xl flex items-center justify-between">
+                <span className="text-xs text-indigo-400">Administratorlar:</span>
+                <strong className="text-indigo-300 text-base">{stats.adminUsersCount}</strong>
+              </div>
+              <div className="bg-white/[0.02] border border-white/[0.06] p-3 rounded-xl flex items-center justify-between">
+                <span className="text-xs text-amber-400">Qabulxona (Reception):</span>
+                <strong className="text-amber-300 text-base">{stats.receptionistCount}</strong>
+              </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white/[0.02] border border-white/[0.06] p-3 rounded-2xl">
+              
+              {/* Search */}
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input 
+                  placeholder="Ism, login yoki klinika bo'yicha qidirish..." 
+                  value={userSearch} 
+                  onChange={e => setUserSearch(e.target.value)} 
+                  className="h-10 pl-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs placeholder:text-slate-500" 
+                />
+                {userSearch && (
+                  <button onClick={() => setUserSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                
+                {/* Role filter */}
+                <div className="flex items-center gap-1 bg-black/20 p-1 rounded-xl border border-white/5 text-xs">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase px-2">Rol:</span>
+                  <button 
+                    onClick={() => setUserRoleFilter('all')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${userRoleFilter === 'all' ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Barchasi
+                  </button>
+                  <button 
+                    onClick={() => setUserRoleFilter('doctor')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${userRoleFilter === 'doctor' ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Shifokor
+                  </button>
+                  <button 
+                    onClick={() => setUserRoleFilter('admin')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${userRoleFilter === 'admin' ? 'bg-indigo-500/20 text-indigo-300' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Admin
+                  </button>
+                  <button 
+                    onClick={() => setUserRoleFilter('receptionist')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${userRoleFilter === 'receptionist' ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Reception
+                  </button>
+                </div>
+
+                {/* Clinic filter dropdown */}
+                <select 
+                  value={userClinicFilter} 
+                  onChange={e => setUserClinicFilter(e.target.value)}
+                  className="h-9 px-3 bg-black/20 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="all" className="bg-slate-900 text-white">Barcha Klinikalar</option>
+                  {clinics.map(c => (
+                    <option key={c.id} value={c.id} className="bg-slate-900 text-white">
+                      {c.name} ({c.id})
+                    </option>
                   ))}
-                </AnimatePresence>
+                </select>
+
               </div>
 
-              {ads.length === 0 && (
-                <div className="p-12 text-center text-slate-500">
-                  <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                  <p>Hech qanday reklama topilmadi</p>
-                  <Button onClick={handleAddAd} className="mt-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white">
-                    <Plus className="w-4 h-4 mr-2" /> Birinchi Reklamani Qo'shish
-                  </Button>
-                </div>
-              )}
             </div>
-          </motion.div>
+
+            {/* Users Table */}
+            <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-white/[0.03] border-b border-white/[0.06] text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                      <th className="py-3 px-4">Foydalanuvchi & Login</th>
+                      <th className="py-3 px-4">Biriktirilgan Klinika</th>
+                      <th className="py-3 px-4">Tizimdagi Roli</th>
+                      <th className="py-3 px-4">Parol</th>
+                      <th className="py-3 px-4">Komissiya</th>
+                      <th className="py-3 px-4 text-right">Amallar</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04] text-xs">
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-500">
+                          <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                          <p className="text-sm font-semibold">Hech qanday foydalanuvchi topilmadi</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredUsers.map((u) => {
+                        const clinic = clinics.find(c => c.id?.toLowerCase() === u.clinic_id?.toLowerCase());
+                        const isPassRevealed = revealedPasswords[u.id || u.username];
+
+                        return (
+                          <tr key={u.id || u.username} className="hover:bg-white/[0.03] transition-colors group">
+                            
+                            {/* 1. Name & Username */}
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 ${
+                                  u.role === 'admin' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' :
+                                  u.role === 'doctor' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' :
+                                  'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                }`}>
+                                  {u.name?.charAt(0).toUpperCase() || 'U'}
+                                </div>
+                                <div>
+                                  <p className="font-bold text-white">{u.name}</p>
+                                  <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                                    <span className="font-mono">@{u.username}</span>
+                                    <button 
+                                      onClick={() => copyToClipboard(u.username, 'Login')}
+                                      className="p-0.5 hover:text-white"
+                                      title="Loginni nusxalash"
+                                    >
+                                      <Copy className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* 2. Clinic */}
+                            <td className="py-3.5 px-4">
+                              <div>
+                                <span className="font-semibold text-white">{clinic?.name || u.clinic_id}</span>
+                                <span className="block text-[10px] text-slate-500 font-mono">ID: {u.clinic_id}</span>
+                              </div>
+                            </td>
+
+                            {/* 3. Role */}
+                            <td className="py-3.5 px-4">
+                              {u.role === 'admin' && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-bold uppercase">
+                                  <ShieldCheck className="w-3 h-3" /> Administrator
+                                </span>
+                              )}
+                              {u.role === 'doctor' && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold uppercase">
+                                  <Stethoscope className="w-3 h-3" /> Shifokor
+                                </span>
+                              )}
+                              {u.role === 'receptionist' && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold uppercase">
+                                  <User className="w-3 h-3" /> Qabulxona
+                                </span>
+                              )}
+                              {!['admin', 'doctor', 'receptionist'].includes(u.role) && (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-700 text-slate-300 text-[10px] font-bold uppercase">
+                                  {u.role}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* 4. Password */}
+                            <td className="py-3.5 px-4 font-mono">
+                              <div className="flex items-center gap-1.5 bg-white/[0.03] border border-white/5 px-2 py-1 rounded-lg w-fit">
+                                <span className="text-[11px] text-slate-300">
+                                  {isPassRevealed ? u.password : '••••••'}
+                                </span>
+                                <button 
+                                  onClick={() => togglePasswordVisibility(u.id || u.username)} 
+                                  className="text-slate-400 hover:text-white p-0.5"
+                                  title={isPassRevealed ? "Yashirish" : "Ko'rsatish"}
+                                >
+                                  {isPassRevealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                </button>
+                                <button 
+                                  onClick={() => copyToClipboard(u.password, 'Parol')} 
+                                  className="text-slate-400 hover:text-white p-0.5"
+                                  title="Parolni nusxalash"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </td>
+
+                            {/* 5. Commission rate */}
+                            <td className="py-3.5 px-4">
+                              <span className="text-slate-300 font-semibold">{u.commission_rate ? `${u.commission_rate}%` : '—'}</span>
+                            </td>
+
+                            {/* 6. Actions */}
+                            <td className="py-3.5 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleEditUser(u)} 
+                                  className="h-8 w-8 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg"
+                                  title="Tahrirlash"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleDeleteUser(u.id)} 
+                                  className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg"
+                                  title="O'chirish"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </td>
+
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
         )}
-      </div>
 
-      {/* Modal */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-[600px] rounded-[2rem] p-8 border border-white/[0.08] bg-[#0f0f16] text-white">
-          <DialogHeader className="mb-6">
-            <DialogTitle className="text-2xl font-bold">{editingClinic ? t('superAdmin.editClinic') : t('superAdmin.addClinic')}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-slate-500 uppercase">{t('superAdmin.clinicId')}</Label>
-                <Input disabled={!!editingClinic} value={form.id} onChange={e => setForm({...form, id: e.target.value})} placeholder="star-med" className="h-12 bg-white/[0.03] border-white/[0.08] rounded-xl text-white" />
+        {/* ════════════════════ TAB 3: REKLAMALAR (ADS) ════════════════════ */}
+        {activeTab === 'ads' && (
+          <div className="space-y-4">
+            
+            {/* Ad Stats Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="p-3.5 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20">
+                <span className="text-[11px] font-bold text-blue-300 uppercase">Jami Reklamalar</span>
+                <p className="text-2xl font-black text-white mt-1">{adStats.totalAds}</p>
               </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-slate-500 uppercase">{t('common.password')}</Label>
-                <Input value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder="Parol" className="h-12 bg-white/[0.03] border-white/[0.08] rounded-xl text-white" />
+              <div className="p-3.5 rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+                <span className="text-[11px] font-bold text-emerald-300 uppercase">Faol Reklamalar</span>
+                <p className="text-2xl font-black text-white mt-1">{adStats.activeAds}</p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
+                <span className="text-[11px] font-bold text-purple-300 uppercase">Jami Clicklar</span>
+                <p className="text-2xl font-black text-white mt-1">{adStats.totalClicks}</p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20">
+                <span className="text-[11px] font-bold text-amber-300 uppercase">O'rtacha CTR</span>
+                <p className="text-2xl font-black text-white mt-1">{adStats.ctr}%</p>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-500 uppercase">{t('superAdmin.clinicName')}</Label>
+
+            {/* Ads Table */}
+            <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-white/[0.03] border-b border-white/[0.06] text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                      <th className="py-3 px-4">Reklama & Banner</th>
+                      <th className="py-3 px-4">Havola (Link)</th>
+                      <th className="py-3 px-4">Vaqt Grafigi</th>
+                      <th className="py-3 px-4">Ko'rishlar / Click</th>
+                      <th className="py-3 px-4">Holat</th>
+                      <th className="py-3 px-4 text-right">Amallar</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04] text-xs">
+                    {ads.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-500">
+                          <ImageIcon className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                          <p className="text-sm font-semibold">Hech qanday reklama qo'shilmagan</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      ads.map((ad) => (
+                        <tr key={ad.id} className="hover:bg-white/[0.03] transition-colors">
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-3">
+                              {ad.image_url ? (
+                                <img src={ad.image_url} alt={ad.title} className="w-12 h-12 rounded-xl object-cover border border-white/10 flex-shrink-0" />
+                              ) : (
+                                <div className="w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
+                                  <ImageIcon className="w-6 h-6 text-purple-400" />
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-bold text-white">{ad.title}</p>
+                                {ad.description && <p className="text-[11px] text-slate-400 line-clamp-1">{ad.description}</p>}
+                                {ad.cta_text && <span className="text-[9px] text-purple-300 font-bold uppercase mt-0.5 inline-block">CTA: {ad.cta_text}</span>}
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            {ad.link_url ? (
+                              <a href={ad.link_url} target="_blank" rel="noreferrer" className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 text-[11px]">
+                                <LinkIcon className="w-3 h-3" /> Ochish
+                              </a>
+                            ) : (
+                              <span className="text-slate-500 text-[11px]">Havola yo'q</span>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-4 text-slate-300 text-[11px]">
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-slate-500" />
+                              <span>{ad.start_time || '08:00'} — {ad.end_time || '22:00'}</span>
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            <div className="space-y-0.5 text-[11px]">
+                              <p className="text-slate-400">Ko'rildi: <strong className="text-white">{ad.impressions || 0}</strong></p>
+                              <p className="text-slate-400">Click: <strong className="text-cyan-300">{ad.clicks || 0}</strong></p>
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            <button
+                              onClick={() => toggleAdStatus(ad)}
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border transition-all ${
+                                ad.enabled 
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
+                                  : 'bg-slate-700 text-slate-400 border-slate-600'
+                              }`}
+                            >
+                              {ad.enabled ? '● Faol' : '○ O\'chirilgan'}
+                            </button>
+                          </td>
+
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleEditAd(ad)} 
+                                className="h-8 w-8 text-slate-400 hover:text-white"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleDeleteAd(ad.id)} 
+                                className="h-8 w-8 text-rose-400 hover:text-rose-300"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ════════════════════ TAB 4: TO'LOVLAR VA TARIFLAR (BILLING) ════════════════════ */}
+        {activeTab === 'billing' && (
+          <div className="space-y-4">
+            
+            {/* Tariff Comparison Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* Basic Plan Info */}
+              <div className="bg-gradient-to-b from-slate-900 to-[#0d0f18] border border-slate-700/60 rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">⭐</span>
+                    <h4 className="text-base font-black text-white">BASIC Ta'rifi</h4>
+                  </div>
+                  <span className="text-base font-black text-slate-200">99,000 UZS <span className="text-xs text-slate-400 font-normal">/ oy</span></span>
+                </div>
+                <p className="text-xs text-slate-400 mb-4">Kichik va o'rta stomatologiya klinikalari uchun to'liq boshlang'ich tizim.</p>
+                <div className="space-y-1.5 text-xs text-slate-300">
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Bemorlar bazasi & Tarix</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Qabullar & Navbat taqvimi</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> To'lovlar & Qarzdorlik nazorati</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Omborxona & Xarajatlar</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Xodimlar & Ish haqi (Payroll)</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Davolash rejalari & Retseptlar</div>
+                </div>
+                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
+                  <span>Biriktirilgan klinikalar:</span>
+                  <strong className="text-white">{stats.basicCount} ta</strong>
+                </div>
+              </div>
+
+              {/* Pro Plan Info */}
+              <div className="bg-gradient-to-b from-indigo-950/40 to-[#0d0f18] border border-indigo-500/30 rounded-2xl p-5 relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-indigo-500 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl">
+                  Eng Ommabop
+                </div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🚀</span>
+                    <h4 className="text-base font-black text-indigo-300">PRO Ta'rifi</h4>
+                  </div>
+                  <span className="text-base font-black text-white">189,000 UZS <span className="text-xs text-slate-400 font-normal">/ oy</span></span>
+                </div>
+                <p className="text-xs text-slate-400 mb-4">Barcha professional va zamonaviy imkoniyatlarga ega to'liq versiya.</p>
+                <div className="space-y-1.5 text-xs text-slate-300">
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> <strong>BASIC dagi barcha modullar</strong></div>
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> Implantologiya & Pasportlar moduli</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> Marketing & Reklama kanallari ROI tahlili</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> Klinik keyslar (Before/After Portfolio)</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> SMS va Telegram orqali avto-eslatmalar</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> Ustuvor 24/7 texnik yordam</div>
+                </div>
+                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
+                  <span>Biriktirilgan klinikalar:</span>
+                  <strong className="text-indigo-300">{stats.proCount} ta</strong>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Overdue / Expiring Clinics Action Table */}
+            <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-400" /> To'lov Muddati Yaqinlashgan yoki O'tgan Klinikalar
+                </h4>
+              </div>
+              <div className="space-y-2">
+                {clinics.filter(c => isPaymentOverdue(c.last_payment_date) || getTimeRemaining(c.expires_at).days <= 7).map(c => {
+                  const timeInfo = getTimeRemaining(c.expires_at);
+                  return (
+                    <div key={c.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
+                      <div>
+                        <p className="font-bold text-white text-sm">{c.name} <span className="text-xs text-slate-400 font-mono">({c.id})</span></p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Muddati: <strong className={timeInfo.color}>{c.expires_at} ({timeInfo.text})</strong> • Oylik to'lov: <strong>{c.monthly_fee?.toLocaleString()} UZS</strong>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          size="sm" 
+                          onClick={() => markAsPaid(c.id)}
+                          className="h-8 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold"
+                        >
+                          To'lovni Qabul Qilish
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleOpenRenewModal(c)}
+                          className="h-8 bg-white/5 text-slate-300 hover:text-white border-white/10 text-xs"
+                        >
+                          Muddatni Uzaytirish
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {clinics.filter(c => isPaymentOverdue(c.last_payment_date) || getTimeRemaining(c.expires_at).days <= 7).length === 0 && (
+                  <p className="text-xs text-emerald-400 text-center py-4 font-semibold">
+                    ✓ Hozirda qarzdor yoki muddati tugagan klinika mavjud emas!
+                  </p>
+                )}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ════════════════════ TAB 5: TIZIM VA ZAXIRA (SYSTEM) ════════════════════ */}
+        {activeTab === 'system' && (
+          <div className="space-y-4">
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              
+              <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Database className="w-4 h-4 text-indigo-400" />
+                  <h4 className="text-sm font-bold text-white">Ma'lumotlar Bazasi</h4>
+                </div>
+                <div className="space-y-2 text-xs text-slate-300">
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <span className="text-slate-400">Holat:</span>
+                    <strong className="text-emerald-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Ulanish Faol</strong>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <span className="text-slate-400">Jami Klinikalar:</span>
+                    <strong className="text-white">{clinics.length} ta</strong>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <span className="text-slate-400">Jami Xodimlar:</span>
+                    <strong className="text-white">{users.length} ta</strong>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-slate-400">Reklama Bannerlari:</span>
+                    <strong className="text-white">{ads.length} ta</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                  <h4 className="text-sm font-bold text-white">Xavfsizlik & Kirish</h4>
+                </div>
+                <div className="space-y-2 text-xs text-slate-300">
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <span className="text-slate-400">SuperAdmin Login:</span>
+                    <strong className="font-mono text-white">admin</strong>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <span className="text-slate-400">Sessiya Turi:</span>
+                    <strong className="text-cyan-300">Root Administrator</strong>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <span className="text-slate-400">Tizim Versiyasi:</span>
+                    <strong className="text-white">v2.5.0 Enterprise</strong>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-slate-400">Offline Fallback:</span>
+                    <strong className="text-emerald-400">Yoqilgan (LocalStorage Sync)</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl p-5 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Download className="w-4 h-4 text-indigo-400" />
+                    <h4 className="text-sm font-bold text-white">Tizim Zaxira Nusxasi (Backup)</h4>
+                  </div>
+                  <p className="text-xs text-slate-400 mb-4">Barcha klinika va foydalanuvchilar ma'lumotlarini to'liq JSON formatida eksport qiling.</p>
+                </div>
+                <Button 
+                  onClick={handleExportBackup}
+                  className="w-full bg-gradient-to-r from-indigo-500 to-cyan-500 hover:opacity-95 text-white font-bold text-xs h-10 rounded-xl"
+                >
+                  <Download className="w-3.5 h-3.5 mr-2" /> Zaxira Nusxani Yuklab Olish
+                </Button>
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+      </main>
+
+      {/* ════════════════════ MODAL 1: KLINIKA QO'SHISH / TAHRIRLASH ════════════════════ */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="max-w-[550px] rounded-3xl p-6 border border-white/10 bg-[#0d0f18] text-white">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-indigo-400" />
+              {editingClinic ? 'Klinika Ma\'lumotlarini Tahrirlash' : 'Yangi Klinika Yaratish'}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-400">
+              Klinika asosiy ma'lumotlari, ta'rifi va administrator hisobini sozlang.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Klinika ID (Unique) *</Label>
+                <Input 
+                  disabled={!!editingClinic} 
+                  value={form.id} 
+                  onChange={e => setForm({...form, id: e.target.value})} 
+                  placeholder="star_med" 
+                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Master Parol *</Label>
+                <Input 
+                  value={form.password} 
+                  onChange={e => setForm({...form, password: e.target.value})} 
+                  placeholder="Parol" 
+                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">Klinika Nomi *</Label>
               <Input 
                 value={form.name} 
                 onChange={e => {
@@ -1306,420 +2068,518 @@ export default function SuperAdmin() {
                     admin_name: editingClinic ? form.admin_name : val + ' Admin'
                   });
                 }} 
-                placeholder="Star Med Premium" 
-                className="h-12 bg-white/[0.03] border-white/[0.08] rounded-xl text-white" 
+                placeholder="Star Med Dental Clinic" 
+                className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
               />
             </div>
 
-            {/* Admin User Section (Collapsible or just separated) */}
+            {/* Admin User Section (New clinic creation only) */}
             {!editingClinic && (
-              <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 space-y-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <UserPlus className="w-4 h-4 text-indigo-400" />
-                  <span className="text-[11px] font-black text-indigo-300 uppercase tracking-widest text-[10px]">Admin Foydalanuvchi</span>
+              <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-2.5">
+                <div className="flex items-center gap-1.5">
+                  <UserPlus className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="text-[11px] font-bold text-indigo-300 uppercase">Klinika Bosh Administratori</span>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-3">
-                   <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold text-slate-500 uppercase ml-1">Admin Logini</Label>
-                      <Input 
-                        value={form.admin_username || form.id} 
-                        onChange={e => setForm({...form, admin_username: e.target.value})} 
-                        placeholder="admin_login" 
-                        className="h-10 bg-black/20 border-white/[0.05] rounded-xl text-xs" 
-                      />
-                   </div>
-                   <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold text-slate-500 uppercase ml-1">Admin Paroli</Label>
-                      <Input 
-                        value={form.admin_password || form.password} 
-                        onChange={e => setForm({...form, admin_password: e.target.value})} 
-                        placeholder="••••••••" 
-                        className="h-10 bg-black/20 border-white/[0.05] rounded-xl text-xs" 
-                      />
-                   </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-bold text-slate-400 uppercase">Admin Logini</Label>
+                    <Input 
+                      value={form.admin_username || form.id} 
+                      onChange={e => setForm({...form, admin_username: e.target.value})} 
+                      placeholder="admin_login" 
+                      className="h-9 bg-black/30 border-white/10 rounded-lg text-xs" 
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-bold text-slate-400 uppercase">Admin Paroli</Label>
+                    <Input 
+                      value={form.admin_password || form.password} 
+                      onChange={e => setForm({...form, admin_password: e.target.value})} 
+                      placeholder="••••••••" 
+                      className="h-9 bg-black/30 border-white/10 rounded-lg text-xs" 
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[9px] font-bold text-slate-500 uppercase ml-1">Admin To'liq Ismi</Label>
+                <div className="space-y-1">
+                  <Label className="text-[9px] font-bold text-slate-400 uppercase">Admin To'liq Ismi</Label>
                   <Input 
                     value={form.admin_name} 
                     onChange={e => setForm({...form, admin_name: e.target.value})} 
                     placeholder="Admin F.I.O" 
-                    className="h-10 bg-black/20 border-white/[0.05] rounded-xl text-xs" 
+                    className="h-9 bg-black/30 border-white/10 rounded-lg text-xs" 
                   />
                 </div>
               </div>
             )}
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-500 uppercase">Ta'rif (Plan)</Label>
-              <select 
-                value={form.plan || 'pro'} 
-                onChange={e => {
-                  const newPlan = e.target.value;
-                  setForm({ ...form, plan: newPlan, monthly_fee: newPlan === 'basic' ? 99000 : 189000 });
-                }} 
-                className="w-full h-12 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 text-white"
-              >
-                <option value="basic" className="bg-slate-900 text-white">⭐ BASIC — 99.000 UZS / oy (Asosiy modullar + Ombor + Hisobotlar + Ish haqi)</option>
-                <option value="pro" className="bg-slate-900 text-white">🚀 PRO — 189.000 UZS / oy (Barcha modullar + Implantlar + Marketing + Case-lar)</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-500 uppercase">Oylik To'lov</Label>
-              <div className="h-12 bg-white/[0.05] border border-white/[0.08] rounded-xl text-white flex items-center px-4">
-                <span className="font-black text-lg">{((form.monthly_fee) || 0).toLocaleString()}</span>
-                <span className="text-slate-400 ml-1 text-sm">UZS / oy</span>
-                <span className={`ml-auto text-[10px] font-black uppercase px-2 py-1 rounded-lg ${(form.plan === 'basic') ? 'bg-slate-700 text-slate-300' : 'bg-blue-600 text-white'}`}>
-                  {(form.plan === 'basic') ? 'BASIC' : 'PRO'}
-                </span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-slate-500 uppercase">{t('common.status')}</Label>
-                <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="w-full h-12 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 text-white">
-                  <option value="Active">{t('common.active')}</option>
-                  <option value="Inactive">{t('common.inactive')}</option>
+
+            {/* Plan and Monthly Fee */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Ta'rif (Plan)</Label>
+                <select 
+                  value={form.plan || 'pro'} 
+                  onChange={e => {
+                    const newPlan = e.target.value;
+                    setForm({ ...form, plan: newPlan, monthly_fee: newPlan === 'basic' ? 99000 : 189000 });
+                  }} 
+                  className="w-full h-10 bg-white/[0.04] border border-white/10 rounded-xl px-3 text-white text-xs focus:border-indigo-500"
+                >
+                  <option value="basic" className="bg-slate-900 text-white">⭐ BASIC (99.000 UZS / oy)</option>
+                  <option value="pro" className="bg-slate-900 text-white">🚀 PRO (189.000 UZS / oy)</option>
                 </select>
               </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-slate-500 uppercase">{t('superAdmin.expiresAt')}</Label>
-                <Input type="date" value={form.expires_at} onChange={e => setForm({...form, expires_at: e.target.value})} className="h-12 bg-white/[0.03] border-white/[0.08] rounded-xl text-white" />
+
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Oylik To'lov (UZS)</Label>
+                <Input 
+                  type="number"
+                  value={form.monthly_fee} 
+                  onChange={e => setForm({...form, monthly_fee: Number(e.target.value)})} 
+                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
+                />
               </div>
             </div>
-            <div className="pt-4 flex gap-3 border-t border-white/[0.06]">
-              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)} className="flex-1 h-12 rounded-xl text-slate-400 hover:text-white">{t('common.cancel')}</Button>
-              <Button type="submit" className="flex-[2] h-12 bg-gradient-to-r from-indigo-500 to-cyan-500 text-white rounded-xl font-bold">{editingClinic ? t('common.save') : t('common.create')}</Button>
+
+            {/* Status & Expiry */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Holat</Label>
+                <select 
+                  value={form.status} 
+                  onChange={e => setForm({...form, status: e.target.value})} 
+                  className="w-full h-10 bg-white/[0.04] border border-white/10 rounded-xl px-3 text-white text-xs focus:border-indigo-500"
+                >
+                  <option value="Active" className="bg-slate-900 text-white">Faol (Active)</option>
+                  <option value="Inactive" className="bg-slate-900 text-white">Nofaol (Inactive)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Obuna Tugash Sanasi</Label>
+                <Input 
+                  type="date" 
+                  value={form.expires_at} 
+                  onChange={e => setForm({...form, expires_at: e.target.value})} 
+                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
+                />
+              </div>
             </div>
+
+            <div className="pt-3 flex gap-2 border-t border-white/10">
+              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)} className="flex-1 h-10 rounded-xl text-slate-400 text-xs">
+                Bekor qilish
+              </Button>
+              <Button type="submit" className="flex-[2] h-10 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:opacity-95 text-white font-bold text-xs rounded-xl">
+                {editingClinic ? 'O\'zgarishlarni Saqlash' : 'Klinikani Yaratish'}
+              </Button>
+            </div>
+
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* User Management Modal */}
+      {/* ════════════════════ MODAL 2: FOYDALANUVCHI QO'SHISH / TAHRIRLASH ════════════════════ */}
       <Dialog open={userModalOpen} onOpenChange={setUserModalOpen}>
-        <DialogContent className="max-w-[500px] rounded-[2rem] p-8 border border-white/[0.08] bg-[#0f0f16] text-white">
-          <DialogHeader className="mb-6">
-            <DialogTitle className="text-2xl font-bold">
-              {editingUser ? 'Foydalanuvchini tahrirlash' : 'Yangi foydalanuvchi'}
+        <DialogContent className="max-w-[480px] rounded-3xl p-6 border border-white/10 bg-[#0d0f18] text-white">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-cyan-400" />
+              {editingUser ? 'Foydalanuvchini Tahrirlash' : 'Yangi Foydalanuvchi Qo\'shish'}
             </DialogTitle>
           </DialogHeader>
           
-          <form onSubmit={handleUserSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-500 uppercase">Ism</Label>
+          <form onSubmit={handleUserSubmit} className="space-y-3.5 text-xs">
+            
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">Klinika *</Label>
+              <select 
+                disabled={!!editingUser}
+                value={userForm.clinic_id} 
+                onChange={e => setUserForm({...userForm, clinic_id: e.target.value})} 
+                className="w-full h-10 bg-white/[0.04] border border-white/10 rounded-xl px-3 text-white text-xs focus:border-cyan-500"
+              >
+                {clinics.map(c => (
+                  <option key={c.id} value={c.id} className="bg-slate-900 text-white">
+                    {c.name} ({c.id})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">F.I.O / Ism Familiya *</Label>
               <Input 
                 value={userForm.name} 
                 onChange={e => setUserForm({...userForm, name: e.target.value})} 
-                placeholder="Ism Familiya" 
-                className="h-12 bg-white/[0.03] border-white/[0.08] rounded-xl text-white" 
+                placeholder="Dr. Alisher Valiyev" 
+                className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-slate-500 uppercase">Login</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Login (Username) *</Label>
                 <Input 
                   value={userForm.username} 
                   onChange={e => setUserForm({...userForm, username: e.target.value})} 
-                  placeholder="username" 
-                  className="h-12 bg-white/[0.03] border-white/[0.08] rounded-xl text-white" 
+                  placeholder="alisher_doc" 
+                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs font-mono" 
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-slate-500 uppercase">Parol</Label>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] font-bold text-slate-400 uppercase">Parol *</Label>
+                  <button 
+                    type="button" 
+                    onClick={() => setUserForm({...userForm, password: Math.random().toString(36).substring(2, 8)})}
+                    className="text-[9px] text-cyan-400 hover:underline"
+                  >
+                    Avto-generatsiya
+                  </button>
+                </div>
                 <Input 
                   value={userForm.password} 
                   onChange={e => setUserForm({...userForm, password: e.target.value})} 
                   placeholder="••••••••" 
-                  className="h-12 bg-white/[0.03] border-white/[0.08] rounded-xl text-white" 
+                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs font-mono" 
                 />
               </div>
             </div>
             
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-500 uppercase">Rol</Label>
-              <select 
-                value={userForm.role} 
-                onChange={e => setUserForm({...userForm, role: e.target.value})} 
-                className="w-full h-12 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 text-white"
-              >
-                <option value="admin">Administrator</option>
-                <option value="doctor">Shifokor</option>
-                <option value="receptionist">Administrator</option>
-              </select>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Tizimdagi Roli</Label>
+                <select 
+                  value={userForm.role} 
+                  onChange={e => setUserForm({...userForm, role: e.target.value})} 
+                  className="w-full h-10 bg-white/[0.04] border border-white/10 rounded-xl px-3 text-white text-xs focus:border-cyan-500"
+                >
+                  <option value="doctor" className="bg-slate-900 text-white">🩺 Shifokor (Doctor)</option>
+                  <option value="admin" className="bg-slate-900 text-white">👑 Administrator</option>
+                  <option value="receptionist" className="bg-slate-900 text-white">📋 Qabulxona (Reception)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Komissiya foizi (%)</Label>
+                <Input 
+                  type="number"
+                  value={userForm.commission_rate || 0} 
+                  onChange={e => setUserForm({...userForm, commission_rate: Number(e.target.value)})} 
+                  placeholder="30" 
+                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
+                />
+              </div>
             </div>
             
-            {/* Existing users for this clinic */}
-            {selectedClinicId && (
-              <div className="pt-4 border-t border-white/[0.06]">
-                <Label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">
-                  Klinika foydalanuvchilari
-                </Label>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {getClinicUsers(selectedClinicId).map(user => (
-                    <div key={user.id} className="flex items-center justify-between p-3 bg-white/[0.03] rounded-xl">
-                      <div>
-                        <p className="text-sm font-bold text-white">{user.name}</p>
-                        <p className="text-xs text-slate-500">@{user.username} • {user.role}</p>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button 
-                          type="button"
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleEditUser(user)}
-                          className="h-8 w-8 text-slate-400 hover:text-white"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button 
-                          type="button"
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="h-8 w-8 text-rose-400 hover:text-rose-300"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                  {getClinicUsers(selectedClinicId).length === 0 && (
-                    <p className="text-xs text-slate-500 text-center py-4">Foydalanuvchilar yo'q</p>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            <div className="pt-4 flex gap-3 border-t border-white/[0.06]">
+            <div className="pt-3 flex gap-2 border-t border-white/10">
               <Button 
                 type="button" 
                 variant="ghost" 
                 onClick={() => setUserModalOpen(false)} 
-                className="flex-1 h-12 rounded-xl text-slate-400 hover:text-white"
+                className="flex-1 h-10 rounded-xl text-slate-400 text-xs"
               >
-                {t('common.cancel')}
+                Bekor qilish
               </Button>
               <Button 
                 type="submit" 
-                className="flex-[2] h-12 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-bold"
+                className="flex-[2] h-10 bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-95 text-white font-bold text-xs rounded-xl"
               >
-                {editingUser ? t('common.save') : t('common.create')}
+                {editingUser ? 'Saqlash' : 'Qo\'shish'}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Advertisement Modal */}
+      {/* ════════════════════ MODAL 3: OBUNANI UZAYTIRISH (QUICK RENEW) ════════════════════ */}
+      <Dialog open={renewModalOpen} onOpenChange={setRenewModalOpen}>
+        <DialogContent className="max-w-[420px] rounded-3xl p-6 border border-white/10 bg-[#0d0f18] text-white">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <CalendarCheck className="w-5 h-5 text-emerald-400" />
+              Obunani Uzaytirish
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-400">
+              {renewingClinic?.name} ({renewingClinic?.id}) uchun obuna muddatini uzaytiring.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 text-xs">
+            <div className="p-3 bg-white/[0.03] border border-white/5 rounded-xl space-y-1">
+              <div className="flex justify-between text-slate-400">
+                <span>Hozirgi muddat:</span>
+                <strong className="text-white">{renewingClinic?.expires_at || 'Muddatsiz'}</strong>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>Oylik to'lov summasi:</span>
+                <strong className="text-emerald-400">{renewingClinic?.monthly_fee?.toLocaleString()} UZS</strong>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">Muddatni tanlang:</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {[1, 3, 6, 12].map(m => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setRenewMonths(m)}
+                    className={`py-2.5 rounded-xl border text-xs font-bold transition-all ${
+                      renewMonths === m 
+                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-md' 
+                        : 'bg-white/[0.03] border-white/10 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    +{m} oy
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between">
+              <span className="text-emerald-300 font-medium">Jami to'lov:</span>
+              <strong className="text-emerald-400 text-sm">{((renewingClinic?.monthly_fee || 0) * renewMonths).toLocaleString()} UZS</strong>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button 
+                variant="ghost" 
+                onClick={() => setRenewModalOpen(false)} 
+                className="flex-1 h-10 text-xs rounded-xl text-slate-400"
+              >
+                Bekor qilish
+              </Button>
+              <Button 
+                onClick={handleConfirmRenew} 
+                className="flex-[2] h-10 bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 text-white font-bold text-xs rounded-xl"
+              >
+                Obunani Uzaytirish
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ════════════════════ MODAL 4: KLINIKA TAFSILOTLARI (DETAIL DRAWER) ════════════════════ */}
+      <Dialog open={detailModalOpen} onOpenChange={setDetailModalOpen}>
+        <DialogContent className="max-w-[550px] max-h-[85vh] overflow-y-auto rounded-3xl p-6 border border-white/10 bg-[#0d0f18] text-white">
+          {selectedClinicForDetail && (
+            <div>
+              <DialogHeader className="mb-4">
+                <DialogTitle className="text-xl font-bold flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-indigo-400" />
+                    <span>{selectedClinicForDetail.name}</span>
+                  </div>
+                  <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg ${
+                    selectedClinicForDetail.plan === 'basic' ? 'bg-slate-800 text-slate-300' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                  }`}>
+                    {selectedClinicForDetail.plan === 'basic' ? '⭐ BASIC' : '🚀 PRO'}
+                  </span>
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4 text-xs">
+                {/* Meta details */}
+                <div className="grid grid-cols-2 gap-2.5 p-3.5 bg-white/[0.03] border border-white/5 rounded-2xl">
+                  <div>
+                    <span className="text-slate-400 text-[10px] block">Klinika ID:</span>
+                    <strong className="font-mono text-white text-xs">{selectedClinicForDetail.id}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] block">Master Parol:</span>
+                    <strong className="font-mono text-white text-xs">{selectedClinicForDetail.password}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] block">Obuna Tugash Sanasi:</span>
+                    <strong className="text-white text-xs">{selectedClinicForDetail.expires_at}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] block">Oylik To'lov:</span>
+                    <strong className="text-emerald-400 text-xs">{selectedClinicForDetail.monthly_fee?.toLocaleString()} UZS</strong>
+                  </div>
+                </div>
+
+                {/* Staff List */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-slate-300 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-cyan-400" /> Biriktirilgan Xodimlar ({getClinicUsers(selectedClinicForDetail.id).length})
+                    </span>
+                    <button 
+                      onClick={() => {
+                        setDetailModalOpen(false);
+                        handleAddUser(selectedClinicForDetail.id);
+                      }}
+                      className="text-[10px] font-bold text-cyan-400 hover:underline flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" /> Xodim qo'shish
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {getClinicUsers(selectedClinicForDetail.id).map(user => (
+                      <div key={user.id || user.username} className="flex items-center justify-between p-2.5 bg-white/[0.02] border border-white/5 rounded-xl">
+                        <div>
+                          <p className="font-bold text-white text-xs">{user.name}</p>
+                          <p className="text-[11px] text-slate-400 font-mono">@{user.username} • Parol: {user.password}</p>
+                        </div>
+                        <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-white/5 text-slate-300">
+                          {user.role}
+                        </span>
+                      </div>
+                    ))}
+                    {getClinicUsers(selectedClinicForDetail.id).length === 0 && (
+                      <p className="text-center text-slate-500 py-4 text-xs">Ushbu klinikada xodimlar topilmadi</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-white/10 flex gap-2">
+                  <Button 
+                    onClick={() => {
+                      setDetailModalOpen(false);
+                      handleImpersonateClinic(selectedClinicForDetail);
+                    }}
+                    className="flex-1 h-10 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl"
+                  >
+                    <KeyRound className="w-3.5 h-3.5 mr-1.5" /> Ushbu Klinikaga Kirish
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ════════════════════ MODAL 5: REKLAMA QO'SHISH / TAHRIRLASH ════════════════════ */}
       <Dialog open={adModalOpen} onOpenChange={setAdModalOpen}>
-        <DialogContent className="max-w-[600px] max-h-[90vh] rounded-[2rem] border border-white/[0.08] bg-[#0f0f16] text-white flex flex-col">
-          <DialogHeader className="mb-4 px-8 pt-8">
-            <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-              <ImageIcon className="w-6 h-6 text-blue-400" />
-              {editingAd ? 'Reklamani Tahrirlash' : 'Yangi Reklama Qo\'shish'}
+        <DialogContent className="max-w-[550px] max-h-[85vh] overflow-y-auto rounded-3xl p-6 border border-white/10 bg-[#0d0f18] text-white">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-purple-400" />
+              {editingAd ? 'Reklamani Tahrirlash' : 'Yangi Reklama Banneri Qo\'shish'}
             </DialogTitle>
           </DialogHeader>
-          
-          <div className="flex-1 overflow-y-auto px-8 pb-4 custom-scrollbar">
-          <form onSubmit={handleAdSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-500 uppercase">Sarlavha *</Label>
+
+          <form onSubmit={handleAdSubmit} className="space-y-3.5 text-xs">
+            
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">Sarlavha *</Label>
               <Input 
                 value={adForm.title} 
                 onChange={e => setAdForm({...adForm, title: e.target.value})} 
-                placeholder="Reklama sarlavhasi" 
-                className="h-12 bg-white/[0.03] border-white/[0.08] rounded-xl text-white" 
+                placeholder="Masalan: Yangi dental uskunalar yetkazib berish" 
+                className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
               />
             </div>
-            
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-500 uppercase">Tavsif</Label>
+
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase">Qisqa Tavsif</Label>
               <Input 
                 value={adForm.description} 
                 onChange={e => setAdForm({...adForm, description: e.target.value})} 
-                placeholder="Qisqa tavsif" 
-                className="h-12 bg-white/[0.03] border-white/[0.08] rounded-xl text-white" 
+                placeholder="Aksiya va chegirmalar haqida batafsil ma'lumot" 
+                className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
               />
             </div>
-            
-            {/* Image Upload Section */}
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                <ImageIcon className="w-3.5 h-3.5" />
-                Rasm
+
+            {/* Image upload */}
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                <ImageIcon className="w-3.5 h-3.5" /> Banner Rasmi
               </Label>
               
-              {/* Upload Area */}
               {!adForm.image_url ? (
-                <label className="relative flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/20 rounded-xl hover:border-blue-500/50 hover:bg-white/[0.02] transition-all cursor-pointer group">
+                <label className="flex flex-col items-center justify-center w-full h-24 border border-dashed border-white/20 rounded-xl hover:border-purple-500/50 hover:bg-white/[0.02] cursor-pointer transition-all">
                   <input
                     id="ad-image-upload"
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    accept="image/*"
                     onChange={handleImageUpload}
                     disabled={uploadingImage}
                     className="hidden"
                   />
                   {uploadingImage ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
-                      <span className="text-xs text-slate-400">Yuklanmoqda...</span>
-                    </div>
+                    <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
                   ) : (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-                        <Upload className="w-6 h-6 text-blue-400" />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs font-bold text-slate-300">Rasm yuklash</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">JPEG, PNG, WebP (Max 5MB)</p>
-                      </div>
+                    <div className="text-center text-slate-400 text-xs">
+                      <Upload className="w-5 h-5 mx-auto mb-1 text-purple-400" />
+                      <span>Rasm yuklash (JPEG, PNG, WebP)</span>
                     </div>
                   )}
                 </label>
               ) : (
-                <div className="relative">
-                  <div className="flex items-center gap-3 p-3 bg-white/[0.03] border border-white/10 rounded-xl">
-                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-white/5 flex-shrink-0">
-                      <img 
-                        src={adForm.image_url} 
-                        alt="Preview" 
-                        className="w-full h-full object-cover" 
-                        onError={(e) => e.target.style.display = 'none'} 
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-white truncate">
-                        {selectedFile ? selectedFile.name : 'Rasm yuklangan'}
-                      </p>
-                      {selectedFile && (
-                        <p className="text-[10px] text-slate-400 mt-0.5">
-                          {formatFileSize(selectedFile.size)}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={removeImage}
-                      className="h-8 w-8 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 flex-shrink-0"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+                <div className="flex items-center gap-3 p-2 bg-white/[0.03] border border-white/10 rounded-xl">
+                  <img src={adForm.image_url} alt="Preview" className="w-14 h-14 object-cover rounded-lg" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-white text-xs truncate">Rasm yuklandi</p>
+                    <p className="text-[10px] text-emerald-400">Faol banner</p>
                   </div>
+                  <Button type="button" variant="ghost" size="icon" onClick={removeImage} className="text-rose-400 hover:text-rose-300">
+                    <X className="w-4 h-4" />
+                  </Button>
                 </div>
               )}
             </div>
-            
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-500 uppercase">Link URL</Label>
-              <Input 
-                value={adForm.link_url} 
-                onChange={e => setAdForm({...adForm, link_url: e.target.value})} 
-                placeholder="https://..." 
-                className="h-12 bg-white/[0.03] border-white/[0.08] rounded-xl text-white" 
-              />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Havola URL (Link)</Label>
+                <Input 
+                  value={adForm.link_url} 
+                  onChange={e => setAdForm({...adForm, link_url: e.target.value})} 
+                  placeholder="https://t.me/..." 
+                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Tugma Matni (CTA)</Label>
+                <Input 
+                  value={adForm.cta_text} 
+                  onChange={e => setAdForm({...adForm, cta_text: e.target.value})} 
+                  placeholder="Batafsil" 
+                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
+                />
+              </div>
             </div>
-            
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-500 uppercase">CTA Matni</Label>
-              <Input 
-                value={adForm.cta_text} 
-                onChange={e => setAdForm({...adForm, cta_text: e.target.value})} 
-                placeholder="Batafsil" 
-                className="h-12 bg-white/[0.03] border-white/[0.08] rounded-xl text-white" 
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5" />
-                  Boshlanish Vaqti
-                </Label>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Boshlanish Vaqti</Label>
                 <Input 
                   type="time"
                   value={adForm.start_time} 
                   onChange={e => setAdForm({...adForm, start_time: e.target.value})} 
-                  className="h-12 bg-white/[0.03] border-white/[0.08] rounded-xl text-white" 
+                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5" />
-                  Tugash Vaqti
-                </Label>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Tugash Vaqti</Label>
                 <Input 
                   type="time"
                   value={adForm.end_time} 
                   onChange={e => setAdForm({...adForm, end_time: e.target.value})} 
-                  className="h-12 bg-white/[0.03] border-white/[0.08] rounded-xl text-white" 
+                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
                 />
               </div>
             </div>
-            
-            <div className="flex items-center gap-3 p-4 bg-white/[0.03] rounded-xl border border-white/[0.06]">
-              <input
-                type="checkbox"
-                id="enabled"
-                checked={adForm.enabled}
-                onChange={e => setAdForm({...adForm, enabled: e.target.checked})}
-                className="w-5 h-5 rounded border-white/20 bg-white/5 text-blue-500 focus:ring-blue-500"
-              />
-              <Label htmlFor="enabled" className="text-sm font-bold text-white cursor-pointer">
-                Reklama faol
-              </Label>
+
+            <div className="pt-3 flex gap-2 border-t border-white/10">
+              <Button type="button" variant="ghost" onClick={() => setAdModalOpen(false)} className="flex-1 h-10 rounded-xl text-slate-400 text-xs">
+                Bekor qilish
+              </Button>
+              <Button type="submit" className="flex-[2] h-10 bg-gradient-to-r from-purple-500 to-pink-600 hover:opacity-95 text-white font-bold text-xs rounded-xl">
+                {editingAd ? 'O\'zgarishlarni Saqlash' : 'Reklamani Qo\'shish'}
+              </Button>
             </div>
-            
-            {/* Preview */}
-            {adForm.title && (
-              <div className="p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-xl border border-white/10">
-                <Label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">Ko'rinishi</Label>
-                <div className="flex items-center gap-3">
-                  {adForm.image_url && (
-                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-white/5">
-                      <img src={adForm.image_url} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.target.style.display = 'none'} />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-white">{adForm.title}</p>
-                    {adForm.description && <p className="text-xs text-slate-300 mt-0.5">{adForm.description}</p>}
-                  </div>
-                  {adForm.cta_text && (
-                    <span className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-xs font-bold rounded-lg">
-                      {adForm.cta_text}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
+
           </form>
-          </div>
-          
-          {/* Footer buttons - sticky at bottom */}
-          <div className="px-8 pb-8 pt-4 border-t border-white/[0.06] bg-[#0f0f16]">
-            <div className="flex gap-3">
-              <Button 
-                type="button" 
-                variant="ghost" 
-                onClick={() => setAdModalOpen(false)} 
-                className="flex-1 h-12 rounded-xl text-slate-400 hover:text-white"
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button 
-                type="submit" 
-                onClick={handleAdSubmit}
-                className="flex-[2] h-12 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-bold"
-              >
-                {editingAd ? t('common.save') : t('common.create')}
-              </Button>
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

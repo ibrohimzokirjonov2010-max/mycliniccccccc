@@ -415,8 +415,16 @@ export default function Staff() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-500 uppercase">
-                      {(user.full_name || user.name || '?').charAt(0)}
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-500 uppercase overflow-hidden">
+                      {(user.avatar_url || user.photo || user.avatar || user.image) ? (
+                        <img 
+                          src={user.avatar_url || user.photo || user.avatar || user.image} 
+                          alt={user.full_name || user.name} 
+                          className="w-full h-full object-cover" 
+                        />
+                      ) : (
+                        (user.full_name || user.name || '?').charAt(0)
+                      )}
                     </div>
                     <div>
                       <p className="font-bold text-slate-900 text-sm">{user.full_name || user.name || 'Nomsiz'}</p>
@@ -496,8 +504,16 @@ export default function Staff() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-500 uppercase">
-                          {(user.full_name || user.name || '?').charAt(0)}
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-500 uppercase overflow-hidden">
+                          {(user.avatar_url || user.photo || user.avatar || user.image) ? (
+                            <img 
+                              src={user.avatar_url || user.photo || user.avatar || user.image} 
+                              alt={user.full_name || user.name} 
+                              className="w-full h-full object-cover" 
+                            />
+                          ) : (
+                            (user.full_name || user.name || '?').charAt(0)
+                          )}
                         </div>
                         <div>
                           <p className="font-bold text-slate-900">{user.full_name || user.name || 'Nomsiz'}</p>

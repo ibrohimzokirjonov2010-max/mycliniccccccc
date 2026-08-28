@@ -7,6 +7,15 @@ import { base44 } from '@/api/base44Client';
 import { getOrSeedImplantBrands, calculateBrandStockStats } from './ImplantBrandsModal';
 
 const BONE_TYPES = ['D1', 'D2', 'D3', 'D4'];
+const SERVICE_OPTIONS = [
+  { id: 'Implant', label: '🔩 Implant (O\'rnatish)', defaultPrice: 1500000 },
+  { id: 'Formik', label: '🩹 Formik (Formirovatel)', defaultPrice: 100000 },
+  { id: 'Karonka', label: '👑 Karonka (Koronka/Tsirkon)', defaultPrice: 1500000 },
+  { id: 'Abutment', label: '🔧 Abutment', defaultPrice: 300000 },
+  { id: 'Sinus-lifting', label: '🩺 Sinus-lifting', defaultPrice: 2000000 },
+  { id: 'Suyak ekish', label: '🧬 Suyak ekish (Graft)', defaultPrice: 1000000 },
+  { id: 'Boshqa', label: '➕ Boshqa xizmat...', defaultPrice: 0 }
+];
 
 export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, onSave, existingData }) {
   const [brands, setBrands] = useState([]);
@@ -16,6 +25,9 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
   const [newBrandStock, setNewBrandStock] = useState(100);
 
   const [form, setForm] = useState({
+    service_name: 'Implant',
+    service_custom: '',
+    price: 1500000,
     firma: 'Osstem', firma_custom: '', brend: '',
     diameter: '', length: '', lot_number: '',
     torque: '', isq: '', bone_type: 'D2',
@@ -57,6 +69,9 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
   const resetForm = () => {
     const defaultFirma = brands.length > 0 ? brands[0].name : 'Osstem';
     setForm({
+      service_name: 'Implant',
+      service_custom: '',
+      price: 1500000,
       firma: defaultFirma, firma_custom: '', brend: '',
       diameter: '', length: '', lot_number: '',
       torque: '', isq: '', bone_type: 'D2',
@@ -80,6 +95,7 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
     let finalFirma = form.firma;
     let finalCustom = form.firma === 'Boshqa' ? form.firma_custom.trim() : '';
     let finalBrend = form.brend?.trim() || (form.firma === 'Boshqa' ? finalCustom : (form.firma || 'Standart'));
+    let finalService = form.service_name === 'Boshqa' ? (form.service_custom?.trim() || 'Xizmat') : (form.service_name || 'Implant');
 
     // If user added a new brand via "Boshqa" or quick add, create it in ImplantBrand entity
     if (form.firma === 'Boshqa' && finalCustom) {
@@ -102,6 +118,9 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
 
     onSave(toothId, {
       ...form,
+      service_name: finalService,
+      service_custom: form.service_custom,
+      price: Number(form.price) || 0,
       firma: finalFirma,
       firma_custom: finalCustom,
       brend: finalBrend
@@ -129,7 +148,7 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
                 <DialogTitle className="text-[15px] font-black text-white uppercase leading-none tracking-tight">
                   Tish {fdiNumber}
                 </DialogTitle>
-                <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Implant ma'lumotlari</p>
+                <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Xizmat va Implant ma'lumotlari</p>
               </div>
             </div>
             <button
@@ -143,6 +162,81 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
 
         {/* Form Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
+
+          {/* Hizmat turi (Service selector) */}
+          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 space-y-2">
+            <label className="text-slate-500 text-[9.5px] font-black uppercase tracking-wider block">
+              1. Hizmat turi (Amaliyot) *
+            </label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {SERVICE_OPTIONS.map(opt => (
+                <button
+                  type="button"
+                  key={opt.id}
+                  onClick={() => {
+                    setForm(prev => ({
+                      ...prev,
+                      service_name: opt.id,
+                      price: opt.defaultPrice !== undefined && opt.id !== 'Boshqa' ? opt.defaultPrice : prev.price
+                    }));
+                  }}
+                  className={`px-2.5 py-1.5 rounded-xl text-left text-[11px] font-bold transition-all border ${
+                    form.service_name === opt.id
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {form.service_name === 'Boshqa' && (
+              <Input
+                placeholder="Xizmat nomini kiriting..."
+                value={form.service_custom}
+                onChange={e => set('service_custom', e.target.value)}
+                className="bg-white border-slate-300 h-9 rounded-xl text-xs font-bold"
+              />
+            )}
+          </div>
+
+          {/* Narxi */}
+          <div className="bg-emerald-50/60 p-3 rounded-2xl border border-emerald-200/80 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-emerald-900 text-[9.5px] font-black uppercase tracking-wider block">
+                2. Xizmat Narxi (so'm) *
+              </label>
+              <span className="text-[10px] font-mono font-black text-emerald-700">
+                {(Number(form.price) || 0).toLocaleString()} so'm
+              </span>
+            </div>
+            <div className="relative">
+              <Input
+                type="number"
+                step="10000"
+                className="bg-white border-emerald-300 focus:border-emerald-500 h-10 rounded-xl font-mono font-black text-slate-900 text-sm pl-3 pr-14 shadow-sm"
+                value={form.price}
+                onChange={e => set('price', e.target.value)}
+                placeholder="1500000"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">
+                SO'M
+              </span>
+            </div>
+            <div className="flex items-center gap-1 overflow-x-auto py-0.5 scrollbar-none">
+              {[100000, 500000, 1000000, 1500000, 2000000, 3000000].map(amt => (
+                <button
+                  type="button"
+                  key={amt}
+                  onClick={() => set('price', amt)}
+                  className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0 transition-colors"
+                >
+                  {(amt / 1000).toLocaleString()}k
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Firma (Loaded strictly from Brands section with stock!) */}
           <div>

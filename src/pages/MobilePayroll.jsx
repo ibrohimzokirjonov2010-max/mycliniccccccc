@@ -62,6 +62,20 @@ export default function MobilePayroll() {
     }
   };
 
+  const handleExistingDoctorAvatarUpload = async (doctorId, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      toast.loading("Shifokor rasmi yangilanmoqda...", { id: "mobile-doctor-avatar" });
+      const compressed = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.8 });
+      await base44.entities.User.update(doctorId, { avatar_url: compressed });
+      setDoctors(prev => prev.map(d => String(d.id) === String(doctorId) ? { ...d, avatar_url: compressed } : d));
+      toast.success("Shifokor rasmi saqlandi!", { id: "mobile-doctor-avatar" });
+    } catch (err) {
+      toast.error("Rasm saqlashda xatolik yuz berdi", { id: "mobile-doctor-avatar" });
+    }
+  };
+
   // Check for navigation state to open modal from Appointments
   useEffect(() => {
     if (location.state?.openAddDoctor) {
@@ -250,16 +264,31 @@ export default function MobilePayroll() {
                     className="p-5 flex items-center gap-4"
                     onClick={() => setExpandedDoctor(expandedDoctor === doctor.id ? null : doctor.id)}
                   >
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black shadow-lg transition-all duration-300 overflow-hidden ${expandedDoctor === doctor.id ? 'bg-[#00D084] text-white ring-2 ring-emerald-400' : 'bg-slate-100 text-slate-500'}`}>
-                      {(doctor.avatar_url || doctor.photo || doctor.avatar || doctor.image) ? (
-                        <img 
-                          src={doctor.avatar_url || doctor.photo || doctor.avatar || doctor.image} 
-                          alt={doctor.name || doctor.full_name} 
-                          className="w-full h-full object-cover" 
+                    <div className="relative group/avatar shrink-0">
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black shadow-lg transition-all duration-300 overflow-hidden ${expandedDoctor === doctor.id ? 'bg-[#00D084] text-white ring-2 ring-emerald-400' : 'bg-slate-100 text-slate-500'}`}>
+                        {(doctor.avatar_url || doctor.photo || doctor.avatar || doctor.image) ? (
+                          <img 
+                            src={doctor.avatar_url || doctor.photo || doctor.avatar || doctor.image} 
+                            alt={doctor.name || doctor.full_name} 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          (doctor.name || doctor.full_name)?.charAt(0)
+                        )}
+                      </div>
+                      <label 
+                        onClick={(e) => e.stopPropagation()} 
+                        className="absolute -bottom-1 -right-1 w-6 h-6 bg-slate-900/80 text-white rounded-lg flex items-center justify-center cursor-pointer shadow-md active:scale-95 transition-transform"
+                        title="Rasmni yuklash"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-white" />
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden" 
+                          onChange={(e) => handleExistingDoctorAvatarUpload(doctor.id, e)} 
                         />
-                      ) : (
-                        (doctor.name || doctor.full_name)?.charAt(0)
-                      )}
+                      </label>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
@@ -413,8 +442,7 @@ export default function MobilePayroll() {
                           : 'text-slate-500'
                       }`}
                     >
-                      <Percent className="w-3.5 h-3.5" />
-                      <span>1. Foizga (%)</span>
+                      <span>Foizga</span>
                     </button>
                     <button
                       type="button"
@@ -425,15 +453,14 @@ export default function MobilePayroll() {
                           : 'text-slate-500'
                       }`}
                     >
-                      <DollarSign className="w-3.5 h-3.5" />
-                      <span>2. Oylikka (so'm)</span>
+                      <span>Oylikka (so'm)</span>
                     </button>
                   </div>
                 </div>
 
                 {newDoctorForm.salary_type === 'percentage' ? (
                   <div className="space-y-2 animate-in fade-in-50 duration-200">
-                    <Label className="text-xs font-bold text-slate-500 uppercase">{t('staff.commission_rate')} (%) *</Label>
+                    <Label className="text-xs font-bold text-slate-500 uppercase">{t('staff.commission_rate') || "Komissiya foizi (%)"} *</Label>
                     <div className="relative">
                       <Input 
                         type="number"

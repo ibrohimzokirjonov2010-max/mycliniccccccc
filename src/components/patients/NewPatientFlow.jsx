@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
@@ -260,12 +261,14 @@ const EditableSelect = ({ value, onChange, placeholder, options, type = "text", 
 
 export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [savingError, setSavingError] = useState(null);
   const [services, setServices] = useState([]);
   const [createdPatient, setCreatedPatient] = useState(null);
   const [createdPlan, setCreatedPlan] = useState(null);
+  const [implantPrompt, setImplantPrompt] = useState(null);
   const [botUsername, setBotUsername] = useState(''); // Telegram bot username (without @)
   const [showQr, setShowQr] = useState(false);
   const [clinicInfo, setClinicInfo] = useState(null);
@@ -996,9 +999,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       // Prepare complete plan data with all services
       const allServices = [];
       const allPlans = [];
+      const implantEntries = [];
       
       teethList.forEach(tooth => {
         const toothSvcs = tooth ? (toothData[tooth]?.services || []) : [];
+        const fdiNum = tooth ? idToFdi(tooth) : '';
         const planName = tooth && tooth !== 'general'
           ? `${createdPatient.full_name} — ${t('patients.fdiTooth', { number: tooth })}`
           : planForm.name || `${createdPatient.full_name} — ${t('patients.wizard.treatmentPlan')}`;
@@ -1015,8 +1020,46 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
             price: s.price,
             tooth: tooth === 'general' ? 'Umumiy' : tooth
           });
+
+          // Check if this service is an implant service
+          const sName = (s.service_name || s.name || '').toLowerCase();
+          const sCat = (s.category || '').toLowerCase();
+          if (sName.includes('implant') || sCat.includes('implant')) {
+            implantEntries.push({
+              toothNumber: fdiNum || (tooth === 'general' ? '' : tooth),
+              service: s
+            });
+          }
         });
       });
+
+      // Avtomatik ravishda Implant bo'limida kiritish kutilayotgan yozuvlarni yaratish
+      if (implantEntries.length > 0) {
+        for (const entry of implantEntries) {
+          try {
+            await base44.entities.Implant.create({
+              patient_id: createdPatient.id,
+              patient_name: createdPatient.full_name,
+              patient_phone: createdPatient.phone || '',
+              doctor: selectedDoc?.name || selectedDoc?.full_name || '',
+              doctor_id: patientForm.main_treatment_provider || '',
+              tooth_numbers: entry.toothNumber ? [entry.toothNumber] : [],
+              tooth_number: entry.toothNumber || '',
+              service_name: entry.service.service_name || entry.service.name || "Implantat o'rnatish",
+              price: entry.service.price || 4000000,
+              narxi: entry.service.price || 4000000,
+              lifecycle_status: 'planned',
+              placement_date: today.split('T')[0],
+              incomplete_data: true,
+              needs_fill: true,
+              created_at: today,
+              notes: "Yangi bemor rejasi orqali yaratilgan — texnik ma'lumotlar kiritilishi kutilmoqda"
+            });
+          } catch (impErr) {
+            console.error('Failed to create linked implant in NewPatientFlow:', impErr);
+          }
+        }
+      }
       
       setCreatedPlan({ 
         ...lastPlan, 
@@ -1027,7 +1070,18 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         allPlansObjects: allCreatedPlans, // Store real DB objects
         allToothData: { ...toothData }
       });
-      setStep(4);
+
+      // Agar implant tanlangan bo'lsa - maxsus taklif oynasi chiqadi
+      if (implantEntries.length > 0) {
+        setImplantPrompt({
+          open: true,
+          patientName: createdPatient.full_name,
+          teeth: teethNumbersUsed.join(', ') || '—',
+          count: implantEntries.length
+        });
+      } else {
+        setStep(4);
+      }
       onSaved?.();
     } catch (error) {
       console.error('[NewPatientFlow] ' + t('patients.wizard.saveError') + ':', error);
@@ -1260,7 +1314,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   }, [createdPatient, createdPlan, grandTotal, discountPaymentId, onSaved]);
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="!p-0 w-[95vw] sm:w-[94vw] md:w-[92vw] max-w-5xl h-[88dvh] max-h-[88dvh] flex flex-col overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border-0 shadow-2xl gap-0 !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
 
          {/* Header */}
@@ -2724,5 +2779,78 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* ─── Implant Bo'limiga O'tish Taklifi Dialogi ─── */}
+    {implantPrompt && (
+      <Dialog open={implantPrompt.open} onOpenChange={(open) => !open && setImplantPrompt(null)}>
+        <DialogContent className="max-w-md p-0 overflow-hidden rounded-[2rem] border-none shadow-3xl bg-white z-[9999]">
+          <div className="bg-gradient-to-r from-teal-500 via-[#1499AD] to-indigo-600 px-6 py-6 text-white text-center relative overflow-hidden">
+            <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl shadow-inner border border-white/30 animate-pulse">
+              🔩
+            </div>
+            <h3 className="text-lg font-black uppercase tracking-tight">
+              Implant Bo'limiga O'tish
+            </h3>
+            <p className="text-xs font-bold text-white/80 mt-1">
+              Siz implant bo'limiga o'tib jarayonni yakunlab qo'ying
+            </p>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-2.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-slate-400 uppercase tracking-wider">Bemor:</span>
+                <span className="font-black text-slate-900">{implantPrompt.patientName}</span>
+              </div>
+              {implantPrompt.teeth && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-slate-400 uppercase tracking-wider">Tish raqami:</span>
+                  <span className="font-black text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-lg border border-teal-200 font-mono">
+                    #{implantPrompt.teeth}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between items-center text-xs">
+                <span className="font-bold text-slate-400 uppercase tracking-wider">Holat:</span>
+                <span className="font-black text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-300 flex items-center gap-1">
+                  ⚠️ Ma'lumot kiritish kerak
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 text-center leading-relaxed">
+              Implant bo'limida tish raqami bilan barcha ma'lumotlar kiritishga tayyor holatda turibdi. Hozir o'tib firma, brend va o'lchamlarini kiritishingiz yoki keyinroq to'ldirishingiz mumkin.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setImplantPrompt(null);
+                  onClose();
+                  navigate('/implants');
+                }}
+                className="flex-1 h-12 rounded-2xl bg-gradient-to-r from-teal-500 to-[#1499AD] hover:opacity-95 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-teal-500/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Davom ettirish</span>
+                <span>→</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setImplantPrompt(null);
+                  setStep(4);
+                }}
+                className="h-12 px-6 rounded-2xl border-2 border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer"
+              >
+                Keyinroq
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )}
+  </>
   );
 }

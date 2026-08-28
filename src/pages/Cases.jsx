@@ -7,7 +7,9 @@ import { base44 } from '@/api/base44Client';
 import { db } from '@/api/supabaseClient';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useAuth } from '@/lib/AuthContext';
 import TelegramImageCropper from '@/components/ui/TelegramImageCropper';
+import { mediaStorage } from '@/utils/mediaStorage';
 
 // Mock Data for Initial State
 const MOCK_CASES = [
@@ -51,6 +53,7 @@ const MOCK_CASES = [
 
 export default function Cases() {
   const { t, language } = useTranslation();
+  const { user, isDoctor } = useAuth();
   const [cases, setCases] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const clinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
@@ -79,7 +82,29 @@ export default function Cases() {
         // Fetch Cases
         try {
           const dbCases = await base44.entities.Case.list();
-          setCases(dbCases || []);
+          // Restore high-res offline images from IndexedDB if needed
+          const localMedia = await mediaStorage.getAllCaseMedia();
+          let merged = (dbCases || []).map(c => {
+            if (localMedia && localMedia[c.id]) {
+              return {
+                ...c,
+                images: {
+                  before: localMedia[c.id].before || c.images?.before || c.image_before,
+                  after: localMedia[c.id].after || c.images?.after || c.image_after
+                }
+              };
+            }
+            return c;
+          });
+          // Doktor bo'lsa faqat o'zi qo'shgan keyslarni ko'rsin
+          if (isDoctor && user?.id) {
+            merged = merged.filter(c =>
+              String(c.doctor_id) === String(user.id) ||
+              String(c.created_by_id) === String(user.id) ||
+              String(c.doctor || '').toLowerCase() === String(user.name || '').toLowerCase()
+            );
+          }
+          setCases(merged);
         } catch (e) {
           console.warn("Cases fetch error:", e);
           setCases(MOCK_CASES);
@@ -88,7 +113,7 @@ export default function Cases() {
         // Fetch Categories
         try {
           const catData = await base44.entities.CaseCategory.list();
-          if (catData) {
+          if (catData && Array.isArray(catData)) {
             setCustomTags(catData.map(c => c.name));
           }
         } catch (e) {
@@ -103,6 +128,20 @@ export default function Cases() {
     }
     loadData();
   }, [clinicId]);
+
+  const handleDeleteCase = async (caseId) => {
+    if (!window.confirm("Haqiqatan ham ushbu klinik keysni o'chirmoqchimisiz?")) return;
+    try {
+      await base44.entities.Case.delete(caseId);
+      await mediaStorage.deleteCaseMedia(caseId);
+      setCases(prev => prev.filter(c => c.id !== caseId));
+      setSelectedCase(null);
+      toast.success("Keys muvaffaqiyatli o'chirildi!");
+    } catch (err) {
+      console.error("Delete error:", err);
+      toast.error(err.message || "O'chirishda xatolik");
+    }
+  };
 
   const ALL_TAGS = ["Barchasi", ...new Set([...cases.flatMap(c => c.tags), ...customTags])];
 
@@ -260,7 +299,11 @@ export default function Cases() {
       {/* BEFORE / AFTER SLIDER MODAL */}
       <AnimatePresence>
          {selectedCase && (
-           <CaseDetailModal data={selectedCase} onClose={() => setSelectedCase(null)} />
+           <CaseDetailModal 
+             data={selectedCase} 
+             onClose={() => setSelectedCase(null)} 
+             onDelete={handleDeleteCase}
+           />
          )}
       </AnimatePresence>
 
@@ -271,41 +314,46 @@ export default function Cases() {
         patients={dbPatients}
         doctors={dbDoctors.map(d => d.name || d.full_name)}
         onSave={async (newCase) => {
-          const loadingToast = toast.loading("Rasmlar serverga yuklanmoqda...");
+          const loadingToast = toast.loading("Keys saqlanmoqda...");
           try {
-             // 1. Upload images to Supabase Storage if they are base64
              let finalImages = { ...newCase.images };
              const timestamp = Date.now();
              const patientSlug = (newCase.patientname || 'case').replace(/\s+/g, '_').toLowerCase();
              
+             // Compress images if base64 before saving to optimize performance & storage
+             if (finalImages.before && finalImages.before.startsWith('data:')) {
+               finalImages.before = await compressImage(finalImages.before, 1200, 0.75);
+             }
+             if (finalImages.after && finalImages.after.startsWith('data:')) {
+               finalImages.after = await compressImage(finalImages.after, 1200, 0.75);
+             }
+
+             // Try Supabase Storage upload if available
              try {
                // Upload BEFORE image
-               if (newCase.images.before && newCase.images.before.startsWith('data:')) {
+               if (finalImages.before && finalImages.before.startsWith('data:')) {
                  const beforeUrl = await db.storage.uploadFile(
                    'cases', 
                    `${clinicId}/${patientSlug}_${timestamp}_before.jpg`, 
-                   newCase.images.before
+                   finalImages.before
                  );
-                 finalImages.before = beforeUrl;
+                 if (beforeUrl) finalImages.before = beforeUrl;
                }
 
                // Upload AFTER image
-               if (newCase.images.after && newCase.images.after.startsWith('data:')) {
+               if (finalImages.after && finalImages.after.startsWith('data:')) {
                  const afterUrl = await db.storage.uploadFile(
                    'cases', 
                    `${clinicId}/${patientSlug}_${timestamp}_after.jpg`, 
-                   newCase.images.after
+                   finalImages.after
                  );
-                 finalImages.after = afterUrl;
+                 if (afterUrl) finalImages.after = afterUrl;
                }
-               toast.loading("Ma'lumotlar bazaga yozilmoqda...", { id: loadingToast });
              } catch (storageErr) {
-               console.warn("Storage upload failed, falling back to base64:", storageErr);
-               // We continue with original base64 images if storage upload fails
-               // this ensures the app works even if the user hasn't set up buckets yet
+               console.warn("Storage upload failed, falling back to local persistent storage:", storageErr);
              }
 
-             // 2. Save the case record with image URLs
+             // 2. Save the case record
              const caseToSave = {
                 ...newCase,
                 images: finalImages,
@@ -319,7 +367,11 @@ export default function Cases() {
                   ...saved,
                   images: saved.images || finalImages
                 };
-                setCases(prev => [enriched, ...prev]);
+
+                // Store in IndexedDB for permanent local retention
+                await mediaStorage.saveCaseMedia(enriched.id, enriched.images);
+
+                setCases(prev => [enriched, ...prev.filter(c => c.id !== enriched.id)]);
                 toast.success("Keys professional darajada saqlandi!", { id: loadingToast });
                 setIsModalOpen(false);
              } else {
@@ -438,7 +490,7 @@ function CaseCard({ data, onClick }) {
 /* -------------------------------------------------------------------------- */
 /*                             BEFORE / AFTER MODAL                           */
 /* -------------------------------------------------------------------------- */
-function CaseDetailModal({ data, onClose }) {
+function CaseDetailModal({ data, onClose, onDelete }) {
   const { t } = useTranslation();
   const [sliderPos, setSliderPos] = useState(50);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
@@ -531,166 +583,195 @@ function CaseDetailModal({ data, onClose }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 overflow-y-auto bg-white/95 backdrop-blur-3xl"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 lg:p-6 bg-slate-950/80 backdrop-blur-md overflow-y-auto"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      {/* HEADER TOOLS - Sticky for better mobile UX */}
-      <div className="sticky top-0 right-0 left-0 flex items-center justify-end gap-3 p-4 lg:p-8 z-[60] bg-white/50 backdrop-blur-sm pointer-events-none">
-        
-        {/* Drawing Tools */}
-        <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 p-1.5 rounded-2xl shadow-xl pointer-events-auto">
-          <button 
-            onClick={() => setIsDrawingMode(!isDrawingMode)}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${isDrawingMode ? 'bg-[#1499AD] text-white shadow-[0_0_15px_rgba(20,153,173,0.5)]' : 'text-slate-400 hover:text-white hover:bg-slate-200'}`}
-          >
-            <Pen className="w-4 h-4" />
-          </button>
-          
-          {isDrawingMode && (
-             <div className="flex items-center gap-1.5 px-2 border-l border-slate-300">
-               {['#ef4444', '#eab308', '#22c55e', '#1499AD', '#000000'].map(c => (
-                 <button 
-                    key={c} 
-                    onClick={() => setColor(c)}
-                    className={`w-5 h-5 rounded-full border-2 ${color === c ? 'border-slate-900 scale-110' : 'border-white'}`}
-                    style={{ backgroundColor: c }}
-                 />
-               ))}
-               <button onClick={clearCanvas} className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-rose-500">
-                 <Trash2 className="w-4 h-4" />
-               </button>
-             </div>
-          )}
-        </div>
+      <motion.div
+        initial={{ scale: 0.96, opacity: 0, y: 15 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.96, opacity: 0, y: 15 }}
+        transition={{ type: "spring", duration: 0.3, bounce: 0.1 }}
+        className="relative w-full max-w-5xl bg-[#0C1222] border border-white/15 rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* COMPACT INTEGRATED HEADER */}
+        <div className="px-4 sm:px-6 py-3 bg-[#131B2E] border-b border-white/10 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <h2 className="text-base sm:text-lg font-black text-white truncate">
+              {data.patientname || data.patient_name || data.patientName || "Keys Ko'rinishi"}
+            </h2>
+            {data.date && (
+              <span className="shrink-0 px-2.5 py-0.5 rounded-md bg-[#1499AD]/15 border border-[#1499AD]/30 text-[#1499AD] text-[11px] font-bold tracking-wider">
+                {data.date}
+              </span>
+            )}
+          </div>
 
-        <button 
-          onClick={onClose}
-          className="w-10 h-10 bg-slate-200 text-slate-600 rounded-2xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-colors pointer-events-auto shadow-sm"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-
-      <div className="w-full min-h-full flex flex-col xl:flex-row gap-6 p-4 lg:p-8 max-w-[1600px] mx-auto pb-20">
-        
-        {/* BIG SLIDER CONTAINER */}
-        <div className="w-full xl:w-[75%] h-[50vh] sm:h-[60vh] xl:h-[85vh] relative rounded-[2rem] overflow-hidden bg-[#0C1222] border border-white/10 shadow-2xl flex-shrink-0"
-             onMouseMove={handleSliderMove}
-             onTouchMove={handleSliderMove}
-        >
-          {/* AFTER */}
-          <div className="absolute inset-0 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${data.images?.after || data.image_after})` }} />
-          
-          {/* BEFORE */}
-          <div 
-             className="absolute inset-0 bg-contain bg-center bg-no-repeat" 
-             style={{ 
-               backgroundImage: `url(${data.images?.before || data.image_before || data.images?.after || data.image_after})`,
-               clipPath: `inset(0 ${100 - sliderPos}% 0 0)`
-             }} 
-          />
-
-          {/* SLIDER HANDLE */}
-          {!isDrawingMode && (
-            <div 
-              className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_15px_rgba(0,0,0,0.8)] cursor-col-resize flex items-center justify-center -translate-x-[50%]"
-              style={{ left: `${sliderPos}%` }}
-            >
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-full flex items-center justify-center shadow-2xl text-[#0C1222] border-4 border-[#0C1222]">
-                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 ml-1" />
-                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 -ml-1" />
-              </div>
+          {/* Tools & Close */}
+          <div className="flex items-center gap-2">
+            {/* Drawing Tools */}
+            <div className="flex items-center gap-1 bg-white/5 border border-white/10 p-1 rounded-xl">
+              <button 
+                onClick={() => setIsDrawingMode(!isDrawingMode)}
+                title="Chizish rejimi"
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all ${isDrawingMode ? 'bg-[#1499AD] text-white shadow-md shadow-[#1499AD]/40' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
+              >
+                <Pen className="w-3.5 h-3.5" />
+              </button>
+              
+              {isDrawingMode && (
+                <div className="flex items-center gap-1 px-1.5 border-l border-white/10">
+                  {['#ef4444', '#eab308', '#22c55e', '#1499AD', '#ffffff'].map(c => (
+                    <button 
+                      key={c} 
+                      onClick={() => setColor(c)}
+                      className={`w-4 h-4 rounded-full border ${color === c ? 'border-white scale-110 shadow-sm' : 'border-white/20'}`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                  <button onClick={clearCanvas} title="Tozalash" className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-rose-400">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
-          )}
 
-          {/* CANVAS FOR DRAWING OVERLAY */}
-          <canvas
-             ref={canvasRef}
-             className={`absolute inset-0 z-10 w-full h-full ${isDrawingMode ? 'cursor-crosshair' : 'pointer-events-none'}`}
-             onMouseDown={startDrawing}
-             onMouseMove={draw}
-             onMouseUp={stopDrawing}
-             onMouseLeave={stopDrawing}
-             onTouchStart={startDrawing}
-             onTouchMove={draw}
-             onTouchEnd={stopDrawing}
-          />
-
-          {/* LABELS */}
-          <div className="absolute top-4 left-4 sm:top-6 sm:left-6 group/label pointer-events-none">
-            <motion.div 
-               initial={{ x: -20, opacity: 0 }}
-               animate={{ x: 0, opacity: 1 }}
-               className="bg-black/80 backdrop-blur-md px-4 py-2 rounded-xl text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] border border-white/10 shadow-2xl"
+            {/* Close Button */}
+            <button 
+              onClick={onClose}
+              className="w-8 h-8 rounded-xl bg-white/10 hover:bg-rose-500 hover:text-white text-slate-300 flex items-center justify-center transition-colors shadow-sm cursor-pointer"
             >
-              {t('cases.detail.before') || "Oldin"} <span className="text-[8px] opacity-40 ml-1 font-bold">{t('cases.detail.status') || "Holat"}</span>
-            </motion.div>
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          
-          <div className="absolute top-4 right-4 sm:top-6 sm:right-6 group/label pointer-events-none">
-            <motion.div 
-               initial={{ x: 20, opacity: 0 }}
-               animate={{ x: 0, opacity: 1 }}
-               className="bg-[#1499AD] backdrop-blur-md px-4 py-2 rounded-xl text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] shadow-xl shadow-[#1499AD]/40"
-            >
-              {t('cases.detail.after') || "Keyin"} <span className="text-[8px] text-white/50 ml-1 font-bold">{t('cases.detail.result') || "Natija"}</span>
-            </motion.div>
-          </div>
-          
-          {isDrawingMode && (
-            <motion.div 
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-xl px-8 py-3.5 rounded-2xl border border-white/10 text-white text-[11px] font-black uppercase tracking-widest shadow-2xl pointer-events-none flex items-center gap-3"
-            >
-              <Pen className="w-4 h-4 text-[#1499AD]" />
-              {t('cases.detail.canvasInstruction') || "Bemoringizga klinik holatni tushuntiring"}
-            </motion.div>
-          )}
         </div>
 
-        {/* INFO PANEL */}
-        <div className="w-full xl:w-[25%] bg-[#1A2235] p-6 sm:p-8 rounded-[2rem] border border-white/10 relative shadow-2xl min-h-fit">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-[#1499AD]/10 blur-[80px] rounded-full pointer-events-none" />
+        {/* MODAL BODY */}
+        <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
           
-          <h2 className="text-2xl sm:text-3xl font-black text-white relative z-10 mb-2">{data.patientname || data.patient_name || data.patientName}</h2>
-          <div className="inline-block bg-[#1499AD]/20 border border-[#1499AD]/30 text-[#1499AD] font-black text-[10px] tracking-widest uppercase px-3 py-1.5 rounded-lg mb-6 sm:mb-8">
-             {data.date}
-          </div>
-          
-          <div className="space-y-6 sm:space-y-8 relative z-10">
-            <div>
-              <h4 className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2">
-                 <Sparkles className="w-3 h-3" /> {t('cases.detail.doctor') || "Davolovchi Shifokor"}
-              </h4>
-              <div className="flex items-center gap-3 bg-white/5 p-4 rounded-2xl border border-white/5">
-                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white flex items-center justify-center font-black text-lg shadow-lg">
-                   {(data.doctor || "D")[0]}
-                 </div>
-                 <span className="text-white font-bold text-base sm:text-lg">{data.doctor}</span>
+          {/* LEFT: BEFORE / AFTER SLIDER CONTAINER */}
+          <div 
+            className="flex-1 min-h-[300px] sm:min-h-[380px] lg:min-h-[460px] relative bg-[#060913] overflow-hidden flex items-center justify-center select-none"
+            onMouseMove={handleSliderMove}
+            onTouchMove={handleSliderMove}
+          >
+            {/* AFTER */}
+            <div 
+              className="absolute inset-0 bg-contain bg-center bg-no-repeat" 
+              style={{ backgroundImage: `url(${data.images?.after || data.image_after})` }} 
+            />
+            
+            {/* BEFORE */}
+            <div 
+              className="absolute inset-0 bg-contain bg-center bg-no-repeat" 
+              style={{ 
+                backgroundImage: `url(${data.images?.before || data.image_before || data.images?.after || data.image_after})`,
+                clipPath: `inset(0 ${100 - sliderPos}% 0 0)`
+              }} 
+            />
+
+            {/* SLIDER HANDLE */}
+            {!isDrawingMode && (
+              <div 
+                className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_12px_rgba(0,0,0,0.8)] cursor-col-resize flex items-center justify-center -translate-x-[50%]"
+                style={{ left: `${sliderPos}%` }}
+              >
+                <div className="w-8 h-8 sm:w-9 sm:h-9 bg-white rounded-full flex items-center justify-center shadow-xl text-[#0C1222] border-2 border-[#0C1222]">
+                  <ChevronLeft className="w-3.5 h-3.5 ml-0.5" />
+                  <ChevronRight className="w-3.5 h-3.5 -ml-0.5" />
+                </div>
+              </div>
+            )}
+
+            {/* CANVAS FOR DRAWING OVERLAY */}
+            <canvas
+              ref={canvasRef}
+              className={`absolute inset-0 z-10 w-full h-full ${isDrawingMode ? 'cursor-crosshair' : 'pointer-events-none'}`}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+            />
+
+            {/* LABELS */}
+            <div className="absolute top-3 left-3 pointer-events-none">
+              <div className="bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-lg text-white font-black text-[9px] uppercase tracking-wider border border-white/10 shadow-lg">
+                {t('cases.detail.before') || "Oldin"} <span className="text-[7px] opacity-40 ml-0.5">{t('cases.detail.status') || "Holat"}</span>
               </div>
             </div>
             
-            <div>
-              <h4 className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3">{t('cases.detail.tags') || "Teglar (Kategoriyalar)"}</h4>
-              <div className="flex flex-wrap gap-2">
-                {(data.tags || []).map(tag => (
-                  <span key={tag} className="px-3 py-2 bg-[#0C1222] border border-white/10 text-white text-[10px] font-black uppercase tracking-wider rounded-xl shadow-inner">
-                    {tag}
-                  </span>
-                ))}
+            <div className="absolute top-3 right-3 pointer-events-none">
+              <div className="bg-[#1499AD] backdrop-blur-md px-3 py-1.5 rounded-lg text-white font-black text-[9px] uppercase tracking-wider shadow-md shadow-[#1499AD]/30">
+                {t('cases.detail.after') || "Keyin"} <span className="text-[7px] text-white/60 ml-0.5">{t('cases.detail.result') || "Natija"}</span>
+              </div>
+            </div>
+            
+            {isDrawingMode && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/10 text-white text-[10px] font-bold shadow-lg pointer-events-none flex items-center gap-2">
+                <Pen className="w-3 h-3 text-[#1499AD]" />
+                <span>{t('cases.detail.canvasInstruction') || "Chizish orqali holatni tushuntiring"}</span>
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT: COMPACT INFO PANEL */}
+          <div className="w-full lg:w-[300px] xl:w-[320px] bg-[#11192C] p-4 sm:p-5 border-t lg:border-t-0 lg:border-l border-white/10 flex flex-col justify-between overflow-y-auto shrink-0 gap-4">
+            <div className="space-y-4">
+              {/* Doctor */}
+              <div>
+                <h4 className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-[#1499AD]" /> {t('cases.detail.doctor') || "Davolovchi Shifokor"}
+                </h4>
+                <div className="flex items-center gap-2.5 bg-white/5 p-2.5 rounded-xl border border-white/5">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#1499AD] to-emerald-500 text-white flex items-center justify-center font-black text-xs shadow-md">
+                    {(data.doctor || "D")[0]}
+                  </div>
+                  <span className="text-white font-bold text-xs sm:text-sm truncate">{data.doctor || "Shifokor biriktirilmagan"}</span>
+                </div>
+              </div>
+              
+              {/* Tags */}
+              {data.tags && data.tags.length > 0 && (
+                <div>
+                  <h4 className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-2">{t('cases.detail.tags') || "Kategoriyalar"}</h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {data.tags.map(tag => (
+                      <span key={tag} className="px-2 py-0.5 bg-[#0C1222] border border-white/10 text-slate-200 text-[10px] font-bold rounded-md">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              <div>
+                <h4 className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-2">{t('cases.detail.description') || "Tavsif va Izoh"}</h4>
+                <p className="text-slate-300 text-xs leading-relaxed bg-white/5 p-3 rounded-xl border border-white/5 whitespace-pre-wrap max-h-36 overflow-y-auto">
+                  {data.description || (t('cases.detail.noDescription') || "Izoh kiritilmagan.")}
+                </p>
               </div>
             </div>
 
-            <div className="pb-4">
-              <h4 className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3">{t('cases.detail.description') || "Tavsif va Izoh"}</h4>
-              <p className="text-slate-300 text-sm sm:text-base leading-relaxed bg-white/5 p-4 sm:p-5 rounded-2xl border border-white/5 whitespace-pre-wrap">
-                {data.description || (t('cases.detail.noDescription') || "Izoh kiritilmagan.")}
-              </p>
-            </div>
+            {/* Actions */}
+            {onDelete && (
+              <div className="pt-3 border-t border-white/10">
+                <button 
+                  onClick={() => onDelete(data.id)}
+                  className="w-full py-2 px-3 bg-rose-500/15 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Keysni o'chirish</span>
+                </button>
+              </div>
+            )}
           </div>
-        </div>
 
-      </div>
+        </div>
+      </motion.div>
     </motion.div>
   )
 }
@@ -698,8 +779,12 @@ function CaseDetailModal({ data, onClose }) {
 /* -------------------------------------------------------------------------- */
 /*                          IMAGE COMPRESSION UTILITY                         */
 /* -------------------------------------------------------------------------- */
-const compressImage = (base64Str, maxWidth = 1200, quality = 0.7) => {
+const compressImage = (base64Str, maxWidth = 1200, quality = 0.75) => {
   return new Promise((resolve) => {
+    if (!base64Str || typeof base64Str !== 'string' || !base64Str.startsWith('data:image')) {
+      resolve(base64Str);
+      return;
+    }
     const img = new Image();
     img.src = base64Str;
     img.onload = () => {
@@ -709,12 +794,12 @@ const compressImage = (base64Str, maxWidth = 1200, quality = 0.7) => {
 
       if (width > height) {
         if (width > maxWidth) {
-          height *= maxWidth / width;
+          height = Math.round((height * maxWidth) / width);
           width = maxWidth;
         }
       } else {
         if (height > maxWidth) {
-          width *= maxWidth / height;
+          width = Math.round((width * maxWidth) / height);
           height = maxWidth;
         }
       }
@@ -762,10 +847,11 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
+        const compressed = await compressImage(reader.result, 1400, 0.8);
         setCropperState({
           isOpen: true,
-          imageSrc: reader.result,
+          imageSrc: compressed,
           targetType: type
         });
       };
@@ -774,11 +860,12 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
     }
   };
 
-  const handleApplyCroppedImage = (croppedDataUrl) => {
+  const handleApplyCroppedImage = async (croppedDataUrl) => {
+    const compressed = await compressImage(croppedDataUrl, 1200, 0.75);
     if (cropperState.targetType === 'before') {
-      setBeforeImg(croppedDataUrl);
+      setBeforeImg(compressed);
     } else {
-      setAfterImg(croppedDataUrl);
+      setAfterImg(compressed);
     }
     setCropperState({ isOpen: false, imageSrc: null, targetType: 'before' });
     toast.success("Rasm tahrirlandi va sifatli saqlandi!");

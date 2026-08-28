@@ -97,7 +97,22 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
     }
 
     if (isDoctor) {
-      const doctorAllowedPaths = ['/', '/patients', '/appointments', '/leads', '/treatment-plans', '/implants', '/technicians', '/cases', '/settings'];
+      // Doktor uchun barcha 12 bo'lim ochiq — faqat o'z ma'lumotlari ko'rinadi (sahifalar ichida filtrlangan)
+      const doctorAllowedPaths = [
+        '/',                    // 1. Boshqaruv paneli
+        '/patients',            // 2. Bemorlar
+        '/appointments',        // 3. Uchrashuvlar
+        '/leads',               // 4. Lidlar
+        '/payments',            // 5. To'lovlar
+        '/treatment-plans',     // 6. Davolash rejalari
+        '/recall',              // 7. Eslashmalar
+        '/no-show',             // 8. Kelgan emas
+        '/treatment-tracking',  // 9. Davolash kuzatuvi
+        '/debts',               // 10. Qarzlar
+        '/implants',            // 11. Implantlar
+        '/cases',               // 12. Mening keyslarim
+        '/settings',
+      ];
       return items.filter(item => doctorAllowedPaths.includes(item.path));
     }
     
@@ -208,8 +223,12 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
         {!collapsed ? (
           <div className="bg-white lg:bg-white/5 backdrop-blur-md rounded-[1.25rem] p-3 border border-slate-100 lg:border-white/5 flex items-center justify-between group transition-all shadow-sm lg:shadow-lg hover:shadow-md">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-[#1499AD] flex items-center justify-center text-white font-black text-xs shadow-md">
-                {user?.name?.[0] || 'U'}
+              <div className="w-10 h-10 rounded-xl bg-[#1499AD] flex items-center justify-center text-white font-black text-xs shadow-md overflow-hidden shrink-0">
+                {(user?.avatar_url || user?.photo || user?.avatar || user?.image) ? (
+                  <img src={user.avatar_url || user.photo || user.avatar || user.image} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  user?.name?.[0]?.toUpperCase() || 'U'
+                )}
               </div>
               <div className="min-w-0">
                 <p className="text-[13px] font-bold text-slate-900 lg:text-white truncate tracking-tight leading-none uppercase">{user?.full_name || user?.name || 'Foydalanuvchi'}</p>
@@ -230,8 +249,12 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-[#1499AD] flex items-center justify-center text-white font-black text-xs shadow-md" title={user?.full_name || user?.name || 'Foydalanuvchi'}>
-              {user?.name?.[0] || 'U'}
+            <div className="w-10 h-10 rounded-xl bg-[#1499AD] flex items-center justify-center text-white font-black text-xs shadow-md overflow-hidden shrink-0" title={user?.full_name || user?.name || 'Foydalanuvchi'}>
+              {(user?.avatar_url || user?.photo || user?.avatar || user?.image) ? (
+                <img src={user.avatar_url || user.photo || user.avatar || user.image} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                user?.name?.[0]?.toUpperCase() || 'U'
+              )}
             </div>
             <button
               onClick={handleLogout}

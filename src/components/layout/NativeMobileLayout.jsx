@@ -192,7 +192,12 @@ export default function NativeMobileLayout({ children }) {
     
     // Role based filtering
     if (isDoctor) {
-      const doctorAllowedPaths = ['/', '/patients', '/appointments', '/leads', '/treatment-plans', '/implants', '/technicians', '/cases', '/settings'];
+      const doctorAllowedPaths = [
+        '/', '/patients', '/appointments', '/leads',
+        '/payments', '/treatment-plans', '/recall', '/recalls',
+        '/no-show', '/treatment-tracking', '/debts',
+        '/implants', '/cases', '/settings'
+      ];
       items = items.filter(item => doctorAllowedPaths.includes(item.path));
     }
     
@@ -499,8 +504,12 @@ export default function NativeMobileLayout({ children }) {
                 style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1499AD] to-[#0E7A8A] flex items-center justify-center text-white font-black text-xs shrink-0 shadow-sm">
-                    {user?.name?.[0] || 'U'}
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1499AD] to-[#0E7A8A] flex items-center justify-center text-white font-black text-xs shrink-0 shadow-sm overflow-hidden">
+                    {(user?.avatar_url || user?.photo || user?.avatar || user?.image) ? (
+                      <img src={user.avatar_url || user.photo || user.avatar || user.image} alt={user.name} className="w-full h-full object-cover" />
+                    ) : (
+                      user?.name?.[0]?.toUpperCase() || 'U'
+                    )}
                   </div>
                   <div className="min-w-0">
                     <p className="text-[11px] font-black text-slate-900 truncate tracking-tight uppercase leading-none">{user?.full_name || user?.name || 'User'}</p>

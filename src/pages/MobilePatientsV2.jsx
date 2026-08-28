@@ -49,10 +49,13 @@ export default function MobilePatientsV2() {
       }
       let data = [];
       if (isDoctor && user?.id) {
-        data = await base44.entities.Patient.filter({ main_treatment_provider: user.id }, '-created_date', 100);
-        if (data.length === 0 && user.name) {
-          data = await base44.entities.Patient.filter({ main_treatment_provider: user.name }, '-created_date', 100);
-        }
+        // Ikki shart: 1) biriktirilgan (main_treatment_provider)  2) qo'shgan (created_by_id)
+        const allPats = await base44.entities.Patient.list('-created_date', 500).catch(() => []);
+        data = (allPats || []).filter(p =>
+          String(p.main_treatment_provider) === String(user.id) ||
+          String(p.main_treatment_provider) === String(user.name) ||
+          String(p.created_by_id) === String(user.id)
+        );
       } else {
         data = await base44.entities.Patient.list('-created_date', 100);
       }

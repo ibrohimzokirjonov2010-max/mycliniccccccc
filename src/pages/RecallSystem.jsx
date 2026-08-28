@@ -1,24 +1,28 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Plus, Search, Bell, Send, MessageCircle, Smartphone, History, Settings, 
-  Loader2, CheckCircle2, XCircle, Calendar, Phone,
-  Filter, AlertCircle, Clock, CheckSquare,
-  MoreHorizontal
+  Plus, Search, Bell, Send, MessageCircle, Smartphone, Settings, 
+  Loader2, CheckCircle2, XCircle, Phone,
+  Clock, CheckSquare, Table as TableIcon, LayoutGrid, FileSpreadsheet, X,
+  ArrowUp, ArrowDown, ArrowUpDown, Trash2, User
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import EmptyState from '@/components/ui/EmptyState';
-import { formatDateTime } from '@/lib/utils';
+import { 
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
+} from '@/components/ui/alert-dialog';
+import { formatDateTime, cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 /**
@@ -35,39 +39,12 @@ const RECALL_RULES = [
 const getTodayDateStr = () => new Date().toISOString().split('T')[0];
 
 /**
- * REMINDER_TIMING - Eslatma vaqt rejimlari
- */
-const REMINDER_TIMING = [
-  { value: '1_day', label: '1 kun oldin', hours: 24 },
-  { value: '2_hours', label: '2 soat oldin', hours: 2 },
-  { value: '30_minutes', label: '30 daqiqa oldin', hours: 0.5 },
-];
-
-/**
- * NOTIFICATION_CHANNELS - Xabar yuborish kanallari
- */
-const NOTIFICATION_CHANNELS = [
-  { value: 'telegram', label: 'Telegram', icon: MessageCircle },
-  { value: 'sms', label: 'SMS', icon: Smartphone },
-];
-
-/**
- * RECALL_STATUSES - Clear workflow statuses
- */
-const RECALL_STATUSES = {
-  DRAFT: { value: 'Draft', label: 'Qoralama', color: 'bg-slate-100 text-slate-700 border-slate-200' },
-  SCHEDULED: { value: 'Scheduled', label: 'Rejalashtirilgan', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  PENDING: { value: 'Pending', label: 'Kutilmoqda', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  SENT: { value: 'Sent', label: 'Yuborilgan', color: 'bg-purple-100 text-purple-700 border-purple-200' },
-  COMPLETED: { value: 'Completed', label: 'Bajarildi', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  FAILED: { value: 'Failed', label: 'Xatolik', color: 'bg-red-100 text-red-700 border-red-200' }
-};
-
-/**
- * RecallSystem Page - Professional Healthcare CRM
+ * RecallSystem Page - Professional Excel Spreadsheet View
  */
 export default function RecallSystem() {
+  const navigate = useNavigate();
   const { t, language } = useTranslation();
+  const { user, isDoctor } = useAuth();
   
   const getRuleLabel = (value) => {
     if (language === 'ru') {
@@ -119,17 +96,37 @@ export default function RecallSystem() {
   const [notificationHistory, setNotificationHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('all'); // all, upcoming, pending, contacted, completed, history
   const [selectedRecalls, setSelectedRecalls] = useState(new Set());
   
+  // Density switcher
+  const [density, setDensity] = useState(() => {
+    return localStorage.getItem('myclinic_recall_density') || 'compact';
+  });
+  const toggleDensity = (val) => {
+    setDensity(val);
+    localStorage.setItem('myclinic_recall_density', val);
+  };
+
+  // Sorting state
+  const [sortField, setSortField] = useState('date');
+  const [sortOrder, setSortOrder] = useState('asc');
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [selectedRecall, setSelectedRecall] = useState(null);
-  
-  // Filter & sort states
-  const [filterPriority, setFilterPriority] = useState('all'); // all, urgent, today, week
-  const [sortBy, setSortBy] = useState('date_asc'); // date_asc, date_desc, priority
+  const [deleteRecallId, setDeleteRecallId] = useState(null);
 
   // Form states
   const [form, setForm] = useState(() => {
@@ -137,7 +134,7 @@ export default function RecallSystem() {
     return {
       patient_id: '',
       patient_name: '',
-      start_date: today, // Boshlang'ich sana
+      start_date: today,
       recall_date: calculateRecallDate('3_months', today) || today,
       recall_time: '09:00',
       reason: '',
@@ -151,35 +148,45 @@ export default function RecallSystem() {
       treatment_type: ''
     };
   });
-  
-  // Settings states
-  const [settings, setSettings] = useState({
-    auto_reminder: true,
-    reminder_1_day: true,
-    reminder_2_hours: true,
-    default_channel: 'telegram',
-    telegram_bot_token: '',
-    sms_api_key: '',
-    sms_provider: 'eskiz'
-  });
-  
+
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
 
+  // Settings state
+  const [settings, setSettings] = useState(() => {
+    const saved = localStorage.getItem('myclinic_recall_settings');
+    return saved ? JSON.parse(saved) : {
+      auto_reminder: true,
+      default_channel: 'telegram',
+      reminder_1_day: true,
+      reminder_2_hours: true,
+      template_manual: 'Assalomu alaykum, {patient_name}! Sizga {clinic_name} klinikasida {reason} bo\'yicha eslatma yubormoqdamiz. Qabul vaqti: {recall_date} {recall_time}',
+      template_1_day: 'Eslatma: Ertaga {recall_time} da {clinic_name} klinikasida {reason} uchun qabulingiz bor.',
+      template_2_hours: 'Eslatma: Bugun {recall_time} da {clinic_name} klinikasida qabulingiz bor.'
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('myclinic_recall_settings', JSON.stringify(settings));
+  }, [settings]);
+
   /**
-   * Load all data with enhanced delivery tracking
+   * Load all data
    */
   const load = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const [recs, pats, history] = await Promise.all([
-        base44.entities.Recall.list('-recall_date', 50),   // ⚡ tez
-        base44.entities.Patient.list('full_name', 50),       // ⚡ tez
-        base44.entities.NotificationHistory?.list('-sent_at', 100) || Promise.resolve([])
-      ]);
+      let recallList = [];
+      if (isDoctor && user?.id) {
+        recallList = await base44.entities.Recall.filter({ doctor_id: user.id }, '-created_date', 100).catch(() => []);
+      } else {
+        recallList = await base44.entities.Recall.list('-created_date', 100);
+      }
       
-      // Enhance recalls with delivery status
-      const enrichedRecalls = recs.map(recall => ({
+      const pats = await base44.entities.Patient.list('full_name', 200).catch(() => []);
+      const history = await base44.entities.NotificationHistory?.list('-sent_at', 100).catch(() => []) || [];
+      
+      const enrichedRecalls = (recallList || []).map(recall => ({
         ...recall,
         priority: calculatePriority(recall),
         lastAction: getLastAction(recall, history),
@@ -187,25 +194,22 @@ export default function RecallSystem() {
       }));
       
       setRecalls(enrichedRecalls);
-      setPatients(pats);
-      setNotificationHistory(history);
-      // ✅ toast olib tashlandi — load funksiyasi endi [] bilan stable (loop xavfi yo'q)
+      setPatients(pats || []);
+      setNotificationHistory(history || []);
     } catch (error) {
       console.error('Failed to load recalls:', error);
-      toast.error('Xatolik', {
-        description: 'Ma\'lumotlarni yuklashda xatolik yuz berdi'
-      });
+      toast.error('Ma\'lumotlarni yuklashda xatolik yuz berdi');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isDoctor, user?.id]);
 
-  /**
-   * Calculate recall priority based on date and status
-   */
   const calculatePriority = (recall) => {
+    if (!recall.recall_date) return 'low';
     const today = new Date();
+    today.setHours(0,0,0,0);
     const recallDate = new Date(recall.recall_date);
+    recallDate.setHours(0,0,0,0);
     const daysUntil = Math.ceil((recallDate - today) / (1000 * 60 * 60 * 24));
     
     if (daysUntil < 0) return 'overdue';
@@ -215,17 +219,10 @@ export default function RecallSystem() {
     return 'low';
   };
 
-  /**
-   * Get last action performed on recall
-   */
   const getLastAction = (recall, history) => {
     const recallHistory = history.filter(h => h.recall_id === recall.id);
     if (recallHistory.length === 0) return null;
-    
-    const lastAction = recallHistory.sort((a, b) => 
-      new Date(b.sent_at) - new Date(a.sent_at)
-    )[0];
-    
+    const lastAction = recallHistory.sort((a, b) => new Date(b.sent_at) - new Date(a.sent_at))[0];
     return {
       type: lastAction.channel,
       time: lastAction.sent_at,
@@ -233,314 +230,172 @@ export default function RecallSystem() {
     };
   };
 
-  /**
-   * Get delivery status from notification history
-   */
   const getDeliveryStatus = (recall, history) => {
     const recallHistory = history.filter(h => h.recall_id === recall.id);
     if (recallHistory.length === 0) return 'not_sent';
-    
-    const latest = recallHistory.sort((a, b) => 
-      new Date(b.sent_at) - new Date(a.sent_at)
-    )[0];
-    
-    return latest.status; // sent, failed, opened
+    const latest = recallHistory.sort((a, b) => new Date(b.sent_at) - new Date(a.sent_at))[0];
+    return latest.status;
   };
 
   useEffect(() => { load(); }, [load]);
 
   /**
-   * Advanced filtering with priority and smart sorting
+   * Status Counts
+   */
+  const statusCounts = useMemo(() => {
+    const counts = {
+      all: recalls.length,
+      upcoming: 0,
+      pending: 0,
+      contacted: 0,
+      completed: 0,
+      history: notificationHistory.length
+    };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    recalls.forEach(r => {
+      const st = r.status || 'Pending';
+      if (st === 'Pending') counts.pending += 1;
+      else if (st === 'Contacted') counts.contacted += 1;
+      else if (st === 'Completed') counts.completed += 1;
+
+      if (r.recall_date) {
+        const rDate = new Date(r.recall_date);
+        if (rDate >= today && rDate <= nextWeek && st !== 'Completed') {
+          counts.upcoming += 1;
+        }
+      }
+    });
+
+    return counts;
+  }, [recalls, notificationHistory]);
+
+  /**
+   * Filtered Recalls
    */
   const filteredRecalls = useMemo(() => {
     let result = [...recalls];
     
-    // Search filter (name, phone, last visit)
+    // Search
     if (search) {
+      const q = search.toLowerCase();
       result = result.filter(r => 
-        r.patient_name?.toLowerCase().includes(search.toLowerCase()) ||
-        r.reason?.toLowerCase().includes(search.toLowerCase()) ||
-        r.patient_phone?.includes(search)
+        (r.patient_name || '').toLowerCase().includes(q) ||
+        (r.reason || '').toLowerCase().includes(q) ||
+        (r.patient_phone || '').includes(q) ||
+        (r.notes || '').toLowerCase().includes(q)
       );
     }
     
-    // Priority filter
-    if (filterPriority === 'urgent') {
-      result = result.filter(r => r.priority === 'urgent' || r.priority === 'overdue');
-    } else if (filterPriority === 'today') {
-      const today = new Date().toISOString().split('T')[0];
+    // Tab Filter
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    if (activeTab === 'upcoming') {
       result = result.filter(r => {
-        if (!r || !r.recall_date) return false;
-        const cleanDate = r.recall_date.includes('T') ? r.recall_date.split('T')[0] : r.recall_date.split(' ')[0];
-        return cleanDate === today;
+        if (!r.recall_date) return false;
+        const rDate = new Date(r.recall_date);
+        return rDate >= today && rDate <= nextWeek && r.status !== 'Completed';
       });
-    } else if (filterPriority === 'week') {
-      const today = new Date();
-      const weekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-      result = result.filter(r => {
-        const recallDate = new Date(r.recall_date);
-        return recallDate >= today && recallDate <= weekLater;
-      });
+    } else if (activeTab === 'pending') {
+      result = result.filter(r => (r.status || 'Pending') === 'Pending');
+    } else if (activeTab === 'contacted') {
+      result = result.filter(r => r.status === 'Contacted');
+    } else if (activeTab === 'completed') {
+      result = result.filter(r => r.status === 'Completed');
     }
-    
+
     // Sorting
     result.sort((a, b) => {
-      if (sortBy === 'date_asc') {
-        return new Date(a.recall_date) - new Date(b.recall_date);
-      } else if (sortBy === 'date_desc') {
-        return new Date(b.recall_date) - new Date(a.recall_date);
-      } else if (sortBy === 'priority') {
-        const priorityOrder = { overdue: 0, urgent: 1, high: 2, medium: 3, low: 4 };
-        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      let valA, valB;
+      switch (sortField) {
+        case 'patient':
+          valA = (a.patient_name || '').toLowerCase();
+          valB = (b.patient_name || '').toLowerCase();
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'priority': {
+          const priorityOrder = { overdue: 0, urgent: 1, high: 2, medium: 3, low: 4 };
+          valA = priorityOrder[a.priority] !== undefined ? priorityOrder[a.priority] : 5;
+          valB = priorityOrder[b.priority] !== undefined ? priorityOrder[b.priority] : 5;
+          return sortOrder === 'asc' ? valA - valB : valB - valA;
+        }
+        case 'status':
+          valA = (a.status || '').toLowerCase();
+          valB = (b.status || '').toLowerCase();
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'date':
+        default:
+          valA = new Date(`${a.recall_date || '1970-01-01'}T${a.recall_time || '00:00'}`).getTime();
+          valB = new Date(`${b.recall_date || '1970-01-01'}T${b.recall_time || '00:00'}`).getTime();
+          return sortOrder === 'asc' ? valA - valB : valB - valA;
       }
-      return 0;
     });
     
     return result;
-  }, [recalls, search, filterPriority, sortBy]);
+  }, [recalls, search, activeTab, sortField, sortOrder]);
 
   /**
-   * Get upcoming recalls (next 7 days)
-   */
-  const upcomingRecalls = useMemo(() => {
-    const today = new Date();
-    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-    return filteredRecalls.filter(r => {
-      const recallDate = new Date(r.recall_date);
-      return recallDate >= today && recallDate <= nextWeek && r.status !== 'Completed';
-    });
-  }, [filteredRecalls]);
-
-  /**
-   * Auto-create recall from treatment completion
-   * Real scenario: Dilshod came → got filling → 6 month recall scheduled
-   */
-  const createAutoRecall = useCallback(async (patientId, treatmentType, ruleValue = '6_months') => {
-    try {
-      const patient = patients.find(p => p.id === patientId);
-      if (!patient) return;
-      
-      const recallDate = calculateRecallDate(ruleValue);
-      if (!recallDate) return;
-      
-      const recallData = {
-        patient_id: patientId,
-        patient_name: patient.full_name,
-        patient_phone: patient.phone,
-        telegram_chat_id: patient.telegram_chat_id,
-        recall_date: recallDate,
-        recall_time: '09:00',
-        reason: `${treatmentType} - qayta ko'rik`,
-        treatment_type: treatmentType,
-        status: 'Pending',
-        notes: `Avtomatik yaratildi: ${treatmentType} davolashidan ${RECALL_RULES.find(r => r.value === ruleValue)?.label} o'tgach`,
-        send_telegram: true,
-        send_sms: false,
-        recall_rule: ruleValue,
-        notification_settings: {
-          send_telegram: true,
-          send_sms: false,
-          reminder_1_day: true,
-          reminder_2_hours: true
-        }
-      };
-      
-      await base44.entities.Recall.create(recallData);
-      
-      // Schedule automatic reminders
-      if (settings.auto_reminder) {
-        await scheduleReminders(recallData);
-      }
-      
-      // Reload data
-      await load();
-      
-      return recallData;
-    } catch (error) {
-      console.error('Failed to create auto recall:', error);
-    }
-  }, [patients, settings, load]);
-
-  /**
-   * Handle form save
-   */
-  const handleSave = useCallback(async () => {
-    if (!form.patient_id || !form.recall_date) return;
-    
-    setSaving(true);
-    try {
-      const patient = patients.find(p => p.id === form.patient_id);
-      const recallData = {
-        ...form,
-        patient_phone: patient?.phone,
-        telegram_chat_id: patient?.telegram_chat_id,
-        notification_settings: {
-          send_telegram: form.send_telegram,
-          send_sms: form.send_sms,
-          reminder_1_day: settings.reminder_1_day,
-          reminder_2_hours: settings.reminder_2_hours
-        }
-      };
-      
-      await base44.entities.Recall.create(recallData);
-      
-      // Schedule automatic reminders if enabled
-      if (settings.auto_reminder) {
-        await scheduleReminders(recallData);
-      }
-      
-      setModalOpen(false);
-      setForm({
-        patient_id: '',
-        patient_name: '',
-        recall_date: '',
-        recall_time: '09:00',
-        reason: '',
-        status: 'Pending',
-        notes: '',
-        send_telegram: true,
-        send_sms: false,
-        telegram_chat_id: '',
-        phone: '',
-        recall_rule: '6_months',
-        treatment_type: ''
-      });
-      await load();
-    } catch (error) {
-      console.error('Failed to save recall:', error);
-    } finally {
-      setSaving(false);
-    }
-  }, [form, patients, settings, load]);
-
-  /**
-   * Schedule automatic reminders
-   */
-  const scheduleReminders = async (recallData) => {
-    const recallDateTime = new Date(`${recallData.recall_date}T${recallData.recall_time}`);
-    
-    // 1 day reminder
-    if (settings.reminder_1_day) {
-      const reminder1Day = new Date(recallDateTime.getTime() - 24 * 60 * 60 * 1000);
-      await base44.entities.ScheduledNotification?.create({
-        recall_id: recallData.id,
-        patient_id: recallData.patient_id,
-        scheduled_at: reminder1Day.toISOString(),
-        channel: settings.default_channel,
-        message: generateReminderMessage(recallData, '1_day'),
-        status: 'scheduled'
-      });
-    }
-    
-    // 2 hours reminder
-    if (settings.reminder_2_hours) {
-      const reminder2Hours = new Date(recallDateTime.getTime() - 2 * 60 * 60 * 1000);
-      await base44.entities.ScheduledNotification?.create({
-        recall_id: recallData.id,
-        patient_id: recallData.patient_id,
-        scheduled_at: reminder2Hours.toISOString(),
-        channel: settings.default_channel,
-        message: generateReminderMessage(recallData, '2_hours'),
-        status: 'scheduled'
-      });
-    }
-  };
-
-/**
- * RECALL_TEMPLATES - Professional message templates
- */
-const RECALL_TEMPLATES = [
-  { id: 'hygiene', label: 'Gigiyena (6 oy)', text: 'Salom {name}! 🏥 Professional gigiyena vaqti keldi. Tish toshlarini tozalash sizni milk kasalliklaridan himoya qiladi. Kelishingizni kutamiz!' },
-  { id: 'checkup', label: 'Profilaktik ko\'rik', text: 'Salom {name}! 🦷 Oxirgi ko\'rikdan beri ancha vaqt o\'tdi. Tekshiruvga kelib turish tishlarni butun saqlashning eng arzon yo\'lidir.' },
-  { id: 'implant', label: 'Implantatsiya nazorati', text: 'Salom {name}! 🔬 Implantatsiyadan so\'ng nazorat ko\'rigi juda muhim. Shifokorimiz sizni kutmoqda.' },
-  { id: 'ortho', label: 'Ortodontiya nazorati', text: 'Salom {name}! 🦷 Breket tizimingizning holatini tekshirish va aktivatsiya vaqti keldi.' },
-];
-
-const generateReminderMessage = (recall, templateId = 'checkup') => {
-  const template = RECALL_TEMPLATES.find(t => t.id === templateId) || RECALL_TEMPLATES[1];
-  return `🏥 *MY CLINIC*\n\n` + template.text.replace('{name}', recall.patient_name || 'Hurmatli bemor') + 
-         ` \n\n📅 Sana: ${recall.recall_date}\n🕐 Vaqt: ${recall.recall_time || '09:00'}`;
-};
-
-  /**
-   * Bulk send recalls
-   */
-  const bulkSendRecalls = useCallback(async (recallIds) => {
-    setSending(true);
-    try {
-      const selected = recalls.filter(r => recallIds.includes(r.id));
-      
-      for (const recall of selected) {
-        const message = generateReminderMessage(recall, 'manual');
-        
-        // Send via preferred channel
-        if (recall.send_telegram && recall.telegram_chat_id) {
-          await sendTelegramMessage(recall.telegram_chat_id, message);
-        } else if (recall.send_sms && recall.patient_phone) {
-          await sendSMS(recall.patient_phone, message);
-        }
-        
-        // Update status
-        await base44.entities.Recall.update(recall.id, { status: 'Sent' });
-      }
-      
-      toast.success('Muvaffaqiyatli!', {
-        description: `${selected.length} ta recall yuborildi`,
-        duration: 3000
-      });
-      
-      setSelectedRecalls(new Set());
-      await load();
-    } catch (error) {
-      console.error('Bulk send failed:', error);
-      toast.error('Xatolik', {
-        description: 'Yuborishda xatolik yuz berdi'
-      });
-    } finally {
-      setSending(false);
-    }
-  }, [recalls, load]);
-
-  /**
-   * Toggle recall selection for bulk actions
+   * Bulk actions
    */
   const toggleRecallSelection = useCallback((recallId) => {
     setSelectedRecalls(prev => {
       const next = new Set(prev);
-      if (next.has(recallId)) {
-        next.delete(recallId);
-      } else {
-        next.add(recallId);
-      }
+      if (next.has(recallId)) next.delete(recallId);
+      else next.add(recallId);
       return next;
     });
   }, []);
 
-  /**
-   * Select all visible recalls
-   */
   const selectAllRecalls = useCallback(() => {
-    if (selectedRecalls.size === filteredRecalls.length) {
+    if (selectedRecalls.size === filteredRecalls.length && filteredRecalls.length > 0) {
       setSelectedRecalls(new Set());
     } else {
       setSelectedRecalls(new Set(filteredRecalls.map(r => r.id)));
     }
   }, [filteredRecalls, selectedRecalls.size]);
-  const sendNotification = useCallback(async (channel) => {
-    if (!selectedRecall) return;
-    
+
+  const bulkSendRecalls = useCallback(async (recallIds) => {
     setSending(true);
     try {
-      const message = generateReminderMessage(selectedRecall, 'manual');
-      
-      // Send via selected channel
-      if (channel === 'telegram' && selectedRecall.telegram_chat_id) {
-        await sendTelegramMessage(selectedRecall.telegram_chat_id, message);
-      } else if (channel === 'sms' && selectedRecall.patient_phone) {
-        await sendSMS(selectedRecall.patient_phone, message);
+      const selected = recalls.filter(r => recallIds.includes(r.id));
+      for (const recall of selected) {
+        if (recall.telegram_chat_id) {
+          const msg = `Assalomu alaykum, ${recall.patient_name}! Eslatib o'tamiz: ${recall.recall_date} sanasida qabulingiz bor.`;
+          await base44.integrations?.Telegram?.sendMessage?.({
+            chat_id: recall.telegram_chat_id,
+            text: msg
+          }).catch(() => {});
+        }
+        await base44.entities.Recall.update(recall.id, { status: 'Contacted' }).catch(() => {});
       }
+      toast.success(`${selected.length} ta eslatma yuborildi!`);
+      setSelectedRecalls(new Set());
+      await load();
+    } catch (error) {
+      console.error('Bulk send failed:', error);
+      toast.error('Yuborishda xatolik yuz berdi');
+    } finally {
+      setSending(false);
+    }
+  }, [recalls, load]);
+
+  const sendNotification = useCallback(async (channel) => {
+    if (!selectedRecall) return;
+    setSending(true);
+    try {
+      const message = `Assalomu alaykum, ${selectedRecall.patient_name}! Eslatib o'tamiz: ${selectedRecall.recall_date} ${selectedRecall.recall_time || ''} da qabulingiz bor (${selectedRecall.reason || 'Ko\'rik'}).`;
       
-      // Log to history
+      if (channel === 'telegram' && selectedRecall.telegram_chat_id) {
+        await base44.integrations?.Telegram?.sendMessage?.({
+          chat_id: selectedRecall.telegram_chat_id,
+          text: message
+        });
+      }
+
       await base44.entities.NotificationHistory?.create({
         recall_id: selectedRecall.id,
         patient_id: selectedRecall.patient_id,
@@ -550,59 +405,44 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
         sent_at: new Date().toISOString(),
         status: 'sent'
       });
-      
+
+      await base44.entities.Recall.update(selectedRecall.id, { status: 'Contacted' });
+
+      toast.success("Eslatma muvaffaqiyatli yuborildi!");
       setSendModalOpen(false);
       setSelectedRecall(null);
       await load();
     } catch (error) {
       console.error('Failed to send notification:', error);
+      toast.error("Xabar yuborishda xatolik");
     } finally {
       setSending(false);
     }
   }, [selectedRecall, load]);
 
-  /**
-   * Send Telegram message
-   */
-  const sendTelegramMessage = async (chatId, message) => {
-    // This would integrate with your backend Telegram bot API
-    return base44.integrations?.Telegram?.sendMessage?.({
-      chat_id: chatId,
-      text: message,
-      parse_mode: 'Markdown'
-    });
-  };
-
-  /**
-   * Send SMS
-   */
-  const sendSMS = async (phone, message) => {
-    // This would integrate with SMS gateway (Eskiz.uz or Twilio)
-    return base44.integrations?.SMS?.send?.({
-      phone,
-      message
-    });
-  };
-
-  /**
-   * Update recall status
-   */
   const updateStatus = useCallback(async (id, status) => {
     try {
       await base44.entities.Recall.update(id, { status });
+      toast.success("Holat yangilandi!");
       await load();
     } catch (error) {
       console.error('Failed to update status:', error);
+      toast.error("Holatni o'zgartirishda xatolik");
     }
   }, [load]);
 
-  /**
-   * Open send notification modal
-   */
-  const openSendModal = useCallback((recall) => {
-    setSelectedRecall(recall);
-    setSendModalOpen(true);
-  }, []);
+  const handleDeleteRecall = async () => {
+    if (!deleteRecallId) return;
+    try {
+      await base44.entities.Recall.delete(deleteRecallId);
+      toast.success("Eslatma o'chirildi!");
+      setDeleteRecallId(null);
+      await load();
+    } catch (err) {
+      console.error(err);
+      toast.error("O'chirishda xatolik");
+    }
+  };
 
   const handleOpenNewModal = () => {
     const today = getTodayDateStr();
@@ -627,203 +467,707 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
     setModalOpen(true);
   };
 
+  const handleSave = useCallback(async () => {
+    if (!form.patient_id || !form.recall_date) return;
+    setSaving(true);
+    try {
+      const patient = patients.find(p => p.id === form.patient_id);
+      const recallData = {
+        ...form,
+        patient_name: patient?.full_name || form.patient_name,
+        patient_phone: patient?.phone || form.phone,
+        telegram_chat_id: patient?.telegram_chat_id || form.telegram_chat_id,
+      };
+      
+      await base44.entities.Recall.create(recallData);
+      toast.success("Yangi eslatma yaratildi!");
+      setModalOpen(false);
+      await load();
+    } catch (error) {
+      console.error('Failed to save recall:', error);
+      toast.error("Saqlashda xatolik");
+    } finally {
+      setSaving(false);
+    }
+  }, [form, patients, load]);
+
+  /**
+   * Export to CSV with UTF-8 BOM
+   */
+  const exportCSV = useCallback(() => {
+    try {
+      if (!filteredRecalls || filteredRecalls.length === 0) {
+        toast.warning("Eksport qilish uchun ma'lumot topilmadi");
+        return;
+      }
+      const headers = [
+        "№",
+        "Bemor (F.I.Sh)",
+        "Telefon",
+        "Eslatma Sanasi",
+        "Vaqti",
+        "Muhimlik",
+        "Turi / Izoh",
+        "Holat"
+      ];
+      const rows = filteredRecalls.map((r, idx) => {
+        return [
+          idx + 1,
+          `"${(r.patient_name || '').replace(/"/g, '""')}"`,
+          `"${(r.patient_phone || '').replace(/"/g, '""')}"`,
+          `"${r.recall_date || ''}"`,
+          `"${r.recall_time || ''}"`,
+          `"${r.priority || ''}"`,
+          `"${(r.reason || '').replace(/"/g, '""')}"`,
+          `"${r.status || 'Pending'}"`
+        ].join(",");
+      });
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Eslatmalar_Recall_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Eslatmalar Excel (.csv) formatida yuklab olindi!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Eksportda xatolik yuz berdi");
+    }
+  }, [filteredRecalls]);
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'Completed':
+        return { label: 'Bajarildi', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+      case 'Contacted':
+        return { label: 'Bog\'lanildi', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+      case 'Scheduled':
+        return { label: 'Rejalashtirilgan', bg: 'bg-purple-50 text-purple-700 border-purple-200' };
+      case 'Missed':
+        return { label: 'O\'tkazib yuborildi', bg: 'bg-rose-50 text-rose-700 border-rose-200' };
+      case 'Pending':
+      default:
+        return { label: 'Kutilmoqda', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
+    }
+  };
+
+  const getPriorityBadge = (priority) => {
+    switch (priority) {
+      case 'overdue':
+        return { label: 'Muddati o\'tgan', bg: 'bg-rose-100 text-rose-800 border-rose-200' };
+      case 'urgent':
+        return { label: '🔥 Dolzarb', bg: 'bg-amber-100 text-amber-800 border-amber-200' };
+      case 'high':
+        return { label: 'Yuqori', bg: 'bg-orange-50 text-orange-700 border-orange-200' };
+      case 'medium':
+        return { label: 'O\'rta', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+      case 'low':
+      default:
+        return { label: 'Past', bg: 'bg-slate-100 text-slate-700 border-slate-200' };
+    }
+  };
+
   return (
-    <div className="space-y-4 pb-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4.5 rounded-2xl border border-slate-100 shadow-sm">
+    <div className="space-y-3.5 pb-4">
+      {/* ─── Excel Header Bar ────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">
-            {t('recall.title') || 'Recall Tizimi'}
-          </h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-            {t('recall.subtitle') || 'Avtomatik eslatmalar bilan bemorlarni qayta chaqirish'}
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('recall.title') || "Eslatmalar & Recall"}</h1>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+              • Avtomatik Qayta Chaqirish {recalls.length} Yozuvlar
+            </span>
+          </div>
+          <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+            Bemorlarni profilaktik ko'riklar, davolash bosqichlari va eslatmalari reyestri
           </p>
         </div>
-        
-        <div className="flex gap-2 shrink-0">
+
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={exportCSV} 
+            className="gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs text-slate-700 h-9.5 px-3.5"
+            title="Excel formatida (.csv) yuklab olish"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span>Eksport (Excel)</span>
+          </Button>
+
           <Button 
             variant="outline" 
             size="sm"
             onClick={() => setSettingsOpen(true)}
-            className="gap-1.5 h-9 rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white"
+            className="gap-1.5 h-9.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white"
           >
-            <Settings className="w-3.5 h-3.5 text-slate-400" />
-            {t('recall.settings') || t('common.settings') || 'Sozlamalar'}
+            <Settings className="w-3.5 h-3.5 text-slate-500" />
+            <span>{t('recall.settings') || "Sozlamalar"}</span>
           </Button>
+
           <Button 
-            size="sm"
             onClick={handleOpenNewModal} 
-            className="bg-[#10b981] hover:bg-[#10b981]/90 gap-1.5 h-9 rounded-xl text-xs font-bold text-white shadow-md shadow-emerald-500/10 border-none cursor-pointer"
+            className="bg-[#00D084] hover:bg-[#00B875] text-white gap-1.5 border-none rounded-xl h-9.5 px-4 font-black text-xs shadow-md shadow-[#00D084]/20 transition-all active:scale-95"
           >
-            <Plus className="w-3.5 h-3.5" />
-            {t('recall.newRecall') || t('recall.addNew') || 'Yangi recall'}
+            <Plus className="w-4 h-4" />
+            <span>{t('recall.newRecall') || "Yangi recall"}</span>
           </Button>
         </div>
       </div>
 
-      {/* Professional Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Card 1 */}
-        <div className="bg-white border border-slate-100 rounded-xl p-3.5 flex items-center gap-3.5 shadow-sm">
-          <div className="w-9.5 h-9.5 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-            <Bell className="w-4.5 h-4.5" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('recall.stats.total') || 'Jami recalllar'}</p>
-            <p className="text-xl font-black text-slate-900 mt-0.5">{recalls.length}</p>
-          </div>
-        </div>
-        
-        {/* Card 2 */}
-        <div className="bg-white border border-slate-100 rounded-xl p-3.5 flex items-center gap-3.5 shadow-sm">
-          <div className="w-9.5 h-9.5 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-            <Clock className="w-4.5 h-4.5" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('recall.stats.pending') || 'Kutilayotgan'}</p>
-            <p className="text-xl font-black text-slate-900 mt-0.5">{recalls.filter(r => r.status === 'Pending').length}</p>
-          </div>
-        </div>
-        
-        {/* Card 3 */}
-        <div className="bg-white border border-slate-100 rounded-xl p-3.5 flex items-center gap-3.5 shadow-sm">
-          <div className="w-9.5 h-9.5 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-4.5 h-4.5" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('recall.stats.sent') || 'Yuborilgan'}</p>
-            <p className="text-xl font-black text-slate-900 mt-0.5">{notificationHistory.length}</p>
-          </div>
-        </div>
+      {/* ─── Top Executive KPI Grid ─────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: "JAMI ESLATMALAR", value: statusCounts.all, icon: Bell, color: "text-blue-600", bg: "bg-blue-50 border-blue-100", countText: "Barcha rejalashtirilgan eslatmalar" },
+          { label: "KUTILMOQDA (PENDING)", value: statusCounts.pending, icon: Clock, color: "text-amber-600", bg: "bg-amber-50 border-amber-100", countText: "Hali yuborilmagan eslatmalar" },
+          { label: "YAQINLASHAYOTGAN (7 KUN)", value: statusCounts.upcoming, icon: CheckCircle2, color: "text-purple-600", bg: "bg-purple-50 border-purple-100", countText: "Shu haftada chaqiriladiganlar" },
+          { label: "YUBORILGAN XABARLAR", value: statusCounts.history, icon: Send, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", countText: "Telegram va SMS orqali yuborilgan" },
+        ].map((s, i) => (
+          <motion.div 
+            key={s.label}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: i * 0.03 }}
+            className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-xs flex items-center justify-between relative overflow-hidden"
+          >
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">
+                {s.label}
+              </span>
+              <div className="text-lg sm:text-xl font-black font-mono tracking-tight text-slate-900 tabular-nums">
+                {s.value} <span className="text-xs font-bold text-slate-400">ta</span>
+              </div>
+              <p className="text-[9.5px] font-medium text-slate-400 mt-0.5">{s.countText}</p>
+            </div>
+
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-xs shrink-0 ${s.bg}`}>
+              <s.icon className={`w-5 h-5 ${s.color}`} />
+            </div>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Bulk Actions Bar */}
+      {/* ─── Bulk Action Sticky Banner ──────────────────────────────── */}
       <AnimatePresence>
         {selectedRecalls.size > 0 && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="bg-slate-900 text-white rounded-xl p-2.5 px-4 flex items-center justify-between gap-4 sticky top-4 z-50 shadow-lg"
+            className="bg-slate-900 text-white rounded-2xl p-3 px-4 flex items-center justify-between gap-4 sticky top-4 z-50 shadow-xl"
           >
             <div className="flex items-center gap-2">
-              <CheckSquare className="w-4.5 h-4.5 text-emerald-400 animate-pulse" />
-              <span className="font-bold text-xs">{selectedRecalls.size} {t('recall.bulkActions.selected') || 'ta recall tanlandi'}</span>
+              <CheckSquare className="w-4 h-4 text-emerald-400 animate-pulse" />
+              <span className="font-black text-xs">{selectedRecalls.size} ta eslatma tanlandi</span>
             </div>
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
                 onClick={() => bulkSendRecalls(Array.from(selectedRecalls))}
                 disabled={sending}
-                className="bg-emerald-500 hover:bg-emerald-600 gap-1.5 h-8 px-3 text-xs font-bold border-none"
+                className="bg-emerald-500 hover:bg-emerald-600 gap-1.5 h-8 px-3.5 text-xs font-bold border-none"
               >
-                <Send className="w-3 h-3" />
-                {t('recall.bulkActions.send') || t('common.send') || 'Yuborish'}
+                <Send className="w-3.5 h-3.5" />
+                <span>Barchasiga yuborish</span>
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSelectedRecalls(new Set())}
-                className="text-white/60 hover:text-white hover:bg-white/10 h-8 px-2 text-xs font-bold"
+                className="text-white/70 hover:text-white hover:bg-white/10 h-8 px-2.5 text-xs font-bold"
               >
-                {t('recall.bulkActions.cancel') || t('common.cancel') || 'Bekor qilish'}
+                Bekor qilish
               </Button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          <Input 
-            placeholder={t('recall.searchPlaceholder') || 'Qidirish (ism, telefon)...'} 
-            value={search} 
-            onChange={e => setSearch(e.target.value)} 
-            className="pl-10 h-10 rounded-xl border-slate-200 bg-white placeholder:text-slate-400 text-sm focus-visible:ring-1 focus-visible:ring-slate-350" 
-          />
-        </div>
-        
-        <div className="flex items-center gap-2 shrink-0">
-          <Select value={filterPriority} onValueChange={setFilterPriority}>
-            <SelectTrigger className="h-10 w-[140px] rounded-xl border-slate-200 text-xs font-semibold text-slate-700 bg-white">
-              <div className="flex items-center gap-2 truncate">
-                <Filter className="w-3.5 h-3.5 text-slate-400" />
-                <SelectValue placeholder={t('recall.filters.label') || 'Filtrlash'} />
-              </div>
-            </SelectTrigger>
-            <SelectContent className="rounded-xl border-slate-150">
-              <SelectItem value="all" className="text-xs font-medium">{t('recall.filters.all') || 'Barchasi'}</SelectItem>
-              <SelectItem value="urgent" className="text-xs font-medium">{t('recall.filters.urgent') || '🔥 Dolzarb'}</SelectItem>
-              <SelectItem value="today" className="text-xs font-medium">{t('recall.filters.today') || 'Bugun'}</SelectItem>
-              <SelectItem value="week" className="text-xs font-medium">{t('recall.filters.week') || 'Bu hafta'}</SelectItem>
-            </SelectContent>
-          </Select>
+      {/* ─── Excel Spreadsheet Controls Bar ────────────────────────── */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
           
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="h-10 w-[140px] rounded-xl border-slate-200 text-xs font-semibold text-slate-700 bg-white">
-              <div className="flex items-center gap-2 truncate">
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
-                <SelectValue />
-              </div>
-            </SelectTrigger>
-            <SelectContent className="rounded-xl border-slate-150">
-              <SelectItem value="date_asc" className="text-xs font-medium">{t('recall.sort.dateAsc') || 'Sana ↑'}</SelectItem>
-              <SelectItem value="date_desc" className="text-xs font-medium">{t('recall.sort.dateDesc') || 'Sana ↓'}</SelectItem>
-              <SelectItem value="priority" className="text-xs font-medium">{t('recall.sort.priority') || 'Muhimlik 🔽'}</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Search Box */}
+          <div className="relative flex-1 group">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
+            <input 
+              type="text" 
+              placeholder="Bemor ismi, telefon raqami yoki muolaja turi bo'yicha qidiruv..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-9 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
+            />
+            {search && (
+              <button 
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+            {[
+              { id: 'all', label: "Barchasi", count: statusCounts.all },
+              { id: 'upcoming', label: "Yaqinlashayotgan", count: statusCounts.upcoming },
+              { id: 'pending', label: "Kutilmoqda", count: statusCounts.pending },
+              { id: 'contacted', label: "Bog'lanildi", count: statusCounts.contacted },
+              { id: 'completed', label: "Bajarildi", count: statusCounts.completed },
+              { id: 'history', label: "Xabarlar Tarixi", count: statusCounts.history },
+            ].map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+                    isActive 
+                      ? "bg-slate-900 text-white shadow-xs font-black" 
+                      : "bg-slate-100/70 text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                  )}
+                >
+                  <span>{tab.label}</span>
+                  <span className={cn(
+                    "px-1.5 py-0.2 rounded-full text-[9px] font-black",
+                    isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
+                  )}>
+                    {tab.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Density Switcher */}
+          <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 shrink-0">
+            <button
+              onClick={() => toggleDensity('compact')}
+              title="Ixcham Excel Jadvali"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
+                density === 'compact' 
+                  ? 'bg-white text-slate-900 shadow-xs' 
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
+              <span>Excel</span>
+            </button>
+            <button
+              onClick={() => toggleDensity('comfortable')}
+              title="Keng Jadval Ko'rinishi"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
+                density === 'comfortable' 
+                  ? 'bg-white text-slate-900 shadow-xs' 
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
+              <span>Keng</span>
+            </button>
+          </div>
+
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList className="bg-muted w-full justify-start overflow-x-auto no-scrollbar h-11 p-1">
-          <TabsTrigger value="all" className="flex-1 sm:flex-none h-9">{t('recall.tabs.all') || 'Barcha'}</TabsTrigger>
-          <TabsTrigger value="upcoming" className="flex-1 sm:flex-none h-9 whitespace-nowrap">
-            {t('recall.tabs.upcoming') || 'Yaqinlashayotgan'} ({upcomingRecalls.length})
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex-1 sm:flex-none h-9">{t('recall.tabs.history') || 'Tarix'}</TabsTrigger>
-        </TabsList>
+      {/* ─── Main Content View (Recalls vs Notification History) ──────── */}
+      {activeTab === 'history' ? (
+        /* History Excel Table */
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden"
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 text-[10.5px] font-black uppercase tracking-wider sticky top-0">
+                  <th className="w-12 px-2.5 py-2.5 text-center border-r border-slate-200 font-mono">№</th>
+                  <th className="px-3.5 py-2.5 border-r border-slate-200">Bemor (F.I.Sh)</th>
+                  <th className="w-32 px-3 py-2.5 text-center border-r border-slate-200">Kanal</th>
+                  <th className="px-3.5 py-2.5 border-r border-slate-200">Yuborilgan Xabar</th>
+                  <th className="w-44 px-3.5 py-2.5 border-r border-slate-200">Yuborilgan Vaqt</th>
+                  <th className="w-32 px-3 py-2.5 text-center">Holat</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200/70 text-xs">
+                {notificationHistory.length > 0 ? (
+                  notificationHistory.map((item, idx) => (
+                    <tr key={item.id || idx} className="hover:bg-slate-50">
+                      <td className="text-center font-mono font-bold text-slate-400 border-r border-slate-200/70 py-2.5 px-2">
+                        {idx + 1}
+                      </td>
+                      <td className="px-3.5 py-2.5 font-bold text-slate-900 border-r border-slate-200/70">
+                        {item.patient_name || 'Bemor'}
+                      </td>
+                      <td className="px-3 py-2.5 text-center border-r border-slate-200/70">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-700">
+                          {item.channel === 'telegram' ? (
+                            <><MessageCircle className="w-3.5 h-3.5 text-blue-500" /> Telegram</>
+                          ) : (
+                            <><Smartphone className="w-3.5 h-3.5 text-green-500" /> SMS</>
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-3.5 py-2.5 text-slate-600 border-r border-slate-200/70 font-mono text-[11px] truncate max-w-md">
+                        {item.message || '—'}
+                      </td>
+                      <td className="px-3.5 py-2.5 text-slate-500 border-r border-slate-200/70 font-mono">
+                        {formatDateTime(item.sent_at)}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        {item.status === 'sent' ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Yuborildi
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-red-700 font-bold text-[11px] bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
+                            <XCircle className="w-3.5 h-3.5" /> Xatolik
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="py-16 text-center text-slate-400">
+                      Hali xabarlar yuborilmagan
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      ) : (
+        /* Recalls Excel Grid Table */
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden relative"
+        >
+          {loading && (
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-slate-100 overflow-hidden z-20">
+              <motion.div 
+                className="h-full bg-gradient-to-r from-[#1499AD] to-[#0E7A8A]"
+                animate={{ x: ['-100%', '100%'] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+              />
+            </div>
+          )}
+          
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left select-text">
+              {/* ─── Excel Table Header ────────────────── */}
+              <thead>
+                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 text-[10.5px] font-black uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
+                  
+                  {/* Select All Checkbox */}
+                  <th className="w-10 px-2.5 py-2.5 text-center border-r border-slate-200 select-none">
+                    <Checkbox 
+                      checked={selectedRecalls.size === filteredRecalls.length && filteredRecalls.length > 0}
+                      onCheckedChange={selectAllRecalls}
+                    />
+                  </th>
 
-        <TabsContent value="all" className="mt-4 outline-none">
-          <RecallsTable 
-            recalls={filteredRecalls}
-            loading={loading}
-            onStatusChange={updateStatus}
-            onSendClick={openSendModal}
-            selectedRecalls={selectedRecalls}
-            toggleRecallSelection={toggleRecallSelection}
-          />
-        </TabsContent>
+                  {/* № Col */}
+                  <th className="w-12 px-2.5 py-2.5 text-center border-r border-slate-200 select-none font-mono">
+                    №
+                  </th>
 
-        <TabsContent value="upcoming" className="mt-4 outline-none">
-          <RecallsTable 
-            recalls={upcomingRecalls}
-            loading={loading}
-            onStatusChange={updateStatus}
-            onSendClick={openSendModal}
-            emptyMessage="Yaqinlashayotgan recall yo'q"
-            selectedRecalls={selectedRecalls}
-            toggleRecallSelection={toggleRecallSelection}
-          />
-        </TabsContent>
+                  {/* BEMOR (F.I.SH) */}
+                  <th 
+                    onClick={() => handleSort('patient')}
+                    className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span>Bemor (F.I.Sh)</span>
+                      {sortField === 'patient' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
 
-        <TabsContent value="history" className="mt-4 outline-none">
-          <NotificationHistoryTable history={notificationHistory} loading={loading} />
-        </TabsContent>
-      </Tabs>
+                  {/* SANA */}
+                  <th 
+                    onClick={() => handleSort('date')}
+                    className="w-36 px-3 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span>Eslatma Sanasi</span>
+                      {sortField === 'date' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* MUHIMLIK */}
+                  <th 
+                    onClick={() => handleSort('priority')}
+                    className="w-32 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>Muhimlik</span>
+                      {sortField === 'priority' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* TURI / IZOH */}
+                  <th className="px-3.5 py-2.5 border-r border-slate-200 select-none min-w-[180px]">
+                    Davolash Turi / Izoh
+                  </th>
+
+                  {/* STATUS */}
+                  <th 
+                    onClick={() => handleSort('status')}
+                    className="w-40 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  >
+                    <div className="flex items-center justify-center gap-1.5 text-slate-700">
+                      <span>Holat</span>
+                      {sortField === 'status' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* Actions */}
+                  <th className="w-32 px-2 py-2.5 text-center text-slate-500 whitespace-nowrap select-none">
+                    {t('common.actions') || "Amallar"}
+                  </th>
+
+                </tr>
+              </thead>
+
+              {/* ─── Excel Table Body ────────────────── */}
+              <tbody className="divide-y divide-slate-200/70 text-xs">
+                {filteredRecalls.length > 0 ? (
+                  filteredRecalls.map((recall, idx) => {
+                    const isCompact = density === 'compact';
+                    const isSelected = selectedRecalls.has(recall.id);
+                    const priority = getPriorityBadge(recall.priority);
+                    const status = getStatusBadge(recall.status);
+
+                    return (
+                      <tr 
+                        key={recall.id} 
+                        className={`group hover:bg-[#1499AD]/10 hover:shadow-xs transition-colors cursor-pointer ${
+                          isSelected ? 'bg-blue-50/60' : (idx % 2 === 1 ? 'bg-slate-50/30' : 'bg-white')
+                        }`}
+                      >
+                        {/* Checkbox Cell */}
+                        <td className="text-center border-r border-slate-200/70 px-2 py-2" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox 
+                            checked={isSelected}
+                            onCheckedChange={() => toggleRecallSelection(recall.id)}
+                          />
+                        </td>
+
+                        {/* № Cell */}
+                        <td className={`text-center font-mono font-bold text-slate-400 border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-2 px-2' : 'py-3 px-2.5'}`}>
+                          {idx + 1}
+                        </td>
+
+                        {/* BEMOR (F.I.SH) Cell */}
+                        <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-6.5 h-6.5 rounded-lg bg-purple-50 text-purple-700 font-black text-[10px] flex items-center justify-center border border-purple-100 shrink-0">
+                              <User className="w-3.5 h-3.5 text-purple-600" />
+                            </div>
+                            <div className="min-w-0">
+                              <span 
+                                onClick={(e) => {
+                                  if (recall.patient_id) {
+                                    e.stopPropagation();
+                                    navigate(`/patients/${recall.patient_id}`);
+                                  }
+                                }}
+                                className="font-extrabold text-slate-900 hover:text-blue-600 transition-colors truncate block hover:underline"
+                              >
+                                {recall.patient_name || 'Noma\'lum bemor'}
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-400 block truncate">
+                                {recall.patient_phone || 'Telefon yo\'q'}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* ESLATMA SANASI Cell */}
+                        <td className={`border-r border-slate-200/70 font-mono ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          <div className="font-bold text-slate-900">
+                            {recall.recall_date || '—'}
+                          </div>
+                          {recall.recall_time && (
+                            <div className="text-[10px] text-slate-400 font-semibold">
+                              {recall.recall_time}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* MUHIMLIK Cell */}
+                        <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border ${priority.bg}`}>
+                            {priority.label}
+                          </span>
+                        </td>
+
+                        {/* DAVOLASH TURI / IZOH Cell */}
+                        <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          <div className="min-w-0">
+                            <span className="font-bold text-slate-800 truncate block">
+                              {recall.reason || recall.treatment_type || 'Profilaktik ko\'rik'}
+                            </span>
+                            {recall.notes && (
+                              <span className="text-[10px] text-slate-400 truncate block">
+                                {recall.notes}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* STATUS Cell */}
+                        <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1 px-2' : 'py-2 px-2.5'}`} onClick={(e) => e.stopPropagation()}>
+                          <Select 
+                            value={recall.status || 'Pending'} 
+                            onValueChange={(val) => updateStatus(recall.id, val)}
+                          >
+                            <SelectTrigger className={cn(
+                              "h-7 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider mx-auto border transition-colors focus:ring-0",
+                              status.bg
+                            )}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl font-bold text-xs">
+                              <SelectItem value="Pending">Kutilmoqda</SelectItem>
+                              <SelectItem value="Contacted">Bog'lanildi</SelectItem>
+                              <SelectItem value="Scheduled">Rejalashtirilgan</SelectItem>
+                              <SelectItem value="Completed">Bajarildi</SelectItem>
+                              <SelectItem value="Missed">O'tkazib yuborildi</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
+
+                        {/* Actions Cell */}
+                        <td className={`text-center whitespace-nowrap ${isCompact ? 'py-1 px-1.5' : 'py-2 px-2'}`} onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1">
+                            {recall.patient_phone && (
+                              <button 
+                                onClick={() => { window.location.href = `tel:${recall.patient_phone}`; }}
+                                className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer"
+                                title="Qo'ng'iroq qilish"
+                              >
+                                <Phone className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            <button 
+                              onClick={() => { setSelectedRecall(recall); setSendModalOpen(true); }}
+                              className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
+                              title="Xabar yuborish (Telegram / SMS)"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button 
+                              onClick={() => setDeleteRecallId(recall.id)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                              title="O'chirish"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="py-20 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300">
+                          <Bell className="w-6 h-6" />
+                        </div>
+                        <p className="text-sm font-bold text-slate-500">
+                          {search ? `"${search}" bo'yicha eslatma topilmadi` : "Eslatmalar mavjud emas"}
+                        </p>
+                        {(search || activeTab !== 'all') && (
+                          <button
+                            onClick={() => { setSearch(''); setActiveTab('all'); }}
+                            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
+                          >
+                            Filtrlarni tozalash
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ─── Excel Formula Summary Footer Bar ──────────────────── */}
+          <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3 text-slate-600 font-bold">
+              <span className="flex items-center gap-1.5">
+                <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
+                <span>Jadvalda:</span>
+                <strong className="text-slate-900 font-mono">{filteredRecalls.length}</strong> ta eslatma
+              </span>
+              <span className="text-slate-300">•</span>
+              <span>
+                Kutilmoqda: <strong className="text-amber-700 font-mono">{statusCounts.pending} ta</strong>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span>
+                Yaqinlashayotgan: <strong className="text-purple-700 font-mono">{statusCounts.upcoming} ta</strong>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span>
+                Bajarildi: <strong className="text-emerald-700 font-mono">{statusCounts.completed} ta</strong>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-black uppercase text-slate-500">Jami Yuborilgan Eslatmalar:</span>
+              <span className="font-mono font-bold text-slate-900 text-sm">
+                {notificationHistory.length} <span className="text-[10px] text-slate-500">ta</span>
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ─── Modals ─────────────────────────────────────────────────── */}
 
       {/* New Recall Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-2xl p-5">
           <DialogHeader>
-            <DialogTitle>{t('recall.modal.newTitle') || 'Yangi Recall'}</DialogTitle>
+            <DialogTitle className="text-lg font-black text-slate-900">
+              {t('recall.modal.newTitle') || 'Yangi Recall (Eslatma) Yaratish'}
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3.5 pt-2">
             <div>
-              <Label>{t('recall.modal.patient') || 'Bemor *'}</Label>
+              <Label className="text-xs font-bold text-slate-700">{t('recall.modal.patient') || 'Bemor *'}</Label>
               <Select 
                 value={form.patient_id} 
                 onValueChange={v => {
@@ -837,18 +1181,18 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
                   });
                 }}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('common.select') || 'Tanlang'} />
+                <SelectTrigger className="h-10 rounded-xl bg-slate-50 border-slate-200 font-bold text-xs">
+                  <SelectValue placeholder={t('common.select') || 'Bemorni tanlang'} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl max-h-60">
                   {patients.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>
+                    <SelectItem key={p.id} value={p.id} className="font-bold text-xs">{p.full_name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             
-            {/* 1. Boshlang'ich sana va Vaqt */}
+            {/* Boshlang'ich sana va Vaqt */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-bold text-slate-700">Boshlang'ich sana *</Label>
@@ -868,7 +1212,6 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
                   }} 
                   className="h-10 rounded-xl bg-slate-50 border-slate-200 font-bold text-xs"
                 />
-                <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">Avtomatik bugungi sana</span>
               </div>
               <div>
                 <Label className="text-xs font-bold text-slate-700">{t('recall.modal.time') || 'Vaqt'}</Label>
@@ -881,7 +1224,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
               </div>
             </div>
             
-            {/* 2. Avtomatik davr & Eslatma (Recall) sanasi */}
+            {/* Avtomatik davr & Eslatma sanasi */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-bold text-slate-700">{t('recall.modal.rule') || 'Avtomatik davr'}</Label>
@@ -914,12 +1257,7 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
               </div>
 
               <div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold text-slate-700">{t('recall.modal.date') || 'Eslatma sanasi *'}</Label>
-                  {form.recall_rule === 'custom' && (
-                    <span className="text-[9px] font-bold text-amber-600">Kalendardan</span>
-                  )}
-                </div>
+                <Label className="text-xs font-bold text-slate-700">{t('recall.modal.date') || 'Eslatma sanasi *'}</Label>
                 <Input 
                   type="date" 
                   value={form.recall_date} 
@@ -930,76 +1268,43 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
                       recall_rule: 'custom'
                     });
                   }} 
-                  className="h-10 rounded-xl bg-white border-[#1499AD]/40 focus:border-[#1499AD] font-bold text-xs text-[#1499AD]"
+                  className="h-10 rounded-xl bg-white border-[#1499AD]/40 font-bold text-xs text-[#1499AD]"
                 />
               </div>
             </div>
 
-            {/* Info Badge */}
-            {form.recall_rule !== 'custom' ? (
-              <p className="text-[11px] text-[#1499AD] font-semibold bg-[#1499AD]/5 px-3 py-2 rounded-xl border border-[#1499AD]/10 flex items-center justify-between">
-                <span>📅 Hisoblangan sana: <strong>{form.recall_date}</strong></span>
-                <span className="text-[10px] text-slate-400 font-normal">(Kalendardan o'zgartirishingiz mumkin)</span>
-              </p>
-            ) : (
-              <p className="text-[11px] text-amber-700 font-semibold bg-amber-50 px-3 py-2 rounded-xl border border-amber-100 flex items-center gap-1.5">
-                <span>🗓️ Kalendar orqali maxsus sana belgilandi: <strong>{form.recall_date}</strong></span>
-              </p>
-            )}
-
             <div>
-              <Label>{t('recall.modal.reason') || 'Davolash turi'}</Label>
+              <Label className="text-xs font-bold text-slate-700">{t('recall.modal.reason') || 'Davolash turi / Sabab'}</Label>
               <Input 
                 value={form.treatment_type} 
                 onChange={e => setForm({ ...form, treatment_type: e.target.value, reason: `${e.target.value} - qayta ko'rik` })} 
-                placeholder={t('recall.modal.placeholderTreatment') || "Masalan: Plomba qo'yish"}
+                placeholder="Masalan: Tish tozalash, Plomba, Implant nazorati"
+                className="h-10 rounded-xl bg-slate-50 border-slate-200 font-bold text-xs"
               />
             </div>
             
             <div>
-              <Label>{t('recall.modal.notes') || t('common.notes') || 'Izohlar'}</Label>
+              <Label className="text-xs font-bold text-slate-700">{t('recall.modal.notes') || 'Qo\'shimcha izohlar'}</Label>
               <Textarea 
                 value={form.notes} 
                 onChange={e => setForm({ ...form, notes: e.target.value })} 
                 rows={2} 
+                className="rounded-xl bg-slate-50 border-slate-200 text-xs"
               />
             </div>
-
-            {/* Notification Channels */}
-            <div className="border rounded-lg p-3 space-y-3">
-              <Label className="text-sm font-medium">{t('recall.modal.channels') || 'Eslatma kanallari'}</Label>
-              <div className="flex gap-4">
-                <div className="flex items-center gap-2">
-                  <Checkbox 
-                    checked={form.send_telegram}
-                    onCheckedChange={v => setForm({ ...form, send_telegram: v })}
-                  />
-                  <MessageCircle className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm">Telegram</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox 
-                    checked={form.send_sms}
-                    onCheckedChange={v => setForm({ ...form, send_sms: v })}
-                  />
-                  <Smartphone className="w-4 h-4 text-green-500" />
-                  <span className="text-sm">SMS</span>
-                </div>
-              </div>
-            </div>
             
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setModalOpen(false)}>
-                {t('recall.bulkActions.cancel') || t('common.cancel') || 'Bekor'}
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <Button variant="outline" onClick={() => setModalOpen(false)} className="rounded-xl h-10 px-4 text-xs font-bold">
+                {t('common.cancel') || 'Bekor qilish'}
               </Button>
               <Button 
                 onClick={handleSave} 
                 disabled={saving || !form.patient_id || !form.recall_date}
-                className="bg-primary hover:bg-primary/90"
+                className="bg-[#00D084] hover:bg-[#00B875] text-white rounded-xl h-10 px-5 text-xs font-black"
               >
                 {saving ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('recall.modal.creating') || t('common.saving') || 'Saqlanmoqda...'}</>
-                ) : (t('common.save') || 'Saqlash')}
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saqlanmoqda...</>
+                ) : 'Saqlash'}
               </Button>
             </div>
           </div>
@@ -1008,15 +1313,15 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
 
       {/* Settings Modal */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-2xl p-5">
           <DialogHeader>
-            <DialogTitle>Eslatma sozlamalari</DialogTitle>
+            <DialogTitle className="text-lg font-black text-slate-900">Eslatma sozlamalari</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
               <div>
-                <p className="font-medium">Avtomatik eslatmalar</p>
-                <p className="text-sm text-muted-foreground">Recall yaratilganda avtomatik yuborish</p>
+                <p className="font-bold text-xs text-slate-900">Avtomatik eslatmalar</p>
+                <p className="text-[11px] text-slate-500">Recall sanasi kelganda avtomatik xabar yuborish</p>
               </div>
               <Switch 
                 checked={settings.auto_reminder}
@@ -1025,44 +1330,44 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
             </div>
             
             <div className="space-y-2">
-              <Label>Eslatma vaqtlari</Label>
-              <div className="space-y-2">
+              <Label className="text-xs font-bold text-slate-700">Eslatma vaqtlari</Label>
+              <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <div className="flex items-center gap-2">
                   <Checkbox 
                     checked={settings.reminder_1_day}
                     onCheckedChange={v => setSettings({ ...settings, reminder_1_day: v })}
                   />
-                  <span className="text-sm">1 kun oldin</span>
+                  <span className="text-xs font-semibold text-slate-700">1 kun oldin</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox 
                     checked={settings.reminder_2_hours}
                     onCheckedChange={v => setSettings({ ...settings, reminder_2_hours: v })}
                   />
-                  <span className="text-sm">2 soat oldin</span>
+                  <span className="text-xs font-semibold text-slate-700">2 soat oldin</span>
                 </div>
               </div>
             </div>
 
             <div>
-              <Label>Asosiy kanal</Label>
+              <Label className="text-xs font-bold text-slate-700">Asosiy xabar kanali</Label>
               <Select 
                 value={settings.default_channel}
                 onValueChange={v => setSettings({ ...settings, default_channel: v })}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-10 rounded-xl bg-slate-50 border-slate-200 font-bold text-xs">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="telegram">Telegram</SelectItem>
-                  <SelectItem value="sms">SMS</SelectItem>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="telegram" className="text-xs font-bold">Telegram</SelectItem>
+                  <SelectItem value="sms" className="text-xs font-bold">SMS</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setSettingsOpen(false)}>
-                Yopish
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button onClick={() => setSettingsOpen(false)} className="rounded-xl h-10 px-5 text-xs font-black bg-slate-900 text-white">
+                Saqlash va Yopish
               </Button>
             </div>
           </div>
@@ -1071,419 +1376,79 @@ const generateReminderMessage = (recall, templateId = 'checkup') => {
 
       {/* Send Notification Modal */}
       <Dialog open={sendModalOpen} onOpenChange={setSendModalOpen}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-sm rounded-2xl p-5">
           <DialogHeader>
-            <DialogTitle>Eslatma yuborish</DialogTitle>
+            <DialogTitle className="text-lg font-black text-slate-900">Eslatma yuborish</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 pt-2">
             {selectedRecall && (
-              <div className="bg-muted rounded-lg p-3">
-                <p className="font-medium">{selectedRecall.patient_name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {selectedRecall.recall_date} {selectedRecall.recall_time}
+              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                <p className="font-bold text-xs text-slate-900">{selectedRecall.patient_name}</p>
+                <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                  {selectedRecall.recall_date} {selectedRecall.recall_time} ({selectedRecall.reason || 'Ko\'rik'})
                 </p>
               </div>
             )}
             
-            <p className="text-sm text-muted-foreground">
-              Qaysi kanal orqali yuborishni tanlang:
+            <p className="text-xs font-semibold text-slate-600">
+              Xabar yuborish kanalini tanlang:
             </p>
             
             <div className="grid grid-cols-2 gap-3">
               <Button
                 variant="outline"
-                className="flex-col h-20 gap-2"
+                className="flex-col h-20 gap-2 rounded-xl border-slate-200 hover:border-blue-500 hover:bg-blue-50/50"
                 onClick={() => sendNotification('telegram')}
                 disabled={sending || !selectedRecall?.telegram_chat_id}
               >
                 <MessageCircle className="w-6 h-6 text-blue-500" />
-                <span className="text-xs">Telegram</span>
+                <span className="text-xs font-bold">Telegram</span>
               </Button>
               <Button
                 variant="outline"
-                className="flex-col h-20 gap-2"
+                className="flex-col h-20 gap-2 rounded-xl border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50"
                 onClick={() => sendNotification('sms')}
                 disabled={sending || !selectedRecall?.patient_phone}
               >
-                <Smartphone className="w-6 h-6 text-green-500" />
-                <span className="text-xs">SMS</span>
+                <Smartphone className="w-6 h-6 text-emerald-500" />
+                <span className="text-xs font-bold">SMS</span>
               </Button>
             </div>
             
             {sending && (
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
+              <div className="flex items-center justify-center gap-2 text-xs font-bold text-slate-500">
+                <Loader2 className="w-4 h-4 animate-spin text-[#1499AD]" />
                 Yuborilmoqda...
               </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
 
-/**
- * Recalls Table Component
- */
-function RecallsTable({ recalls, loading, onStatusChange, onSendClick, emptyMessage, selectedRecalls, toggleRecallSelection }) {
-  const { t } = useTranslation();
-  if (loading) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="h-24 bg-slate-100 rounded-2xl animate-pulse" />
-        ))}
-      </div>
-    );
-  }
-
-  if (recalls.length === 0) {
-    return (
-      <EmptyState 
-        icon={Bell} 
-        title={emptyMessage || t('recall.empty') || "Recall yo'q"}
-        description={t('recall.emptyDesc') || "Yangi recall qo'shish uchun tugmani bosing"}
-      />
-    );
-  }
-
-  // Status colors
-  const getStatusStyle = (status) => {
-    const styles = {
-      'Pending': { bg: 'bg-amber-55 text-amber-700 border-amber-100/70', text: 'text-amber-700', border: 'border-amber-100', label: t('status.Pending') || t('status.pending') || 'Kutilayotgan' },
-      'Contacted': { bg: 'bg-blue-55 text-blue-700 border-blue-100/70', text: 'text-blue-700', border: 'border-blue-100', label: t('status.Contacted') || t('status.contacted') || 'Bog\'lanildi' },
-      'Scheduled': { bg: 'bg-purple-55 text-purple-700 border-purple-100/70', text: 'text-purple-700', border: 'border-purple-100', label: t('status.Scheduled') || t('status.scheduled') || 'Rejalashtirilgan' },
-      'Completed': { bg: 'bg-emerald-55 text-emerald-700 border-emerald-100/70', text: 'text-emerald-700', border: 'border-emerald-100', label: t('status.Completed') || t('status.completed') || 'Bajarildi' },
-      'Missed': { bg: 'bg-rose-55 text-rose-700 border-rose-100/70', text: 'text-rose-700', border: 'border-rose-100', label: t('status.Missed') || t('status.missed') || 'O\'tkazib yuborildi' }
-    };
-    return styles[status] || styles['Pending'];
-  };
-
-  // Priority badge
-  const getPriorityBadge = (priority) => {
-    const badges = {
-      'overdue': { bg: 'bg-rose-50 text-rose-600 border border-rose-100', text: 'text-rose-600', label: `⚠️ ${t('status.overdue') || 'Muddati o\'tgan'}` },
-      'urgent': { bg: 'bg-amber-50 text-amber-700 border border-amber-150', text: 'text-amber-700', label: `🔥 ${t('status.urgent') || 'Dolzarb'}` },
-      'high': { bg: 'bg-orange-50 text-orange-600 border border-orange-100', text: 'text-orange-600', label: t('status.High') || 'Yuqori' },
-      'medium': { bg: 'bg-blue-50 text-blue-600 border border-blue-100', text: 'text-blue-600', label: t('status.Medium') || 'O\'rta' },
-      'low': { bg: 'bg-slate-50 text-slate-600 border border-slate-100', text: 'text-slate-600', label: t('status.Low') || 'Past' }
-    };
-    return badges[priority] || badges['low'];
-  };
-
-  return (
-    <div className="space-y-3.5">
-      {/* Desktop View */}
-      <div className="hidden sm:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full text-left border-collapse table-fixed min-w-[850px]">
-            <thead>
-              <tr className="bg-slate-50/50 border-b border-slate-100">
-                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[28%] min-w-[200px]">{t('recall.table.patient') || 'Bemor'}</th>
-                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[14%] min-w-[110px]">{t('recall.table.recallDate') || 'Sana'}</th>
-                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[12%] min-w-[95px]">{t('recall.priority') || 'Muhimlik'}</th>
-                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[18%] min-w-[130px]">{t('recall.table.reason') || 'Turi / Izoh'}</th>
-                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[13%] min-w-[110px]">{t('recall.table.status') || 'Status'}</th>
-                <th className="px-4 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right w-[15%] min-w-[140px]">{t('recall.table.actions') || 'Amallar'}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {recalls.map((recall) => {
-                const status = getStatusStyle(recall.status);
-                const priority = getPriorityBadge(recall.priority);
-                const isSelected = selectedRecalls.has(recall.id);
-
-                return (
-                  <tr key={recall.id} className={`hover:bg-slate-50/40 transition-colors group ${isSelected ? 'bg-primary/5' : ''}`}>
-                    <td className="px-4 py-2.5 w-[28%] min-w-[200px]">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Checkbox 
-                          checked={isSelected}
-                          onCheckedChange={() => toggleRecallSelection(recall.id)}
-                          className="shrink-0"
-                        />
-                        <div className="w-8.5 h-8.5 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                          {recall.patient_name?.charAt(0) || '?'}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-slate-800 text-[13px] truncate" title={recall.patient_name}>{recall.patient_name}</p>
-                          <p className="text-[10.5px] font-medium text-slate-500 mt-0.5 truncate">{recall.patient_phone || t('recall.noPhone') || "Telefon yo'q"}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 w-[14%] min-w-[110px]">
-                      <div className="text-[12px] font-bold text-slate-700">{recall.recall_date}</div>
-                      {recall.recall_time && <div className="text-[10px] text-slate-400 mt-0.5">{recall.recall_time}</div>}
-                    </td>
-                    <td className="px-4 py-2.5 w-[12%] min-w-[95px]">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold ${priority.bg} ${priority.text} whitespace-nowrap`}>
-                        {priority.label.replace('⚠️ ', '').replace('🔥 ', '')}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 w-[18%] min-w-[130px]">
-                      <p className="text-[11.5px] font-medium text-slate-600 truncate max-w-[160px]" title={recall.reason}>{recall.reason || "—"}</p>
-                    </td>
-                    <td className="px-4 py-2.5 w-[13%] min-w-[110px]">
-                      <Select 
-                        value={recall.status} 
-                        onValueChange={v => onStatusChange(recall.id, v)}
-                      >
-                        <SelectTrigger className={`h-7 px-2 py-0 border font-bold text-[9.5px] uppercase tracking-wider w-[110px] transition-colors focus:ring-0 ${status.bg} ${status.text} ${status.border}`}>
-                          <span className="w-full text-center"><SelectValue /></span>
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border-slate-150">
-                          {['Pending', 'Contacted', 'Scheduled', 'Completed', 'Missed'].map(s => (
-                            <SelectItem key={s} value={s} className="font-bold text-[9.5px] uppercase tracking-wider">{getStatusStyle(s).label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-4 py-2.5 text-right w-[15%] min-w-[140px]">
-                      <div className="flex items-center justify-end gap-1">
-                        {recall.patient_phone && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7.5 w-7.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 transition-colors shrink-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.location.href = `tel:${recall.patient_phone}`;
-                            }}
-                            title={t('recall.makeCall') || "Qo'ng'iroq qilish"}
-                          >
-                            <Phone className="w-3 h-3" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7.5 w-7.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors shrink-0"
-                          onClick={() => onSendClick(recall)}
-                          title={t('recall.sendSms') || "Xabar yuborish"}
-                        >
-                          <Send className="w-3 h-3" />
-                        </Button>
-                        {recall.lastAction ? (
-                          <div className="w-7.5 h-7.5 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0" title={`${t('recall.sent') || 'Yuborildi'}: ${formatDateTime(recall.lastAction.time)}`}>
-                            {recall.lastAction.type === 'telegram' ? <MessageCircle className="w-3.5 h-3.5 text-blue-500" /> : <Smartphone className="w-3.5 h-3.5 text-green-500" />}
-                          </div>
-                        ) : recall.deliveryStatus === 'failed' ? (
-                          <div className="w-7.5 h-7.5 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center shrink-0 text-red-500" title={t('common.error') || "Xatolik"}>
-                            <AlertCircle className="w-3.5 h-3.5" />
-                          </div>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Mobile View - Sleek Cards */}
-      <div className="sm:hidden space-y-3">
-        {recalls.map((recall, idx) => {
-          const status = getStatusStyle(recall.status);
-          const priority = getPriorityBadge(recall.priority);
-          const isSelected = selectedRecalls.has(recall.id);
-
-          return (
-            <motion.div
-              key={recall.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              className={`bg-white rounded-xl p-3 border ${
-                isSelected ? 'border-primary bg-primary/5' : 
-                recall.priority === 'urgent' || recall.priority === 'overdue'
-                  ? 'border-red-150 bg-red-50/20'
-                  : 'border-slate-100 hover:border-slate-200'
-              } transition-all relative overflow-hidden`}
-            >
-              {/* Left color bar for priority */}
-              <div className={`absolute left-0 top-0 bottom-0 w-1 ${priority.bg}`} />
-
-              <div className="flex items-start gap-2.5">
-                <Checkbox 
-                  checked={isSelected}
-                  onCheckedChange={() => toggleRecallSelection(recall.id)}
-                  className="mt-1"
-                />
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start mb-1.5 gap-2">
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm truncate">{recall.patient_name}</h4>
-                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">{recall.patient_phone || t('recall.noPhone') || "Telefon yo'q"}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${priority.bg} ${priority.text}`}>
-                        {priority.label.replace('⚠️ ', '').replace('🔥 ', '')}
-                      </span>
-                      <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-semibold ${status.bg} ${status.text} border ${status.border}`}>
-                        {status.label}
-                      </span>
-                    </div>
-                  </div>
-
-                  {recall.reason && (
-                    <p className="text-xs text-slate-500 mb-2.5 truncate">{recall.reason}</p>
-                  )}
-
-                  <div className="flex justify-between items-center pt-2 border-t border-slate-50 text-[11px] text-slate-400">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      <span>{recall.recall_date}</span>
-                      {recall.recall_time && <span>• {recall.recall_time}</span>}
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      {recall.patient_phone && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 rounded-lg bg-emerald-50 text-emerald-600 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.location.href = `tel:${recall.patient_phone}`;
-                          }}
-                        >
-                          <Phone className="w-3 h-3" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 rounded-lg bg-blue-50 text-blue-600 p-0"
-                        onClick={() => onSendClick(recall)}
-                      >
-                        <Send className="w-3 h-3" />
-                      </Button>
-                      <Select 
-                        value={recall.status} 
-                        onValueChange={v => onStatusChange(recall.id, v)}
-                      >
-                        <SelectTrigger className="w-7 h-7 border-0 p-0 hover:bg-slate-55 flex items-center justify-center rounded-lg bg-slate-50 border border-slate-100">
-                          <MoreHorizontal className="w-3.5 h-3.5 text-slate-400" />
-                        </SelectTrigger>
-                        <SelectContent align="end">
-                          {['Pending', 'Contacted', 'Scheduled', 'Completed', 'Missed'].map(s => (
-                            <SelectItem key={s} value={s}>{getStatusStyle(s).label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Notification History Table Component
- */
-function NotificationHistoryTable({ history, loading }) {
-  const { t } = useTranslation();
-  if (loading) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="h-16 bg-muted rounded-xl animate-pulse" />
-        ))}
-      </div>
-    );
-  }
-
-  if (history.length === 0) {
-    return (
-      <EmptyState 
-        icon={History}
-        title={t('recall.historyEmpty') || "Tarix bo'sh"}
-        description={t('recall.historyEmptyDesc') || "Hali hech qanday eslatma yuborilmagan"}
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {/* Desktop View */}
-      <div className="hidden sm:block bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">{t('recall.table.patient') || 'Bemor'}</th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">{t('recall.table.channel') || 'Kanal'}</th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">{t('recall.sent') || 'Yuborilgan'}</th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase px-5 py-3">{t('recall.table.status') || 'Status'}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map(item => (
-                <tr key={item.id} className="border-b border-border last:border-0 hover:bg-accent/30 transition-colors">
-                  <td className="px-5 py-3.5 text-sm font-medium">{item.patient_name}</td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-1 text-sm">
-                      {item.channel === 'telegram' ? (
-                        <><MessageCircle className="w-4 h-4 text-blue-500" /> Telegram</>
-                      ) : (
-                        <><Smartphone className="w-4 h-4 text-green-500" /> SMS</>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5 text-sm text-muted-foreground">{formatDateTime(item.sent_at)}</td>
-                  <td className="px-5 py-3.5">
-                    {item.status === 'sent' ? (
-                      <span className="flex items-center gap-1 text-emerald-600 text-sm font-medium">
-                        <CheckCircle2 className="w-4 h-4" /> {t('recall.sent') || 'Yuborildi'}
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-red-600 text-sm font-medium">
-                        <XCircle className="w-4 h-4" /> {t('common.error') || 'Xatolik'}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Mobile View */}
-      <div className="sm:hidden space-y-3">
-        {history.map(item => (
-          <div key={item.id} className="bg-white rounded-xl p-3 border border-slate-100 shadow-sm">
-            <div className="flex justify-between items-start mb-2">
-              <h4 className="font-bold text-sm">{item.patient_name}</h4>
-              {item.status === 'sent' ? (
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{t('recall.sent') || 'Yuborildi'}</span>
-              ) : (
-                <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">{t('common.error') || 'Xatolik'}</span>
-              )}
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteRecallId} onOpenChange={() => setDeleteRecallId(null)}>
+        <AlertDialogContent className="rounded-2xl border-none shadow-3xl bg-white max-w-md p-6">
+          <AlertDialogHeader>
+            <div className="w-14 h-14 bg-rose-50 rounded-xl flex items-center justify-center text-rose-500 mb-3 mx-auto">
+              <Trash2 className="w-7 h-7" />
             </div>
-            <div className="flex justify-between items-center text-xs text-slate-500">
-              <div className="flex items-center gap-1">
-                {item.channel === 'telegram' ? (
-                  <MessageCircle className="w-3 h-3 text-blue-500" />
-                ) : (
-                  <Smartphone className="w-3 h-3 text-green-500" />
-                )}
-                <span>{item.channel === 'telegram' ? 'Telegram' : 'SMS'}</span>
-              </div>
-              <span>{formatDateTime(item.sent_at)}</span>
-            </div>
-          </div>
-        ))}
-      </div>
+            <AlertDialogTitle className="text-xl font-bold text-slate-900 text-center uppercase tracking-tight">
+              O'chirishni tasdiqlaysizmi?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500 text-center font-medium pt-1.5 text-sm">
+              Ushbu eslatma o'chiriladi. Bu amalni ortga qaytarib bo'lmaydi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 flex gap-3">
+            <AlertDialogCancel className="h-10 rounded-xl border-slate-200 font-bold uppercase text-[10px] tracking-wider flex-1 m-0">
+              Bekor qilish
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteRecall} className="h-10 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold uppercase text-[10px] tracking-wider flex-1 m-0 shadow-md">
+              O'chirish
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

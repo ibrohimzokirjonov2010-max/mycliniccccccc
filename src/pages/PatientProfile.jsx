@@ -5,11 +5,10 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import {
   ArrowLeft, Phone, Calendar, DollarSign, ClipboardList,
   Plus, MessageSquare, FileDown, AlertTriangle, Clock, Activity,
-  MapPin, User, CheckCircle2, XCircle, Shield, Image,
-  Copy, Share2, QrCode, ExternalLink, Check, X, Wallet, CreditCard, Camera, Upload, ZoomIn, ChevronLeft, ChevronRight, Trash2, Search, Loader2, Printer
+  CheckCircle2, XCircle, Shield, Image,
+  Copy, Share2, QrCode, Check, X, Wallet, CreditCard, Camera, Upload, ChevronLeft, ChevronRight, Trash2, Search, Loader2, Printer
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Tooth } from '@/components/ui/Icons';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import {
@@ -20,7 +19,7 @@ import {
 } from '@/lib/telegramBotConfig';
 import { sendTestReminderForPatient } from '@/lib/telegramReminderService';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList } from '@/components/ui/tabs';
 import StatusBadge from '../components/ui/StatusBadge';
 import EmptyState from '../components/ui/EmptyState';
 import PatientAppointments from '../components/patients/PatientAppointments';
@@ -2560,130 +2559,195 @@ export default function PatientProfile() {
         )}
         
         {/* Patient Identity Row */}
-        {/* ══ BCLINIC HEADER (Top Row) ══ */}
-        <div className="bg-white px-4 pt-3 pb-2 flex items-center justify-between gap-4 border-b border-[#f1f3f4]/60 print:hidden">
-          {/* Left: Avatar + Patient Info */}
-          <div className="flex items-center gap-3 min-w-0">
+        {/* ══ EXCEL EHR HEADER (Top Row) ══ */}
+        <div className="bg-white px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200/80 shadow-2xs print:hidden">
+          {/* Left: Back Button + Avatar + Patient Info */}
+          <div className="flex items-center gap-3.5 min-w-0">
             {/* Back Button */}
             <button
               onClick={() => navigate('/patients')}
-              className="w-9 h-9 shrink-0 rounded-xl bg-[#ff6d00]/10 hover:bg-[#ff6d00]/20 border border-[#ff6d00]/20 flex items-center justify-center transition-all active:scale-95 group"
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all active:scale-95 group shrink-0 border border-slate-200/60 cursor-pointer"
               title="Bemorlar ro'yxatiga qaytish"
             >
-              <ArrowLeft className="w-4 h-4 text-[#ff6d00] group-hover:scale-110 transition-transform" />
+              <ArrowLeft className="w-4 h-4 text-slate-600 group-hover:-translate-x-0.5 transition-transform" />
+              <span className="hidden sm:inline">Bemorlar</span>
             </button>
             
             {/* Avatar Upload */}
             <div className="relative">
               {medicalAlerts && medicalAlerts.length > 0 && (
-                <div className="absolute -top-2 -left-1 z-10 flex items-center gap-1 bg-gradient-to-r from-red-500 to-rose-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-md animate-bounce border-none">
+                <div className="absolute -top-1.5 -left-1 z-10 flex items-center gap-1 bg-gradient-to-r from-red-500 to-rose-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full shadow-md animate-bounce border-none">
                   <span className="font-[1000]">{medicalAlerts.length}</span>
                 </div>
               )}
               <div
                 className="relative group cursor-pointer shrink-0"
                 onClick={() => { const inp = document.getElementById('avatar-upload-input'); if(inp) inp.click(); }}
+                title="Profil rasmini o'zgartirish"
               >
                 {patient.photo_url ? (
                   <img
                     src={patient.photo_url}
                     alt={patient.full_name}
-                    className="w-11 h-11 rounded-xl object-cover border border-[#e8eaed]"
+                    className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shadow-xs"
                   />
                 ) : (
                   <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center text-white text-base font-black border border-[#e8eaed]"
-                    style={{ background: 'linear-gradient(135deg,#1a73e8 0%,#0d5db8 100%)' }}
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-base font-black border border-slate-200 shadow-xs bg-slate-900"
                   >
                     {getInitials(patient.full_name)}
                   </div>
                 )}
+                <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                  <Camera className="w-4 h-4" />
+                </div>
               </div>
               <input id="avatar-upload-input" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             </div>
 
-            {/* Name + phone */}
+            {/* Name + Badges + Phone */}
             <div className="min-w-0">
-              <div className="flex items-baseline gap-1.5 flex-wrap">
-                <h1 className="text-[14px] font-bold text-[#202124] leading-tight truncate max-w-[150px] sm:max-w-none">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-base sm:text-lg font-black text-slate-900 leading-tight truncate">
                   {patient.full_name}
                 </h1>
                 {age !== null && (
-                  <span className="text-[10px] text-[#5f6368] font-normal shrink-0">{age} yosh</span>
+                  <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10.5px] font-bold">
+                    {age} yosh
+                  </span>
                 )}
+                {patient.gender && (
+                  <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10.5px] font-bold">
+                    {patient.gender === 'Female' ? 'Ayol' : 'Erkak'}
+                  </span>
+                )}
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-md text-[10px] font-black uppercase tracking-wider">
+                  {patient.status || "Faol"}
+                </span>
               </div>
-              <div className="text-[10px] text-[#5f6368] mt-0.5">
+              <div className="flex items-center gap-2 mt-1">
                 {patient.phone ? (
-                  <a
-                    href={`tel:+${patient.phone.replace(/\D/g, '').startsWith('998') ? patient.phone.replace(/\D/g, '') : '998' + patient.phone.replace(/\D/g, '')}`}
-                    className="font-bold text-[#1499AD] hover:underline flex items-center gap-1 bg-[#1499AD]/5 px-2.5 py-1 rounded-full border border-[#1499AD]/10 w-fit"
-                  >
-                    <Phone className="w-2.5 h-2.5" />
-                    {formatPhone(patient.phone)}
-                  </a>
+                  <div className="flex items-center gap-1.5">
+                    <a
+                      href={`tel:+${patient.phone.replace(/\D/g, '').startsWith('998') ? patient.phone.replace(/\D/g, '') : '998' + patient.phone.replace(/\D/g, '')}`}
+                      className="font-mono font-bold text-xs text-[#1499AD] hover:underline flex items-center gap-1 bg-[#1499AD]/10 px-2.5 py-0.5 rounded-lg border border-[#1499AD]/20"
+                      title="Qo'ng'iroq qilish"
+                    >
+                      <Phone className="w-3 h-3" />
+                      {formatPhone(patient.phone)}
+                    </a>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(patient.phone);
+                        toast.success("Telefon raqami nusxalandi");
+                      }}
+                      className="p-1 text-slate-400 hover:text-slate-700 rounded transition-colors cursor-pointer"
+                      title="Nusxalash"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  </div>
                 ) : (
-                  <span className="font-bold text-slate-400">—</span>
+                  <span className="font-bold text-slate-400 text-xs">—</span>
+                )}
+                {patient.address && (
+                  <>
+                    <span className="w-1 h-1 rounded-full bg-slate-300 hidden sm:inline" />
+                    <span className="text-xs font-semibold text-slate-500 truncate max-w-[200px] hidden sm:inline">
+                      {patient.address}
+                    </span>
+                  </>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Right side: Top action icons */}
-          <div className="flex items-center gap-1.5 text-[#5f6368] shrink-0">
-            <button onClick={() => setApptModalOpen(true)} className="w-8 h-8 flex items-center justify-center hover:bg-[#f1f3f4] rounded-full transition-colors" title="Qo'shish">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          {/* Right side: Financial Quick Stats & Action Buttons */}
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* KPI Summary Chips */}
+            <div className="hidden xl:flex items-center gap-2 mr-2">
+              <div className="px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-xl text-right">
+                <p className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">To'langan</p>
+                <p className="text-xs font-black text-emerald-800 font-mono tabular-nums">{totalPaid.toLocaleString()} UZS</p>
+              </div>
+              <div className={`px-3 py-1.5 rounded-xl text-right border ${totalDebt > 0 ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                <p className="text-[9px] font-bold uppercase tracking-wider">{totalDebt > 0 ? 'Qarzdorlik' : 'Qarz yo\'q'}</p>
+                <p className="text-xs font-black font-mono tabular-nums">{totalDebt.toLocaleString()} UZS</p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <button
+              onClick={() => setApptModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-xs transition-all cursor-pointer"
+            >
+              <Calendar className="w-3.5 h-3.5 text-[#1499AD]" />
+              <span>+ Qabul</span>
             </button>
-            <button onClick={generatePDF} className="w-8 h-8 flex items-center justify-center hover:bg-[#f1f3f4] rounded-full transition-colors" title="Rasm yuklash">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+
+            <button
+              onClick={openPayModal}
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-xs transition-all cursor-pointer"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              <span>+ To'lov</span>
+            </button>
+
+            <button
+              onClick={exportCard043PDF}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+              title="Shakl 043/u Tibbiy kartani PDF formatida yuklash"
+            >
+              <FileDown className="w-3.5 h-3.5 text-slate-500" />
+              <span className="hidden sm:inline">043/u (PDF)</span>
+            </button>
+
+            <button
+              onClick={generatePDF}
+              className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors cursor-pointer"
+              title="Bemor kvitansiyasi / hisobotini yuklash"
+            >
+              <Printer className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* ══ BCLINIC TAB BAR ══ */}
-        <div className="w-full bg-white print:hidden">
-          <div className="relative w-full overflow-hidden">
-            {/* Left Shadow */}
-            <div 
-              className={cn(
-                "absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-white to-transparent pointer-events-none z-10 transition-opacity duration-300",
-                showLeftShadow ? "opacity-100" : "opacity-0"
-              )} 
-            />
-            {/* Right Shadow */}
-            <div 
-              className={cn(
-                "absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white to-transparent pointer-events-none z-10 transition-opacity duration-300",
-                showRightShadow ? "opacity-100" : "opacity-0"
-              )} 
-            />
-
-            <div 
-              ref={tabScrollRef}
-              className="overflow-x-auto no-scrollbar w-full"
-            >
-              <div className="flex items-end min-w-max px-4 w-full">
-                {[
-                  { id: 'info',         label: t('patientProfile.tabs.info') },
-                  { id: 'treatments',   label: t('patientProfile.tabs.treatments') },
-                  { id: 'appointments', label: t('patientProfile.tabs.appointments') },
-                  { id: 'payments',     label: t('patientProfile.tabs.payments') },
-                  { id: 'notes',        label: t('patientProfile.tabs.notes') },
-                  { id: 'implants',     label: t('patientProfile.tabs.implants') },
-                  { id: 'photos',       label: t('patientProfile.tabs.photos') },
-                ].map(tabItem => (
+        {/* ══ EXCEL SPREADSHEET TAB BAR ══ */}
+        <div className="w-full bg-slate-50/90 border-b border-slate-200 px-4 print:hidden">
+          <div className="overflow-x-auto no-scrollbar w-full">
+            <div className="flex items-center gap-1 py-1.5 min-w-max">
+              {[
+                { id: 'info',         label: "🦷 Tish xaritasi" },
+                { id: 'treatments',   label: "📋 Davolash Rejalari", count: (plans || []).length },
+                { id: 'appointments', label: "📅 Uchrashuvlar", count: (appointments || []).length },
+                { id: 'payments',     label: "💳 To'lovlar & Qarz", count: (payments || []).length },
+                { id: 'notes',        label: "📝 Eslatmalar" },
+                { id: 'implants',     label: "🔩 Implantlar" },
+                { id: 'photos',       label: "🖼️ Rentgen & Rasmlar" },
+              ].map(tabItem => {
+                const isActive = activeTab === tabItem.id;
+                return (
                   <button
                     key={tabItem.id}
                     onClick={() => setActiveTab(tabItem.id)}
-                    className={`px-3.5 py-2.5 text-[13px] whitespace-nowrap transition-all border-b-2 font-medium cursor-pointer ${
-                      activeTab === tabItem.id
-                        ? 'border-[#1a73e8] text-[#1a73e8] font-bold'
-                        : 'border-transparent text-[#5f6368] hover:text-[#202124]'
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-white text-slate-900 font-black shadow-xs border border-slate-200/80'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 font-semibold'
                     }`}
                   >
-                    {tabItem.label}
+                    <span>{tabItem.label}</span>
+                    {tabItem.count !== undefined && tabItem.count > 0 && (
+                      <span className={`px-1.5 py-0.2 rounded-full text-[9.5px] font-black ${
+                        isActive ? 'bg-[#1499AD]/10 text-[#1499AD]' : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        {tabItem.count}
+                      </span>
+                    )}
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
           </div>
         </div>

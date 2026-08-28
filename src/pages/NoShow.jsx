@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 import { 
   AlertTriangle, Calendar, Clock, User, 
   Phone, MessageSquare, ChevronRight, 
@@ -16,6 +17,7 @@ const formatCurrency = (val) => new Intl.NumberFormat('uz-UZ', { style: 'currenc
 
 export default function NoShow() {
   const { t } = useTranslation();
+  const { user, isDoctor } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,15 +27,23 @@ export default function NoShow() {
     try {
       setLoading(true);
       const [data, pts] = await Promise.all([
-         base44.entities.Appointment.filter({ status: 'No-Show' }, '-date', 100), // ⚡
-         base44.entities.Patient.list('full_name', 100)  // ⚡
+         base44.entities.Appointment.filter({ status: 'No-Show' }, '-date', 200), // ⚡
+         base44.entities.Patient.list('full_name', 200)  // ⚡
       ]);
       
       const ptsMap = new Map((pts || []).map(p => [p.id, p]));
-      const appointmentsWithPhones = (data || []).map(appt => ({
+      let appointmentsWithPhones = (data || []).map(appt => ({
         ...appt,
         phone: ptsMap.get(appt.patient_id)?.phone
       }));
+
+      // Doktor bo'lsa faqat o'ziga tayinlangan uchrashuvlarni ko'rsin
+      if (isDoctor && user?.id) {
+        appointmentsWithPhones = appointmentsWithPhones.filter(appt =>
+          String(appt.doctor_id) === String(user.id) ||
+          String(appt.doctor_name || '').toLowerCase() === String(user.name || '').toLowerCase()
+        );
+      }
 
       setAppointments(appointmentsWithPhones);
     } catch (err) {
@@ -43,7 +53,7 @@ export default function NoShow() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [isDoctor, user?.id]);
 
   const handleCall = (phone) => {
     if (phone) {

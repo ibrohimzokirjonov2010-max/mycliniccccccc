@@ -176,7 +176,8 @@ class HybridEntityLoader {
               'torque', 'isq', 'bone_type', 'implant_type', 'doctor',
               'extra_services', 'tooth_numbers', 'timeline', 'audit_log',
               'complications', 'xray_urls', 'reminder_months', 'reminder_date',
-              'tooth_data', 'placement_date', 'lifecycle_status', 'tooth_id'];
+              'tooth_data', 'placement_date', 'lifecycle_status', 'tooth_id',
+              'service_name', 'hizmat_turi', 'price', 'narxi', 'stage_items'];
     }
     if (this.entityName === 'Payment') {
       return ['doctor_id', 'commission_rate', 'patient_name', 'category', 'debt_amount', 'method'];
@@ -185,7 +186,25 @@ class HybridEntityLoader {
       // MUHIM: username va password notes'ga ENCODE QILINMASIN!
       // Ular doim to'g'ridan-to'g'ri DB ustunlarida saqlanishi kerak
       // Aks holda login ishlamaydi
-      return ['phone', 'specialty', 'commission_rate', 'base_salary', 'full_name', 'name', 'role', 'workingHours'];
+      return [
+        'phone',
+        'specialty',
+        'commission_rate',
+        'base_salary',
+        'full_name',
+        'name',
+        'role',
+        'workingHours',
+        'avatar_url',
+        'photo_url',
+        'photo',
+        'avatar',
+        'image',
+        'salary_type',
+        'is_active',
+        'color',
+        'telegram_chat_id'
+      ];
     }
     if (this.entityName === 'Recall') {
       return ['patient_name', 'patient_phone', 'type', 'type_label', 'status', 'recall_date', 'notes'];
@@ -233,6 +252,9 @@ class HybridEntityLoader {
     if (this.entityName === 'Case') {
       return ['doctor', 'patientname', 'patient_id', 'date', 'tags', 'images', 'description'];
     }
+    if (this.entityName === 'CaseCategory') {
+      return ['name', 'notes'];
+    }
     return [];
   }
 
@@ -277,7 +299,15 @@ class HybridEntityLoader {
       
       // Fill in missing fields from the encoded tech data
       Object.entries(techData).forEach(([k, v]) => {
-        if (merged[k] == null || merged[k] === '') merged[k] = v;
+        if (merged[k] == null || merged[k] === '') {
+          if (k === 'images' && typeof v === 'string' && v.startsWith('{')) {
+            try { merged[k] = JSON.parse(v); } catch { merged[k] = v; }
+          } else if (k === 'tags' && typeof v === 'string' && v.startsWith('[')) {
+            try { merged[k] = JSON.parse(v); } catch { merged[k] = v; }
+          } else {
+            merged[k] = v;
+          }
+        }
       });
       return merged;
     } catch (e) {
@@ -306,6 +336,27 @@ class HybridEntityLoader {
       const local = this._getDeepLocal(enriched.id);
       if (local) {
         enriched = { ...local, ...enriched };
+      }
+
+      // 3. Entity-specific field normalization
+      if (this.entityName === 'Case') {
+        if (typeof enriched.tags === 'string') {
+          try { enriched.tags = JSON.parse(enriched.tags); }
+          catch { enriched.tags = enriched.tags ? [enriched.tags] : []; }
+        }
+        if (!Array.isArray(enriched.tags)) {
+          enriched.tags = enriched.tags ? [enriched.tags] : [];
+        }
+        if (typeof enriched.images === 'string') {
+          try { enriched.images = JSON.parse(enriched.images); }
+          catch { enriched.images = { after: enriched.images }; }
+        }
+        if (!enriched.images || typeof enriched.images !== 'object') {
+          enriched.images = {
+            before: enriched.image_before || '',
+            after: enriched.image_after || ''
+          };
+        }
       }
       
       result.push(enriched);
@@ -505,6 +556,18 @@ class HybridEntityLoader {
         return merged;
       }
 
+      // For Case: merge with local data so locally saved cases always show up!
+      if (this.entityName === 'Case' || this.entityName === 'CaseCategory') {
+        const localData = this._localStorageList(orderBy, limit);
+        const merged = [...enriched];
+        localData.forEach(lr => {
+          if (!merged.find(mr => mr.id === lr.id)) {
+            merged.push(lr);
+          }
+        });
+        return merged;
+      }
+
       // For User: merge with auth system users and mock DB users
       // This prevents doctors from disappearing in Appointments/Payments tabs when Supabase hasn't synced
       if (this.entityName === 'User') {
@@ -538,6 +601,7 @@ class HybridEntityLoader {
       case 'Appointment': return ['patient_name', 'doctor_name', 'service_name', 'notes'];
       case 'Payment': return ['patient_name', 'category', 'notes'];
       case 'Inventory': return ['name', 'category', 'notes'];
+      case 'Case': return ['patientname', 'doctor', 'description', 'notes'];
       default: return ['notes', 'name', 'title'];
     }
   }
@@ -820,7 +884,7 @@ class HybridEntityLoader {
         console.error(`Error creating ${this.entityName}:`, error);
         
         // DO NOT silently fallback to localstorage if it's a known conflict or validation error
-        if (error.message && (error.message.includes('23505') || error.message.includes('23514') || error.message.includes('Supabase DB Error'))) {
+        if (error.message && (error.message.includes('23505') || error.message.includes('23514'))) {
            throw error; // Throw to UI
         }
         
@@ -1011,7 +1075,12 @@ class HybridEntityLoader {
           if (error.code === '23503') {
              throw new Error("Bog'langan ma'lumotlar borligi sababli o'chirish mumkin emas (masalan: bemorlar uchrashuvi yoki to'lovlar).");
           }
-          throw error;
+          // If table does not exist, just delete locally
+          if (error.code === '42P01' || error.code === 'PGRST205' || error.code === '404') {
+             console.warn(`Table for ${this.entityName} not in DB, cleaning local.`);
+          } else {
+             throw error;
+          }
         }
       }
       
@@ -1021,7 +1090,12 @@ class HybridEntityLoader {
       return result;
     } catch (error) {
       console.error(`Error deleting ${this.entityName}:`, error);
-      throw error; // Rethrow to UI to show toast.error
+      if (error.code === '23503' || (error.message && error.message.includes('Bog\'langan'))) {
+        throw error;
+      }
+      const result = this._localStorageDelete(id);
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('crm-data-updated'));
+      return result;
     }
   }
 

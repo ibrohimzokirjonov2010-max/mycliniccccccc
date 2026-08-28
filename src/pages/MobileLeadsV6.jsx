@@ -6,6 +6,7 @@ import {
   Settings2, Palette, Copy, UserPlus, X
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -123,6 +124,7 @@ const getSourceBadgeInfo = (source) => {
 };
 
 export default function MobileLeadsV6() {
+  const { user, isDoctor } = useAuth();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -149,7 +151,18 @@ export default function MobileLeadsV6() {
   const loadLeads = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await base44.entities.Lead.list('-created_date', 100);
+      const allData = await base44.entities.Lead.list('-created_date', 200);
+      
+      // Doktor bo'lsa faqat o'ziga tayinlangan yoki o'zi qo'shgan lidlarni ko'rsin
+      let data = allData;
+      if (isDoctor && user?.id) {
+        data = (allData || []).filter(lead =>
+          String(lead.assigned_doctor_id) === String(user.id) ||
+          String(lead.created_by_id) === String(user.id) ||
+          (!lead.assigned_doctor_id && !lead.created_by_id)
+        );
+      }
+      
       setLeads(data);
       
       const total = data.length;
@@ -163,7 +176,7 @@ export default function MobileLeadsV6() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isDoctor, user?.id]);
 
   useEffect(() => {
     loadLeads();

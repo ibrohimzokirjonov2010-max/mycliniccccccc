@@ -159,9 +159,9 @@ const ToothColumn = memo(function ToothColumn({
   else if (hovered && !isDisabled) filterStyle = `drop-shadow(0 2px 6px ${st.color}50)`;
 
   // Lateral view height (the tall side-profile) and occlusal view height (small oval)
-  const LATERAL_H  = compact ? 65 : 80;
-  const OCCLUSAL_H = compact ? 20 : 24;
-  const scaleFactor = compact ? 0.62 : 0.75;
+  const LATERAL_H  = compact ? 48 : 80;
+  const OCCLUSAL_H = compact ? 15 : 24;
+  const scaleFactor = compact ? 0.54 : 0.75;
 
   const ToothImg = ({ src, alt, isCrown, transform }) => {
     const isRootAlert = !isCrown && isPsrAlert;
@@ -704,10 +704,10 @@ function ProfessionalOdontogram({
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth;
-      const baseWidth = compact ? 440 : 560;
-      // Chart base is 440px when compact.
+      const baseWidth = compact ? 390 : 560;
+      // Chart base is 390px when compact.
       // We calculate fluid scale to fit the viewport with layout safe margins.
-      const margin = width < 380 ? 44 : 58;
+      const margin = width < 380 ? 32 : 48;
       const targetWidth = Math.min(width - margin, baseWidth);
       const calculatedScale = targetWidth / baseWidth;
       setScale(Math.max(calculatedScale, 0.55));
@@ -898,15 +898,15 @@ function ProfessionalOdontogram({
       )}
 
       {/* ── Chart Area ──────────────────────────────────────────────────── */}
-      <div className="py-3 px-2 flex justify-center w-full overflow-hidden">
+      <div className="pt-3 pb-2 px-2 flex justify-center w-full overflow-hidden">
         <div
           className="grid grid-cols-2 gap-0 relative select-none origin-top transition-transform duration-200"
           style={{ 
             width: 'fit-content', 
             margin: '0 auto', 
-            minWidth: compact ? 440 : 560,
+            minWidth: compact ? 390 : 560,
             transform: scale < 1 ? `scale(${scale})` : undefined,
-            marginBottom: scale < 1 ? `${-250 * (1 - scale)}px` : undefined
+            marginBottom: scale < 1 ? `${-210 * (1 - scale)}px` : undefined
           }}
         >
           {/* Quadrant 1: Upper Right (teeth 18-11) */}

@@ -2,40 +2,95 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, PieChart, Pie, 
-  Cell
+  ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
-import EmptyState from '../components/ui/EmptyState';
 import { 
-  BarChart3, TrendingUp, Users, DollarSign, ArrowDownRight, Activity,
-  Trophy, Medal, Award, Crown, Calendar, Sparkles, CheckCircle2,
-  Clock, XCircle, ChevronRight, UserCheck, Stethoscope
+  TrendingUp, DollarSign, ArrowDownRight,
+  Calendar, Table as TableIcon, LayoutGrid, FileSpreadsheet,
+  ArrowUp, ArrowDown, ArrowUpDown, Award,
+  Receipt, Layers, Search, X
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
 import { useTranslation } from '@/i18n/LanguageContext';
-import { formatCurrency, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
+// Standard Uzbek Months
+const UZ_MONTHS = [
+  'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+  'Iyul', 'Avgust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'
+];
+
+/**
+ * Reports Page - Professional Excel Spreadsheet View
+ */
 export default function Reports() {
   const { t, language } = useTranslation();
   const [payments, setPayments] = useState([]);
-  const [patients, setPatients] = useState([]);
+  const [, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [doctors, setDoctors] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Filters & Tabs
   const [period, setPeriod] = useState('all'); // 'all' | 'this_month' | 'last_month' | 'year'
-  const [doctorSortBy, setDoctorSortBy] = useState('revenue'); // 'revenue' | 'appointments' | 'avg_check'
-  const [breakdownTab, setBreakdownTab] = useState('appointments'); // 'appointments' | 'services'
+  const [activeReportTab, setActiveReportTab] = useState('doctors'); // 'doctors' | 'finance' | 'services' | 'appointments'
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Density switcher with localStorage
+  const [density, setDensity] = useState(() => {
+    return localStorage.getItem('myclinic_reports_density') || 'compact';
+  });
+  const toggleDensity = (val) => {
+    setDensity(val);
+    localStorage.setItem('myclinic_reports_density', val);
+  };
+
+  // Sorting state for Doctors Table
+  const [docSortField, setDocSortField] = useState('revenue');
+  const [docSortOrder, setDocSortOrder] = useState('desc');
+
+  const handleDocSort = (field) => {
+    if (docSortField === field) {
+      setDocSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setDocSortField(field);
+      setDocSortOrder('desc');
+    }
+  };
+
+  // Sorting state for Finance Table
+  const [finSortField, setFinSortField] = useState('month');
+  const [finSortOrder, setFinSortOrder] = useState('desc');
+
+  const handleFinSort = (field) => {
+    if (finSortField === field) {
+      setFinSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setFinSortField(field);
+      setFinSortOrder('desc');
+    }
+  };
+
+  // Sorting state for Services Table
+  const [srvSortField, setSrvSortField] = useState('revenue');
+  const [srvSortOrder, setSrvSortOrder] = useState('desc');
+
+  const handleSrvSort = (field) => {
+    if (srvSortField === field) {
+      setSrvSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSrvSortField(field);
+      setSrvSortOrder('desc');
+    }
+  };
 
   useEffect(() => {
-    let loadingTimer = setTimeout(() => {
-      setLoading(true);
-    }, 150);
-
     async function load() {
       try {
+        setLoading(true);
         const [pays, pats, appts, exps, users] = await Promise.all([
           base44.entities.Payment.list('-date', 500),
           base44.entities.Patient.list('-created_date', 300),
@@ -51,12 +106,10 @@ export default function Reports() {
       } catch (err) {
         console.error("Report load error:", err);
       } finally {
-        clearTimeout(loadingTimer);
         setLoading(false);
       }
     }
     load();
-    return () => clearTimeout(loadingTimer);
   }, []);
 
   const chartLocale = useMemo(() => {
@@ -66,12 +119,14 @@ export default function Reports() {
   }, [language]);
 
   const formatMonthLabel = useCallback((monthStr) => {
-    const date = new Date(monthStr + "-15");
+    if (!monthStr) return '';
+    const [year, month] = monthStr.split('-').map(Number);
+    if (!year || !month) return monthStr;
     if (language === 'uz') {
-      const months = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun", "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"];
-      return months[date.getMonth()];
+      return `${UZ_MONTHS[month - 1]} ${year}`;
     }
-    return date.toLocaleDateString(chartLocale, { month: 'short' });
+    const date = new Date(year, month - 1, 15);
+    return date.toLocaleDateString(chartLocale, { month: 'short', year: 'numeric' });
   }, [language, chartLocale]);
 
   // Date range filter helpers
@@ -94,55 +149,28 @@ export default function Reports() {
   const filteredAppointments = useMemo(() => appointments.filter(a => filterByPeriod(a.date)), [appointments, filterByPeriod]);
   const filteredExpenses = useMemo(() => expenses.filter(e => filterByPeriod(e.date)), [expenses, filterByPeriod]);
 
-  // Stats calculation
+  // Overall Financial Stats
   const stats = useMemo(() => {
-    const totalIncome = filteredPayments.filter(p => p.type === 'Income').reduce((sum, p) => sum + (p.amount || 0), 0);
-    const totalExpense = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const totalIncome = filteredPayments.filter(p => p.type === 'Income').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const totalExpense = filteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const netProfit = totalIncome - totalExpense;
     const completedAppts = filteredAppointments.filter(a => (a.status || '').toLowerCase() === 'completed').length;
     const avgCheck = completedAppts > 0 ? Math.round(totalIncome / completedAppts) : (filteredPayments.length > 0 ? Math.round(totalIncome / filteredPayments.length) : 0);
     return { totalIncome, totalExpense, netProfit, completedAppts, avgCheck };
   }, [filteredPayments, filteredExpenses, filteredAppointments]);
 
-  // Monthly Finance
-  const financeData = useMemo(() => {
-    const monthlyFinance = {};
-    payments.filter(p => p.type === 'Income').forEach(p => {
-      const month = p.date?.substring(0, 7);
-      if (month) {
-        if (!monthlyFinance[month]) monthlyFinance[month] = { income: 0, expense: 0, net: 0 };
-        monthlyFinance[month].income += (p.amount || 0);
-      }
-    });
-    expenses.forEach(e => {
-      const month = e.date?.substring(0, 7);
-      if (month) {
-        if (!monthlyFinance[month]) monthlyFinance[month] = { income: 0, expense: 0, net: 0 };
-        monthlyFinance[month].expense += (e.amount || 0);
-      }
-    });
-    return Object.entries(monthlyFinance)
-      .sort()
-      .slice(-6)
-      .map(([month, data]) => ({ 
-        month: formatMonthLabel(month), 
-        ...data 
-      }));
-  }, [payments, expenses, formatMonthLabel]);
-
-  // 🩺 COMPREHENSIVE DOCTOR PRODUCTIVITY & LEADERBOARD
+  // ═════════════════════════════════════════════════════════════════════════
+  // 1. DOCTORS LEADERBOARD DATA & EXCEL SORTING
+  // ═════════════════════════════════════════════════════════════════════════
   const doctorLeaderboard = useMemo(() => {
-    // Collect all doctors from user list and active transactions
     const docMap = {};
 
-    // 1. Initialize from official doctors list
     doctors.forEach(doc => {
       const name = doc.name || doc.full_name || 'Shifokor';
       docMap[String(doc.id)] = {
         id: doc.id,
         name,
         specialty: doc.specialty || 'Stomatolog',
-        avatar: doc.avatar_url || doc.photo || doc.avatar || doc.image || '',
         revenue: 0,
         appointmentCount: 0,
         completedCount: 0,
@@ -151,7 +179,6 @@ export default function Reports() {
       };
     });
 
-    // 2. Tally revenue from Payments
     filteredPayments.filter(p => p.type === 'Income').forEach(p => {
       let matchedDocId = p.doctor_id ? String(p.doctor_id) : null;
       if (!matchedDocId && p.doctor_name) {
@@ -165,7 +192,6 @@ export default function Reports() {
           id: matchedDocId || key,
           name: p.doctor_name || 'Shifokor',
           specialty: 'Stomatolog',
-          avatar: '',
           revenue: 0,
           appointmentCount: 0,
           completedCount: 0,
@@ -173,11 +199,10 @@ export default function Reports() {
           patientIds: new Set(),
         };
       }
-      docMap[key].revenue += (p.amount || 0);
+      docMap[key].revenue += (Number(p.amount) || 0);
       if (p.patient_id) docMap[key].patientIds.add(p.patient_id);
     });
 
-    // 3. Tally appointments
     filteredAppointments.forEach(a => {
       let matchedDocId = a.doctor_id ? String(a.doctor_id) : null;
       if (!matchedDocId && a.doctor_name) {
@@ -191,7 +216,6 @@ export default function Reports() {
           id: matchedDocId || key,
           name: a.doctor_name || 'Shifokor',
           specialty: 'Stomatolog',
-          avatar: '',
           revenue: 0,
           appointmentCount: 0,
           completedCount: 0,
@@ -209,7 +233,6 @@ export default function Reports() {
       if (a.patient_id) docMap[key].patientIds.add(a.patient_id);
     });
 
-    // 4. Calculate averages and sort
     const list = Object.values(docMap).map(doc => {
       const avgCheck = doc.completedCount > 0 
         ? Math.round(doc.revenue / doc.completedCount) 
@@ -225,123 +248,320 @@ export default function Reports() {
       };
     });
 
-    // Filter out zero activity if there are active ones
-    const activeList = list.filter(d => d.revenue > 0 || d.appointmentCount > 0);
-    const finalDocs = activeList.length > 0 ? activeList : list.slice(0, 5);
+    const totalRev = list.reduce((sum, d) => sum + d.revenue, 0) || 1;
 
-    // Total clinic revenue for calculating percentage
-    const totalRev = finalDocs.reduce((sum, d) => sum + d.revenue, 0) || 1;
-    const maxRev = Math.max(...finalDocs.map(d => d.revenue), 1);
-    const maxAppts = Math.max(...finalDocs.map(d => d.appointmentCount), 1);
-
-    // Sort according to user selection
-    finalDocs.sort((a, b) => {
-      if (doctorSortBy === 'revenue') return b.revenue - a.revenue;
-      if (doctorSortBy === 'appointments') return b.appointmentCount - a.appointmentCount;
-      if (doctorSortBy === 'avg_check') return b.avgCheck - a.avgCheck;
-      return b.revenue - a.revenue;
-    });
-
-    return finalDocs.map((doc, idx) => ({
+    let result = list.map(doc => ({
       ...doc,
-      rank: idx + 1,
-      revenueShare: Math.round((doc.revenue / totalRev) * 100),
-      relativeProgress: doctorSortBy === 'revenue' 
-        ? Math.round((doc.revenue / maxRev) * 100) 
-        : Math.round((doc.appointmentCount / maxAppts) * 100)
+      revenueShare: Math.round((doc.revenue / totalRev) * 100)
     }));
-  }, [doctors, filteredPayments, filteredAppointments, doctorSortBy]);
 
-  // Chart data for Doctor Bar Chart
-  const doctorChartData = useMemo(() => {
-    return doctorLeaderboard.slice(0, 6).map(d => ({
-      name: d.name.replace(/^(dr\.|doc\.|doktor)\s*/i, '').split(' ')[0],
-      fullName: d.name,
-      revenue: d.revenue,
-      appointments: d.appointmentCount,
-      completed: d.completedCount,
-      avgCheck: d.avgCheck,
-    }));
-  }, [doctorLeaderboard]);
+    if (searchQuery) {
+      result = result.filter(d => 
+        d.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        d.specialty.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
 
-  // 📊 Doctor Appointments Distribution (Pie Chart)
-  const doctorAppointmentsPieData = useMemo(() => {
-    const pieColors = ['#1499AD', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b'];
-    return doctorLeaderboard
-      .filter(d => d.appointmentCount > 0)
-      .slice(0, 6)
-      .map((d, i) => ({
-        name: d.name,
-        value: d.appointmentCount,
-        revenue: d.revenue,
-        color: pieColors[i % pieColors.length]
-      }));
-  }, [doctorLeaderboard]);
-
-  // Top Services
-  const serviceData = useMemo(() => {
-    const servicePopularity = {};
-    filteredPayments.filter(p => p.type === 'Income').forEach(p => {
-      const sName = p.service_name || 'Boshqa';
-      servicePopularity[sName] = (servicePopularity[sName] || 0) + 1;
+    result.sort((a, b) => {
+      let valA, valB;
+      switch (docSortField) {
+        case 'name':
+          valA = a.name.toLowerCase();
+          valB = b.name.toLowerCase();
+          return docSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'appointments':
+          valA = a.appointmentCount;
+          valB = b.appointmentCount;
+          return docSortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'patients':
+          valA = a.uniquePatients;
+          valB = b.uniquePatients;
+          return docSortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'completed':
+          valA = a.completedCount;
+          valB = b.completedCount;
+          return docSortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'avg_check':
+          valA = a.avgCheck;
+          valB = b.avgCheck;
+          return docSortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'share':
+          valA = a.revenueShare;
+          valB = b.revenueShare;
+          return docSortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'revenue':
+        default:
+          valA = a.revenue;
+          valB = b.revenue;
+          return docSortOrder === 'asc' ? valA - valB : valB - valA;
+      }
     });
-    return Object.entries(servicePopularity)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([name, value]) => ({ name: name === 'Boshqa' ? (t('reports.others') || 'Boshqa') : name, value }));
-  }, [filteredPayments, t]);
 
-  const colors = { Completed: '#10b981', Scheduled: '#3b82f6', Cancelled: '#ef4444', 'No-Show': '#64748b', InProgress: '#8b5cf6', Waiting: '#f59e0b' };
-  const chartColors = ['#1499AD', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
-  
-  // Appointment Statuses
-  const apptStatusData = useMemo(() => {
+    return result.map((doc, idx) => ({ ...doc, rank: idx + 1 }));
+  }, [doctors, filteredPayments, filteredAppointments, searchQuery, docSortField, docSortOrder]);
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // 2. MONTHLY FINANCIAL REPORT DATA & EXCEL SORTING
+  // ═════════════════════════════════════════════════════════════════════════
+  const monthlyFinanceReport = useMemo(() => {
+    const map = {};
+
+    payments.filter(p => p.type === 'Income').forEach(p => {
+      const month = p.date?.substring(0, 7);
+      if (month) {
+        if (!map[month]) map[month] = { rawMonth: month, income: 0, expense: 0, appointments: 0 };
+        map[month].income += (Number(p.amount) || 0);
+      }
+    });
+
+    expenses.forEach(e => {
+      const month = e.date?.substring(0, 7);
+      if (month) {
+        if (!map[month]) map[month] = { rawMonth: month, income: 0, expense: 0, appointments: 0 };
+        map[month].expense += (Number(e.amount) || 0);
+      }
+    });
+
+    appointments.forEach(a => {
+      const month = a.date?.substring(0, 7);
+      if (month) {
+        if (!map[month]) map[month] = { rawMonth: month, income: 0, expense: 0, appointments: 0 };
+        map[month].appointments += 1;
+      }
+    });
+
+    let list = Object.values(map).map(item => {
+      const net = item.income - item.expense;
+      const margin = item.income > 0 ? Math.round((net / item.income) * 100) : 0;
+      return {
+        ...item,
+        monthLabel: formatMonthLabel(item.rawMonth),
+        net,
+        margin
+      };
+    });
+
+    list.sort((a, b) => {
+      let valA, valB;
+      switch (finSortField) {
+        case 'income':
+          valA = a.income;
+          valB = b.income;
+          return finSortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'expense':
+          valA = a.expense;
+          valB = b.expense;
+          return finSortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'net':
+          valA = a.net;
+          valB = b.net;
+          return finSortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'appointments':
+          valA = a.appointments;
+          valB = b.appointments;
+          return finSortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'margin':
+          valA = a.margin;
+          valB = b.margin;
+          return finSortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'month':
+        default:
+          valA = a.rawMonth;
+          valB = b.rawMonth;
+          return finSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+    });
+
+    return list;
+  }, [payments, expenses, appointments, formatMonthLabel, finSortField, finSortOrder]);
+
+  // Chart data for 6-month finances
+  const financeChartData = useMemo(() => {
+    return [...monthlyFinanceReport]
+      .sort((a, b) => a.rawMonth.localeCompare(b.rawMonth))
+      .slice(-6)
+      .map(d => ({
+        month: d.monthLabel.split(' ')[0],
+        income: d.income,
+        expense: d.expense,
+        net: d.net
+      }));
+  }, [monthlyFinanceReport]);
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // 3. TOP SERVICES REPORT DATA & EXCEL SORTING
+  // ═════════════════════════════════════════════════════════════════════════
+  const servicesReport = useMemo(() => {
+    const map = {};
+
+    filteredPayments.filter(p => p.type === 'Income').forEach(p => {
+      const name = p.service_name || p.category || 'Boshqa xizmatlar';
+      if (!map[name]) {
+        map[name] = { name, count: 0, revenue: 0 };
+      }
+      map[name].count += 1;
+      map[name].revenue += (Number(p.amount) || 0);
+    });
+
+    const totalIncome = Object.values(map).reduce((sum, s) => sum + s.revenue, 0) || 1;
+
+    let list = Object.values(map).map(s => ({
+      ...s,
+      avgPrice: Math.round(s.revenue / (s.count || 1)),
+      share: Math.round((s.revenue / totalIncome) * 100)
+    }));
+
+    if (searchQuery) {
+      list = list.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+
+    list.sort((a, b) => {
+      let valA, valB;
+      switch (srvSortField) {
+        case 'name':
+          valA = a.name.toLowerCase();
+          valB = b.name.toLowerCase();
+          return srvSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'count':
+          valA = a.count;
+          valB = b.count;
+          return srvSortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'avgPrice':
+          valA = a.avgPrice;
+          valB = b.avgPrice;
+          return srvSortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'share':
+          valA = a.share;
+          valB = b.share;
+          return srvSortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'revenue':
+        default:
+          valA = a.revenue;
+          valB = b.revenue;
+          return srvSortOrder === 'asc' ? valA - valB : valB - valA;
+      }
+    });
+
+    return list;
+  }, [filteredPayments, searchQuery, srvSortField, srvSortOrder]);
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // 4. APPOINTMENTS BREAKDOWN DATA
+  // ═════════════════════════════════════════════════════════════════════════
+  const appointmentsStatusReport = useMemo(() => {
     const statusCounts = {};
     filteredAppointments.forEach(a => {
       const rawStatus = a.status || '';
-      let status = 'Scheduled';
+      let status = 'Rejalashtirilgan';
       const lower = rawStatus.toLowerCase();
-      if (lower === 'completed') status = 'Completed';
-      else if (lower === 'scheduled' || lower === 'planned') status = 'Scheduled';
-      else if (lower === 'cancelled') status = 'Cancelled';
-      else if (lower === 'no-show' || lower === 'noshow' || lower === 'no_show') status = 'No-Show';
-      else if (lower === 'waiting') status = 'Waiting';
-      else if (lower === 'inprogress' || lower === 'in_progress' || lower === 'in progress' || lower === 'status.in progress' || lower === 'status.in_progress') status = 'InProgress';
+      if (lower === 'completed') status = 'Bajarilgan';
+      else if (lower === 'scheduled' || lower === 'planned') status = 'Rejalashtirilgan';
+      else if (lower === 'cancelled') status = 'Bekor qilingan';
+      else if (lower.includes('no_show') || lower.includes('no-show') || lower.includes('noshow')) status = 'Kelmagan';
+      else if (lower.includes('progress') || lower.includes('waiting')) status = 'Kutilmoqda';
       else {
-        status = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
+        status = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
       }
       statusCounts[status] = (statusCounts[status] || 0) + 1;
     });
 
-    return Object.entries(statusCounts).map(([name, value]) => ({ 
-      name: t(`status.${name}`) || name, 
-      value, 
-      color: colors[name] || '#94a3b8' 
-    }));
-  }, [filteredAppointments, t]);
+    const total = filteredAppointments.length || 1;
+    const colors = {
+      'Bajarilgan': '#10b981',
+      'Rejalashtirilgan': '#3b82f6',
+      'Bekor qilingan': '#ef4444',
+      'Kelmagan': '#64748b',
+      'Kutilmoqda': '#f59e0b'
+    };
 
-  if (loading) return (
-    <div className="space-y-6 p-4">
-      <div className="h-10 w-48 bg-slate-100 rounded-lg animate-pulse" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[1,2,3,4].map(i => <div key={i} className="h-32 bg-slate-50 rounded-[2rem] animate-pulse" />)}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {[1,2].map(i => <div key={i} className="h-80 bg-slate-50 rounded-[2.5rem] animate-pulse" />)}
-      </div>
-    </div>
-  );
+    return Object.entries(statusCounts).map(([status, count]) => ({
+      status,
+      count,
+      share: Math.round((count / total) * 100),
+      color: colors[status] || '#94a3b8'
+    }));
+  }, [filteredAppointments]);
+
+  /**
+   * Export Active Report Table to CSV with UTF-8 BOM
+   */
+  const exportCSV = useCallback(() => {
+    try {
+      let headers = [];
+      let rows = [];
+      let filename = `Hisobot_${activeReportTab}_${new Date().toISOString().slice(0, 10)}.csv`;
+
+      if (activeReportTab === 'doctors') {
+        headers = ["№", "Shifokor (F.I.Sh)", "Mutaxassislik", "Qabullar Soni", "Bajarilgan", "Noyob Bemorlar", "Umumiy Tushum (UZS)", "O'rtacha Chek (UZS)", "Ulush (%)"];
+        rows = doctorLeaderboard.map((d, idx) => [
+          idx + 1,
+          `"${d.name.replace(/"/g, '""')}"`,
+          `"${d.specialty.replace(/"/g, '""')}"`,
+          d.appointmentCount,
+          d.completedCount,
+          d.uniquePatients,
+          d.revenue,
+          d.avgCheck,
+          `${d.revenueShare}%`
+        ].join(","));
+      } else if (activeReportTab === 'finance') {
+        headers = ["№", "Oy / Davr", "Qabullar Soni", "Kirim / Tushum (UZS)", "Chiqim / Xarajat (UZS)", "Sof Foyda (UZS)", "Rentabellik (%)"];
+        rows = monthlyFinanceReport.map((f, idx) => [
+          idx + 1,
+          `"${f.monthLabel}"`,
+          f.appointments,
+          f.income,
+          f.expense,
+          f.net,
+          `${f.margin}%`
+        ].join(","));
+      } else if (activeReportTab === 'services') {
+        headers = ["№", "Xizmat Nomi", "Bajarilganlar Soni", "Umumiy Tushum (UZS)", "O'rtacha Narx (UZS)", "Ulush (%)"];
+        rows = servicesReport.map((s, idx) => [
+          idx + 1,
+          `"${s.name.replace(/"/g, '""')}"`,
+          s.count,
+          s.revenue,
+          s.avgPrice,
+          `${s.share}%`
+        ].join(","));
+      } else {
+        headers = ["№", "Qabul Holati", "Uchrashuvlar Soni", "Ulush (%)"];
+        rows = appointmentsStatusReport.map((a, idx) => [
+          idx + 1,
+          `"${a.status}"`,
+          a.count,
+          `${a.share}%`
+        ].join(","));
+      }
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Hisobot Excel (.csv) formatida yuklab olindi!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Eksportda xatolik yuz berdi");
+    }
+  }, [activeReportTab, doctorLeaderboard, monthlyFinanceReport, servicesReport, appointmentsStatusReport]);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white/95 backdrop-blur-md border border-slate-100 p-3.5 rounded-2xl shadow-xl z-50">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{label}</p>
+        <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-3 rounded-xl shadow-lg z-50 text-xs">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">{label}</p>
           {payload.map((p, i) => (
-            <div key={i} className="flex items-center gap-2 mb-1">
+            <div key={i} className="flex items-center gap-2 mb-0.5">
               <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color || p.fill }} />
-              <p className="text-xs font-black text-slate-900">
-                {p.name}: <span className="text-[#1499AD] font-black">{typeof p.value === 'number' ? (p.value >= 10000 ? formatCurrency(p.value) : `${p.value.toLocaleString()} ta`) : p.value}</span>
+              <p className="font-bold text-slate-800">
+                {p.name}: <span className="font-mono font-black text-slate-900">{Number(p.value).toLocaleString()} UZS</span>
               </p>
             </div>
           ))}
@@ -352,498 +572,738 @@ export default function Reports() {
   };
 
   return (
-    <div className="space-y-4 pb-6">
-      {/* Top Header & Period Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 sm:px-0">
+    <div className="space-y-3.5 pb-4">
+      
+      {/* ─── Excel Header Bar ────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none uppercase">
-            {t('navigation.reports') || 'Hisobotlar va Tahlil'}
-          </h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">
-            Klinika faoliyati, shifokorlar reytingi va qabullar tahlili
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('navigation.reports') || "Hisobotlar"}</h1>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-[#1499AD]/10 text-[#1499AD] border border-[#1499AD]/20">
+              • Analitika va Boshqaruv
+            </span>
+          </div>
+          <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+            Klinika umumiy moliyaviy hisoboti, shifokorlar reytingi va xizmatlar tahlili
           </p>
         </div>
 
-        {/* Period Filter Tabs */}
-        <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-2xl border border-slate-200/60 shadow-xs self-start sm:self-auto">
-          {[
-            { key: 'all', label: 'Barchasi' },
-            { key: 'this_month', label: 'Bu oy' },
-            { key: 'last_month', label: 'O\'tgan oy' },
-            { key: 'year', label: 'Yillik' },
-          ].map(p => (
-            <button
-              key={p.key}
-              onClick={() => setPeriod(p.key)}
-              className={cn(
-                "px-3.5 h-8 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
-                period === p.key
-                  ? "bg-white text-[#1499AD] shadow-sm font-black"
-                  : "text-slate-500 hover:text-slate-900"
-              )}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          {/* Period Filter Tabs */}
+          <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70">
+            {[
+              { key: 'all', label: 'Barchasi' },
+              { key: 'this_month', label: 'Bu oy' },
+              { key: 'last_month', label: 'O\'tgan oy' },
+              { key: 'year', label: 'Yillik' },
+            ].map(p => (
+              <button
+                key={p.key}
+                onClick={() => setPeriod(p.key)}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                  period === p.key
+                    ? "bg-white text-slate-900 shadow-xs font-black"
+                    : "text-slate-500 hover:text-slate-900"
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          <Button 
+            variant="outline" 
+            onClick={exportCSV} 
+            className="gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs text-slate-700 h-9 px-3.5"
+            title="Excel formatida (.csv) yuklab olish"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span>Eksport (Excel)</span>
+          </Button>
         </div>
       </div>
 
-      {/* Quick Overview Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 px-1 sm:px-0">
+      {/* ─── Top Executive Financial KPI Grid ───────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: t('patients.totalVisits') || 'Jami qabullar', value: `${filteredAppointments.length} ta`, sub: `${stats.completedAppts} ta yakunlangan`, icon: Calendar, color: "text-[#1499AD]", bg: "bg-[#1499AD]/10" },
-          { label: t('payments.income') || 'Jami Tushum', value: formatCurrency(stats.totalIncome).replace(' so\'m', ''), sub: "so'm kirim", icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50", isCurrency: true },
-          { label: t('expenses.title') || 'Chiqimlar', value: formatCurrency(stats.totalExpense).replace(' so\'m', ''), sub: "so'm xarajat", icon: ArrowDownRight, color: "text-rose-600", bg: "bg-rose-50", isCurrency: true },
-          { label: t('reports.netProfit', 'Net Profit') || 'Sof Foyda', value: formatCurrency(stats.netProfit).replace(' so\'m', ''), sub: `O'rtacha chek: ${formatCurrency(stats.avgCheck)}`, icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-50", isCurrency: true },
+          { label: "JAMI QABULLAR", value: `${filteredAppointments.length} ta`, icon: Calendar, color: "text-blue-600", bg: "bg-blue-50 border-blue-100", countText: `${stats.completedAppts} ta yakunlangan` },
+          { label: "UMUMIY DAROMAD", value: `${stats.totalIncome.toLocaleString()} UZS`, icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", countText: "Klinikaga jami tushum" },
+          { label: "CHIQIMLAR / XARAJAT", value: `${stats.totalExpense.toLocaleString()} UZS`, icon: ArrowDownRight, color: "text-rose-600", bg: "bg-rose-50 border-rose-100", countText: "Jami klinik xarajatlar" },
+          { label: "SOF FOYDA", value: `${stats.netProfit.toLocaleString()} UZS`, icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-50 border-purple-100", countText: `O'rtacha chek: ${stats.avgCheck.toLocaleString()} UZS` },
         ].map((s, i) => (
           <motion.div 
-            key={i}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="bg-white border border-slate-100 rounded-[1.5rem] p-4 shadow-sm relative overflow-hidden group hover:shadow-md hover:border-[#1499AD]/20 transition-all"
+            key={s.label}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: i * 0.03 }}
+            className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-xs flex items-center justify-between relative overflow-hidden"
           >
-            <div className="flex items-center justify-between mb-2">
-              <div className={`w-9 h-9 rounded-xl ${s.bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                <s.icon className={`w-5 h-5 ${s.color}`} />
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">
+                {s.label}
+              </span>
+              <div className="text-lg sm:text-xl font-black font-mono tracking-tight text-slate-900 tabular-nums">
+                {s.value}
               </div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate max-w-[100px]">{s.sub}</span>
+              <p className="text-[9.5px] font-medium text-slate-400 mt-0.5">{s.countText}</p>
             </div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{s.label}</p>
-            <p className={`text-base sm:text-lg font-black tracking-tight truncate ${s.color} mt-0.5`}>
-              {s.value}
-            </p>
+
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-xs shrink-0 ${s.bg}`}>
+              <s.icon className={`w-5 h-5 ${s.color}`} />
+            </div>
           </motion.div>
         ))}
       </div>
 
-      {/* ═════════════════════════════════════════════════════════════════════════ */}
-      {/* 🏆 SHIFOKORLAR REYTINGI VA UNUMDORLIGI (PROFESSIONAL LEADERBOARD)       */}
-      {/* ═════════════════════════════════════════════════════════════════════════ */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-[2.5rem] border border-slate-100 p-6 sm:p-8 shadow-sm"
-      >
-        {/* Header with Title & Sort Switchers */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs">
-                <Crown className="w-4 h-4" />
-              </div>
-              <h2 className="text-base font-black text-slate-900 uppercase tracking-tight">
-                Shifokorlar Unumdorligi va Reytingi
-              </h2>
-            </div>
-            <p className="text-[11px] font-bold text-slate-400 mt-1 ml-10">
-              Shifokorlarning keltirgan daromadi, qabul soni va o'rtacha chek ko'rsatkichlari
-            </p>
+      {/* ─── Excel Spreadsheet Controls & Report Navigation Bar ─────── */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+          
+          {/* Report Type Selector Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+            {[
+              { id: 'doctors', label: "Shifokorlar Reytingi", icon: Award, count: doctorLeaderboard.length },
+              { id: 'finance', label: "Oylik Kirim & Chiqim", icon: DollarSign, count: monthlyFinanceReport.length },
+              { id: 'services', label: "Top Xizmatlar", icon: Layers, count: servicesReport.length },
+              { id: 'appointments', label: "Qabullar Taqsimoti", icon: Receipt, count: appointmentsStatusReport.length },
+            ].map(tab => {
+              const isActive = activeReportTab === tab.id;
+              const IconComp = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveReportTab(tab.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+                    isActive 
+                      ? "bg-slate-900 text-white shadow-sm font-black" 
+                      : "bg-slate-100/70 text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                  )}
+                >
+                  <IconComp className={cn("w-3.5 h-3.5", isActive ? "text-emerald-400" : "text-slate-400")} />
+                  <span>{tab.label}</span>
+                  <span className={cn(
+                    "px-1.5 py-0.2 rounded-full text-[9px] font-black",
+                    isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
+                  )}>
+                    {tab.count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Sort Tabs */}
-          <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-2xl border border-slate-200/60 self-start md:self-auto">
-            <button
-              onClick={() => setDoctorSortBy('revenue')}
-              className={cn(
-                "px-3.5 h-8 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer",
-                doctorSortBy === 'revenue'
-                  ? "bg-[#1499AD] text-white shadow-sm font-black"
-                  : "text-slate-500 hover:text-slate-900 bg-white"
-              )}
-            >
-              <DollarSign className="w-3.5 h-3.5" />
-              <span>Daromad bo'yicha</span>
-            </button>
-            <button
-              onClick={() => setDoctorSortBy('appointments')}
-              className={cn(
-                "px-3.5 h-8 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer",
-                doctorSortBy === 'appointments'
-                  ? "bg-[#1499AD] text-white shadow-sm font-black"
-                  : "text-slate-500 hover:text-slate-900 bg-white"
-              )}
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Uchrashuvlar bo'yicha</span>
-            </button>
-            <button
-              onClick={() => setDoctorSortBy('avg_check')}
-              className={cn(
-                "px-3.5 h-8 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer",
-                doctorSortBy === 'avg_check'
-                  ? "bg-[#1499AD] text-white shadow-sm font-black"
-                  : "text-slate-500 hover:text-slate-900 bg-white"
-              )}
-            >
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>O'rtacha chek</span>
-            </button>
+          <div className="flex items-center gap-2">
+            {/* Search Box */}
+            {(activeReportTab === 'doctors' || activeReportTab === 'services') && (
+              <div className="relative w-full sm:w-64 group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-[#1499AD]" />
+                <input 
+                  type="text" 
+                  placeholder={activeReportTab === 'doctors' ? "Shifokor nomi..." : "Xizmat nomi..."}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-8.5 pl-8 pr-7 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 outline-none"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Density Switcher */}
+            <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 shrink-0">
+              <button
+                onClick={() => toggleDensity('compact')}
+                title="Ixcham Excel Jadvali"
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
+                  density === 'compact' 
+                    ? 'bg-white text-slate-900 shadow-xs' 
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
+                <span>Excel</span>
+              </button>
+              <button
+                onClick={() => toggleDensity('comfortable')}
+                title="Keng Jadval Ko'rinishi"
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
+                  density === 'comfortable' 
+                    ? 'bg-white text-slate-900 shadow-xs' 
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
+                <span>Keng</span>
+              </button>
+            </div>
           </div>
+
         </div>
+      </div>
 
-        {/* Doctor Grid Cards / Leaderboard */}
-        {doctorLeaderboard.length > 0 ? (
-          <div className="space-y-6">
-            {/* Top 3 Podium Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {doctorLeaderboard.slice(0, 3).map((doc, idx) => {
-                const rankStyles = [
-                  { badge: 'bg-amber-400 text-white', border: 'border-amber-200/80 bg-gradient-to-b from-amber-50/50 to-white', icon: Trophy, medal: '🥇 1-O\'rin', shadow: 'shadow-amber-500/10' },
-                  { badge: 'bg-slate-400 text-white', border: 'border-slate-200 bg-gradient-to-b from-slate-50/50 to-white', icon: Medal, medal: '🥈 2-O\'rin', shadow: 'shadow-slate-500/10' },
-                  { badge: 'bg-amber-700 text-white', border: 'border-amber-900/20 bg-gradient-to-b from-amber-50/30 to-white', icon: Award, medal: '🥉 3-O\'rin', shadow: 'shadow-amber-800/10' }
-                ][idx] || { badge: 'bg-slate-200 text-slate-700', border: 'border-slate-100 bg-white', icon: Award, medal: `#${idx + 1}` };
-
-                const IconComponent = rankStyles.icon;
-
-                return (
-                  <div 
-                    key={doc.id || doc.name} 
-                    className={cn(
-                      "p-5 rounded-3xl border relative overflow-hidden transition-all shadow-sm hover:shadow-md",
-                      rankStyles.border
-                    )}
-                  >
-                    {/* Rank Badge */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-1.5">
-                        <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider", rankStyles.badge)}>
-                          {rankStyles.medal}
-                        </span>
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          {doc.revenueShare}% ulush
-                        </span>
-                      </div>
-                      <IconComponent className="w-5 h-5 text-amber-500 opacity-80" />
-                    </div>
-
-                    {/* Doctor Info */}
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200/80 shadow-xs overflow-hidden shrink-0 flex items-center justify-center">
-                        {doc.avatar ? (
-                          <img src={doc.avatar} alt={doc.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-[#1499AD]/10 text-[#1499AD] font-black text-base flex items-center justify-center">
-                            {doc.name.replace(/^(dr\.|doc\.|doktor)\s*/i, '').charAt(0)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-black text-slate-900 text-sm tracking-tight truncate">
-                          {doc.name}
-                        </h4>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
-                          {doc.specialty}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Key Metrics */}
-                    <div className="space-y-2 bg-white/80 backdrop-blur-xs p-3 rounded-2xl border border-slate-100">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Tushum:</span>
-                        <span className="font-black text-emerald-600">{formatCurrency(doc.revenue)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Uchrashuvlar:</span>
-                        <span className="font-black text-slate-900">{doc.appointmentCount} ta <span className="text-[10px] text-emerald-500 font-bold">({doc.completedCount} bajarilgan)</span></span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">O'rtacha chek:</span>
-                        <span className="font-black text-[#1499AD]">{formatCurrency(doc.avgCheck)}</span>
-                      </div>
-                    </div>
-
-                    {/* Relative Progress Bar */}
-                    <div className="mt-3.5">
-                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-[#1499AD] to-blue-500 rounded-full transition-all duration-700" 
-                          style={{ width: `${Math.max(doc.relativeProgress, 8)}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Comparison Chart & Detailed Table */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
-              {/* Doctor Comparison Bar Chart */}
-              <div className="bg-slate-50/70 p-5 sm:p-6 rounded-3xl border border-slate-100">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">
-                    {doctorSortBy === 'revenue' ? "Daromadlar taqqoslash (so'm)" : (doctorSortBy === 'appointments' ? "Uchrashuvlar soni taqqoslash" : "O'rtacha chek taqqoslash")}
-                  </h4>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Top 6 Shifokor</span>
-                </div>
-                <div className="h-[240px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={doctorChartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="6 6" stroke="#e2e8f0" vertical={false} />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} />
-                      <Tooltip content={<CustomTooltip />} cursor={{ fill: '#ffffff', radius: 10 }} />
-                      {doctorSortBy === 'revenue' && (
-                        <Bar dataKey="revenue" name="Tushum" fill="#1499AD" radius={[8, 8, 0, 0]} barSize={28} />
-                      )}
-                      {doctorSortBy === 'appointments' && (
-                        <Bar dataKey="appointments" name="Qabullar soni" fill="#3b82f6" radius={[8, 8, 0, 0]} barSize={28} />
-                      )}
-                      {doctorSortBy === 'avg_check' && (
-                        <Bar dataKey="avgCheck" name="O'rtacha chek" fill="#10b981" radius={[8, 8, 0, 0]} barSize={28} />
-                      )}
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Full Doctors Ranking List */}
-              <div className="bg-slate-50/70 p-5 sm:p-6 rounded-3xl border border-slate-100">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">
-                    Shifokorlar to'liq ro'yxati
-                  </h4>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{doctorLeaderboard.length} nafar</span>
-                </div>
-
-                <div className="space-y-2.5 max-h-[250px] overflow-y-auto no-scrollbar pr-1">
-                  {doctorLeaderboard.map((doc) => (
-                    <div 
-                      key={doc.id || doc.name} 
-                      className="p-3 bg-white rounded-2xl border border-slate-100 hover:border-[#1499AD]/30 flex items-center justify-between gap-3 transition-all"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className={cn(
-                          "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0",
-                          doc.rank === 1 ? "bg-amber-100 text-amber-700" : (doc.rank === 2 ? "bg-slate-200 text-slate-700" : (doc.rank === 3 ? "bg-amber-900/10 text-amber-900" : "bg-slate-100 text-slate-500"))
-                        )}>
-                          #{doc.rank}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-xs font-black text-slate-900 truncate leading-tight">{doc.name}</p>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">{doc.specialty}</p>
-                        </div>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <p className="text-xs font-black text-emerald-600 leading-tight">{formatCurrency(doc.revenue)}</p>
-                        <p className="text-[9px] font-bold text-slate-400">{doc.appointmentCount} ta qabul ({doc.completionRate}%)</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <EmptyState icon={Stethoscope} title="Shifokorlar faoliyati bo'yicha ma'lumot topilmadi" />
-        )}
-      </motion.div>
-
-      {/* ═════════════════════════════════════════════════════════════════════════ */}
-      {/* 📊 UCHRASHUVLAR VA XIZMATLAR TAHLILI (2 TA USTUN)                        */}
-      {/* ═════════════════════════════════════════════════════════════════════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-1 sm:px-0">
-        {/* Finance Chart (6 Oylik Kirim va Chiqim) */}
+      {/* ═════════════════════════════════════════════════════════════════ */}
+      {/* ─── TAB 1: SHIFOKORLAR UNUMDORLIGI & REYTINGI EXCEL JADVALI ───── */}
+      {/* ═════════════════════════════════════════════════════════════════ */}
+      {activeReportTab === 'doctors' && (
         <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-[2.5rem] border border-slate-100 p-6 sm:p-8 shadow-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden relative"
         >
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">{t('reports.incomeAndExpenses') || 'Kirim va Chiqimlar'}</h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Oxirgi 6 oylik dinamika</p>
+          {loading && (
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-slate-100 overflow-hidden z-20">
+              <motion.div 
+                className="h-full bg-gradient-to-r from-[#1499AD] to-[#0E7A8A]"
+                animate={{ x: ['-100%', '100%'] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+              />
             </div>
-            <div className="flex gap-2">
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-[9px] font-bold text-slate-400 uppercase">{t('payments.income')}</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-500" /><span className="text-[9px] font-bold text-slate-400 uppercase">{t('expenses.title')}</span></div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left select-text">
+              <thead>
+                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 text-[10.5px] font-black uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
+                  <th className="w-12 px-2.5 py-2.5 text-center border-r border-slate-200 select-none font-mono">
+                    №
+                  </th>
+                  <th 
+                    onClick={() => handleDocSort('name')}
+                    className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span>Shifokor (F.I.Sh)</span>
+                      {docSortField === 'name' ? (
+                        docSortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-3.5 py-2.5 border-r border-slate-200 whitespace-nowrap min-w-[140px]">
+                    Mutaxassislik
+                  </th>
+                  <th 
+                    onClick={() => handleDocSort('appointments')}
+                    className="w-32 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap bg-blue-50/30"
+                  >
+                    <div className="flex items-center justify-center gap-1.5 text-blue-800 font-mono">
+                      <span>Qabullar</span>
+                      {docSortField === 'appointments' ? (
+                        docSortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-40" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleDocSort('completed')}
+                    className="w-32 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  >
+                    <div className="flex items-center justify-center gap-1.5 text-emerald-800 font-mono">
+                      <span>Bajarilgan</span>
+                      {docSortField === 'completed' ? (
+                        docSortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleDocSort('patients')}
+                    className="w-32 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  >
+                    <div className="flex items-center justify-center gap-1.5 text-slate-700 font-mono">
+                      <span>Bemorlar soni</span>
+                      {docSortField === 'patients' ? (
+                        docSortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleDocSort('revenue')}
+                    className="w-44 px-3.5 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-emerald-50/40 select-none whitespace-nowrap"
+                  >
+                    <div className="flex items-center justify-end gap-1.5 text-emerald-700 font-mono">
+                      <span>Umumiy Tushum</span>
+                      {docSortField === 'revenue' ? (
+                        docSortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-40" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleDocSort('avg_check')}
+                    className="w-36 px-3.5 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  >
+                    <div className="flex items-center justify-end gap-1.5 text-slate-700 font-mono">
+                      <span>O'rtacha Chek</span>
+                      {docSortField === 'avg_check' ? (
+                        docSortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleDocSort('share')}
+                    className="w-28 px-3 py-2.5 text-center select-none whitespace-nowrap"
+                  >
+                    Klinika Ulushi
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-200/70 text-xs">
+                {doctorLeaderboard.length > 0 ? (
+                  doctorLeaderboard.map((doc, idx) => {
+                    const isCompact = density === 'compact';
+                    return (
+                      <tr 
+                        key={doc.id || idx}
+                        className={`group hover:bg-[#1499AD]/10 transition-colors ${
+                          idx % 2 === 1 ? 'bg-slate-50/30' : 'bg-white'
+                        }`}
+                      >
+                        <td className={`text-center font-mono font-bold text-slate-400 border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-2 px-2' : 'py-3 px-2.5'}`}>
+                          {idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : idx + 1}
+                        </td>
+                        <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          <span className="font-extrabold text-slate-900 group-hover:text-[#1499AD] transition-colors truncate block">
+                            {doc.name}
+                          </span>
+                        </td>
+                        <td className={`border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-bold text-slate-600 bg-slate-100 border border-slate-200">
+                            {doc.specialty}
+                          </span>
+                        </td>
+                        <td className={`text-center border-r border-slate-200/70 whitespace-nowrap bg-blue-50/20 ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
+                          <span className="font-mono font-bold text-blue-900">{doc.appointmentCount} ta</span>
+                        </td>
+                        <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
+                          <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                            {doc.completedCount} ({doc.completionRate}%)
+                          </span>
+                        </td>
+                        <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
+                          <span className="font-mono font-bold text-slate-700">{doc.uniquePatients} nafar</span>
+                        </td>
+                        <td className={`text-right border-r border-slate-200/70 whitespace-nowrap bg-emerald-50/30 ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
+                          <span className="font-mono font-black text-emerald-600 text-xs tabular-nums">
+                            {doc.revenue.toLocaleString()} <span className="text-[9.5px] text-emerald-500">UZS</span>
+                          </span>
+                        </td>
+                        <td className={`text-right border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
+                          <span className="font-mono font-bold text-slate-800 text-xs tabular-nums">
+                            {doc.avgCheck.toLocaleString()} <span className="text-[9.5px] text-slate-400">UZS</span>
+                          </span>
+                        </td>
+                        <td className={`text-center whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
+                          <span className="font-mono font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                            {doc.revenueShare}%
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={9} className="py-16 text-center text-slate-400 font-bold">
+                      Ma'lumot topilmadi
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer Bar */}
+          <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3 text-slate-600 font-bold">
+              <span>Jadvalda: <strong className="text-slate-900 font-mono">{doctorLeaderboard.length}</strong> ta shifokor</span>
+              <span>•</span>
+              <span>Σ Jami Qabullar: <strong className="text-blue-700 font-mono">{doctorLeaderboard.reduce((s, d) => s + d.appointmentCount, 0)} ta</strong></span>
+            </div>
+            <div className="flex items-center gap-2 font-mono">
+              <span className="text-slate-500 font-bold uppercase text-[10px]">Σ Jami Shifokorlar Tushumi:</span>
+              <strong className="text-emerald-700 text-sm">{doctorLeaderboard.reduce((s, d) => s + d.revenue, 0).toLocaleString()} UZS</strong>
             </div>
           </div>
-          {financeData.length > 0 ? (
-            <div className="h-[250px] w-full">
+        </motion.div>
+      )}
+
+      {/* ═════════════════════════════════════════════════════════════════ */}
+      {/* ─── TAB 2: OYLIK MOLIYAVIY HISOBOT (KIRIM & CHIQIM) ─────────── */}
+      {/* ═════════════════════════════════════════════════════════════════ */}
+      {activeReportTab === 'finance' && (
+        <div className="space-y-3.5">
+          {/* Monthly Finance Chart */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-xs font-black text-slate-900 uppercase">Oylik Kirim va Chiqim Dinamikasi</h3>
+                <p className="text-[10px] text-slate-400 font-bold">So'nggi 6 oylik moliyaviy ko'rsatkichlar diagrammasi</p>
+              </div>
+              <div className="flex items-center gap-3 text-[11px] font-bold">
+                <span className="flex items-center gap-1.5 text-emerald-700"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Tushum (Kirim)</span>
+                <span className="flex items-center gap-1.5 text-rose-700"><div className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Chiqim (Xarajat)</span>
+              </div>
+            </div>
+            <div className="h-[220px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={financeData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="8 8" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc', radius: 12 }} />
-                  <Bar dataKey="income" name={t('payments.income')} fill="#10b981" radius={[6, 6, 0, 0]} barSize={18} />
-                  <Bar dataKey="expense" name={t('expenses.title')} fill="#f43f5e" radius={[6, 6, 0, 0]} barSize={18} />
+                <BarChart data={financeChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="income" name="Tushum" fill="#10b981" radius={[6, 6, 0, 0]} barSize={22} />
+                  <Bar dataKey="expense" name="Xarajat" fill="#f43f5e" radius={[6, 6, 0, 0]} barSize={22} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          ) : <EmptyState icon={BarChart3} title={t('common.noData')} />}
-        </motion.div>
-
-        {/* Dynamic Breakdown: Uchrashuvlar bo'yicha / Xizmatlar bo'yicha */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-[2.5rem] border border-slate-100 p-6 sm:p-8 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">
-                {breakdownTab === 'appointments' ? 'Uchrashuvlar Taqsimoti' : 'Top Xizmatlar'}
-              </h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                {breakdownTab === 'appointments' ? 'Shifokorlar bo\'yicha qabullar ulushi' : 'Eng ko\'p ko\'rsatilgan xizmatlar'}
-              </p>
-            </div>
-
-            {/* Switch between Appointments & Services */}
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-              <button
-                onClick={() => setBreakdownTab('appointments')}
-                className={cn(
-                  "px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer",
-                  breakdownTab === 'appointments' ? "bg-white text-[#1499AD] shadow-xs" : "text-slate-500"
-                )}
-              >
-                Qabullar
-              </button>
-              <button
-                onClick={() => setBreakdownTab('services')}
-                className={cn(
-                  "px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer",
-                  breakdownTab === 'services' ? "bg-white text-[#1499AD] shadow-xs" : "text-slate-500"
-                )}
-              >
-                Xizmatlar
-              </button>
-            </div>
           </div>
 
-          {breakdownTab === 'appointments' ? (
-            doctorAppointmentsPieData.length > 0 ? (
-              <div className="flex flex-col sm:flex-row items-center gap-6">
-                <div className="h-[220px] w-full sm:w-1/2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie 
-                        data={doctorAppointmentsPieData} 
-                        dataKey="value" 
-                        nameKey="name" 
-                        cx="50%" 
-                        cy="50%" 
-                        innerRadius={55}
-                        outerRadius={80} 
-                        paddingAngle={5}
-                      >
-                        {doctorAppointmentsPieData.map((entry, index) => (
-                          <Cell key={index} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<CustomTooltip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex flex-col gap-2 w-full sm:w-1/2 justify-center">
-                  {doctorAppointmentsPieData.map((d) => (
-                    <div key={d.name} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100/60">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                        <span className="text-[11px] font-black text-slate-700 uppercase tracking-tight truncate">{d.name}</span>
+          {/* Monthly Finance Excel Grid Table */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden relative"
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left select-text">
+                <thead>
+                  <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 text-[10.5px] font-black uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
+                    <th className="w-12 px-2.5 py-2.5 text-center border-r border-slate-200 font-mono">№</th>
+                    <th 
+                      onClick={() => handleFinSort('month')}
+                      className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors"
+                    >
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span>Oy / Davr</span>
+                        {finSortField === 'month' ? (
+                          finSortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                        ) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
                       </div>
-                      <span className="text-[11px] font-black text-slate-900 ml-2 shrink-0">{d.value} ta</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : <EmptyState icon={Calendar} title="Uchrashuvlar topilmadi" />
-          ) : (
-            serviceData.length > 0 ? (
-              <div className="flex flex-col sm:flex-row items-center gap-6">
-                <div className="h-[220px] w-full sm:w-1/2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={serviceData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={4}>
-                        {serviceData.map((entry, index) => (
-                          <Cell key={index} fill={chartColors[index % chartColors.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<CustomTooltip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex flex-col gap-2 w-full sm:w-1/2 justify-center">
-                  {serviceData.map((d, index) => (
-                    <div key={d.name} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100/60">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: chartColors[index % chartColors.length] }} />
-                        <span className="text-[11px] font-black text-slate-700 uppercase tracking-tight truncate">{d.name}</span>
-                      </div>
-                      <span className="text-[11px] font-black text-slate-900 ml-2 shrink-0">{d.value} {t('reports.pieces') || 'ta'}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : <EmptyState icon={BarChart3} title={t('common.noData')} />
-          )}
-        </motion.div>
-      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleFinSort('appointments')}
+                      className="w-32 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-blue-50/30"
+                    >
+                      Qabullar
+                    </th>
+                    <th 
+                      onClick={() => handleFinSort('income')}
+                      className="w-44 px-3.5 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-emerald-50/40"
+                    >
+                      Kirim (Tushum)
+                    </th>
+                    <th 
+                      onClick={() => handleFinSort('expense')}
+                      className="w-44 px-3.5 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-rose-50/40"
+                    >
+                      Chiqim (Xarajat)
+                    </th>
+                    <th 
+                      onClick={() => handleFinSort('net')}
+                      className="w-44 px-3.5 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-purple-50/40"
+                    >
+                      Sof Foyda
+                    </th>
+                    <th 
+                      onClick={() => handleFinSort('margin')}
+                      className="w-32 px-3 py-2.5 text-center"
+                    >
+                      Rentabellik
+                    </th>
+                  </tr>
+                </thead>
 
-      {/* Appointment Status Breakdown */}
-      <motion.div 
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="bg-white rounded-[2.5rem] border border-slate-100 p-6 sm:p-8 shadow-sm"
-      >
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-tight">
-              {t('dashboard.appointmentStats') || 'Uchrashuvlar Holatlari Statistikasi'}
-            </h3>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-              Qabullar ijrosi, yakunlangan va bekor qilingan holatlar tahlili
-            </p>
-          </div>
-          <span className="text-xs font-black text-[#1499AD] bg-[#1499AD]/10 px-3 py-1 rounded-full">
-            Jami: {filteredAppointments.length} ta
-          </span>
+                <tbody className="divide-y divide-slate-200/70 text-xs">
+                  {monthlyFinanceReport.length > 0 ? (
+                    monthlyFinanceReport.map((f, idx) => {
+                      const isCompact = density === 'compact';
+                      return (
+                        <tr 
+                          key={f.rawMonth}
+                          className={`hover:bg-[#1499AD]/10 transition-colors ${
+                            idx % 2 === 1 ? 'bg-slate-50/30' : 'bg-white'
+                          }`}
+                        >
+                          <td className={`text-center font-mono font-bold text-slate-400 border-r border-slate-200/70 ${isCompact ? 'py-2 px-2' : 'py-3 px-2.5'}`}>
+                            {idx + 1}
+                          </td>
+                          <td className={`border-r border-slate-200/70 font-extrabold text-slate-900 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                            {f.monthLabel}
+                          </td>
+                          <td className={`text-center border-r border-slate-200/70 font-mono font-bold text-blue-900 bg-blue-50/20 ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
+                            {f.appointments} ta
+                          </td>
+                          <td className={`text-right border-r border-slate-200/70 font-mono font-bold text-emerald-700 bg-emerald-50/20 ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
+                            {f.income.toLocaleString()} UZS
+                          </td>
+                          <td className={`text-right border-r border-slate-200/70 font-mono font-bold text-rose-700 bg-rose-50/20 ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
+                            {f.expense.toLocaleString()} UZS
+                          </td>
+                          <td className={`text-right border-r border-slate-200/70 font-mono font-black text-purple-700 bg-purple-50/20 ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
+                            {f.net.toLocaleString()} UZS
+                          </td>
+                          <td className={`text-center font-mono font-black ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
+                            <span className={cn(
+                              "px-2 py-0.5 rounded text-[11px]",
+                              f.margin >= 50 ? "bg-emerald-100 text-emerald-800" : (f.margin >= 20 ? "bg-blue-100 text-blue-800" : "bg-rose-100 text-rose-800")
+                            )}>
+                              {f.margin}%
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="py-16 text-center text-slate-400 font-bold">
+                        Moliyaviy ma'lumot topilmadi
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer Bar */}
+            <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-3 text-slate-600 font-bold">
+                <span>Jami Oylar: <strong className="text-slate-900 font-mono">{monthlyFinanceReport.length}</strong></span>
+                <span>•</span>
+                <span>Σ Jami Kirim: <strong className="text-emerald-700 font-mono">{monthlyFinanceReport.reduce((s, f) => s + f.income, 0).toLocaleString()} UZS</strong></span>
+              </div>
+              <div className="flex items-center gap-3 font-mono">
+                <span className="text-rose-700 font-bold">Σ Chiqim: {monthlyFinanceReport.reduce((s, f) => s + f.expense, 0).toLocaleString()} UZS</span>
+                <span>•</span>
+                <span className="text-purple-700 font-black text-sm">Σ Sof Foyda: {monthlyFinanceReport.reduce((s, f) => s + f.net, 0).toLocaleString()} UZS</span>
+              </div>
+            </div>
+          </motion.div>
         </div>
+      )}
 
-        {apptStatusData.length > 0 ? (
-          <div className="flex flex-col lg:flex-row items-center gap-8">
-            <div className="h-[250px] w-full lg:w-1/2">
+      {/* ═════════════════════════════════════════════════════════════════ */}
+      {/* ─── TAB 3: TOP XIZMATLAR HISOBOTI EXCEL JADVALI ───────────────── */}
+      {/* ═════════════════════════════════════════════════════════════════ */}
+      {activeReportTab === 'services' && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden relative"
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left select-text">
+              <thead>
+                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 text-[10.5px] font-black uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
+                  <th className="w-12 px-2.5 py-2.5 text-center border-r border-slate-200 font-mono">№</th>
+                  <th 
+                    onClick={() => handleSrvSort('name')}
+                    className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span>Xizmat Nomi / Kategoriya</span>
+                      {srvSortField === 'name' ? (
+                        srvSortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSrvSort('count')}
+                    className="w-36 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-blue-50/30"
+                  >
+                    Bajarilgan Soni
+                  </th>
+                  <th 
+                    onClick={() => handleSrvSort('revenue')}
+                    className="w-48 px-3.5 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-emerald-50/40"
+                  >
+                    Umumiy Tushum
+                  </th>
+                  <th 
+                    onClick={() => handleSrvSort('avgPrice')}
+                    className="w-40 px-3.5 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors"
+                  >
+                    O'rtacha Narx
+                  </th>
+                  <th 
+                    onClick={() => handleSrvSort('share')}
+                    className="w-32 px-3 py-2.5 text-center"
+                  >
+                    Tushumdagi Ulushi
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-200/70 text-xs">
+                {servicesReport.length > 0 ? (
+                  servicesReport.map((srv, idx) => {
+                    const isCompact = density === 'compact';
+                    return (
+                      <tr 
+                        key={srv.name}
+                        className={`hover:bg-[#1499AD]/10 transition-colors ${
+                          idx % 2 === 1 ? 'bg-slate-50/30' : 'bg-white'
+                        }`}
+                      >
+                        <td className={`text-center font-mono font-bold text-slate-400 border-r border-slate-200/70 ${isCompact ? 'py-2 px-2' : 'py-3 px-2.5'}`}>
+                          {idx + 1}
+                        </td>
+                        <td className={`border-r border-slate-200/70 font-extrabold text-slate-900 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          {srv.name}
+                        </td>
+                        <td className={`text-center border-r border-slate-200/70 font-mono font-bold text-blue-900 bg-blue-50/20 ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
+                          {srv.count} ta
+                        </td>
+                        <td className={`text-right border-r border-slate-200/70 font-mono font-black text-emerald-600 bg-emerald-50/20 ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
+                          {srv.revenue.toLocaleString()} <span className="text-[9.5px] text-emerald-500">UZS</span>
+                        </td>
+                        <td className={`text-right border-r border-slate-200/70 font-mono font-bold text-slate-700 ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
+                          {srv.avgPrice.toLocaleString()} <span className="text-[9.5px] text-slate-400">UZS</span>
+                        </td>
+                        <td className={`text-center font-mono font-black ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
+                          <span className="bg-slate-100 px-2 py-0.5 rounded text-[11px] text-slate-800">
+                            {srv.share}%
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="py-16 text-center text-slate-400 font-bold">
+                      Xizmatlar bo'yicha ma'lumot topilmadi
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer Bar */}
+          <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3 text-slate-600 font-bold">
+              <span>Jami Xizmat Turlari: <strong className="text-slate-900 font-mono">{servicesReport.length}</strong></span>
+              <span>•</span>
+              <span>Σ Jami Muolajalar: <strong className="text-blue-700 font-mono">{servicesReport.reduce((s, r) => s + r.count, 0)} ta</strong></span>
+            </div>
+            <div className="flex items-center gap-2 font-mono">
+              <span className="text-slate-500 font-bold uppercase text-[10px]">Σ Xizmatlar Tushumi:</span>
+              <strong className="text-emerald-700 text-sm">{servicesReport.reduce((s, r) => s + r.revenue, 0).toLocaleString()} UZS</strong>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ═════════════════════════════════════════════════════════════════ */}
+      {/* ─── TAB 4: QABULLAR HOLATI EXCEL JADVALI ─────────────────────── */}
+      {/* ═════════════════════════════════════════════════════════════════ */}
+      {activeReportTab === 'appointments' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
+          {/* Pie Chart Card */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
+            <div>
+              <h3 className="text-xs font-black text-slate-900 uppercase">Qabullar Taqsimoti (Diagramma)</h3>
+              <p className="text-[10px] text-slate-400 font-bold mt-0.5">Uchrashuvlarning holatlar bo'yicha foiz ulushi</p>
+            </div>
+            <div className="h-[200px] w-full my-2">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie 
-                    data={apptStatusData} 
+                    data={appointmentsStatusReport} 
+                    dataKey="count" 
+                    nameKey="status" 
                     cx="50%" 
                     cy="50%" 
-                    innerRadius={70} 
-                    outerRadius={105} 
-                    paddingAngle={6}
-                    dataKey="value" 
+                    innerRadius={50} 
+                    outerRadius={75} 
+                    paddingAngle={4}
                   >
-                    {apptStatusData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} stroke="none" />
+                    {appointmentsStatusReport.map((entry, index) => (
+                      <Cell key={index} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip content={<CustomTooltip />} />
+                  <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full lg:w-1/2">
-              {apptStatusData.map(d => (
-                <div key={d.name} className="flex flex-col p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate">{d.name}</span>
-                  </div>
-                  <span className="text-lg font-black text-slate-900">{d.value} <span className="text-[10px] font-bold text-slate-400">ta</span></span>
+            <div className="flex flex-wrap gap-2 text-[10px] font-bold">
+              {appointmentsStatusReport.map((a) => (
+                <div key={a.status} className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: a.color }} />
+                  <span>{a.status}: {a.count} ta</span>
                 </div>
               ))}
             </div>
           </div>
-        ) : <EmptyState icon={BarChart3} title={t('common.noData')} />}
-      </motion.div>
+
+          {/* Status Table */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col justify-between"
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left select-text">
+                <thead>
+                  <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 text-[10.5px] font-black uppercase tracking-wider">
+                    <th className="w-12 px-2.5 py-2.5 text-center border-r border-slate-200 font-mono">№</th>
+                    <th className="px-3.5 py-2.5 border-r border-slate-200">Qabul Holati</th>
+                    <th className="w-36 px-3 py-2.5 text-center border-r border-slate-200 bg-blue-50/30">Uchrashuvlar Soni</th>
+                    <th className="w-36 px-3 py-2.5 text-center">Ulush (%)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200/70 text-xs">
+                  {appointmentsStatusReport.map((item, idx) => (
+                    <tr key={item.status} className="hover:bg-[#1499AD]/10 transition-colors">
+                      <td className="text-center font-mono font-bold text-slate-400 border-r border-slate-200/70 py-2.5 px-2">
+                        {idx + 1}
+                      </td>
+                      <td className="border-r border-slate-200/70 font-extrabold text-slate-900 py-2.5 px-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                          <span>{item.status}</span>
+                        </div>
+                      </td>
+                      <td className="text-center border-r border-slate-200/70 font-mono font-bold text-blue-900 bg-blue-50/20 py-2.5 px-3">
+                        {item.count} ta qabul
+                      </td>
+                      <td className="text-center font-mono font-black py-2.5 px-3">
+                        <span className="bg-slate-100 px-2.5 py-1 rounded text-xs">
+                          {item.share}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer Bar */}
+            <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex items-center justify-between text-xs">
+              <span className="text-slate-600 font-bold">
+                Jami Qabullar: <strong className="text-blue-700 font-mono">{filteredAppointments.length} ta</strong>
+              </span>
+              <span className="text-emerald-700 font-bold font-mono">
+                Muvaffaqiyatli yakunlangan: {stats.completedAppts} ta ({Math.round((stats.completedAppts / (filteredAppointments.length || 1)) * 100)}%)
+              </span>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
     </div>
   );
 }

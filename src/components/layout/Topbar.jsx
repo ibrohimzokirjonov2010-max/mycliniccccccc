@@ -12,6 +12,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import { useAuth } from '@/lib/AuthContext';
 
 /**
  * Topbar Component
@@ -26,8 +27,8 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 export default function Topbar({ onMenuClick, sidebarCollapsed }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user, logout } = useAuth();
   const [notificationCount, setNotificationCount] = useState(0);
-  const [currentUser, setCurrentUser] = useState(null);
 
   /**
    * Fetch notification count on mount
@@ -56,11 +57,15 @@ export default function Topbar({ onMenuClick, sidebarCollapsed }) {
    * Handle user logout
    */
   const handleLogout = useCallback(() => {
-    localStorage.removeItem('is_authenticated');
-    localStorage.removeItem('user_name');
-    base44.clinic.logout();
-    navigate('/login');
-  }, [navigate]);
+    if (logout) {
+      logout();
+    } else {
+      localStorage.removeItem('is_authenticated');
+      localStorage.removeItem('user_name');
+      base44.clinic.logout();
+      navigate('/login');
+    }
+  }, [navigate, logout]);
 
   /**
    * Navigate to settings page
@@ -118,8 +123,12 @@ export default function Topbar({ onMenuClick, sidebarCollapsed }) {
               className="rounded-full"
               aria-label="User menu"
             >
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-primary" />
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                {(user?.avatar_url || user?.photo || user?.avatar || user?.image) ? (
+                  <img src={user.avatar_url || user.photo || user.avatar || user.image} alt={user?.name || 'User'} className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-4 h-4 text-primary" />
+                )}
               </div>
             </Button>
           </DropdownMenuTrigger>

@@ -7,6 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { db } from '@/api/supabaseClient';
 import { toast } from 'sonner';
+import { mediaStorage } from '@/utils/mediaStorage';
+import { useAuth } from '@/lib/AuthContext';
 
 // Reuse mock data for now
 const MOCK_CASES = [
@@ -49,6 +51,7 @@ const MOCK_CASES = [
 ];
 
 export default function MobileCases() {
+  const { user, isDoctor } = useAuth();
   const [cases, setCases] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const clinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
@@ -83,8 +86,28 @@ export default function MobileCases() {
         // Fetch Cases
         try {
           const dbCases = await base44.entities.Case.list();
-          // Only use mock data if DB is completely unreachable or first time fetch fails
-          setCases(dbCases || []);
+          const localMedia = await mediaStorage.getAllCaseMedia();
+          let merged = (dbCases || []).map(c => {
+            if (localMedia && localMedia[c.id]) {
+              return {
+                ...c,
+                images: {
+                  before: localMedia[c.id].before || c.images?.before || c.image_before,
+                  after: localMedia[c.id].after || c.images?.after || c.image_after
+                }
+              };
+            }
+            return c;
+          });
+          // Doktor bo'lsa faqat o'zi qo'shgan keyslarni ko'rsin
+          if (isDoctor && user?.id) {
+            merged = merged.filter(c =>
+              String(c.doctor_id) === String(user.id) ||
+              String(c.created_by_id) === String(user.id) ||
+              String(c.doctor || '').toLowerCase() === String(user.name || '').toLowerCase()
+            );
+          }
+          setCases(merged);
         } catch (e) {
           console.warn("Cases fetch error:", e);
           setCases(MOCK_CASES);
@@ -93,7 +116,7 @@ export default function MobileCases() {
         // Fetch Categories
         try {
           const catData = await base44.entities.CaseCategory.list();
-          if (catData) {
+          if (catData && Array.isArray(catData)) {
             setCustomTags(catData.map(c => c.name));
           }
         } catch (e) {
@@ -108,6 +131,20 @@ export default function MobileCases() {
     }
     loadData();
   }, [clinicId]);
+
+  const handleDeleteCase = async (caseId) => {
+    if (!window.confirm("Haqiqatan ham ushbu klinik keysni o'chirmoqchimisiz?")) return;
+    try {
+      await base44.entities.Case.delete(caseId);
+      await mediaStorage.deleteCaseMedia(caseId);
+      setCases(prev => prev.filter(c => c.id !== caseId));
+      setSelectedCase(null);
+      toast.success("Keys muvaffaqiyatli o'chirildi!");
+    } catch (err) {
+      console.error("Delete error:", err);
+      toast.error(err.message || "O'chirishda xatolik");
+    }
+  };
 
   const ALL_TAGS = ["Barchasi", ...new Set([...cases.flatMap(c => c.tags), ...customTags])];
 
@@ -261,35 +298,47 @@ export default function MobileCases() {
       {/* BEFORE/AFTER MOBILE VIEWER */}
       <AnimatePresence>
          {selectedCase && (
-           <MobileCaseViewer data={selectedCase} onClose={() => setSelectedCase(null)} />
+           <MobileCaseViewer 
+             data={selectedCase} 
+             onClose={() => setSelectedCase(null)} 
+             onDelete={handleDeleteCase}
+           />
          )}
       </AnimatePresence>
 
       <MobileUploadModal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => setIsModalOpen(false)} 
         existingTags={ALL_TAGS.filter(t => t !== "Barchasi")}
         patients={dbPatients}
         doctors={dbDoctors.map(d => d.name || d.full_name)}
         onSave={async (newCase) => {
-          const loadingToast = toast.loading("Rasmlar bazaga yuklanmoqda...");
+          const loadingToast = toast.loading("Keys saqlanmoqda...");
           try {
-             // 1. Upload images to storage (essential for mobile high-res photos)
              let finalImages = { ...newCase.images };
              const timestamp = Date.now();
              const patientSlug = (newCase.patientname || 'case').replace(/\s+/g, '_').toLowerCase();
 
+             // Compress images
+             if (finalImages.before && finalImages.before.startsWith('data:')) {
+               finalImages.before = await compressImage(finalImages.before, 1200, 0.75);
+             }
+             if (finalImages.after && finalImages.after.startsWith('data:')) {
+               finalImages.after = await compressImage(finalImages.after, 1200, 0.75);
+             }
+
+             // Try Supabase Storage upload
              try {
-                if (newCase.images.before && newCase.images.before.startsWith('data:')) {
-                   const beforeUrl = await db.storage.uploadFile('cases', `${clinicId}/${patientSlug}_${timestamp}_before.jpg`, newCase.images.before);
-                   finalImages.before = beforeUrl;
+                if (finalImages.before && finalImages.before.startsWith('data:')) {
+                   const beforeUrl = await db.storage.uploadFile('cases', `${clinicId}/${patientSlug}_${timestamp}_before.jpg`, finalImages.before);
+                   if (beforeUrl) finalImages.before = beforeUrl;
                 }
-                if (newCase.images.after && newCase.images.after.startsWith('data:')) {
-                   const afterUrl = await db.storage.uploadFile('cases', `${clinicId}/${patientSlug}_${timestamp}_after.jpg`, newCase.images.after);
-                   finalImages.after = afterUrl;
+                if (finalImages.after && finalImages.after.startsWith('data:')) {
+                   const afterUrl = await db.storage.uploadFile('cases', `${clinicId}/${patientSlug}_${timestamp}_after.jpg`, finalImages.after);
+                   if (afterUrl) finalImages.after = afterUrl;
                 }
              } catch (storageErr) {
-                console.warn("Storage upload failed, using original format:", storageErr);
+                console.warn("Storage upload failed, using local persistent storage:", storageErr);
              }
 
              // 2. Save record
@@ -301,13 +350,20 @@ export default function MobileCases() {
              
              const saved = await base44.entities.Case.create(caseToSave);
              if (saved) {
-                setCases(prev => [saved, ...prev]);
+                const enriched = {
+                  ...saved,
+                  images: saved.images || finalImages
+                };
+                // Store in IndexedDB for permanent local retention
+                await mediaStorage.saveCaseMedia(enriched.id, enriched.images);
+
+                setCases(prev => [enriched, ...prev.filter(c => c.id !== enriched.id)]);
                 toast.success("Keys muvaffaqiyatli saqlandi!", { id: loadingToast });
                 setIsModalOpen(false);
              }
           } catch (e) {
              console.error(e);
-             toast.error("Xatolik: Ma'lumotni saqlab bo'lmadi", { id: loadingToast });
+             toast.error(e.message || "Xatolik: Ma'lumotni saqlab bo'lmadi", { id: loadingToast });
           }
         }} 
       />
@@ -398,7 +454,7 @@ function AddTagModalMobile({ isOpen, onClose, onAdd }) {
 /* -------------------------------------------------------------------------- */
 /*                        MOBILE BEFORE/AFTER VIEWER                          */
 /* -------------------------------------------------------------------------- */
-function MobileCaseViewer({ data, onClose }) {
+function MobileCaseViewer({ data, onClose, onDelete }) {
   const [sliderPos, setSliderPos] = useState(50);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [color, setColor] = useState('#1499AD');
@@ -597,6 +653,18 @@ function MobileCaseViewer({ data, onClose }) {
               </div>
               <div className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-widest">Natija</div>
            </div>
+
+           {onDelete && (
+             <div className="mt-5 pt-4 border-t border-slate-100 flex justify-end">
+               <button 
+                 onClick={() => onDelete(data.id)}
+                 className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 border border-rose-200"
+               >
+                 <Trash2 className="w-4 h-4" />
+                 <span>Keysni o'chirish</span>
+               </button>
+             </div>
+           )}
         </div>
 
       </div>

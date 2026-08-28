@@ -8,6 +8,7 @@ import {
   FileText, Receipt, Stethoscope, Eye
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -33,9 +34,38 @@ const formatPhone = (phone) => {
   return phone;
 };
 
+const getPaymentMethodLabel = (method, t) => {
+  if (!t) {
+    if (method === 'Card') return 'Plastik karta';
+    if (method === 'Transfer') return 'Bank o‘tkazma';
+    if (method === 'Cash') return 'Naqd pul';
+    return method || '—';
+  }
+  if (method === 'Card') return t('payments.methods.Card') || 'Plastik karta';
+  if (method === 'Transfer') return t('payments.methods.Transfer') || 'Bank o‘tkazma';
+  if (method === 'Cash') return t('payments.methods.Cash') || 'Naqd pul';
+  return method || '—';
+};
+
+const getPaymentTypeLabel = (type, t) => {
+  if (!t) {
+    if (type === 'Expense') return 'Chiqim';
+    if (type === 'Refund') return 'Qaytarish';
+    if (type === 'Discount') return 'Chegirma';
+    if (type === 'Debt') return 'Qarz';
+    return 'Kirim';
+  }
+  if (type === 'Expense') return t('payments.types.Expense') || 'Chiqim';
+  if (type === 'Refund') return t('payments.types.Refund') || 'Qaytarish';
+  if (type === 'Discount') return t('payments.types.Discount') || 'Chegirma';
+  if (type === 'Debt') return t('payments.types.Debt') || 'Qarz';
+  return t('payments.types.Income') || 'Kirim';
+};
+
 export default function MobileDebts() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user, isDoctor } = useAuth();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -54,15 +84,24 @@ export default function MobileDebts() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await base44.entities.Patient.list('full_name', 50); // ⚡ tez
-      setPatients(data.filter(p => (p.total_debt || 0) > 0));
+      const data = await base44.entities.Patient.list('full_name', 300); // ⚡ tez
+      // Doktor bo'lsa faqat o'z bemorlarining qarzlarini ko'rsin
+      let filtered = data || [];
+      if (isDoctor && user?.id) {
+        filtered = filtered.filter(p =>
+          String(p.main_treatment_provider) === String(user.id) ||
+          String(p.main_treatment_provider) === String(user.name) ||
+          String(p.created_by_id) === String(user.id)
+        );
+      }
+      setPatients(filtered.filter(p => (p.total_debt || 0) > 0));
     } catch (err) {
       console.error(err);
       toast.error("Ma'lumotlarni yuklashda xatolik");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isDoctor, user?.id]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -186,7 +225,37 @@ export default function MobileDebts() {
 
       const assignedDoctor = (allDoctors || []).find(d => d.id === patient.main_treatment_provider || d.name === patient.main_treatment_provider || d.id === patient.doctor_id);
 
-      setDetailPlans(plansList);
+      // Enrich plans with accurate dynamically calculated paid_amount
+      const enrichedPlans = plansList.map(plan => {
+        const planTotal = Number(plan.total_price) || 0;
+        
+        const directPays = paysList.filter(p => {
+          const isIncome = (p.type || '').toLowerCase() === 'income';
+          if (!isIncome) return false;
+          if (p.plan_id && p.plan_id === plan.id) return true;
+          const notes = (p.notes || '').toLowerCase();
+          const sName = (p.service_name || '').toLowerCase();
+          const pName = (plan.name || '').toLowerCase();
+          return (pName && (notes.includes(pName) || sName.includes(pName)));
+        });
+        const directPaidSum = directPays.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+        
+        let calculatedPaid = directPaidSum;
+        if (plansList.length === 1) {
+          calculatedPaid = Math.max(calculatedPaid, totalIncomes);
+        } else {
+          calculatedPaid = Math.max(calculatedPaid, Number(plan.paid_amount) || 0);
+        }
+        
+        const effectivePaid = Math.min(planTotal > 0 ? planTotal : calculatedPaid, calculatedPaid);
+        
+        return {
+          ...plan,
+          paid_amount: effectivePaid
+        };
+      });
+
+      setDetailPlans(enrichedPlans);
       setDetailHistory(actualHistory);
       setPatientDetailData({
         patient,
@@ -504,7 +573,10 @@ export default function MobileDebts() {
                       <div className="p-3 space-y-2.5">
                         {detailPlans.map((plan, pIdx) => {
                           const planTotal = Number(plan.total_price) || 0;
-                          const planPaid = Number(plan.paid_amount) || 0;
+                          const rawPaid = plan.paid_amount !== undefined ? Number(plan.paid_amount) : 0;
+                          const planPaid = detailPlans.length === 1 && (patientDetailData?.totalPaid > 0)
+                            ? Math.min(planTotal > 0 ? planTotal : patientDetailData.totalPaid, Math.max(rawPaid, patientDetailData.totalPaid))
+                            : rawPaid;
                           const planRemaining = Math.max(0, planTotal - planPaid);
                           const planServices = plan.services || [];
 
@@ -562,10 +634,17 @@ export default function MobileDebts() {
                             const isExpense = (hPay.type || '').toLowerCase() === 'expense';
                             return (
                               <div key={hPay.id || hIdx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 text-[11px]">
-                                <span className="font-bold text-slate-800">{hPay.method || 'Naqd'}</span>
-                                <span className={`font-black ${isExpense ? 'text-rose-600' : 'text-emerald-600'}`}>
-                                  {isExpense ? '-' : '+'}{hAmt.toLocaleString()} so'm
-                                </span>
+                                <div>
+                                  <p className="font-bold text-slate-800">{getPaymentMethodLabel(hPay.method, t)}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className={`font-black ${isExpense ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                    {isExpense ? '-' : '+'}{hAmt.toLocaleString()} so'm
+                                  </p>
+                                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                    {getPaymentTypeLabel(hPay.type, t)}
+                                  </p>
+                                </div>
                               </div>
                             );
                           })

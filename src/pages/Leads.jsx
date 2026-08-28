@@ -28,9 +28,11 @@ import {
   FileSpreadsheet, Instagram, Send, Facebook, Globe, Copy, Check,
   ExternalLink, UserCheck, CheckCircle2, MoreHorizontal, LayoutGrid, Table
 } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function Leads() {
   const { t, currentLanguage } = useTranslation();
+  const { user, isDoctor } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -98,10 +100,24 @@ export default function Leads() {
 
   // ─── Queries ──────────────────────────────────────────────────────────
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['leads', debouncedSearch],
+    queryKey: ['leads', debouncedSearch, isDoctor, user?.id],
     queryFn: async () => {
-      if (debouncedSearch) return await base44.entities.Lead.search(debouncedSearch, 100);
-      return await base44.entities.Lead.list('-created_date', 100);
+      let allLeads;
+      if (debouncedSearch) {
+        allLeads = await base44.entities.Lead.search(debouncedSearch, 200);
+      } else {
+        allLeads = await base44.entities.Lead.list('-created_date', 200);
+      }
+      // Doktor bo'lsa faqat o'ziga tayinlangan yoki o'zi qo'shgan lidlarni ko'rsin
+      if (isDoctor && user?.id) {
+        return (allLeads || []).filter(lead =>
+          String(lead.assigned_doctor_id) === String(user.id) ||
+          String(lead.created_by_id) === String(user.id) ||
+          // Agar assigned_doctor_id yo'q bo'lsa — hamma doktorlarga ko'rsatilsin
+          (!lead.assigned_doctor_id && !lead.created_by_id)
+        );
+      }
+      return allLeads || [];
     },
     staleTime: 30000,
   });

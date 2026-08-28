@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit2, Trash2, Download, Plus, AlertTriangle,
   CheckCircle2, Clock, FileText, Camera, Activity, Phone,
-  Building2, Tag, Layers, Settings2, Hash, UserRound, CalendarDays, BellRing, CalendarClock
+  Building2, Tag, Layers, Settings2, Hash, UserRound, CalendarDays, BellRing, CalendarClock, DollarSign
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -578,6 +578,8 @@ export default function ImplantDetail() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1 pt-6 border-t border-slate-100">
             {[  
+              [<Tag className="w-3.5 h-3.5 text-teal-500" />, "Hizmat turi", implant.service_name || implant.hizmat_turi || 'Implant'],
+              [<DollarSign className="w-3.5 h-3.5 text-emerald-600" />, "Xizmat narxi", `${(Number(implant.price) || Number(implant.narxi) || 1500000).toLocaleString()} so'm`],
               [<Building2 className="w-3.5 h-3.5 text-indigo-500" />, t('implants.firma'), (() => { const f = implant.firma || implant.tooth_data?.firma; const fc = implant.firma_custom || implant.tooth_data?.firma_custom; return f === 'Boshqa' ? (fc || t('common.other')) : (f || '—'); })()],
               [<Tag className="w-3.5 h-3.5 text-violet-500" />, t('implants.brandModel'), implant.brend || implant.tooth_data?.brend || '—'],
               [<Layers className="w-3.5 h-3.5 text-amber-500" />, t('implants.boneType'), implant.bone_type || implant.tooth_data?.bone_type || '—'],

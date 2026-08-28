@@ -1,7 +1,8 @@
-import { useMemo, memo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import StatusBadge from '../ui/StatusBadge';
 import EmptyState from '../ui/EmptyState';
-import { CreditCard, TrendingUp, TrendingDown, Wallet, Printer } from 'lucide-react';
+import { CreditCard, TrendingUp, TrendingDown, Wallet, Printer, Receipt, Eye, X, Download } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useTranslation } from '@/i18n/LanguageContext';
 
 /**
@@ -20,6 +21,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
  */
 function PatientPayments({ payments = [] }) {
   const { t, language } = useTranslation();
+  const [previewReceiptUrl, setPreviewReceiptUrl] = useState(null);
   const handlePrintPaymentReceipt = (payment) => {
     const win = window.open('', '_blank');
     const isIncome = payment.type === 'Income';
@@ -342,16 +344,28 @@ function PatientPayments({ payments = [] }) {
                       <div className="font-bold text-slate-700">{categoryClean || '—'}</div>
                     </td>
                     <td className="px-5 py-3 text-right">
-                      {pType === 'income' || pType === 'refund' ? (
-                        <button
-                          type="button"
-                          onClick={() => handlePrintPaymentReceipt({ ...payment, categoryClean })}
-                          className="p-1.5 hover:bg-slate-100 hover:text-slate-900 text-slate-400 rounded-xl transition-all border-none bg-transparent cursor-pointer inline-flex items-center justify-center active:scale-90"
-                          title={t('patientPayments.printReceipt')}
-                        >
-                          <Printer className="w-4 h-4 text-emerald-600" />
-                        </button>
-                      ) : '—'}
+                      <div className="flex items-center justify-end gap-1.5">
+                        {(payment.receipt_url || payment.receipt_image || payment.check_image) && (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewReceiptUrl(payment.receipt_url || payment.receipt_image || payment.check_image)}
+                            className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-xl transition-all border-none bg-blue-50/50 cursor-pointer inline-flex items-center gap-1 active:scale-90 text-[10px] font-bold"
+                            title="Chek rasmini ko'rish"
+                          >
+                            <Receipt className="w-3.5 h-3.5" /> Chek
+                          </button>
+                        )}
+                        {pType === 'income' || pType === 'refund' ? (
+                          <button
+                            type="button"
+                            onClick={() => handlePrintPaymentReceipt({ ...payment, categoryClean })}
+                            className="p-1.5 hover:bg-slate-100 hover:text-slate-900 text-slate-400 rounded-xl transition-all border-none bg-transparent cursor-pointer inline-flex items-center justify-center active:scale-90"
+                            title={t('patientPayments.printReceipt')}
+                          >
+                            <Printer className="w-4 h-4 text-emerald-600" />
+                          </button>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -365,6 +379,49 @@ function PatientPayments({ payments = [] }) {
           {t('patientPayments.totalCount', { count: payments.length })}
         </div>
       </div>
+
+      {/* Fullscreen Receipt Lightbox */}
+      <Dialog open={!!previewReceiptUrl} onOpenChange={(open) => !open && setPreviewReceiptUrl(null)}>
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[92vh] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-slate-950 flex flex-col [&>button]:hidden">
+          <div className="p-3.5 px-5 bg-slate-900 text-white flex items-center justify-between">
+            <span className="text-xs font-black uppercase tracking-wider flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-emerald-400" /> To'lov cheki / Kvitansiya
+            </span>
+            <button
+              type="button"
+              onClick={() => setPreviewReceiptUrl(null)}
+              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 text-white transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-black/40 min-h-[300px]">
+            {previewReceiptUrl && (
+              <img 
+                src={previewReceiptUrl} 
+                alt="Chek" 
+                className="max-h-[72vh] max-w-full object-contain rounded-xl shadow-2xl" 
+              />
+            )}
+          </div>
+          <div className="p-3.5 px-5 bg-slate-900 flex justify-end gap-2">
+            <a
+              href={previewReceiptUrl}
+              download="tolov_cheki.jpg"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" /> Yuklab olish
+            </a>
+            <button
+              type="button"
+              onClick={() => setPreviewReceiptUrl(null)}
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+            >
+              Yopish
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

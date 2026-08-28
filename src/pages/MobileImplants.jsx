@@ -17,6 +17,7 @@ import { Package } from 'lucide-react';
 import Paywall from '@/components/layout/Paywall';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/AuthContext';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const LIFECYCLE_MAPPING = {
@@ -106,6 +107,44 @@ const StatusPill = ({ status }) => {
   );
 };
 
+// ─── Resolve Service & Price ──────────────────────────────────────────────
+const resolveService = (implant) => {
+  if (implant.service_name && implant.service_name.trim()) return implant.service_name.trim();
+  if (implant.hizmat_turi && implant.hizmat_turi.trim()) return implant.hizmat_turi.trim();
+  const status = (implant.lifecycle_status || '').toLowerCase();
+  if (status.includes('crown') || status.includes('karonka')) return 'Karonka';
+  if (status.includes('abutment')) return 'Abutment';
+  if (status.includes('healing') || status.includes('formik')) return 'Formik';
+  return 'Implant';
+};
+
+const resolvePrice = (implant) => {
+  if (implant.price !== undefined && implant.price !== null && implant.price !== '') {
+    const num = Number(implant.price);
+    if (!isNaN(num)) return num;
+  }
+  if (implant.narxi !== undefined && implant.narxi !== null && implant.narxi !== '') {
+    const num = Number(implant.narxi);
+    if (!isNaN(num)) return num;
+  }
+  const svc = resolveService(implant).toLowerCase();
+  if (svc.includes('formik') || svc.includes('healing')) return 100000;
+  if (svc.includes('karonka') || svc.includes('crown')) return 1500000;
+  if (svc.includes('abutment')) return 300000;
+  if (svc.includes('sinus')) return 2000000;
+  if (svc.includes('graft') || svc.includes('suyak')) return 1000000;
+  return 1500000;
+};
+
+const SERVICE_EMOJIS = {
+  'Implant': '🔩',
+  'Formik': '🩹',
+  'Karonka': '👑',
+  'Abutment': '🔧',
+  'Sinus-lifting': '🩺',
+  'Suyak ekish': '🧬',
+};
+
 // ─── Implant Card ─────────────────────────────────────────────────────────────
 const ImplantCard = ({ implant, onStatusChange, onNavigate, today }) => {
   const cfg = getLifecycleCfg(implant.lifecycle_status);
@@ -114,6 +153,11 @@ const ImplantCard = ({ implant, onStatusChange, onNavigate, today }) => {
   const isOverdue = daysLeft !== null && daysLeft < 0;
   const isUrgent = daysLeft !== null && daysLeft >= 0 && daysLeft <= 7;
   const isSoon = daysLeft !== null && daysLeft > 7 && daysLeft <= 14;
+
+  const serviceName = resolveService(implant);
+  const emoji = SERVICE_EMOJIS[serviceName] || '⚡';
+  const priceVal = resolvePrice(implant);
+  const firmaName = implant.firma === 'Boshqa' ? (implant.firma_custom || 'Boshqa') : (implant.firma || 'Dentium');
 
   return (
     <motion.div
@@ -126,15 +170,13 @@ const ImplantCard = ({ implant, onStatusChange, onNavigate, today }) => {
     >
       {/* Card Top */}
       <div className="p-4">
-        <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-start justify-between gap-2 mb-3">
           {/* Avatar + Info */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
             {/* Tooth Badge */}
             <div className="relative flex-shrink-0">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center">
-                <svg viewBox="0 0 24 24" className="w-6 h-6 text-indigo-500" fill="currentColor">
-                  <path d="M12 2C9.5 2 7.5 3.5 6.5 5.5C5.5 4 4 3 3 3C1.9 3 1 4.1 1 5.3C1 7.3 2 8.9 3 10.7C3.8 12.1 4 13.5 4 15C4 17.8 5.5 20.5 7 22H9.5L10 18C10.2 16.3 11 15 12 15C13 15 13.8 16.3 14 18L14.5 22H17C18.5 20.5 20 17.8 20 15C20 13.5 20.2 12.1 21 10.7C22 8.9 23 7.3 23 5.3C23 4.1 22.1 3 21 3C20 3 18.5 4 17.5 5.5C16.5 3.5 14.5 2 12 2Z" />
-                </svg>
+              <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center text-xl">
+                {emoji}
               </div>
               {teeth.length > 0 && (
                 <div className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1 bg-slate-900 text-white rounded-lg text-[9px] font-black border-2 border-white flex items-center justify-center">
@@ -143,66 +185,52 @@ const ImplantCard = ({ implant, onStatusChange, onNavigate, today }) => {
               )}
             </div>
 
-            {/* Name & Info */}
+            {/* Name & Service & Firm */}
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-black text-slate-900 tracking-tight truncate">
-                {safeRender(implant.patient_name)}
-              </p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  {implant.firma === 'Boshqa' ? (implant.firma_custom || 'Boshqa') : safeRender(implant.firma)}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-slate-900 text-white uppercase tracking-wider">
+                  {serviceName}
                 </span>
-                {implant.diameter && implant.length && (
-                  <>
-                    <span className="w-1 h-1 bg-slate-200 rounded-full flex-shrink-0" />
-                    <span className="text-[10px] font-bold text-slate-400">
-                      Ø{implant.diameter}×{implant.length}mm
-                    </span>
-                  </>
+                {(implant.incomplete_data === true || implant.needs_fill === true || (!implant.firma && !implant.brend && !implant.firma_custom)) ? (
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-300 animate-pulse">
+                    ⚠️ Kiritish kerak
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider truncate">
+                    {firmaName}
+                  </span>
                 )}
               </div>
+              <p className="text-sm font-black text-slate-900 tracking-tight truncate mt-1">
+                {safeRender(implant.patient_name)}
+              </p>
             </div>
           </div>
 
-          {/* Status Pill */}
-          <StatusPill status={implant.lifecycle_status} />
+          {/* Price Tag Badge */}
+          <div className="flex flex-col items-end shrink-0">
+            <span className="font-mono font-black text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
+              {priceVal.toLocaleString()} so'm
+            </span>
+          </div>
         </div>
 
-        {/* Details Row */}
+        {/* Details Row: Sana, Tish, Firma, Holat */}
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100/60">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">O'rnatilgan</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Amaliyot Sanasi</p>
             <div className="flex items-center gap-1">
               <Calendar className="w-3 h-3 text-slate-400" />
-              <p className="text-[11px] font-bold text-slate-700">{safeRender(implant.placement_date)}</p>
+              <p className="text-[11px] font-bold text-slate-700 font-mono">{safeRender(implant.placement_date)}</p>
             </div>
           </div>
 
-          {implant.reminder_date ? (
-            <div className={`rounded-xl p-2.5 border ${
-              isOverdue ? 'bg-rose-50 border-rose-100' :
-              isUrgent  ? 'bg-amber-50 border-amber-100' :
-              isSoon    ? 'bg-blue-50 border-blue-100' :
-                          'bg-slate-50/80 border-slate-100/60'
-            }`}>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Nazorat</p>
-              <div className="flex items-center gap-1">
-                <Bell className={`w-3 h-3 ${isOverdue ? 'text-rose-500 animate-pulse' : isUrgent ? 'text-amber-500' : 'text-slate-400'}`} />
-                <p className={`text-[11px] font-bold ${isOverdue ? 'text-rose-600' : isUrgent ? 'text-amber-600' : 'text-slate-700'}`}>
-                  {isOverdue
-                    ? `${Math.abs(daysLeft)} kun o'tib ketdi`
-                    : daysLeft === 0 ? 'Bugun!'
-                    : `${daysLeft} kun qoldi`
-                  }
-                </p>
-              </div>
+          <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100/60 flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Holat</p>
+              <StatusPill status={implant.lifecycle_status} />
             </div>
-          ) : (
-            <div className="bg-slate-50/80 rounded-xl p-2.5 border border-slate-100/60">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Brend</p>
-              <p className="text-[11px] font-bold text-slate-700">{safeRender(implant.brend) || '—'}</p>
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Extra Services */}
@@ -424,6 +452,7 @@ const StatusUpdateSheet = ({ open, implant, onClose, onUpdate, updating }) => (
 export default function MobileImplants() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user, isDoctor } = useAuth();
   const hasImplantsAccess = useFeature('implants');
 
   const [implants, setImplants] = useState([]);
@@ -454,12 +483,26 @@ export default function MobileImplants() {
         loadingTimerRef.current = setTimeout(() => setLoading(true), 150);
       }
       const [imps, pats, svcs, brnds] = await Promise.all([
-        base44.entities.Implant.list('-placement_date', 100),
+        base44.entities.Implant.list('-placement_date', 300),
         base44.entities.Patient.list('full_name', 100),
         base44.entities.Service.filter({ is_active: true }, 'name', 100),
         getOrSeedImplantBrands(),
       ]);
-      setImplants(imps || []);
+      // Doktor bo'lsa faqat o'z bemorlarining implantlarini ko'rsin
+      let filteredImps = imps || [];
+      if (isDoctor && user?.id) {
+        const myPatients = (pats || []).filter(p =>
+          String(p.main_treatment_provider) === String(user.id) ||
+          String(p.main_treatment_provider) === String(user.name) ||
+          String(p.created_by_id) === String(user.id)
+        );
+        const myPatientIds = new Set(myPatients.map(p => String(p.id)));
+        filteredImps = filteredImps.filter(i =>
+          myPatientIds.has(String(i.patient_id)) ||
+          String(i.doctor_id) === String(user.id)
+        );
+      }
+      setImplants(filteredImps);
       setPatients(pats || []);
       setServices(svcs || []);
       setBrands(brnds || []);
@@ -471,7 +514,7 @@ export default function MobileImplants() {
       if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
       setLoading(false);
     }
-  }, []);
+  }, [isDoctor, user?.id]);
 
   useEffect(() => { load(); }, [load]);
 

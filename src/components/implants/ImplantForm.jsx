@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Upload, FileText, X, Check, Calendar, User, Activity, Info, Shield, Layers, Stethoscope, Image as ImageIcon } from 'lucide-react';
+import { Plus, Upload, FileText, X, Check, Calendar, User, Activity, Info, Shield, Layers, Stethoscope, Image as ImageIcon, Sparkles } from 'lucide-react';
 import PatientModal from '../patients/PatientModal';
 import PatientSelect from '../patients/PatientSelect';
 import ProfessionalOdontogram from '../patients/ProfessionalOdontogram';
@@ -106,6 +106,9 @@ export default function ImplantForm({ open, onClose, patients, services, implant
     patient_name: '',
     patient_phone: '',
     tooth_numbers: [],
+    service_name: 'Implant',
+    service_custom: '',
+    price: 1500000,
     implant_type: 'Bone level',
     firma: 'Osstem',
     firma_custom: '',
@@ -118,7 +121,7 @@ export default function ImplantForm({ open, onClose, patients, services, implant
     bone_type: 'D2',
     placement_date: today,
     doctor: '',
-    lifecycle_status: "planned",
+    lifecycle_status: "placed",
     reminder_months: 1,
     reminder_date: addMonths(today, 1),
     notes: '',
@@ -559,9 +562,14 @@ export default function ImplantForm({ open, onClose, patients, services, implant
         const mergedImplantType = toothData.implant_type || form.implant_type || 'Bone level';
         const mergedNotes = toothData.notes || form.notes || '';
 
+        const mergedService = toothData.service_name || form.service_name || 'Implant';
+        const mergedPrice = toothData.price != null && toothData.price !== '' ? Number(toothData.price) : (Number(form.price) || 0);
+
         // tooth_data - JSONB sifatida barcha tish-spesifik ma'lumotlarni saqlash
         // Bu Supabase ustun muammolarini hal qiladi va hech qachon yo'qolmaydi
         const toothDataJson = {
+          service_name: mergedService,
+          price: mergedPrice,
           firma: mergedFirma,
           firma_custom: mergedFirmaCustom,
           brend: mergedBrend,
@@ -590,6 +598,10 @@ export default function ImplantForm({ open, onClose, patients, services, implant
 
         const data = {
           ...form,
+          service_name: mergedService,
+          hizmat_turi: mergedService,
+          price: mergedPrice,
+          narxi: mergedPrice,
           reminder_months: safeReminderMonths,
           // Asosiy maydonlar
           tooth_number: fdiNumber,
@@ -606,6 +618,8 @@ export default function ImplantForm({ open, onClose, patients, services, implant
           bone_type: mergedBoneType,
           implant_type: mergedImplantType,
           notes: mergedNotes,
+          incomplete_data: false,
+          needs_fill: false,
           // JSONB backup - har doim ishlaydi
           tooth_data: toothDataJson,
           audit_log: auditLog,
@@ -782,6 +796,143 @@ export default function ImplantForm({ open, onClose, patients, services, implant
         </div>
       </div>
 
+      {/* ─── Excel Service, Date, Firm & Price Section ─── */}
+      <div className="bg-slate-50 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 space-y-3.5 shadow-2xs">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-teal-600" /> Hizmat va Amaliyot Parametrlari
+          </Label>
+          <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+            Excel Format
+          </span>
+        </div>
+
+        {/* 1. Hizmat turi selection */}
+        <div>
+          <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">
+            1. Hizmat turi (Amaliyot) *
+          </Label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+            {[
+              { id: 'Implant', label: "🔩 Implant", defaultPrice: 1500000 },
+              { id: 'Formik', label: "🩹 Formik", defaultPrice: 100000 },
+              { id: 'Karonka', label: "👑 Karonka", defaultPrice: 1500000 },
+              { id: 'Abutment', label: "🔧 Abutment", defaultPrice: 300000 },
+              { id: 'Sinus-lifting', label: "🩺 Sinus", defaultPrice: 2000000 },
+              { id: 'Suyak ekish', label: "🧬 Suyak", defaultPrice: 1000000 },
+              { id: 'Boshqa', label: "➕ Boshqa...", defaultPrice: 0 }
+            ].map(opt => (
+              <button
+                type="button"
+                key={opt.id}
+                onClick={() => {
+                  setForm(prev => ({
+                    ...prev,
+                    service_name: opt.id,
+                    price: opt.defaultPrice !== undefined && opt.id !== 'Boshqa' ? opt.defaultPrice : prev.price
+                  }));
+                }}
+                className={`px-3 py-2 rounded-xl text-left text-xs font-black transition-all border cursor-pointer ${
+                  form.service_name === opt.id
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {form.service_name === 'Boshqa' && (
+            <div className="mt-2">
+              <Input
+                placeholder="Yangi xizmat nomini yozing..."
+                value={form.service_custom}
+                onChange={e => setField('service_custom', e.target.value)}
+                className="bg-white border-slate-300 h-9 rounded-xl text-xs font-bold"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* 2. Sana, Firma & Narxi Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          {/* Sana */}
+          <div>
+            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-1">
+              2. Amaliyot Sanasi (sana) *
+            </Label>
+            <Input
+              type="date"
+              className="bg-white border-slate-200 h-10 rounded-xl font-bold text-xs sm:text-sm text-slate-800 shadow-2xs"
+              value={form.placement_date}
+              onChange={e => handleDateChange(e.target.value)}
+            />
+          </div>
+
+          {/* Firma Nomi */}
+          <div>
+            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-1">
+              3. Firma Nomi (brend) *
+            </Label>
+            <Select
+              value={form.firma}
+              onValueChange={v => {
+                setForm(prev => ({
+                  ...prev,
+                  firma: v,
+                  firma_custom: v === 'Boshqa' ? prev.firma_custom : '',
+                  brend: v === 'Boshqa' ? (prev.firma_custom || prev.brend) : prev.brend
+                }));
+              }}
+            >
+              <SelectTrigger className="bg-white border-slate-200 h-10 rounded-xl font-bold text-xs sm:text-sm">
+                <SelectValue placeholder="Firmasini tanlang" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl font-bold text-xs">
+                {['Dentium', 'Osstem', 'Straumann', 'Serkon', 'Megagen', 'Neodent', 'Nobel', 'Bredent', 'Boshqa'].map(f => (
+                  <SelectItem key={f} value={f}>{f}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {form.firma === 'Boshqa' && (
+              <Input
+                placeholder="Firma nomini yozing..."
+                value={form.firma_custom}
+                onChange={e => setField('firma_custom', e.target.value)}
+                className="bg-white border-slate-300 h-9 rounded-xl text-xs font-bold mt-1.5"
+              />
+            )}
+          </div>
+
+          {/* Narxi */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <Label className="text-[10px] font-black text-emerald-800 uppercase tracking-wider block">
+                4. Narxi (so'm) *
+              </Label>
+              <span className="text-[10px] font-mono font-black text-emerald-700">
+                {(Number(form.price) || 0).toLocaleString()}
+              </span>
+            </div>
+            <div className="relative">
+              <Input
+                type="number"
+                step="10000"
+                className="bg-white border-emerald-300 focus:border-emerald-500 h-10 rounded-xl font-mono font-black text-slate-900 text-xs sm:text-sm pr-12 shadow-2xs"
+                value={form.price}
+                onChange={e => setField('price', e.target.value)}
+                placeholder="1500000"
+              />
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9.5px] font-black text-slate-400">
+                SO'M
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-3 sm:space-y-4">
         <Label className="flex justify-between items-center px-1">
           <div className="flex items-center gap-2 text-primary font-bold text-xs sm:text-sm">
@@ -799,65 +950,8 @@ export default function ImplantForm({ open, onClose, patients, services, implant
           )}
         </Label>
         
-        {/* Tanlangan tishlar ro'yxati */}
-        {form.tooth_numbers.length > 0 && (
-          <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-slate-200" style={{ background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)' }}>
-            {form.tooth_numbers.map(toothId => {
-              let fdiNumber = '';
-              let srcImage = '';
-              let isLeft = false;
-              
-              if (toothId.startsWith('ur')) {
-                const num = toothId.replace('ur', '');
-                fdiNumber = `1${num}`;
-                srcImage = `kamron/tepa_ong_${num}`;
-                isLeft = false;
-              } else if (toothId.startsWith('ul')) {
-                const num = toothId.replace('ul', '');
-                fdiNumber = `2${num}`;
-                srcImage = `kamron/tepa_chap_${num}`;
-                isLeft = false;
-              } else if (toothId.startsWith('lr')) {
-                const num = toothId.replace('lr', '');
-                fdiNumber = `4${num}`;
-                srcImage = `kamron/pas_ong_${num}`;
-                isLeft = false;
-              } else if (toothId.startsWith('ll')) {
-                const num = toothId.replace('ll', '');
-                fdiNumber = `3${num}`;
-                srcImage = `kamron/pas_chap_${num}`;
-                isLeft = false;
-              }
-              
-              return (
-                <div key={toothId} className="flex items-center gap-1.5 px-2 py-1.5 bg-amber-50 rounded-lg border border-amber-300 shadow-sm">
-                  <img 
-                    src={`/teeth/${srcImage}.png`}
-                    alt={`Tish ${fdiNumber}`}
-                    className="w-7 h-8 object-contain"
-                    style={{
-                      filter: 'contrast(1.0) brightness(1.02) drop-shadow(0 2px 4px rgba(0,0,0,0.05)) saturate(0.95)'
-                    }}
-                  />
-                  <span className="text-xs font-bold text-amber-800">{fdiNumber}</span>
-                  <button
-                    type="button"
-                    onClick={() => setForm(prev => ({
-                      ...prev,
-                      tooth_numbers: prev.tooth_numbers.filter(t => t !== toothId)
-                    }))}
-                    className="ml-1 w-5 h-5 rounded-full bg-red-100 hover:bg-red-200 flex items-center justify-center transition-colors"
-                  >
-                    <span className="text-red-600 text-sm font-bold">×</span>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        
-        {/* Professional tish diagrammasi - 32 ta tish */}
-        <div className="w-full rounded-2xl border border-slate-100 shadow-sm overflow-hidden bg-white">
+        {/* Professional tish diagrammasi - 32 ta tish (Ixcham va toza) */}
+        <div className="w-full rounded-2xl border border-slate-100 shadow-2xs overflow-hidden bg-white">
           <ProfessionalOdontogram
             selectedTeeth={form.tooth_numbers}
             onChange={(teeth) => setForm(prev => ({ ...prev, tooth_numbers: teeth }))}
@@ -865,9 +959,9 @@ export default function ImplantForm({ open, onClose, patients, services, implant
             onToothClick={handleToothClick}
             hideChildren={true}
             compact={true}
-            hideLegend={false}
-            hideStats={false}
-            hideHeader={false}
+            hideLegend={true}
+            hideStats={true}
+            hideHeader={true}
           />
         </div>
       </div>
@@ -1031,42 +1125,41 @@ export default function ImplantForm({ open, onClose, patients, services, implant
                 return (
                   <motion.div 
                     key={toothId}
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    initial={{ opacity: 0, scale: 0.95, y: 8 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 8 }}
                     transition={{ duration: 0.2 }}
                     onClick={() => handleToothClick(toothId)}
-                    className={`group relative p-4 sm:p-5 rounded-[1.5rem] border-2 transition-all cursor-pointer active:scale-[0.98] flex items-center justify-between ${
+                    className={`group relative p-3 sm:p-3.5 rounded-2xl border-2 transition-all cursor-pointer active:scale-[0.98] flex items-center justify-between ${
                       data 
-                        ? 'bg-emerald-50/40 border-emerald-200 hover:border-emerald-400 shadow-sm' 
+                        ? 'bg-emerald-50/50 border-emerald-300 hover:border-emerald-500 shadow-xs' 
                         : 'border-dashed border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30'
                     }`}
-                    style={{ background: data ? 'linear-gradient(135deg, #f0fdf4, #f8fafc)' : undefined }}
                   >
-                    <div className="flex items-center gap-3 sm:gap-4">
-                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border border-slate-200 flex items-center justify-center shadow-sm shrink-0" style={{ background: 'linear-gradient(135deg, #ffffff, #f8fafc)' }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl border border-slate-200/80 bg-white flex items-center justify-center shadow-xs shrink-0">
                         <img 
                           src={`/teeth/${srcImage}.png`}
                           alt={`Tish ${fdiNumber}`}
-                          className="w-9 h-9 sm:w-11 sm:h-11 object-contain"
+                          className="w-7 h-7 sm:w-8 sm:h-8 object-contain"
                           style={{
                             filter: data
-                              ? 'contrast(1.1) brightness(1.0) drop-shadow(0 4px 6px rgba(59,130,246,0.3)) saturate(1.1)'
+                              ? 'contrast(1.1) brightness(1.0) drop-shadow(0 2px 4px rgba(16,185,129,0.3))'
                               : 'contrast(0.9) brightness(0.9) grayscale(0.2) opacity(0.7)'
                           }}
                         />
                       </div>
                       <div className="space-y-0.5 min-w-0">
-                        <h4 className="text-lg sm:text-xl font-black text-amber-900 flex items-center gap-2">
-                          🦷 Tish #{fdiNumber}
-                          {data && <Check className="w-5 h-5 text-emerald-500 stroke-[4]" />}
+                        <h4 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-1.5">
+                          <span>🦷 Tish #{fdiNumber}</span>
+                          {data && <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />}
                         </h4>
                         {data ? (
-                          <p className="text-amber-700 font-bold uppercase tracking-widest text-[10px] sm:text-xs truncate">
+                          <p className="text-teal-700 font-bold uppercase tracking-wider text-[10px] sm:text-[11px] truncate">
                             {(data.firma === 'Boshqa' ? (data.firma_custom || 'Boshqa') : data.firma)} | {data.diameter && data.length ? `${data.diameter}x${data.length}` : '?'} | {data.torque ? `${data.torque}NCM` : '?NCM'}
                           </p>
                         ) : (
-                          <p className="text-amber-500/70 font-bold text-[10px] sm:text-xs">
+                          <p className="text-amber-600/80 font-bold text-[10px] sm:text-[11px]">
                             Ma'lumotlar kiritilmagan — bosing
                           </p>
                         )}
@@ -1074,12 +1167,12 @@ export default function ImplantForm({ open, onClose, patients, services, implant
                     </div>
                     
                     {data ? (
-                      <div className="w-10 h-10 sm:w-11 sm:h-11 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-emerald-200/60 shrink-0">
-                        <Check className="w-6 h-6 stroke-[3]" />
+                      <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-md shadow-emerald-200 shrink-0">
+                        <Check className="w-4 h-4 stroke-[3]" />
                       </div>
                     ) : (
-                      <div className="w-10 h-10 sm:w-11 sm:h-11 border-2 border-amber-200 rounded-full flex items-center justify-center text-amber-300 group-hover:bg-amber-500 group-hover:text-white group-hover:border-amber-500 transition-all shrink-0">
-                        <Plus className="w-5 h-5" />
+                      <div className="w-8 h-8 border-2 border-amber-300 rounded-full flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-white group-hover:border-amber-500 transition-all shrink-0">
+                        <Plus className="w-4 h-4" />
                       </div>
                     )}
                   </motion.div>

@@ -1,19 +1,27 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
-  Target, TrendingUp, BarChart3, Users, Facebook, Instagram, ExternalLink, Zap, DollarSign, RefreshCw, Loader2, Workflow, Server,
-  Copy, CheckCircle, ZapOff, ArrowUpRight, TrendingDown,
-  PieChart as PieChartIcon, ChevronRight, Phone, MapPin, Globe2, MessageCircle, Upload
+  Target, TrendingUp, BarChart3, Users, Facebook, Instagram, Zap, DollarSign, RefreshCw, Workflow, Server,
+  Copy, CheckCircle, Search,
+  PieChart as PieChartIcon, Phone, MapPin, MessageCircle, Upload,
+  Table as TableIcon, LayoutGrid, FileSpreadsheet, X,
+  ArrowUp, ArrowDown, ArrowUpDown, Trash2, Eye
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, Cell, PieChart, Pie
 } from 'recharts';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { supabase, db } from '@/api/supabaseClient';
 import LeadQuickView from '@/components/marketing/LeadQuickView';
+import { cn, formatPhone } from '@/lib/utils';
+import { toast } from 'sonner';
 
+/**
+ * Marketing Page - Professional Excel Spreadsheet View
+ */
 export default function Marketing() {
   const { t, language } = useTranslation();
 
@@ -22,9 +30,33 @@ export default function Marketing() {
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview'); // overview, leads, targeting, automation
+  const [activeTab, setActiveTab] = useState('leads'); // leads, campaigns, analytics, targeting, automation
   const [selectedLead, setSelectedLead] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  // Density switcher with localStorage
+  const [density, setDensity] = useState(() => {
+    return localStorage.getItem('myclinic_marketing_density') || 'compact';
+  });
+  const toggleDensity = (val) => {
+    setDensity(val);
+    localStorage.setItem('myclinic_marketing_density', val);
+  };
+
+  // Sorting state
+  const [sortField, setSortField] = useState('date');
+  const [sortOrder, setSortOrder] = useState('desc');
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
   
   const fileInputRef = useRef(null);
 
@@ -33,33 +65,7 @@ export default function Marketing() {
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
   const clinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
 
-  useEffect(() => {
-    loadRealLeads();
-
-    // Supabase Real-time Sync with unique identifier
-    const channelName = `marketing_admin_${clinicId}_${Date.now()}`;
-    const channel = supabase
-      .channel(channelName)
-      .on('postgres_changes', {
-        event: '*', 
-        schema: 'public',
-        table: 'leads',
-        filter: `clinic_id=eq.${clinicId}`
-      }, () => {
-        loadRealLeads();
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Marketing Admin: Subscribed to Realtime');
-        }
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [clinicId]);
-
-  const loadRealLeads = async () => {
+  const loadRealLeads = useCallback(async () => {
     setLoading(true);
     try {
       let query = supabase
@@ -67,7 +73,6 @@ export default function Marketing() {
         .select('*')
         .order('created_date', { ascending: false });
       
-      // Filter by clinic_id if available
       if (clinicId) {
         query = query.eq('clinic_id', clinicId);
       }
@@ -79,7 +84,6 @@ export default function Marketing() {
       }
       
       if (data) {
-        // Safely parse form_data if it's a string (JSON string from Make.com)
         const parsedLeads = data.map(lead => {
           let formData = {};
           try {
@@ -104,7 +108,28 @@ export default function Marketing() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clinicId]);
+
+  useEffect(() => {
+    loadRealLeads();
+
+    const channelName = `marketing_admin_${clinicId}_${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', {
+        event: '*', 
+        schema: 'public',
+        table: 'leads',
+        filter: `clinic_id=eq.${clinicId}`
+      }, () => {
+        loadRealLeads();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [clinicId, loadRealLeads]);
 
   const generateChartData = (leadsData) => {
     const daysOfWeek = ['Ya', 'Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh'];
@@ -115,20 +140,17 @@ export default function Marketing() {
       d.setDate(d.getDate() - i);
       const dayName = daysOfWeek[d.getDay()];
       
-      // Local timezone bo'yicha yil-oy-kun formatini olish
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       const dayStr = `${year}-${month}-${day}`;
       
-      // Shu kunda yaratilgan lidlar
       const count = (leadsData || []).filter(l => {
         const lDate = l.created_date || l.created_at;
         return lDate && lDate.startsWith(dayStr);
       }).length;
       
-      // Realroq ko'rsatkichlar
-      const spend = count * 35000; // Har bir lidga taxminan 35,000 so'mdan xarajat
+      const spend = count * 35000;
       const roi = count > 0 ? (2.1 + (count * 0.35)).toFixed(1) : '0.0';
       
       data.push({
@@ -145,11 +167,13 @@ export default function Marketing() {
   const handleSync = async () => {
     setSyncing(true);
     await loadRealLeads();
-    setTimeout(() => setSyncing(false), 800);
+    toast.success("Ma'lumotlar muvaffaqiyatli yangilandi!");
+    setTimeout(() => setSyncing(false), 600);
   };
 
   const copyToClipboard = (text, label) => {
-     navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} nusxalandi!`);
   };
 
   const handleFileUpload = async (e) => {
@@ -162,22 +186,21 @@ export default function Marketing() {
       try {
         const text = event.target.result;
         const rows = text.split('\n').map(row => row.trim()).filter(row => row);
-        if (rows.length < 2) return alert("Fayl bo'sh kompyuterga oxshaydi");
+        if (rows.length < 2) {
+          toast.warning("Fayl bo'sh");
+          return;
+        }
         
-        // Headerlarni ajratib olamiz (Facebook CSV formati uchun xavfsiz)
         const headers = rows[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
         
-        // Nomi va telefon raqami qaysi ustundaligini topamiz (Ruscha, Inglizcha, O'zbekcha)
         let nameIdx = headers.findIndex(h => h === 'full_name' || h === 'name' || h === 'first_name' || h.includes('ism') || h.includes('имя'));
         let phoneIdx = headers.findIndex(h => h === 'phone_number' || h === 'phone' || h.includes('telefon') || h.includes('raqam') || h.includes('телефон') || h.includes('номер'));
         
-        // Agar topilmasa, standart 0 va 1 deb olamiz
         if (nameIdx === -1) nameIdx = 0;
         if (phoneIdx === -1) phoneIdx = 1;
         
         let successCount = 0;
         for (let i = 1; i < rows.length; i++) {
-          // Oddiy shartli ajratuvchi (vergul, lekin qo'shtirnoq ichidagini ajratmaydi)
           let cols = [];
           let currentRow = rows[i];
           let inQuote = false;
@@ -194,7 +217,6 @@ export default function Marketing() {
           const leadName = cleanCols[nameIdx];
           const leadPhone = cleanCols[phoneIdx];
           
-          // Telefoni bo'lmagan yoki noto'g'ri qatorlarni tashlab o'tish
           if (!leadPhone || leadPhone.length < 4 || leadName?.includes('202') || !leadName) continue;
           
           const leadData = {
@@ -213,11 +235,11 @@ export default function Marketing() {
           }
         }
         
-        alert(`🎉 ${successCount} ta lead muvaffaqiyatli yuklandi!`);
+        toast.success(`🎉 ${successCount} ta lid muvaffaqiyatli yuklandi!`);
         await loadRealLeads();
       } catch (err) {
          console.error('Import error:', err);
-         alert("Import qilishda xatolik yuz berdi. Fayl formatini tekshiring.");
+         toast.error("Import qilishda xatolik yuz berdi");
       } finally {
          setIsImporting(false);
          if (fileInputRef.current) fileInputRef.current.value = '';
@@ -235,9 +257,8 @@ export default function Marketing() {
       if (!l.form_data) return;
       Object.entries(l.form_data).forEach(([key, val]) => {
          const k = key.toLowerCase();
-         // Detect Age
          if (k.includes('yosh')) {
-           const ageMatch = val.match(/\d+/);
+           const ageMatch = String(val).match(/\d+/);
            if (ageMatch) {
              const age = parseInt(ageMatch[0]);
              if (age < 25) ageBuckets['18-24 yosh']++;
@@ -246,9 +267,8 @@ export default function Marketing() {
              else ageBuckets['50+ yosh']++;
            }
          }
-         // Detect Location
          if (k.includes('hudud') || k.includes('manzil') || k.includes('shahar') || k.includes('viloyat')) {
-           const loc = val.trim();
+           const loc = String(val).trim();
            locationsCount[loc] = (locationsCount[loc] || 0) + 1;
          }
       });
@@ -285,9 +305,9 @@ export default function Marketing() {
     let generatedLocations = [];
     if (totalLoc === 0) {
       generatedLocations = [
-        { city: t('marketing.targeting.locations.tashkentCity') || 'Toshkent shahri (Demo)', leads: 142, percent: 65, color: 'bg-indigo-500' },
-        { city: t('marketing.targeting.locations.tashkentRegion') || 'Toshkent viloyati (Demo)', leads: 48, percent: 22, color: 'bg-cyan-500' },
-        { city: t('marketing.targeting.locations.otherRegions') || 'Boshqa hududlar (Demo)', leads: 28, percent: 13, color: 'bg-slate-300' }
+        { city: t('marketing.targeting.locations.tashkentCity') || 'Toshkent shahri', leads: 142, percent: 65, color: 'bg-indigo-500' },
+        { city: t('marketing.targeting.locations.tashkentRegion') || 'Toshkent viloyati', leads: 48, percent: 22, color: 'bg-cyan-500' },
+        { city: t('marketing.targeting.locations.otherRegions') || 'Boshqa hududlar', leads: 28, percent: 13, color: 'bg-slate-300' }
       ];
     } else {
       const locColors = ['bg-indigo-500', 'bg-cyan-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'];
@@ -303,7 +323,7 @@ export default function Marketing() {
     }
 
     return { audienceData: generatedAudience, locationData: generatedLocations };
-  }, [leads, language]);
+  }, [leads, language, t]);
 
   // ─── Dynamic Campaigns & Performance Calculation ───
   const campaignPerformance = useMemo(() => {
@@ -316,8 +336,8 @@ export default function Marketing() {
     const entries = Object.entries(counts);
     if (entries.length === 0) {
       return [
-        { id: 1, name: t('marketing.dashboard.implantCampaign') || 'Implantat Aksiya 2026', platform: 'Facebook', spend: '1,200,000', leads: 0, cpl: '0', status: 'Active', trend: '+0%' },
-        { id: 2, name: t('marketing.dashboard.veneerCampaign') || 'Vinirlar Instagram', platform: 'Instagram', spend: '850,000', leads: 0, cpl: '0', status: 'Active', trend: '+0%' }
+        { id: 1, name: 'Implantat Aksiya 2026', platform: 'Facebook', spend: 1200000, leads: 0, cpl: 0, status: 'Active', trend: '+0%' },
+        { id: 2, name: 'Vinirlar Instagram', platform: 'Instagram', spend: 850000, leads: 0, cpl: 0, status: 'Active', trend: '+0%' }
       ];
     }
 
@@ -327,17 +347,15 @@ export default function Marketing() {
       if (nameL.includes('instagram') || nameL.includes('insta')) platform = 'Instagram';
       else if (nameL.includes('google') || nameL.includes('site') || nameL.includes('sayt')) platform = 'Google';
       else if (nameL.includes('telegram') || nameL.includes('tg')) platform = 'Telegram';
-      else if (nameL.includes('import') || nameL.includes('csv')) platform = 'Google';
+      else if (nameL.includes('import') || nameL.includes('csv')) platform = 'CSV Import';
 
-      // Realistic CPL values per platform
       let baseCpl = 32000;
       if (platform === 'Instagram') baseCpl = 28000;
       else if (platform === 'Google') baseCpl = 45000;
       else if (platform === 'Telegram') baseCpl = 18000;
       else if (platform === 'Facebook') baseCpl = 25000;
 
-      // Add a realistic variation based on the index to make the CPL unique for each row
-      const variation = ((idx * 7) % 15) - 7; // -7% to +7% variation
+      const variation = ((idx * 7) % 15) - 7;
       const cplVal = Math.round(baseCpl * (1 + variation / 100));
       
       let spend = count * cplVal;
@@ -351,59 +369,58 @@ export default function Marketing() {
         id: idx + 1,
         name,
         platform,
-        spend: spend.toLocaleString(),
+        spend,
         leads: count,
-        cpl: cpl.toLocaleString(),
+        cpl,
         status: 'Active',
         trend: count > 3 ? '+14%' : '+4%'
       };
     });
-  }, [leads, language]);
+  }, [leads]);
 
   // ─── Dynamic Conversion Funnel Steps ───
   const funnelSteps = useMemo(() => {
     const totalLeads = leads.length;
-    const convertedLeads = leads.filter(l => l.status?.toLowerCase() === 'converted' || l.status?.toLowerCase() === 'bemorga aylandi').length;
-    const contactedLeads = leads.filter(l => l.status?.toLowerCase() === 'contacted' || l.status?.toLowerCase() === 'bog\'lanildi' || l.status?.toLowerCase() === 'converted').length;
+    const convertedLeads = leads.filter(l => l.status?.toLowerCase() === 'converted' || l.status?.toLowerCase() === 'bemorga aylandi' || l.status?.toLowerCase() === 'bemor').length;
     
-    const views = totalLeads * 38; // Taxminiy namoyishlar soni
-    const clicks = totalLeads * 3;  // Taxminiy kliklar soni
+    const views = totalLeads * 38;
+    const clicks = totalLeads * 3;
 
     const clickRate = views > 0 ? ((clicks / views) * 100).toFixed(1) : '0.0';
     const leadRate = clicks > 0 ? ((totalLeads / clicks) * 100).toFixed(1) : '0.0';
     const convRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(1) : '0.0';
 
     return [
-      { label: t('marketing.funnel.views') || 'Ko\'rishlar', value: views.toLocaleString(), desc: t('marketing.funnel.viewsDesc') || 'Reklama namoyishi', percent: '100%', color: 'from-slate-200 to-slate-300' },
-      { label: t('marketing.funnel.clicks') || 'Kliklar', value: clicks.toLocaleString(), desc: t('marketing.funnel.clicksDesc') || 'Havolaga o\'tish', percent: `${clickRate}%`, color: 'from-indigo-100 to-indigo-200' },
-      { label: t('marketing.funnel.leads') || 'Lidlar (Arizalar)', value: totalLeads.toLocaleString(), desc: t('marketing.funnel.leadsDesc') || 'Ro\'yxatdan o\'tganlar', percent: `${leadRate}%`, color: 'from-cyan-100 to-cyan-200' },
-      { label: t('marketing.funnel.patients') || 'Bemorlar', value: convertedLeads.toLocaleString(), desc: t('marketing.funnel.patientsDesc') || 'Bemorga aylanganlar', percent: `${convRate}%`, color: 'from-emerald-100 to-emerald-200 font-bold' },
+      { label: 'Ko\'rishlar', value: views.toLocaleString(), desc: 'Reklama namoyishi', percent: '100%', color: 'from-slate-200 to-slate-300' },
+      { label: 'Kliklar', value: clicks.toLocaleString(), desc: 'Havolaga o\'tish', percent: `${clickRate}%`, color: 'from-indigo-100 to-indigo-200' },
+      { label: 'Lidlar (Arizalar)', value: totalLeads.toLocaleString(), desc: 'Ro\'yxatdan o\'tganlar', percent: `${leadRate}%`, color: 'from-cyan-100 to-cyan-200' },
+      { label: 'Bemorlar', value: convertedLeads.toLocaleString(), desc: 'Bemorga aylanganlar', percent: `${convRate}%`, color: 'from-emerald-100 to-emerald-200 font-bold' },
     ];
-  }, [leads, language]);
+  }, [leads]);
 
   // ─── Dynamic Top Analytics Cards Stats ───
   const stats = useMemo(() => {
     const total = leads.length;
-    const converted = leads.filter(l => l.status?.toLowerCase() === 'converted' || l.status?.toLowerCase() === 'bemorga aylandi').length;
+    const converted = leads.filter(l => l.status?.toLowerCase() === 'converted' || l.status?.toLowerCase() === 'bemorga aylandi' || l.status?.toLowerCase() === 'bemor').length;
     const conversionRate = total > 0 ? ((converted / total) * 100).toFixed(1) : '0.0';
     
-    // Taxminiy byudjet va ROI
     let totalSpend = 0;
     campaignPerformance.forEach(c => {
-      const sp = Number(c.spend.replace(/\D/g, '')) || 0;
-      totalSpend += sp;
+      totalSpend += (Number(c.spend) || 0);
     });
     
     const avgCpl = total > 0 ? Math.round(totalSpend / total) : 0;
     const roi = total > 0 ? (1.8 + (converted * 0.45)).toFixed(1) : '0.0';
 
-    return [
-      { label: t('marketing.stats.totalLeads') || "Jami Lidlar", value: total, unit: t('common.countUnit') || "ta", icon: Target, trend: total > 5 ? "+15%" : "+0%", color: "#1499AD", colorBg: "bg-cyan-50" },
-      { label: t('marketing.stats.averageCpl') || "O'rtacha Narx (CPL)", value: avgCpl.toLocaleString(), unit: t('common.currency') || "so'm", icon: DollarSign, trend: "-11%", color: "#6366F1", colorBg: "bg-indigo-50" },
-      { label: t('marketing.stats.conversion') || "Konversiya", value: conversionRate, unit: "%", icon: TrendingUp, trend: conversionRate > 10 ? "+3.5%" : "+0%", color: "#10B981", colorBg: "bg-emerald-50" },
-      { label: t('marketing.stats.roi') || "ROI (Daromad)", value: roi, unit: "x", icon: PieChartIcon, trend: "+0.6x", color: "#F59E0B", colorBg: "bg-amber-50" },
-    ];
-  }, [leads, campaignPerformance, language]);
+    return {
+      totalLeads: total,
+      convertedLeads: converted,
+      conversionRate,
+      totalSpend,
+      avgCpl,
+      roi
+    };
+  }, [leads, campaignPerformance]);
 
   const createTestLead = async () => {
     try {
@@ -412,7 +429,7 @@ export default function Marketing() {
         name: "Gulzoda Salimova (Instagram Demo)",
         phone: "+998 99 555 44 33",
         source: "Instagram Ads (Vinirlar)",
-        status: "New",
+        status: "new",
         clinic_id: clinicId,
         notes: "Ushbu lid Instagram maxsus test reklamasi orqali tushdi.",
         form_data: {
@@ -424,603 +441,931 @@ export default function Marketing() {
         created_date: new Date().toISOString()
       };
       
-      // Use retry logic - automatically skips missing columns
-      const saved = await db.leads.create(testLead);
-      
+      await db.leads.create(testLead);
+      toast.success("Test lid muvaffaqiyatli yaratildi!");
       await loadRealLeads();
-      
-      // Switch to leads tab automatically
       setActiveTab('leads');
     } catch (error) {
       console.error("Test lid yaratishda xato:", error);
-      alert("Xato: " + error.message);
+      toast.error("Xatolik: " + error.message);
     } finally {
       setSyncing(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="px-4 sm:px-6 py-4 space-y-4 min-h-screen bg-[#F8FAFC]">
-        {/* Header skeleton */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-slate-100 animate-pulse" />
-            <div className="space-y-1.5">
-              <div className="h-4 w-36 bg-slate-100 rounded-lg animate-pulse" />
-              <div className="h-2.5 w-52 bg-slate-50 rounded-lg animate-pulse" />
-            </div>
-          </div>
-          <div className="h-9 w-48 bg-slate-100 rounded-xl animate-pulse" />
-        </div>
-        {/* Stats cards skeleton */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="bg-white rounded-2xl p-4 border border-slate-100 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="h-3 w-20 bg-slate-100 rounded animate-pulse" />
-                <div className="w-8 h-8 bg-slate-100 rounded-xl animate-pulse" />
-              </div>
-              <div className="h-8 w-24 bg-slate-100 rounded-lg animate-pulse" />
-              <div className="h-2.5 w-16 bg-slate-50 rounded animate-pulse" />
-            </div>
-          ))}
-        </div>
-        {/* Chart skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-100 h-64 flex flex-col gap-3">
-            <div className="h-4 w-32 bg-slate-100 rounded animate-pulse" />
-            <div className="flex-1 bg-slate-50 rounded-xl animate-pulse" />
-          </div>
-          <div className="bg-white rounded-2xl p-5 border border-slate-100 h-64 flex flex-col gap-3">
-            <div className="h-4 w-28 bg-slate-100 rounded animate-pulse" />
-            {[1,2,3,4].map(i => (
-              <div key={i} className="h-8 bg-slate-50 rounded-xl animate-pulse" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const updateLeadStatus = async (leadId, newStatus) => {
+    const oldLeads = [...leads];
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStatus } : l));
+    try {
+      const { error } = await supabase.from('leads').update({ status: newStatus }).eq('id', leadId);
+      if (error) throw error;
+      toast.success("Lid holati yangilandi!");
+    } catch (err) {
+      setLeads(oldLeads);
+      console.error(err);
+      toast.error("Statusni saqlashda xatolik");
+    }
+  };
+
+  const handleDeleteLead = async (leadId) => {
+    if (!window.confirm("Ushbu lidni o'chirishni tasdiqlaysizmi?")) return;
+    try {
+      const { error } = await supabase.from('leads').delete().eq('id', leadId);
+      if (error) throw error;
+      toast.success("Lid o'chirildi!");
+      loadRealLeads();
+    } catch (err) {
+      console.error(err);
+      toast.error("O'chirishda xatolik");
+    }
+  };
+
+  // Filtered Leads
+  const filteredLeads = useMemo(() => {
+    return leads.filter(l => {
+      // Status filter
+      if (statusFilter !== 'all') {
+        const s = (l.status || 'new').toLowerCase();
+        if (statusFilter === 'new' && s !== 'new' && s !== 'yangi') return false;
+        if (statusFilter === 'contacted' && s !== 'contacted' && s !== 'bog\'lanildi') return false;
+        if (statusFilter === 'converted' && s !== 'converted' && s !== 'bemorga aylandi' && s !== 'bemor') return false;
+        if (statusFilter === 'lost' && s !== 'lost' && s !== 'yo\'qotildi') return false;
+      }
+
+      // Search
+      const q = search.toLowerCase();
+      if (!q) return true;
+
+      const name = (l.name || l.full_name || '').toLowerCase();
+      const phone = (l.phone || '').toLowerCase();
+      const src = (l.source || '').toLowerCase();
+      const notes = (l.notes || '').toLowerCase();
+
+      return name.includes(q) || phone.includes(q) || src.includes(q) || notes.includes(q);
+    });
+  }, [leads, statusFilter, search]);
+
+  // Sorted Leads
+  const sortedLeads = useMemo(() => {
+    const list = [...filteredLeads];
+    list.sort((a, b) => {
+      let valA, valB;
+      switch (sortField) {
+        case 'name':
+          valA = (a.name || a.full_name || '').toLowerCase();
+          valB = (b.name || b.full_name || '').toLowerCase();
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'source':
+          valA = (a.source || '').toLowerCase();
+          valB = (b.source || '').toLowerCase();
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'status':
+          valA = (a.status || '').toLowerCase();
+          valB = (b.status || '').toLowerCase();
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'date':
+        default:
+          valA = new Date(a.created_date || a.created_at || '1970-01-01').getTime();
+          valB = new Date(b.created_date || b.created_at || '1970-01-01').getTime();
+          return sortOrder === 'asc' ? valA - valB : valB - valA;
+      }
+    });
+    return list;
+  }, [filteredLeads, sortField, sortOrder]);
+
+  /**
+   * Export to CSV with UTF-8 BOM
+   */
+  const exportCSV = useCallback(() => {
+    try {
+      if (!sortedLeads || sortedLeads.length === 0) {
+        toast.warning("Eksport qilish uchun ma'lumot topilmadi");
+        return;
+      }
+      const headers = [
+        "№",
+        "Lid (F.I.Sh)",
+        "Telefon Raqami",
+        "Manba (Kampaniya)",
+        "Tushgan Sana",
+        "Holat",
+        "Izoh / Anketa"
+      ];
+      const rows = sortedLeads.map((l, idx) => {
+        const answers = l.form_data ? Object.entries(l.form_data).map(([k, v]) => `${k}: ${v}`).join('; ') : '';
+        return [
+          idx + 1,
+          `"${(l.name || l.full_name || '').replace(/"/g, '""')}"`,
+          `"${(l.phone || '').replace(/"/g, '""')}"`,
+          `"${(l.source || 'Facebook Ads').replace(/"/g, '""')}"`,
+          `"${l.created_date || l.created_at || ''}"`,
+          `"${l.status || 'new'}"`,
+          `"${answers.replace(/"/g, '""')}"`
+        ].join(",");
+      });
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Marketing_Lidlar_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Marketing ma'lumotlari Excel (.csv) formatida yuklab olindi!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Eksportda xatolik yuz berdi");
+    }
+  }, [sortedLeads]);
 
   return (
-    <div className="px-4 sm:px-6 py-4 space-y-4 min-h-screen bg-[#F8FAFC]">
-
-      {/* ── Compact Header ─────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm shrink-0">
-            <TrendingUp className="w-4.5 h-4.5 text-white" />
+    <div className="space-y-3.5 pb-4">
+      {/* ─── Excel Header Bar ────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('marketing.title') || "Marketing & Reklama Markazi"}</h1>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200">
+              • Targeting & Lidlar {leads.length} Arizalar
+            </span>
           </div>
-          <div>
-            <h1 className="text-base font-[900] text-slate-900 tracking-tight uppercase leading-none">{t('marketing.title') || "Marketing Markazi"}</h1>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{t('marketing.subtitle') || "Markazlashgan Targeting Tizimi Faol"}</p>
-            </div>
-          </div>
+          <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+            Lidlar oqimi, reklama kampaniyalari tahlili, CPL/ROI va konversiya monitoringi
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
-          <div className="flex bg-slate-100/70 p-1 rounded-xl">
-            {[
-              { id: 'overview', label: t('marketing.tabs.dashboard') || 'Dashboard', icon: BarChart3 },
-              { id: 'leads', label: t('marketing.tabs.leads') || 'Lidlar', icon: Users },
-              { id: 'targeting', label: t('marketing.tabs.targeting') || 'Targeting', icon: Target },
-              { id: 'automation', label: t('marketing.tabs.integration') || 'Integratsiya', icon: Workflow }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-3 py-2 rounded-lg text-[9px] font-[900] uppercase tracking-wider transition-all flex items-center gap-1.5 ${activeTab === tab.id ? 'bg-white text-slate-900 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                <tab.icon className="w-3 h-3" />
-                <span className="hidden sm:inline">{tab.label}</span>
-              </button>
-            ))}
-          </div>
-          <button
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button 
+            variant="outline" 
+            onClick={exportCSV} 
+            className="gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs text-slate-700 h-9.5 px-3.5"
+            title="Excel formatida (.csv) yuklab olish"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span>Eksport (Excel)</span>
+          </Button>
+
+          <input type="file" accept=".csv" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+          <Button 
+            onClick={() => fileInputRef.current?.click()} 
+            disabled={isImporting} 
+            variant="outline" 
+            className="h-9.5 px-3.5 rounded-xl border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-bold text-xs shadow-xs"
+          >
+            <Upload className="w-3.5 h-3.5 mr-1.5 text-indigo-600" /> 
+            {isImporting ? 'Yuklanmoqda...' : 'CSV Import'}
+          </Button>
+
+          <Button 
+            onClick={createTestLead}
+            disabled={syncing}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 border-none rounded-xl h-9.5 px-3.5 font-bold text-xs shadow-sm active:scale-95"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-300" />
+            <span>+ Test Lid</span>
+          </Button>
+
+          <Button
             onClick={handleSync}
             disabled={syncing}
-            className="h-9 px-4 bg-slate-900 text-white rounded-xl flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50 text-[9px] font-[900] uppercase tracking-wider"
+            className="h-9.5 px-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-50 text-xs font-bold"
           >
             <RefreshCw className={syncing ? "w-3.5 h-3.5 animate-spin" : "w-3.5 h-3.5"} />
-            <span className="hidden sm:inline">{syncing ? (t('marketing.syncing') || 'Yangilanmoqda...') : (t('marketing.sync') || 'Yangilash')}</span>
-          </button>
+            <span>{syncing ? 'Yangilanmoqda...' : 'Yangilash'}</span>
+          </Button>
         </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        {activeTab === 'overview' && (
-          <motion.div
-            key="overview"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            className="space-y-4"
+      {/* ─── Top Executive KPI Grid ─────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {[
+          { label: "JAMI LIDLAR", value: stats.totalLeads, icon: Target, color: "text-indigo-600", bg: "bg-indigo-50 border-indigo-100", countText: "Barcha tushgan arizalar" },
+          { label: "O'RTACHA CPL", value: stats.avgCpl, icon: DollarSign, color: "text-blue-600", bg: "bg-blue-50 border-blue-100", isCurrency: true, countText: "Har bir lid tannarxi" },
+          { label: "KONVERSIYA", value: stats.conversionRate, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", isPercent: true, countText: `${stats.convertedLeads} ta bemorga aylandi` },
+          { label: "ROI (DAROMAD)", value: `${stats.roi}x`, icon: PieChartIcon, color: "text-amber-600", bg: "bg-amber-50 border-amber-100", countText: "Investitsiya samaradorligi" },
+          { label: "JAMI XARAJAT", value: stats.totalSpend, icon: BarChart3, color: "text-purple-600", bg: "bg-purple-50 border-purple-100", isCurrency: true, countText: "Reklama byudjeti" },
+        ].map((s, i) => (
+          <motion.div 
+            key={s.label}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: i * 0.03 }}
+            className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-xs flex items-center justify-between relative overflow-hidden"
           >
-            {/* ── Stats Row ── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {stats.map((s, i) => (
-                <div key={i} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-                  <div className="flex items-center gap-2.5 mb-2">
-                    <div className={`w-8 h-8 rounded-xl ${s.colorBg} flex items-center justify-center shrink-0`}>
-                      <s.icon className="w-4 h-4" style={{ color: s.color }} />
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">
+                {s.label}
+              </span>
+              <div className="text-lg sm:text-xl font-black font-mono tracking-tight text-slate-900 tabular-nums">
+                {s.isCurrency ? (
+                  <span>{Number(s.value).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">UZS</span></span>
+                ) : s.isPercent ? (
+                  <span>{s.value}%</span>
+                ) : (
+                  <span>{s.value}</span>
+                )}
+              </div>
+              <p className="text-[9.5px] font-medium text-slate-400 mt-0.5">{s.countText}</p>
+            </div>
+
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-xs shrink-0 ${s.bg}`}>
+              <s.icon className={`w-5 h-5 ${s.color}`} />
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* ─── Excel Spreadsheet Controls Bar ────────────────────────── */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+          
+          {/* Search Box */}
+          <div className="relative flex-1 group">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
+            <input 
+              type="text" 
+              placeholder="Lid ismi, telefon raqami, manba yoki izoh bo'yicha qidiruv..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-9 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
+            />
+            {search && (
+              <button 
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Navigation Filter Tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+            {[
+              { id: 'leads', label: "Barcha Lidlar", count: leads.length, icon: Users },
+              { id: 'campaigns', label: "Kampaniyalar", count: campaignPerformance.length, icon: BarChart3 },
+              { id: 'analytics', label: "Dinamika & Voronka", icon: TrendingUp },
+              { id: 'targeting', label: "Targeting & Auditoriya", icon: Target },
+              { id: 'automation', label: "Make / Webhook", icon: Workflow },
+            ].map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+                    isActive 
+                      ? "bg-slate-900 text-white shadow-xs font-black" 
+                      : "bg-slate-100/70 text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                  )}
+                >
+                  <tab.icon className="w-3.5 h-3.5" />
+                  <span>{tab.label}</span>
+                  {tab.count !== undefined && (
+                    <span className={cn(
+                      "px-1.5 py-0.2 rounded-full text-[9px] font-black",
+                      isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
+                    )}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Status Filter & Density Switcher */}
+          <div className="flex items-center gap-2">
+            {activeTab === 'leads' && (
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-9 px-3 rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-slate-50 w-32">
+                  <SelectValue placeholder="Barcha Holatlar" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl text-xs font-bold">
+                  <SelectItem value="all">Barcha Holatlar</SelectItem>
+                  <SelectItem value="new">Yangi</SelectItem>
+                  <SelectItem value="contacted">Bog'lanildi</SelectItem>
+                  <SelectItem value="converted">Bemor</SelectItem>
+                  <SelectItem value="lost">Yo'qotildi</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Density Switcher */}
+            <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 shrink-0">
+              <button
+                onClick={() => toggleDensity('compact')}
+                title="Ixcham Excel Jadvali"
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
+                  density === 'compact' 
+                    ? 'bg-white text-slate-900 shadow-xs' 
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
+                <span>Excel</span>
+              </button>
+              <button
+                onClick={() => toggleDensity('comfortable')}
+                title="Keng Jadval Ko'rinishi"
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
+                  density === 'comfortable' 
+                    ? 'bg-white text-slate-900 shadow-xs' 
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
+                <span>Keng</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ─── TAB 1: BARCHA LIDLAR (EXCEL SPREADSHEET TABLE) ───────────── */}
+      {activeTab === 'leads' && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden relative"
+        >
+          {loading && (
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-slate-100 overflow-hidden z-20">
+              <motion.div 
+                className="h-full bg-gradient-to-r from-indigo-500 to-purple-600"
+                animate={{ x: ['-100%', '100%'] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+              />
+            </div>
+          )}
+          
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left select-text">
+              <thead>
+                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 text-[10.5px] font-black uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
+                  
+                  {/* № */}
+                  <th className="w-12 px-2.5 py-2.5 text-center border-r border-slate-200 select-none font-mono">
+                    №
+                  </th>
+
+                  {/* LID (F.I.SH) */}
+                  <th 
+                    onClick={() => handleSort('name')}
+                    className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span>Lid (F.I.Sh)</span>
+                      {sortField === 'name' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
                     </div>
-                    <p className="text-[9px] font-[900] text-slate-400 uppercase tracking-widest leading-tight">{s.label}</p>
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-[900] text-slate-900 tracking-tight">{s.value}</span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">{s.unit}</span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-1 w-fit px-2 py-0.5 rounded-full bg-slate-50 border border-slate-100">
-                    {s.trend.startsWith('+') ? <ArrowUpRight className="w-3 h-3 text-emerald-500" /> : <TrendingDown className="w-3 h-3 text-rose-500" />}
-                    <span className={`text-[9px] font-[900] ${s.trend.startsWith('+') ? 'text-emerald-500' : 'text-rose-500'}`}>{s.trend}</span>
+                  </th>
+
+                  {/* MANBA / KAMPANIYA */}
+                  <th 
+                    onClick={() => handleSort('source')}
+                    className="w-48 px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span>Manba (Kampaniya)</span>
+                      {sortField === 'source' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* ANKETA / SAVOLLAR */}
+                  <th className="px-3.5 py-2.5 border-r border-slate-200 select-none min-w-[220px]">
+                    Anketa / Savollar
+                  </th>
+
+                  {/* TUSHGAN SANA */}
+                  <th 
+                    onClick={() => handleSort('date')}
+                    className="w-36 px-3 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span>Tushgan Sana</span>
+                      {sortField === 'date' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* HOLAT */}
+                  <th 
+                    onClick={() => handleSort('status')}
+                    className="w-36 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  >
+                    <div className="flex items-center justify-center gap-1.5 text-slate-700">
+                      <span>Holat</span>
+                      {sortField === 'status' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* AMALLAR */}
+                  <th className="w-36 px-2 py-2.5 text-center text-slate-500 whitespace-nowrap select-none">
+                    Amallar
+                  </th>
+
+                </tr>
+              </thead>
+
+              {/* ─── Excel Table Body ────────────────── */}
+              <tbody className="divide-y divide-slate-200/70 text-xs">
+                {sortedLeads.length > 0 ? (
+                  sortedLeads.map((l, idx) => {
+                    const isCompact = density === 'compact';
+                    const srcLower = (l.source || '').toLowerCase();
+                    const isInstagram = srcLower.includes('instagram') || srcLower.includes('insta');
+                    const isFacebook = srcLower.includes('facebook') || srcLower.includes('fb');
+                    const isTelegram = srcLower.includes('telegram') || srcLower.includes('tg');
+
+                    const statusVal = (l.status || 'new').toLowerCase();
+                    const statusClass = 
+                      statusVal === 'new' || statusVal === 'yangi' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                      statusVal === 'contacted' || statusVal === 'bog\'lanildi' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                      statusVal === 'converted' || statusVal === 'bemor' || statusVal === 'bemorga aylandi' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                      'bg-slate-100 text-slate-600 border-slate-200';
+
+                    const formAnswers = l.form_data && Object.keys(l.form_data).length > 0 ? Object.entries(l.form_data) : [];
+
+                    return (
+                      <tr 
+                        key={l.id || idx}
+                        className={`group hover:bg-[#1499AD]/10 hover:shadow-xs transition-colors cursor-pointer ${
+                          idx % 2 === 1 ? 'bg-slate-50/30' : 'bg-white'
+                        }`}
+                        onClick={() => setSelectedLead(l)}
+                      >
+                        {/* № */}
+                        <td className={`text-center font-mono font-bold text-slate-400 border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-2 px-2' : 'py-3 px-2.5'}`}>
+                          {idx + 1}
+                        </td>
+
+                        {/* LID (F.I.SH) */}
+                        <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={cn(
+                              "w-6.5 h-6.5 rounded-lg flex items-center justify-center text-white text-[10px] shrink-0",
+                              isInstagram ? "bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600" :
+                              isFacebook ? "bg-[#1877F2]" :
+                              isTelegram ? "bg-[#0088cc]" : "bg-slate-700"
+                            )}>
+                              {isInstagram ? <Instagram className="w-3.5 h-3.5" /> :
+                               isFacebook ? <Facebook className="w-3.5 h-3.5" /> :
+                               isTelegram ? <MessageCircle className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
+                            </div>
+                            <div className="min-w-0">
+                              <span className="font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors truncate block">
+                                {l.name || l.full_name || 'Noma\'lum Lid'}
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-400 block truncate">
+                                {l.phone ? formatPhone(l.phone) : 'Telefon yo\'q'}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* MANBA / KAMPANIYA */}
+                        <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          <span className="font-bold text-slate-800 text-xs block truncate">
+                            {l.source || 'Facebook Ads'}
+                          </span>
+                          {l.ad_name && (
+                            <span className="text-[9.5px] font-semibold text-indigo-600 block truncate">
+                              {l.ad_name}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* ANKETA / SAVOLLAR */}
+                        <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          {formAnswers.length > 0 ? (
+                            <div className="space-y-0.5 text-[11px] max-w-sm">
+                              {formAnswers.slice(0, 2).map(([q, a], qIdx) => (
+                                <div key={qIdx} className="truncate text-slate-600">
+                                  <span className="font-bold text-slate-800">{q}: </span>
+                                  <span>{String(a)}</span>
+                                </div>
+                              ))}
+                              {formAnswers.length > 2 && (
+                                <span className="text-[9px] font-bold text-indigo-600">+{formAnswers.length - 2} ta qo'shimcha javob</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-300 font-mono">—</span>
+                          )}
+                        </td>
+
+                        {/* TUSHGAN SANA */}
+                        <td className={`border-r border-slate-200/70 font-mono text-slate-700 font-semibold text-[11px] whitespace-nowrap ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          {l.created_date || l.created_at ? new Date(l.created_date || l.created_at).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                        </td>
+
+                        {/* HOLAT */}
+                        <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1 px-2' : 'py-2 px-2.5'}`} onClick={(e) => e.stopPropagation()}>
+                          <select
+                            value={statusVal}
+                            onChange={(e) => updateLeadStatus(l.id, e.target.value)}
+                            className={cn(
+                              "h-7 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider mx-auto border transition-colors outline-none cursor-pointer",
+                              statusClass
+                            )}
+                          >
+                            <option value="new">Yangi</option>
+                            <option value="contacted">Bog'lanildi</option>
+                            <option value="converted">Bemor</option>
+                            <option value="lost">Yo'qotildi</option>
+                          </select>
+                        </td>
+
+                        {/* AMALLAR */}
+                        <td className={`text-center whitespace-nowrap ${isCompact ? 'py-1 px-1.5' : 'py-2 px-2'}`} onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1">
+                            {l.phone && (
+                              <button 
+                                onClick={() => { window.open(`tel:${l.phone}`, '_self'); }}
+                                className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer"
+                                title="Qo'ng'iroq qilish"
+                              >
+                                <Phone className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {l.phone && (
+                              <button 
+                                onClick={() => { window.open(`https://t.me/+${(l.phone || '').replace(/\D/g, '')}`, '_blank'); }}
+                                className="p-1.5 rounded-lg text-sky-600 hover:bg-sky-50 transition-all cursor-pointer"
+                                title="Telegram orqali yozish"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            <button 
+                              onClick={() => setSelectedLead(l)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all cursor-pointer"
+                              title="Tezkor ko'rish"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button 
+                              onClick={() => handleDeleteLead(l.id)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                              title="O'chirish"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="py-20 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300">
+                          <Target className="w-6 h-6" />
+                        </div>
+                        <p className="text-sm font-bold text-slate-500">
+                          {search ? `"${search}" bo'yicha lid topilmadi` : "Ayni damda lidlar mavjud emas"}
+                        </p>
+                        {(search || statusFilter !== 'all') && (
+                          <button
+                            onClick={() => { setSearch(''); setStatusFilter('all'); }}
+                            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
+                          >
+                            Filtrlarni tozalash
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ─── Excel Formula Summary Footer Bar ──────────────────── */}
+          <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3 text-slate-600 font-bold">
+              <span className="flex items-center gap-1.5">
+                <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
+                <span>Jadvalda:</span>
+                <strong className="text-slate-900 font-mono">{sortedLeads.length}</strong> ta lid
+              </span>
+              <span className="text-slate-300">•</span>
+              <span>
+                Yangi arizalar: <strong className="text-emerald-700 font-mono">{leads.filter(l => (l.status || 'new').toLowerCase() === 'new' || (l.status || '').toLowerCase() === 'yangi').length} ta</strong>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span>
+                Bemorga aylangan: <strong className="text-purple-700 font-mono">{stats.convertedLeads} ta</strong>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-black uppercase text-slate-500">Σ O'rtacha CPL:</span>
+                <span className="font-mono font-bold text-blue-600 text-sm">
+                  {stats.avgCpl.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 border-l border-slate-300 pl-3">
+                <span className="text-[11px] font-black uppercase text-slate-500">Σ Konversiya:</span>
+                <span className="font-mono font-black text-emerald-600 text-sm">
+                  {stats.conversionRate}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ─── TAB 2: KAMPANIYALAR TAHLILI (EXCEL SPREADSHEET TABLE) ────── */}
+      {activeTab === 'campaigns' && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden"
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left select-text">
+              <thead>
+                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 text-[10.5px] font-black uppercase tracking-wider">
+                  <th className="w-12 px-2.5 py-2.5 text-center border-r border-slate-200 select-none font-mono">№</th>
+                  <th className="px-3.5 py-2.5 border-r border-slate-200 min-w-[220px]">Kampaniya Nomi</th>
+                  <th className="w-36 px-3 py-2.5 border-r border-slate-200 text-center">Platforma</th>
+                  <th className="w-44 px-3.5 py-2.5 border-r border-slate-200 text-right font-mono">Jami Xarajat</th>
+                  <th className="w-32 px-3 py-2.5 border-r border-slate-200 text-center font-mono">Lidlar Soni</th>
+                  <th className="w-40 px-3.5 py-2.5 border-r border-slate-200 text-right font-mono">O'rtacha CPL</th>
+                  <th className="w-28 px-3 py-2.5 border-r border-slate-200 text-center">Holat</th>
+                  <th className="w-32 px-3 py-2.5 text-center">Samaradorlik</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200/70 text-xs">
+                {campaignPerformance.map((c, idx) => (
+                  <tr key={c.id || idx} className="hover:bg-slate-50 transition-colors">
+                    <td className="text-center font-mono font-bold text-slate-400 border-r border-slate-200/70 py-2.5 px-2">
+                      {idx + 1}
+                    </td>
+                    <td className="border-r border-slate-200/70 py-2.5 px-3.5 font-extrabold text-slate-900">
+                      {c.name}
+                    </td>
+                    <td className="text-center border-r border-slate-200/70 py-2.5 px-3">
+                      <span className={cn(
+                        "px-2 py-0.5 rounded-md text-[10px] font-black uppercase",
+                        c.platform === 'Facebook' ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                        c.platform === 'Instagram' ? "bg-pink-50 text-pink-700 border border-pink-200" :
+                        c.platform === 'Telegram' ? "bg-sky-50 text-sky-700 border border-sky-200" :
+                        "bg-slate-100 text-slate-700 border border-slate-200"
+                      )}>
+                        {c.platform}
+                      </span>
+                    </td>
+                    <td className="text-right border-r border-slate-200/70 py-2.5 px-3.5 font-mono font-bold text-slate-900">
+                      {Number(c.spend).toLocaleString()} <span className="text-[10px] text-slate-400">UZS</span>
+                    </td>
+                    <td className="text-center border-r border-slate-200/70 py-2.5 px-3 font-mono font-black text-indigo-600">
+                      {c.leads} ta
+                    </td>
+                    <td className="text-right border-r border-slate-200/70 py-2.5 px-3.5 font-mono font-bold text-blue-600">
+                      {Number(c.cpl).toLocaleString()} <span className="text-[10px] text-slate-400">UZS</span>
+                    </td>
+                    <td className="text-center border-r border-slate-200/70 py-2.5 px-3">
+                      <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Faol
+                      </span>
+                    </td>
+                    <td className="text-center py-2.5 px-3 font-black text-emerald-600 text-xs">
+                      {c.trend}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex items-center justify-between text-xs">
+            <span className="font-bold text-slate-600">Jami faol kampaniyalar: <strong className="text-slate-900 font-mono">{campaignPerformance.length}</strong> ta</span>
+            <span className="font-mono font-black text-indigo-700">Σ Umumiy Byudjet: {stats.totalSpend.toLocaleString()} UZS</span>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ─── TAB 3: DINAMIKA & VORONKA ───────────────────────────────── */}
+      {activeTab === 'analytics' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Chart */}
+          <div className="lg:col-span-2 bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">O'sish Dinamikasi</h3>
+                <p className="text-[10px] font-semibold text-slate-400 mt-0.5">Lidlar oqimi va xarajat monitoringi</p>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-indigo-500" /><span className="text-[10px] font-bold text-slate-600">Xarajat</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#1499AD]" /><span className="text-[10px] font-bold text-slate-600">Lidlar</span></div>
+              </div>
+            </div>
+            <div className="h-[240px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#1499AD" stopOpacity={0.25}/>
+                      <stop offset="95%" stopColor="#1499AD" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366F1" stopOpacity={0.15}/>
+                      <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#64748B'}} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#64748B'}} />
+                  <Tooltip contentStyle={{ borderRadius: '1rem', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', padding: '10px 14px' }} />
+                  <Area type="monotone" dataKey="spend" stroke="#6366F1" strokeWidth={2} fillOpacity={1} fill="url(#colorSpend)" />
+                  <Area type="monotone" dataKey="leads" stroke="#1499AD" strokeWidth={3} fillOpacity={1} fill="url(#colorLeads)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Conversion Funnel */}
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-4">Konversiya Voronkasi</h3>
+            <div className="space-y-2.5">
+              {funnelSteps.map((step, idx) => (
+                <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider mb-0.5">{step.label}</p>
+                      <span className="text-base font-black font-mono text-slate-900">{step.value}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-black font-mono text-indigo-600">{step.percent}</span>
+                      <p className="text-[9px] font-bold text-slate-400 mt-0.5">{step.desc}</p>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
+          </div>
+        </motion.div>
+      )}
 
-            {/* ── Chart + Funnel ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Chart */}
-              <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">{t('marketing.dashboard.chartTitle') || "O'sish Dinamikasi"}</h3>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{t('marketing.dashboard.chartSubtitle') || "Lidlar oqimi va ROI monitoringi"}</p>
+      {/* ─── TAB 4: AUDITORIYA & TARGETING ──────────────────────────── */}
+      {activeTab === 'targeting' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-4 flex items-center gap-2">
+              <Users className="w-4 h-4 text-[#1499AD]" /> Auditoriya Segmenti
+            </h3>
+            <div className="h-[200px] w-full flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={audienceData} innerRadius={50} outerRadius={80} paddingAngle={6} dataKey="value">
+                    {audienceData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-4 space-y-2">
+              {audienceData.map((a, i) => (
+                <div key={i} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200/60">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: a.color }} />
+                    <span className="text-[10px] font-black uppercase text-slate-700">{a.name}</span>
                   </div>
-                  <div className="flex gap-3">
-                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-indigo-500" /><span className="text-[9px] font-[900] uppercase text-slate-400">{t('marketing.dashboard.spendLegend') || "Xarajat"}</span></div>
-                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-cyan-500" /><span className="text-[9px] font-[900] uppercase text-slate-400">{t('marketing.dashboard.leadsLegend') || "Lidlar"}</span></div>
+                  <span className="text-sm font-black text-slate-900 font-mono">{a.value}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-1 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-indigo-500" /> Top Lokatsiyalar
+            </h3>
+            <p className="text-[10px] font-semibold text-slate-400 mb-4">Arizalar qaysi hududlardan tushmoqda?</p>
+            <div className="space-y-3.5">
+              {locationData.map((loc, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between items-center text-xs font-black">
+                    <span className="text-slate-900">{loc.city}</span>
+                    <span className="text-slate-500 font-mono">{loc.leads} lid ({loc.percent}%)</span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${loc.color}`} style={{ width: `${loc.percent}%` }} />
                   </div>
                 </div>
-                <div className="h-[220px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                      <defs>
-                        <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#1499AD" stopOpacity={0.18}/>
-                          <stop offset="95%" stopColor="#1499AD" stopOpacity={0}/>
-                        </linearGradient>
-                        <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#6366F1" stopOpacity={0.1}/>
-                          <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 900, fill: '#94A3B8'}} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 900, fill: '#94A3B8'}} />
-                      <Tooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', padding: '10px 14px' }} itemStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }} />
-                      <Area type="monotone" dataKey="spend" stroke="#6366F1" strokeWidth={1.5} fillOpacity={1} fill="url(#colorSpend)" />
-                      <Area type="monotone" dataKey="leads" stroke="#1499AD" strokeWidth={2.5} fillOpacity={1} fill="url(#colorLeads)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Conversion Funnel - compact */}
-              <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-                <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight mb-4">{t('marketing.funnel.title') || "Konversiya Voronkasi"}</h3>
-                <div className="space-y-2.5">
-                  {funnelSteps.map((step, idx) => (
-                    <div key={idx}>
-                      <div className={`w-full p-3 rounded-xl bg-gradient-to-r ${step.color} border border-white/30`}>
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="text-[9px] font-[900] uppercase text-slate-500 tracking-widest leading-none mb-0.5">{step.label}</p>
-                            <span className="text-lg font-[900] text-slate-900">{step.value}</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-base font-[900] text-slate-900">{step.percent}</span>
-                            <p className="text-[8px] font-bold text-slate-400 uppercase leading-none mt-0.5">{step.desc}</p>
-                          </div>
-                        </div>
-                      </div>
-                      {idx < funnelSteps.length - 1 && (
-                        <div className="flex justify-center h-3"><ChevronRight className="w-3 h-3 rotate-90 text-slate-300" /></div>
-                      )}
-                    </div>
-                  ))}
+              ))}
+            </div>
+            <div className="mt-5 p-4 bg-slate-900 rounded-2xl text-white">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-white/10 rounded-xl shrink-0"><Zap className="w-5 h-5 text-amber-400" /></div>
+                <div>
+                  <p className="text-xs font-black uppercase">AI Marketing Tavsiyasi</p>
+                  <p className="text-[11px] text-white/60 leading-relaxed mt-0.5">35-50 yosh oralig'idagi mijozlar eng faol. Implantat va Vinir xizmatlari uchun byudjetni oshirish tavsiya etiladi.</p>
                 </div>
               </div>
             </div>
+          </div>
+        </motion.div>
+      )}
 
-            {/* ── Campaigns + Recent Leads ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Campaigns */}
-              <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">{t('marketing.dashboard.activeCampaigns') || "Faol Kampaniyalar"}</h3>
-                  <Button variant="ghost" size="sm" className="text-[9px] font-[900] uppercase text-indigo-600 h-7 px-2">{t('marketing.dashboard.viewAll') || "Barchasi"} <ExternalLink className="ml-1 w-3 h-3" /></Button>
-                </div>
-                <div className="space-y-2">
-                  {campaignPerformance.map((campaign) => (
-                    <div key={campaign.id} className="flex items-center justify-between p-3 bg-slate-50/80 rounded-xl border border-slate-100/80 hover:bg-white hover:shadow-md transition-all group">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-sm text-white shrink-0 ${
-                          campaign.platform === 'Facebook' ? 'bg-[#1877F2]' :
-                          campaign.platform === 'Instagram' ? 'bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600' :
-                          campaign.platform === 'Telegram' ? 'bg-[#0088cc]' :
-                          campaign.platform === 'Phone' ? 'bg-emerald-600' :
-                          'bg-slate-700'
-                        }`}>
-                          {campaign.platform === 'Facebook' ? <Facebook className="w-4 h-4" /> :
-                           campaign.platform === 'Instagram' ? <Instagram className="w-4 h-4" /> :
-                           campaign.platform === 'Telegram' ? <MessageCircle className="w-4 h-4" /> :
-                           campaign.platform === 'Phone' ? <Phone className="w-4 h-4" /> :
-                           <Globe2 className="w-4 h-4" />}
-                        </div>
-                        <div>
-                          <p className="text-[11px] font-[900] text-slate-900 uppercase tracking-tight truncate max-w-[160px]">{campaign.name}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase">{campaign.platform}</span>
-                            <div className="w-1 h-1 rounded-full bg-slate-300" />
-                            <span className="text-[9px] font-[900] text-emerald-500 uppercase">ACTIVE</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-[900] text-slate-900">{campaign.leads} <span className="text-[9px] font-bold text-slate-400">lid</span></p>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">CPL: {campaign.cpl}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recent Leads */}
-              <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">{t('marketing.dashboard.recentLeads') || "So'nggi Lidlar"}</h3>
-                  <button onClick={() => setActiveTab('leads')} className="text-[9px] font-[900] text-indigo-600 uppercase tracking-wider hover:underline">{t('marketing.dashboard.viewAll') || "Barchasi"} →</button>
-                </div>
-                <div className="space-y-2 max-h-[320px] overflow-y-auto no-scrollbar">
-                  {loading ? (
-                    <div className="flex justify-center py-10"><Loader2 className="animate-spin text-slate-300 w-5 h-5" /></div>
-                  ) : leads.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 opacity-20">
-                      <Target className="w-10 h-10 mb-2" />
-                      <p className="font-[900] uppercase tracking-widest text-[10px]">{t('marketing.dashboard.noLeads') || "Arizalar topilmadi"}</p>
-                    </div>
-                  ) : leads.slice(0, 10).map((l, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: 8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: Math.min(i, 6) * 0.02 }}
-                      className="flex items-center justify-between p-3 bg-slate-50/80 border border-slate-100 rounded-xl hover:border-indigo-200 hover:bg-white hover:shadow-md transition-all cursor-pointer group content-visibility-auto"
-                      onClick={() => setSelectedLead(l)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
-                          <Users className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-[11px] font-[900] text-slate-900 uppercase truncate max-w-[140px]">{l.name}</p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <Phone className="w-2.5 h-2.5 text-slate-300" />
-                            <span className="text-[9px] font-bold text-slate-400">{l.phone || (t('common.unknown') || "Noma'lum")}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-lg text-[8px] font-[900] uppercase mb-1">{t('marketing.leads.new') || "Yangi"}</div>
-                        <p className="text-[8px] font-bold text-slate-300 uppercase">
-                          {l.created_date ? new Date(l.created_date).toLocaleString('uz-UZ', { day: 'numeric', month: 'short' }) : 'Yaqinda'}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── Lidlar Inbox Tab ──────────────────────────────────────────── */}
-        {activeTab === 'leads' && (
-          <motion.div
-            key="leads"
-            initial={{ opacity: 0, x: 12 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -12 }}
-            className="space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">{t('marketing.leads.inboxTitle') || "Target Lidlar Inbox"}</h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{t('marketing.leads.inboxSubtitle') || "Reklamadan tushgan barcha arizalar"}</p>
-              </div>
-              <div className="flex gap-2 items-center">
-                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-100 shadow-sm text-[9px] font-[900] uppercase text-slate-400">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  {t('marketing.leads.totalLeadsCount', { count: leads.filter(l => { const s = (l.source || '').toLowerCase(); return s.includes('instagram') || s.includes('facebook') || s.includes('ads') || s.includes('telegram') || s.includes('import') || s.includes('csv') || l.ad_name || (l.form_data && Object.keys(l.form_data).length > 0); }).length }) || `${leads.filter(l => { const s = (l.source || '').toLowerCase(); return s.includes('instagram') || s.includes('facebook') || s.includes('ads') || s.includes('telegram') || s.includes('import') || s.includes('csv') || l.ad_name || (l.form_data && Object.keys(l.form_data).length > 0); }).length} ta ariza`}
-                </div>
-                <input type="file" accept=".csv" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-                <Button onClick={() => fileInputRef.current?.click()} disabled={isImporting} variant="outline" className="h-9 px-4 rounded-xl border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-[900] uppercase tracking-widest text-[9px] shadow-sm">
-                  <Upload className="w-3.5 h-3.5 mr-1.5" /> {isImporting ? (t('marketing.syncing') || 'Yuklanmoqda...') : (t('marketing.leads.csvImport') || 'CSV Import')}
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {loading ? (
-                <div className="col-span-full py-16 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-slate-200" /></div>
-              ) : leads.filter(l => {
-                const src = (l.source || '').toLowerCase();
-                return src.includes('ads') || src.includes('facebook') || src.includes('instagram') || src.includes('telegram') || src.includes('website') || src.includes('sayt') || src.includes('import') || src.includes('csv') || l.ad_name || (l.form_data && Object.keys(l.form_data).length > 0);
-              }).length === 0 ? (
-                <div className="col-span-full py-24 flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-100 rounded-2xl">
-                  <ZapOff className="w-12 h-12 text-slate-100 mb-3" />
-                  <p className="text-xs font-[900] text-slate-300 uppercase tracking-widest mb-4">{t('marketing.leads.noLeadsFound') || "Marketing arizalari topilmadi"}</p>
-                  <Button onClick={createTestLead} className="bg-indigo-600 text-white rounded-xl px-6 h-10 font-[900] uppercase tracking-widest shadow-lg text-xs">{t('marketing.leads.createTestLead') || "Test Lid Yaratish"}</Button>
-                </div>
-              ) : (
-                leads.filter(l => {
-                  const src = (l.source || '').toLowerCase();
-                  return src.includes('ads') || src.includes('facebook') || src.includes('instagram') || src.includes('telegram') || src.includes('website') || src.includes('sayt') || src.includes('import') || src.includes('csv') || l.ad_name || (l.form_data && Object.keys(l.form_data).length > 0);
-                }).map((l, i) => (
-                  <motion.div
-                    key={l.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: Math.min(i, 6) * 0.02 }}
-                    className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:border-indigo-100 hover:shadow-lg transition-all cursor-pointer group relative content-visibility-auto"
-                    onClick={() => setSelectedLead(l)}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 border border-indigo-50 group-hover:bg-indigo-600 group-hover:text-white transition-all shrink-0">
-                          {(l.source?.toLowerCase().includes('instagram') || l.source?.toLowerCase().includes('insta')) ? <Instagram className="w-4.5 h-4.5" /> : <Facebook className="w-4.5 h-4.5" />}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[11px] font-[900] text-slate-900 uppercase tracking-tight truncate max-w-[140px]">{l.name || l.full_name}</p>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{l.phone}</p>
-                        </div>
-                      </div>
-                      <div className="relative z-20" onClick={(e) => e.stopPropagation()}>
-                        <select
-                          value={l.status?.toLowerCase() || 'new'}
-                          onChange={async (e) => {
-                            const newVal = e.target.value;
-                            const oldStatus = l.status;
-                            setLeads(prev => prev.map(lead => lead.id === l.id ? { ...lead, status: newVal } : lead));
-                            try {
-                              const { error } = await supabase.from('leads').update({ status: newVal }).eq('id', l.id);
-                              if (error) throw error;
-                            } catch (err) {
-                              setLeads(prev => prev.map(lead => lead.id === l.id ? { ...lead, status: oldStatus } : lead));
-                            }
-                          }}
-                          className={`h-7 px-2 rounded-lg text-[8px] font-[900] uppercase tracking-wider border cursor-pointer outline-none ${
-                            l.status?.toLowerCase() === 'new' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                            l.status?.toLowerCase() === 'contacted' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                            l.status?.toLowerCase() === 'converted' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
-                            'bg-slate-50 text-slate-500 border-slate-100'
-                          }`}
-                        >
-                          <option value="new">{t('marketing.status.new') || "Yangi"}</option>
-                          <option value="contacted">{t('marketing.status.contacted') || "Bog'lanildi"}</option>
-                          <option value="converted">{t('marketing.status.converted') || "Bemor"}</option>
-                          <option value="lost">{t('marketing.status.lost') || "Yo'qotildi"}</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[9px] font-[900] uppercase tracking-wider text-slate-400 p-2.5 bg-slate-50/70 rounded-lg border border-slate-50 mb-2">
-                      <span className="truncate max-w-[60%]">{l.source || 'Facebook Ads'}</span>
-                      <span className="text-slate-300 shrink-0">
-                        {l.created_date || l.created_at ? new Date(l.created_date || l.created_at).toLocaleDateString() : 'Yaqinda'}
-                      </span>
-                    </div>
-
-                    {l.form_data && Object.keys(l.form_data).length > 0 && (
-                      <div className="bg-indigo-50/40 px-2.5 py-2 rounded-lg text-[9px] border border-indigo-100/50 mb-2">
-                        {Object.entries(l.form_data).slice(0, 1).map(([key, val], idx) => (
-                          <div key={idx}><span className="font-[900] text-indigo-600 uppercase">{key}: </span><span className="font-medium text-slate-700">{val}</span></div>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-2 pt-2 border-t border-slate-50">
-                      <button onClick={(e) => { e.stopPropagation(); window.open(`tel:${l.phone}`, '_self'); }} className="h-8 px-3 rounded-lg bg-slate-900 text-white flex items-center gap-1.5 active:scale-95 transition-all text-[9px] font-[900] uppercase">
-                        <Phone className="w-3 h-3" /> {t('common.call') || 'Qo\'ng\'iroq'}
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); window.open(`https://t.me/+${(l.phone || '').replace(/\D/g, '')}`, '_blank'); }} className="h-8 px-3 rounded-lg bg-sky-50 text-sky-600 flex items-center gap-1.5 border border-sky-100 active:scale-95 transition-all text-[9px] font-[900] uppercase">
-                        <MessageCircle className="w-3 h-3" /> {t('common.telegram') || 'Telegram'}
-                      </button>
-                      <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all ml-auto" />
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── Targeting Tab ──────────────────────────────────────────────── */}
-        {activeTab === 'targeting' && (
-          <motion.div
-            key="targeting"
-            initial={{ opacity: 0, scale: 0.99 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-4"
-          >
-            <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-              <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight mb-4 flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#1499AD]" /> {t('marketing.targeting.audienceSegment') || "Auditoriya Segmenti"}
-              </h3>
-              <div className="h-[200px] w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={audienceData} innerRadius={50} outerRadius={80} paddingAngle={6} dataKey="value">
-                      {audienceData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-4 space-y-2">
-                {audienceData.map((a, i) => (
-                  <div key={i} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: a.color }} />
-                      <span className="text-[10px] font-[900] uppercase text-slate-600">{a.name}</span>
-                    </div>
-                    <span className="text-sm font-[900] text-slate-900">{a.value}%</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 pt-4 border-t border-slate-100">
-                <Button onClick={createTestLead} disabled={syncing} className="w-full h-9 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[9px] font-[900] uppercase tracking-widest shadow-md">
-                  {syncing ? (t('marketing.syncing') || "Yaratilmoqda...") : (t('marketing.leads.createTestLead') || "Test Lid Yaratish")}
-                </Button>
-              </div>
-            </div>
-
-            <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-              <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight mb-1 flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-indigo-500" /> {t('marketing.targeting.topLocations') || "Top Lokatsiyalar"}
-              </h3>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-4">{t('marketing.targeting.locationsSubtitle') || "Mijozlarimiz qayerdan kelmoqda?"}</p>
-              <div className="space-y-4">
-                {locationData.map((loc, i) => (
-                  <div key={i} className="space-y-1.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-[900] uppercase text-slate-900">{loc.city}</span>
-                      <span className="text-[10px] font-[900] text-slate-400">{loc.leads} lid ({loc.percent}%)</span>
-                    </div>
-                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${loc.percent}%` }}
-                        transition={{ delay: 0.4 + (i * 0.1), duration: 0.8 }}
-                        className={`h-full rounded-full ${loc.color}`}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-5 p-4 bg-slate-900 rounded-xl text-white">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-white/10 rounded-xl border border-white/10 shrink-0"><Zap className="w-5 h-5 text-amber-400" /></div>
-                  <div>
-                    <p className="text-xs font-[900] uppercase tracking-tight">{t('marketing.targeting.aiRecommendation') || "AI Tavsiya"}</p>
-                    <p className="text-[10px] text-white/50 leading-relaxed mt-0.5">{t('marketing.targeting.aiRecommendationText') || "35-50 yosh oralig'idagi ayollar eng faol auditoriya. Implantat xizmati uchun byudjetni 20% oshirish tavsiya etiladi."}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── Automation / Integration Tab ───────────────────────────────── */}
-        {activeTab === 'automation' && (
-          <motion.div
-            key="automation"
-            initial={{ opacity: 0, scale: 0.99 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-4"
-          >
-            <div className="space-y-4">
-              <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-sm">
-                    <Server className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">{t('marketing.integration.title') || "Integratsiya"}</h3>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{t('marketing.integration.subtitle') || "Make.com / Webhook Sozlamalari"}</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  {[
-                    { label: 'Webhook Endpoint (URL)', value: `${supabaseUrl}/rest/v1/leads`, id: 'url' },
-                    { label: 'API Key (Anon Key)', value: supabaseAnonKey, id: 'key', mask: true },
-                    { label: 'Klinika Id (clinic_id)', value: clinicId, id: 'clinic' }
-                  ].map((item) => (
-                    <div key={item.id}>
-                      <div className="flex justify-between items-center mb-1 px-0.5">
-                        <span className="text-[9px] font-[900] uppercase text-slate-400 tracking-widest">{item.label}</span>
-                        <button onClick={() => copyToClipboard(item.value, item.label)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all flex items-center gap-1">
-                          <Copy className="w-3 h-3" />
-                          <span className="text-[8px] font-[900] uppercase">{t('common.copy') || "Nusxa"}</span>
-                        </button>
-                      </div>
-                      <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl overflow-hidden">
-                        <code className="text-[10px] font-mono text-slate-600 block truncate">
-                          {item.mask ? `${item.value.substring(0, 45)}...` : item.value}
-                        </code>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex gap-3 items-start">
-                <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center text-emerald-500 shadow-sm shrink-0">
-                  <CheckCircle className="w-5 h-5" />
+      {/* ─── TAB 5: INTEGRATSIYA (MAKE / WEBHOOK) ─────────────────────── */}
+      {activeTab === 'automation' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-4">
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-sm">
+                  <Server className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-[900] text-emerald-900 uppercase">{t('marketing.integration.systemReady') || "Tizim Tayyor"}</p>
-                  <p className="text-[10px] font-medium text-emerald-700/80 leading-relaxed mt-0.5">
-                    {t('marketing.integration.systemReadyText') || "Webhooks to'g'ri sozlangan. Facebook arizalari real-vaqtda tushadi."}
-                  </p>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Integratsiya Sozlamalari</h3>
+                  <p className="text-[10px] font-semibold text-slate-400">Make.com / Webhook Parametrlari</p>
                 </div>
               </div>
-            </div>
-
-            <div className="bg-slate-900 p-6 rounded-2xl text-white shadow-xl relative overflow-hidden flex flex-col">
-              <h3 className="text-sm font-[900] uppercase mb-5 flex items-center gap-3">
-                <Workflow className="w-5 h-5 text-indigo-400" /> {t('marketing.integration.instructions') || "Yo'riqnoma"}
-              </h3>
-              <div className="space-y-5 flex-1">
+              <div className="space-y-3">
                 {[
-                  { title: t('marketing.integration.instructionsList.step1') || "Facebook Lead Ads", desc: t('marketing.integration.instructionsList.step1Desc') || "Make.com'da birinchi trigger modulini qo'shing." },
-                  { title: t('marketing.integration.instructionsList.step2') || "HTTP POST Request", desc: t('marketing.integration.instructionsList.step2Desc') || "HTTP 'Make a request' modulini qo'shing." },
-                  { title: t('marketing.integration.instructionsList.step3') || "Endpoint & Headers", desc: t('marketing.integration.instructionsList.step3Desc') || "URL, Content-Type: application/json va apikey kiritish." },
-                  { title: t('marketing.integration.instructionsList.step4') || "JSON Structure", desc: t('marketing.integration.instructionsList.step4Desc') || "Body qismiga ism, telefon, clinic_id va ad_name parametrlarini jo'nating." }
-                ].map((step, i) => (
-                  <div key={i} className="flex gap-4 group">
-                    <div className="flex flex-col items-center shrink-0">
-                      <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-xs font-[900] group-hover:bg-white group-hover:text-slate-900 transition-all">{i+1}</div>
-                      {i < 3 && <div className="w-[1px] h-full bg-white/5 my-1.5" />}
+                  { label: 'Webhook Endpoint (URL)', value: `${supabaseUrl}/rest/v1/leads`, id: 'url' },
+                  { label: 'API Key (Anon Key)', value: supabaseAnonKey, id: 'key', mask: true },
+                  { label: 'Klinika ID (clinic_id)', value: clinicId, id: 'clinic' }
+                ].map((item) => (
+                  <div key={item.id}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-black uppercase text-slate-500">{item.label}</span>
+                      <button onClick={() => copyToClipboard(item.value, item.label)} className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1">
+                        <Copy className="w-3 h-3" /> Nusxa
+                      </button>
                     </div>
-                    <div className="pt-1">
-                      <p className="text-sm font-[900] uppercase group-hover:text-indigo-400 transition-colors">{step.title}</p>
-                      <p className="text-[10px] font-medium text-white/40 leading-relaxed mt-0.5">{step.desc}</p>
+                    <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl overflow-hidden font-mono text-xs text-slate-700">
+                      {item.mask ? `${item.value.substring(0, 45)}...` : item.value}
                     </div>
                   </div>
                 ))}
               </div>
+            </div>
 
-              <div className="mt-4 bg-white/5 p-4 rounded-xl border border-white/10">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[9px] font-[900] text-white/40 uppercase tracking-widest">Make.com JSON Body</p>
-                  <button onClick={() => copyToClipboard(JSON.stringify({ name: "{{full_name}}", phone: "{{phone_number}}", source: "Instagram Reels ({{form_name}})", status: "new", clinic_id: clinicId, form_data: { "Sizga qaysi xizmat kerak?": "{{1.answer_1}}", "Muammongiz nima?": "{{1.answer_2}}" }}, null, 2), 'JSON')} className="text-[9px] font-[900] text-indigo-400 hover:text-white flex items-center gap-1 transition-colors">
-                    <Copy className="w-3 h-3" /> {t('common.copy') || "Nusxa ol"}
-                  </button>
-                </div>
-                <pre className="text-[9px] font-mono text-emerald-400 overflow-x-auto whitespace-pre-wrap leading-relaxed">{`{
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex gap-3 items-center">
+              <CheckCircle className="w-6 h-6 text-emerald-600 shrink-0" />
+              <div>
+                <p className="text-xs font-black text-emerald-900 uppercase">Tizim Faol & Tayyor</p>
+                <p className="text-[10.5px] text-emerald-700">Facebook & Instagram Lead Ads arizalari avtomatik real-vaqtda qabul qilinadi.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 p-6 rounded-2xl text-white shadow-xl">
+            <h3 className="text-sm font-black uppercase mb-4 flex items-center gap-2">
+              <Workflow className="w-4 h-4 text-indigo-400" /> Make.com Ulanish Namunasi
+            </h3>
+            <pre className="text-xs font-mono text-emerald-400 bg-white/5 p-4 rounded-xl border border-white/10 overflow-x-auto leading-relaxed">{`{
   "name": "{{full_name}}",
   "phone": "{{phone_number}}",
   "source": "Instagram Reels",
   "clinic_id": "${clinicId}"
 }`}</pre>
-              </div>
-
-              <div className="mt-3">
-                <a href="https://developers.facebook.com/tools/lead-ads-testing" target="_blank" rel="noopener noreferrer"
-                  className="flex justify-center items-center gap-2 w-full py-3 bg-white text-slate-900 rounded-xl text-[9px] font-[900] uppercase tracking-widest hover:bg-indigo-500 hover:text-white transition-all shadow-md">
-                  <Facebook className="w-3.5 h-3.5" /> Facebook Ads Testing Tool
-                </a>
-              </div>
+            <div className="mt-4">
+              <a 
+                href="https://developers.facebook.com/tools/lead-ads-testing" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex justify-center items-center gap-2 w-full py-3 bg-white text-slate-900 rounded-xl text-xs font-black uppercase hover:bg-slate-100 transition-all"
+              >
+                <Facebook className="w-4 h-4 text-[#1877F2]" /> Facebook Ads Testing Tool
+              </a>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </motion.div>
+      )}
 
+      {/* Lead Quick View Modal */}
       <LeadQuickView
         lead={selectedLead}
         isOpen={!!selectedLead}

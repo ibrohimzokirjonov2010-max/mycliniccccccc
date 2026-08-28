@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Loader2, Search, User } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function PatientSelect({ 
   patients = [], 
@@ -16,32 +17,44 @@ export default function PatientSelect({
   buttonClassName = "bg-emerald-500 hover:bg-emerald-600 px-3 w-10 shadow-sm"
 }) {
   const { t } = useTranslation();
+  const { user, isDoctor } = useAuth();
   const [search, setSearch] = useState(initialName || '');
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
 
+  const availablePatients = useMemo(() => {
+    if (isDoctor && user?.id) {
+      return (patients || []).filter(p =>
+        String(p.main_treatment_provider) === String(user.id) ||
+        String(p.main_treatment_provider) === String(user.name) ||
+        String(p.created_by_id) === String(user.id)
+      );
+    }
+    return patients || [];
+  }, [patients, isDoctor, user]);
+
   // Sync search text when value changes from outside
   useEffect(() => {
     if (value) {
-      const p = patients.find(p => p.id === value);
+      const p = availablePatients.find(p => p.id === value) || patients.find(p => p.id === value);
       if (p) setSearch(p.full_name);
       else if (initialName && search === '') setSearch(initialName);
     } else {
       setSearch('');
     }
-  }, [value, patients, initialName]);
+  }, [value, availablePatients, patients, initialName]);
 
   // Show all patients when search is blank, filter otherwise
   const filtered = search.trim()
-    ? patients.filter(p =>
+    ? availablePatients.filter(p =>
         p.full_name?.toLowerCase().includes(search.toLowerCase()) ||
         p.phone?.includes(search)
       )
-    : patients;
+    : availablePatients;
 
   // Limit to 50 results for performance
   const displayList = filtered.slice(0, 50);
-  const isLoading = loading || (open && patients.length === 0);
+  const isLoading = loading || (open && availablePatients.length === 0 && patients.length === 0);
 
   return (
     <div className="flex gap-2 relative z-[100] w-full" ref={wrapperRef}>

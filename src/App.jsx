@@ -14,6 +14,7 @@ import Login     from './pages/Login';
 // NOTE: Dashboard, Patients, Appointments, Leads ham lazy qilindi — tezroq yuklash uchun
 import GlobalAlerter from './components/notifications/GlobalAlerter';
 import RecallAlerter from './components/notifications/RecallAlerter';
+import ImplantAlerter from './components/notifications/ImplantAlerter';
 import NativePushManager from './components/notifications/NativePushManager';
 import TelegramReminderWorker from './components/notifications/TelegramReminderWorker';
 import Paywall   from './components/layout/Paywall';
@@ -156,6 +157,7 @@ const AuthenticatedApp = memo(() => {
     <>
       <GlobalAlerter />
       <RecallAlerter />
+      <ImplantAlerter />
       <NativePushManager />
       {/* 🤖 Telegram Reminder Worker — 2 soat oldin va 07:00 da eslatmalar yuboradi */}
       <TelegramReminderWorker />

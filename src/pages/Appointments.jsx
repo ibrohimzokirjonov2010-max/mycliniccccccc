@@ -84,8 +84,18 @@ export default function Appointments() {
 
   // 🗄️ patients — 5 daqiqa kesh
   const { data: patients = [] } = useQuery({
-    queryKey: QUERY_KEYS.patients,
-    queryFn: () => base44.entities.Patient.list('full_name', 300),
+    queryKey: ['patients', isDoctor, user?.id],
+    queryFn: async () => {
+      if (isDoctor && user?.id) {
+        const allPats = await base44.entities.Patient.list('-created_date', 500).catch(() => []);
+        return (allPats || []).filter(p =>
+          String(p.main_treatment_provider) === String(user.id) ||
+          String(p.main_treatment_provider) === String(user.name) ||
+          String(p.created_by_id) === String(user.id)
+        );
+      }
+      return await base44.entities.Patient.list('full_name', 300);
+    },
     staleTime: 5 * 60 * 1000,
   });
 

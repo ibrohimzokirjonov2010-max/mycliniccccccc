@@ -1,29 +1,34 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import { 
   Plus, Search, ClipboardList, FileDown, 
-  ChevronRight, Edit2, Activity, Clock, 
-  Target, TrendingUp, Users, Trash2
+  Edit2, Clock, 
+  TrendingUp, Trash2, Table as TableIcon, LayoutGrid, FileSpreadsheet, X,
+  ArrowUp, ArrowDown, ArrowUpDown, CheckCircle2, FileText, User,
+  Check, Layers, ExternalLink, Printer
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import EmptyState from '../components/ui/EmptyState';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
 import TreatmentPlanInvoice from '../components/treatments/TreatmentPlanInvoice';
 import jsPDF from 'jspdf';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 
+/**
+ * TreatmentPlans Page - Professional Excel Spreadsheet View with Interactive Detail Modal
+ */
 export default function TreatmentPlans() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -31,33 +36,61 @@ export default function TreatmentPlans() {
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
+  const [activeStatusFilter, setActiveStatusFilter] = useState('all'); // 'all' | 'planned' | 'in_progress' | 'completed'
+
+  // Density switcher with localStorage
+  const [density, setDensity] = useState(() => {
+    return localStorage.getItem('myclinic_treatment_plans_density') || 'compact';
+  });
+  const toggleDensity = (val) => {
+    setDensity(val);
+    localStorage.setItem('myclinic_treatment_plans_density', val);
+  };
+
+  // Sorting state
+  const [sortField, setSortField] = useState('date');
+  const [sortOrder, setSortOrder] = useState('desc');
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
+  // Modal states
   const [modalOpen, setModalOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [editPlan, setEditPlan] = useState(null);
   const [selectedPlanForInvoice, setSelectedPlanForInvoice] = useState(null);
   const [deletePlanId, setDeletePlanId] = useState(null);
 
+  // Detail Modal Plan ID (dynamic reference)
+  const [selectedDetailPlanId, setSelectedDetailPlanId] = useState(null);
+
   // ── React Query: Treatment plans ──────────────────────────────────────────
   const { data: rawPlans = [], isFetching: plansFetching } = useQuery({
     queryKey: ['treatmentPlans', isDoctor, user?.id],
     queryFn: async () => {
       if (isDoctor && user?.id) {
-        const docPlans = await base44.entities.TreatmentPlan.filter({ doctor_id: user.id }, '-created_date', 50).catch(() => []);
+        const docPlans = await base44.entities.TreatmentPlan.filter({ doctor_id: user.id }, '-created_date', 100).catch(() => []);
         return docPlans || [];
       }
-      return await base44.entities.TreatmentPlan.list('-created_date', 50);
+      return await base44.entities.TreatmentPlan.list('-created_date', 100);
     },
     staleTime: 3 * 60 * 1000,
   });
 
-  // ── React Query: Patients (initial load) ──────────────────────────────────
+  // ── React Query: Patients ─────────────────────────────────────────────────
   const { data: patients = [] } = useQuery({
     queryKey: QUERY_KEYS.patients,
     queryFn: () => base44.entities.Patient.list('full_name', 200),
     staleTime: 5 * 60 * 1000,
   });
 
-  // ── React Query: Services (initial load) ──────────────────────────────────
+  // ── React Query: Services ─────────────────────────────────────────────────
   const { data: rawServices = [] } = useQuery({
     queryKey: QUERY_KEYS.services,
     queryFn: () => base44.entities.Service.list('name', 500),
@@ -67,7 +100,7 @@ export default function TreatmentPlans() {
   const plans = rawPlans;
   const loading = plansFetching && rawPlans.length === 0;
 
-  // De-duplicate by name only (case-insensitive)
+  // De-duplicate services
   const services = useMemo(() => {
     const seen = new Map();
     (rawServices || []).forEach(s => {
@@ -84,23 +117,23 @@ export default function TreatmentPlans() {
   const handleDelete = async () => {
     if (!deletePlanId) return;
     try {
-      // 1. Delete linked payments in parallel (not sequential)
       const linkedContext = `Linked to Plan: ${deletePlanId}`;
       const existingPayments = await base44.entities.Payment.filter({
         notes: linkedContext
       });
       
       await Promise.all(existingPayments.map(pay => base44.entities.Payment.delete(pay.id)));
-
-      // 2. Delete the plan
       await base44.entities.TreatmentPlan.delete(deletePlanId);
       
-      toast.success(t('common.success'));
+      toast.success(t('common.success') || "Davolash rejasi o'chirildi!");
       setDeletePlanId(null);
+      if (selectedDetailPlanId === deletePlanId) {
+        setSelectedDetailPlanId(null);
+      }
       invalidatePlans();
     } catch (err) {
       console.error(err);
-      toast.error(t('common.error'));
+      toast.error(t('common.error') || "Xatolik yuz berdi");
     }
   };
 
@@ -109,346 +142,1016 @@ export default function TreatmentPlans() {
       const prev = plans.find(p => p.id === id)?.status;
       if (prev === newStatus) return;
 
-      // Optimistic update
-      queryClient.setQueryData(QUERY_KEYS.treatmentPlans, (old) => {
+      queryClient.setQueryData(['treatmentPlans', isDoctor, user?.id], (old) => {
         return (old || []).map(p => p.id === id ? { ...p, status: newStatus } : p);
       });
 
       await base44.entities.TreatmentPlan.update(id, { status: newStatus });
+      toast.success("Reja holati yangilandi!");
       invalidatePlans();
     } catch (err) {
       console.error(err);
+      toast.error("Holatni o'zgartirishda xatolik");
       invalidatePlans();
     }
   };
 
-  const filtered = plans.filter(p => {
-    if (isDoctor && String(p.doctor_id) !== String(user?.id) && (p.doctor_name || '').toLowerCase() !== (user?.name || '').toLowerCase()) {
-      return false;
-    }
-    return p.name?.toLowerCase().includes(search.toLowerCase()) ||
-      p.patient_name?.toLowerCase().includes(search.toLowerCase());
-  });
-
-  // Stats — support both English and Uzbek status values
-  const inProgressCount = plans.filter(p => p.status === 'Jarayonda' || p.status === 'In Progress' || p.status === 'InProgress').length;
-  const scheduledCount = plans.filter(p => p.status === 'Rejalashtirilgan' || p.status === 'Planned' || p.status === 'Scheduled').length;
-  const totalValue = plans.reduce((s, p) => s + (p.total_price || 0), 0);
-
-  // Normalize status for display
+  // Normalize status for filtering & display
   const normalizeStatus = (status) => {
     const s = String(status || '').toLowerCase();
-    if (s.includes('plan') || s.includes('reja')) return 'planned';
-    if (s.includes('progress') || s.includes('jarayon')) return 'in_progress';
     if (s.includes('complete') || s.includes('yakun') || s.includes('bajar')) return 'completed';
-    return s || 'planned';
+    if (s.includes('progress') || s.includes('jarayon')) return 'in_progress';
+    if (s.includes('plan') || s.includes('reja')) return 'planned';
+    return 'planned';
   };
 
-  const generatePDF = (plan) => {
-    const doc = new jsPDF();
-    doc.setFontSize(22);
-    doc.text(t('treatmentPlan.title').toUpperCase(), 105, 20, { align: 'center' });
-    doc.setFontSize(12);
-    doc.text(`${t('treatmentPlan.patient')}: ${plan.patient_name}`, 20, 40);
-    doc.text(`${t('common.name')}: ${plan.name}`, 20, 50);
-    doc.text(`${t('common.status')}: ${t('status.' + normalizeStatus(plan.status))}`, 20, 60);
-    doc.text(`${t('common.date')}: ${new Date().toLocaleDateString()}`, 20, 70);
+  // Status counts
+  const statusCounts = useMemo(() => {
+    const counts = { all: plans.length, planned: 0, in_progress: 0, completed: 0 };
+    plans.forEach(p => {
+      const st = normalizeStatus(p.status);
+      if (counts[st] !== undefined) counts[st] += 1;
+    });
+    return counts;
+  }, [plans]);
 
-    let y = 90;
-    doc.setFontSize(14);
-    doc.text(t('treatmentPlan.services').toUpperCase(), 20, y);
-    y += 10;
-    doc.setFontSize(11);
-    (plan.services || []).forEach((s, i) => {
-      doc.text(`${i + 1}. ${s.service_name}`, 25, y);
-      doc.text(`${s.price?.toLocaleString()} UZS`, 150, y);
-      y += 8;
+  // Filtered Treatment Plans
+  const filteredPlans = useMemo(() => {
+    return plans.filter(p => {
+      if (isDoctor && String(p.doctor_id) !== String(user?.id) && (p.doctor_name || '').toLowerCase() !== (user?.name || '').toLowerCase()) {
+        return false;
+      }
+      
+      const st = normalizeStatus(p.status);
+      if (activeStatusFilter !== 'all' && st !== activeStatusFilter) {
+        return false;
+      }
+
+      const q = search.toLowerCase();
+      if (!q) return true;
+
+      const planName = (p.name || '').toLowerCase();
+      const patientName = (p.patient_name || '').toLowerCase();
+      const teeth = (p.tooth_number || '').toLowerCase();
+      const docName = (p.doctor_name || '').toLowerCase();
+
+      return planName.includes(q) || patientName.includes(q) || teeth.includes(q) || docName.includes(q);
+    });
+  }, [plans, isDoctor, user, activeStatusFilter, search]);
+
+  // Sorted Treatment Plans
+  const sortedPlans = useMemo(() => {
+    const list = [...filteredPlans];
+    list.sort((a, b) => {
+      let valA, valB;
+      switch (sortField) {
+        case 'patient':
+          valA = (a.patient_name || '').toLowerCase();
+          valB = (b.patient_name || '').toLowerCase();
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'name':
+          valA = (a.name || '').toLowerCase();
+          valB = (b.name || '').toLowerCase();
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'price':
+          valA = Number(a.total_price || 0);
+          valB = Number(b.total_price || 0);
+          return sortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'services':
+          valA = (a.services || []).length;
+          valB = (b.services || []).length;
+          return sortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'status':
+          valA = normalizeStatus(a.status);
+          valB = normalizeStatus(b.status);
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'date':
+        default:
+          valA = new Date(a.created_date || a.created_at || 0).getTime();
+          valB = new Date(b.created_date || b.created_at || 0).getTime();
+          return sortOrder === 'asc' ? valA - valB : valB - valA;
+      }
+    });
+    return list;
+  }, [filteredPlans, sortField, sortOrder]);
+
+  // Dynamic reference to selected plan in Detail Modal
+  const activeDetailPlan = useMemo(() => {
+    if (!selectedDetailPlanId) return null;
+    return plans.find(p => String(p.id) === String(selectedDetailPlanId)) || null;
+  }, [selectedDetailPlanId, plans]);
+
+  // Toggle individual service completion inside activeDetailPlan
+  const handleToggleService = async (serviceIndex) => {
+    if (!activeDetailPlan) return;
+    const currentServices = Array.isArray(activeDetailPlan.services) ? [...activeDetailPlan.services] : [];
+    if (!currentServices[serviceIndex]) return;
+
+    const current = currentServices[serviceIndex];
+    const newCompleted = !current.completed;
+    currentServices[serviceIndex] = {
+      ...current,
+      completed: newCompleted,
+      completed_at: newCompleted ? new Date().toISOString() : null
+    };
+
+    const allCompleted = currentServices.length > 0 && currentServices.every(s => s.completed);
+    const someCompleted = currentServices.some(s => s.completed);
+    const newPlanStatus = allCompleted ? 'Yakunlangan' : (someCompleted ? 'Jarayonda' : 'Rejalashtirilgan');
+
+    // Optimistic cache update
+    queryClient.setQueryData(['treatmentPlans', isDoctor, user?.id], (old) => {
+      return (old || []).map(p => String(p.id) === String(activeDetailPlan.id) ? {
+        ...p,
+        services: currentServices,
+        status: newPlanStatus
+      } : p);
     });
 
-    y += 10;
-    doc.line(20, y, 190, y);
-    y += 10;
-    doc.setFontSize(14);
-    doc.text(`${t('common.total').toUpperCase()}: ${plan.total_price?.toLocaleString()} UZS`, 20, y);
-
-    doc.save(`plan-${plan.name}.pdf`);
+    try {
+      await base44.entities.TreatmentPlan.update(activeDetailPlan.id, {
+        services: currentServices,
+        status: newPlanStatus
+      });
+      invalidatePlans();
+      toast.success(newCompleted ? "Xizmat bajarildi deb belgilandi!" : "Xizmat holati bekor qilindi");
+    } catch (err) {
+      console.error(err);
+      toast.error("Xizmat holatini yangilashda xatolik");
+      invalidatePlans();
+    }
   };
 
+  // Stats calculation
+  const totalValue = useMemo(() => {
+    return plans.reduce((s, p) => s + (Number(p.total_price) || 0), 0);
+  }, [plans]);
+
+  const filteredTotalValue = useMemo(() => {
+    return sortedPlans.reduce((s, p) => s + (Number(p.total_price) || 0), 0);
+  }, [sortedPlans]);
+
+  // PDF Export
+  const generatePDF = (plan) => {
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text("DAVOLASH REJASI", 105, 20, { align: 'center' });
+    doc.setFontSize(11);
+    doc.text(`Bemor: ${plan.patient_name || '—'}`, 20, 40);
+    doc.text(`Reja nomi: ${plan.name || '—'}`, 20, 48);
+    doc.text(`Holati: ${normalizeStatus(plan.status) === 'completed' ? 'Yakunlangan' : normalizeStatus(plan.status) === 'in_progress' ? 'Jarayonda' : 'Rejalashtirilgan'}`, 20, 56);
+    doc.text(`Tishlar: ${plan.tooth_number || '—'}`, 20, 64);
+    doc.text(`Sana: ${new Date().toLocaleDateString('uz-UZ')}`, 20, 72);
+
+    let y = 88;
+    doc.setFontSize(13);
+    doc.text("BELGILANGAN XIZMATLAR:", 20, y);
+    y += 8;
+    doc.setFontSize(10);
+    (plan.services || []).forEach((s, i) => {
+      const isDone = s.completed ? '[BAJARILDI] ' : '';
+      doc.text(`${i + 1}. ${isDone}${s.service_name || s.name || 'Xizmat'}`, 25, y);
+      doc.text(`${Number(s.price || 0).toLocaleString()} UZS`, 150, y);
+      y += 7;
+    });
+
+    y += 8;
+    doc.line(20, y, 190, y);
+    y += 10;
+    doc.setFontSize(13);
+    doc.text(`JAMI SUMMA: ${Number(plan.total_price || 0).toLocaleString()} UZS`, 20, y);
+
+    doc.save(`Reja-${(plan.name || 'plan').replace(/\s+/g, '_')}.pdf`);
+    toast.success("PDF yuklab olindi!");
+  };
+
+  /**
+   * Export to CSV with UTF-8 BOM
+   */
+  const exportCSV = useCallback(() => {
+    try {
+      if (!sortedPlans || sortedPlans.length === 0) {
+        toast.warning("Eksport qilish uchun ma'lumot topilmadi");
+        return;
+      }
+      const headers = [
+        "№",
+        "Bemor (F.I.Sh)",
+        "Reja Nomi",
+        "Shifokor",
+        "Tishlar",
+        "Xizmatlar Soni",
+        "Jami Qiymati (UZS)",
+        "Holat",
+        "Yaratilgan Sana"
+      ];
+      const rows = sortedPlans.map((p, idx) => {
+        const st = normalizeStatus(p.status);
+        const statusText = st === 'completed' ? 'Yakunlangan' : st === 'in_progress' ? 'Jarayonda' : 'Rejalashtirilgan';
+        const dateStr = p.created_date ? new Date(p.created_date).toLocaleDateString('uz-UZ') : '—';
+
+        return [
+          idx + 1,
+          `"${(p.patient_name || '').replace(/"/g, '""')}"`,
+          `"${(p.name || '').replace(/"/g, '""')}"`,
+          `"${(p.doctor_name || '').replace(/"/g, '""')}"`,
+          `"${(p.tooth_number || '').replace(/"/g, '""')}"`,
+          (p.services || []).length,
+          Number(p.total_price || 0),
+          `"${statusText}"`,
+          `"${dateStr}"`
+        ].join(",");
+      });
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Davolash_Rejalari_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Davolash rejalari Excel (.csv) formatida yuklab olindi!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Eksportda xatolik yuz berdi");
+    }
+  }, [sortedPlans]);
+
   return (
-    <div className="space-y-3 pb-4">
-      {/* Header section with Stats */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-1">
-          <div className="space-y-0.5">
-            <h1 className="text-lg font-bold text-slate-800 tracking-tight">{t('treatmentPlan.title')}</h1>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.25em]">{t('treatmentPlan.subtitle')}</p>
+    <div className="space-y-3.5 pb-4">
+      {/* ─── Excel Header Bar ────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('treatmentPlan.title') || "Davolash rejalari"}</h1>
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
+              • Tibbiy Rejalar & Tahlillar {plans.length} Yozuvlar
+            </span>
           </div>
-          
+          <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+            Bemorlar uchun shakllantirilgan davolash rejalari, muolaja bosqichlari va hisob-kitoblari
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={exportCSV} 
+            className="gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs text-slate-700 h-9.5 px-3.5"
+            title="Excel formatida (.csv) yuklab olish"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span>Eksport (Excel)</span>
+          </Button>
+
           <Button 
             onClick={() => { setEditPlan(null); setModalOpen(true); }} 
-            className="h-9 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold flex items-center gap-1.5 shadow-md transition-all active:scale-95 border-none text-[10px] uppercase tracking-wider"
+            className="bg-[#00D084] hover:bg-[#00B875] text-white gap-1.5 border-none rounded-xl h-9.5 px-4 font-black text-xs shadow-md shadow-[#00D084]/20 transition-all active:scale-95"
           >
-            <Plus className="w-4.5 h-4.5 stroke-[2.5px]" />
-            <span className="uppercase text-[10px] tracking-wider">{t('treatmentPlan.createNew')}</span>
+            <Plus className="w-4 h-4" />
+            <span>{t('treatmentPlan.createNew') || "Yangi reja yaratish"}</span>
           </Button>
         </div>
+      </div>
 
-        {/* Premium Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 px-1">
-          {[
-            { label: t('treatmentPlan.stats.inProgress'), value: inProgressCount, icon: Activity, color: "text-amber-600", bg: "bg-amber-500/10", border: "border-amber-100" },
-            { label: t('treatmentPlan.stats.planned'), value: scheduledCount, icon: Clock, color: "text-blue-600", bg: "bg-blue-500/10", border: "border-blue-100" },
-            { label: t('treatmentPlan.stats.totalValue'), value: totalValue, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-500/10", border: "border-emerald-100", isCurrency: true },
-          ].map((s, i) => (
-            <motion.div 
-              key={s.label}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i, 4) * 0.02 }}
-              className={`bg-white border ${s.border} rounded-xl p-4.5 shadow-sm relative group hover:shadow-md transition-all duration-350 content-visibility-auto`}
+      {/* ─── Top Executive KPI Grid ─────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: "JARAYONDA", value: statusCounts.in_progress, icon: Clock, color: "text-amber-600", bg: "bg-amber-50 border-amber-100", isNumber: true, countText: "Bajarilayotgan rejalar" },
+          { label: "REJALASHTIRILGAN", value: statusCounts.planned, icon: ClipboardList, color: "text-blue-600", bg: "bg-blue-50 border-blue-100", isNumber: true, countText: "Navbatdagi rejalar" },
+          { label: "YAKUNLANGAN", value: statusCounts.completed, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", isNumber: true, countText: "Muvaffaqiyatli yakunlangan" },
+          { label: "JAMI REJALAR QIYMATI", value: totalValue, icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-50 border-purple-100", isNumber: false, countText: "Klinikaga kutilayotgan tushum" },
+        ].map((s, i) => (
+          <motion.div 
+            key={s.label}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: i * 0.03 }}
+            className="bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-xs flex items-center justify-between relative overflow-hidden"
+          >
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">
+                {s.label}
+              </span>
+              <div className="text-lg sm:text-xl font-black font-mono tracking-tight text-slate-900 tabular-nums">
+                {s.isNumber ? (
+                  <span>{s.value} <span className="text-xs font-bold text-slate-400">ta</span></span>
+                ) : (
+                  <span>{Number(s.value).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">UZS</span></span>
+                )}
+              </div>
+              <p className="text-[9.5px] font-medium text-slate-400 mt-0.5">{s.countText}</p>
+            </div>
+
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-xs shrink-0 ${s.bg}`}>
+              <s.icon className={`w-5 h-5 ${s.color}`} />
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* ─── Excel Spreadsheet Controls Bar ────────────────────────── */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+          
+          {/* Search Box */}
+          <div className="relative flex-1 group">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
+            <input 
+              type="text" 
+              placeholder="Bemor ismi, reja nomi yoki tish raqami bo'yicha qidiruv..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-9 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
+            />
+            {search && (
+              <button 
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Status Filter Tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+            {[
+              { id: 'all', label: "Barchasi", count: statusCounts.all },
+              { id: 'in_progress', label: "Jarayonda", count: statusCounts.in_progress },
+              { id: 'planned', label: "Rejalashtirilgan", count: statusCounts.planned },
+              { id: 'completed', label: "Yakunlangan", count: statusCounts.completed },
+            ].map(tab => {
+              const isActive = activeStatusFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveStatusFilter(tab.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+                    isActive 
+                      ? "bg-slate-900 text-white shadow-xs font-black" 
+                      : "bg-slate-100/70 text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                  )}
+                >
+                  <span>{tab.label}</span>
+                  <span className={cn(
+                    "px-1.5 py-0.2 rounded-full text-[9px] font-black",
+                    isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
+                  )}>
+                    {tab.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Density Switcher */}
+          <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 shrink-0">
+            <button
+              onClick={() => toggleDensity('compact')}
+              title="Ixcham Excel Jadvali"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
+                density === 'compact' 
+                  ? 'bg-white text-slate-900 shadow-xs' 
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
             >
-              <div className="flex items-center gap-3.5">
-                <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center shrink-0`}>
-                  <s.icon className={`w-5 h-5 ${s.color}`} />
-                </div>
-                <div className="min-w-0 flex-1">
-                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">{s.label}</p>
-                   <p className={`text-lg font-black tracking-tight ${s.color} mt-0.5 leading-none`}>
-                    {s.isCurrency ? `${(s.value/1000000).toFixed(1)}M` : s.value}
-                    {s.isCurrency && <span className="text-[9px] ml-0.5 opacity-60 font-bold uppercase">uzs</span>}
-                  </p>
-                </div>
-              </div>
-              <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden mt-3.5">
-                <motion.div 
-                   initial={{ width: 0 }}
-                   animate={{ width: s.isCurrency ? "100%" : `${(s.value / (inProgressCount + scheduledCount || 1)) * 100}%` }}
-                   className={`h-full ${s.bg.replace('/10', '')} opacity-40`}
-                />
-              </div>
-            </motion.div>
-          ))}
+              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
+              <span>Excel</span>
+            </button>
+            <button
+              onClick={() => toggleDensity('comfortable')}
+              title="Keng Jadval Ko'rinishi"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
+                density === 'comfortable' 
+                  ? 'bg-white text-slate-900 shadow-xs' 
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
+              <span>Keng</span>
+            </button>
+          </div>
+
         </div>
       </div>
 
-      {/* Toolbar & Search */}
-      <div className="flex flex-col md:flex-row items-center gap-4 px-1">
-        <div className="relative flex-1 w-full group">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400 group-focus-within:text-slate-700 transition-colors" />
-          <Input 
-            placeholder={t('treatmentPlan.searchPlaceholder')} 
-            value={search} 
-            onChange={e => setSearch(e.target.value)} 
-            className="h-11 pl-10 pr-4 rounded-xl border border-slate-200 bg-white shadow-sm focus:ring-2 focus:ring-slate-900/5 text-sm font-semibold placeholder:font-normal placeholder:text-slate-400"
-          />
-        </div>
-      </div>
-
-      {/* Main List Area */}
-      <div className="px-1">
-        {loading ? (
-          <div className="space-y-3">
-            {[1,2,3].map(i => <div key={i} className="h-24 bg-white border border-slate-100 rounded-xl animate-pulse" />)}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center shadow-sm">
-            <EmptyState icon={ClipboardList} title={t('treatmentPlan.noPlansFound')} description={t('treatmentPlan.noPlansDescription')} />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Desktop Table View */}
-            <div className="hidden lg:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto no-scrollbar">
-                <table className="w-full text-left border-collapse table-fixed min-w-[900px]">
-                  <thead>
-                    <tr className="bg-slate-50/50 border-b border-slate-100">
-                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[32%] min-w-[240px]">{t('treatmentPlan.table.planDetails') || 'Reja ma\'lumotlari'}</th>
-                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[15%] min-w-[140px]">{t('treatmentPlan.table.status') || 'Status'}</th>
-                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[18%] min-w-[140px]">{t('treatmentPlan.table.teeth') || 'Tishlar'}</th>
-                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider w-[15%] min-w-[120px]">{t('treatmentPlan.table.value') || 'Qiymati'}</th>
-                      <th className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right w-[20%] min-w-[160px]">{t('treatmentPlan.table.actions') || 'Amallar'}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filtered.map((p) => {
-                      const statusVal = normalizeStatus(p.status);
-                      const statusClasses = statusVal === 'completed'
-                        ? 'bg-emerald-50/70 text-emerald-700 border-emerald-100 hover:bg-emerald-50'
-                        : statusVal === 'in_progress'
-                          ? 'bg-amber-50/70 text-amber-700 border-amber-100 hover:bg-amber-50'
-                          : 'bg-blue-50/70 text-blue-700 border-blue-100 hover:bg-blue-50';
-
-                      return (
-                        <tr key={p.id} className="hover:bg-slate-50/40 transition-colors group">
-                          <td className="px-5 py-3 w-[32%] min-w-[240px]">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className={`w-8.5 h-8.5 rounded-lg flex items-center justify-center shadow-sm transition-all shrink-0 ${
-                                (p.status === 'Yakunlangan' || p.status === 'Completed') ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white'
-                              }`}>
-                                <Target className="w-4 h-4" />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="font-bold text-slate-800 text-[13px] tracking-tight hover:text-slate-900 transition-colors truncate max-w-[180px] sm:max-w-[240px]" title={p.name}>{p.name}</p>
-                                <p className="text-[10.5px] font-medium text-slate-500 mt-0.5 truncate max-w-[180px] sm:max-w-[240px]" title={p.patient_name}>{p.patient_name}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-5 py-3 w-[15%] min-w-[140px]">
-                            <Select 
-                              value={statusVal} 
-                              onValueChange={(val) => updatePlanStatus(p.id, val)}
-                            >
-                              <SelectTrigger className={`h-7 px-2.5 rounded-md border font-bold text-[9.5px] uppercase tracking-wider w-[125px] transition-colors focus:ring-0 ${statusClasses}`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="rounded-xl border-slate-150">
-                                <SelectItem value="planned" className="font-bold text-[9.5px] uppercase tracking-wider">{t('status.planned')}</SelectItem>
-                                <SelectItem value="in_progress" className="font-bold text-[9.5px] uppercase tracking-wider">{t('status.in_progress')}</SelectItem>
-                                <SelectItem value="completed" className="font-bold text-[9.5px] uppercase tracking-wider">{t('status.completed')}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="px-5 py-3 w-[18%] min-w-[140px]">
-                             <div className="flex flex-wrap gap-1 max-h-[48px] overflow-y-auto no-scrollbar">
-                                {(p.tooth_number || "—").split(',').map((t, idx) => (
-                                  <span key={idx} className="px-1.5 py-0.5 bg-slate-50 text-slate-650 border border-slate-100 rounded-md text-[9px] font-bold tracking-tight whitespace-nowrap">
-                                    #{t.trim()}
-                                  </span>
-                                ))}
-                             </div>
-                          </td>
-                          <td className="px-5 py-3 w-[15%] min-w-[120px]">
-                            <p className="font-bold text-slate-800 text-[13.5px] tracking-tight whitespace-nowrap">
-                              {p.total_price?.toLocaleString()}
-                               <span className="text-[9px] ml-0.5 text-slate-400 uppercase font-medium">uzs</span>
-                            </p>
-                          </td>
-                          <td className="px-5 py-3 text-right w-[20%] min-w-[160px]">
-                            <div className="flex items-center justify-end gap-1">
-                               <Button 
-                                 size="icon" 
-                                 variant="ghost" 
-                                 onClick={() => { setEditPlan(p); setModalOpen(true); }}
-                                 className="w-7.5 h-7.5 rounded-lg bg-slate-55 border border-slate-100 hover:bg-slate-900 hover:text-white transition-all shadow-sm active:scale-95"
-                               >
-                                 <Edit2 className="w-3 h-3" />
-                               </Button>
-                               <Button 
-                                 size="icon" 
-                                 variant="ghost" 
-                                 onClick={() => { setSelectedPlanForInvoice(p); setInvoiceOpen(true); }}
-                                 className="w-7.5 h-7.5 rounded-lg bg-slate-55 border border-slate-100 hover:bg-slate-900 hover:text-white transition-all shadow-sm active:scale-95"
-                               >
-                                 <FileDown className="w-3 h-3" />
-                               </Button>
-                               <Button 
-                                 size="icon" 
-                                 variant="ghost" 
-                                 onClick={() => setDeletePlanId(p.id)}
-                                 className="w-7.5 h-7.5 rounded-lg bg-slate-55 border border-slate-100 hover:bg-rose-500 hover:text-white transition-all shadow-sm active:scale-95"
-                               >
-                                 <Trash2 className="w-3.5 h-3.5" />
-                               </Button>
-                               <Button 
-                                 size="icon" 
-                                 variant="ghost" 
-                                 onClick={() => navigate(`/patients/${p.patient_id}`)}
-                                 className="w-7.5 h-7.5 rounded-lg bg-slate-55 border border-slate-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-95"
-                               >
-                                 <ChevronRight className="w-3.5 h-3.5" />
-                               </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Mobile/Tablet Card View */}
-            <div className="lg:hidden grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              <AnimatePresence mode="popLayout">
-                {filtered.map((p, index) => (
-                  <motion.div 
-                    key={p.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: Math.min(index, 6) * 0.02 }}
-                    onClick={() => { setEditPlan(p); setModalOpen(true); }}
-                    className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group active:scale-[0.98] cursor-pointer content-visibility-auto"
-                  >
-                    <div className="p-4.5">
-                      <div className="flex items-start justify-between mb-3.5">
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm shrink-0 transition-all ${
-                            (p.status === 'Yakunlangan' || p.status === 'Completed') ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-900 group-hover:text-white'
-                          }`}>
-                            <Activity className="w-5 h-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="text-sm font-bold text-slate-800 tracking-tight truncate">{p.name}</h3>
-                            <p className="text-[10.5px] font-medium text-slate-500 flex items-center gap-1 mt-0.5 truncate">
-                              <Users className="w-3 h-3 text-slate-400" /> {p.patient_name}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="h-1.5 w-10 bg-slate-100 rounded-full overflow-hidden mb-1">
-                             <div className={`h-full bg-blue-500`} style={{ width: p.status === 'Completed' ? '100%' : '30%' }} />
-                          </div>
-                          <p className="text-[8px] font-bold text-slate-450 uppercase tracking-wider text-right">Progress</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 mb-3.5 overflow-x-auto no-scrollbar">
-                         <div className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border ${
-                            (p.status === 'Yakunlangan' || p.status === 'Completed') ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                            (p.status === 'Jarayonda' || p.status === 'In Progress' || p.status === 'InProgress') ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                            'bg-blue-50 text-blue-700 border-blue-100'
-                          }`}>
-                            {t('status.' + normalizeStatus(p.status))}
-                         </div>
-                         {(p.services || []).length > 0 && (
-                            <div className="px-2 py-1 bg-slate-50 rounded-lg text-[9px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-                               {(p.services || []).length} xizmat
-                            </div>
-                         )}
-                      </div>
-
-                      <div className="flex items-center justify-between py-3.5 border-t border-slate-100">
-                        <div>
-                           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Jami qiymat</p>
-                           <p className="text-lg font-bold text-slate-800 tracking-tight">
-                            {p.total_price?.toLocaleString()}
-                            <span className="text-[9px] ml-0.5 text-slate-400 uppercase font-medium">uzs</span>
-                          </p>
-                        </div>
-                         <div className="flex gap-1.5">
-                           <Button 
-                             size="icon" 
-                             variant="ghost" 
-                             onClick={(e) => { e.stopPropagation(); setDeletePlanId(p.id); }}
-                             className="w-8.5 h-8.5 rounded-xl bg-rose-50 text-rose-500 shadow-sm active:scale-90 hover:bg-rose-100"
-                           >
-                             <Trash2 className="w-4 h-4" />
-                           </Button>
-                           <Button size="icon" variant="ghost" className="w-8.5 h-8.5 rounded-xl bg-slate-900 text-white shadow-md active:scale-90 hover:bg-slate-800"><ChevronRight className="w-4 h-4" /></Button>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
+      {/* ─── Main Excel Spreadsheet Data Grid Table ──────────────────── */}
+      {/* Columns: № | BEMOR (F.I.SH) | REJA NOMI | TISHLAR | XIZMATLAR | JAMI QIYMATI | STATUS | AMALLAR */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden relative"
+      >
+        {loading && (
+          <div className="absolute inset-x-0 top-0 h-0.5 bg-slate-100 overflow-hidden z-20">
+            <motion.div 
+              className="h-full bg-gradient-to-r from-[#1499AD] to-[#0E7A8A]"
+              animate={{ x: ['-100%', '100%'] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+            />
           </div>
         )}
-      </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left select-text">
+            {/* ─── Excel Table Header ────────────────── */}
+            <thead>
+              <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 text-[10.5px] font-black uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
+                
+                {/* № Col */}
+                <th className="w-12 px-2.5 py-2.5 text-center border-r border-slate-200 select-none font-mono">
+                  №
+                </th>
 
-      <TreatmentPlanModal open={modalOpen} onClose={() => { setModalOpen(false); setEditPlan(null); }} plan={editPlan} patients={patients} services={services} onSaved={invalidatePlans} />
-      <TreatmentPlanInvoice open={invoiceOpen} onClose={() => { setInvoiceOpen(false); setSelectedPlanForInvoice(null); }} plan={selectedPlanForInvoice} />
+                {/* BEMOR (F.I.SH) */}
+                <th 
+                  onClick={() => handleSort('patient')}
+                  className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
+                >
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span>Bemor (F.I.Sh)</span>
+                    {sortField === 'patient' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-30" />
+                    )}
+                  </div>
+                </th>
+
+                {/* REJA NOMI */}
+                <th 
+                  onClick={() => handleSort('name')}
+                  className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
+                >
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span>Reja Nomi / Tavsif</span>
+                    {sortField === 'name' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-30" />
+                    )}
+                  </div>
+                </th>
+
+                {/* TISHLAR */}
+                <th className="w-32 px-3 py-2.5 text-center border-r border-slate-200 select-none whitespace-nowrap">
+                  Tishlar
+                </th>
+
+                {/* XIZMATLAR */}
+                <th 
+                  onClick={() => handleSort('services')}
+                  className="w-28 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap bg-blue-50/30"
+                  title="Xizmatlar soni bo'yicha saralash"
+                >
+                  <div className="flex items-center justify-center gap-1.5 text-blue-800 font-mono">
+                    <span>Xizmatlar</span>
+                    {sortField === 'services' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-40" />
+                    )}
+                  </div>
+                </th>
+
+                {/* JAMI QIYMAT */}
+                <th 
+                  onClick={() => handleSort('price')}
+                  className="w-44 px-3.5 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-emerald-50/40 select-none whitespace-nowrap"
+                  title="Jami qiymat bo'yicha saralash"
+                >
+                  <div className="flex items-center justify-end gap-1.5 text-emerald-700 font-mono">
+                    <span>Jami Qiymat</span>
+                    {sortField === 'price' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-40" />
+                    )}
+                  </div>
+                </th>
+
+                {/* STATUS */}
+                <th 
+                  onClick={() => handleSort('status')}
+                  className="w-40 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                >
+                  <div className="flex items-center justify-center gap-1.5 text-slate-700">
+                    <span>Holat</span>
+                    {sortField === 'status' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-30" />
+                    )}
+                  </div>
+                </th>
+
+                {/* Actions */}
+                <th className="w-36 px-2 py-2.5 text-center text-slate-500 whitespace-nowrap select-none">
+                  {t('common.actions') || "Amallar"}
+                </th>
+
+              </tr>
+            </thead>
+
+            {/* ─── Excel Table Body ────────────────── */}
+            <tbody className="divide-y divide-slate-200/70 text-xs">
+              {sortedPlans.length > 0 ? (
+                sortedPlans.map((p, idx) => {
+                  const isCompact = density === 'compact';
+                  const st = normalizeStatus(p.status);
+                  const teethList = (p.tooth_number || '').split(',').map(t => t.trim()).filter(Boolean);
+
+                  return (
+                    <tr 
+                      key={p.id} 
+                      className={`group hover:bg-[#1499AD]/10 hover:shadow-xs transition-colors cursor-pointer ${
+                        idx % 2 === 1 ? 'bg-slate-50/30' : 'bg-white'
+                      }`}
+                      onClick={() => setSelectedDetailPlanId(p.id)}
+                    >
+                      {/* № Cell */}
+                      <td className={`text-center font-mono font-bold text-slate-400 border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-2 px-2' : 'py-3 px-2.5'}`}>
+                        {idx + 1}
+                      </td>
+
+                      {/* BEMOR (F.I.SH) Cell */}
+                      <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-6.5 h-6.5 rounded-lg bg-blue-50 text-blue-700 font-black text-[10px] flex items-center justify-center border border-blue-100 shrink-0">
+                            <User className="w-3.5 h-3.5 text-blue-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <span 
+                              onClick={(e) => {
+                                if (p.patient_id) {
+                                  e.stopPropagation();
+                                  navigate(`/patients/${p.patient_id}`);
+                                }
+                              }}
+                              className="font-extrabold text-slate-900 hover:text-blue-600 transition-colors truncate block hover:underline"
+                            >
+                              {p.patient_name || 'Noma\'lum bemor'}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* REJA NOMI Cell */}
+                      <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                        <div className="min-w-0">
+                          <span className="font-bold text-slate-800 group-hover:text-[#1499AD] transition-colors truncate block">
+                            {p.name}
+                          </span>
+                          {p.doctor_name && (
+                            <span className="text-[10px] font-medium text-slate-400 block truncate">
+                              Shifokor: {p.doctor_name}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* TISHLAR Cell */}
+                      <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
+                        {teethList.length > 0 ? (
+                          <div className="flex items-center justify-center gap-1 flex-wrap max-w-[140px] mx-auto">
+                            {teethList.map((tooth, tIdx) => (
+                              <span key={tIdx} className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                #{tooth}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-300 font-mono">—</span>
+                        )}
+                      </td>
+
+                      {/* XIZMATLAR SONI Cell */}
+                      <td className={`text-center border-r border-slate-200/70 whitespace-nowrap bg-blue-50/20 ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-bold text-blue-900 bg-blue-100/70 border border-blue-200/60">
+                          {(p.services || []).length} ta xizmat
+                        </span>
+                      </td>
+
+                      {/* JAMI QIYMAT Cell */}
+                      <td className={`text-right border-r border-slate-200/70 whitespace-nowrap bg-emerald-50/30 ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
+                        <span className="font-mono font-black text-emerald-600 text-xs tabular-nums">
+                          {Number(p.total_price || 0).toLocaleString()}
+                          <span className="text-[9.5px] font-semibold text-emerald-500 ml-1">UZS</span>
+                        </span>
+                      </td>
+
+                      {/* STATUS Cell */}
+                      <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1 px-2' : 'py-2 px-2.5'}`} onClick={(e) => e.stopPropagation()}>
+                        <Select 
+                          value={st} 
+                          onValueChange={(val) => updatePlanStatus(p.id, val)}
+                        >
+                          <SelectTrigger className={cn(
+                            "h-7 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider mx-auto border transition-colors focus:ring-0",
+                            st === 'completed'
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : st === 'in_progress'
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-blue-50 text-blue-700 border-blue-200"
+                          )}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl font-bold text-xs">
+                            <SelectItem value="planned">Rejalashtirilgan</SelectItem>
+                            <SelectItem value="in_progress">Jarayonda</SelectItem>
+                            <SelectItem value="completed">Yakunlangan</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
+
+                      {/* Actions Cell */}
+                      <td className={`text-center whitespace-nowrap ${isCompact ? 'py-1 px-1.5' : 'py-2 px-2'}`}>
+                        <div className="flex items-center justify-center gap-1" onClick={(ev) => ev.stopPropagation()}>
+                          <button 
+                            onClick={() => { setEditPlan(p); setModalOpen(true); }}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-[#1499AD] hover:bg-[#1499AD]/10 transition-all cursor-pointer"
+                            title="Rejani tahrirlash (Wizard)"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button 
+                            onClick={() => { setSelectedPlanForInvoice(p); setInvoiceOpen(true); }}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer"
+                            title="Kvitansiya / Hisob-faktura"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button 
+                            onClick={() => generatePDF(p)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
+                            title="PDF yuklab olish"
+                          >
+                            <FileDown className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button 
+                            onClick={() => setDeletePlanId(p.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                            title="O'chirish"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={8} className="py-20 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300">
+                        <ClipboardList className="w-6 h-6" />
+                      </div>
+                      <p className="text-sm font-bold text-slate-500">
+                        {search ? `"${search}" bo'yicha davolash rejasi topilmadi` : "Davolash rejalari mavjud emas"}
+                      </p>
+                      {(search || activeStatusFilter !== 'all') && (
+                        <button
+                          onClick={() => { setSearch(''); setActiveStatusFilter('all'); }}
+                          className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
+                        >
+                          Filtrlarni tozalash
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ─── Excel Formula Summary Footer Bar ──────────────────── */}
+        <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3 text-slate-600 font-bold">
+            <span className="flex items-center gap-1.5">
+              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
+              <span>Jadvalda:</span>
+              <strong className="text-slate-900 font-mono">{sortedPlans.length}</strong> ta reja
+            </span>
+            <span className="text-slate-300">•</span>
+            <span>
+              Jarayonda: <strong className="text-amber-700 font-mono">{statusCounts.in_progress} ta</strong>
+            </span>
+            <span className="text-slate-300">•</span>
+            <span>
+              Rejalashtirilgan: <strong className="text-blue-700 font-mono">{statusCounts.planned} ta</strong>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-black uppercase text-slate-500">Σ Tanlangan Rejalar Qiymati:</span>
+              <span className="font-mono font-bold text-slate-800 text-sm">
+                {filteredTotalValue.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 border-l border-slate-300 pl-3">
+              <span className="text-[11px] font-black uppercase text-slate-500">Σ Umumiy Rejalar Qiymati:</span>
+              <span className="font-mono font-black text-emerald-600 text-sm">
+                {totalValue.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ─── Interactive Treatment Plan Detail & Execution Modal ─────── */}
+      <Dialog open={!!activeDetailPlan} onOpenChange={(open) => { if (!open) setSelectedDetailPlanId(null); }}>
+        <DialogContent className="sm:max-w-2xl rounded-2xl p-5 max-h-[90vh] overflow-y-auto">
+          {activeDetailPlan && (
+            <div className="space-y-4">
+              <DialogHeader>
+                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#1499AD] text-white flex items-center justify-center font-black text-sm shadow-xs">
+                      <Layers className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-base font-black text-slate-900 leading-tight">
+                        {activeDetailPlan.name}
+                      </DialogTitle>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                          <User className="w-3.5 h-3.5 text-blue-600" />
+                          {activeDetailPlan.patient_name || 'Bemor'}
+                        </span>
+                        {activeDetailPlan.doctor_name && (
+                          <>
+                            <span className="text-slate-300">•</span>
+                            <span className="text-[11px] font-bold text-slate-400">
+                              Dr. {activeDetailPlan.doctor_name}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => generatePDF(activeDetailPlan)}
+                      className="h-8 px-2.5 rounded-xl border-slate-200 text-xs font-bold gap-1 text-slate-700"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Chop etish</span>
+                    </Button>
+
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        setSelectedPlanForInvoice(activeDetailPlan);
+                        setInvoiceOpen(true);
+                      }}
+                      className="h-8 px-2.5 rounded-xl border-slate-200 text-xs font-bold gap-1 text-slate-700"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Kvitansiya</span>
+                    </Button>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              {/* Status & Progress Bar Card */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                      Reja Holati:
+                    </span>
+                    <div className="mt-1">
+                      <Select 
+                        value={normalizeStatus(activeDetailPlan.status)} 
+                        onValueChange={(val) => updatePlanStatus(activeDetailPlan.id, val)}
+                      >
+                        <SelectTrigger className="h-7.5 px-3 rounded-lg font-bold text-xs bg-white border-slate-300">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl font-bold text-xs">
+                          <SelectItem value="planned">Rejalashtirilgan</SelectItem>
+                          <SelectItem value="in_progress">Jarayonda</SelectItem>
+                          <SelectItem value="completed">Yakunlangan</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                      Jami Qiymati:
+                    </span>
+                    <span className="text-base font-black font-mono text-emerald-700">
+                      {Number(activeDetailPlan.total_price || 0).toLocaleString()} UZS
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress bar of completed services */}
+                {Array.isArray(activeDetailPlan.services) && activeDetailPlan.services.length > 0 && (
+                  <div>
+                    {(() => {
+                      const totalSrv = activeDetailPlan.services.length;
+                      const doneSrv = activeDetailPlan.services.filter(s => s.completed).length;
+                      const pct = Math.round((doneSrv / totalSrv) * 100);
+                      return (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span className="text-slate-600">
+                              Bajarilish: <strong className="text-slate-900">{doneSrv} / {totalSrv} ta xizmat</strong>
+                            </span>
+                            <span className="text-emerald-700 font-mono font-black">{pct}%</span>
+                          </div>
+                          <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-emerald-500 rounded-full transition-all duration-500" 
+                              style={{ width: `${pct}%` }} 
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              {/* Services Checklist / Execution Excel Grid */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+                <div className="bg-slate-100/90 px-3.5 py-2 border-b border-slate-200 flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase text-slate-700">
+                    Rejadagi Xizmatlar & Muolajalar ({Array.isArray(activeDetailPlan.services) ? activeDetailPlan.services.length : 0})
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400">
+                    Bajarilgan xizmatlarni belgilang (Checkmark)
+                  </span>
+                </div>
+
+                <div className="max-h-64 overflow-y-auto">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead className="sticky top-0 bg-slate-50 z-10">
+                      <tr className="border-b border-slate-200 text-slate-500 text-[10px] font-bold uppercase">
+                        <th className="w-10 px-2.5 py-2 text-center border-r border-slate-200">№</th>
+                        <th className="w-10 px-2 py-2 text-center border-r border-slate-200">Holat</th>
+                        <th className="px-3 py-2 border-r border-slate-200">Xizmat Nomi</th>
+                        <th className="w-20 px-2 py-2 text-center border-r border-slate-200">Tish</th>
+                        <th className="px-3 py-2 text-right">Narxi (UZS)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200/70 font-mono">
+                      {Array.isArray(activeDetailPlan.services) && activeDetailPlan.services.length > 0 ? (
+                        activeDetailPlan.services.map((srv, sIdx) => {
+                          const isDone = !!srv.completed;
+                          return (
+                            <tr 
+                              key={sIdx} 
+                              onClick={() => handleToggleService(sIdx)}
+                              className={`cursor-pointer transition-colors ${
+                                isDone ? 'bg-emerald-50/50 hover:bg-emerald-100/60' : 'hover:bg-slate-50'
+                              }`}
+                            >
+                              <td className="px-2.5 py-2 text-center text-slate-400 border-r border-slate-200/70">{sIdx + 1}</td>
+                              
+                              {/* Interactive Checkbox */}
+                              <td className="px-2 py-2 text-center border-r border-slate-200/70" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleService(sIdx)}
+                                  className={`w-5 h-5 rounded-md flex items-center justify-center transition-all cursor-pointer ${
+                                    isDone 
+                                      ? 'bg-emerald-600 text-white shadow-xs' 
+                                      : 'border-2 border-slate-300 hover:border-emerald-500 bg-white'
+                                  }`}
+                                  title={isDone ? "Bajarildi (Bekor qilish)" : "Bajarildi deb belgilash"}
+                                >
+                                  {isDone && <Check className="w-3.5 h-3.5 stroke-[3px]" />}
+                                </button>
+                              </td>
+
+                              {/* Service Name */}
+                              <td className="px-3 py-2 font-sans font-bold text-slate-900 border-r border-slate-200/70">
+                                <div className="flex items-center gap-2">
+                                  <span className={isDone ? 'line-through text-slate-400 font-normal' : ''}>
+                                    {srv.service_name || srv.name || 'Muolaja xizmati'}
+                                  </span>
+                                  {isDone && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 shrink-0">
+                                      Bajarildi
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Tooth Number */}
+                              <td className="px-2 py-2 text-center border-r border-slate-200/70 text-slate-700">
+                                {srv.tooth_number ? (
+                                  <span className="px-1.5 py-0.2 rounded bg-slate-100 font-bold text-[10px]">
+                                    #{srv.tooth_number}
+                                  </span>
+                                ) : (
+                                  activeDetailPlan.tooth_number ? (
+                                    <span className="px-1.5 py-0.2 rounded bg-slate-100 font-bold text-[10px]">
+                                      #{activeDetailPlan.tooth_number}
+                                    </span>
+                                  ) : '—'
+                                )}
+                              </td>
+
+                              {/* Price */}
+                              <td className="px-3 py-2 text-right font-bold text-slate-800">
+                                {Number(srv.price || 0).toLocaleString()} UZS
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="py-6 text-center text-slate-400 font-sans">
+                            Rejaga xizmatlar kiritilmagan
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Bottom Actions Footer */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-200">
+                {activeDetailPlan.patient_id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedDetailPlanId(null);
+                      navigate(`/patients/${activeDetailPlan.patient_id}`);
+                    }}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Bemor profiliga o'tish</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
+                <div className="flex items-center gap-2 self-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const pToEdit = activeDetailPlan;
+                      setSelectedDetailPlanId(null);
+                      setEditPlan(pToEdit);
+                      setModalOpen(true);
+                    }}
+                    className="h-9 px-3.5 rounded-xl border-slate-200 text-slate-700 text-xs font-bold gap-1.5"
+                  >
+                    <Edit2 className="w-3.5 h-3.5 text-slate-600" />
+                    <span>Rejani Tahrirlash (Wizard)</span>
+                  </Button>
+
+                  <Button
+                    onClick={() => setSelectedDetailPlanId(null)}
+                    className="h-9 px-4 rounded-xl bg-slate-900 text-white text-xs font-black"
+                  >
+                    Yopish
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Creation & Full Reconfiguration Wizard Modal */}
+      <TreatmentPlanModal 
+        open={modalOpen} 
+        onClose={() => { setModalOpen(false); setEditPlan(null); }} 
+        plan={editPlan} 
+        patients={patients} 
+        services={services} 
+        onSaved={invalidatePlans} 
+      />
+      
+      {/* Invoice Modal */}
+      <TreatmentPlanInvoice 
+        open={invoiceOpen} 
+        onClose={() => { setInvoiceOpen(false); setSelectedPlanForInvoice(null); }} 
+        plan={selectedPlanForInvoice} 
+      />
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deletePlanId} onOpenChange={() => setDeletePlanId(null)}>
@@ -457,14 +1160,20 @@ export default function TreatmentPlans() {
             <div className="w-14 h-14 bg-rose-50 rounded-xl flex items-center justify-center text-rose-500 mb-3 mx-auto">
               <Trash2 className="w-7 h-7" />
             </div>
-            <AlertDialogTitle className="text-xl font-bold text-slate-900 text-center uppercase tracking-tight">O'chirishni tasdiqlaysizmi?</AlertDialogTitle>
+            <AlertDialogTitle className="text-xl font-bold text-slate-900 text-center uppercase tracking-tight">
+              O'chirishni tasdiqlaysizmi?
+            </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-500 text-center font-medium pt-1.5 text-sm">
               Ushbu davolash rejasi va unga bog'liq barcha qarzlar butunlay o'chiriladi. Bu amalni ortga qaytarib bo'lmaydi.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6 flex gap-3">
-            <AlertDialogCancel className="h-11 rounded-xl border-slate-100 font-bold uppercase text-[10px] tracking-wider flex-1 m-0">Bekor qilish</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="h-11 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold uppercase text-[10px] tracking-wider flex-1 m-0 shadow-md shadow-rose-500/20">O'chirish</AlertDialogAction>
+            <AlertDialogCancel className="h-10 rounded-xl border-slate-200 font-bold uppercase text-[10px] tracking-wider flex-1 m-0">
+              Bekor qilish
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="h-10 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold uppercase text-[10px] tracking-wider flex-1 m-0 shadow-md">
+              O'chirish
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

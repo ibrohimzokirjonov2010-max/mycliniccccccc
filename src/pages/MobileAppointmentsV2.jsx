@@ -79,12 +79,19 @@ export default function MobileAppointmentsV2() {
           setLoading(true);
         }, 150);
       }
-      const [apps, pats, servs, users] = await Promise.all([
+      const [apps, rawPats, servs, users] = await Promise.all([
         base44.entities.Appointment.list('-date', 50),   // ⚡ tez yuklash
-        base44.entities.Patient.list('full_name', 50),   // ⚡ tez yuklash
+        base44.entities.Patient.list(isDoctor ? '-created_date' : 'full_name', isDoctor ? 500 : 50),   // ⚡ tez yuklash
         base44.entities.Service.list('name', 100),
         base44.entities.User.list('name', 50)
       ]);
+      const pats = isDoctor && user?.id
+        ? (rawPats || []).filter(p =>
+            String(p.main_treatment_provider) === String(user.id) ||
+            String(p.main_treatment_provider) === String(user.name) ||
+            String(p.created_by_id) === String(user.id)
+          )
+        : (rawPats || []);
       const normalizedApps = apps.map(a => {
         let tStr = a.time || '08:00';
         const parts = tStr.split(':');

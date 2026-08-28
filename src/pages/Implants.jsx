@@ -1,29 +1,29 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Plus, Search, Activity, AlertTriangle, CheckCircle2, 
-  ChevronRight, TrendingUp, Zap, Bell, Target, Phone, Calendar, ArrowRight, Layers, MessageCircle
+  Plus, Search, CheckCircle2, 
+  TrendingUp, Bell, Target, Phone,
+  Table as TableIcon, LayoutGrid, FileSpreadsheet, X,
+  ArrowUp, ArrowDown, ArrowUpDown, Trash2, User, MessageCircle,
+  Package, Layers, Eye, DollarSign, Sparkles, Calendar, Check, Edit2
 } from 'lucide-react';
 import { Tooth } from '@/components/ui/Icons';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion, AnimatePresence } from 'framer-motion';
-import ImplantForm, { EXTRA_SERVICES } from '../components/implants/ImplantForm';
+import ImplantForm from '../components/implants/ImplantForm';
 import ImplantBrandsModal, { getOrSeedImplantBrands, calculateBrandStockStats } from '@/components/implants/ImplantBrandsModal';
-import { useFeature } from '@/hooks/useFeature';
-import { Package, Settings2 } from 'lucide-react';
-import Paywall from '@/components/layout/Paywall';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useAuth } from '@/lib/AuthContext';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
-// Defensive rendering helper to prevent "Objects are not valid as React child" crashes
+// Defensive rendering helper
 const safeRender = (val, fallback = '—') => {
   if (val == null || val === '') return fallback;
   if (typeof val === 'string' || typeof val === 'number') return val;
   if (typeof val === 'object') {
-    // If it's an object with a label/name/title, try to show that
     return val.label || val.name || val.title || JSON.stringify(val).substring(0, 20);
   }
   return String(val);
@@ -34,10 +34,50 @@ const toothIdToFdi = (id) => {
   if (!id) return id;
   const s = String(id);
   const match = s.match(/^(ur|ul|lr|ll)(\d+)$/);
-  if (!match) return s; // already FDI or unknown format
+  if (!match) return s;
   const [, quad, num] = match;
   const quadMap = { ur: '1', ul: '2', ll: '3', lr: '4' };
   return quadMap[quad] + num;
+};
+
+// Resolve service category
+export const resolveService = (implant) => {
+  if (implant.service_name && implant.service_name.trim()) return implant.service_name.trim();
+  if (implant.hizmat_turi && implant.hizmat_turi.trim()) return implant.hizmat_turi.trim();
+  const status = (implant.lifecycle_status || '').toLowerCase();
+  if (status.includes('crown') || status.includes('karonka')) return 'Karonka';
+  if (status.includes('abutment')) return 'Abutment';
+  if (status.includes('healing') || status.includes('formik')) return 'Formik';
+  return 'Implant';
+};
+
+// Service Visual Config
+const SERVICE_CONFIG = {
+  'Implant':   { label: 'Implant',   emoji: '🔩', badge: 'bg-teal-50 text-teal-700 border-teal-200' },
+  'Formik':    { label: 'Formik',    emoji: '🩹', badge: 'bg-amber-50 text-amber-800 border-amber-200' },
+  'Karonka':   { label: 'Karonka',   emoji: '👑', badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  'Abutment':  { label: 'Abutment',  emoji: '🔧', badge: 'bg-purple-50 text-purple-700 border-purple-200' },
+  'Sinus-lifting': { label: 'Sinus-lifting', emoji: '🩺', badge: 'bg-sky-50 text-sky-700 border-sky-200' },
+  'Suyak ekish': { label: 'Suyak ekish', emoji: '🧬', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+};
+
+// Resolve price in UZS
+export const resolvePrice = (implant) => {
+  if (implant.price !== undefined && implant.price !== null && implant.price !== '') {
+    const num = Number(implant.price);
+    if (!isNaN(num)) return num;
+  }
+  if (implant.narxi !== undefined && implant.narxi !== null && implant.narxi !== '') {
+    const num = Number(implant.narxi);
+    if (!isNaN(num)) return num;
+  }
+  const svc = resolveService(implant).toLowerCase();
+  if (svc.includes('formik') || svc.includes('healing')) return 100000;
+  if (svc.includes('karonka') || svc.includes('crown')) return 1500000;
+  if (svc.includes('abutment')) return 300000;
+  if (svc.includes('sinus')) return 2000000;
+  if (svc.includes('graft') || svc.includes('suyak')) return 1000000;
+  return 1500000; // Default standard implant
 };
 
 const LIFECYCLE_MAPPING = {
@@ -51,38 +91,41 @@ const LIFECYCLE_MAPPING = {
 };
 
 const LIFECYCLE_COLORS = {
-  'planned': 'bg-blue-50 text-blue-600 border-blue-100',
-  'placed': 'bg-teal-50 text-teal-600 border-teal-100',
-  'healing': 'bg-yellow-50 text-yellow-600 border-yellow-100',
-  'abutment': 'bg-purple-50 text-purple-600 border-purple-100',
-  'crown': 'bg-indigo-50 text-indigo-600 border-indigo-100',
-  'completed': 'bg-emerald-50 text-emerald-600 border-emerald-100',
-  'failure': 'bg-rose-50 text-rose-600 border-rose-100',
+  'planned': 'bg-blue-50 text-blue-700 border-blue-200',
+  'placed': 'bg-teal-50 text-teal-700 border-teal-200',
+  'healing': 'bg-yellow-50 text-yellow-800 border-yellow-200',
+  'abutment': 'bg-purple-50 text-purple-700 border-purple-200',
+  'crown': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  'completed': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'failure': 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
-function StatBox({ label, value, icon: Icon, color, lightColor, sub, delay = 0 }) {  
-  return (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay }}
-      className="bg-white border border-slate-100/80 rounded-[1.5rem] p-4 sm:p-6 shadow-sm shadow-slate-200/40 relative group overflow-hidden"
-    >
-      <div className={`absolute -right-2 -top-2 w-16 h-16 ${lightColor} opacity-40 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500`} />
-      <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl ${lightColor} flex items-center justify-center mb-3 transition-transform group-hover:rotate-6`}>
-        <Icon className={`w-4.5 h-4.5 sm:w-5.5 sm:h-5.5 ${color}`} />
-      </div>
-      <div className="space-y-0.5">
-        <p className="text-[10px] sm:text-xs font-[900] text-slate-400 uppercase tracking-widest">{label}</p>
-        <p className="text-base sm:text-xl font-[900] text-slate-900 tracking-tighter">{value}</p>
-        {sub && <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{sub}</p>}
-      </div>
-    </motion.div>
-  );
-}
+/**
+ * Format ISO or standard date to readable Excel DD.MM.YYYY
+ */
+const formatDate = (dateStr) => {
+  if (!dateStr) return '—';
+  try {
+    const clean = String(dateStr).split('T')[0];
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+    return dateStr;
+  } catch {
+    return dateStr;
+  }
+};
 
+/**
+ * Implants Page - Professional Excel Spreadsheet View
+ * Matching Exact Schema: hizmatlar | sana | tish raqami | firma nomi | narxi
+ */
 export default function Implants() {
   const { t } = useTranslation();
+  const { user, isDoctor } = useAuth();
+  const navigate = useNavigate();
+
   const [implants, setImplants] = useState([]);
   const [patients, setPatients] = useState([]);
   const [services, setServices] = useState([]);
@@ -90,669 +133,1041 @@ export default function Implants() {
   const [brandsModalOpen, setBrandsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterFirma, setFilterFirma] = useState('');
+  const [activeTab, setActiveTab] = useState('all'); // all, implant, formik, karonka, other, control, analytics
+  const [filterFirma, setFilterFirma] = useState('all');
   const [addOpen, setAddOpen] = useState(false);
-  const [tab, setTab] = useState('dashboard');
-  const hasImplantsAccess = useFeature('implants');
+  const [editingImplant, setEditingImplant] = useState(null);
 
-  const load = async () => {
+  // Density switcher with localStorage
+  const [density, setDensity] = useState(() => {
+    return localStorage.getItem('myclinic_implants_density') || 'compact';
+  });
+  const toggleDensity = (val) => {
+    setDensity(val);
+    localStorage.setItem('myclinic_implants_density', val);
+  };
+
+  // Sorting state
+  const [sortField, setSortField] = useState('date');
+  const [sortOrder, setSortOrder] = useState('desc');
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       const [imps, pats, svcs, brnds] = await Promise.all([
-        base44.entities.Implant.list('-placement_date', 100),
+        base44.entities.Implant.list('-placement_date', 400),
         base44.entities.Patient.list('full_name', 100),
         base44.entities.Service.filter({ is_active: true }, 'name', 100),
         getOrSeedImplantBrands(),
       ]);
-      setImplants(imps || []);
+
+      let filteredImps = imps || [];
+      if (isDoctor && user?.id) {
+        const myPatients = (pats || []).filter(p =>
+          String(p.main_treatment_provider) === String(user.id) ||
+          String(p.main_treatment_provider) === String(user.name) ||
+          String(p.created_by_id) === String(user.id)
+        );
+        const myPatientIds = new Set(myPatients.map(p => String(p.id)));
+        filteredImps = filteredImps.filter(i =>
+          myPatientIds.has(String(i.patient_id)) ||
+          String(i.doctor_id) === String(user.id)
+        );
+      }
+      setImplants(filteredImps);
       setPatients(pats || []);
       setServices(svcs || []);
       setBrands(brnds || []);
     } catch (error) {
       console.error('Error loading implants and brands:', error);
+      toast.error("Ma'lumotlarni yuklashda xatolik");
     } finally {
       setLoading(false);
     }
-  };
+  }, [isDoctor, user?.id, user?.name]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   const today = new Date();
-  const thirtyDaysAgo = new Date(today.getTime() - 30 * 86400000).toISOString().split('T')[0];
-  const recentCount = implants.filter(i => i.placement_date >= thirtyDaysAgo).length;
   const totalCount = implants.length;
   const failureCount = implants.filter(i => (LIFECYCLE_MAPPING[i.lifecycle_status] || i.lifecycle_status?.toLowerCase()) === 'failure').length;
-  const successCount = implants.filter(i => (LIFECYCLE_MAPPING[i.lifecycle_status] || i.lifecycle_status?.toLowerCase()) === 'completed').length;
-  const successRate = totalCount > 0 ? Math.round(((totalCount - failureCount) / totalCount) * 100) : 0;
+  const completedCount = implants.filter(i => (LIFECYCLE_MAPPING[i.lifecycle_status] || i.lifecycle_status?.toLowerCase()) === 'completed').length;
   
-  const needsControl = implants.filter(i => {
-    if (!i.reminder_date) return false;
-    const rd = new Date(i.reminder_date);
-    const diff = (rd - today) / 86400000;
-    return diff <= 14 && diff >= -7;
-  });
+  // Total Revenue Calculation (Sum of all prices)
+  const totalRevenue = useMemo(() => {
+    return implants.reduce((acc, curr) => acc + resolvePrice(curr), 0);
+  }, [implants]);
 
-  const brandStats = {};
-  implants.forEach(i => {
-    const b = i.firma === 'Boshqa' ? (i.firma_custom || 'Boshqa') : i.firma;
-    if (b) brandStats[b] = (brandStats[b] || 0) + 1;
-  });
-  const topBrands = Object.entries(brandStats).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  // Breakdown by Service type
+  const serviceStats = useMemo(() => {
+    let implantCount = 0;
+    let implantSum = 0;
+    let formikCount = 0;
+    let formikSum = 0;
+    let karonkaCount = 0;
+    let karonkaSum = 0;
+    let otherCount = 0;
+    let otherSum = 0;
 
-  const filtered = implants.filter(i => {
-    const toothNumbers = i.tooth_numbers || (i.tooth_number ? [i.tooth_number] : []);
-    const matchSearch = i.patient_name?.toLowerCase().includes(search.toLowerCase()) ||
-      toothNumbers.some(n => String(n).includes(search));
-    const matchStatus = !filterStatus || i.lifecycle_status?.toLowerCase() === filterStatus?.toLowerCase();
-    const matchFirma = !filterFirma || i.firma === filterFirma;
-    return matchSearch && matchStatus && matchFirma;
-  });
+    implants.forEach(i => {
+      const svc = resolveService(i).toLowerCase();
+      const p = resolvePrice(i);
+      if (svc.includes('formik') || svc.includes('healing')) {
+        formikCount++;
+        formikSum += p;
+      } else if (svc.includes('karonka') || svc.includes('crown')) {
+        karonkaCount++;
+        karonkaSum += p;
+      } else if (svc.includes('implant')) {
+        implantCount++;
+        implantSum += p;
+      } else {
+        otherCount++;
+        otherSum += p;
+      }
+    });
 
-  if (!hasImplantsAccess) {
-    return <Paywall featureName="Implantlar" />;
-  }
+    return {
+      implantCount, implantSum,
+      formikCount, formikSum,
+      karonkaCount, karonkaSum,
+      otherCount, otherSum
+    };
+  }, [implants]);
+
+  const needsControl = useMemo(() => {
+    return implants.filter(i => {
+      if (!i.reminder_date) return false;
+      const rd = new Date(i.reminder_date);
+      const diff = (rd - today) / 86400000;
+      return diff <= 14 && diff >= -7;
+    });
+  }, [implants, today]);
+
+  // Ma'lumotlari to'ldirilmagan implantlar ro'yxati
+  const incompleteList = useMemo(() => {
+    return implants.filter(i => 
+      i.incomplete_data === true || 
+      i.needs_fill === true || 
+      (!i.firma && !i.brend && !i.firma_custom)
+    );
+  }, [implants]);
+
+  // Unique brand firms for filter
+  const brandFirmOptions = useMemo(() => {
+    const set = new Set();
+    implants.forEach(i => {
+      const f = i.firma;
+      if (f && f !== 'Boshqa') set.add(f);
+      if (i.firma_custom) set.add(i.firma_custom);
+    });
+    return Array.from(set);
+  }, [implants]);
+
+  // Filtered implants
+  const filteredImplants = useMemo(() => {
+    return implants.filter(i => {
+      const svc = resolveService(i).toLowerCase();
+
+      // Tab filter
+      if (activeTab === 'incomplete') {
+        const isInc = i.incomplete_data === true || i.needs_fill === true || (!i.firma && !i.brend && !i.firma_custom);
+        if (!isInc) return false;
+      } else if (activeTab === 'implant') {
+        if (!svc.includes('implant')) return false;
+      } else if (activeTab === 'formik') {
+        if (!svc.includes('formik') && !svc.includes('healing')) return false;
+      } else if (activeTab === 'karonka') {
+        if (!svc.includes('karonka') && !svc.includes('crown')) return false;
+      } else if (activeTab === 'other') {
+        if (svc.includes('implant') || svc.includes('formik') || svc.includes('healing') || svc.includes('karonka') || svc.includes('crown')) return false;
+      } else if (activeTab === 'control') {
+        if (!i.reminder_date) return false;
+        const rd = new Date(i.reminder_date);
+        const diff = (rd - today) / 86400000;
+        if (!(diff <= 14 && diff >= -7)) return false;
+      }
+
+      // Brand firma filter
+      if (filterFirma !== 'all') {
+        const itemFirm = i.firma === 'Boshqa' ? (i.firma_custom || '') : (i.firma || '');
+        if (itemFirm !== filterFirma) return false;
+      }
+
+      // Search
+      const q = search.toLowerCase();
+      if (!q) return true;
+
+      const pName = (i.patient_name || '').toLowerCase();
+      const pPhone = (i.patient_phone || '').toLowerCase();
+      const firma = (i.firma || '').toLowerCase();
+      const firmaCustom = (i.firma_custom || '').toLowerCase();
+      const brend = (i.brend || '').toLowerCase();
+      const svcName = resolveService(i).toLowerCase();
+      const teeth = (i.tooth_numbers || (i.tooth_number ? [i.tooth_number] : [])).join(' ');
+
+      return pName.includes(q) || pPhone.includes(q) || firma.includes(q) || firmaCustom.includes(q) || brend.includes(q) || teeth.includes(q) || svcName.includes(q);
+    });
+  }, [implants, activeTab, filterFirma, search, today]);
+
+  // Sorted implants
+  const sortedImplants = useMemo(() => {
+    const list = [...filteredImplants];
+    list.sort((a, b) => {
+      let valA, valB;
+      switch (sortField) {
+        case 'service':
+          valA = resolveService(a).toLowerCase();
+          valB = resolveService(b).toLowerCase();
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'tooth':
+          valA = (a.tooth_number || (a.tooth_numbers && a.tooth_numbers[0]) || '').toString();
+          valB = (b.tooth_number || (b.tooth_numbers && b.tooth_numbers[0]) || '').toString();
+          return sortOrder === 'asc' ? valA.localeCompare(valB, undefined, { numeric: true }) : valB.localeCompare(valA, undefined, { numeric: true });
+        case 'brand':
+          valA = (a.firma === 'Boshqa' ? a.firma_custom : a.firma || '').toLowerCase();
+          valB = (b.firma === 'Boshqa' ? b.firma_custom : b.firma || '').toLowerCase();
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'price':
+          valA = resolvePrice(a);
+          valB = resolvePrice(b);
+          return sortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'patient':
+          valA = (a.patient_name || '').toLowerCase();
+          valB = (b.patient_name || '').toLowerCase();
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'status':
+          valA = (a.lifecycle_status || '').toLowerCase();
+          valB = (b.lifecycle_status || '').toLowerCase();
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'date':
+        default:
+          valA = new Date(a.placement_date || '1970-01-01').getTime();
+          valB = new Date(b.placement_date || '1970-01-01').getTime();
+          return sortOrder === 'asc' ? valA - valB : valB - valA;
+      }
+    });
+    return list;
+  }, [filteredImplants, sortField, sortOrder]);
+
+  const updateImplantStatus = async (id, newVal) => {
+    const statusLabel = Object.keys(LIFECYCLE_MAPPING).find(key => LIFECYCLE_MAPPING[key] === newVal) || newVal;
+    
+    // Optimistic update
+    setImplants(prev => prev.map(item => 
+      item.id === id ? { ...item, lifecycle_status: statusLabel } : item
+    ));
+
+    try {
+      await base44.entities.Implant.update(id, { lifecycle_status: statusLabel });
+      toast.success("Holat yangilandi!");
+      load();
+    } catch (e) {
+      console.error(e);
+      toast.error("Statusni saqlashda xatolik");
+      load();
+    }
+  };
+
+  const handleDeleteImplant = async (id) => {
+    if (!window.confirm("Ushbu yozuvni o'chirishni tasdiqlaysizmi?")) return;
+    try {
+      await base44.entities.Implant.delete(id);
+      toast.success("Yozuv muvaffaqiyatli o'chirildi!");
+      load();
+    } catch (err) {
+      console.error(err);
+      toast.error("O'chirishda xatolik");
+    }
+  };
+
+  /**
+   * Export to CSV with UTF-8 BOM
+   * Exact columns: №, Hizmatlar, Sana, Tish raqami, Firma nomi, Narxi, Bemor, Telefon, Holat
+   */
+  const exportCSV = useCallback(() => {
+    try {
+      if (!sortedImplants || sortedImplants.length === 0) {
+        toast.warning("Eksport qilish uchun ma'lumot topilmadi");
+        return;
+      }
+      const headers = [
+        "№",
+        "hizmatlar",
+        "sana",
+        "tish raqami",
+        "firma nomi",
+        "narxi",
+        "bemor",
+        "telefon",
+        "holat"
+      ];
+      const rows = sortedImplants.map((i, idx) => {
+        const rawTeeth = (i.tooth_numbers || (i.tooth_number ? [i.tooth_number] : []));
+        const teeth = [...new Set(rawTeeth.map(String))].map(n => toothIdToFdi(n)).join(', ');
+        const svc = resolveService(i);
+        const price = resolvePrice(i);
+        const firma = i.firma === 'Boshqa' ? (i.firma_custom || 'Boshqa') : (i.firma || 'Dentium');
+        const date = formatDate(i.placement_date);
+        const statusText = i.lifecycle_status || 'O\'rnatildi';
+
+        return [
+          idx + 1,
+          `"${svc.replace(/"/g, '""')}"`,
+          `"${date}"`,
+          `"${teeth}"`,
+          `"${firma.replace(/"/g, '""')}"`,
+          price,
+          `"${(i.patient_name || '').replace(/"/g, '""')}"`,
+          `"${(i.patient_phone || '').replace(/"/g, '""')}"`,
+          `"${statusText.replace(/"/g, '""')}"`
+        ].join(",");
+      });
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Implantlar_Hizmatlar_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Implantlar jadvali Excel (.csv) formatida yuklab olindi!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Eksportda xatolik yuz berdi");
+    }
+  }, [sortedImplants]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-24 lg:pb-8">
-      {/* Premium Header */}
-      <div className="sticky top-0 z-30 bg-[#F8FAFC]/80 backdrop-blur-md px-4 py-4 sm:px-6 mb-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-[900] text-slate-900 tracking-tight flex items-center gap-2">
-              <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center justify-center">
-                <Tooth className="w-5 h-5 text-indigo-600" />
-              </div>
-              {t('navigation.implants')}
-            </h1>
-            <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">{t('implants.subtitle')}</p>
+    <div className="space-y-3.5 pb-6">
+      {/* ─── Header Bar ────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">Implantologiya Bo'limi</h1>
+            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-teal-50 text-teal-700 border border-teal-200 flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-teal-600" />
+              {implants.length} ta amaliyot
+            </span>
           </div>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setAddOpen(true)}
-            className="bg-slate-900 text-white p-3 sm:px-5 sm:py-2.5 rounded-2xl flex items-center gap-2 shadow-lg shadow-slate-200 transition-all hover:bg-slate-800"
+          <p className="text-xs font-semibold text-slate-400 mt-0.5">
+            Implant, Formik, Karonka va jarrohlik xizmatlari reyestri hamda monitoringi
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            onClick={exportCSV} 
+            className="gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs text-slate-700 h-9.5 px-3.5 cursor-pointer shadow-xs"
+            title="Excel (.csv) formatida yuklab olish"
           >
-            <Plus className="w-5 h-5" />
-            <span className="hidden sm:inline font-bold text-sm uppercase tracking-wider">{t('implants.addNew')}</span>
-          </motion.button>
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span>Eksport (Excel)</span>
+          </Button>
+
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setBrandsModalOpen(true)}
+            className="gap-1.5 h-9.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white cursor-pointer shadow-xs"
+          >
+            <Package className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Brendlar & Zaxira</span>
+          </Button>
+
+          <Button 
+            onClick={() => setAddOpen(true)} 
+            className="bg-[#00D084] hover:bg-[#00B875] text-white gap-1.5 border-none rounded-xl h-9.5 px-4 font-black text-xs shadow-md shadow-[#00D084]/20 transition-all active:scale-95 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Yangi amaliyot qo'shish</span>
+          </Button>
         </div>
       </div>
 
-      <div className="px-4 sm:px-6 space-y-6">
-        <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <div className="flex items-center justify-between mb-6">
-            <TabsList className="bg-slate-100/50 p-1 rounded-2xl border border-slate-200/50">
-              <TabsTrigger 
-                value="dashboard" 
-                className="rounded-xl px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 font-bold text-xs uppercase tracking-wider"
+      {/* ─── KPI Cards Grid ─────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {[
+          { 
+            label: "JAMI AMALIYOTLAR", 
+            value: `${totalCount} ta`, 
+            sub: "Barcha xizmatlar yig'indisi", 
+            icon: Tooth, 
+            color: "text-indigo-600", 
+            bg: "bg-indigo-50 border-indigo-100" 
+          },
+          { 
+            label: "JAMI QIYMAT (SUMMA)", 
+            value: `${totalRevenue.toLocaleString()} so'm`, 
+            sub: "Klinika umumiy tushumi", 
+            icon: DollarSign, 
+            color: "text-emerald-600", 
+            bg: "bg-emerald-50 border-emerald-100",
+            highlight: true
+          },
+          { 
+            label: "🔩 IMPLANTLAR", 
+            value: `${serviceStats.implantCount} ta`, 
+            sub: `${serviceStats.implantSum.toLocaleString()} so'm`, 
+            icon: TrendingUp, 
+            color: "text-teal-600", 
+            bg: "bg-teal-50 border-teal-100" 
+          },
+          { 
+            label: "🩹 FORMIKLAR", 
+            value: `${serviceStats.formikCount} ta`, 
+            sub: `${serviceStats.formikSum.toLocaleString()} so'm`, 
+            icon: Layers, 
+            color: "text-amber-600", 
+            bg: "bg-amber-50 border-amber-100" 
+          },
+          { 
+            label: "👑 KARONKALAR", 
+            value: `${serviceStats.karonkaCount} ta`, 
+            sub: `${serviceStats.karonkaSum.toLocaleString()} so'm`, 
+            icon: CheckCircle2, 
+            color: "text-purple-600", 
+            bg: "bg-purple-50 border-purple-100" 
+          },
+        ].map((s, i) => (
+          <motion.div 
+            key={s.label}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: i * 0.03 }}
+            className={`bg-white border border-slate-200/90 rounded-2xl p-3.5 shadow-xs flex items-center justify-between relative overflow-hidden ${
+              s.highlight ? 'ring-1 ring-emerald-400/50 bg-gradient-to-br from-white to-emerald-50/20' : ''
+            }`}
+          >
+            <div className="min-w-0 flex-1 mr-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5 truncate">
+                {s.label}
+              </span>
+              <div className="text-base sm:text-lg font-black font-mono tracking-tight text-slate-900 truncate">
+                {s.value}
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 mt-0.5 truncate">{s.sub}</p>
+            </div>
+
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-xs shrink-0 ${s.bg}`}>
+              <s.icon className={`w-5 h-5 ${s.color}`} />
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* ─── Excel Spreadsheet Controls Bar ────────────────────────── */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+          
+          {/* Search Box */}
+          <div className="relative flex-1 group">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
+            <input 
+              type="text" 
+              placeholder="Xizmat, bemor ismi, telefon, firma yoki tish raqami bo'yicha qidirish..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-9.5 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
+            />
+            {search && (
+              <button 
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
               >
-                {t('dashboard.statistics')}
-              </TabsTrigger>
-              <TabsTrigger 
-                value="list"
-                className="rounded-xl px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 font-bold text-xs uppercase tracking-wider flex items-center gap-2"
-              >
-                {t('patients.patientList')}
-                {needsControl.length > 0 && (
-                  <span className="w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] flex items-center justify-center animate-pulse">
-                    {needsControl.length}
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          <AnimatePresence mode="wait">
-            {/* DASHBOARD CONTENT */}
-            <TabsContent value="dashboard" className="mt-0 space-y-6">
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatBox 
-                  label={t('implants.stats.total')} 
-                  value={totalCount} 
-                  icon={Activity} 
-                  color="text-indigo-600" 
-                  lightColor="bg-indigo-50"
-                  delay={0.1}
-                />
-                <StatBox 
-                  label={t('implants.stats.recent')} 
-                  value={recentCount} 
-                  icon={TrendingUp} 
-                  color="text-blue-600" 
-                  lightColor="bg-blue-50"
-                  delay={0.2}
-                />
-                <StatBox 
-                  label={t('implants.stats.success')} 
-                  value={`${successRate}%`} 
-                  icon={CheckCircle2} 
-                  color="text-emerald-600" 
-                  lightColor="bg-emerald-50"
-                  sub={`${failureCount} ta failure`}
-                  delay={0.3}
-                />
-                <StatBox 
-                  label={t('implants.stats.control')} 
-                  value={needsControl.length} 
-                  icon={Bell} 
-                  color="text-amber-600" 
-                  lightColor="bg-amber-50"
-                  delay={0.4}
-                />
+          {/* Filter Tabs matching Services & Logic */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+            {[
+              { id: 'all', label: "Barchasi", count: totalCount },
+              { id: 'incomplete', label: "⚠️ Kiritish talab", count: incompleteList.length, alert: incompleteList.length > 0 },
+              { id: 'implant', label: "🔩 Implant", count: serviceStats.implantCount },
+              { id: 'formik', label: "🩹 Formik", count: serviceStats.formikCount },
+              { id: 'karonka', label: "👑 Karonka", count: serviceStats.karonkaCount },
+              { id: 'other', label: "🔧 Boshqa xizmatlar", count: serviceStats.otherCount },
+              { id: 'control', label: "🔔 Nazorat talab", count: needsControl.length, alert: needsControl.length > 0 },
+              { id: 'analytics', label: "📦 Brendlar & Zaxira", count: brands.length },
+            ].map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+                    isActive 
+                      ? "bg-slate-900 text-white shadow-xs font-black" 
+                      : "bg-slate-100/70 text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                  )}
+                >
+                  <span>{tab.label}</span>
+                  <span className={cn(
+                    "px-1.5 py-0.2 rounded-full text-[9px] font-black",
+                    tab.alert ? "bg-amber-400 text-slate-900" : (isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600")
+                  )}>
+                    {tab.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Brand Filter & Density Switcher */}
+          <div className="flex items-center gap-2">
+            {brandFirmOptions.length > 0 && activeTab !== 'analytics' && (
+              <Select value={filterFirma} onValueChange={setFilterFirma}>
+                <SelectTrigger className="h-9 px-3 rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-slate-50 w-36">
+                  <SelectValue placeholder="Barcha Firmalar" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl text-xs font-bold">
+                  <SelectItem value="all">Barcha Firmalar</SelectItem>
+                  {brandFirmOptions.map(f => (
+                    <SelectItem key={f} value={f}>{f}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Density Switcher */}
+            <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 shrink-0">
+              <button
+                onClick={() => toggleDensity('compact')}
+                title="Ixcham Excel Jadvali"
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all cursor-pointer ${
+                  density === 'compact' 
+                    ? 'bg-white text-slate-900 shadow-xs' 
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
+                <span>Excel</span>
+              </button>
+              <button
+                onClick={() => toggleDensity('comfortable')}
+                title="Keng Jadval Ko'rinishi"
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all cursor-pointer ${
+                  density === 'comfortable' 
+                    ? 'bg-white text-slate-900 shadow-xs' 
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
+                <span>Keng</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ─── Main Content (Excel Data Grid vs Analytics View) ────────── */}
+      {activeTab === 'analytics' ? (
+        /* Brand Performance & Stock Analytics Grid */
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Brand Stock Card */}
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
+                  <Target className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Brendlar Ulushi & Zaxira</h3>
+                  <p className="text-[11px] font-semibold text-slate-400">
+                    Jami {totalCount} ta amaliyot o'rnatilgan
+                  </p>
+                </div>
               </div>
 
-              {/* Control Alerts Section */}
-              {needsControl.length > 0 && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-gradient-to-br from-amber-50 to-orange-50/30 border border-amber-100 rounded-[2rem] p-6 relative overflow-hidden group"
-                >
-                  <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform duration-700">
-                    <Bell className="w-24 h-24 text-amber-600" />
+              <Button
+                size="sm"
+                onClick={() => setBrandsModalOpen(true)}
+                className="h-8 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black text-[11px] gap-1 border border-indigo-200 cursor-pointer"
+              >
+                <Package className="w-3.5 h-3.5" />
+                Zaxira Boshqaruvi
+              </Button>
+            </div>
+
+            {(() => {
+              const brandsWithStats = calculateBrandStockStats(brands, implants);
+              const placedBrands = brandsWithStats.filter(b => b.used_count > 0).sort((a, b) => b.used_count - a.used_count);
+
+              if (placedBrands.length === 0) {
+                return (
+                  <div className="py-12 text-center text-slate-400 font-bold text-xs">
+                    Hozircha implantlar o'rnatilmagan
                   </div>
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-200">
-                        <AlertTriangle className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">{t('implants.alerts.title')}</h3>
-                        <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mt-0.5">{needsControl.length} {t('implants.alerts.subtitle').replace('{count}', needsControl.length)}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {needsControl.slice(0, 4).map(i => (
-                        <div key={i.id} className="relative">
-                          <Link 
-                            to={`/implants/${i.id}`} 
-                            className="absolute inset-0 z-10"
-                            onClick={(e) => {
-                              // If any button inside was clicked, don't navigate
-                              if (e.target.closest('button')) {
-                                e.preventDefault();
-                              }
-                            }}
-                          />
-                          <div className="bg-white/80 backdrop-blur-sm border border-amber-100/50 rounded-2xl p-4 flex items-center justify-between hover:bg-white transition-all hover:shadow-md group/item overflow-hidden">
-                            <div className="flex items-center gap-3">
-                              <div className="min-w-10 h-10 px-2 rounded-full bg-amber-50 flex items-center justify-center font-bold text-amber-700 text-[10px] border border-amber-100 flex-wrap gap-0.5">
-                                {(i.tooth_numbers || [i.tooth_number]).map(n => <span key={n}>#{n}</span>)}
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-slate-900 tracking-tight">{i.patient_name}</p>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-                                  {i.firma} · {(() => {
-                                    const daysLeft = Math.ceil((new Date(i.reminder_date) - today) / 86400000);
-                                    if (daysLeft < 0) return <span className="text-rose-500">{t('implants.alerts.overdue', { days: Math.abs(daysLeft) })}</span>;
-                                    if (daysLeft === 0) return <span className="text-amber-600 font-black">{t('implants.alerts.today')}</span>;
-                                    return <span className="text-blue-500">{t('implants.alerts.remaining', { days: daysLeft })}</span>;
-                                  })()}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 relative z-20">
-                              <motion.button
-                                whileTap={{ scale: 0.9 }}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  if (i.patient_phone) window.location.href = `tel:${i.patient_phone}`;
-                                }}
-                                className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition-colors shadow-sm shadow-emerald-100/20"
-                                title="Qo'ng'iroq"
-                              >
-                                <Phone className="w-3.5 h-3.5" />
-                              </motion.button>
-                              <motion.button
-                                whileTap={{ scale: 0.9 }}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  if (i.patient_phone) window.location.href = `sms:${i.patient_phone}`;
-                                }}
-                                className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors shadow-sm shadow-blue-100/20"
-                                title="SMS yuborish"
-                              >
-                                <MessageCircle className="w-3.5 h-3.5" />
-                              </motion.button>
-                              <ChevronRight className="w-4 h-4 text-amber-400 group-hover/item:translate-x-1 transition-transform ml-1" />
-                            </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  {placedBrands.map(brand => {
+                    const sharePct = totalCount > 0 ? Math.round((brand.used_count / totalCount) * 100) : 0;
+                    return (
+                      <div key={brand.id || brand.name} className="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
+                        <div className="flex justify-between items-center mb-1.5 text-xs font-black">
+                          <span className="text-slate-900">{brand.name} {brand.country && `(${brand.country})`}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-indigo-600 font-mono">{sharePct}% ({brand.used_count} ta)</span>
+                            <span className={cn(
+                              "px-2 py-0.5 rounded text-[10px]",
+                              brand.is_out_of_stock ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-800"
+                            )}>
+                              {brand.remaining_stock} ta qoldi
+                            </span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Main Analysis Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Brand Performance & Stock */}
-                <motion.div 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm shadow-slate-200/40 space-y-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                        <Target className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">Brendlar Ulushi & Zaxira</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                          {totalCount} ta implant o'rnatilgan
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <Button
-                      size="sm"
-                      onClick={() => setBrandsModalOpen(true)}
-                      className="h-8 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black text-[10px] uppercase tracking-wider gap-1 border border-indigo-200/60 cursor-pointer"
-                    >
-                      <Package className="w-3 h-3" />
-                      Brendlar & Zaxira
-                    </Button>
-                  </div>
-                  
-                  {(() => {
-                    const brandsWithStats = calculateBrandStockStats(brands, implants);
-                    const placedBrands = brandsWithStats.filter(b => b.used_count > 0).sort((a, b) => b.used_count - a.used_count);
-                    const BRAND_COLORS = [
-                      { bar: 'from-indigo-500 to-blue-500', bg: 'bg-indigo-50', text: 'text-indigo-600', dot: 'bg-indigo-500' },
-                      { bar: 'from-violet-500 to-purple-500', bg: 'bg-violet-50', text: 'text-violet-600', dot: 'bg-violet-500' },
-                      { bar: 'from-teal-500 to-emerald-500', bg: 'bg-teal-50', text: 'text-teal-600', dot: 'bg-teal-500' },
-                      { bar: 'from-amber-500 to-orange-500', bg: 'bg-amber-50', text: 'text-amber-600', dot: 'bg-amber-500' },
-                    ];
-
-                    if (placedBrands.length === 0) {
-                      return (
-                        <div className="py-8 text-center space-y-2 border border-dashed border-slate-200 rounded-2xl p-4">
-                          <Package className="w-8 h-8 text-slate-300 mx-auto" />
-                          <p className="text-xs font-bold text-slate-500">Hozircha implant o'rnatilmagan</p>
-                          <p className="text-[10.5px] text-slate-400 max-w-xs mx-auto">
-                            Bemorlarga implant o'rnatilgach, brendlar bo'yicha real ulush va zaxira sarfi shu yerda avtomatik ko'rsatiladi.
-                          </p>
+                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${sharePct}%` }} />
                         </div>
-                      );
-                    }
-
-                    return (
-                      <div className="space-y-3.5">
-                        {placedBrands.map((brand, idx) => {
-                          const col = BRAND_COLORS[idx % BRAND_COLORS.length];
-                          const sharePct = totalCount > 0 ? Math.round((brand.used_count / totalCount) * 100) : 0;
-
-                          return (
-                            <div key={brand.id || brand.name} className="group p-2.5 rounded-xl hover:bg-slate-50/70 transition-colors">
-                              <div className="flex justify-between items-center mb-1.5">
-                                <div className="flex items-center gap-2">
-                                  <span className={`w-2 h-2 rounded-full ${col.dot} flex-shrink-0`} />
-                                  <span className="text-xs font-[900] text-slate-800 uppercase tracking-wide">
-                                    {brand.name}
-                                  </span>
-                                  {brand.country && (
-                                    <span className="text-[9px] font-bold text-slate-400">
-                                      ({brand.country})
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-[10px] font-black ${col.text} ${col.bg} px-2 py-0.5 rounded-md`}>
-                                    {sharePct}%
-                                  </span>
-                                  <span className="text-xs font-black text-slate-900">
-                                    {brand.used_count} ta
-                                  </span>
-                                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ml-1 ${
-                                    brand.is_out_of_stock 
-                                      ? 'bg-rose-100 text-rose-700' 
-                                      : brand.is_low_stock 
-                                        ? 'bg-amber-100 text-amber-800' 
-                                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                                  }`}>
-                                    {brand.remaining_stock} ta qoldi
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-100">
-                                <motion.div
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${sharePct}%` }}
-                                  transition={{ duration: 0.9, delay: idx * 0.1, ease: 'easeOut' }}
-                                  className={`h-full bg-gradient-to-r ${col.bar} rounded-full shadow-sm`}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
                       </div>
                     );
-                  })()}
+                  })}
+                </div>
+              );
+            })()}
+          </div>
 
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      {(() => {
-                        const brandsWithStats = calculateBrandStockStats(brands, implants);
-                        const placedBrands = brandsWithStats.filter(b => b.used_count > 0).sort((a, b) => b.used_count - a.used_count);
-                        return placedBrands[0] ? `Eng ko'p ishlatiladigan: ${placedBrands[0].name}` : `Jami ${brands.length} ta brend omborda`;
-                      })()}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setBrandsModalOpen(true)}
-                      className="text-xs font-black text-indigo-600 hover:text-indigo-800 tracking-tight flex items-center gap-1 cursor-pointer"
-                    >
-                      Barcha brendlar & Zaxira boshqaruvi ({brands.length}) →
-                    </button>
-                  </div>
-                </motion.div>
-
-                {/* Lifecycle Status */}
-                <motion.div 
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm shadow-slate-200/40"
-                >
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-                        <Activity className="w-5 h-5" />
-                      </div>
-                      <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">{t('implants.analysis.lifecycle')}</h3>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {Object.keys(LIFECYCLE_COLORS).map(statusKey => {
-                      const cnt = implants.filter(i => {
-                        const s = LIFECYCLE_MAPPING[i.lifecycle_status] || i.lifecycle_status?.toLowerCase();
-                        return statusKey === (s || '').toLowerCase();
-                      }).length;
-                      if (cnt === 0) return null;
-                      
-                      return (
-                        <div key={statusKey} className="flex items-center justify-between p-3 rounded-2xl border border-slate-50 hover:bg-slate-50 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-2 h-2 rounded-full ${LIFECYCLE_COLORS[statusKey].split(' ')[1]}`} />
-                            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">{t(`implants.status.${statusKey}`)}</span>
-                          </div>
-                          <span className="text-xs font-[900] text-slate-900 bg-white px-3 py-1 rounded-lg border border-slate-100 shadow-sm">{cnt}</span>
-                        </div>
-                      );
-                    })}
-                    {totalCount === 0 && <div className="py-10 text-center text-slate-400 font-bold text-xs uppercase tracking-widest">{t('common.noData')}</div>}
-                  </div>
-                </motion.div>
+          {/* Lifecycle Breakdown Card */}
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100">
+                <Layers className="w-5 h-5" />
               </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Lifecycle Taqsimoti</h3>
+                <p className="text-[11px] font-semibold text-slate-400">
+                  Implantatsiya bosqichlari bo'yicha holat
+                </p>
+              </div>
+            </div>
 
-              {/* Recent Activity List */}
+            <div className="space-y-2.5">
+              {Object.keys(LIFECYCLE_COLORS).map(statusKey => {
+                const cnt = implants.filter(i => {
+                  const s = LIFECYCLE_MAPPING[i.lifecycle_status] || i.lifecycle_status?.toLowerCase();
+                  return statusKey === (s || '').toLowerCase();
+                }).length;
+                if (cnt === 0) return null;
+                return (
+                  <div key={statusKey} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200/70 text-xs">
+                    <span className="font-bold text-slate-800 uppercase tracking-wider">{t(`implants.status.${statusKey}`) || statusKey}</span>
+                    <span className="font-mono font-black text-slate-900 bg-white px-2.5 py-0.5 rounded-md border border-slate-200 shadow-xs">{cnt} ta</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* ─── Excel Spreadsheet Data Grid Table ──────────────────────── */
+        /* Exact Columns: № | hizmatlar | sana | tish raqami | firma nomi | narxi | Bemor | Holat | Amallar */
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden relative"
+        >
+          {loading && (
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-slate-100 overflow-hidden z-20">
               <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm shadow-slate-200/40"
-              >
-                <div className="px-6 py-5 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
-                      <Zap className="w-4 h-4 text-slate-900" />
-                    </div>
-                    <h3 className="text-xs font-[900] text-slate-900 uppercase tracking-widest">{t('implants.analysis.recentActivity')}</h3>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => setTab('list')} className="text-[10px] font-[900] uppercase tracking-widest text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
-                    {t('implants.analysis.viewAll')} <ArrowRight className="ml-1 w-3 h-3" />
-                  </Button>
-                </div>
-                
-                {loading ? (
-                  <div className="p-6 space-y-4">
-                    {[1, 2, 3].map(i => <div key={i} className="h-16 bg-slate-50 rounded-2xl animate-pulse" />)}
-                  </div>
-                ) : implants.length === 0 ? (
-                  <div className="py-20 text-center">
-                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Activity className="w-8 h-8 text-slate-200" />
-                    </div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('common.noData')}</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-50">
-                    {implants.slice(0, 5).map(i => (
-                      <Link key={i.id} to={`/implants/${i.id}`} className="group block">
-                        <div className="px-6 py-4 flex items-center justify-between hover:bg-slate-50/50 transition-all">
-                          <div className="flex items-center gap-4">
-                            <div className="relative w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:shadow-md transition-all">
-                              <Tooth className="w-6 h-6 text-indigo-400 group-hover:text-indigo-600 transition-colors" />
-                              <div className="absolute -bottom-1 -right-1 min-w-6 h-6 px-1 rounded-lg bg-slate-900 text-white flex items-center justify-center text-[8px] font-black border-2 border-white flex-wrap gap-0.5">
-                                {[...new Set((i.tooth_numbers || (i.tooth_number ? [i.tooth_number] : [])).map(String))].map(n => <span key={`tooth-${n}`}>#{toothIdToFdi(n)}</span>)}
-                              </div>
-                            </div>
-                              <div>
-                                <p className="text-sm font-bold text-slate-900 tracking-tight group-hover:text-indigo-600 transition-colors">
-                                  {safeRender(i.patient_name)}
-                                </p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{safeRender(i.firma)}</span>
-                                  <span className="w-1 h-1 bg-slate-200 rounded-full" />
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{safeRender(i.placement_date)}</span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border ${LIFECYCLE_COLORS[LIFECYCLE_MAPPING[i.lifecycle_status] || i.lifecycle_status?.toLowerCase()] || ''}`}>
-                              {t(`implants.status.${LIFECYCLE_MAPPING[i.lifecycle_status] || i.lifecycle_status?.toLowerCase() || 'placed'}`)}
-                            </div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            </TabsContent>
+                className="h-full bg-gradient-to-r from-teal-500 to-indigo-600"
+                animate={{ x: ['-100%', '100%'] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+              />
+            </div>
+          )}
+          
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left select-text">
+              {/* ─── Excel Table Header ────────────────── */}
+              <thead>
+                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 text-[11px] font-black uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
+                  
+                  {/* № Col */}
+                  <th className="w-12 px-2.5 py-3 text-center border-r border-slate-200 select-none font-mono">
+                    №
+                  </th>
 
-            {/* LIST CONTENT */}
-            <TabsContent value="list" className="mt-0 space-y-6">
-              {/* Premium Filters */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="relative group">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
-                  <Input 
-                    placeholder={t('implants.filters.search')} 
-                    value={search} 
-                    onChange={e => setSearch(e.target.value)} 
-                    className="pl-12 h-12 bg-white border-slate-100 rounded-2xl focus:ring-slate-900 focus:border-slate-900 font-medium text-sm transition-all"
-                  />
-                </div>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="h-12 bg-white border-slate-100 rounded-2xl font-bold text-xs uppercase tracking-wider text-slate-600">
-                    <SelectValue placeholder={t('implants.filters.allStatus')} />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl border-slate-100">
-                    <SelectItem value={null} className="text-xs font-bold uppercase tracking-wider">{t('implants.filters.allStatus')}</SelectItem>
-                    {Object.keys(LIFECYCLE_COLORS).map(s => (
-                      <SelectItem key={s} value={s} className="text-xs font-bold uppercase tracking-wider">{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={filterFirma} onValueChange={setFilterFirma}>
-                  <SelectTrigger className="h-12 bg-white border-slate-100 rounded-2xl font-bold text-xs uppercase tracking-wider text-slate-600">
-                    <SelectValue placeholder={t('implants.filters.allBrands')} />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl border-slate-100">
-                    <SelectItem value={null} className="text-xs font-bold uppercase tracking-wider">{t('implants.filters.allBrands')}</SelectItem>
-                    {['Nobel', 'Osstem', 'Straumann', 'Nucleoss', 'Boshqa'].map(f => (
-                      <SelectItem key={f} value={f} className="text-xs font-bold uppercase tracking-wider">{f}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  {/* 1. HIZMATLAR (hizmatlar) */}
+                  <th 
+                    onClick={() => handleSort('service')}
+                    className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[140px]"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span>hizmatlar</span>
+                      {sortField === 'service' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
 
-              {/* Mobile-First List Card Design */}
-              {loading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-white rounded-[2rem] animate-pulse border border-slate-100" />)}
-                </div>
-              ) : filtered.length === 0 ? (
-                <div className="py-24 text-center bg-white rounded-[3rem] border border-slate-100 border-dashed">
-                  <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Activity className="w-10 h-10 text-slate-200" />
-                  </div>
-                  <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">Implantlar topilmadi</h3>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">Qidiruv parametrlarini o'zgartirib ko'ring</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filtered.map(i => (
-                    <motion.div
-                      layout
-                      initial={{ opacity: 0, scale: 0.98 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      key={i.id}
-                      className="group relative bg-white border border-slate-100 rounded-[2rem] p-5 hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-300"
-                    >
-                      <Link to={`/implants/${i.id}`} className="absolute inset-0 z-10" />
-                      
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center relative group-hover:scale-110 transition-transform">
-                            <Tooth className="w-7 h-7 text-indigo-400" />
-                            <div className="absolute -top-2 -right-2 min-w-7 h-7 px-1 rounded-xl bg-slate-900 text-white flex items-center justify-center text-[8px] font-black border-2 border-white shadow-sm flex-wrap gap-0.5">
-                              {[...new Set((i.tooth_numbers || (i.tooth_number ? [i.tooth_number] : [])).map(String))].map(n => <span key={`tooth-badge-${n}`}>#{toothIdToFdi(n)}</span>)}
+                  {/* 2. SANA (sana) */}
+                  <th 
+                    onClick={() => handleSort('date')}
+                    className="w-32 px-3 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span>sana</span>
+                      {sortField === 'date' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* 3. TISH RAQAMI (tish raqami) */}
+                  <th 
+                    onClick={() => handleSort('tooth')}
+                    className="w-28 px-2.5 py-3 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>tish raqami</span>
+                      {sortField === 'tooth' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* 4. FIRMA NOMI (firma nomi) */}
+                  <th 
+                    onClick={() => handleSort('brand')}
+                    className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[150px]"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span>firma nomi</span>
+                      {sortField === 'brand' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* 5. NARXI (narxi) */}
+                  <th 
+                    onClick={() => handleSort('price')}
+                    className="w-36 px-3.5 py-3 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap bg-emerald-50/40"
+                  >
+                    <div className="flex items-center justify-end gap-1.5 text-emerald-900">
+                      <span>narxi</span>
+                      {sortField === 'price' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* BEMOR (F.I.SH) */}
+                  <th 
+                    onClick={() => handleSort('patient')}
+                    className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[180px]"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span>Bemor (F.I.Sh)</span>
+                      {sortField === 'patient' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* HOLAT (STATUS) */}
+                  <th 
+                    onClick={() => handleSort('status')}
+                    className="w-36 px-3 py-3 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  >
+                    <div className="flex items-center justify-center gap-1.5 text-slate-700">
+                      <span>Holat</span>
+                      {sortField === 'status' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* Actions */}
+                  <th className="w-28 px-2 py-3 text-center text-slate-500 whitespace-nowrap select-none">
+                    Amallar
+                  </th>
+
+                </tr>
+              </thead>
+
+              {/* ─── Excel Table Body ────────────────── */}
+              <tbody className="divide-y divide-slate-200/70 text-xs">
+                {sortedImplants.length > 0 ? (
+                  sortedImplants.map((i, idx) => {
+                    const isCompact = density === 'compact';
+                    const rawTeeth = (i.tooth_numbers || (i.tooth_number ? [i.tooth_number] : []));
+                    const teethList = [...new Set(rawTeeth.map(String))];
+                    const serviceName = resolveService(i);
+                    const serviceCfg = SERVICE_CONFIG[serviceName] || { label: serviceName, emoji: '⚡', badge: 'bg-slate-100 text-slate-700 border-slate-200' };
+                    const priceVal = resolvePrice(i);
+                    const firmaName = i.firma === 'Boshqa' ? (i.firma_custom || 'Boshqa') : (i.firma || 'Dentium');
+                    const statusCode = LIFECYCLE_MAPPING[i.lifecycle_status] || i.lifecycle_status?.toLowerCase() || 'placed';
+                    const statusClass = LIFECYCLE_COLORS[statusCode] || 'bg-slate-50 text-slate-700 border-slate-200';
+
+                    const isIncomplete = i.incomplete_data === true || i.needs_fill === true || (!i.firma && !i.brend && !i.firma_custom);
+
+                    return (
+                      <tr 
+                        key={i.id} 
+                        className={`group hover:bg-[#1499AD]/10 hover:shadow-xs transition-colors cursor-pointer ${
+                          isIncomplete ? 'bg-amber-50/30' : (idx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white')
+                        }`}
+                        onClick={() => navigate(`/implants/${i.id}`)}
+                      >
+                        {/* № Cell */}
+                        <td className={`text-center font-mono font-bold text-slate-400 border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-2 px-2' : 'py-3 px-2.5'}`}>
+                          {idx + 1}
+                        </td>
+
+                        {/* 1. HIZMATLAR Cell */}
+                        <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          <span className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider border shadow-2xs",
+                            serviceCfg.badge
+                          )}>
+                            <span>{serviceCfg.emoji}</span>
+                            <span>{serviceCfg.label}</span>
+                          </span>
+                        </td>
+
+                        {/* 2. SANA Cell */}
+                        <td className={`border-r border-slate-200/70 font-mono text-slate-800 font-bold whitespace-nowrap ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          {formatDate(i.placement_date)}
+                        </td>
+
+                        {/* 3. TISH RAQAMI Cell */}
+                        <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
+                          {teethList.length > 0 ? (
+                            <div className="flex items-center justify-center gap-1 flex-wrap">
+                              {teethList.map(tNum => (
+                                <span key={tNum} className="px-2 py-0.5 rounded-md text-xs font-mono font-black bg-slate-900 text-white shadow-xs">
+                                  #{toothIdToFdi(tNum)}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-300 font-mono">—</span>
+                          )}
+                        </td>
+
+                        {/* 4. FIRMA NOMI Cell */}
+                        <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          <div className="min-w-0">
+                            {isIncomplete ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-300 animate-pulse">
+                                ⚠️ Ma'lumot kiritish kerak
+                              </span>
+                            ) : (
+                              <>
+                                <span className="font-black text-slate-900 group-hover:text-[#1499AD] transition-colors truncate block text-xs">
+                                  {firmaName}
+                                </span>
+                                {i.brend && i.brend !== firmaName && (
+                                  <span className="text-[10px] font-semibold text-slate-500 block truncate">
+                                    {i.brend} {i.diameter && i.length && `(Ø${i.diameter}×${i.length}mm)`}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 5. NARXI Cell */}
+                        <td className={`text-right border-r border-slate-200/70 font-mono font-black text-emerald-700 whitespace-nowrap bg-emerald-50/20 text-xs sm:text-sm ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          {priceVal.toLocaleString()} <span className="text-[10px] font-bold text-emerald-600/80 uppercase">so'm</span>
+                        </td>
+
+                        {/* BEMOR Cell */}
+                        <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-6.5 h-6.5 rounded-lg bg-teal-50 text-teal-700 font-black text-[10px] flex items-center justify-center border border-teal-100 shrink-0">
+                              <User className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <span 
+                                onClick={(e) => {
+                                  if (i.patient_id) {
+                                    e.stopPropagation();
+                                    navigate(`/patients/${i.patient_id}`);
+                                  }
+                                }}
+                                className="font-black text-slate-900 hover:text-blue-600 transition-colors truncate block hover:underline text-xs"
+                              >
+                                {safeRender(i.patient_name)}
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-400 block truncate">
+                                {safeRender(i.patient_phone, 'Telefon yo\'q')}
+                              </span>
                             </div>
                           </div>
-                          <div>
-                            <h4 className="text-base font-black text-slate-900 tracking-tight leading-tight group-hover:text-indigo-600 transition-colors">
-                              {safeRender(i.patient_name)}
-                            </h4>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Phone className="w-3 h-3 text-slate-400" />
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{safeRender(i.patient_phone, 'Noma\'lum')}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="relative z-20" onClick={(e) => e.stopPropagation()}>
+                        </td>
+
+                        {/* HOLAT Cell */}
+                        <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1 px-2' : 'py-2 px-2.5'}`} onClick={(e) => e.stopPropagation()}>
                           <Select 
-                            value={LIFECYCLE_MAPPING[i.lifecycle_status] || i.lifecycle_status?.toLowerCase() || 'placed'} 
-                            onValueChange={async (newVal) => {
-                              const statusLabel = Object.keys(LIFECYCLE_MAPPING).find(key => LIFECYCLE_MAPPING[key] === newVal) || newVal;
-                              
-                              // Optimistic Update
-                              const oldImplants = [...implants];
-                              setImplants(prev => prev.map(item => 
-                                item.id === i.id ? { ...item, lifecycle_status: statusLabel } : item
-                              ));
-
-                              try {
-                                const { error } = await base44.entities.Implant.update(i.id, { lifecycle_status: statusLabel });
-                                if (error) throw error;
-                                // Success - no reload needed
-                              } catch (e) {
-                                // Rollback
-                                setImplants(oldImplants);
-                                console.error("Implant status update error:", e);
-                                alert("Xatolik: Status saqlanmadi.");
-                              }
-                            }}
+                            value={statusCode} 
+                            onValueChange={(val) => updateImplantStatus(i.id, val)}
                           >
-                            <SelectTrigger className={`h-8 px-3 rounded-xl text-[9px] font-black uppercase tracking-[0.1em] border min-w-[120px] transition-all ${LIFECYCLE_COLORS[LIFECYCLE_MAPPING[i.lifecycle_status] || i.lifecycle_status?.toLowerCase()] || ''}`}>
-                              <SelectValue placeholder="Status" />
+                            <SelectTrigger className={cn(
+                              "h-7 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider mx-auto border transition-colors focus:ring-0",
+                              statusClass
+                            )}>
+                              <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-2xl border-slate-100">
+                            <SelectContent className="rounded-xl font-bold text-xs">
                               {Object.keys(LIFECYCLE_COLORS).map(s => (
-                                <SelectItem key={s} value={s} className="text-[10px] font-black uppercase tracking-widest py-2">
-                                  {t(`implants.status.${s}`)}
+                                <SelectItem key={s} value={s} className="text-xs font-bold uppercase tracking-wider">
+                                  {t(`implants.status.${s}`) || s}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
-                        </div>
-                      </div>
+                        </td>
 
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-100/50">
-                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Brend & Model</p>
-                          <p className={`text-[11px] font-bold text-slate-800 uppercase tracking-tight truncate`}>
-                            {i.firma === 'Boshqa' ? i.firma_custom || t('common.other') : i.firma} · {i.brend || '—'}
-                          </p>
-                        </div>
-                        <div className="bg-slate-50/50 rounded-2xl p-3 border border-slate-100/50">
-                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">O'lchamlar</p>
-                          <p className="text-[11px] font-bold text-slate-800 uppercase tracking-tight">
-                            {i.diameter && i.length ? `Ø${safeRender(i.diameter)} × ${safeRender(i.length)}mm` : (safeRender(i.diameter) !== '—' ? `Ø${safeRender(i.diameter)}` : '—')}
-                          </p>
-                        </div>
-                      </div>
+                        {/* Actions Cell */}
+                        <td className={`text-center whitespace-nowrap ${isCompact ? 'py-1 px-1.5' : 'py-2 px-2'}`} onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1">
+                            {isIncomplete && (
+                              <button 
+                                onClick={() => setEditingImplant(i)}
+                                className="px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-xs transition-all cursor-pointer active:scale-95"
+                                title="Ma'lumotlarni to'ldirish"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                                <span>Kiritish</span>
+                              </button>
+                            )}
 
-                      {i.extra_services && i.extra_services.length > 0 && (
-                        <div className="mb-4 bg-indigo-50/50 rounded-2xl p-3 border border-indigo-100/50">
-                           <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest mb-2 flex items-center gap-1">
-                             <Layers className="w-3 h-3" /> {t('implants.table.extraServices')}
-                           </p>
-                           <div className="flex flex-wrap gap-1.5">
-                             {i.extra_services.slice(0, 3).map(serviceId => (
-                               <span key={serviceId} className="px-2 py-1 bg-white text-indigo-600 rounded-lg text-[9px] font-bold border border-indigo-100 shadow-sm whitespace-nowrap">
-                                 {EXTRA_SERVICES.find(s => s.id === serviceId)?.label || serviceId}
-                               </span>
-                             ))}
-                             {i.extra_services.length > 3 && (
-                               <span className="px-2 py-1 bg-indigo-100/60 text-indigo-700 rounded-lg text-[9px] font-bold border border-indigo-200/50">
-                                 +{i.extra_services.length - 3} ta
-                               </span>
-                             )}
-                           </div>
-                        </div>
-                      )}
+                            {i.patient_phone && (
+                              <button 
+                                onClick={() => { window.location.href = `tel:${i.patient_phone}`; }}
+                                className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer"
+                                title="Qo'ng'iroq qilish"
+                              >
+                                <Phone className="w-3.5 h-3.5" />
+                              </button>
+                            )}
 
-                      <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{i.placement_date}</span>
+                            <button 
+                              onClick={() => navigate(`/implants/${i.id}`)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all cursor-pointer"
+                              title="Tafsilotlar va tahrirlash"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button 
+                              onClick={() => handleDeleteImplant(i.id)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                              title="O'chirish"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
-                        </div>
-                        
-                        {i.reminder_date && (() => {
-                          const daysLeft = Math.ceil((new Date(i.reminder_date) - today) / 86400000);
-                          const isOverdue = daysLeft < 0;
-                          const isUrgent = daysLeft <= 7 && daysLeft >= 0;
-                          
-                          return (
-                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl ${
-                              isOverdue ? 'bg-rose-100 text-rose-700 border border-rose-200' : 
-                              isUrgent ? 'bg-amber-50 text-amber-600' : 
-                              daysLeft <= 14 ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-500'
-                            }`}>
-                              <Bell className={`w-3 h-3 ${isOverdue ? 'animate-pulse' : ''}`} />
-                              <span className="text-[9px] font-black uppercase tracking-widest">
-                                {isOverdue ? t('implants.alerts.overdue', { days: Math.abs(daysLeft) }) : 
-                                 daysLeft === 0 ? t('implants.alerts.today') : 
-                                 t('implants.alerts.remaining', { days: daysLeft })}
-                              </span>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-          </AnimatePresence>
-        </Tabs>
-      </div>
+                        </td>
 
-      {/* Add Modal */}
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={9} className="py-20 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300">
+                          <Tooth className="w-6 h-6" />
+                        </div>
+                        <p className="text-sm font-bold text-slate-500">
+                          {search ? `"${search}" bo'yicha ma'lumot topilmadi` : "Hozircha amaliyotlar mavjud emas"}
+                        </p>
+                        {(search || activeTab !== 'all' || filterFirma !== 'all') && (
+                          <button
+                            onClick={() => { setSearch(''); setActiveTab('all'); setFilterFirma('all'); }}
+                            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                          >
+                            Filtrlarni tozalash
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ─── Excel Formula Summary Footer Bar ──────────────────── */}
+          <div className="bg-slate-100/95 border-t border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3 text-slate-600 font-bold flex-wrap">
+              <span className="flex items-center gap-1.5">
+                <TableIcon className="w-4 h-4 text-[#1499AD]" />
+                <span>Jadvalda:</span>
+                <strong className="text-slate-900 font-mono">{sortedImplants.length}</strong> ta amaliyot
+              </span>
+              <span className="text-slate-300">•</span>
+              <span>
+                Implantlar: <strong className="text-teal-700 font-mono">{serviceStats.implantCount} ta</strong>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span>
+                Formiklar: <strong className="text-amber-700 font-mono">{serviceStats.formikCount} ta</strong>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span>
+                Karonkalar: <strong className="text-indigo-700 font-mono">{serviceStats.karonkaCount} ta</strong>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[11px] font-black uppercase text-slate-500">Jadval Jami Qiymati:</span>
+              <span className="font-mono font-black text-emerald-600 text-sm">
+                {sortedImplants.reduce((acc, curr) => acc + resolvePrice(curr), 0).toLocaleString()} so'm
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ─── Add/Edit Implant Modal ───────────────────────────────────────── */}
       <ImplantForm
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
+        open={addOpen || !!editingImplant}
+        onClose={() => { setAddOpen(false); setEditingImplant(null); }}
         patients={patients}
         services={services}
-        onSaved={() => { load(); setTab('list'); }}
+        implant={editingImplant}
+        onSaved={() => { load(); setActiveTab('all'); setEditingImplant(null); }}
       />
 
-      {/* Brands & Stock Management Modal */}
+      {/* ─── Brands & Stock Management Modal ─────────────────────────── */}
       <ImplantBrandsModal
         open={brandsModalOpen}
         onClose={() => setBrandsModalOpen(false)}
