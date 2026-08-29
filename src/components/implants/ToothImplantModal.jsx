@@ -5,16 +5,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Check, X, Box, Plus, Package } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { getOrSeedImplantBrands, calculateBrandStockStats } from './ImplantBrandsModal';
+import { 
+  ImplantIcon, FormerIcon, CrownIcon, AbutmentIcon, 
+  SinusLiftIcon, BoneGraftIcon, DentalSurgicalIcon 
+} from '@/components/ui/Icons';
 
 const BONE_TYPES = ['D1', 'D2', 'D3', 'D4'];
 const SERVICE_OPTIONS = [
-  { id: 'Implant', label: '🔩 Implant (O\'rnatish)', defaultPrice: 1500000 },
-  { id: 'Formik', label: '🩹 Formik (Formirovatel)', defaultPrice: 100000 },
-  { id: 'Karonka', label: '👑 Karonka (Koronka/Tsirkon)', defaultPrice: 1500000 },
-  { id: 'Abutment', label: '🔧 Abutment', defaultPrice: 300000 },
-  { id: 'Sinus-lifting', label: '🩺 Sinus-lifting', defaultPrice: 2000000 },
-  { id: 'Suyak ekish', label: '🧬 Suyak ekish (Graft)', defaultPrice: 1000000 },
-  { id: 'Boshqa', label: '➕ Boshqa xizmat...', defaultPrice: 0 }
+  { id: 'Implant', label: 'Implant (O\'rnatish)', icon: ImplantIcon, iconColor: 'text-teal-600', defaultPrice: 1500000 },
+  { id: 'Formik', label: 'Formik (Formirovatel)', icon: FormerIcon, iconColor: 'text-amber-600', defaultPrice: 100000 },
+  { id: 'Karonka', label: 'Karonka (Tojcha/Tsirkon)', icon: CrownIcon, iconColor: 'text-indigo-600', defaultPrice: 1500000 },
+  { id: 'Abutment', label: 'Abutment', icon: AbutmentIcon, iconColor: 'text-purple-600', defaultPrice: 300000 },
+  { id: 'Sinus-lifting', label: 'Sinus-lifting', icon: SinusLiftIcon, iconColor: 'text-sky-600', defaultPrice: 2000000 },
+  { id: 'Suyak ekish', label: 'Suyak ekish (Graft)', icon: BoneGraftIcon, iconColor: 'text-emerald-600', defaultPrice: 1000000 },
+  { id: 'Boshqa', label: 'Boshqa xizmat...', icon: DentalSurgicalIcon, iconColor: 'text-slate-600', defaultPrice: 0 }
 ];
 
 export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, onSave, existingData }) {
@@ -142,7 +146,7 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
           <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-4 flex items-center justify-between text-white rounded-t-[2rem]">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm text-lg">
-                🦷
+                <ImplantIcon className="w-5 h-5 text-white" />
               </div>
               <div>
                 <DialogTitle className="text-[15px] font-black text-white uppercase leading-none tracking-tight">
@@ -169,26 +173,31 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
               1. Hizmat turi (Amaliyot) *
             </label>
             <div className="grid grid-cols-2 gap-1.5">
-              {SERVICE_OPTIONS.map(opt => (
-                <button
-                  type="button"
-                  key={opt.id}
-                  onClick={() => {
-                    setForm(prev => ({
-                      ...prev,
-                      service_name: opt.id,
-                      price: opt.defaultPrice !== undefined && opt.id !== 'Boshqa' ? opt.defaultPrice : prev.price
-                    }));
-                  }}
-                  className={`px-2.5 py-1.5 rounded-xl text-left text-[11px] font-bold transition-all border ${
-                    form.service_name === opt.id
-                      ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              {SERVICE_OPTIONS.map(opt => {
+                const isSelected = form.service_name === opt.id;
+                const OptIcon = opt.icon;
+                return (
+                  <button
+                    type="button"
+                    key={opt.id}
+                    onClick={() => {
+                      setForm(prev => ({
+                        ...prev,
+                        service_name: opt.id,
+                        price: opt.defaultPrice !== undefined && opt.id !== 'Boshqa' ? opt.defaultPrice : prev.price
+                      }));
+                    }}
+                    className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-left text-[11px] font-bold transition-all border cursor-pointer select-none ${
+                      isSelected
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    {OptIcon && <OptIcon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : opt.iconColor}`} />}
+                    <span className="truncate">{opt.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {form.service_name === 'Boshqa' && (

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Upload, FileText, X, Check, Calendar, User, Activity, Info, Shield, Layers, Stethoscope, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { ImplantIcon } from '@/components/ui/Icons';
 import PatientModal from '../patients/PatientModal';
 import PatientSelect from '../patients/PatientSelect';
 import ProfessionalOdontogram from '../patients/ProfessionalOdontogram';
@@ -796,71 +797,23 @@ export default function ImplantForm({ open, onClose, patients, services, implant
         </div>
       </div>
 
-      {/* ─── Excel Service, Date, Firm & Price Section ─── */}
-      <div className="bg-slate-50 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 space-y-3.5 shadow-2xs">
+      {/* ─── Implant Parametrlari (Sana, Firma & Narxi) ─── */}
+      <div className="bg-slate-50 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 space-y-3 shadow-2xs">
         <div className="flex items-center justify-between">
           <Label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-teal-600" /> Hizmat va Amaliyot Parametrlari
+            <ImplantIcon className="w-4 h-4 text-teal-600" /> Implant Parametrlari
           </Label>
-          <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
-            Excel Format
+          <span className="text-[10px] font-black text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
+            Implantatsiya
           </span>
         </div>
 
-        {/* 1. Hizmat turi selection */}
-        <div>
-          <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">
-            1. Hizmat turi (Amaliyot) *
-          </Label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-            {[
-              { id: 'Implant', label: "🔩 Implant", defaultPrice: 1500000 },
-              { id: 'Formik', label: "🩹 Formik", defaultPrice: 100000 },
-              { id: 'Karonka', label: "👑 Karonka", defaultPrice: 1500000 },
-              { id: 'Abutment', label: "🔧 Abutment", defaultPrice: 300000 },
-              { id: 'Sinus-lifting', label: "🩺 Sinus", defaultPrice: 2000000 },
-              { id: 'Suyak ekish', label: "🧬 Suyak", defaultPrice: 1000000 },
-              { id: 'Boshqa', label: "➕ Boshqa...", defaultPrice: 0 }
-            ].map(opt => (
-              <button
-                type="button"
-                key={opt.id}
-                onClick={() => {
-                  setForm(prev => ({
-                    ...prev,
-                    service_name: opt.id,
-                    price: opt.defaultPrice !== undefined && opt.id !== 'Boshqa' ? opt.defaultPrice : prev.price
-                  }));
-                }}
-                className={`px-3 py-2 rounded-xl text-left text-xs font-black transition-all border cursor-pointer ${
-                  form.service_name === opt.id
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          {form.service_name === 'Boshqa' && (
-            <div className="mt-2">
-              <Input
-                placeholder="Yangi xizmat nomini yozing..."
-                value={form.service_custom}
-                onChange={e => setField('service_custom', e.target.value)}
-                className="bg-white border-slate-300 h-9 rounded-xl text-xs font-bold"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* 2. Sana, Firma & Narxi Row */}
+        {/* Sana, Firma & Narxi Row */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           {/* Sana */}
           <div>
             <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-1">
-              2. Amaliyot Sanasi (sana) *
+              O'rnatilgan sana *
             </Label>
             <Input
               type="date"
@@ -873,7 +826,7 @@ export default function ImplantForm({ open, onClose, patients, services, implant
           {/* Firma Nomi */}
           <div>
             <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-1">
-              3. Firma Nomi (brend) *
+              Firma / Brend *
             </Label>
             <Select
               value={form.firma}
@@ -910,7 +863,7 @@ export default function ImplantForm({ open, onClose, patients, services, implant
           <div>
             <div className="flex items-center justify-between mb-1">
               <Label className="text-[10px] font-black text-emerald-800 uppercase tracking-wider block">
-                4. Narxi (so'm) *
+                Implant Narxi (so'm) *
               </Label>
               <span className="text-[10px] font-mono font-black text-emerald-700">
                 {(Number(form.price) || 0).toLocaleString()}

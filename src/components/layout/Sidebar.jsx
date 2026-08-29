@@ -13,6 +13,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
 import { useFeature } from '@/hooks/useFeature';
 import { prefetchModuleData } from '@/utils/prefetcher';
+import { ImplantIcon } from '@/components/ui/Icons';
 
 /**
  * Navigation menu items configuration
@@ -34,7 +35,7 @@ const getMenuItems = (t) => [
   { path: '/no-show', label: t('navigation.noShow'), icon: AlertTriangle },
   { path: '/treatment-tracking', label: t('navigation.treatmentTracking'), icon: Activity },
   { path: '/debts', label: t('navigation.debts'), icon: Wallet },
-  { path: '/implants', label: t('navigation.implants'), icon: Zap },
+  { path: '/implants', label: t('navigation.implants'), icon: ImplantIcon },
   { path: '/marketing', label: t('navigation.marketing'), icon: Target },
   { path: '/cases', label: t('navigation.cases') || 'Mening Keyslarim', icon: Camera },
   { path: '/settings', label: t('navigation.settings'), icon: Settings },

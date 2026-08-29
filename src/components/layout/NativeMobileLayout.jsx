@@ -19,6 +19,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useTranslation } from '@/i18n/LanguageContext';
 import ErrorBoundary from './ErrorBoundary';
 import { Suspense, memo } from 'react';
+import { ImplantIcon } from '@/components/ui/Icons';
 
 // Specialized skeleton loader for premium page-to-page transitions
 const InlineLoader = memo(() => (
@@ -83,7 +84,7 @@ const MENU_ITEMS_GEN = (t) => [
   // Clinical Modules
   { path: '/treatment-plans', label: t('navigation.treatmentPlans'), icon: ClipboardList, color: 'text-sky-600', bg: 'bg-sky-50' },
   { path: '/cases', label: t('navigation.cases') || "Mening Keyslarim", icon: Camera, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { path: '/implants', label: t('navigation.implants'), icon: Zap, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+  { path: '/implants', label: t('navigation.implants'), icon: ImplantIcon, color: 'text-teal-600', bg: 'bg-teal-50' },
   { path: '/treatment-tracking', label: t('navigation.treatmentTracking'), icon: Activity, color: 'text-green-600', bg: 'bg-green-50' },
   
   // Financial Modules
@@ -421,7 +422,7 @@ export default function NativeMobileLayout({ children }) {
           className="fixed right-5 z-40 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full shadow-xl shadow-indigo-500/30 flex items-center justify-center text-white border-[3px] border-white active:scale-95 transition-transform"
           style={{ width: 48, height: 48, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 58px)' }}
         >
-          <Zap className="w-5 h-5 text-white" />
+          <ImplantIcon className="w-5 h-5 text-white" />
         </motion.button>
       ) : null}
 

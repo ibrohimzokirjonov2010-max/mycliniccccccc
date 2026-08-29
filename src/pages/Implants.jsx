@@ -5,9 +5,13 @@ import {
   TrendingUp, Bell, Target, Phone,
   Table as TableIcon, LayoutGrid, FileSpreadsheet, X,
   ArrowUp, ArrowDown, ArrowUpDown, Trash2, User, MessageCircle,
-  Package, Layers, Eye, DollarSign, Sparkles, Calendar, Check, Edit2
+  Package, Layers, Eye, Receipt, Sparkles, Calendar, Check, Edit2
 } from 'lucide-react';
-import { Tooth } from '@/components/ui/Icons';
+import { 
+  Tooth, ImplantIcon, CrownIcon, FormerIcon, AbutmentIcon, 
+  BoneGraftIcon, SinusLiftIcon, DentalSurgicalIcon, BrandStockIcon, 
+  KiritishTalabIcon, ClinicalControlIcon, ClinicalRevenueIcon 
+} from '@/components/ui/Icons';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -53,12 +57,12 @@ export const resolveService = (implant) => {
 
 // Service Visual Config
 const SERVICE_CONFIG = {
-  'Implant':   { label: 'Implant',   emoji: '🔩', badge: 'bg-teal-50 text-teal-700 border-teal-200' },
-  'Formik':    { label: 'Formik',    emoji: '🩹', badge: 'bg-amber-50 text-amber-800 border-amber-200' },
-  'Karonka':   { label: 'Karonka',   emoji: '👑', badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-  'Abutment':  { label: 'Abutment',  emoji: '🔧', badge: 'bg-purple-50 text-purple-700 border-purple-200' },
-  'Sinus-lifting': { label: 'Sinus-lifting', emoji: '🩺', badge: 'bg-sky-50 text-sky-700 border-sky-200' },
-  'Suyak ekish': { label: 'Suyak ekish', emoji: '🧬', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'Implant':       { label: 'Implant',       icon: ImplantIcon,        badge: 'bg-teal-50 text-teal-700 border-teal-200' },
+  'Formik':        { label: 'Formik',        icon: FormerIcon,         badge: 'bg-amber-50 text-amber-800 border-amber-200' },
+  'Karonka':       { label: 'Karonka',       icon: CrownIcon,          badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  'Abutment':      { label: 'Abutment',      icon: AbutmentIcon,       badge: 'bg-purple-50 text-purple-700 border-purple-200' },
+  'Sinus-lifting': { label: 'Sinus-lifting', icon: SinusLiftIcon,      badge: 'bg-sky-50 text-sky-700 border-sky-200' },
+  'Suyak ekish':   { label: 'Suyak ekish',   icon: BoneGraftIcon,      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
 };
 
 // Resolve price in UZS
@@ -392,7 +396,7 @@ export default function Implants() {
 
   /**
    * Export to CSV with UTF-8 BOM
-   * Exact columns: №, Hizmatlar, Sana, Tish raqami, Firma nomi, Narxi, Bemor, Telefon, Holat
+   * Exact columns: №, Bemor (F.I.Sh), Telefon, Tish raqamlari, Firma nomi, Hizmat, Narxi, Qo'yilgan sana, Holat
    */
   const exportCSV = useCallback(() => {
     try {
@@ -402,14 +406,14 @@ export default function Implants() {
       }
       const headers = [
         "№",
-        "hizmatlar",
-        "sana",
-        "tish raqami",
-        "firma nomi",
-        "narxi",
-        "bemor",
-        "telefon",
-        "holat"
+        "Bemor (F.I.Sh)",
+        "Telefon",
+        "Tish raqamlari",
+        "Firma nomi",
+        "Hizmat",
+        "Narxi",
+        "Qo'yilgan sana",
+        "Holat"
       ];
       const rows = sortedImplants.map((i, idx) => {
         const rawTeeth = (i.tooth_numbers || (i.tooth_number ? [i.tooth_number] : []));
@@ -422,13 +426,13 @@ export default function Implants() {
 
         return [
           idx + 1,
-          `"${svc.replace(/"/g, '""')}"`,
-          `"${date}"`,
-          `"${teeth}"`,
-          `"${firma.replace(/"/g, '""')}"`,
-          price,
           `"${(i.patient_name || '').replace(/"/g, '""')}"`,
           `"${(i.patient_phone || '').replace(/"/g, '""')}"`,
+          `"${teeth}"`,
+          `"${firma.replace(/"/g, '""')}"`,
+          `"${svc.replace(/"/g, '""')}"`,
+          price,
+          `"${date}"`,
           `"${statusText.replace(/"/g, '""')}"`
         ].join(",");
       });
@@ -438,7 +442,7 @@ export default function Implants() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `Implantlar_Hizmatlar_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.setAttribute("download", `Implantlar_${new Date().toISOString().slice(0, 10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -457,8 +461,8 @@ export default function Implants() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black text-slate-900 tracking-tight">Implantologiya Bo'limi</h1>
-            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-teal-50 text-teal-700 border border-teal-200 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-teal-600" />
+            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-teal-50 text-teal-700 border border-teal-200 flex items-center gap-1.5">
+              <ImplantIcon className="w-3.5 h-3.5 text-teal-600" />
               {implants.length} ta amaliyot
             </span>
           </div>
@@ -484,7 +488,7 @@ export default function Implants() {
             onClick={() => setBrandsModalOpen(true)}
             className="gap-1.5 h-9.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white cursor-pointer shadow-xs"
           >
-            <Package className="w-3.5 h-3.5 text-indigo-600" />
+            <BrandStockIcon className="w-4 h-4 text-indigo-600" />
             <span>Brendlar & Zaxira</span>
           </Button>
 
@@ -493,7 +497,7 @@ export default function Implants() {
             className="bg-[#00D084] hover:bg-[#00B875] text-white gap-1.5 border-none rounded-xl h-9.5 px-4 font-black text-xs shadow-md shadow-[#00D084]/20 transition-all active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Yangi amaliyot qo'shish</span>
+            <span>Yangi implant qo'shish</span>
           </Button>
         </div>
       </div>
@@ -513,32 +517,32 @@ export default function Implants() {
             label: "JAMI QIYMAT (SUMMA)", 
             value: `${totalRevenue.toLocaleString()} so'm`, 
             sub: "Klinika umumiy tushumi", 
-            icon: DollarSign, 
+            icon: ClinicalRevenueIcon, 
             color: "text-emerald-600", 
             bg: "bg-emerald-50 border-emerald-100",
             highlight: true
           },
           { 
-            label: "🔩 IMPLANTLAR", 
+            label: "IMPLANTLAR", 
             value: `${serviceStats.implantCount} ta`, 
             sub: `${serviceStats.implantSum.toLocaleString()} so'm`, 
-            icon: TrendingUp, 
+            icon: ImplantIcon, 
             color: "text-teal-600", 
             bg: "bg-teal-50 border-teal-100" 
           },
           { 
-            label: "🩹 FORMIKLAR", 
+            label: "FORMIKLAR", 
             value: `${serviceStats.formikCount} ta`, 
             sub: `${serviceStats.formikSum.toLocaleString()} so'm`, 
-            icon: Layers, 
+            icon: FormerIcon, 
             color: "text-amber-600", 
             bg: "bg-amber-50 border-amber-100" 
           },
           { 
-            label: "👑 KARONKALAR", 
+            label: "KARONKALAR", 
             value: `${serviceStats.karonkaCount} ta`, 
             sub: `${serviceStats.karonkaSum.toLocaleString()} so'm`, 
-            icon: CheckCircle2, 
+            icon: CrownIcon, 
             color: "text-purple-600", 
             bg: "bg-purple-50 border-purple-100" 
           },
@@ -594,33 +598,35 @@ export default function Implants() {
           </div>
 
           {/* Filter Tabs matching Services & Logic */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
-              { id: 'all', label: "Barchasi", count: totalCount },
-              { id: 'incomplete', label: "⚠️ Kiritish talab", count: incompleteList.length, alert: incompleteList.length > 0 },
-              { id: 'implant', label: "🔩 Implant", count: serviceStats.implantCount },
-              { id: 'formik', label: "🩹 Formik", count: serviceStats.formikCount },
-              { id: 'karonka', label: "👑 Karonka", count: serviceStats.karonkaCount },
-              { id: 'other', label: "🔧 Boshqa xizmatlar", count: serviceStats.otherCount },
-              { id: 'control', label: "🔔 Nazorat talab", count: needsControl.length, alert: needsControl.length > 0 },
-              { id: 'analytics', label: "📦 Brendlar & Zaxira", count: brands.length },
+              { id: 'all', label: "Barchasi", count: totalCount, icon: TableIcon, activeColor: "text-slate-200", defaultColor: "text-slate-500" },
+              { id: 'incomplete', label: "Kiritish talab", count: incompleteList.length, alert: incompleteList.length > 0, icon: KiritishTalabIcon, activeColor: "text-amber-300", defaultColor: "text-amber-500" },
+              { id: 'implant', label: "Implant", count: serviceStats.implantCount, icon: ImplantIcon, activeColor: "text-teal-300", defaultColor: "text-teal-600" },
+              { id: 'formik', label: "Formik", count: serviceStats.formikCount, icon: FormerIcon, activeColor: "text-amber-300", defaultColor: "text-amber-600" },
+              { id: 'karonka', label: "Karonka", count: serviceStats.karonkaCount, icon: CrownIcon, activeColor: "text-indigo-300", defaultColor: "text-indigo-600" },
+              { id: 'other', label: "Boshqa xizmatlar", count: serviceStats.otherCount, icon: DentalSurgicalIcon, activeColor: "text-sky-300", defaultColor: "text-sky-600" },
+              { id: 'control', label: "Nazorat talab", count: needsControl.length, alert: needsControl.length > 0, icon: ClinicalControlIcon, activeColor: "text-rose-300", defaultColor: "text-rose-500" },
+              { id: 'analytics', label: "Brendlar & Zaxira", count: brands.length, icon: BrandStockIcon, activeColor: "text-purple-300", defaultColor: "text-purple-600" },
             ].map(tab => {
               const isActive = activeTab === tab.id;
+              const TabIcon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+                    "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer select-none",
                     isActive 
-                      ? "bg-slate-900 text-white shadow-xs font-black" 
-                      : "bg-slate-100/70 text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                      ? "bg-slate-900 text-white shadow-xs font-black ring-1 ring-slate-800" 
+                      : "bg-slate-100/80 text-slate-700 hover:bg-slate-200/80 hover:text-slate-900 border border-slate-200/60"
                   )}
                 >
+                  <TabIcon className={cn("w-3.5 h-3.5 shrink-0 transition-colors", isActive ? tab.activeColor : tab.defaultColor)} />
                   <span>{tab.label}</span>
                   <span className={cn(
                     "px-1.5 py-0.2 rounded-full text-[9px] font-black",
-                    tab.alert ? "bg-amber-400 text-slate-900" : (isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600")
+                    tab.alert ? "bg-amber-400 text-slate-950 font-black shadow-xs animate-pulse" : (isActive ? "bg-white/20 text-white" : "bg-slate-200/90 text-slate-700")
                   )}>
                     {tab.count}
                   </span>
@@ -686,7 +692,7 @@ export default function Implants() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
-                  <Target className="w-5 h-5" />
+                  <BrandStockIcon className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Brendlar Ulushi & Zaxira</h3>
@@ -699,9 +705,9 @@ export default function Implants() {
               <Button
                 size="sm"
                 onClick={() => setBrandsModalOpen(true)}
-                className="h-8 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black text-[11px] gap-1 border border-indigo-200 cursor-pointer"
+                className="h-8 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black text-[11px] gap-1.5 border border-indigo-200 cursor-pointer"
               >
-                <Package className="w-3.5 h-3.5" />
+                <BrandStockIcon className="w-3.5 h-3.5" />
                 Zaxira Boshqaruvi
               </Button>
             </div>
@@ -780,7 +786,7 @@ export default function Implants() {
         </div>
       ) : (
         /* ─── Excel Spreadsheet Data Grid Table ──────────────────────── */
-        /* Exact Columns: № | hizmatlar | sana | tish raqami | firma nomi | narxi | Bemor | Holat | Amallar */
+        /* Exact Columns: № | 1. Bemor (F.I.Sh) | 2. Tish raqamlari | 3. Firma nomi | 4. Narxi | 5. Qo'yilgan sana | 6. Amallar */
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -807,88 +813,13 @@ export default function Implants() {
                     №
                   </th>
 
-                  {/* 1. HIZMATLAR (hizmatlar) */}
-                  <th 
-                    onClick={() => handleSort('service')}
-                    className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[140px]"
-                  >
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span>hizmatlar</span>
-                      {sortField === 'service' ? (
-                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 opacity-30" />
-                      )}
-                    </div>
-                  </th>
-
-                  {/* 2. SANA (sana) */}
-                  <th 
-                    onClick={() => handleSort('date')}
-                    className="w-32 px-3 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
-                  >
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span>sana</span>
-                      {sortField === 'date' ? (
-                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 opacity-30" />
-                      )}
-                    </div>
-                  </th>
-
-                  {/* 3. TISH RAQAMI (tish raqami) */}
-                  <th 
-                    onClick={() => handleSort('tooth')}
-                    className="w-28 px-2.5 py-3 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
-                  >
-                    <div className="flex items-center justify-center gap-1.5">
-                      <span>tish raqami</span>
-                      {sortField === 'tooth' ? (
-                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 opacity-30" />
-                      )}
-                    </div>
-                  </th>
-
-                  {/* 4. FIRMA NOMI (firma nomi) */}
-                  <th 
-                    onClick={() => handleSort('brand')}
-                    className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[150px]"
-                  >
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span>firma nomi</span>
-                      {sortField === 'brand' ? (
-                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 opacity-30" />
-                      )}
-                    </div>
-                  </th>
-
-                  {/* 5. NARXI (narxi) */}
-                  <th 
-                    onClick={() => handleSort('price')}
-                    className="w-36 px-3.5 py-3 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap bg-emerald-50/40"
-                  >
-                    <div className="flex items-center justify-end gap-1.5 text-emerald-900">
-                      <span>narxi</span>
-                      {sortField === 'price' ? (
-                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 opacity-30" />
-                      )}
-                    </div>
-                  </th>
-
-                  {/* BEMOR (F.I.SH) */}
+                  {/* 1. BEMOR (F.I.SH) */}
                   <th 
                     onClick={() => handleSort('patient')}
-                    className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[180px]"
+                    className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[190px]"
                   >
                     <div className="flex items-center justify-between gap-1.5">
-                      <span>Bemor (F.I.Sh)</span>
+                      <span>1. Bemor (F.I.Sh)</span>
                       {sortField === 'patient' ? (
                         sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                       ) : (
@@ -897,24 +828,69 @@ export default function Implants() {
                     </div>
                   </th>
 
-                  {/* HOLAT (STATUS) */}
+                  {/* 2. TISH RAQAMLARI */}
                   <th 
-                    onClick={() => handleSort('status')}
-                    className="w-36 px-3 py-3 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                    onClick={() => handleSort('tooth')}
+                    className="w-28 px-2.5 py-3 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                   >
-                    <div className="flex items-center justify-center gap-1.5 text-slate-700">
-                      <span>Holat</span>
-                      {sortField === 'status' ? (
-                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>2. Tish raqamlari</span>
+                      {sortField === 'tooth' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                       ) : (
                         <ArrowUpDown className="w-3 h-3 opacity-30" />
                       )}
                     </div>
                   </th>
 
-                  {/* Actions */}
-                  <th className="w-28 px-2 py-3 text-center text-slate-500 whitespace-nowrap select-none">
-                    Amallar
+                  {/* 3. FIRMA NOMI */}
+                  <th 
+                    onClick={() => handleSort('brand')}
+                    className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[170px]"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span>3. Firma nomi</span>
+                      {sortField === 'brand' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* 4. NARXI */}
+                  <th 
+                    onClick={() => handleSort('price')}
+                    className="w-36 px-3.5 py-3 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap bg-emerald-50/40"
+                  >
+                    <div className="flex items-center justify-end gap-1.5 text-emerald-900">
+                      <span>4. Narxi</span>
+                      {sortField === 'price' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* 5. QO'YILGAN SANA */}
+                  <th 
+                    onClick={() => handleSort('date')}
+                    className="w-36 px-3 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span>5. Qo'yilgan sana</span>
+                      {sortField === 'date' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+
+                  {/* 6. AMALLAR */}
+                  <th className="px-3 py-3 text-center text-slate-700 whitespace-nowrap select-none min-w-[210px]">
+                    <span>6. Amallar</span>
                   </th>
 
                 </tr>
@@ -949,23 +925,32 @@ export default function Implants() {
                           {idx + 1}
                         </td>
 
-                        {/* 1. HIZMATLAR Cell */}
+                        {/* 1. BEMOR (F.I.SH) Cell */}
                         <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
-                          <span className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider border shadow-2xs",
-                            serviceCfg.badge
-                          )}>
-                            <span>{serviceCfg.emoji}</span>
-                            <span>{serviceCfg.label}</span>
-                          </span>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 font-black text-[10px] flex items-center justify-center border border-teal-100 shrink-0">
+                              <User className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <span 
+                                onClick={(e) => {
+                                  if (i.patient_id) {
+                                    e.stopPropagation();
+                                    navigate(`/patients/${i.patient_id}`);
+                                  }
+                                }}
+                                className="font-black text-slate-900 hover:text-[#1499AD] transition-colors truncate block hover:underline text-xs"
+                              >
+                                {safeRender(i.patient_name)}
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-400 block truncate">
+                                {safeRender(i.patient_phone, 'Telefon yo\'q')}
+                              </span>
+                            </div>
+                          </div>
                         </td>
 
-                        {/* 2. SANA Cell */}
-                        <td className={`border-r border-slate-200/70 font-mono text-slate-800 font-bold whitespace-nowrap ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
-                          {formatDate(i.placement_date)}
-                        </td>
-
-                        {/* 3. TISH RAQAMI Cell */}
+                        {/* 2. TISH RAQAMLARI Cell */}
                         <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
                           {teethList.length > 0 ? (
                             <div className="flex items-center justify-center gap-1 flex-wrap">
@@ -980,12 +965,13 @@ export default function Implants() {
                           )}
                         </td>
 
-                        {/* 4. FIRMA NOMI Cell */}
+                        {/* 3. FIRMA NOMI Cell */}
                         <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
                           <div className="min-w-0">
                             {isIncomplete ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-300 animate-pulse">
-                                ⚠️ Ma'lumot kiritish kerak
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs">
+                                <KiritishTalabIcon className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                <span>Ma'lumot kiritish kerak</span>
                               </span>
                             ) : (
                               <>
@@ -993,7 +979,7 @@ export default function Implants() {
                                   {firmaName}
                                 </span>
                                 {i.brend && i.brend !== firmaName && (
-                                  <span className="text-[10px] font-semibold text-slate-500 block truncate">
+                                  <span className="text-[10px] font-semibold text-slate-500 block truncate mt-0.5">
                                     {i.brend} {i.diameter && i.length && `(Ø${i.diameter}×${i.length}mm)`}
                                   </span>
                                 )}
@@ -1002,65 +988,42 @@ export default function Implants() {
                           </div>
                         </td>
 
-                        {/* 5. NARXI Cell */}
+                        {/* 4. NARXI Cell */}
                         <td className={`text-right border-r border-slate-200/70 font-mono font-black text-emerald-700 whitespace-nowrap bg-emerald-50/20 text-xs sm:text-sm ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
                           {priceVal.toLocaleString()} <span className="text-[10px] font-bold text-emerald-600/80 uppercase">so'm</span>
                         </td>
 
-                        {/* BEMOR Cell */}
-                        <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-6.5 h-6.5 rounded-lg bg-teal-50 text-teal-700 font-black text-[10px] flex items-center justify-center border border-teal-100 shrink-0">
-                              <User className="w-3.5 h-3.5" />
-                            </div>
-                            <div className="min-w-0">
-                              <span 
-                                onClick={(e) => {
-                                  if (i.patient_id) {
-                                    e.stopPropagation();
-                                    navigate(`/patients/${i.patient_id}`);
-                                  }
-                                }}
-                                className="font-black text-slate-900 hover:text-blue-600 transition-colors truncate block hover:underline text-xs"
-                              >
-                                {safeRender(i.patient_name)}
-                              </span>
-                              <span className="text-[10px] font-mono text-slate-400 block truncate">
-                                {safeRender(i.patient_phone, 'Telefon yo\'q')}
-                              </span>
-                            </div>
-                          </div>
+                        {/* 5. QO'YILGAN SANA Cell */}
+                        <td className={`border-r border-slate-200/70 font-mono text-slate-800 font-bold whitespace-nowrap ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                          {formatDate(i.placement_date)}
                         </td>
 
-                        {/* HOLAT Cell */}
-                        <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1 px-2' : 'py-2 px-2.5'}`} onClick={(e) => e.stopPropagation()}>
-                          <Select 
-                            value={statusCode} 
-                            onValueChange={(val) => updateImplantStatus(i.id, val)}
-                          >
-                            <SelectTrigger className={cn(
-                              "h-7 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider mx-auto border transition-colors focus:ring-0",
-                              statusClass
-                            )}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl font-bold text-xs">
-                              {Object.keys(LIFECYCLE_COLORS).map(s => (
-                                <SelectItem key={s} value={s} className="text-xs font-bold uppercase tracking-wider">
-                                  {t(`implants.status.${s}`) || s}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </td>
+                        {/* 6. AMALLAR Cell */}
+                        <td className={`text-center whitespace-nowrap ${isCompact ? 'py-1 px-2' : 'py-2 px-2.5'}`} onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <Select 
+                              value={statusCode} 
+                              onValueChange={(val) => updateImplantStatus(i.id, val)}
+                            >
+                              <SelectTrigger className={cn(
+                                "h-7 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider mx-auto border transition-colors focus:ring-0 min-w-[120px] max-w-[130px] shrink-0",
+                                statusClass
+                              )}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl font-bold text-xs">
+                                {Object.keys(LIFECYCLE_COLORS).map(s => (
+                                  <SelectItem key={s} value={s} className="text-xs font-bold uppercase tracking-wider">
+                                    {t(`implants.status.${s}`) || s}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
 
-                        {/* Actions Cell */}
-                        <td className={`text-center whitespace-nowrap ${isCompact ? 'py-1 px-1.5' : 'py-2 px-2'}`} onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-1">
                             {isIncomplete && (
                               <button 
                                 onClick={() => setEditingImplant(i)}
-                                className="px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-xs transition-all cursor-pointer active:scale-95"
+                                className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-xs transition-all cursor-pointer active:scale-95 shrink-0"
                                 title="Ma'lumotlarni to'ldirish"
                               >
                                 <Edit2 className="w-3 h-3" />
@@ -1101,10 +1064,10 @@ export default function Implants() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={9} className="py-20 text-center">
+                    <td colSpan={7} className="py-20 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300">
-                          <Tooth className="w-6 h-6" />
+                          <ImplantIcon className="w-6 h-6" />
                         </div>
                         <p className="text-sm font-bold text-slate-500">
                           {search ? `"${search}" bo'yicha ma'lumot topilmadi` : "Hozircha amaliyotlar mavjud emas"}
@@ -1134,16 +1097,19 @@ export default function Implants() {
                 <strong className="text-slate-900 font-mono">{sortedImplants.length}</strong> ta amaliyot
               </span>
               <span className="text-slate-300">•</span>
-              <span>
-                Implantlar: <strong className="text-teal-700 font-mono">{serviceStats.implantCount} ta</strong>
+              <span className="flex items-center gap-1">
+                <ImplantIcon className="w-3.5 h-3.5 text-teal-600" />
+                <span>Implantlar:</span> <strong className="text-teal-700 font-mono">{serviceStats.implantCount} ta</strong>
               </span>
               <span className="text-slate-300">•</span>
-              <span>
-                Formiklar: <strong className="text-amber-700 font-mono">{serviceStats.formikCount} ta</strong>
+              <span className="flex items-center gap-1">
+                <FormerIcon className="w-3.5 h-3.5 text-amber-600" />
+                <span>Formiklar:</span> <strong className="text-amber-700 font-mono">{serviceStats.formikCount} ta</strong>
               </span>
               <span className="text-slate-300">•</span>
-              <span>
-                Karonkalar: <strong className="text-indigo-700 font-mono">{serviceStats.karonkaCount} ta</strong>
+              <span className="flex items-center gap-1">
+                <CrownIcon className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Karonkalar:</span> <strong className="text-indigo-700 font-mono">{serviceStats.karonkaCount} ta</strong>
               </span>
             </div>
 

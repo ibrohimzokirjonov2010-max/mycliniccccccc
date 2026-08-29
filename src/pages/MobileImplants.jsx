@@ -5,7 +5,7 @@ import {
   Plus, Search, Activity, AlertTriangle, CheckCircle2,
   ChevronRight, TrendingUp, Bell, Target, Phone, Calendar,
   Layers, MessageCircle, Zap, X, Filter, SlidersHorizontal,
-  Award, Clock, ArrowUpRight, RefreshCw
+  Award, Clock, ArrowUpRight, RefreshCw, FileEdit
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,11 @@ import Paywall from '@/components/layout/Paywall';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
+import { 
+  ImplantIcon, CrownIcon, FormerIcon, AbutmentIcon, 
+  BoneGraftIcon, SinusLiftIcon, DentalSurgicalIcon, 
+  BrandStockIcon, KiritishTalabIcon, ClinicalControlIcon 
+} from '@/components/ui/Icons';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const LIFECYCLE_MAPPING = {
@@ -31,13 +36,13 @@ const LIFECYCLE_MAPPING = {
 };
 
 const LIFECYCLE_CONFIG = {
-  planned:   { label: 'Rejalashtirilgan', emoji: '📋', bg: 'bg-blue-50',    text: 'text-blue-700',    dot: 'bg-blue-500',    border: 'border-blue-100' },
-  placed:    { label: "O'rnatildi",        emoji: '🔩', bg: 'bg-teal-50',    text: 'text-teal-700',    dot: 'bg-teal-500',    border: 'border-teal-100' },
-  healing:   { label: 'Healing',           emoji: '🩹', bg: 'bg-yellow-50',  text: 'text-yellow-700',  dot: 'bg-yellow-500',  border: 'border-yellow-100' },
-  abutment:  { label: 'Abutment',          emoji: '🔧', bg: 'bg-purple-50',  text: 'text-purple-700',  dot: 'bg-purple-500',  border: 'border-purple-100' },
-  crown:     { label: 'Crown tayyor',      emoji: '👑', bg: 'bg-indigo-50',  text: 'text-indigo-700',  dot: 'bg-indigo-500',  border: 'border-indigo-100' },
-  completed: { label: 'Tugallangan',       emoji: '✅', bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', border: 'border-emerald-100' },
-  failure:   { label: 'Failure',           emoji: '❌', bg: 'bg-rose-50',    text: 'text-rose-700',    dot: 'bg-rose-500',    border: 'border-rose-100' },
+  planned:   { label: 'Rejalashtirilgan', bg: 'bg-blue-50',    text: 'text-blue-700',    dot: 'bg-blue-500',    border: 'border-blue-200' },
+  placed:    { label: "O'rnatildi",        bg: 'bg-teal-50',    text: 'text-teal-700',    dot: 'bg-teal-500',    border: 'border-teal-200' },
+  healing:   { label: 'Healing',           bg: 'bg-amber-50',   text: 'text-amber-800',   dot: 'bg-amber-500',   border: 'border-amber-200' },
+  abutment:  { label: 'Abutment',          bg: 'bg-purple-50',  text: 'text-purple-700',  dot: 'bg-purple-500',  border: 'border-purple-200' },
+  crown:     { label: 'Crown tayyor',      bg: 'bg-indigo-50',  text: 'text-indigo-700',  dot: 'bg-indigo-500',  border: 'border-indigo-200' },
+  completed: { label: 'Tugallangan',       bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', border: 'border-emerald-200' },
+  failure:   { label: 'Failure',           bg: 'bg-rose-50',    text: 'text-rose-700',    dot: 'bg-rose-500',    border: 'border-rose-200' },
 };
 
 const BRAND_COLORS = [
@@ -100,8 +105,8 @@ const SkeletonCard = () => (
 const StatusPill = ({ status }) => {
   const cfg = getLifecycleCfg(status);
   return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-      <span>{cfg.emoji}</span>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
       {cfg.label}
     </span>
   );
@@ -136,13 +141,15 @@ const resolvePrice = (implant) => {
   return 1500000;
 };
 
-const SERVICE_EMOJIS = {
-  'Implant': '🔩',
-  'Formik': '🩹',
-  'Karonka': '👑',
-  'Abutment': '🔧',
-  'Sinus-lifting': '🩺',
-  'Suyak ekish': '🧬',
+const getServiceIcon = (serviceName) => {
+  const s = (serviceName || '').toLowerCase();
+  if (s.includes('karonka') || s.includes('crown') || s.includes('toj')) return CrownIcon;
+  if (s.includes('formik') || s.includes('healing')) return FormerIcon;
+  if (s.includes('abutment') || s.includes('abatment')) return AbutmentIcon;
+  if (s.includes('sinus')) return SinusLiftIcon;
+  if (s.includes('suyak') || s.includes('graft') || s.includes('membrana')) return BoneGraftIcon;
+  if (s.includes('implant')) return ImplantIcon;
+  return DentalSurgicalIcon;
 };
 
 // ─── Implant Card ─────────────────────────────────────────────────────────────
@@ -155,7 +162,7 @@ const ImplantCard = ({ implant, onStatusChange, onNavigate, today }) => {
   const isSoon = daysLeft !== null && daysLeft > 7 && daysLeft <= 14;
 
   const serviceName = resolveService(implant);
-  const emoji = SERVICE_EMOJIS[serviceName] || '⚡';
+  const SvcIcon = getServiceIcon(serviceName);
   const priceVal = resolvePrice(implant);
   const firmaName = implant.firma === 'Boshqa' ? (implant.firma_custom || 'Boshqa') : (implant.firma || 'Dentium');
 
@@ -175,8 +182,8 @@ const ImplantCard = ({ implant, onStatusChange, onNavigate, today }) => {
           <div className="flex items-center gap-3 min-w-0 flex-1">
             {/* Tooth Badge */}
             <div className="relative flex-shrink-0">
-              <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center text-xl">
-                {emoji}
+              <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-700">
+                <SvcIcon className="w-6 h-6" />
               </div>
               {teeth.length > 0 && (
                 <div className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1 bg-slate-900 text-white rounded-lg text-[9px] font-black border-2 border-white flex items-center justify-center">
@@ -192,8 +199,9 @@ const ImplantCard = ({ implant, onStatusChange, onNavigate, today }) => {
                   {serviceName}
                 </span>
                 {(implant.incomplete_data === true || implant.needs_fill === true || (!implant.firma && !implant.brend && !implant.firma_custom)) ? (
-                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-300 animate-pulse">
-                    ⚠️ Kiritish kerak
+                  <span className="inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-300 animate-pulse">
+                    <KiritishTalabIcon className="w-2.5 h-2.5 text-amber-600" />
+                    Kiritish kerak
                   </span>
                 ) : (
                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider truncate">
@@ -603,7 +611,7 @@ export default function MobileImplants() {
             <div>
               <h1 className="text-xl font-[900] text-slate-900 tracking-tighter flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
-                  <Zap className="w-4 h-4 text-white" />
+                  <ImplantIcon className="w-4.5 h-4.5 text-white" />
                 </div>
                 Implantlar
               </h1>
@@ -791,7 +799,7 @@ export default function MobileImplants() {
           <div className="px-4 pb-4 space-y-4">
             {/* Stats Grid */}
             <div className="grid grid-cols-2 gap-3">
-              <StatCard value={stats.total}        label="Jami implant"   icon={Zap}          color="text-indigo-600" bg="bg-indigo-50"  delay={0.05} />
+              <StatCard value={stats.total}        label="Jami implant"   icon={ImplantIcon}          color="text-indigo-600" bg="bg-indigo-50"  delay={0.05} />
               <StatCard value={stats.recent}       label="30 kunda"       icon={TrendingUp}   color="text-blue-600"   bg="bg-blue-50"   delay={0.10} />
               <StatCard value={`${stats.successRate}%`} label="Muvaffaqiyat" icon={CheckCircle2} color="text-emerald-600" bg="bg-emerald-50" delay={0.15} badge={stats.failures > 0 ? ` (${stats.failures} failure)` : ''} />
               <StatCard value={stats.needsControl.length} label="Nazorat kerak" icon={Bell} color="text-amber-600"  bg="bg-amber-50"  delay={0.20} />

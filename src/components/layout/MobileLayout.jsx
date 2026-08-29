@@ -7,7 +7,7 @@ import {
   Wallet, CreditCard, AlertTriangle, Activity, 
   FileText, BarChart3, Briefcase, Globe, Wrench
 } from 'lucide-react';
-import { Tooth } from '@/components/ui/Icons';
+import { Tooth, ImplantIcon } from '@/components/ui/Icons';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -44,7 +44,7 @@ const getMoreNavItems = (t) => [
   // Kuzatuv
   { path: '/no-shows', icon: AlertTriangle, label: t('navigation.noShow'), category: 'tracking' },
   { path: '/treatment-tracking', icon: Activity, label: t('navigation.treatmentTracking'), category: 'tracking' },
-  { path: '/implants', icon: FileText, label: t('navigation.implants'), category: 'tracking' },
+  { path: '/implants', icon: ImplantIcon, label: t('navigation.implants'), category: 'tracking' },
 ];
 
 /**

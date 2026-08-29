@@ -77,6 +77,26 @@ const ToothSVG = memo(({ toothNum, status, isUpper, size = 44, selected, onClick
 
   const renderRoots = () => {
     if (isExtracted || status === 'missing') return null;
+
+    if (status === 'implant') {
+      const rw = Math.min(s.rootW, 12);
+      const rh = s.rootH;
+      const rx = cx - rw/2;
+      return (
+        <g opacity={0.95}>
+          {/* Implant collar platform */}
+          <rect x={rx - 1.5} y={isUpper ? rootY + rh - 3 : rootY} width={rw + 3} height={3} rx={1} fill="#475569" stroke="#1e293b" strokeWidth={0.5} />
+          {/* Tapered root fixture */}
+          <rect x={rx} y={rootY} width={rw} height={rh} rx={rw/3} fill="#64748b" stroke="#334155" strokeWidth={0.8} />
+          {/* Helical screw threads */}
+          <line x1={rx} y1={rootY + rh * 0.25} x2={rx + rw} y2={rootY + rh * 0.25 - 1} stroke="#cbd5e1" strokeWidth={1.2} strokeLinecap="round" />
+          <line x1={rx} y1={rootY + rh * 0.45} x2={rx + rw} y2={rootY + rh * 0.45 - 1} stroke="#cbd5e1" strokeWidth={1.2} strokeLinecap="round" />
+          <line x1={rx} y1={rootY + rh * 0.65} x2={rx + rw} y2={rootY + rh * 0.65 - 1} stroke="#cbd5e1" strokeWidth={1.2} strokeLinecap="round" />
+          <line x1={rx} y1={rootY + rh * 0.85} x2={rx + rw} y2={rootY + rh * 0.85 - 1} stroke="#cbd5e1" strokeWidth={1.2} strokeLinecap="round" />
+        </g>
+      );
+    }
+
     const rootColor = st.root;
     const rootOpacity = 0.85;
 

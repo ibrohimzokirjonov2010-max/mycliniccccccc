@@ -9,6 +9,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ImplantIcon, BrandStockIcon } from '@/components/ui/Icons';
 
 export const DEFAULT_IMPLANT_BRANDS = [
   { name: 'Osstem', country: 'Janubiy Koreya', initial_stock: 50, added_stock: 0, model: 'TSIII, SA/CA' },
@@ -267,7 +268,7 @@ export default function ImplantBrandsModal({
           </button>
           
           <div className="flex items-center gap-2 mb-1 text-[10px] font-black tracking-widest text-indigo-300 uppercase">
-            <Package className="w-3.5 h-3.5" />
+            <ImplantIcon className="w-4 h-4 text-indigo-300" />
             Implantlar Ombori & Brendlar Boshqaruvi
           </div>
           
@@ -337,7 +338,7 @@ export default function ImplantBrandsModal({
               >
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <span className="text-xs font-black text-indigo-700 uppercase tracking-wide flex items-center gap-1.5">
-                    <Box className="w-4 h-4 text-indigo-600" />
+                    <ImplantIcon className="w-4 h-4 text-indigo-600" />
                     {editingBrand ? `Brendni tahrirlash: ${editingBrand.name}` : "Yangi Implant Brendi Qo'shish"}
                   </span>
                   <button 
@@ -437,7 +438,7 @@ export default function ImplantBrandsModal({
             </div>
           ) : brandsWithStats.length === 0 ? (
             <div className="bg-white rounded-2xl p-8 text-center border border-slate-200">
-              <Package className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+              <BrandStockIcon className="w-10 h-10 mx-auto text-slate-300 mb-2" />
               <p className="text-xs font-bold text-slate-600">Brendlar mavjud emas</p>
               <p className="text-[11px] text-slate-400 mt-1">Yangi brend qo'shish tugmasi orqali klinika brendlarini kiriting.</p>
             </div>

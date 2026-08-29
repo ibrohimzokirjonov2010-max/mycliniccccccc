@@ -626,14 +626,14 @@ const StatsSummary = memo(({ toothStatuses, allTeeth }) => {
 const Legend = memo(() => {
   const { t } = useTranslation();
   return (
-    <div className="px-4 sm:px-6 py-2.5 border-t border-slate-100 flex flex-wrap items-center gap-x-4 gap-y-2 w-full">
+    <div className="px-4 sm:px-6 py-2.5 border-t border-slate-100 bg-slate-50/40 flex flex-wrap items-center gap-x-3 gap-y-2 w-full">
       {Object.entries(STATUS).map(([key, val]) => (
-        <div key={key} className="flex items-center gap-1.5 flex-shrink-0">
+        <div key={key} className="flex items-center gap-1.5 flex-shrink-0 px-2 py-0.5 rounded-md bg-white border border-slate-200/60 shadow-2xs">
           <div
-            className="w-2.5 h-2.5 rounded-sm border"
+            className="w-2.5 h-2.5 rounded-xs border shrink-0"
             style={{ backgroundColor: val.bg, borderColor: val.border }}
           />
-          <span className="text-[10px] font-[700] text-slate-500 whitespace-nowrap">
+          <span className="text-[10px] font-[700] text-slate-600 whitespace-nowrap">
             {t('odontogram.statuses.' + key) || val.label}
           </span>
         </div>
@@ -683,6 +683,7 @@ function ProfessionalOdontogram({
   showBatchControls = false,
   patientType     = 'adult',
   chartView       = 'teeth',
+  quadrantFilter  = 'all',
   showOcclusal    = true,
   psrScores       = {},
   onPatientTypeChange,
@@ -865,29 +866,25 @@ function ProfessionalOdontogram({
     <div
       className={cn(
         "bg-white w-full",
-        !hideHeader && "rounded-2xl border border-slate-100 overflow-hidden"
+        !hideHeader && "rounded-xl border border-slate-200/90 overflow-hidden shadow-xs"
       )}
-      style={!hideHeader ? {
-        boxShadow:
-          '0 4px 20px -4px rgba(15,23,42,0.06), 0 0 0 1px rgba(241,245,249,1)',
-      } : {}}
     >
       {/* ── Header ─────────────────────────────────────────────────────── */}
       {!hideHeader && onPatientTypeChange && (patientAge === null || patientAge <= 15) && (
         <div
           className="flex items-center justify-end px-3.5 py-1.5 border-b border-slate-100 bg-slate-50/70"
         >
-          <div className="flex items-center bg-slate-100/60 rounded-lg p-0.5">
+          <div className="flex items-center bg-slate-100/80 rounded-lg p-0.5 border border-slate-200/60">
             {[['adult', t('odontogram.patientTypes.adult') || 'Kattalar'], ['child', t('odontogram.patientTypes.child') || 'Bolalar']].map(([val, label]) => (
               <button
                 key={val}
                 type="button"
                 onClick={() => onPatientTypeChange(val)}
                 className={cn(
-                  'px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-wider transition-all',
+                  'px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer',
                   patientType === val
-                    ? 'bg-white text-slate-700 shadow-sm border border-slate-200/20'
-                    : 'text-slate-400 hover:text-slate-500',
+                    ? 'bg-white text-slate-800 shadow-xs border border-slate-200/80'
+                    : 'text-slate-500 hover:text-slate-700',
                 )}
               >
                 {label}
@@ -899,49 +896,79 @@ function ProfessionalOdontogram({
 
       {/* ── Chart Area ──────────────────────────────────────────────────── */}
       <div className="pt-3 pb-2 px-2 flex justify-center w-full overflow-hidden">
-        <div
-          className="grid grid-cols-2 gap-0 relative select-none origin-top transition-transform duration-200"
-          style={{ 
-            width: 'fit-content', 
-            margin: '0 auto', 
-            minWidth: compact ? 390 : 560,
-            transform: scale < 1 ? `scale(${scale})` : undefined,
-            marginBottom: scale < 1 ? `${-210 * (1 - scale)}px` : undefined
-          }}
-        >
-          {/* Quadrant 1: Upper Right (teeth 18-11) */}
-          {chartView !== 'mandible' && (
-            <div className="flex justify-end items-end pb-1 pr-0.5 border-b border-r border-slate-200 gap-0">
+        {quadrantFilter === 'Q1' ? (
+          <div className="flex flex-col items-center gap-2 p-3 bg-slate-50/70 border border-slate-200 rounded-xl shadow-2xs">
+            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono">Q1 — O'ng Yuqori Jag' (18 - 11)</span>
+            <div className="flex justify-center items-end gap-0 border-b border-r border-slate-300 pb-1 pr-1 bg-white/80 rounded-lg p-2">
               {renderRow(upperRight, true)}
             </div>
-          )}
-
-          {/* Quadrant 2: Upper Left (teeth 21-28) */}
-          {chartView !== 'mandible' && (
-            <div className="flex justify-start items-end pb-1 pl-0.5 border-b border-slate-200 gap-0">
+          </div>
+        ) : quadrantFilter === 'Q2' ? (
+          <div className="flex flex-col items-center gap-2 p-3 bg-slate-50/70 border border-slate-200 rounded-xl shadow-2xs">
+            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono">Q2 — Chap Yuqori Jag' (21 - 28)</span>
+            <div className="flex justify-center items-end gap-0 border-b border-l border-slate-300 pb-1 pl-1 bg-white/80 rounded-lg p-2">
               {renderRow(upperLeft, true)}
             </div>
-          )}
-
-          {/* Quadrant 4: Lower Right (teeth 48-41) */}
-          {chartView !== 'maxilla' && (
-            <div className={cn("flex justify-end items-start pt-1 pr-0.5 border-r border-slate-200 gap-0", chartView === 'mandible' && "border-t-0")}>
-              {renderRow(lowerRight, false)}
-            </div>
-          )}
-
-          {/* Quadrant 3: Lower Left (teeth 31-38) */}
-          {chartView !== 'maxilla' && (
-            <div className="flex justify-start items-start pt-1 pl-0.5 gap-0">
+          </div>
+        ) : quadrantFilter === 'Q3' ? (
+          <div className="flex flex-col items-center gap-2 p-3 bg-slate-50/70 border border-slate-200 rounded-xl shadow-2xs">
+            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono">Q3 — Chap Pastki Jag' (31 - 38)</span>
+            <div className="flex justify-center items-start gap-0 border-t border-l border-slate-300 pt-1 pl-1 bg-white/80 rounded-lg p-2">
               {renderRow(lowerLeft, false)}
             </div>
-          )}
-        </div>
+          </div>
+        ) : quadrantFilter === 'Q4' ? (
+          <div className="flex flex-col items-center gap-2 p-3 bg-slate-50/70 border border-slate-200 rounded-xl shadow-2xs">
+            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono">Q4 — O'ng Pastki Jag' (48 - 41)</span>
+            <div className="flex justify-center items-start gap-0 border-t border-r border-slate-300 pt-1 pr-1 bg-white/80 rounded-lg p-2">
+              {renderRow(lowerRight, false)}
+            </div>
+          </div>
+        ) : (
+          <div
+            className="grid grid-cols-2 gap-0 relative select-none origin-top transition-transform duration-200"
+            style={{ 
+              width: 'fit-content', 
+              margin: '0 auto', 
+              minWidth: compact ? 390 : 560,
+              transform: scale < 1 ? `scale(${scale})` : undefined,
+              marginBottom: scale < 1 ? `${-210 * (1 - scale)}px` : undefined
+            }}
+          >
+            {/* Quadrant 1: Upper Right (teeth 18-11) */}
+            {chartView !== 'mandible' && (
+              <div className="flex justify-end items-end pb-1 pr-0.5 border-b border-r border-slate-200 gap-0">
+                {renderRow(upperRight, true)}
+              </div>
+            )}
+
+            {/* Quadrant 2: Upper Left (teeth 21-28) */}
+            {chartView !== 'mandible' && (
+              <div className="flex justify-start items-end pb-1 pl-0.5 border-b border-slate-200 gap-0">
+                {renderRow(upperLeft, true)}
+              </div>
+            )}
+
+            {/* Quadrant 4: Lower Right (teeth 48-41) */}
+            {chartView !== 'maxilla' && (
+              <div className={cn("flex justify-end items-start pt-1 pr-0.5 border-r border-slate-200 gap-0", chartView === 'mandible' && "border-t-0")}>
+                {renderRow(lowerRight, false)}
+              </div>
+            )}
+
+            {/* Quadrant 3: Lower Left (teeth 31-38) */}
+            {chartView !== 'maxilla' && (
+              <div className="flex justify-start items-start pt-1 pl-0.5 gap-0">
+                {renderRow(lowerLeft, false)}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Stats ── */}
       {!hideStats && chartView === 'teeth' && (
-        <StatsSummary toothStatuses={toothStatuses} allTeeth={allTeeth} />
+        <StatsSummary toothStatuses={toothStatuses} allTeeth={quadrantFilter === 'Q1' ? upperRight : quadrantFilter === 'Q2' ? upperLeft : quadrantFilter === 'Q3' ? lowerLeft : quadrantFilter === 'Q4' ? lowerRight : allTeeth} />
       )}
 
       {/* ── Legend ── */}
