@@ -452,13 +452,13 @@ export default function Reports() {
     const statusCounts = {};
     filteredAppointments.forEach(a => {
       const rawStatus = a.status || '';
-      let status = 'Rejalashtirilgan';
+      let status = language === 'ru' ? 'Запланировано' : 'Rejalashtirilgan';
       const lower = rawStatus.toLowerCase();
-      if (lower === 'completed') status = 'Bajarilgan';
-      else if (lower === 'scheduled' || lower === 'planned') status = 'Rejalashtirilgan';
-      else if (lower === 'cancelled') status = 'Bekor qilingan';
-      else if (lower.includes('no_show') || lower.includes('no-show') || lower.includes('noshow')) status = 'Kelmagan';
-      else if (lower.includes('progress') || lower.includes('waiting')) status = 'Kutilmoqda';
+      if (lower === 'completed') status = language === 'ru' ? 'Выполнено' : 'Bajarilgan';
+      else if (lower === 'scheduled' || lower === 'planned') status = language === 'ru' ? 'Запланировано' : 'Rejalashtirilgan';
+      else if (lower === 'cancelled') status = language === 'ru' ? 'Отменено' : 'Bekor qilingan';
+      else if (lower.includes('no_show') || lower.includes('no-show') || lower.includes('noshow')) status = language === 'ru' ? 'Неявка' : 'Kelmagan';
+      else if (lower.includes('progress') || lower.includes('waiting')) status = language === 'ru' ? 'В ожидании' : 'Kutilmoqda';
       else {
         status = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
       }
@@ -580,11 +580,11 @@ export default function Reports() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('navigation.reports') || "Hisobotlar"}</h1>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-[#1499AD]/10 text-[#1499AD] border border-[#1499AD]/20">
-              • Analitika va Boshqaruv
+              {language === 'ru' ? '• АНАЛИТИКА И УПРАВЛЕНИЕ' : language === 'en' ? '• ANALYTICS & MANAGEMENT' : '• Analitika va Boshqaruv'}
             </span>
           </div>
           <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
-            Klinika umumiy moliyaviy hisoboti, shifokorlar reytingi va xizmatlar tahlili
+            {t('reports.subtitle') || (language === 'ru' ? 'Общий финансовый отчет клиники, рейтинг врачей и анализ услуг' : 'Klinika umumiy moliyaviy hisoboti, shifokorlar reytingi va xizmatlar tahlili')}
           </p>
         </div>
 
@@ -592,10 +592,10 @@ export default function Reports() {
           {/* Period Filter Tabs */}
           <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70">
             {[
-              { key: 'all', label: 'Barchasi' },
-              { key: 'this_month', label: 'Bu oy' },
-              { key: 'last_month', label: 'O\'tgan oy' },
-              { key: 'year', label: 'Yillik' },
+              { key: 'all', label: language === 'ru' ? 'Все' : language === 'en' ? 'All' : 'Barchasi' },
+              { key: 'this_month', label: language === 'ru' ? 'Этот месяц' : language === 'en' ? 'This month' : 'Bu oy' },
+              { key: 'last_month', label: language === 'ru' ? 'Прошлый месяц' : language === 'en' ? 'Last month' : "O'tgan oy" },
+              { key: 'year', label: language === 'ru' ? 'За год' : language === 'en' ? 'This year' : 'Yillik' },
             ].map(p => (
               <button
                 key={p.key}
@@ -612,25 +612,17 @@ export default function Reports() {
             ))}
           </div>
 
-          <Button 
-            variant="outline" 
-            onClick={exportCSV} 
-            className="gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs text-slate-700 h-9 px-3.5"
-            title="Excel formatida (.csv) yuklab olish"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Eksport (Excel)</span>
-          </Button>
+          
         </div>
       </div>
 
       {/* ─── Top Executive Financial KPI Grid ───────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "JAMI QABULLAR", value: `${filteredAppointments.length} ta`, icon: Calendar, color: "text-blue-600", bg: "bg-blue-50 border-blue-100", countText: `${stats.completedAppts} ta yakunlangan` },
-          { label: "UMUMIY DAROMAD", value: `${stats.totalIncome.toLocaleString()} UZS`, icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", countText: "Klinikaga jami tushum" },
-          { label: "CHIQIMLAR / XARAJAT", value: `${stats.totalExpense.toLocaleString()} UZS`, icon: ArrowDownRight, color: "text-rose-600", bg: "bg-rose-50 border-rose-100", countText: "Jami klinik xarajatlar" },
-          { label: "SOF FOYDA", value: `${stats.netProfit.toLocaleString()} UZS`, icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-50 border-purple-100", countText: `O'rtacha chek: ${stats.avgCheck.toLocaleString()} UZS` },
+          { label: t('reports.totalVisits') || (language === 'ru' ? "ВСЕГО ПРИЁМОВ" : "JAMI QABULLAR"), value: language === 'ru' ? `${filteredAppointments.length}` : `${filteredAppointments.length} ta`, icon: Calendar, color: "text-blue-600", bg: "bg-blue-50 border-blue-100", countText: language === 'ru' ? `${stats.completedAppts} завершено` : `${stats.completedAppts} ta yakunlangan` },
+          { label: t('reports.totalRevenue') || (language === 'ru' ? "ОБЩИЙ ДОХОД" : "UMUMIY DAROMAD"), value: `${stats.totalIncome.toLocaleString()} UZS`, icon: DollarSign, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", countText: t('reports.clinicTotalIncome') || (language === 'ru' ? "Всего поступлений в клинику" : "Klinikaga jami tushum") },
+          { label: t('reports.totalExpenses') || (language === 'ru' ? "РАСХОДЫ КЛИНИКИ" : "CHIQIMLAR / XARAJAT"), value: `${stats.totalExpense.toLocaleString()} UZS`, icon: ArrowDownRight, color: "text-rose-600", bg: "bg-rose-50 border-rose-100", countText: t('reports.clinicTotalExpenses') || (language === 'ru' ? "Общие расходы клиники" : "Jami klinik xarajatlar") },
+          { label: t('reports.netProfit') || (language === 'ru' ? "ЧИСТАЯ ПРИБЫЛЬ" : "SOF FOYDA"), value: `${stats.netProfit.toLocaleString()} UZS`, icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-50 border-purple-100", countText: language === 'ru' ? `Средний чек: ${stats.avgCheck.toLocaleString()} UZS` : `O'rtacha chek: ${stats.avgCheck.toLocaleString()} UZS` },
         ].map((s, i) => (
           <motion.div 
             key={s.label}
@@ -663,10 +655,10 @@ export default function Reports() {
           {/* Report Type Selector Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
-              { id: 'doctors', label: "Shifokorlar Reytingi", icon: Award, count: doctorLeaderboard.length },
-              { id: 'finance', label: "Oylik Kirim & Chiqim", icon: DollarSign, count: monthlyFinanceReport.length },
-              { id: 'services', label: "Top Xizmatlar", icon: Layers, count: servicesReport.length },
-              { id: 'appointments', label: "Qabullar Taqsimoti", icon: Receipt, count: appointmentsStatusReport.length },
+              { id: 'doctors', label: t('reports.doctorRating') || (language === 'ru' ? "Рейтинг врачей" : "Shifokorlar Reytingi"), icon: Award, count: doctorLeaderboard.length },
+              { id: 'finance', label: t('reports.monthlyFinance') || (language === 'ru' ? "Доходы и расходы" : "Oylik Kirim & Chiqim"), icon: DollarSign, count: monthlyFinanceReport.length },
+              { id: 'services', label: t('reports.topServices') || (language === 'ru' ? "Топ услуг" : "Top Xizmatlar"), icon: Layers, count: servicesReport.length },
+              { id: 'appointments', label: t('reports.visitsBreakdown') || (language === 'ru' ? "Распределение приёмов" : "Qabullar Taqsimoti"), icon: Receipt, count: appointmentsStatusReport.length },
             ].map(tab => {
               const isActive = activeReportTab === tab.id;
               const IconComp = tab.icon;
@@ -701,7 +693,7 @@ export default function Reports() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-[#1499AD]" />
                 <input 
                   type="text" 
-                  placeholder={activeReportTab === 'doctors' ? "Shifokor nomi..." : "Xizmat nomi..."}
+                  placeholder={activeReportTab === 'doctors' ? (language === 'ru' ? "Поиск по имени врача..." : "Shifokor nomi...") : (language === 'ru' ? "Поиск по названию услуги..." : "Xizmat nomi...")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full h-8.5 pl-8 pr-7 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 outline-none"
@@ -714,33 +706,6 @@ export default function Reports() {
               </div>
             )}
 
-            {/* Density Switcher */}
-            <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 shrink-0">
-              <button
-                onClick={() => toggleDensity('compact')}
-                title="Ixcham Excel Jadvali"
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                  density === 'compact' 
-                    ? 'bg-white text-slate-900 shadow-xs' 
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-                <span>Excel</span>
-              </button>
-              <button
-                onClick={() => toggleDensity('comfortable')}
-                title="Keng Jadval Ko'rinishi"
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                  density === 'comfortable' 
-                    ? 'bg-white text-slate-900 shadow-xs' 
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-                <span>Keng</span>
-              </button>
-            </div>
           </div>
 
         </div>
@@ -777,7 +742,7 @@ export default function Reports() {
                     className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
                   >
                     <div className="flex items-center justify-between gap-1.5">
-                      <span>Shifokor (F.I.Sh)</span>
+                      <span>{t('reports.doctorCol') || (language === 'ru' ? 'Врач (Ф.И.О)' : 'Shifokor (F.I.Sh)')}</span>
                       {docSortField === 'name' ? (
                         docSortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                       ) : (
@@ -786,14 +751,14 @@ export default function Reports() {
                     </div>
                   </th>
                   <th className="px-3.5 py-2.5 border-r border-slate-200 whitespace-nowrap min-w-[140px]">
-                    Mutaxassislik
+                    {t('reports.specialtyCol') || (language === 'ru' ? 'Специальность' : 'Mutaxassislik')}
                   </th>
                   <th 
                     onClick={() => handleDocSort('appointments')}
                     className="w-32 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap bg-blue-50/30"
                   >
                     <div className="flex items-center justify-center gap-1.5 text-blue-800 font-mono">
-                      <span>Qabullar</span>
+                      <span>{t('reports.visitsCol') || (language === 'ru' ? 'Приёмы' : 'Qabullar')}</span>
                       {docSortField === 'appointments' ? (
                         docSortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                       ) : (
@@ -806,7 +771,7 @@ export default function Reports() {
                     className="w-32 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                   >
                     <div className="flex items-center justify-center gap-1.5 text-emerald-800 font-mono">
-                      <span>Bajarilgan</span>
+                      <span>{t('reports.completedCol') || (language === 'ru' ? 'Выполнено' : 'Bajarilgan')}</span>
                       {docSortField === 'completed' ? (
                         docSortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                       ) : (
@@ -819,7 +784,7 @@ export default function Reports() {
                     className="w-32 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                   >
                     <div className="flex items-center justify-center gap-1.5 text-slate-700 font-mono">
-                      <span>Bemorlar soni</span>
+                      <span>{t('reports.patientsCol') || (language === 'ru' ? 'Кол-во пациентов' : 'Bemorlar soni')}</span>
                       {docSortField === 'patients' ? (
                         docSortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                       ) : (
@@ -832,7 +797,7 @@ export default function Reports() {
                     className="w-44 px-3.5 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-emerald-50/40 select-none whitespace-nowrap"
                   >
                     <div className="flex items-center justify-end gap-1.5 text-emerald-700 font-mono">
-                      <span>Umumiy Tushum</span>
+                      <span>{t('reports.revenueCol') || (language === 'ru' ? 'Общая выручка' : 'Umumiy Tushum')}</span>
                       {docSortField === 'revenue' ? (
                         docSortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
                       ) : (
@@ -845,7 +810,7 @@ export default function Reports() {
                     className="w-36 px-3.5 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                   >
                     <div className="flex items-center justify-end gap-1.5 text-slate-700 font-mono">
-                      <span>O'rtacha Chek</span>
+                      <span>{t('reports.avgCheckCol') || (language === 'ru' ? 'Средний чек' : "O'rtacha Chek")}</span>
                       {docSortField === 'avg_check' ? (
                         docSortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                       ) : (
@@ -857,7 +822,7 @@ export default function Reports() {
                     onClick={() => handleDocSort('share')}
                     className="w-28 px-3 py-2.5 text-center select-none whitespace-nowrap"
                   >
-                    Klinika Ulushi
+                    {t('reports.clinicShareCol') || (language === 'ru' ? 'Доля клиники' : 'Klinika Ulushi')}
                   </th>
                 </tr>
               </thead>
@@ -883,11 +848,13 @@ export default function Reports() {
                         </td>
                         <td className={`border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
                           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-bold text-slate-600 bg-slate-100 border border-slate-200">
-                            {doc.specialty}
+                            {(!doc.specialty || doc.specialty === 'Stomatolog') 
+                              ? (language === 'ru' ? 'Стоматолог' : language === 'en' ? 'Dentist' : 'Stomatolog') 
+                              : doc.specialty}
                           </span>
                         </td>
                         <td className={`text-center border-r border-slate-200/70 whitespace-nowrap bg-blue-50/20 ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
-                          <span className="font-mono font-bold text-blue-900">{doc.appointmentCount} ta</span>
+                          <span className="font-mono font-bold text-blue-900">{doc.appointmentCount} {language === 'ru' ? '' : 'ta'}</span>
                         </td>
                         <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
                           <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
@@ -895,7 +862,7 @@ export default function Reports() {
                           </span>
                         </td>
                         <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
-                          <span className="font-mono font-bold text-slate-700">{doc.uniquePatients} nafar</span>
+                          <span className="font-mono font-bold text-slate-700">{doc.uniquePatients} {language === 'ru' ? 'пациентов' : 'nafar'}</span>
                         </td>
                         <td className={`text-right border-r border-slate-200/70 whitespace-nowrap bg-emerald-50/30 ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
                           <span className="font-mono font-black text-emerald-600 text-xs tabular-nums">
@@ -925,19 +892,6 @@ export default function Reports() {
               </tbody>
             </table>
           </div>
-
-          {/* Footer Bar */}
-          <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-3 text-slate-600 font-bold">
-              <span>Jadvalda: <strong className="text-slate-900 font-mono">{doctorLeaderboard.length}</strong> ta shifokor</span>
-              <span>•</span>
-              <span>Σ Jami Qabullar: <strong className="text-blue-700 font-mono">{doctorLeaderboard.reduce((s, d) => s + d.appointmentCount, 0)} ta</strong></span>
-            </div>
-            <div className="flex items-center gap-2 font-mono">
-              <span className="text-slate-500 font-bold uppercase text-[10px]">Σ Jami Shifokorlar Tushumi:</span>
-              <strong className="text-emerald-700 text-sm">{doctorLeaderboard.reduce((s, d) => s + d.revenue, 0).toLocaleString()} UZS</strong>
-            </div>
-          </div>
         </motion.div>
       )}
 
@@ -950,12 +904,12 @@ export default function Reports() {
           <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="text-xs font-black text-slate-900 uppercase">Oylik Kirim va Chiqim Dinamikasi</h3>
-                <p className="text-[10px] text-slate-400 font-bold">So'nggi 6 oylik moliyaviy ko'rsatkichlar diagrammasi</p>
+                <h3 className="text-xs font-black text-slate-900 uppercase">{language === 'ru' ? 'Динамика доходов и расходов' : 'Oylik Kirim va Chiqim Dinamikasi'}</h3>
+                <p className="text-[10px] text-slate-400 font-bold">{language === 'ru' ? 'График финансовых показателей за последние 6 месяцев' : "So'nggi 6 oylik moliyaviy ko'rsatkichlar diagrammasi"}</p>
               </div>
               <div className="flex items-center gap-3 text-[11px] font-bold">
-                <span className="flex items-center gap-1.5 text-emerald-700"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Tushum (Kirim)</span>
-                <span className="flex items-center gap-1.5 text-rose-700"><div className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Chiqim (Xarajat)</span>
+                <span className="flex items-center gap-1.5 text-emerald-700"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> {language === 'ru' ? 'Доход (Поступления)' : 'Tushum (Kirim)'}</span>
+                <span className="flex items-center gap-1.5 text-rose-700"><div className="w-2.5 h-2.5 rounded-full bg-rose-500" /> {language === 'ru' ? 'Расход' : 'Chiqim (Xarajat)'}</span>
               </div>
             </div>
             <div className="h-[220px] w-full">
@@ -988,7 +942,7 @@ export default function Reports() {
                       className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors"
                     >
                       <div className="flex items-center justify-between gap-1.5">
-                        <span>Oy / Davr</span>
+                        <span>{language === 'ru' ? 'Месяц / Период' : 'Oy / Davr'}</span>
                         {finSortField === 'month' ? (
                           finSortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                         ) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
@@ -1081,14 +1035,14 @@ export default function Reports() {
             {/* Footer Bar */}
             <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-3 text-slate-600 font-bold">
-                <span>Jami Oylar: <strong className="text-slate-900 font-mono">{monthlyFinanceReport.length}</strong></span>
+                <span>{language === 'ru' ? 'Всего месяцев: ' : 'Jami Oylar: '}<strong className="text-slate-900 font-mono">{monthlyFinanceReport.length}</strong></span>
                 <span>•</span>
-                <span>Σ Jami Kirim: <strong className="text-emerald-700 font-mono">{monthlyFinanceReport.reduce((s, f) => s + f.income, 0).toLocaleString()} UZS</strong></span>
+                <span>{language === 'ru' ? 'Σ Общий доход: ' : 'Σ Jami Kirim: '}<strong className="text-emerald-700 font-mono">{monthlyFinanceReport.reduce((s, f) => s + f.income, 0).toLocaleString()} UZS</strong></span>
               </div>
               <div className="flex items-center gap-3 font-mono">
-                <span className="text-rose-700 font-bold">Σ Chiqim: {monthlyFinanceReport.reduce((s, f) => s + f.expense, 0).toLocaleString()} UZS</span>
+                <span className="text-rose-700 font-bold">{language === 'ru' ? 'Σ Расход: ' : 'Σ Chiqim: '}{monthlyFinanceReport.reduce((s, f) => s + f.expense, 0).toLocaleString()} UZS</span>
                 <span>•</span>
-                <span className="text-purple-700 font-black text-sm">Σ Sof Foyda: {monthlyFinanceReport.reduce((s, f) => s + f.net, 0).toLocaleString()} UZS</span>
+                <span className="text-purple-700 font-black text-sm">{language === 'ru' ? 'Σ Чистая прибыль: ' : 'Σ Sof Foyda: '}{monthlyFinanceReport.reduce((s, f) => s + f.net, 0).toLocaleString()} UZS</span>
               </div>
             </div>
           </motion.div>
@@ -1114,7 +1068,7 @@ export default function Reports() {
                     className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors"
                   >
                     <div className="flex items-center justify-between gap-1.5">
-                      <span>Xizmat Nomi / Kategoriya</span>
+                      <span>{language === 'ru' ? 'Услуга / Категория' : 'Xizmat Nomi / Kategoriya'}</span>
                       {srvSortField === 'name' ? (
                         srvSortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                       ) : <ArrowUpDown className="w-3 h-3 opacity-30" />}
@@ -1191,19 +1145,6 @@ export default function Reports() {
               </tbody>
             </table>
           </div>
-
-          {/* Footer Bar */}
-          <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-3 text-slate-600 font-bold">
-              <span>Jami Xizmat Turlari: <strong className="text-slate-900 font-mono">{servicesReport.length}</strong></span>
-              <span>•</span>
-              <span>Σ Jami Muolajalar: <strong className="text-blue-700 font-mono">{servicesReport.reduce((s, r) => s + r.count, 0)} ta</strong></span>
-            </div>
-            <div className="flex items-center gap-2 font-mono">
-              <span className="text-slate-500 font-bold uppercase text-[10px]">Σ Xizmatlar Tushumi:</span>
-              <strong className="text-emerald-700 text-sm">{servicesReport.reduce((s, r) => s + r.revenue, 0).toLocaleString()} UZS</strong>
-            </div>
-          </div>
         </motion.div>
       )}
 
@@ -1215,8 +1156,8 @@ export default function Reports() {
           {/* Pie Chart Card */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col justify-between">
             <div>
-              <h3 className="text-xs font-black text-slate-900 uppercase">Qabullar Taqsimoti (Diagramma)</h3>
-              <p className="text-[10px] text-slate-400 font-bold mt-0.5">Uchrashuvlarning holatlar bo'yicha foiz ulushi</p>
+              <h3 className="text-xs font-black text-slate-900 uppercase">{language === 'ru' ? 'Распределение приёмов (Диаграмма)' : 'Qabullar Taqsimoti (Diagramma)'}</h3>
+              <p className="text-[10px] text-slate-400 font-bold mt-0.5">{language === 'ru' ? 'Процентное соотношение приёмов по статусам' : "Uchrashuvlarning holatlar bo'yicha foiz ulushi"}</p>
             </div>
             <div className="h-[200px] w-full my-2">
               <ResponsiveContainer width="100%" height="100%">
@@ -1260,9 +1201,9 @@ export default function Reports() {
                 <thead>
                   <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 text-[10.5px] font-black uppercase tracking-wider">
                     <th className="w-12 px-2.5 py-2.5 text-center border-r border-slate-200 font-mono">№</th>
-                    <th className="px-3.5 py-2.5 border-r border-slate-200">Qabul Holati</th>
-                    <th className="w-36 px-3 py-2.5 text-center border-r border-slate-200 bg-blue-50/30">Uchrashuvlar Soni</th>
-                    <th className="w-36 px-3 py-2.5 text-center">Ulush (%)</th>
+                    <th className="px-3.5 py-2.5 border-r border-slate-200">{language === 'ru' ? 'Статус приёма' : 'Qabul Holati'}</th>
+                    <th className="w-36 px-3 py-2.5 text-center border-r border-slate-200 bg-blue-50/30">{language === 'ru' ? 'Количество приёмов' : 'Uchrashuvlar Soni'}</th>
+                    <th className="w-36 px-3 py-2.5 text-center">{language === 'ru' ? 'Доля (%)' : 'Ulush (%)'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200/70 text-xs">
@@ -1289,16 +1230,6 @@ export default function Reports() {
                   ))}
                 </tbody>
               </table>
-            </div>
-
-            {/* Footer Bar */}
-            <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex items-center justify-between text-xs">
-              <span className="text-slate-600 font-bold">
-                Jami Qabullar: <strong className="text-blue-700 font-mono">{filteredAppointments.length} ta</strong>
-              </span>
-              <span className="text-emerald-700 font-bold font-mono">
-                Muvaffaqiyatli yakunlangan: {stats.completedAppts} ta ({Math.round((stats.completedAppts / (filteredAppointments.length || 1)) * 100)}%)
-              </span>
             </div>
           </motion.div>
         </div>

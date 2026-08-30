@@ -82,7 +82,7 @@ const PRESET_SERVICES = [
 ];
 
 export default function ImplantDetail() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -439,98 +439,98 @@ export default function ImplantDetail() {
   const excelSpecRows = [
     {
       num: 1,
-      key: "Bemor (F.I.Sh)",
+      key: language === 'ru' ? "Пациент (Ф.И.О)" : "Bemor (F.I.Sh)",
       val: safeRender(activeTooth.patient_name),
-      sub: activeTooth.patient_phone || "Telefon kiritilmagan",
+      sub: activeTooth.patient_phone || (language === 'ru' ? "Телефон не указан" : "Telefon kiritilmagan"),
       badge: "bg-teal-50 text-teal-700 border-teal-200",
       icon: UserRound
     },
     {
       num: 2,
-      key: "Tish Raqamlari (FDI)",
+      key: language === 'ru' ? "Номера зубов (FDI)" : "Tish Raqamlari (FDI)",
       val: teethList.length > 0 ? teethList.map(n => `#${toothIdToFdi(n)}`).join(', ') : '—',
-      sub: "Xalqaro FDI tish formulasi",
+      sub: language === 'ru' ? "Международная формула FDI" : "Xalqaro FDI tish formulasi",
       badge: "bg-slate-900 text-white font-mono",
       icon: ImplantIcon
     },
     {
       num: 3,
-      key: "Firma / Brend Nomi",
+      key: language === 'ru' ? "Фирма / Бренд" : "Firma / Brend Nomi",
       val: firmaNom,
-      sub: activeTooth.brend ? `${activeTooth.brend} ${activeTooth.diameter && activeTooth.length ? `(Ø${activeTooth.diameter}×${activeTooth.length}mm)` : ''}` : 'Standart model',
+      sub: activeTooth.brend ? `${activeTooth.brend} ${activeTooth.diameter && activeTooth.length ? `(Ø${activeTooth.diameter}×${activeTooth.length}mm)` : ''}` : (language === 'ru' ? 'Стандартная модель' : 'Standart model'),
       badge: "bg-indigo-50 text-indigo-700 border-indigo-200",
       icon: Building2
     },
     {
       num: 4,
-      key: "Jami Amaliyotlar Narxi",
-      val: `${totalAllServicesPrice.toLocaleString()} so'm`,
-      sub: "Barcha xizmatlar umumiy yig'indisi",
+      key: language === 'ru' ? "Общая стоимость операций" : "Jami Amaliyotlar Narxi",
+      val: `${totalAllServicesPrice.toLocaleString()} ${language === 'ru' ? 'UZS' : "so'm"}`,
+      sub: language === 'ru' ? "Общая сумма всех услуг" : "Barcha xizmatlar umumiy yig'indisi",
       badge: "bg-emerald-50 text-emerald-700 border-emerald-200 font-mono",
       icon: ClinicalRevenueIcon,
       highlight: true
     },
     {
       num: 5,
-      key: "O'rnatilgan Sana",
+      key: language === 'ru' ? "Дата установки" : "O'rnatilgan Sana",
       val: safeRender(activeTooth.placement_date),
-      sub: "Jarrohlik o'tkazilgan sana",
+      sub: language === 'ru' ? "Дата проведения операции" : "Jarrohlik o'tkazilgan sana",
       badge: "bg-slate-100 text-slate-800 font-mono",
       icon: CalendarDays
     },
     {
       num: 6,
-      key: "O'lchamlari (Diametr × Uzunlik)",
+      key: language === 'ru' ? "Размеры (Диаметр × Длина)" : "O'lchamlari (Diametr × Uzunlik)",
       val: (activeTooth.diameter || activeTooth.length) ? `Ø ${safeRender(activeTooth.diameter, '—')} mm × ${safeRender(activeTooth.length, '—')} mm` : '—',
-      sub: "Implant tanasi parametrlari",
+      sub: language === 'ru' ? "Параметры тела импланта" : "Implant tanasi parametrlari",
       badge: "bg-sky-50 text-sky-700 border-sky-200 font-mono",
       icon: Settings2
     },
     {
       num: 7,
-      key: "Torque (Birlamchi Barqarorlik)",
+      key: language === 'ru' ? "Торк (Первичная стабильность)" : "Torque (Birlamchi Barqarorlik)",
       val: activeTooth.torque ? `${activeTooth.torque} Ncm` : '—',
-      sub: activeTooth.torque ? (Number(activeTooth.torque) >= 35 ? "Optimal (≥35 Ncm)" : "Past barqarorlik") : "O'lchanmagan",
+      sub: activeTooth.torque ? (Number(activeTooth.torque) >= 35 ? (language === 'ru' ? "Оптимально (≥35 Ncm)" : "Optimal (≥35 Ncm)") : (language === 'ru' ? "Низкая стабильность" : "Past barqarorlik")) : (language === 'ru' ? "Не измерено" : "O'lchanmagan"),
       badge: activeTooth.torque ? (Number(activeTooth.torque) >= 35 ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200") : "bg-slate-100 text-slate-500",
       icon: Activity
     },
     {
       num: 8,
-      key: "ISQ (Osseointegratsiya Ko'rsatkichi)",
+      key: language === 'ru' ? "ISQ (Индекс остеоинтеграции)" : "ISQ (Osseointegratsiya Ko'rsatkichi)",
       val: activeTooth.isq ? `${activeTooth.isq}` : '—',
-      sub: activeTooth.isq ? (Number(activeTooth.isq) >= 65 ? "Yuqori barqarorlik (Aktiv yuklash mumkin)" : "Kuzatuv talab") : "O'lchanmagan",
+      sub: activeTooth.isq ? (Number(activeTooth.isq) >= 65 ? (language === 'ru' ? "Высокая стабильность (Возможна нагрузка)" : "Yuqori barqarorlik (Aktiv yuklash mumkin)") : (language === 'ru' ? "Требует наблюдения" : "Kuzatuv talab")) : (language === 'ru' ? "Не измерено" : "O'lchanmagan"),
       badge: activeTooth.isq ? "bg-indigo-50 text-indigo-700 border-indigo-200 font-mono" : "bg-slate-100 text-slate-500",
       icon: Sparkles
     },
     {
       num: 9,
-      key: "Suyak Turi (Bone Density)",
+      key: language === 'ru' ? "Тип кости (Плотность кости)" : "Suyak Turi (Bone Density)",
       val: safeRender(activeTooth.bone_type),
-      sub: activeTooth.bone_type ? `Misch klassifikatsiyasi: ${activeTooth.bone_type}` : 'Kiritilmagan',
+      sub: activeTooth.bone_type ? (language === 'ru' ? `Классификация по Мишу: ${activeTooth.bone_type}` : `Misch klassifikatsiyasi: ${activeTooth.bone_type}`) : (language === 'ru' ? 'Не указано' : 'Kiritilmagan'),
       badge: "bg-amber-50 text-amber-800 border-amber-200",
       icon: Layers
     },
     {
       num: 10,
-      key: "Lot / Seriya Raqami",
+      key: language === 'ru' ? "Номер партии / Серия" : "Lot / Seriya Raqami",
       val: safeRender(activeTooth.lot_number),
-      sub: "Zavod pasport partiya raqami",
+      sub: language === 'ru' ? "Заводской номер партии паспорта" : "Zavod pasport partiya raqami",
       badge: "bg-slate-100 text-slate-700 font-mono",
       icon: Hash
     },
     {
       num: 11,
-      key: "Mas'ul Shifokor",
+      key: language === 'ru' ? "Ответственный врач" : "Mas'ul Shifokor",
       val: safeRender(activeTooth.doctor),
-      sub: "Operatsiyani bajargan implantolog",
+      sub: language === 'ru' ? "Имплантолог, проводивший операцию" : "Operatsiyani bajargan implantolog",
       badge: "bg-teal-50 text-teal-700 border-teal-200",
       icon: UserRound
     },
     {
       num: 12,
-      key: "Nazorat Eslatmasi (Recall)",
-      val: activeTooth.reminder_date ? `${activeTooth.reminder_date} (${reminderInfo.text})` : 'Belgilanmagan',
-      sub: activeTooth.reminder_months && activeTooth.reminder_months !== 'custom' ? `${activeTooth.reminder_months} oylik reja` : 'Muddati',
+      key: language === 'ru' ? "Контрольное напоминание (Recall)" : "Nazorat Eslatmasi (Recall)",
+      val: activeTooth.reminder_date ? `${activeTooth.reminder_date} (${reminderInfo.text})` : (language === 'ru' ? 'Не назначено' : 'Belgilanmagan'),
+      sub: activeTooth.reminder_months && activeTooth.reminder_months !== 'custom' ? (language === 'ru' ? `План на ${activeTooth.reminder_months} мес.` : `${activeTooth.reminder_months} oylik reja`) : (language === 'ru' ? 'Срок' : 'Muddati'),
       badge: reminderInfo.badge,
       icon: BellRing
     }
@@ -539,80 +539,30 @@ export default function ImplantDetail() {
   return (
     <div className="space-y-4 pb-12 max-w-7xl mx-auto">
       
-      {/* ─── Breadcrumb & Main Action Bar ────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 px-4 rounded-2xl border border-slate-200/90 shadow-xs">
-        <div className="flex items-center gap-2">
-          <Link to="/implants">
-            <Button variant="ghost" size="sm" className="h-9 px-3 rounded-xl gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer">
-              <ArrowLeft className="w-4 h-4 text-[#1499AD]" />
-              <span>Implantlar bo'limi</span>
-            </Button>
-          </Link>
-          <span className="text-slate-300 font-bold">/</span>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-black text-slate-900 truncate">
-              {safeRender(activeTooth.patient_name)}
-            </span>
-            <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-black bg-slate-900 text-white">
-              {teethList.map(n => `#${toothIdToFdi(n)}`).join(', ') || '#—'}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={exportExcelCSV}
-            className="h-9 px-3 rounded-xl border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 gap-1.5 cursor-pointer shadow-xs"
-            title="Excel (.csv) formatida yuklab olish"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Excel Eksport</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={exportPDF}
-            className="h-9 px-3 rounded-xl border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 gap-1.5 cursor-pointer shadow-xs"
-            title="PDF formatida yuklab olish"
-          >
-            <Download className="w-4 h-4 text-indigo-600" />
-            <span>PDF Pasport</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setEditOpen(true)}
-            className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-black text-slate-800 bg-white hover:bg-slate-50 gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Edit2 className="w-3.5 h-3.5 text-[#1499AD]" />
-            <span>Tahrirlash</span>
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setDeleteConfirm(true)}
-            className="h-9 w-9 p-0 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
-            title="O'chirish"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* ─── Hero Clinical Passport Card ─────────────────────────────── */}
-      <div className="bg-white border border-slate-200/90 rounded-3xl p-5 sm:p-6 shadow-xs relative overflow-hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+      {/* ─── Hero Clinical Passport Card & Unified Actions ─────────────────────────────── */}
+      <div className="bg-white border border-slate-200/90 rounded-3xl p-4 sm:p-6 shadow-xs relative overflow-hidden space-y-4">
+        
+        {/* Top Header Row: Back Button + Patient Info + Action Buttons */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           
-          {/* Left: Patient & Tooth Header */}
-          <div className="flex items-start sm:items-center gap-4 min-w-0">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white flex flex-col items-center justify-center font-mono font-black shadow-md border-2 border-slate-700 shrink-0">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">FDI</span>
-              <span className="text-base sm:text-lg tracking-tight">
+          {/* Left: Exit/Back + FDI Badge + Patient Details */}
+          <div className="flex items-start sm:items-center gap-3 min-w-0">
+            {/* Chiqish / Orqaga qaytish tugmasi */}
+            <Link to="/implants">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-12 px-3 sm:h-14 sm:px-4 rounded-2xl border-slate-200 bg-slate-50/80 hover:bg-slate-100 hover:border-slate-300 text-slate-700 font-black text-xs gap-1.5 shrink-0 shadow-2xs transition-all cursor-pointer"
+                title={language === 'ru' ? 'Назад к списку имплантов' : 'Implantlar ro\'yxatiga qaytish'}
+              >
+                <ArrowLeft className="w-4 h-4 text-[#1499AD]" />
+                <span className="hidden sm:inline">{language === 'ru' ? 'Назад' : language === 'en' ? 'Back' : 'Orqaga'}</span>
+              </Button>
+            </Link>
+
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white flex flex-col items-center justify-center font-mono font-black shadow-md border-2 border-slate-700 shrink-0">
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">FDI</span>
+              <span className="text-sm sm:text-base tracking-tight">
                 {teethList.map(n => `#${toothIdToFdi(n)}`).join(' ') || '#—'}
               </span>
             </div>
@@ -627,7 +577,7 @@ export default function ImplantDetail() {
                   "px-2.5 py-0.5 rounded-lg text-xs font-black uppercase tracking-wider border shadow-2xs",
                   LIFECYCLE_COLORS[displayStatus] || "bg-slate-100 text-slate-700"
                 )}>
-                  {displayStatus}
+                  {language === 'ru' ? (displayStatus === "O'rnatildi" ? 'Установлено' : displayStatus === 'Rejalashtirilgan' ? 'Запланировано' : displayStatus === 'Healing jarayoni' ? 'Заживление' : displayStatus === "Abutment qo'yildi" ? 'Установлен абатмент' : displayStatus === 'Crown tayyor' ? 'Коронка готова' : displayStatus === 'Tugallangan' ? 'Завершено' : displayStatus === 'Failure' ? 'Неудача' : displayStatus) : displayStatus}
                 </span>
 
                 {displayStatus === 'Failure' && (
@@ -637,7 +587,7 @@ export default function ImplantDetail() {
                 )}
               </div>
 
-              <div className="flex items-center gap-4 mt-2 text-xs font-semibold text-slate-500 flex-wrap">
+              <div className="flex items-center gap-4 mt-1.5 text-xs font-semibold text-slate-500 flex-wrap">
                 {activeTooth.patient_phone && (
                   <a 
                     href={`tel:${activeTooth.patient_phone}`}
@@ -665,7 +615,7 @@ export default function ImplantDetail() {
                     to={`/patients/${activeTooth.patient_id}`}
                     className="flex items-center gap-1 text-[#1499AD] hover:underline font-bold"
                   >
-                    <span>Bemor profili</span>
+                    <span>{language === 'ru' ? 'Профиль пациента' : 'Bemor profili'}</span>
                     <ExternalLink className="w-3 h-3" />
                   </Link>
                 )}
@@ -673,47 +623,83 @@ export default function ImplantDetail() {
             </div>
           </div>
 
-          {/* Right: Key Summary Metrics */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 shrink-0">
-            <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">JAMI XIZMATLAR</span>
-              <span className="text-sm font-black font-mono text-emerald-600">{totalAllServicesPrice.toLocaleString()} so'm</span>
-            </div>
+          {/* Right: Action Buttons */}
+          <div className="flex items-center gap-2 flex-wrap self-end lg:self-center">
+            
 
-            <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">Firma / Brend</span>
-              <span className="text-sm font-black text-slate-900 truncate block">{firmaNom}</span>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportPDF}
+              className="h-9 px-3 rounded-xl border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 gap-1.5 cursor-pointer shadow-xs"
+              title="PDF formatida yuklab olish"
+            >
+              <Download className="w-4 h-4 text-indigo-600" />
+              <span>{language === 'ru' ? 'PDF Паспорт' : language === 'en' ? 'PDF Passport' : 'PDF Pasport'}</span>
+            </Button>
 
-            <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 shadow-2xs col-span-2 sm:col-span-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">Holatni O'zgartirish</span>
-              <Select 
-                value={displayStatus} 
-                onValueChange={updateStatus}
-                disabled={statusUpdating}
-              >
-                <SelectTrigger className="h-7 px-2 text-[10px] font-black uppercase border-slate-200 bg-slate-50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl text-xs font-bold">
-                  {["Rejalashtirilgan","O'rnatildi","Healing jarayoni","Abutment qo'yildi","Crown tayyor","Tugallangan","Failure"].map(s => (
-                    <SelectItem key={s} value={s} className="uppercase text-[11px] font-black">
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditOpen(true)}
+              className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-black text-slate-800 bg-white hover:bg-slate-50 gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Edit2 className="w-3.5 h-3.5 text-[#1499AD]" />
+              <span>{language === 'ru' ? 'Редактировать' : language === 'en' ? 'Edit' : 'Tahrirlash'}</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteConfirm(true)}
+              className="h-9 w-9 p-0 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+              title={language === 'ru' ? 'Удалить' : "O'chirish"}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Key Summary Metrics Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+          <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">{language === 'ru' ? 'ВСЕГО УСЛУГ' : language === 'en' ? 'TOTAL SERVICES' : 'JAMI XIZMATLAR'}</span>
+            <span className="text-sm font-black font-mono text-emerald-600">{totalAllServicesPrice.toLocaleString()} {language === 'ru' ? 'UZS' : "so'm"}</span>
           </div>
 
+          <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">{language === 'ru' ? 'ФИРМА / БРЕНД' : language === 'en' ? 'BRAND / COMPANY' : 'Firma / Brend'}</span>
+            <span className="text-sm font-black text-slate-900 truncate block">{firmaNom}</span>
+          </div>
+
+          <div className="p-2.5 bg-white rounded-xl border border-slate-200/70 shadow-2xs col-span-2 sm:col-span-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">{language === 'ru' ? 'ИЗМЕНИТЬ СТАТУС' : language === 'en' ? 'CHANGE STATUS' : "Holatni O'zgartirish"}</span>
+            <Select 
+              value={displayStatus} 
+              onValueChange={updateStatus}
+              disabled={statusUpdating}
+            >
+              <SelectTrigger className="h-7 px-2 text-[10px] font-black uppercase border-slate-200 bg-slate-50">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl text-xs font-bold">
+                {["Rejalashtirilgan","O'rnatildi","Healing jarayoni","Abutment qo'yildi","Crown tayyor","Tugallangan","Failure"].map(s => (
+                  <SelectItem key={s} value={s} className="uppercase text-[11px] font-black">
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
       </div>
 
       {/* ─── Multi-Tooth Selection Tabs (if related teeth exist) ────── */}
       {relatedTeeth.length > 1 && (
         <div className="flex items-center gap-2 bg-white p-2.5 rounded-2xl border border-slate-200/90 shadow-xs overflow-x-auto">
           <span className="text-xs font-black text-slate-400 uppercase tracking-wider pl-2 shrink-0">
-            Amaliyotdagi tishlar:
+            {language === 'ru' ? 'Зубы в операции:' : 'Amaliyotdagi tishlar:'}
           </span>
           <div className="flex items-center gap-1.5">
             {relatedTeeth.map(r => {
@@ -749,11 +735,11 @@ export default function ImplantDetail() {
                 <TableIcon className="w-4 h-4 text-[#1499AD]" />
               </div>
               <h2 className="text-base font-black text-slate-900 tracking-tight uppercase">
-                Xizmatlar & Amaliyotlar Reyestri (Excel Jadvali)
+                {language === 'ru' ? 'Реестр услуг и операций (Excel таблица)' : 'Xizmatlar & Amaliyotlar Reyestri (Excel Jadvali)'}
               </h2>
             </div>
             <p className="text-xs text-slate-400 font-semibold mt-0.5">
-              Implant, Sinus-lifting, Metallokeramika, Abutment va barcha qo'shimcha xizmatlar yig'indisi
+              {language === 'ru' ? 'Имплант, синус-лифтинг, металлокерамика, абатмент и все дополнительные услуги' : 'Implant, Sinus-lifting, Metallokeramika, Abutment va barcha qo\'shimcha xizmatlar yig\'indisi'}
             </p>
           </div>
 
@@ -762,7 +748,7 @@ export default function ImplantDetail() {
             className="bg-[#00D084] hover:bg-[#00B875] text-white gap-1.5 rounded-xl h-9.5 px-4 font-black text-xs shadow-md shadow-[#00D084]/20 transition-all active:scale-95 cursor-pointer self-start sm:self-auto"
           >
             <PlusCircle className="w-4 h-4" />
-            <span>+ Yangi xizmat qo'shish</span>
+            <span>{language === 'ru' ? '+ Добавить услугу' : language === 'en' ? '+ Add Service' : '+ Yangi xizmat qo\'shish'}</span>
           </Button>
         </div>
 
@@ -772,12 +758,12 @@ export default function ImplantDetail() {
             <thead>
               <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 text-[11px] font-black uppercase tracking-wider sticky top-0">
                 <th className="w-12 px-3 py-3 text-center border-r border-slate-200 font-mono">№</th>
-                <th className="px-4 py-3 border-r border-slate-200 min-w-[200px]">Xizmatlar</th>
-                <th className="w-32 px-3 py-3 border-r border-slate-200">Sana</th>
-                <th className="w-28 px-2.5 py-3 text-center border-r border-slate-200">Tish raqami</th>
-                <th className="px-4 py-3 border-r border-slate-200 min-w-[150px]">Firma nomi</th>
-                <th className="w-36 px-4 py-3 text-right border-r border-slate-200 bg-emerald-50/40 text-emerald-900">Narxi</th>
-                <th className="w-24 px-2 py-3 text-center text-slate-500">Amallar</th>
+                <th className="px-4 py-3 border-r border-slate-200 min-w-[200px]">{language === 'ru' ? 'Услуги' : 'Xizmatlar'}</th>
+                <th className="w-32 px-3 py-3 border-r border-slate-200">{language === 'ru' ? 'Дата' : 'Sana'}</th>
+                <th className="w-28 px-2.5 py-3 text-center border-r border-slate-200">{language === 'ru' ? 'Номер зуба' : 'Tish raqami'}</th>
+                <th className="px-4 py-3 border-r border-slate-200 min-w-[150px]">{language === 'ru' ? 'Фирма / Бренд' : 'Firma nomi'}</th>
+                <th className="w-36 px-4 py-3 text-right border-r border-slate-200 bg-emerald-50/40 text-emerald-900">{language === 'ru' ? 'Цена' : 'Narxi'}</th>
+                <th className="w-24 px-2 py-3 text-center text-slate-500">{language === 'ru' ? 'Действия' : 'Amallar'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/70">
@@ -825,7 +811,22 @@ export default function ImplantDetail() {
                         </div>
                         <div>
                           <span className="block font-black text-slate-900 text-xs">
-                            {svc.service_name}
+                            {language === 'ru' ? (svc.service_name || '')
+                              .replace(/Implant o'rnatish/gi, 'Установка импланта')
+                              .replace(/Metallokeramika Karonka/gi, 'Металлокерамическая коронка')
+                              .replace(/Zirkon Karonka/gi, 'Циркониевая коронка')
+                              .replace(/E-Max Karonka/gi, 'Коронка E-Max')
+                              .replace(/E-Max Press Karonka/gi, 'Коронка E-Max Press')
+                              .replace(/Yopiq Sinus-lifting/gi, 'Закрытый синус-лифтинг')
+                              .replace(/Ochiq Sinus-lifting/gi, 'Открытый синус-лифтинг')
+                              .replace(/Suyak ekish/gi, 'Костная пластика')
+                              .replace(/Membrana qo'yish/gi, 'Установка мембраны')
+                              .replace(/Standart Abutment/gi, 'Стандартный абатмент')
+                              .replace(/Individual Zirkon Abutment/gi, 'Индивидуальный циркониевый абатмент')
+                              .replace(/Formik qo'yish/gi, 'Установка формирователя')
+                              .replace(/Formik/gi, 'Формирователь')
+                              .replace(/Boshqa xizmat/gi, 'Другая услуга')
+                              : svc.service_name}
                           </span>
                           {svc.notes && (
                             <span className="text-[10px] font-semibold text-slate-400 block truncate">
@@ -855,7 +856,7 @@ export default function ImplantDetail() {
 
                     {/* Narxi */}
                     <td className="text-right border-r border-slate-200/70 py-2.5 px-4 font-mono font-black text-emerald-700 bg-emerald-50/20 whitespace-nowrap">
-                      {priceVal.toLocaleString()} <span className="text-[10px] font-bold text-emerald-600/80 uppercase">so'm</span>
+                      {priceVal.toLocaleString()} <span className="text-[10px] font-bold text-emerald-600/80 uppercase">{language === 'ru' ? 'UZS' : "so'm"}</span>
                     </td>
 
                     {/* Amallar */}
@@ -865,7 +866,7 @@ export default function ImplantDetail() {
                           <button
                             onClick={() => setEditOpen(true)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-[#1499AD] hover:bg-slate-100 cursor-pointer transition-colors"
-                            title="Asosiy amaliyotni tahrirlash"
+                            title={language === 'ru' ? 'Редактировать основную операцию' : "Asosiy amaliyotni tahrirlash"}
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
@@ -873,7 +874,7 @@ export default function ImplantDetail() {
                           <button
                             onClick={() => handleDeleteService(svc.id)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
-                            title="Xizmatni o'chirish"
+                            title={language === 'ru' ? 'Удалить услугу' : "Xizmatni o'chirish"}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -891,14 +892,14 @@ export default function ImplantDetail() {
         <div className="bg-slate-100/90 border border-slate-200 p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2 text-slate-600 font-bold">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Jami amaliyotlar va xizmatlar soni:</span>
-            <strong className="text-slate-900 font-mono text-sm">{allServices.length} ta</strong>
+            <span>{language === 'ru' ? 'Всего операций и услуг:' : 'Jami amaliyotlar va xizmatlar soni:'}</span>
+            <strong className="text-slate-900 font-mono text-sm">{allServices.length} {language === 'ru' ? '' : 'ta'}</strong>
           </div>
 
           <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
-            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">JAMI QIYMAT (SUMMA):</span>
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">{language === 'ru' ? 'ОБЩАЯ СТОИМОСТЬ:' : 'JAMI QIYMAT (SUMMA):'}</span>
             <span className="font-mono font-black text-emerald-600 text-base">
-              {totalAllServicesPrice.toLocaleString()} so'm
+              {totalAllServicesPrice.toLocaleString()} {language === 'ru' ? 'UZS' : "so'm"}
             </span>
           </div>
         </div>
@@ -907,10 +908,10 @@ export default function ImplantDetail() {
       {/* ─── Navigation Tabs Bar ─────────────────────────────────────── */}
       <div className="flex items-center gap-1.5 bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 overflow-x-auto scrollbar-none">
         {[
-          { id: 'excel', label: "📊 Klinik Pasport Parametrlari", count: excelSpecRows.length },
-          { id: 'clinical', label: "⚡ Barqarorlik (Torque / ISQ)", count: null },
-          { id: 'docs', label: "📷 Rentgen & Pasport Hujjatlari", count: (activeTooth.xray_urls?.length || 0) + (activeTooth.passport_url ? 1 : 0) },
-          { id: 'timeline', label: "📜 Tarix & Audit Log", count: (activeTooth.timeline || []).length },
+          { id: 'excel', label: language === 'ru' ? "📊 Клинический паспорт" : "📊 Klinik Pasport Parametrlari", count: excelSpecRows.length },
+          { id: 'clinical', label: language === 'ru' ? "⚡ Стабильность (Torque / ISQ)" : "⚡ Barqarorlik (Torque / ISQ)", count: null },
+          { id: 'docs', label: language === 'ru' ? "📷 Рентген и документы" : "📷 Rentgen & Pasport Hujjatlari", count: (activeTooth.xray_urls?.length || 0) + (activeTooth.passport_url ? 1 : 0) },
+          { id: 'timeline', label: language === 'ru' ? "📜 История и аудит" : "📜 Tarix & Audit Log", count: (activeTooth.timeline || []).length },
         ].map(tab => {
           const isActive = activeTab === tab.id;
           return (
@@ -949,10 +950,10 @@ export default function ImplantDetail() {
             <div>
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
                 <TableIcon className="w-4 h-4 text-[#1499AD]" />
-                <span>Implant Pasporti — Texnik Parametrlar</span>
+                <span>{language === 'ru' ? 'Паспорт импланта — Технические параметры' : 'Implant Pasporti — Texnik Parametrlar'}</span>
               </h3>
               <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                Barcha klinik, texnik parametrlar va jarrohlik o'lchamlari
+                {language === 'ru' ? 'Все клинические, технические параметры и хирургические размеры' : 'Barcha klinik, texnik parametrlar va jarrohlik o\'lchamlari'}
               </p>
             </div>
           </div>
@@ -962,10 +963,10 @@ export default function ImplantDetail() {
               <thead>
                 <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 text-[11px] font-black uppercase tracking-wider sticky top-0">
                   <th className="w-12 px-3 py-3 text-center border-r border-slate-200 font-mono">№</th>
-                  <th className="w-64 px-4 py-3 border-r border-slate-200">Parametr / Ko'rsatkich</th>
-                  <th className="px-4 py-3 border-r border-slate-200">Qiymati</th>
-                  <th className="w-72 px-4 py-3 border-r border-slate-200 hidden md:table-cell">Tavsif / Holati</th>
-                  <th className="w-24 px-3 py-3 text-center">Boshqaruv</th>
+                  <th className="w-64 px-4 py-3 border-r border-slate-200">{language === 'ru' ? 'Параметр / Показатель' : 'Parametr / Ko\'rsatkich'}</th>
+                  <th className="px-4 py-3 border-r border-slate-200">{language === 'ru' ? 'Значение' : 'Qiymati'}</th>
+                  <th className="w-72 px-4 py-3 border-r border-slate-200 hidden md:table-cell">{language === 'ru' ? 'Описание / Статус' : 'Tavsif / Holati'}</th>
+                  <th className="w-24 px-3 py-3 text-center">{language === 'ru' ? 'Управление' : 'Boshqaruv'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200/70">
@@ -1027,7 +1028,7 @@ export default function ImplantDetail() {
             <div className="p-4 bg-amber-50/50 border-t border-amber-200/80 flex items-start gap-3">
               <span className="text-lg shrink-0">📝</span>
               <div className="text-xs">
-                <span className="font-black text-amber-900 uppercase tracking-wider block mb-0.5">Shifokor Qaydlari:</span>
+                <span className="font-black text-amber-900 uppercase tracking-wider block mb-0.5">{language === 'ru' ? 'Заметки врача:' : 'Shifokor Qaydlari:'}</span>
                 <p className="text-amber-800 font-semibold leading-relaxed">{activeTooth.notes}</p>
               </div>
             </div>
@@ -1105,7 +1106,7 @@ export default function ImplantDetail() {
           <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs space-y-4">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
               <Layers className="w-4 h-4 text-amber-600" />
-              <span>Suyak Tuzilishi & Zichligi (Misch Klassifikatsiyasi)</span>
+              <span>{language === 'ru' ? 'Структура и плотность кости (Классификация по Мишу)' : 'Suyak Tuzilishi & Zichligi (Misch Klassifikatsiyasi)'}</span>
             </h4>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -1126,7 +1127,7 @@ export default function ImplantDetail() {
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-black font-mono text-sm text-slate-900">{b.type}</span>
-                    {b.isCurrent && <span className="text-[9px] font-black text-amber-700 uppercase bg-amber-200/60 px-1.5 py-0.2 rounded">Amaldagi</span>}
+                    {b.isCurrent && <span className="text-[9px] font-black text-amber-700 uppercase bg-amber-200/60 px-1.5 py-0.2 rounded">{language === 'ru' ? 'Текущий' : 'Amaldagi'}</span>}
                   </div>
                   <p className="font-bold text-slate-800 text-[11px]">{b.title}</p>
                   <p className="text-[10px] text-slate-500 mt-0.5">{b.desc}</p>
@@ -1147,20 +1148,20 @@ export default function ImplantDetail() {
           <div>
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-3 flex items-center gap-2">
               <Camera className="w-4 h-4 text-[#1499AD]" />
-              <span>Rentgen Suratlari & Klinik Hujjatlar</span>
+              <span>{language === 'ru' ? 'Рентген-снимки и клинические документы' : 'Rentgen Suratlari & Klinik Hujjatlar'}</span>
             </h3>
 
             {/* Passport Document Scan */}
             {activeTooth.passport_url ? (
               <div className="mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                <span className="text-xs font-black uppercase text-slate-700 block">Zavod Pasporti / Shtrix-kod:</span>
+                <span className="text-xs font-black uppercase text-slate-700 block">{language === 'ru' ? 'Заводской паспорт / Штрих-код:' : 'Zavod Pasporti / Shtrix-kod:'}</span>
                 <div 
                   className="w-48 aspect-[4/3] rounded-xl overflow-hidden border border-slate-300 shadow-xs cursor-pointer relative group"
                   onClick={() => setZoomImg(activeTooth.passport_url)}
                 >
                   <img src={activeTooth.passport_url} alt="Passport" className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
-                    <FileText className="w-4 h-4" /> Ko'rish
+                    <FileText className="w-4 h-4" /> {language === 'ru' ? 'Просмотр' : 'Ko\'rish'}
                   </div>
                 </div>
               </div>
@@ -1177,7 +1178,7 @@ export default function ImplantDetail() {
                   >
                     <img src={url} alt={`Xray-${idx}`} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
-                      <Camera className="w-4 h-4" /> Kattalashtirish
+                      <Camera className="w-4 h-4" /> {language === 'ru' ? 'Увеличить' : 'Kattalashtirish'}
                     </div>
                   </div>
                 ))}
@@ -1185,14 +1186,14 @@ export default function ImplantDetail() {
             ) : (
               <div className="py-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                 <Camera className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs font-bold text-slate-400">Rentgen suratlari biriktirilmagan</p>
+                <p className="text-xs font-bold text-slate-400">{language === 'ru' ? 'Рентген-снимки не прикреплены' : 'Rentgen suratlari biriktirilmagan'}</p>
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={() => setEditOpen(true)}
                   className="mt-3 text-xs font-black rounded-xl border-slate-300"
                 >
-                  Rasm biriktirish
+                  {language === 'ru' ? 'Прикрепить снимок' : 'Rasm biriktirish'}
                 </Button>
               </div>
             )}
@@ -1210,14 +1211,14 @@ export default function ImplantDetail() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
               <Clock className="w-4 h-4 text-[#1499AD]" />
-              <span>Amaliyot Tarixi & Audit Log</span>
+              <span>{language === 'ru' ? 'История операций и аудит' : 'Amaliyot Tarixi & Audit Log'}</span>
             </h3>
-            <span className="text-xs font-mono font-bold text-slate-400">{(activeTooth.timeline || []).length} ta yozuv</span>
+            <span className="text-xs font-mono font-bold text-slate-400">{(activeTooth.timeline || []).length} {language === 'ru' ? 'записей' : 'ta yozuv'}</span>
           </div>
 
           {(!activeTooth.timeline || activeTooth.timeline.length === 0) ? (
             <div className="py-10 text-center text-slate-400 text-xs font-bold">
-              Hozircha tarix mavjud emas
+              {language === 'ru' ? 'История пока отсутствует' : 'Hozircha tarix mavjud emas'}
             </div>
           ) : (
             <div className="space-y-3 relative pl-4 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
@@ -1230,7 +1231,7 @@ export default function ImplantDetail() {
                       <span className="text-[10px] font-mono text-slate-400 font-bold">{new Date(item.date).toLocaleString('uz-UZ')}</span>
                     </div>
                     {item.note && <p className="text-slate-600 font-semibold">{item.note}</p>}
-                    {item.user && <span className="text-[10px] text-[#1499AD] font-bold mt-1 block">Xodim: {item.user}</span>}
+                    {item.user && <span className="text-[10px] text-[#1499AD] font-bold mt-1 block">{language === 'ru' ? 'Сотрудник: ' : 'Xodim: '}{item.user}</span>}
                   </div>
                 </div>
               ))}
@@ -1252,7 +1253,7 @@ export default function ImplantDetail() {
           <DialogHeader>
             <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
               <PlusCircle className="w-5 h-5 text-[#00D084]" />
-              <span>Yangi Xizmat & Amaliyot Qo'shish</span>
+              <span>{language === 'ru' ? 'Добавить услугу и операцию' : 'Yangi Xizmat & Amaliyot Qo\'shish'}</span>
             </DialogTitle>
           </DialogHeader>
 
@@ -1261,7 +1262,7 @@ export default function ImplantDetail() {
             {/* Quick Presets Grid */}
             <div>
               <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
-                Tezkor Xizmat Tanlash:
+                {language === 'ru' ? 'БЫСТРЫЙ ВЫБОР УСЛУГИ:' : 'Tezkor Xizmat Tanlash:'}
               </Label>
               <div className="grid grid-cols-2 gap-2">
                 {PRESET_SERVICES.map(p => {
@@ -1281,10 +1282,24 @@ export default function ImplantDetail() {
                     >
                       <div className="flex items-center gap-1.5 min-w-0">
                         {PIcon && <PIcon className={cn("w-3.5 h-3.5 shrink-0", p.iconColor || "text-slate-600")} />}
-                        <span className="font-bold text-xs text-slate-900 truncate">{p.label}</span>
+                        <span className="font-bold text-xs text-slate-900 truncate">
+                          {language === 'ru' ? (p.label || '')
+                            .replace(/Metallokeramika Karonka/gi, 'Металлокерамика')
+                            .replace(/Zirkon Karonka/gi, 'Циркон коронка')
+                            .replace(/E-Max Press Karonka/gi, 'E-Max коронка')
+                            .replace(/Yopiq Sinus-lifting/gi, 'Закрытый синус-лифтинг')
+                            .replace(/Ochiq Sinus-lifting/gi, 'Открытый синус-лифтинг')
+                            .replace(/Suyak ekish \(Bone graft\)/gi, 'Костная пластика')
+                            .replace(/Membrana qo'yish/gi, 'Мембрана')
+                            .replace(/Standart Abutment/gi, 'Стандартный абатмент')
+                            .replace(/Individual Zirkon Abutment/gi, 'Индивидуальный циркон')
+                            .replace(/Formik \(Healing Abutment\)/gi, 'Формирователь десны')
+                            .replace(/Boshqa amaliyot/gi, 'Другая услуга')
+                            : p.label}
+                        </span>
                       </div>
                       <span className="text-[10px] font-mono font-black text-emerald-700 mt-1">
-                        {p.defaultPrice.toLocaleString()} so'm
+                        {p.defaultPrice.toLocaleString()} {language === 'ru' ? 'UZS' : "so'm"}
                       </span>
                     </button>
                   );
@@ -1297,7 +1312,7 @@ export default function ImplantDetail() {
               
               {/* Xizmat nomi */}
               <div>
-                <Label className="text-xs font-bold text-slate-700 mb-1 block">Xizmat Nomi</Label>
+                <Label className="text-xs font-bold text-slate-700 mb-1 block">{language === 'ru' ? 'Название услуги' : 'Xizmat Nomi'}</Label>
                 <Input
                   value={serviceForm.service_name}
                   onChange={e => setServiceForm(prev => ({ ...prev, service_name: e.target.value }))}
@@ -1309,7 +1324,7 @@ export default function ImplantDetail() {
               {/* Sana & Tish raqami */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs font-bold text-slate-700 mb-1 block">Amaliyot Sanasi</Label>
+                  <Label className="text-xs font-bold text-slate-700 mb-1 block">{language === 'ru' ? 'Дата операции' : 'Amaliyot Sanasi'}</Label>
                   <Input
                     type="date"
                     value={serviceForm.date}
@@ -1319,7 +1334,7 @@ export default function ImplantDetail() {
                 </div>
 
                 <div>
-                  <Label className="text-xs font-bold text-slate-700 mb-1 block">Tish Raqami (FDI)</Label>
+                  <Label className="text-xs font-bold text-slate-700 mb-1 block">{language === 'ru' ? 'Номер зуба (FDI)' : 'Tish Raqami (FDI)'}</Label>
                   <Input
                     value={serviceForm.tooth_number}
                     onChange={e => setServiceForm(prev => ({ ...prev, tooth_number: e.target.value }))}
@@ -1332,7 +1347,7 @@ export default function ImplantDetail() {
               {/* Firma & Narxi */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs font-bold text-slate-700 mb-1 block">Firma / Brend / Lab</Label>
+                  <Label className="text-xs font-bold text-slate-700 mb-1 block">{language === 'ru' ? 'Фирма / Бренд / Лаборатория' : 'Firma / Brend / Lab'}</Label>
                   <Input
                     value={serviceForm.firma}
                     onChange={e => setServiceForm(prev => ({ ...prev, firma: e.target.value }))}
@@ -1342,7 +1357,7 @@ export default function ImplantDetail() {
                 </div>
 
                 <div>
-                  <Label className="text-xs font-bold text-slate-700 mb-1 block">Narxi (so'm)</Label>
+                  <Label className="text-xs font-bold text-slate-700 mb-1 block">{language === 'ru' ? 'Цена (UZS)' : 'Narxi (so\'m)'}</Label>
                   <Input
                     type="number"
                     value={serviceForm.price}
@@ -1354,7 +1369,7 @@ export default function ImplantDetail() {
 
               {/* Izoh */}
               <div>
-                <Label className="text-xs font-bold text-slate-700 mb-1 block">Izoh / Shifokor Qaydlari</Label>
+                <Label className="text-xs font-bold text-slate-700 mb-1 block">{language === 'ru' ? 'Заметки врача / Комментарий' : 'Izoh / Shifokor Qaydlari'}</Label>
                 <Textarea
                   value={serviceForm.notes}
                   onChange={e => setServiceForm(prev => ({ ...prev, notes: e.target.value }))}
@@ -1368,9 +1383,9 @@ export default function ImplantDetail() {
 
             {/* Total Highlight */}
             <div className="bg-emerald-50/80 p-3 rounded-2xl border border-emerald-200 flex items-center justify-between">
-              <span className="text-xs font-black uppercase tracking-wider text-emerald-900">Belgilangan Narx:</span>
+              <span className="text-xs font-black uppercase tracking-wider text-emerald-900">{language === 'ru' ? 'УСТАНОВЛЕННАЯ ЦЕНА:' : 'Belgilangan Narx:'}</span>
               <span className="text-base font-black font-mono text-emerald-700">
-                {(Number(serviceForm.price) || 0).toLocaleString()} so'm
+                {(Number(serviceForm.price) || 0).toLocaleString()} {language === 'ru' ? 'UZS' : "so'm"}
               </span>
             </div>
 
@@ -1380,13 +1395,13 @@ export default function ImplantDetail() {
                 onClick={() => setServiceModalOpen(false)}
                 className="rounded-xl text-xs font-bold h-9.5 px-4"
               >
-                Bekor qilish
+                {language === 'ru' ? 'Отмена' : 'Bekor qilish'}
               </Button>
               <Button 
                 onClick={handleSaveNewService}
                 className="bg-[#00D084] hover:bg-[#00B875] text-white font-black text-xs rounded-xl h-9.5 px-5 cursor-pointer shadow-md shadow-[#00D084]/20"
               >
-                + Xizmatni Saqlash
+                {language === 'ru' ? '+ Сохранить услугу' : '+ Xizmatni Saqlash'}
               </Button>
             </div>
 

@@ -394,7 +394,7 @@ export default function PatientProfile() {
 
   // Lazy load Xrays
   useEffect(() => {
-    if (activeTab === 'xrays' && id) {
+    if ((activeTab === 'photos' || activeTab === 'xrays') && id) {
       (async () => {
         try {
           setXraysLoading(true);
@@ -556,30 +556,45 @@ export default function PatientProfile() {
     try {
       for (const file of files) {
         const reader = new FileReader();
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
           reader.onload = async (ev) => {
-            const dataUrl = ev.target.result;
-            // Save as Xray record with special category
-            await base44.entities.Xray.create({
-              patient_id: id,
-              image_url: dataUrl,
-              date: new Date().toISOString().split('T')[0],
-              type: 'photo',
-              notes: file.name,
-            });
-            resolve();
+            try {
+              const dataUrl = ev.target.result;
+              const fname = (file.name || '').toLowerCase();
+              let imgType = 'photo';
+              if (fname.includes('xray') || fname.includes('rentgen') || fname.includes('r-')) imgType = 'xray';
+              else if (fname.includes('ct') || fname.includes('kt')) imgType = 'ct';
+              else if (fname.includes('optg') || fname.includes('pano')) imgType = 'panoramic';
+
+              const newRecord = await base44.entities.Xray.create({
+                patient_id: id,
+                image_url: dataUrl,
+                date: new Date().toISOString().split('T')[0],
+                created_date: new Date().toISOString(),
+                type: imgType,
+                notes: file.name,
+                description: file.name,
+              });
+              if (newRecord) {
+                setXrays(prev => [newRecord, ...prev]);
+              }
+              resolve();
+            } catch (err) {
+              reject(err);
+            }
           };
+          reader.onerror = reject;
           reader.readAsDataURL(file);
         });
       }
-      toast.success(`${files.length} ta rasm yuklandi`);
-      load();
+      toast.success(`${files.length} ta tasvir muvaffaqiyatli yuklandi`);
+      await load();
     } catch (err) {
       console.error(err);
-      toast.error('Rasm yuklashda xatolik');
+      toast.error('Rasm yuklashda xatolik yuz berdi');
     } finally {
       setPhotoUploading(false);
-      e.target.value = '';
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -1135,11 +1150,12 @@ export default function PatientProfile() {
       setLoading(false);
 
       // ── PHASE 2: Secondary data — load in background, no skeleton ──
-      const [svcsRes, implantsRes, toothRes, doctorsRes] = await Promise.all([
+      const [svcsRes, implantsRes, toothRes, doctorsRes, xraysRes] = await Promise.all([
         servicesCache ? Promise.resolve(servicesCache) : base44.entities.Service.filter({ is_active: true }, 'name', 500),
         base44.entities.Implant.filter({ patient_id: id }),
         base44.entities.ToothRecord.filter({ patient_id: id }, '-created_date', 100),
         doctorsCache ? Promise.resolve(doctorsCache) : base44.entities.User.filter({ role: 'doctor' }, 'name'),
+        base44.entities.Xray.filter({ patient_id: id }, '-created_date', 200),
       ]);
 
       if (!servicesCache) servicesCache = svcsRes || [];
@@ -1179,6 +1195,7 @@ export default function PatientProfile() {
       setImplants(implantsRes || []);
       setToothRecords(toothRes || []);
       setDoctors(doctorsRes || []);
+      setXrays(xraysRes || []);
       setRefreshTrigger(prev => prev + 1);
     } catch (e) {
       console.error("Load failed", e);
@@ -1809,6 +1826,21 @@ export default function PatientProfile() {
     setPayModalOpen(true);
   };
 
+  const openAdvanceModal = () => {
+    setPayForm({ 
+      type: 'Income', 
+      amount: '', 
+      method: 'Cash', 
+      category: "Avans to'lovi", 
+      date: getLocalDateTimeValue(), 
+      notes: "Bemor avans depoziti", 
+      doctor_id: doctors[0]?.id || '', 
+      planId: '', 
+      selectedServiceIds: [] 
+    });
+    setPayModalOpen(true);
+  };
+
   // ✅ DB dagi total_debt ni real hisoblangan qiymat bilan sinxronlash
   useEffect(() => {
     if (!patient?.id || !payments) return;
@@ -2286,7 +2318,7 @@ export default function PatientProfile() {
         }
       });
 
-      // 2. All treatments (including both Tish olingan and Implant)
+      // 2. All treatments
       const treats = Array.isArray(statusObj.treatments) && statusObj.treatments.length > 0
         ? statusObj.treatments
         : (statusObj.treatment ? [statusObj.treatment] : []);
@@ -2382,7 +2414,7 @@ export default function PatientProfile() {
   }
 
   const handleSavePay = async () => {
-    if (payingSavingRef.current) return; // professional: anti double-click (same render tick)
+    if (payingSavingRef.current) return;
     payingSavingRef.current = true;
     setPayingSaving(true);
     try {
@@ -2417,7 +2449,7 @@ export default function PatientProfile() {
         }
       }
 
-      // Full recalculation from all payments (not incremental — prevents drift)
+      // Full recalculation from all payments
       const allPays = await base44.entities.Payment.filter({ patient_id: id }, '-date', 5000);
       const allPatPlans = await base44.entities.TreatmentPlan.filter({ patient_id: id }, '-created_date', 50);
       
@@ -2587,7 +2619,7 @@ export default function PatientProfile() {
               title="Bemorlar ro'yxatiga qaytish"
             >
               <ArrowLeft className="w-4 h-4 text-slate-600 group-hover:-translate-x-0.5 transition-transform" />
-              <span className="hidden sm:inline">Bemorlar</span>
+              <span className="hidden sm:inline">{t('patientProfile.backToPatients') || t('navigation.patients') || 'Bemorlar'}</span>
             </button>
             
             {/* Avatar Upload */}
@@ -2630,16 +2662,16 @@ export default function PatientProfile() {
                 </h1>
                 {age !== null && (
                   <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10.5px] font-bold">
-                    {age} yosh
+                    {age} {t('common.yearsOld') || 'yosh'}
                   </span>
                 )}
                 {patient.gender && (
                   <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10.5px] font-bold">
-                    {patient.gender === 'Female' ? 'Ayol' : 'Erkak'}
+                    {patient.gender === 'Female' ? (t('patients.female') || 'Ayol') : (t('patients.male') || 'Erkak')}
                   </span>
                 )}
                 <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-md text-[10px] font-black uppercase tracking-wider">
-                  {patient.status || "Faol"}
+                  {patient.status === 'New' ? (t('patients.statusNew') || 'Yangi') : (t('patients.statusActive') || patient.status || 'Faol')}
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-1">
@@ -2685,11 +2717,11 @@ export default function PatientProfile() {
             {/* KPI Summary Chips */}
             <div className="hidden xl:flex items-center gap-2 mr-2">
               <div className="px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-xl text-right">
-                <p className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">To'langan</p>
+                <p className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">{t('patientProfile.paidLabel') || "To'langan"}</p>
                 <p className="text-xs font-black text-emerald-800 font-mono tabular-nums">{totalPaid.toLocaleString()} UZS</p>
               </div>
               <div className={`px-3 py-1.5 rounded-xl text-right border ${totalDebt > 0 ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
-                <p className="text-[9px] font-bold uppercase tracking-wider">{totalDebt > 0 ? 'Qarzdorlik' : 'Qarz yo\'q'}</p>
+                <p className="text-[9px] font-bold uppercase tracking-wider">{totalDebt > 0 ? (t('patientProfile.debtLabel') || 'Qarzdorlik') : (t('patientProfile.noDebtLabel') || 'Qarz yo\'q')}</p>
                 <p className="text-xs font-black font-mono tabular-nums">{totalDebt.toLocaleString()} UZS</p>
               </div>
             </div>
@@ -2700,7 +2732,7 @@ export default function PatientProfile() {
               className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-xs transition-all cursor-pointer"
             >
               <Calendar className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>+ Qabul</span>
+              <span>+ {t('patientProfile.addApptBtn') || 'Qabul'}</span>
             </button>
 
             <button
@@ -2708,46 +2740,16 @@ export default function PatientProfile() {
               className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-xs transition-all cursor-pointer"
             >
               <CreditCard className="w-3.5 h-3.5" />
-              <span>+ To'lov</span>
+              <span>+ {t('patientProfile.addPayBtn') || 'To\'lov'}</span>
             </button>
 
             <button
-              onClick={() => {
-                exportPatientToExcel({
-                  patient,
-                  plans,
-                  payments,
-                  appointments,
-                  doctors,
-                  card043Data,
-                  totalPaid,
-                  totalDebt,
-                  toothRecords,
-                });
-                toast.success("Bemor profili to'liq Excel (.csv) formatida yuklab olindi!");
-              }}
-              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-xs transition-all cursor-pointer"
-              title="Bemorning barcha ma'lumotlarini Excel formatida (.csv) yuklab olish"
+              onClick={openAdvanceModal}
+              className="flex items-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-xs transition-all cursor-pointer"
+              title="Bemor hisobiga avans (oldindan to'lov) kiritish"
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Excel</span>
-            </button>
-
-            <button
-              onClick={exportCard043PDF}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
-              title="Shakl 043/u Tibbiy kartani PDF formatida yuklash"
-            >
-              <FileDown className="w-3.5 h-3.5 text-slate-500" />
-              <span className="hidden sm:inline">043/u (PDF)</span>
-            </button>
-
-            <button
-              onClick={generatePDF}
-              className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors cursor-pointer"
-              title="Bemor kvitansiyasi / hisobotini yuklash"
-            >
-              <Printer className="w-4 h-4" />
+              <Wallet className="w-3.5 h-3.5" />
+              <span>+ {t('patientProfile.addAdvanceBtn') || 'Avans'}</span>
             </button>
           </div>
         </div>
@@ -2757,14 +2759,13 @@ export default function PatientProfile() {
           <div className="overflow-x-auto no-scrollbar w-full">
             <div className="flex items-center gap-1 py-1.5 min-w-max">
               {[
-                { id: 'excel',        label: "Excel Jadval",       icon: FileSpreadsheet, iconColor: "text-emerald-600" },
-                { id: 'info',         label: "Tish xaritasi",      icon: Tooth,           iconColor: "text-sky-600" },
-                { id: 'treatments',   label: "Davolash Rejalari",  icon: ClipboardList,   iconColor: "text-indigo-600", count: (plans || []).length },
-                { id: 'appointments', label: "Uchrashuvlar",        icon: Calendar,        iconColor: "text-blue-600",   count: (appointments || []).length },
-                { id: 'payments',     label: "To'lovlar & Qarz",   icon: CreditCard,      iconColor: "text-emerald-600", count: (payments || []).filter(p => { const t = (p.type || 'Income').toLowerCase(); return t !== 'debt' && t !== 'discount' && !(p.notes || '').toLowerCase().includes('linked to plan'); }).length },
-                { id: 'notes',        label: "Eslatmalar",         icon: FileText,        iconColor: "text-amber-600" },
-                { id: 'implants',     label: "Implantlar",         icon: ImplantIcon,     iconColor: "text-purple-600", count: (implants || []).length },
-                { id: 'photos',       label: "Rentgen & Rasmlar",  icon: XrayIcon,        iconColor: "text-cyan-600",   count: (xrays || []).length },
+                { id: 'info',         label: t('patientProfile.tabs.dentalChart') || "Tish xaritasi",      icon: Tooth,           iconColor: "text-sky-600" },
+                { id: 'treatments',   label: t('patientProfile.tabs.treatments') || "Davolash Rejalari",  icon: ClipboardList,   iconColor: "text-indigo-600", count: (plans || []).length },
+                { id: 'appointments', label: t('patientProfile.tabs.appointments') || "Uchrashuvlar",        icon: Calendar,        iconColor: "text-blue-600",   count: (appointments || []).length },
+                { id: 'payments',     label: t('patientProfile.tabs.payments') || "To'lovlar & Qarz",   icon: CreditCard,      iconColor: "text-emerald-600", count: (payments || []).filter(p => { const t = (p.type || 'Income').toLowerCase(); return t !== 'debt' && t !== 'discount' && !(p.notes || '').toLowerCase().includes('linked to plan'); }).length },
+                { id: 'notes',        label: t('patientProfile.tabs.notes') || "Eslatmalar",         icon: FileText,        iconColor: "text-amber-600" },
+                { id: 'implants',     label: t('patientProfile.tabs.implants') || "Implantlar",         icon: ImplantIcon,     iconColor: "text-purple-600", count: (implants || []).length },
+                { id: 'photos',       label: t('patientProfile.tabs.photos') || "Rentgen & Rasmlar",  icon: XrayIcon,        iconColor: "text-cyan-600",   count: (xrays || []).length },
               ].map(tabItem => {
                 const IconComponent = tabItem.icon;
                 const isActive = activeTab === tabItem.id;
@@ -3873,11 +3874,7 @@ export default function PatientProfile() {
                     </div>
                   )}
 
-                  {/* Kategoriya / Maqsad */}
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Kategoriya / Maqsad</Label>
-                    <Input value={payForm.category} onChange={e => setPayForm({ ...payForm, category: e.target.value })} className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold text-xs" placeholder="Masalan: Konsultatsiya" />
-                  </div>
+                  
 
                   {/* Izoh */}
                   <div className="space-y-2">

@@ -1,9 +1,10 @@
 import { useState, useMemo, memo } from 'react';
+import { useTranslation } from '@/i18n/LanguageContext';
 import { 
   CreditCard, Plus, Search, FileSpreadsheet,
   ArrowUpDown, ExternalLink, User, Building,
   Banknote, CheckCircle2, X, Printer, Trash2,
-  Table as TableIcon, Copy, Check, Clock
+  Table as TableIcon, Copy, Check, Clock, Receipt
 } from 'lucide-react';
 import { cn, formatPhone } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ function ExcelPaymentsView({
   onPayInstallment,
   onDeletePayment,
 }) {
+  const { t, language } = useTranslation();
   const [search, setSearch] = useState('');
   const [subTab, setSubTab] = useState('ledger'); // 'ledger' | 'plans' | 'installments'
   const [sortField, setSortField] = useState('date');
@@ -77,9 +79,64 @@ function ExcelPaymentsView({
     return list;
   }, [realIncomePayments, search, sortField, sortAsc]);
 
+  // Dynamic calculation of plan paid amount & debt from patient payments
+  const enrichedPlans = useMemo(() => {
+    if (!plans || plans.length === 0) return [];
+    
+    // Total income payments made by the patient
+    const totalPatientIncomes = realIncomePayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const effectiveTotalPaid = Math.max(totalPatientIncomes, Number(totalPaid) || 0, Number(patient?.total_paid) || 0);
+
+    // Track pool of paid money to allocate across plans
+    let remainingPoolToAllocate = effectiveTotalPaid;
+
+    return plans.map((plan, idx) => {
+      const planPrice = Number(plan.total_price || 0);
+      
+      // 1. Direct payments linked to this plan by plan_id, notes, or name
+      const directPays = realIncomePayments.filter(p => {
+        if (p.plan_id && p.plan_id === plan.id) return true;
+        const notes = (p.notes || '').toLowerCase();
+        const sName = (p.service_name || p.treatment_name || p.category || '').toLowerCase();
+        const pName = (plan.name || '').toLowerCase();
+        return (pName && (notes.includes(pName) || sName.includes(pName)));
+      });
+      const directPaidSum = directPays.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+
+      // 2. Base recorded plan.paid_amount
+      const baseRecordedPaid = Number(plan.paid_amount) || 0;
+
+      let calculatedPaid = Math.max(directPaidSum, baseRecordedPaid);
+
+      // If only 1 plan exists for this patient, ALL patient's income payments apply to this single plan!
+      if (plans.length === 1) {
+        calculatedPaid = Math.max(calculatedPaid, effectiveTotalPaid);
+      } else {
+        // If multiple plans, allocate from remaining pool
+        if (calculatedPaid === 0 && remainingPoolToAllocate > 0) {
+          const alloc = Math.min(planPrice > 0 ? planPrice : remainingPoolToAllocate, remainingPoolToAllocate);
+          calculatedPaid = alloc;
+          remainingPoolToAllocate = Math.max(0, remainingPoolToAllocate - alloc);
+        } else {
+          remainingPoolToAllocate = Math.max(0, remainingPoolToAllocate - calculatedPaid);
+        }
+      }
+
+      const effectivePaid = planPrice > 0 ? Math.min(planPrice, calculatedPaid) : calculatedPaid;
+      const effectiveDebt = Math.max(0, planPrice - effectivePaid);
+
+      return {
+        ...plan,
+        paid_amount: effectivePaid,
+        effectiveDebt,
+        calculatedPrice: planPrice
+      };
+    });
+  }, [plans, realIncomePayments, totalPaid, patient?.total_paid]);
+
   const installmentPlans = useMemo(() => {
-    return (plans || []).filter(p => p.installment_plan && p.installment_plan.months > 0);
-  }, [plans]);
+    return (enrichedPlans || []).filter(p => p.installment_plan && p.installment_plan.months > 0);
+  }, [enrichedPlans]);
 
   const toggleSort = (field) => {
     if (sortField === field) {
@@ -90,28 +147,45 @@ function ExcelPaymentsView({
     }
   };
 
+  const formatPaymentMethod = (method) => {
+    const m = String(method || '').toLowerCase();
+    if (m.includes('card') || m.includes('karta') || m.includes('humo') || m.includes('uzcard') || m.includes('terminal')) return 'Plastik karta';
+    if (m.includes('bank') || m.includes('hisob') || m.includes('transfer') || m.includes('o\'tkazma')) return 'Bank o\'tkazmasi';
+    if (m.includes('installment') || m.includes('nasiya') || m.includes('rassrochka') || m.includes('muddatli')) return 'Muddatli to\'lov';
+    if (m.includes('click') || m.includes('payme') || m.includes('uzum')) return 'Onlayn to\'lov';
+    return 'Naqd pul';
+  };
+
   const getMethodBadge = (method) => {
     const m = (method || '').toLowerCase();
-    if (m.includes('card') || m.includes('karta') || m.includes('humo') || m.includes('uzcard')) {
+    if (m.includes('card') || m.includes('karta') || m.includes('humo') || m.includes('uzcard') || m.includes('карт') || m.includes('терминал')) {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[10px]">
           <CreditCard className="w-3 h-3 text-blue-600 shrink-0" />
-          <span>Karta / Terminal</span>
+          <span>{language === 'ru' ? 'Банковская карта' : language === 'en' ? 'Card Payment' : 'Plastik karta'}</span>
         </span>
       );
     }
-    if (m.includes('bank') || m.includes('hisob') || m.includes('transfer')) {
+    if (m.includes('bank') || m.includes('hisob') || m.includes('transfer') || m.includes('перевод')) {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 font-bold text-[10px]">
           <Building className="w-3 h-3 text-purple-600 shrink-0" />
-          <span>Bank o'tkazmasi</span>
+          <span>{language === 'ru' ? 'Банковский перевод' : language === 'en' ? 'Bank Transfer' : 'Bank o\'tkazmasi'}</span>
+        </span>
+      );
+    }
+    if (m.includes('installment') || m.includes('rassrochka') || m.includes('muddatli') || m.includes('рассрочк')) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[10px]">
+          <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+          <span>{language === 'ru' ? 'Рассрочка' : language === 'en' ? 'Installment' : 'Muddatli to\'lov'}</span>
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
         <Banknote className="w-3 h-3 text-emerald-600 shrink-0" />
-        <span>Naqd pul</span>
+        <span>{language === 'ru' ? 'Наличные' : language === 'en' ? 'Cash' : 'Naqd pul'}</span>
       </span>
     );
   };
@@ -124,84 +198,382 @@ function ExcelPaymentsView({
     setTimeout(() => setCopiedPhone(false), 2000);
   };
 
-  const handlePrintReceipt = (p) => {
-    if (!p) return;
-    const dateStr = p.date || p.created_date ? new Date(p.date || p.created_date).toLocaleString('uz-UZ') : new Date().toLocaleString('uz-UZ');
-    const doctorName = p.doctor_name || patient?.doctor_name || 'Shifokor';
+    const handlePrintReceipt = (p) => {
+    const receiptNo = (p.id || '').slice(0, 8).toUpperCase() || '4F255F';
     const patientName = patient?.full_name || p.patient_name || 'Bemor';
-    const receiptNo = p.receipt_number || p.calculatedReceiptNo || `REC-${1000}`;
-    const amountStr = Number(p.amount || 0).toLocaleString();
-    const methodStr = p.payment_method || p.method || 'Naqd pul';
+    const doctorName = (doctors || []).find(d => d.id === (p.doctor_id || patient?.doctor_id))?.name || 'Klinika shifokori';
+    const dtRaw = p.created_date || p.created_at || p.date || new Date().toISOString();
+    const dtObj = new Date(dtRaw);
+    const dateFormatted = !isNaN(dtObj) ? `${String(dtObj.getDate()).padStart(2,'0')}.${String(dtObj.getMonth()+1).padStart(2,'0')}.${dtObj.getFullYear()}` : new Date().toLocaleDateString('uz-UZ');
+    const dateTimeFormatted = !isNaN(dtObj) ? `${dateFormatted} ${String(dtObj.getHours()).padStart(2,'0')}:${String(dtObj.getMinutes()).padStart(2,'0')}` : dateFormatted;
+
+    // Services from plans
+    let allServices = [];
+    (plans || []).forEach(pl => {
+      if (Array.isArray(pl.services) && pl.services.length > 0) {
+        pl.services.forEach(s => {
+          const rawToothId = pl.tooth_number || s.tooth_id || s.tooth || '—';
+          allServices.push({
+            name: s.service_name || s.name || pl.name || 'Davolash xizmati',
+            category: s.category || pl.department || 'Plomba / Davolash',
+            tooth: rawToothId && rawToothId !== 'general' ? rawToothId : '—',
+            status: s.status || pl.status || 'completed',
+            price: Number(s.price || s.cost || 0)
+          });
+        });
+      } else if (pl.name) {
+        allServices.push({
+          name: pl.name,
+          category: pl.department || 'Davolash rejasi',
+          tooth: pl.tooth_number || '—',
+          status: pl.status || 'completed',
+          price: Number(pl.total_price || 0)
+        });
+      }
+    });
+
+    if (allServices.length === 0) {
+      allServices.push({
+        name: p.treatment_name || p.service_name || p.category || 'Davolash muolajasi',
+        category: 'Davolash',
+        tooth: '—',
+        status: 'completed',
+        price: Number(p.amount || 0)
+      });
+    }
+
+    const totalExpense = allServices.reduce((sum, s) => sum + (s.price || 0), 0) || Number(p.amount || 0);
+
+    // Payments list
+    let validPayments = (payments || []).filter(item => item.type?.toLowerCase() === 'income' || !item.type);
+    if (validPayments.length === 0) {
+      validPayments = [p];
+    }
+    const totalPaidSum = validPayments.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) || Number(p.amount || 0);
+    const finalDebt = Math.max(0, totalExpense - totalPaidSum);
 
     const win = window.open('', '_blank');
     if (!win) return;
     win.document.write(`
       <!DOCTYPE html>
-      <html>
+      <html lang="uz">
       <head>
-        <title>To'lov Kvitansiyasi #${receiptNo}</title>
-        <meta charset="utf-8" />
+        <meta charset="utf-8">
+        <title>Hisob-faktura - ${patientName}</title>
         <style>
-          body { font-family: 'Segoe UI', Arial, sans-serif; margin: 30px; color: #0f172a; max-width: 440px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; }
-          .header { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 15px; margin-bottom: 15px; }
-          .clinic-name { font-size: 20px; font-weight: 900; color: #0f172a; text-transform: uppercase; }
-          .receipt-title { font-size: 13px; font-weight: bold; color: #64748b; margin-top: 4px; }
-          .info-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px; }
-          .info-label { color: #64748b; font-weight: 600; }
-          .info-val { font-weight: 800; color: #0f172a; }
-          .amount-box { background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 14px; text-align: center; margin: 16px 0; }
-          .amount-title { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #166534; }
-          .amount-val { font-size: 24px; font-weight: 900; color: #15803d; margin-top: 4px; }
-          .footer { text-align: center; border-top: 2px dashed #cbd5e1; padding-top: 15px; margin-top: 15px; font-size: 11px; color: #94a3b8; }
-          @media print { body { border: none; padding: 0; } }
+          @page {
+            size: A4;
+            margin: 12mm 15mm;
+          }
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            color: #0f172a;
+            background: #fff;
+            margin: 0;
+            padding: 24px;
+            max-width: 780px;
+            margin: 0 auto;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+          }
+          .clinic-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+          .clinic-logo {
+            width: 42px;
+            height: 42px;
+            color: #0284c7;
+          }
+          .clinic-title {
+            font-size: 22px;
+            font-weight: 900;
+            color: #0284c7;
+            margin: 0;
+            line-height: 1.1;
+          }
+          .clinic-sub {
+            font-size: 11px;
+            color: #64748b;
+            margin: 3px 0 0 0;
+            font-weight: 500;
+          }
+          .clinic-contact {
+            font-size: 11px;
+            color: #475569;
+            margin: 2px 0 0 0;
+            font-weight: 600;
+          }
+          .invoice-meta {
+            text-align: right;
+          }
+          .invoice-title {
+            font-size: 16px;
+            font-weight: 900;
+            color: #0f172a;
+            letter-spacing: 0.5px;
+            margin: 0;
+            text-transform: uppercase;
+          }
+          .meta-row {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 3px;
+          }
+          .meta-num {
+            font-family: monospace;
+            font-weight: 700;
+            color: #0f172a;
+          }
+          .divider {
+            height: 2px;
+            background: #0ea5e9;
+            margin: 14px 0 20px 0;
+          }
+          .section-title {
+            font-size: 11px;
+            font-weight: 900;
+            color: #0284c7;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin: 0 0 10px 0;
+          }
+          .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-top: 1px solid #f1f5f9;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 10px 0;
+            margin-bottom: 22px;
+            gap: 10px 24px;
+          }
+          .info-item {
+            display: flex;
+            flex-direction: column;
+          }
+          .info-label {
+            font-size: 10px;
+            color: #94a3b8;
+            font-weight: 600;
+            margin-bottom: 2px;
+          }
+          .info-val {
+            font-size: 13px;
+            font-weight: 800;
+            color: #0f172a;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 22px;
+            font-size: 12px;
+          }
+          thead tr {
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+          }
+          th {
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+          }
+          td {
+            padding: 9px 10px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #1e293b;
+            font-weight: 500;
+          }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+          .font-bold { font-weight: 700; }
+          .font-black { font-weight: 900; }
+          .total-expense-row td {
+            font-weight: 900;
+            border-top: 1.5px solid #cbd5e1;
+            border-bottom: none;
+            padding-top: 11px;
+            font-size: 13px;
+          }
+          .paid-total-row td {
+            background: #dcfce7 !important;
+            color: #166534 !important;
+            font-weight: 900 !important;
+            font-size: 13px !important;
+            border: none !important;
+            padding: 10px 10px !important;
+          }
+          .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+            padding-top: 20px;
+          }
+          .sig-col {
+            width: 42%;
+          }
+          .sig-line {
+            border-bottom: 1px solid #334155;
+            margin-bottom: 6px;
+          }
+          .sig-name {
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+          }
+          .footer-note {
+            text-align: center;
+            font-size: 10px;
+            color: #94a3b8;
+            margin-top: 32px;
+            font-weight: 500;
+          }
+          @media print {
+            body { padding: 0; }
+          }
         </style>
       </head>
       <body>
         <div class="header">
-          <div class="clinic-name">SHIFOCRM CLINIC</div>
-          <div class="receipt-title">TO'LOV KVITANSIYASI #${receiptNo}</div>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Sana va vaqt:</span>
-          <span class="info-val">${dateStr}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Bemor:</span>
-          <span class="info-val">${patientName}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Telefon:</span>
-          <span class="info-val">${patient?.phone || '—'}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Mas'ul shifokor:</span>
-          <span class="info-val">${doctorName}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">To'lov usuli:</span>
-          <span class="info-val">${methodStr}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Muolaja / Asos:</span>
-          <span class="info-val">${p.treatment_name || p.service_name || p.category || 'Davolash muolajasi'}</span>
+          <div class="clinic-brand">
+            <svg class="clinic-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2C8.7 2 6 4.7 6 8c0 4 3 7 6 10 3-3 6-6 6-10 0-3.3-2.7-6-6-6z" />
+            </svg>
+            <div>
+              <h1 class="clinic-title">DentaCRM</h1>
+              <p class="clinic-sub">Professional stomatologiya klinikasi</p>
+              <p class="clinic-contact">Tel: +998 71 123 45 67 | Toshkent sh.</p>
+            </div>
+          </div>
+          <div class="invoice-meta">
+            <h2 class="invoice-title">HISOB-FAKTURA</h2>
+            <div class="meta-row">Sana: ${dateFormatted}</div>
+            <div class="meta-row">№ <span class="meta-num">${receiptNo}</span></div>
+          </div>
         </div>
 
-        <div class="amount-box">
-          <div class="amount-title">Qabul Qilingan Summa</div>
-          <div class="amount-val">${amountStr} UZS</div>
+        <div class="divider"></div>
+
+        <div class="section-title">BEMOR MA'LUMOTLARI</div>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">To'liq ismi</span>
+            <span class="info-val">${patientName}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Uchrashuv sanasi</span>
+            <span class="info-val">${dateTimeFormatted}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Doktor</span>
+            <span class="info-val">${doctorName}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Davolash turi</span>
+            <span class="info-val">${p.treatment_name || p.service_name || p.category || 'Davolash rejasi'}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Holati</span>
+            <span class="info-val" style="color: #16a34a;">To'langan</span>
+          </div>
         </div>
 
-        <div class="info-row">
-          <span class="info-label">Bemor qoldiq qarzi:</span>
-          <span class="info-val">${Number(totalDebt || 0).toLocaleString()} UZS</span>
+        <div class="section-title">DAVOLASHLAR RO'YXATI</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Davolash nomi</th>
+              <th>Kategoriya</th>
+              <th class="text-center">Tish #</th>
+              <th class="text-center">Holati</th>
+              <th class="text-right">Narxi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${allServices.map(s => `
+              <tr>
+                <td class="font-bold">${s.name}</td>
+                <td>${s.category}</td>
+                <td class="text-center">${s.tooth}</td>
+                <td class="text-center"><span style="color:#0284c7; font-weight:600;">${s.status}</span></td>
+                <td class="text-right font-bold">${Number(s.price || 0).toLocaleString()} so'm</td>
+              </tr>
+            `).join('')}
+            <tr class="total-expense-row">
+              <td colspan="4">Jami xarajat</td>
+              <td class="text-right font-black">${totalExpense.toLocaleString()} so'm</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="section-title">TO'LOVLAR</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Sana</th>
+              <th>To'lov usuli</th>
+              <th class="text-center">Holati</th>
+              <th class="text-right">Summa</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${validPayments.map(item => {
+              const pDateRaw = item.created_date || item.created_at || item.date;
+              const pDate = pDateRaw ? new Date(pDateRaw).toLocaleDateString('uz-UZ') : dateFormatted;
+              return `
+                <tr>
+                  <td>${pDate}</td>
+                  <td class="font-bold">${formatPaymentMethod(item.payment_method || item.method)}</td>
+                  <td class="text-center"><span style="color:#16a34a; font-weight:700;">To'langan</span></td>
+                  <td class="text-right font-bold">${Number(item.amount || 0).toLocaleString()} so'm</td>
+                </tr>
+              `;
+            }).join('')}
+            <tr class="paid-total-row">
+              <td colspan="3">To'langan jami</td>
+              <td class="text-right font-black">${totalPaidSum.toLocaleString()} so'm</td>
+            </tr>
+            ${finalDebt > 0 ? `
+              <tr>
+                <td colspan="3" style="font-weight:900; color:#e11d48; padding-top:8px;">Qoldiq qarz:</td>
+                <td class="text-right font-black" style="color:#e11d48; font-size:13px; padding-top:8px;">${finalDebt.toLocaleString()} so'm</td>
+              </tr>
+            ` : ''}
+          </tbody>
+        </table>
+
+        <div class="signatures">
+          <div class="sig-col">
+            <div class="sig-line"></div>
+            <div class="sig-name">Bemor imzosi: ${patientName}</div>
+          </div>
+          <div class="sig-col">
+            <div class="sig-line"></div>
+            <div class="sig-name">Doktor imzosi: ${doctorName}</div>
+          </div>
         </div>
 
-        <div class="footer">
-          <div>To'lov qabul qilindi. Tashrifingiz uchun rahmat!</div>
-          <div style="margin-top: 4px; font-size: 9px; font-family: monospace;">SHIFOCRM TIZIMI ORQALI CHIQARILDI</div>
+        <div class="footer-note">
+          Hujjat ${dateFormatted} sanasida DentaCRM tizimi tomonidan yaratildi | Ushbu hujjat rasmiy hisoblanadi
         </div>
+
         <script>
-          window.onload = function() { window.print(); }
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 250);
+          }
         </script>
       </body>
       </html>
@@ -211,23 +583,8 @@ function ExcelPaymentsView({
 
   return (
     <div className="space-y-4">
-      {/* ══ EXCEL SPREADSHEET TOOLBAR ══ */}
+      {/* ══ TOOLBAR CONTROLS & FILTERS ══ */}
       <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
-        {/* Formula Bar */}
-        <div className="bg-slate-50/90 px-4 py-2 border-b border-slate-200 flex items-center gap-3 text-xs font-mono">
-          <div className="flex items-center gap-1.5 text-slate-400 font-black shrink-0">
-            <span className="text-[#1a73e8] italic font-serif text-sm">fx</span>
-            <span>=</span>
-          </div>
-          <div className="flex items-center gap-4 flex-wrap text-slate-700 overflow-x-auto no-scrollbar">
-            <span>SUM(TO'LANGAN): <b className="text-emerald-700 font-black font-mono">{Number(totalPaid || 0).toLocaleString()} UZS</b></span>
-            <span className="text-slate-300">|</span>
-            <span>SUM(QARZDORLIK): <b className={Number(totalDebt || 0) > 0 ? "text-rose-600 font-black font-mono" : "text-emerald-600 font-black font-mono"}>{Number(totalDebt || 0).toLocaleString()} UZS</b></span>
-            <span className="text-slate-300">|</span>
-            <span>TO'LOV KVITANSIYALARI: <b className="text-slate-900 font-black">{realIncomePayments.length} ta</b></span>
-          </div>
-        </div>
-
         {/* Action Controls & Filters */}
         <div className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap flex-1">
@@ -238,7 +595,7 @@ function ExcelPaymentsView({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Kvitansiya #, shifokor qidirish..."
+                placeholder={t('patientProfile.searchPayments') || "Kvitansiya #, shifokor qidirish..."}
                 className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
               />
               {search && (
@@ -257,7 +614,7 @@ function ExcelPaymentsView({
                     : "text-slate-600 hover:text-slate-900"
                 )}
               >
-                Kassa Reyestri ({realIncomePayments.length})
+                {t('patientProfile.kassaLedgerTab') || "Kassa Reyestri"} ({realIncomePayments.length})
               </button>
               <button
                 onClick={() => setSubTab('plans')}
@@ -268,7 +625,7 @@ function ExcelPaymentsView({
                     : "text-slate-600 hover:text-slate-900"
                 )}
               >
-                Hisob-Fakturalar & Qarzlar ({plans.length})
+                {t('patientProfile.invoicesAndDebtTab') || "Hisob-Fakturalar & Qarzlar"} ({enrichedPlans.length})
               </button>
               <button
                 onClick={() => setSubTab('installments')}
@@ -279,20 +636,13 @@ function ExcelPaymentsView({
                     : "text-slate-600 hover:text-slate-900"
                 )}
               >
-                Muddatli To'lovlar ({installmentPlans.length})
+                {t('patientProfile.installmentsTab') || "Muddatli To'lovlar"} ({installmentPlans.length})
               </button>
             </div>
           </div>
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setDensity(d => d === 'compact' ? 'normal' : 'compact')}
-              className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-            >
-              {density === 'compact' ? '☷ Ixcham' : '☰ Keng'}
-            </button>
-
             {/* Quick Add Payment Button */}
             {onOpenPayModal && (
               <button
@@ -300,7 +650,7 @@ function ExcelPaymentsView({
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black shadow-2xs transition-all cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>+ To'lov Qabul Qilish</span>
+                <span>+ {t('patientProfile.receivePaymentBtn') || "To'lov Qabul Qilish"}</span>
               </button>
             )}
           </div>
@@ -311,40 +661,37 @@ function ExcelPaymentsView({
       {subTab === 'ledger' && (
         <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
           <div className="overflow-x-auto no-scrollbar">
-            <table className="w-full border-collapse text-left font-sans text-xs">
+            <table className="w-full border-collapse text-left font-sans text-sm">
               <thead>
-                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10.5px]">
-                  <th className="py-2.5 px-3 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
+                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-xs">
+                  <th className="py-3 px-3.5 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
                   <th 
-                    className="py-2.5 px-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors font-mono select-none"
+                    className="py-3 px-3.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors font-mono select-none"
                     onClick={() => toggleSort('date')}
                   >
-                    <div className="flex items-center justify-between gap-1">
-                      <span>Sana & Vaqt</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span>{t('common.dateTime') || "Sana & Vaqt"}</span>
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
                     </div>
                   </th>
-                  <th className="py-2.5 px-3 border-r border-slate-200 font-mono">Kvitansiya #</th>
-                  <th className="py-2.5 px-3 border-r border-slate-200">To'lov Turi</th>
-                  <th className="py-2.5 px-3 border-r border-slate-200 min-w-[160px]">Muolaja / Asos</th>
-                  <th className="py-2.5 px-3 border-r border-slate-200">Shifokor</th>
+                  <th className="py-3 px-3.5 border-r border-slate-200">{t('patientProfile.paymentTypeCol') || "To'lov Turi"}</th>
+                  <th className="py-3 px-3.5 border-r border-slate-200">{t('patientProfile.doctorCol') || "Shifokor"}</th>
                   <th 
-                    className="py-2.5 px-3 border-r border-slate-200 text-right cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[120px]"
+                    className="py-3 px-3.5 border-r border-slate-200 text-right cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[130px]"
                     onClick={() => toggleSort('amount')}
                   >
-                    <div className="flex items-center justify-end gap-1 font-mono">
-                      <span>To'langan Summa</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                    <div className="flex items-center justify-end gap-1.5 font-mono">
+                      <span>{t('patientProfile.paidAmountCol') || "To'langan Summa"}</span>
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
                     </div>
                   </th>
-                  <th className="py-2.5 px-3 border-r border-slate-200 text-right font-mono min-w-[100px]">Chegirma</th>
-                  <th className="py-2.5 px-3 min-w-[140px]">Izoh</th>
+                  <th className="py-3 px-3.5 min-w-[140px]">{t('common.notes') || "Izoh"}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPayments.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-slate-400 italic bg-slate-50/50">
+                    <td colSpan={6} className="py-12 text-center text-slate-400 italic bg-slate-50/50">
                       <CreditCard className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                       <div>Hozircha kassaga to'lov qabul qilinmagan.</div>
                       {Number(totalDebt || 0) > 0 && (
@@ -371,52 +718,37 @@ function ExcelPaymentsView({
                       >
                         {/* Row Index */}
                         <td className={cn(
-                          "border-r border-slate-200 text-center font-mono font-bold text-slate-400 bg-slate-100/40 text-[11px]",
-                          density === 'compact' ? 'py-2 px-2' : 'py-3 px-3'
+                          "border-r border-slate-200 text-center font-mono font-bold text-slate-500 bg-slate-100/40 text-xs",
+                          density === 'compact' ? 'py-3.5 px-3' : 'py-4.5 px-3.5'
                         )}>
                           {idx + 1}
                         </td>
 
                         {/* Date */}
-                        <td className={cn("border-r border-slate-200 font-mono text-slate-700 whitespace-nowrap", density === 'compact' ? 'py-2 px-3' : 'py-3 px-3')}>
+                        <td className={cn("border-r border-slate-200 font-mono font-semibold text-slate-700 whitespace-nowrap text-xs sm:text-sm", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
                           {dateStr}
                         </td>
 
-                        {/* Receipt # */}
-                        <td className={cn("border-r border-slate-200 font-mono font-bold text-[#1a73e8]", density === 'compact' ? 'py-2 px-3' : 'py-3 px-3')}>
-                          {receiptNo}
-                        </td>
-
                         {/* Payment Method */}
-                        <td className={cn("border-r border-slate-200", density === 'compact' ? 'py-2 px-3' : 'py-3 px-3')}>
+                        <td className={cn("border-r border-slate-200 text-xs sm:text-sm", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
                           {getMethodBadge(p.payment_method || p.method)}
                         </td>
 
-                        {/* Treatment Name */}
-                        <td className={cn("border-r border-slate-200 font-bold text-slate-800", density === 'compact' ? 'py-2 px-3' : 'py-3 px-3')}>
-                          {p.treatment_name || p.service_name || p.category || 'Davolash muolajasi'}
-                        </td>
-
                         {/* Doctor */}
-                        <td className={cn("border-r border-slate-200 font-medium text-slate-700", density === 'compact' ? 'py-2 px-3' : 'py-3 px-3')}>
+                        <td className={cn("border-r border-slate-200 font-semibold text-slate-800 text-xs sm:text-sm", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
                           <div className="flex items-center gap-1.5">
-                            <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span>{p.doctor_name || patient?.doctor_name || 'Shifokor'}</span>
+                            <User className="w-4 h-4 text-slate-400 shrink-0" />
+                            <span>{p.doctor_name || patient?.doctor_name || (language === 'ru' ? 'Врач' : language === 'en' ? 'Doctor' : 'Shifokor')}</span>
                           </div>
                         </td>
 
                         {/* Amount */}
-                        <td className={cn("border-r border-slate-200 text-right font-mono font-black text-emerald-700 bg-emerald-50/30", density === 'compact' ? 'py-2 px-3' : 'py-3 px-3')}>
+                        <td className={cn("border-r border-slate-200 text-right font-mono font-black text-emerald-700 bg-emerald-50/40 text-sm sm:text-base tracking-tight", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
                           +{Number(p.amount || 0).toLocaleString()} UZS
                         </td>
 
-                        {/* Discount */}
-                        <td className={cn("border-r border-slate-200 text-right font-mono text-slate-500", density === 'compact' ? 'py-2 px-3' : 'py-3 px-3')}>
-                          {Number(p.discount || 0) > 0 ? `-${Number(p.discount).toLocaleString()} UZS` : '—'}
-                        </td>
-
                         {/* Notes */}
-                        <td className={cn("text-slate-500 italic text-[11px]", density === 'compact' ? 'py-2 px-3' : 'py-3 px-3')}>
+                        <td className={cn("text-slate-600 italic text-xs sm:text-sm", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
                           {p.notes || '—'}
                         </td>
                       </tr>
@@ -433,32 +765,32 @@ function ExcelPaymentsView({
       {subTab === 'plans' && (
         <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
           <div className="overflow-x-auto no-scrollbar">
-            <table className="w-full border-collapse text-left font-sans text-xs">
+            <table className="w-full border-collapse text-left font-sans text-sm">
               <thead>
-                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10.5px]">
-                  <th className="py-2.5 px-3 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
-                  <th className="py-2.5 px-3 border-r border-slate-200 min-w-[200px]">Reja / Muolaja Nomi</th>
-                  <th className="py-2.5 px-3 border-r border-slate-200 font-mono">Sana</th>
-                  <th className="py-2.5 px-3 border-r border-slate-200">Shifokor</th>
-                  <th className="py-2.5 px-3 border-r border-slate-200 text-right font-mono min-w-[120px]">Reja Narxi</th>
-                  <th className="py-2.5 px-3 border-r border-slate-200 text-right font-mono min-w-[120px]">To'langan</th>
-                  <th className="py-2.5 px-3 border-r border-slate-200 text-right font-mono min-w-[120px]">Qoldiq Qarz</th>
-                  <th className="py-2.5 px-3 text-center min-w-[100px]">Faktura</th>
+                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-xs">
+                  <th className="py-3 px-3.5 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
+                  <th className="py-3 px-3.5 border-r border-slate-200 min-w-[200px]">{language === 'ru' ? 'План / Процедура' : language === 'en' ? 'Plan / Treatment Name' : 'Reja / Muolaja Nomi'}</th>
+                  <th className="py-3 px-3.5 border-r border-slate-200 font-mono">{t('common.date') || 'Sana'}</th>
+                  <th className="py-3 px-3.5 border-r border-slate-200">{t('patientProfile.doctorCol') || 'Shifokor'}</th>
+                  <th className="py-3 px-3.5 border-r border-slate-200 text-right font-mono min-w-[130px]">{language === 'ru' ? 'Стоимость плана' : language === 'en' ? 'Plan Price' : 'Reja Narxi'}</th>
+                  <th className="py-3 px-3.5 border-r border-slate-200 text-right font-mono min-w-[130px]">{t('patientProfile.paidLabel') || 'To\'langan'}</th>
+                  <th className="py-3 px-3.5 border-r border-slate-200 text-right font-mono min-w-[130px]">{language === 'ru' ? 'Остаток долга' : language === 'en' ? 'Remaining Debt' : 'Qoldiq Qarz'}</th>
+                  <th className="py-3 px-3.5 text-center min-w-[100px]">{t('patientProfile.invoiceCol') || 'Faktura'}</th>
                 </tr>
               </thead>
               <tbody>
-                {plans.length === 0 ? (
+                {enrichedPlans.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-12 text-center text-slate-400 italic bg-slate-50/50">
                       <FileSpreadsheet className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                      Davolash rejalari hisob-fakturalari topilmadi.
+                      {language === 'ru' ? 'Счета-фактуры планов лечения не найдены.' : language === 'en' ? 'No treatment plan invoices found.' : 'Davolash rejalari hisob-fakturalari topilmadi.'}
                     </td>
                   </tr>
                 ) : (
-                  plans.map((plan, idx) => {
-                    const price = Number(plan.total_price || 0);
+                  enrichedPlans.map((plan, idx) => {
+                    const price = Number(plan.total_price || plan.calculatedPrice || 0);
                     const paid = Number(plan.paid_amount || 0);
-                    const debt = Math.max(0, price - paid);
+                    const debt = Number(plan.effectiveDebt !== undefined ? plan.effectiveDebt : Math.max(0, price - paid));
 
                     return (
                       <tr
@@ -468,47 +800,50 @@ function ExcelPaymentsView({
                           idx % 2 === 1 ? "bg-slate-50/40" : "bg-white"
                         )}
                       >
-                        <td className="border-r border-slate-200 text-center font-mono font-bold text-slate-400 bg-slate-100/40 text-[11px] py-2.5 px-2">
+                        <td className="border-r border-slate-200 text-center font-mono font-bold text-slate-500 bg-slate-100/40 text-xs py-3.5 px-3">
                           {idx + 1}
                         </td>
-                        <td className="border-r border-slate-200 font-bold text-slate-900 py-2.5 px-3">
+                        <td className="border-r border-slate-200 font-bold text-slate-900 text-sm py-3.5 px-3.5">
                           {plan.name || `Davolash rejasi #${idx + 1}`}
                         </td>
-                        <td className="border-r border-slate-200 font-mono text-slate-600 py-2.5 px-3">
+                        <td className="border-r border-slate-200 font-mono font-semibold text-slate-700 text-xs sm:text-sm py-3.5 px-3.5">
                           {plan.created_date ? new Date(plan.created_date).toLocaleDateString('uz-UZ') : '—'}
                         </td>
-                        <td className="border-r border-slate-200 font-medium text-slate-700 py-2.5 px-3">
+                        <td className="border-r border-slate-200 font-semibold text-slate-800 text-xs sm:text-sm py-3.5 px-3.5">
                           <div className="flex items-center gap-1.5">
-                            <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span>{plan.doctor_name || patient?.doctor_name || 'Shifokor'}</span>
+                            <User className="w-4 h-4 text-slate-400 shrink-0" />
+                            <span>{plan.doctor_name || patient?.doctor_name || (language === 'ru' ? 'Врач' : language === 'en' ? 'Doctor' : 'Shifokor')}</span>
                           </div>
                         </td>
-                        <td className="border-r border-slate-200 text-right font-mono font-bold text-slate-900 py-2.5 px-3">
+                        <td className="border-r border-slate-200 text-right font-mono font-black text-slate-950 text-sm sm:text-base tracking-tight py-3.5 px-3.5">
                           {price.toLocaleString()} UZS
                         </td>
-                        <td className="border-r border-slate-200 text-right font-mono font-bold text-emerald-700 py-2.5 px-3">
+                        <td className="border-r border-slate-200 text-right font-mono font-black text-emerald-700 text-sm sm:text-base tracking-tight py-3.5 px-3.5">
                           {paid.toLocaleString()} UZS
                         </td>
                         <td className={cn(
-                          "border-r border-slate-200 text-right font-mono font-black py-2.5 px-3",
-                          debt > 0 ? "text-rose-600 bg-rose-50/30" : "text-emerald-600"
+                          "border-r border-slate-200 text-right font-mono font-black text-sm sm:text-base tracking-tight py-3.5 px-3.5",
+                          debt > 0 ? "text-amber-950 bg-amber-50/30" : "text-emerald-700 bg-emerald-50/20"
                         )}>
                           {debt > 0 ? (
-                            <span>{debt.toLocaleString()} UZS</span>
+                            <span className="inline-flex items-center justify-end gap-1.5 text-amber-950">
+                              <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                              <span>{debt.toLocaleString()} <span className="text-xs font-bold text-amber-800">UZS</span></span>
+                            </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-emerald-600">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>To'langan</span>
+                            <span className="inline-flex items-center justify-end gap-1 text-emerald-700 font-bold text-xs sm:text-sm">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                              <span>{t('patientProfile.paidLabel') || 'To\'langan'}</span>
                             </span>
                           )}
                         </td>
-                        <td className="text-center py-2 px-3">
+                        <td className="text-center py-3 px-3">
                           <button
                             onClick={() => onOpenPlanInvoice && onOpenPlanInvoice(plan)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded text-[10.5px] font-bold transition-all shadow-2xs cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
                           >
-                            <span>Faktura</span>
-                            <ExternalLink className="w-3 h-3" />
+                            <span>{t('patientProfile.invoiceBtn') || 'Faktura'}</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
                           </button>
                         </td>
                       </tr>
@@ -526,7 +861,7 @@ function ExcelPaymentsView({
         <div className="space-y-4">
           {installmentPlans.length === 0 ? (
             <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs p-12 text-center text-slate-400 italic">
-              Faol muddatli to'lovlar (rassrochka) rejasi mavjud emas.
+              {language === 'ru' ? 'Активные планы рассрочки отсутствуют.' : language === 'en' ? 'No active installment plans found.' : 'Faol muddatli to\'lovlar (rassrochka) rejasi mavjud emas.'}
             </div>
           ) : (
             installmentPlans.map((plan) => {
@@ -539,11 +874,11 @@ function ExcelPaymentsView({
                     <div>
                       <h4 className="text-xs font-black uppercase tracking-wide text-slate-800">{plan.name}</h4>
                       <p className="text-[10px] font-mono text-slate-400 mt-0.5">
-                        Jami: {Number(plan.total_price || 0).toLocaleString()} UZS | {inst.months} oylik jadval
+                        {language === 'ru' ? 'Итого: ' : 'Jami: '}{Number(plan.total_price || 0).toLocaleString()} UZS | {inst.months} {language === 'ru' ? 'мес. график' : 'oylik jadval'}
                       </p>
                     </div>
                     <div className="text-right font-mono">
-                      <span className="text-[10px] text-slate-400 block font-bold">Oylik to'lov</span>
+                      <span className="text-[10px] text-slate-400 block font-bold">{language === 'ru' ? 'Ежемесячный платёж' : language === 'en' ? 'Monthly payment' : 'Oylik to\'lov'}</span>
                       <span className="text-xs font-black text-indigo-700">{Number(inst.monthly_amount || 0).toLocaleString()} UZS</span>
                     </div>
                   </div>
@@ -566,9 +901,9 @@ function ExcelPaymentsView({
                           )}
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-700 text-[11px]">{i + 1}-oy</span>
+                            <span className="font-bold text-slate-700 text-[11px]">{i + 1}-{language === 'ru' ? 'й месяц' : language === 'en' ? 'month' : 'oy'}</span>
                             <span className={cn("text-[9px] font-bold px-1.5 py-0.2 rounded", isPaid ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-600")}>
-                              {isPaid ? 'Yopilgan' : 'Kutilmoqda'}
+                              {isPaid ? (language === 'ru' ? 'Оплачено' : 'Yopilgan') : (language === 'ru' ? 'Ожидается' : 'Kutilmoqda')}
                             </span>
                           </div>
 
@@ -601,7 +936,7 @@ function ExcelPaymentsView({
       {selectedPayment && (() => {
         const sp = selectedPayment;
         const paymentAmount = Number(sp.amount) || 0;
-        const methodLabel = sp.payment_method || sp.method || 'Naqd';
+        const methodLabel = formatPaymentMethod(sp.payment_method || sp.method);
         const doc = doctors.find(d => d.id === sp.doctor_id) || { name: sp.doctor_name || patient?.doctor_name || 'Shifokor' };
         const dateStr = sp.date || sp.created_date ? new Date(sp.date || sp.created_date).toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
         const receiptNo = sp.calculatedReceiptNo || sp.receipt_number || `REC-${1000}`;
@@ -619,22 +954,16 @@ function ExcelPaymentsView({
           <Dialog open={!!selectedPayment} onOpenChange={(open) => !open && setSelectedPayment(null)}>
             <DialogContent className="w-[96vw] max-w-3xl p-0 overflow-hidden rounded-2xl border border-slate-300 shadow-2xl [&>button]:hidden bg-white">
               <DialogTitle className="sr-only">To'lov Tafsiloti va Kvitansiya</DialogTitle>
-              {/* ── Top Header Bar (Excel CRM Receipt Style) ── */}
+              {/* ── Top Header Bar ── */}
               <div className="bg-slate-900 text-white px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-b-2 border-emerald-500">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-                    <FileSpreadsheet className="w-5 h-5" />
-                  </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
-                        № {receiptNo} • EXCEL KVITANSIYA
-                      </span>
-                      <span className="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-white/10 text-white border border-white/20">
+                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                         {methodLabel}
                       </span>
                     </div>
-                    <div className="text-2xl font-mono font-black text-white tracking-tight flex items-baseline gap-1.5 mt-0.5">
+                    <div className="text-2xl font-mono font-black text-white tracking-tight flex items-baseline gap-1.5 mt-1">
                       <span className="text-emerald-400">+</span>
                       {paymentAmount.toLocaleString()}
                       <span className="text-xs font-sans font-bold text-slate-400">UZS</span>
@@ -663,7 +992,7 @@ function ExcelPaymentsView({
               {/* ── Modal Scrollable Body ── */}
               <div className="p-5 space-y-4 max-h-[78vh] overflow-y-auto bg-slate-50/50">
 
-                {/* ─── 1. Bemor va To'lov Parametrlari (Excel Data Grid Table) ─── */}
+                {/* ─── 1. Bemor va To'lov Parametrlari (Data Grid Table) ─── */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
                   <div className="bg-slate-100/90 px-4 py-2 border-b border-slate-200 flex items-center justify-between">
                     <span className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
@@ -703,7 +1032,7 @@ function ExcelPaymentsView({
                         </td>
                       </tr>
 
-                      <tr className="border-b border-slate-200">
+                      <tr>
                         <td className="bg-slate-50/80 px-3.5 py-2 font-bold text-slate-500 uppercase text-[10px] border-r border-slate-200">
                           Shifokor:
                         </td>
@@ -719,25 +1048,16 @@ function ExcelPaymentsView({
                           </span>
                         </td>
                       </tr>
-
-                      <tr>
-                        <td className="bg-slate-50/80 px-3.5 py-2 font-bold text-slate-500 uppercase text-[10px] border-r border-slate-200">
-                          Xizmat / Kategoriya:
-                        </td>
-                        <td className="px-3.5 py-2 font-bold text-slate-800 border-r border-slate-200" colSpan={3}>
-                          <span>{sp.treatment_name || sp.service_name || sp.category || 'Davolash muolajasi'}</span>
-                        </td>
-                      </tr>
                     </tbody>
                   </table>
                 </div>
 
-                {/* ─── 2. Davolash Rejasi & Moliyaviy Hisob-kitob (Excel Spreadsheet Balance Sheet) ─── */}
+                {/* ─── 2. Davolash Rejasi & Moliyaviy Hisob-kitob ─── */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
                   <div className="bg-slate-100/90 px-4 py-2 border-b border-slate-200 flex items-center justify-between">
                     <span className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                      Davolash rejasi & moliyaviy hisob-kitob (Excel Sheet)
+                      <Receipt className="w-3.5 h-3.5 text-indigo-600" />
+                      Davolash rejasi & moliyaviy hisob-kitob
                     </span>
                     <span className="text-[10px] font-bold text-slate-500">
                       UZS (So'm)
@@ -811,15 +1131,15 @@ function ExcelPaymentsView({
                       </tr>
 
                       {/* 6. Qoldiq Qarz */}
-                      <tr className={debtAtPaymentTime > 0 ? "bg-rose-50/50 hover:bg-rose-50" : "bg-emerald-50/30"}>
-                        <td className={`text-center font-bold border-r border-slate-200 py-2 ${debtAtPaymentTime > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>06</td>
-                        <td className={`px-3.5 py-2 font-sans font-black border-r border-slate-200 ${debtAtPaymentTime > 0 ? 'text-rose-900' : 'text-emerald-900'}`}>
+                      <tr className={debtAtPaymentTime > 0 ? "bg-amber-50/50 hover:bg-amber-50" : "bg-emerald-50/30"}>
+                        <td className={`text-center font-bold border-r border-slate-200 py-2 ${debtAtPaymentTime > 0 ? 'text-amber-600' : 'text-emerald-500'}`}>06</td>
+                        <td className={`px-3.5 py-2 font-sans font-black border-r border-slate-200 ${debtAtPaymentTime > 0 ? 'text-amber-950' : 'text-emerald-900'}`}>
                           Qoldiq Qarz
                         </td>
-                        <td className={`px-3.5 py-2 text-right font-black border-r border-slate-200 text-[13px] ${debtAtPaymentTime > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        <td className={`px-3.5 py-2 text-right font-black border-r border-slate-200 text-[13px] ${debtAtPaymentTime > 0 ? 'text-amber-900' : 'text-emerald-600'}`}>
                           {debtAtPaymentTime > 0 ? `${debtAtPaymentTime.toLocaleString()}` : "0 (✓ To'liq)"}
                         </td>
-                        <td className={`px-3.5 py-2 font-sans font-bold text-[11px] ${debtAtPaymentTime > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        <td className={`px-3.5 py-2 font-sans font-bold text-[11px] ${debtAtPaymentTime > 0 ? 'text-amber-800' : 'text-emerald-600'}`}>
                           {debtAtPaymentTime > 0 ? "To'lanmagan qarzdorlik" : "✓ Qarzi yo'q"}
                         </td>
                       </tr>
@@ -868,7 +1188,7 @@ function ExcelPaymentsView({
                             <tbody className="divide-y divide-slate-100 font-mono">
                               {realIncomePayments.map((histPay, hIdx) => {
                                 const hAmt = Number(histPay.amount) || 0;
-                                const hMethod = histPay.payment_method || histPay.method || 'Naqd';
+                                const hMethod = formatPaymentMethod(histPay.payment_method || histPay.method);
                                 const hDate = histPay.created_date || histPay.date;
                                 const hDateStr = hDate ? new Date(hDate).toLocaleString('uz-UZ') : '—';
                                 const isCurrent = histPay.id === sp.id;

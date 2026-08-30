@@ -1,6 +1,7 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, memo, useCallback } from 'react';
+import { useTranslation } from '@/i18n/LanguageContext';
 import { 
-  Search, FileSpreadsheet, Edit3, Activity, ShieldCheck
+  Search, FileSpreadsheet, Edit3, Activity, ShieldCheck, ClipboardList
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ProfessionalOdontogram from './ProfessionalOdontogram';
@@ -11,6 +12,7 @@ import { Tooth, ImplantIcon, CrownIcon } from '@/components/ui/Icons';
  * Integrates the visual Professional Odontogram with an interactive Excel 32 FDI Teeth Matrix Spreadsheet.
  */
 function ExcelDentalChartView({
+  
   odontogramSelectedTeeth,
   stableOnOdontogramChange,
   handleInfoToothClick,
@@ -31,8 +33,8 @@ function ExcelDentalChartView({
   dentalFormulaSummaryList = [],
   plans = [],
 }) {
+  const { t, language } = useTranslation();
   const [search, setSearch] = useState('');
-  const [quadrantFilter, setQuadrantFilter] = useState('all'); // 'all' | 'Q1' | 'Q2' | 'Q3' | 'Q4'
   const [viewMode, setViewMode] = useState('both'); // 'both' | 'chart' | 'table'
 
   // Standard 32 FDI Teeth Formula Matrix
@@ -76,62 +78,117 @@ function ExcelDentalChartView({
     48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38
   ];
 
-  const teethRows = useMemo(() => {
-    return fdiOrder.map((fdi, idx) => {
+    const teethRows = useMemo(() => {
+    const list = [];
+    const seenKeys = new Set();
+
+    // 1. First gather services directly from treatment plans
+    (plans || []).forEach(p => {
+      const planDateRaw = p.date || p.created_date || p.created_at;
+      const planDateObj = planDateRaw ? new Date(planDateRaw) : null;
+      const planDateStr = planDateObj && !isNaN(planDateObj) 
+        ? `${String(planDateObj.getDate()).padStart(2,'0')}.${String(planDateObj.getMonth()+1).padStart(2,'0')}.${planDateObj.getFullYear()}`
+        : '—';
+
+      if (Array.isArray(p.services) && p.services.length > 0) {
+        p.services.forEach(s => {
+          const rawTooth = s.tooth_id || s.tooth || s.tooth_number || p.tooth_number;
+          const toothClean = rawTooth && rawTooth !== 'general' && rawTooth !== 'Umumiy' ? String(rawTooth).replace(/^#/, '') : null;
+          const rawName = s.service_name || s.name || p.name;
+          const cleanName = rawName ? rawName.replace(/^#general/i, '').trim() : 'Muolaja';
+          const price = Number(s.price || s.cost || 0);
+          const notes = s.notes || p.notes || '—';
+          const key = `${toothClean || 'all'}_${cleanName}_${planDateStr}`;
+
+          if (toothClean) {
+            seenKeys.add(String(toothClean));
+          }
+
+          list.push({
+            id: s.id || `svc_${list.length}`,
+            fdi: toothClean ? Number(toothClean) || toothClean : '—',
+            toothDisplay: toothClean ? `#${toothClean}` : 'Umumiy',
+            treatment: cleanName,
+            dateStr: planDateStr,
+            price: price,
+            notes: notes,
+            statusKey: s.status || p.status || 'completed'
+          });
+        });
+      } else if (p.name) {
+        const rawTooth = p.tooth_number;
+        const toothClean = rawTooth && rawTooth !== 'general' && rawTooth !== 'Umumiy' ? String(rawTooth).replace(/^#/, '') : null;
+        const price = Number(p.total_price || 0);
+        const notes = p.notes || '—';
+
+        if (toothClean) {
+          seenKeys.add(String(toothClean));
+        }
+
+        list.push({
+          id: p.id || `plan_${list.length}`,
+          fdi: toothClean ? Number(toothClean) || toothClean : '—',
+          toothDisplay: toothClean ? `#${toothClean}` : 'Umumiy',
+          treatment: p.name,
+          dateStr: planDateStr,
+          price: price,
+          notes: notes,
+          statusKey: p.status || 'completed'
+        });
+      }
+    });
+
+    // 2. Also check toothStatuses / pendingToothEdits for diagnosed or treated teeth not yet in plans
+    fdiOrder.forEach(fdi => {
       const fdiStr = String(fdi);
       const stObj = toothStatuses[`ur${fdi}`] || toothStatuses[`ul${fdi}`] || toothStatuses[`ll${fdi}`] || toothStatuses[`lr${fdi}`] || toothStatuses[fdiStr] || {};
       const statusKey = stObj.status || (pendingToothEdits[fdiStr]?.condition) || 'healthy';
       const diagnosis = stObj.diagnosis || pendingToothEdits[fdiStr]?.condition || (statusKey !== 'healthy' ? statusKey : 'Sog\'lom');
-      const treatment = stObj.treatment || pendingToothEdits[fdiStr]?.treatment || '—';
+      const treatment = stObj.treatment || pendingToothEdits[fdiStr]?.treatment || '';
+      const notes = stObj.notes || pendingToothEdits[fdiStr]?.notes || '—';
 
-      // Associated services from treatment plans
-      const matchedServices = [];
-      plans.forEach(p => {
-        (p.services || []).forEach(s => {
-          if (String(s.tooth_number) === fdiStr || String(p.tooth_number) === fdiStr) {
-            matchedServices.push(s.name || p.name);
-          }
+      const isHealthy = (!statusKey || statusKey === 'healthy') && 
+                        (!diagnosis || diagnosis.toLowerCase() === 'sog\'lom' || diagnosis.toLowerCase() === 'healthy') && 
+                        (!treatment || treatment === '—') && 
+                        (notes === '—' || !notes);
+
+      if (!isHealthy && !seenKeys.has(fdiStr)) {
+        let displayTreatment = treatment && treatment !== '—' ? treatment : diagnosis;
+        if (!displayTreatment || displayTreatment === 'healthy') {
+          displayTreatment = 'Davolash muolajasi';
+        }
+
+        list.push({
+          id: `tooth_${fdi}`,
+          fdi: fdi,
+          toothDisplay: `#${fdi}`,
+          treatment: displayTreatment,
+          dateStr: '—',
+          price: 0,
+          notes: notes,
+          statusKey: statusKey
         });
-      });
-
-      let quadrant = 'Q1 (Yuqori O\'ng)';
-      if (fdi >= 21 && fdi <= 28) quadrant = 'Q2 (Yuqori Chap)';
-      if (fdi >= 31 && fdi <= 38) quadrant = 'Q3 (Pastki Chap)';
-      if (fdi >= 41 && fdi <= 48) quadrant = 'Q4 (Pastki O\'ng)';
-
-      return {
-        idx: idx + 1,
-        fdi,
-        fdiStr,
-        name: toothNamesMap[fdi] || `Tish #${fdi}`,
-        quadrant,
-        statusKey,
-        diagnosis,
-        treatment: matchedServices.length > 0 ? matchedServices.join(', ') : treatment,
-        notes: stObj.notes || pendingToothEdits[fdiStr]?.notes || '—'
-      };
+      }
     });
+
+    return list;
   }, [toothStatuses, pendingToothEdits, plans]);
 
   const filteredTeeth = useMemo(() => {
     let list = [...teethRows];
 
-    if (quadrantFilter !== 'all') {
-      list = list.filter(t => t.quadrant.startsWith(quadrantFilter));
-    }
-
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(t => 
         String(t.fdi).includes(q) ||
-        t.name.toLowerCase().includes(q) ||
-        t.diagnosis.toLowerCase().includes(q) ||
-        t.treatment.toLowerCase().includes(q)
+        String(t.toothDisplay).toLowerCase().includes(q) ||
+        t.treatment.toLowerCase().includes(q) ||
+        t.notes.toLowerCase().includes(q)
       );
     }
 
     return list;
-  }, [teethRows, search, quadrantFilter]);
+  }, [teethRows, search]);
 
   const getStatusTag = (statusKey) => {
     const s = (statusKey || '').toLowerCase();
@@ -185,62 +242,24 @@ function ExcelDentalChartView({
 
   return (
     <div className="space-y-4">
-      {/* ══ EXCEL SPREADSHEET TOOLBAR ══ */}
+      {/* ══ TOOLBAR CONTROLS & FILTERS ══ */}
       <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
-        {/* Formula Bar */}
-        <div className="bg-slate-50/90 px-4 py-2 border-b border-slate-200 flex items-center gap-3 text-xs font-mono">
-          <div className="flex items-center gap-1.5 text-slate-400 font-black shrink-0">
-            <span className="text-[#1a73e8] italic font-serif text-sm">fx</span>
-            <span>=</span>
-          </div>
-          <div className="flex items-center gap-4 flex-wrap text-slate-700 overflow-x-auto no-scrollbar">
-            <span>SOG'LOM: <b className="text-emerald-700 font-black">{filteredTeeth.filter(t => t.statusKey === 'healthy').length} ta</b></span>
-            <span className="text-slate-300">|</span>
-            <span>PATOLOGIYA: <b className="text-rose-600 font-black">{filteredTeeth.filter(t => t.statusKey !== 'healthy').length} ta</b></span>
-            <span className="text-slate-300">|</span>
-            <span>FORMULA: <b className="text-slate-900 font-black">{quadrantFilter === 'all' ? '32 FDI tish' : `${quadrantFilter} (${filteredTeeth.length} tish)`}</b></span>
-          </div>
-        </div>
-
         {/* Action Controls & Filters */}
         <div className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Left: Quadrant Filter */}
+          {/* Left: Search Input */}
           <div className="flex items-center gap-2 flex-wrap flex-1">
-            <div className="relative min-w-[180px] max-w-xs flex-1">
+            <div className="relative min-w-[200px] max-w-sm flex-1">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Tish #, tashxis qidirish..."
+                placeholder={t('patientProfile.searchTeethOrTreatment') || t('common.searchTooth') || "Tish #, tashxis qidirish..."}
                 className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
               />
               {search && (
                 <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">✕</button>
               )}
-            </div>
-
-            <div className="inline-flex p-0.5 bg-slate-100 rounded-lg border border-slate-200/60 gap-0.5">
-              {[
-                { id: 'all', label: 'Barchasi (32)' },
-                { id: 'Q1', label: 'Q1 (O\'ng Yuqori)' },
-                { id: 'Q2', label: 'Q2 (Chap Yuqori)' },
-                { id: 'Q3', label: 'Q3 (Chap Pastki)' },
-                { id: 'Q4', label: 'Q4 (O\'ng Pastki)' },
-              ].map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setQuadrantFilter(f.id)}
-                  className={cn(
-                    "px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer",
-                    quadrantFilter === f.id
-                      ? "bg-white text-slate-900 shadow-2xs border border-slate-200/60 font-black"
-                      : "text-slate-600 hover:text-slate-900"
-                  )}
-                >
-                  {f.label}
-                </button>
-              ))}
             </div>
           </div>
 
@@ -252,21 +271,21 @@ function ExcelDentalChartView({
                 className={cn("px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5", viewMode === 'both' ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500")}
               >
                 <Tooth className="w-3.5 h-3.5 text-sky-600" />
-                <span>Xarita + Jadval</span>
+                <span>{t('patientProfile.chartAndTable') || "Xarita + Jadval"}</span>
               </button>
               <button
                 onClick={() => setViewMode('chart')}
                 className={cn("px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5", viewMode === 'chart' ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500")}
               >
                 <Activity className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Tish Grafiki</span>
+                <span>{t('patientProfile.toothChart') || "Tish Grafiki"}</span>
               </button>
               <button
                 onClick={() => setViewMode('table')}
                 className={cn("px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5", viewMode === 'table' ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500")}
               >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Excel Jadval</span>
+                <ClipboardList className="w-3.5 h-3.5 text-indigo-600" />
+                <span>{t('patientProfile.onlyTable') || "Faqat Jadval"}</span>
               </button>
             </div>
           </div>
@@ -284,9 +303,9 @@ function ExcelDentalChartView({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-900">Interaktiv Tish Formulasi</span>
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-900">{t('patientProfile.interactiveFormula') || "Interaktiv Tish Formulasi"}</span>
                 </div>
-                <span className="text-[10px] font-mono font-semibold text-slate-400">ODONTOGRAMMA & DIAGNOSTIKA</span>
+                <span className="text-[10px] font-mono font-semibold text-slate-400">{t('patientProfile.odontogramSubtitle') || "ODONTOGRAMMA & DIAGNOSTIKA"}</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -296,13 +315,13 @@ function ExcelDentalChartView({
                 className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-black uppercase tracking-wider transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
               >
                 <Edit3 className="w-3.5 h-3.5" />
-                <span>{chartEditMode ? "Tahrirni yakunlash" : "Tahrirlash"}</span>
+                <span>{chartEditMode ? (t('patientProfile.finishEdit') || "Tahrirni yakunlash") : (t('patientProfile.edit') || "Tahrirlash")}</span>
               </button>
             </div>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-0">
-            <div className="flex-1 p-2 sm:p-4 overflow-x-auto no-scrollbar min-w-0 w-full flex justify-center bg-white">
+          <div className="flex flex-col 2xl:flex-row gap-0">
+            <div className="flex-1 p-3 sm:p-5 overflow-x-auto no-scrollbar min-w-0 w-full flex justify-center bg-white">
               <ProfessionalOdontogram
                 selectedTeeth={odontogramSelectedTeeth}
                 onChange={stableOnOdontogramChange}
@@ -313,34 +332,35 @@ function ExcelDentalChartView({
                 onPatientTypeChange={setPatientType}
                 patientAge={age}
                 chartView={chartView}
-                quadrantFilter={quadrantFilter}
+                quadrantFilter="all"
                 showOcclusal={showOcclusal}
                 psrScores={psrScores}
                 occlusionNotes={occlusionNotes}
                 onOcclusionNotesChange={handleOcclusionNotesChange}
                 occlusionClass={occlusionClass}
                 onOcclusionClassChange={handleOcclusionClassChange}
+                compact={false}
               />
             </div>
 
             {/* Right diagnostic panel */}
-            <div className="shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200/80 p-3.5 bg-slate-50/40 lg:w-72">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 mb-2.5 flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Aniqlangan Tashxislar</span>
+            <div className="shrink-0 border-t 2xl:border-t-0 2xl:border-l border-slate-200/80 p-4 bg-slate-50/40 2xl:w-80">
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 mb-3 flex items-center gap-1.5">
+                <Activity className="w-4 h-4 text-indigo-600" />
+                <span>{t('patientProfile.detectedDiagnoses') || "Aniqlangan Tashxislar"}</span>
               </h4>
-              <div className="space-y-1.5 max-h-[350px] overflow-y-auto no-scrollbar">
+              <div className="space-y-2 max-h-[360px] overflow-y-auto no-scrollbar">
                 {dentalFormulaSummaryList.map((item, idx) => (
-                  <div key={idx} className="p-2 rounded-lg border border-slate-200/80 bg-white hover:bg-slate-50 flex items-center justify-between text-xs transition-colors shadow-2xs">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-2.5 h-2.5 rounded-xs shrink-0" style={{ backgroundColor: item.color }} />
-                      <span className="font-bold text-slate-800 truncate" style={{ color: item.color }}>{item.name}</span>
+                  <div key={idx} className="p-2.5 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 flex items-center justify-between text-xs transition-all shadow-2xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: item.color }} />
+                      <span className="font-bold text-slate-800 truncate text-[12.5px]" style={{ color: item.color }}>{item.name}</span>
                     </div>
-                    <span className="font-mono font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded text-[11px] shrink-0 border border-slate-200/60">{item.teeth}</span>
+                    <span className="font-mono font-black text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg text-xs shrink-0 border border-slate-200/70">{item.teeth}</span>
                   </div>
                 ))}
                 {dentalFormulaSummaryList.length === 0 && (
-                  <div className="text-xs text-slate-400 italic p-3 text-center bg-white rounded-lg border border-slate-100">Barcha tishlar sog'lom holatda</div>
+                  <div className="text-xs text-slate-400 italic p-3 text-center bg-white rounded-lg border border-slate-100">{t('patientProfile.allTeethHealthy') || "Barcha tishlar sog'lom holatda"}</div>
                 )}
               </div>
             </div>
@@ -348,15 +368,19 @@ function ExcelDentalChartView({
         </div>
       )}
 
-      {/* ══ EXCEL 32 FDI TEETH MATRIX TABLE ══ */}
+      {/* ══ XIZMAT QILINGAN TISHLAR RO'YXATI JADVALI ══ */}
       {(viewMode === 'both' || viewMode === 'table') && (
         <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
           <div className="px-4 py-2.5 bg-slate-50/90 border-b border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">32 FDI Tish Formulalari Jurnali (Excel jadvali)</h4>
+              <ClipboardList className="w-4 h-4 text-indigo-600" />
+              <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">
+                {t('patientProfile.servicedTeethList') || "Xizmat Ko'rsatilgan Tishlar Ro'yxati"} ({filteredTeeth.length})
+              </h4>
             </div>
-            <span className="text-[10px] font-mono font-bold text-slate-400">EXCEL MATRIX</span>
+            <span className="text-[10px] font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+              {filteredTeeth.length} TA MUOLAJA
+            </span>
           </div>
 
           <div className="overflow-x-auto no-scrollbar">
@@ -364,59 +388,67 @@ function ExcelDentalChartView({
               <thead>
                 <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10.5px]">
                   <th className="py-2.5 px-3 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
-                  <th className="py-2.5 px-3 border-r border-slate-200 font-mono text-center w-20">FDI #</th>
-                  <th className="py-2.5 px-3 border-r border-slate-200 min-w-[200px]">Tish Anatomik Nomi</th>
-                  <th className="py-2.5 px-3 border-r border-slate-200">Jag' / Kvadrant</th>
-                  <th className="py-2.5 px-3 border-r border-slate-200 text-center">Holati</th>
-                  <th className="py-2.5 px-3 border-r border-slate-200 min-w-[150px]">Rejalashtirilgan Muolaja</th>
-                  <th className="py-2.5 px-3">Eslatma</th>
+                  <th className="py-2.5 px-3 border-r border-slate-200 font-mono text-center w-28">{t('patientProfile.toothNumberCol') || "1. Tish Raqami"}</th>
+                  <th className="py-2.5 px-3 border-r border-slate-200 min-w-[200px]">{t('patientProfile.treatmentCol') || "2. Qilingan Muolaja"}</th>
+                  <th className="py-2.5 px-3 border-r border-slate-200 text-center w-36">{t('patientProfile.dateCol') || "3. Qilingan Sanasi"}</th>
+                  <th className="py-2.5 px-3 border-r border-slate-200 text-right w-36">{t('patientProfile.priceCol') || "4. Narxi"}</th>
+                  <th className="py-2.5 px-3 min-w-[150px]">{t('patientProfile.notesCol') || "5. Izoh"}</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredTeeth.map((tooth) => (
-                  <tr
-                    key={tooth.fdi}
-                    className={cn(
-                      "border-b border-slate-200/70 hover:bg-sky-50/40 transition-colors",
-                      tooth.idx % 2 === 0 ? "bg-slate-50/40" : "bg-white"
-                    )}
-                  >
-                    {/* Row Index */}
-                    <td className="border-r border-slate-200 text-center font-mono font-bold text-slate-400 bg-slate-100/40 text-[11px] py-2 px-2">
-                      {tooth.idx}
-                    </td>
+                {filteredTeeth.length > 0 ? (
+                  filteredTeeth.map((item, idx) => (
+                    <tr
+                      key={item.id || idx}
+                      className={cn(
+                        "border-b border-slate-200/70 hover:bg-sky-50/40 transition-colors",
+                        idx % 2 === 0 ? "bg-slate-50/40" : "bg-white"
+                      )}
+                    >
+                      {/* № */}
+                      <td className="border-r border-slate-200 text-center font-mono font-bold text-slate-400 bg-slate-100/40 text-[11px] py-2 px-2">
+                        {idx + 1}
+                      </td>
 
-                    {/* FDI Number */}
-                    <td className="border-r border-slate-200 font-mono font-black text-center text-indigo-700 bg-indigo-50/30 py-2 px-2">
-                      #{tooth.fdi}
-                    </td>
+                      {/* 1. Tish raqami */}
+                      <td className="border-r border-slate-200 font-mono font-black text-center text-indigo-700 bg-indigo-50/40 py-2 px-2.5">
+                        {item.toothDisplay}
+                      </td>
 
-                    {/* Tooth Name */}
-                    <td className="border-r border-slate-200 font-bold text-slate-800 py-2 px-3">
-                      {tooth.name}
-                    </td>
+                      {/* 2. Qilingan muolaja */}
+                      <td className="border-r border-slate-200 font-bold text-slate-800 py-2 px-3">
+                        <span>{item.treatment}</span>
+                      </td>
 
-                    {/* Quadrant */}
-                    <td className="border-r border-slate-200 text-slate-600 py-2 px-3 font-medium">
-                      {tooth.quadrant}
-                    </td>
+                      {/* 3. Qilingan sanasi */}
+                      <td className="border-r border-slate-200 text-center font-mono text-slate-600 font-medium py-2 px-3">
+                        {item.dateStr}
+                      </td>
 
-                    {/* Status Badge */}
-                    <td className="border-r border-slate-200 text-center py-2 px-3">
-                      {getStatusTag(tooth.statusKey)}
-                    </td>
+                      {/* 4. Narxi */}
+                      <td className="border-r border-slate-200 text-right font-mono font-bold text-slate-900 py-2 px-3">
+                        {item.price > 0 ? `${item.price.toLocaleString()} UZS` : '—'}
+                      </td>
 
-                    {/* Planned Treatment */}
-                    <td className="border-r border-slate-200 text-slate-800 font-semibold py-2 px-3">
-                      {tooth.treatment}
-                    </td>
-
-                    {/* Notes */}
-                    <td className="text-slate-500 italic text-[11px] py-2 px-3">
-                      {tooth.notes}
+                      {/* 5. Izoh */}
+                      <td className="text-slate-500 italic text-[11px] py-2 px-3">
+                        {item.notes}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center bg-slate-50/30">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200">
+                          <ShieldCheck className="w-5 h-5" />
+                        </div>
+                        <p className="text-xs font-bold text-slate-700">{t('patientProfile.noTreatmentsEmpty') || "Muolaja qilingan tishlar ro'yxati bo'sh"}</p>
+                        <p className="text-[11px] text-slate-400">{t('patientProfile.noTreatmentsEmptyDesc') || "Barcha tishlar sog'lom holatda yoki hali muolaja biriktirilmagan"}</p>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>

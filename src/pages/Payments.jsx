@@ -90,16 +90,12 @@ const formatCategory = (category) => {
 };
 
 const getPaymentMethodLabel = (method, t) => {
-  if (!t) {
-    if (method === 'Card') return 'Plastik karta';
-    if (method === 'Transfer') return 'Bank o‘tkazma';
-    if (method === 'Cash') return 'Naqd pul';
-    return method || '—';
-  }
-  if (method === 'Card') return t('payments.methods.Card') || 'Plastik karta';
-  if (method === 'Transfer') return t('payments.methods.Transfer') || 'Bank o‘tkazma';
-  if (method === 'Cash') return t('payments.methods.Cash') || 'Naqd pul';
-  return method || '—';
+  const m = String(method || '').toLowerCase();
+  if (m.includes('card') || m.includes('karta') || m.includes('humo') || m.includes('uzcard') || m.includes('terminal')) return 'Plastik karta';
+  if (m.includes('bank') || m.includes('hisob') || m.includes('transfer') || m.includes('o\'tkazma')) return 'Bank o\'tkazmasi';
+  if (m.includes('installment') || m.includes('nasiya') || m.includes('rassrochka') || m.includes('muddatli')) return 'Muddatli to\'lov';
+  if (m.includes('click') || m.includes('payme') || m.includes('uzum')) return 'Onlayn to\'lov';
+  return 'Naqd pul';
 };
 
 const getPaymentTypeLabel = (type, t) => {
@@ -1251,79 +1247,402 @@ export default function Payments() {
     setTimeout(() => { win.print(); win.close(); }, 400);
   };
 
-  const handlePrintSingleReceipt = (payment, pat, doc, patientData, debtAtTime) => {
-    const dtRaw = payment.created_date || payment.created_at || payment.date;
-    const dtFormatted = dtRaw ? new Date(dtRaw).toLocaleString('uz-UZ') : '';
-    const paymentAmount = Number(payment.amount) || 0;
+  const handlePrintSingleReceipt = async (payment, pat, doc, patientData, debtAtTime) => {
+    let plansList = patientPlans || [];
+    let histList = patientPaymentsHistory || [];
+
+    if (payment?.patient_id && (plansList.length === 0 || histList.length === 0)) {
+      try {
+        const [fetchedPays, fetchedPlans] = await Promise.all([
+          base44.entities.Payment.filter({ patient_id: payment.patient_id }, '-date', 100).catch(() => []),
+          base44.entities.TreatmentPlan.filter({ patient_id: payment.patient_id }, '-created_date', 50).catch(() => [])
+        ]);
+        if (histList.length === 0) histList = fetchedPays || [];
+        if (plansList.length === 0) plansList = fetchedPlans || [];
+      } catch (err) {
+        console.error("Print data fetch error:", err);
+      }
+    }
+
+    const patientName = pat?.full_name || payment.patient_name || 'Bemor';
+    const doctorName = doc?.name || doc?.full_name || 'Klinika shifokori';
+    const dtRaw = payment.created_date || payment.created_at || payment.date || new Date().toISOString();
+    const dtObj = new Date(dtRaw);
+    const dateFormatted = !isNaN(dtObj) ? `${String(dtObj.getDate()).padStart(2,'0')}.${String(dtObj.getMonth()+1).padStart(2,'0')}.${dtObj.getFullYear()}` : new Date().toLocaleDateString('uz-UZ');
+    const dateTimeFormatted = !isNaN(dtObj) ? `${dateFormatted} ${String(dtObj.getHours()).padStart(2,'0')}:${String(dtObj.getMinutes()).padStart(2,'0')}` : dateFormatted;
+    const invoiceNo = (payment.id || '').split('-').pop()?.toUpperCase() || '4F255F';
+
+    // Flatten services from plans
+    let allServices = [];
+    plansList.forEach(pl => {
+      if (Array.isArray(pl.services) && pl.services.length > 0) {
+        pl.services.forEach(s => {
+          const rawToothId = pl.tooth_number || s.tooth_id || s.tooth || '—';
+          allServices.push({
+            name: s.service_name || s.name || pl.name || 'Davolash xizmati',
+            category: s.category || pl.department || 'Plomba / Davolash',
+            tooth: rawToothId && rawToothId !== 'general' ? rawToothId : '—',
+            status: s.status || pl.status || 'completed',
+            price: Number(s.price || s.cost || 0)
+          });
+        });
+      } else if (pl.name) {
+        allServices.push({
+          name: pl.name,
+          category: pl.department || 'Davolash rejasi',
+          tooth: pl.tooth_number || '—',
+          status: pl.status || 'completed',
+          price: Number(pl.total_price || 0)
+        });
+      }
+    });
+
+    if (allServices.length === 0) {
+      allServices.push({
+        name: payment.service_name || payment.category || 'Davolash muolajasi',
+        category: 'Davolash',
+        tooth: '—',
+        status: 'completed',
+        price: Number(payment.amount || 0)
+      });
+    }
+
+    const totalExpense = allServices.reduce((sum, s) => sum + (s.price || 0), 0) || Number(payment.amount || 0);
+
+    // Payments list
+    let validPayments = (histList || []).filter(p => p.type?.toLowerCase() === 'income' || !p.type);
+    if (validPayments.length === 0) {
+      validPayments = [payment];
+    }
+    const totalPaidSum = validPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || Number(payment.amount || 0);
+    const finalDebt = Math.max(0, totalExpense - totalPaidSum);
+
     const win = window.open('', '_blank');
     if (!win) {
-      toast.error('Brauzerda yangi oyna ochilmadi');
+      toast.error('Brauzerda oyna ochilmadi. Iltimos, qalqib chiquvchi oynalarga ruxsat bering.');
       return;
     }
-    const origPrice = patientData?.originalPrice || 0;
-    const discAmt = patientData?.totalDiscount || 0;
-    const discPct = patientData?.discountPercent || 0;
-    const finTotal = patientData?.finalPlanTotal || 0;
-    const totalPaid = patientData?.totalPaid || 0;
 
     win.document.write(`
       <!DOCTYPE html>
-      <html>
+      <html lang="uz">
       <head>
-        <title>To'lov Cheki - ${payment.patient_name || 'Bemor'}</title>
         <meta charset="utf-8">
+        <title>Hisob-faktura - ${patientName}</title>
         <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #0f172a; max-width: 550px; margin: 0 auto; background: #fff; }
-          .header { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 16px; margin-bottom: 16px; }
-          .title { font-size: 20px; font-weight: 900; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
-          .subtitle { font-size: 11px; color: #64748b; font-weight: 700; margin-top: 4px; text-transform: uppercase; }
-          .amount-card { background: #f0fdf4; border: 2px solid #86efac; border-radius: 12px; padding: 14px; text-align: center; margin: 16px 0; }
-          .amount-title { font-size: 11px; font-weight: 800; color: #166534; text-transform: uppercase; letter-spacing: 1px; }
-          .amount-val { font-size: 26px; font-weight: 900; color: #15803d; font-family: monospace; margin-top: 2px; }
-          table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
-          th, td { padding: 7px 10px; border: 1px solid #e2e8f0; }
-          th { background: #f8fafc; text-align: left; font-weight: 700; color: #475569; width: 45%; }
-          td { font-weight: 600; color: #0f172a; }
+          @page {
+            size: A4;
+            margin: 12mm 15mm;
+          }
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            color: #0f172a;
+            background: #fff;
+            margin: 0;
+            padding: 24px;
+            max-width: 780px;
+            margin: 0 auto;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+          }
+          .clinic-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+          .clinic-logo {
+            width: 42px;
+            height: 42px;
+            color: #0284c7;
+          }
+          .clinic-title {
+            font-size: 22px;
+            font-weight: 900;
+            color: #0284c7;
+            margin: 0;
+            line-height: 1.1;
+          }
+          .clinic-sub {
+            font-size: 11px;
+            color: #64748b;
+            margin: 3px 0 0 0;
+            font-weight: 500;
+          }
+          .clinic-contact {
+            font-size: 11px;
+            color: #475569;
+            margin: 2px 0 0 0;
+            font-weight: 600;
+          }
+          .invoice-meta {
+            text-align: right;
+          }
+          .invoice-title {
+            font-size: 16px;
+            font-weight: 900;
+            color: #0f172a;
+            letter-spacing: 0.5px;
+            margin: 0;
+            text-transform: uppercase;
+          }
+          .meta-row {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 3px;
+          }
+          .meta-num {
+            font-family: monospace;
+            font-weight: 700;
+            color: #0f172a;
+          }
+          .divider {
+            height: 2px;
+            background: #0ea5e9;
+            margin: 14px 0 20px 0;
+          }
+          .section-title {
+            font-size: 11px;
+            font-weight: 900;
+            color: #0284c7;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin: 0 0 10px 0;
+          }
+          .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-top: 1px solid #f1f5f9;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 10px 0;
+            margin-bottom: 22px;
+            gap: 10px 24px;
+          }
+          .info-item {
+            display: flex;
+            flex-direction: column;
+          }
+          .info-label {
+            font-size: 10px;
+            color: #94a3b8;
+            font-weight: 600;
+            margin-bottom: 2px;
+          }
+          .info-val {
+            font-size: 13px;
+            font-weight: 800;
+            color: #0f172a;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 22px;
+            font-size: 12px;
+          }
+          thead tr {
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+          }
+          th {
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+          }
+          td {
+            padding: 9px 10px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #1e293b;
+            font-weight: 500;
+          }
           .text-right { text-align: right; }
-          .footer { text-align: center; font-size: 10px; color: #94a3b8; margin-top: 24px; border-top: 1px dashed #cbd5e1; padding-top: 12px; }
-          @media print { body { padding: 0; } }
+          .text-center { text-align: center; }
+          .font-bold { font-weight: 700; }
+          .font-black { font-weight: 900; }
+          .total-expense-row td {
+            font-weight: 900;
+            border-top: 1.5px solid #cbd5e1;
+            border-bottom: none;
+            padding-top: 11px;
+            font-size: 13px;
+          }
+          .paid-total-row td {
+            background: #dcfce7 !important;
+            color: #166534 !important;
+            font-weight: 900 !important;
+            font-size: 13px !important;
+            border: none !important;
+            padding: 10px 10px !important;
+          }
+          .signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+            padding-top: 20px;
+          }
+          .sig-col {
+            width: 42%;
+          }
+          .sig-line {
+            border-bottom: 1px solid #334155;
+            margin-bottom: 6px;
+          }
+          .sig-name {
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+          }
+          .footer-note {
+            text-align: center;
+            font-size: 10px;
+            color: #94a3b8;
+            margin-top: 32px;
+            font-weight: 500;
+          }
+          @media print {
+            body { padding: 0; }
+          }
         </style>
       </head>
       <body>
         <div class="header">
-          <h1 class="title">DentaCRM Klinikasi</h1>
-          <div class="subtitle">TO'LOV KVITANSIYASI • № ${payment.id?.slice(0, 8)?.toUpperCase() || '001'}</div>
-          <div class="subtitle" style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Sana: ${dtFormatted}</div>
+          <div class="clinic-brand">
+            <svg class="clinic-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2C8.7 2 6 4.7 6 8c0 4 3 7 6 10 3-3 6-6 6-10 0-3.3-2.7-6-6-6z" />
+            </svg>
+            <div>
+              <h1 class="clinic-title">DentaCRM</h1>
+              <p class="clinic-sub">Professional stomatologiya klinikasi</p>
+              <p class="clinic-contact">Tel: +998 71 123 45 67 | Toshkent sh.</p>
+            </div>
+          </div>
+          <div class="invoice-meta">
+            <h2 class="invoice-title">HISOB-FAKTURA</h2>
+            <div class="meta-row">Sana: ${dateFormatted}</div>
+            <div class="meta-row">№ <span class="meta-num">${invoiceNo}</span></div>
+          </div>
         </div>
 
-        <div class="amount-card">
-          <div class="amount-title">To'langan Summa (Kirim)</div>
-          <div class="amount-val">+${paymentAmount.toLocaleString()} UZS</div>
+        <div class="divider"></div>
+
+        <div class="section-title">BEMOR MA'LUMOTLARI</div>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">To'liq ismi</span>
+            <span class="info-val">${patientName}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Uchrashuv sanasi</span>
+            <span class="info-val">${dateTimeFormatted}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Doktor</span>
+            <span class="info-val">${doctorName}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Davolash turi</span>
+            <span class="info-val">${payment.service_name || payment.category || 'Davolash rejasi'}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Holati</span>
+            <span class="info-val" style="color: #16a34a;">To'langan</span>
+          </div>
         </div>
 
+        <div class="section-title">DAVOLASHLAR RO'YXATI</div>
         <table>
-          <tr><th>Bemor (F.I.Sh):</th><td><strong>${payment.patient_name || '—'}</strong></td></tr>
-          <tr><th>Telefon:</th><td>${pat?.phone ? formatPhoneSingleLine(pat.phone) : '—'}</td></tr>
-          <tr><th>Shifokor:</th><td>${doc?.name || 'Biriktirilmagan'}</td></tr>
-          <tr><th>Xizmat / Kategoriya:</th><td>${formatCategory(payment.service_name || payment.category || 'Davolash')}</td></tr>
-          <tr><th>To'lov Usuli:</th><td>${getPaymentMethodLabel(payment.method, t)}</td></tr>
+          <thead>
+            <tr>
+              <th>Davolash nomi</th>
+              <th>Kategoriya</th>
+              <th class="text-center">Tish #</th>
+              <th class="text-center">Holati</th>
+              <th class="text-right">Narxi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${allServices.map(s => `
+              <tr>
+                <td class="font-bold">${s.name}</td>
+                <td>${s.category}</td>
+                <td class="text-center">${s.tooth}</td>
+                <td class="text-center"><span style="color:#0284c7; font-weight:600;">${s.status}</span></td>
+                <td class="text-right font-bold">${Number(s.price || 0).toLocaleString()} so'm</td>
+              </tr>
+            `).join('')}
+            <tr class="total-expense-row">
+              <td colspan="4">Jami xarajat</td>
+              <td class="text-right font-black">${totalExpense.toLocaleString()} so'm</td>
+            </tr>
+          </tbody>
         </table>
 
-        <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-top: 14px; letter-spacing: 0.5px;">Davolash Rejasi & Moliyaviy Holat</div>
+        <div class="section-title">TO'LOVLAR</div>
         <table>
-          <tr><th>Reja (asl narxi):</th><td class="text-right">${origPrice.toLocaleString()} UZS</td></tr>
-          ${discAmt > 0 ? `<tr><th>Chegirma (${discPct}%):</th><td class="text-right" style="color:#7e22ce;">-${discAmt.toLocaleString()} UZS</td></tr>` : ''}
-          <tr><th>Chegirmali Jami Summa:</th><td class="text-right"><strong>${finTotal.toLocaleString()} UZS</strong></td></tr>
-          <tr><th>Bemor Jami To'lagan:</th><td class="text-right" style="color:#15803d; font-weight:900;">${totalPaid.toLocaleString()} UZS</td></tr>
-          <tr><th>Qoldiq Qarz:</th><td class="text-right" style="color:${debtAtTime > 0 ? '#e11d48' : '#15803d'}; font-weight:900;">${debtAtTime > 0 ? debtAtTime.toLocaleString() + ' UZS' : '✓ To\'liq yopilgan'}</td></tr>
+          <thead>
+            <tr>
+              <th>Sana</th>
+              <th>To'lov usuli</th>
+              <th class="text-center">Holati</th>
+              <th class="text-right">Summa</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${validPayments.map(p => {
+              const pDateRaw = p.created_date || p.created_at || p.date;
+              const pDate = pDateRaw ? new Date(pDateRaw).toLocaleDateString('uz-UZ') : dateFormatted;
+              return `
+                <tr>
+                  <td>${pDate}</td>
+                  <td class="font-bold">${getPaymentMethodLabel(p.method, t)}</td>
+                  <td class="text-center"><span style="color:#16a34a; font-weight:700;">To'langan</span></td>
+                  <td class="text-right font-bold">${Number(p.amount || 0).toLocaleString()} so'm</td>
+                </tr>
+              `;
+            }).join('')}
+            <tr class="paid-total-row">
+              <td colspan="3">To'langan jami</td>
+              <td class="text-right font-black">${totalPaidSum.toLocaleString()} so'm</td>
+            </tr>
+            ${finalDebt > 0 ? `
+              <tr>
+                <td colspan="3" style="font-weight:900; color:#e11d48; padding-top:8px;">Qoldiq qarz:</td>
+                <td class="text-right font-black" style="color:#e11d48; font-size:13px; padding-top:8px;">${finalDebt.toLocaleString()} so'm</td>
+              </tr>
+            ` : ''}
+          </tbody>
         </table>
 
-        <div class="footer">
-          <p style="margin: 0 0 3px 0; font-weight: 600;">To'lovingiz uchun minnatdormiz! Salomat bo'ling!</p>
-          <p style="margin: 0; color: #cbd5e1;">DentaCRM tizimi orqali yaratildi</p>
+        <div class="signatures">
+          <div class="sig-col">
+            <div class="sig-line"></div>
+            <div class="sig-name">Bemor imzosi: ${patientName}</div>
+          </div>
+          <div class="sig-col">
+            <div class="sig-line"></div>
+            <div class="sig-name">Doktor imzosi: ${doctorName}</div>
+          </div>
         </div>
+
+        <div class="footer-note">
+          Hujjat ${dateFormatted} sanasida DentaCRM tizimi tomonidan yaratildi | Ushbu hujjat rasmiy hisoblanadi
+        </div>
+
         <script>
-          window.onload = function() { window.print(); }
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 250);
+          }
         </script>
       </body>
       </html>
@@ -1433,9 +1752,6 @@ export default function Payments() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xl font-black text-slate-900 tracking-tight">{t('payments.title')}</span>
-                <span className="px-2 py-0.5 bg-[#1499AD]/10 text-[#1499AD] text-[10px] font-black rounded-full uppercase tracking-wider">
-                  Excel CRM Grid
-                </span>
               </div>
               <div className="flex items-center gap-2 mt-0.5">
                 <div className="flex items-center gap-1">
@@ -1454,16 +1770,6 @@ export default function Payments() {
         </div>
         
         <div className="flex items-center gap-2">
-          {/* Excel Export Button */}
-          <button
-            onClick={handleExportExcel}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-[11px] font-bold tracking-wide transition-all shadow-sm active:scale-95"
-            title="Excel formatida (.csv) yuklab olish"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span className="hidden sm:inline">{t('patients.exportExcel') || "Excelga yuklash"}</span>
-            <Download className="w-3.5 h-3.5 opacity-70" />
-          </button>
 
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -1569,34 +1875,6 @@ export default function Payments() {
                 </button>
               );
             })}
-          </div>
-
-          {/* Density Switcher */}
-          <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 self-end lg:self-auto">
-            <button
-              onClick={() => toggleDensity('compact')}
-              title="Ixcham Excel Jadvali"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'compact' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>Excel</span>
-            </button>
-            <button
-              onClick={() => toggleDensity('comfortable')}
-              title="Keng Jadval Ko'rinishi"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'comfortable' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-              <span>Keng</span>
-            </button>
           </div>
 
         </div>
@@ -1923,35 +2201,6 @@ export default function Payments() {
               </tbody>
             </table>
           </div>
-
-          {/* ─── Excel Spreadsheet Bottom Summary Bar ───────────────────── */}
-          {sortedDisplayPayments.length > 0 && (
-            <div className="bg-slate-100/90 border-t border-slate-200 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600 font-bold">
-              <div className="flex items-center gap-3">
-                <span>
-                  Jadvalda: <strong className="text-slate-900">{paymentsTableSummary.totalCount}</strong> ta to'lov
-                </span>
-              </div>
-
-              <div className="flex items-center gap-4 font-mono tabular-nums">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 uppercase text-[10px] font-sans font-bold">Σ Jami Tushum:</span>
-                  <span className="text-emerald-700 font-black">{paymentsTableSummary.sumAmount.toLocaleString()} UZS</span>
-                </div>
-                <span className="text-slate-300">|</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 uppercase text-[10px] font-sans font-bold">Σ Qoldiq Qarz:</span>
-                  <span className="text-rose-600 font-black">{paymentsTableSummary.sumDebt.toLocaleString()} UZS</span>
-                </div>
-                <span className="text-slate-300 hidden md:inline">|</span>
-                <div className="hidden md:flex items-center gap-1.5">
-                  <span className="text-slate-500 uppercase text-[10px] font-sans font-bold">x̄ O'rtacha:</span>
-                  <span className="text-slate-800 font-bold">{paymentsTableSummary.avgAmount.toLocaleString()} UZS</span>
-                </div>
-              </div>
-            </div>
-          )}
-
         </motion.div>
 
         {hasMore && (
@@ -2592,22 +2841,16 @@ export default function Payments() {
           return (
             <DialogContent className="w-[96vw] max-w-3xl p-0 overflow-hidden rounded-2xl border border-slate-300 shadow-2xl [&>button]:hidden bg-white">
               
-              {/* ── Top Header Bar (Excel CRM Receipt Style) ── */}
+              {/* ── Top Header Bar ── */}
               <div className="bg-slate-900 text-white px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-b-2 border-emerald-500">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-                    <FileSpreadsheet className="w-5 h-5" />
-                  </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest">
-                        № KV-{sp.id?.slice(0, 8)?.toUpperCase() || '001'} • EXCEL KVITANSIYA
-                      </span>
-                      <span className="px-2 py-0.2 rounded-full text-[9px] font-black uppercase bg-white/10 text-white border border-white/20">
+                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                         {methodLabel}
                       </span>
                     </div>
-                    <div className="text-2xl font-mono font-black text-white tracking-tight flex items-baseline gap-1.5 mt-0.5">
+                    <div className="text-2xl font-mono font-black text-white tracking-tight flex items-baseline gap-1.5 mt-1">
                       <span className="text-emerald-400">{paymentAmount < 0 ? '-' : '+'}</span>
                       {Math.abs(paymentAmount).toLocaleString()}
                       <span className="text-xs font-sans font-bold text-slate-400">UZS</span>
@@ -2688,7 +2931,7 @@ export default function Payments() {
                         </td>
                       </tr>
 
-                      <tr className="border-b border-slate-200">
+                      <tr>
                         <td className="bg-slate-50/80 px-3.5 py-2 font-bold text-slate-500 uppercase text-[10px] border-r border-slate-200">
                           Shifokor:
                         </td>
@@ -2699,25 +2942,9 @@ export default function Payments() {
                           To'lov Usuli:
                         </td>
                         <td className="px-3.5 py-2 font-bold text-slate-800">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-bold">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
                             {methodLabel}
                           </span>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td className="bg-slate-50/80 px-3.5 py-2 font-bold text-slate-500 uppercase text-[10px] border-r border-slate-200">
-                          Xizmat / Kategoriya:
-                        </td>
-                        <td className="px-3.5 py-2 font-bold text-slate-800 border-r border-slate-200" colSpan={3}>
-                          <div className="flex items-center gap-2">
-                            <span>{formatCategory(sp.service_name || sp.category || 'Davolash')}</span>
-                            {isInstallment && (
-                              <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black text-blue-600 bg-blue-50 border border-blue-200">
-                                Muddatli to'lov rejasi
-                              </span>
-                            )}
-                          </div>
                         </td>
                       </tr>
                     </tbody>
@@ -2729,7 +2956,7 @@ export default function Payments() {
                   <div className="bg-slate-100/90 px-4 py-2 border-b border-slate-200 flex items-center justify-between">
                     <span className="text-[10.5px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                       <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                      Davolash rejasi & moliyaviy hisob-kitob (Excel Sheet)
+                      Davolash rejasi & moliyaviy hisob-kitob
                     </span>
                     <span className="text-[10px] font-bold text-slate-500">
                       UZS (So'm)

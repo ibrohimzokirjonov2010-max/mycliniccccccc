@@ -55,7 +55,7 @@ const COLOR_OPTIONS = [
 ];
 
 const DEFAULT_CATEGORIES = [
-  { id: 'salary', value: 'salary', label: 'Ish haqi', icon: 'DollarSign', color: 'bg-emerald-100 text-emerald-700', isSystem: true },
+  { id: 'salary', value: 'salary', label: 'Ish haqi', icon: 'Banknote', color: 'bg-emerald-100 text-emerald-700', isSystem: true },
   { id: 'materials', value: 'materials', label: 'Materiallar', icon: 'ShoppingCart', color: 'bg-blue-100 text-blue-700', isSystem: true },
   { id: 'lab', value: 'lab', label: 'Laboratoriya', icon: 'Wrench', color: 'bg-purple-100 text-purple-700', isSystem: true },
   { id: 'rent', value: 'rent', label: 'Arenda', icon: 'Building2', color: 'bg-indigo-100 text-indigo-700', isSystem: true },

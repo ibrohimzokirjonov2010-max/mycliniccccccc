@@ -38,9 +38,10 @@ const formatRelativeTime = (dateStr) => {
   if (diffMins < 60) return `${diffMins} daqiqa oldin`;
   if (diffHours < 24) return `${diffHours} soat oldin`;
   if (diffDays === 1) return 'Kecha';
-  if (diffDays < 30) return `${diffDays} kun oldin`;
-  
-  return created.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short' });
+  const day = String(created.getDate()).padStart(2, '0');
+  const month = String(created.getMonth() + 1).padStart(2, '0');
+  const year = created.getFullYear();
+  return `${day}.${month}.${year}`;
 };
 
 // Color badge mapper based on dot color

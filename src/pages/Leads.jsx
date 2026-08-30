@@ -31,7 +31,7 @@ import {
 import { useAuth } from '@/lib/AuthContext';
 
 export default function Leads() {
-  const { t, currentLanguage } = useTranslation();
+  const { t, language } = useTranslation();
   const { user, isDoctor } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -203,8 +203,10 @@ export default function Leads() {
     if (!dateStr) return '—';
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return '—';
-    const localeStr = currentLanguage === 'uz' ? 'uz-UZ' : currentLanguage === 'ru' ? 'ru-RU' : 'en-US';
-    return date.toLocaleDateString(localeStr, { day: 'numeric', month: 'short', year: 'numeric' });
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}.${month}.${year}`;
   };
 
   const onDragEnd = async (result) => {
@@ -283,11 +285,11 @@ export default function Leads() {
     const meta = getSourceMeta(source);
     const Icon = meta.icon;
     return (
-      <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold border shadow-2xs ${meta.bg} whitespace-nowrap`}>
-        <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 ${meta.iconBg}`}>
-          <Icon className="w-2 h-2" />
-        </span>
-        <span className="truncate max-w-[130px]">{source || meta.label}</span>
+      <div 
+        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${meta.iconBg} shadow-2xs transition-transform hover:scale-110 cursor-help`}
+        title={`Manba: ${source || meta.label}`}
+      >
+        <Icon className="w-3.5 h-3.5 text-white" />
       </div>
     );
   };
@@ -299,14 +301,14 @@ export default function Leads() {
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/80 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-            Yangi
+            {t('leads.statusNew') || (language === 'ru' ? 'Новый' : 'Yangi')}
           </span>
         );
       case 'contacted':
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200/80 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-            Bog'lanildi
+            {t('leads.statusContacted') || (language === 'ru' ? 'Связались' : 'Bog\'lanildi')}
           </span>
         );
       case 'qualified':
@@ -314,21 +316,21 @@ export default function Leads() {
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/80 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            Qiziqqan
+            {t('leads.statusQualified') || (language === 'ru' ? 'Заинтересован' : 'Qiziqqan')}
           </span>
         );
       case 'converted':
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/80 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            Bemor
+            {t('leads.statusConverted') || (language === 'ru' ? 'Пациент' : 'Bemor')}
           </span>
         );
       case 'lost':
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-            Rad etildi
+            {t('leads.statusLost') || (language === 'ru' ? 'Отклонено' : 'Rad etildi')}
           </span>
         );
       default:
@@ -487,17 +489,7 @@ export default function Leads() {
             className="h-9 px-3 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border-slate-200 rounded-lg shadow-2xs"
           >
             <Upload className="w-3.5 h-3.5 mr-1.5 text-slate-500" /> 
-            {isImporting ? 'Yuklanmoqda...' : 'CSV Import'}
-          </Button>
-
-          <Button 
-            variant="outline"
-            size="sm"
-            onClick={exportToExcel}
-            className="h-9 px-3 text-xs font-bold text-emerald-700 bg-emerald-50/70 hover:bg-emerald-100 border-emerald-200 rounded-lg shadow-2xs"
-          >
-            <Download className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
-            Excel Eksport
+            {isImporting ? (language === 'ru' ? 'Загрузка...' : 'Yuklanmoqda...') : (t('leads.csvImport') || 'CSV Import')}
           </Button>
 
           <Button 
@@ -506,7 +498,7 @@ export default function Leads() {
             asChild
           >
             <a href={`https://t.me/${botUsername}?start=admin_${clinicId}`} target="_blank" rel="noopener noreferrer">
-              <Bell className="w-3.5 h-3.5 mr-1.5" /> Telegram Bot
+              <Bell className="w-3.5 h-3.5 mr-1.5" /> {t('leads.telegramBot') || 'Telegram Bot'}
             </a>
           </Button>
 
@@ -532,7 +524,7 @@ export default function Leads() {
           className={`cursor-pointer bg-white border rounded-xl p-3 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between ${statusFilter === 'all' ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200/80'}`}
         >
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Jami Lidlar</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t('leads.totalLeads') || (language === 'ru' ? 'Всего лидов' : 'Jami Lidlar')}</p>
             <p className="text-2xl font-black text-slate-900 mt-0.5 font-mono">{stats?.total || 0}</p>
           </div>
           <div className="w-9 h-9 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center border border-blue-100 shadow-2xs">
@@ -609,10 +601,10 @@ export default function Leads() {
         {/* Status Filter Badges */}
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
           {[
-            { id: 'all', label: 'Barchasi', count: stats?.total || 0 },
-            { id: 'new', label: 'Yangi', count: stats?.new || 0 },
-            { id: 'contacted', label: 'Bog\'lanildi', count: stats?.contacted || 0 },
-            { id: 'converted', label: 'Bemor', count: stats?.converted || 0 },
+            { id: 'all', label: t('leads.allTab') || (language === 'ru' ? 'Все' : 'Barchasi'), count: stats?.total || 0 },
+            { id: 'new', label: t('leads.newTab') || (language === 'ru' ? 'Новые' : 'Yangi'), count: stats?.new || 0 },
+            { id: 'contacted', label: t('leads.contactedTab') || (language === 'ru' ? 'Связались' : 'Bog\'lanildi'), count: stats?.contacted || 0 },
+            { id: 'converted', label: t('leads.convertedTab') || (language === 'ru' ? 'Пациент' : 'Bemor'), count: stats?.converted || 0 },
           ].map(tab => (
             <button
               key={tab.id}
@@ -640,7 +632,7 @@ export default function Leads() {
             }`}
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Excel Jadval</span>
+            <span>{t('leads.excelTable') || (language === 'ru' ? 'Excel таблица' : 'Excel Jadval')}</span>
           </button>
           <button 
             onClick={() => setView('kanban')}
@@ -649,7 +641,7 @@ export default function Leads() {
             }`}
           >
             <LayoutGrid className="w-3.5 h-3.5 text-purple-500" />
-            <span>Kanban</span>
+            <span>{t('leads.kanban') || (language === 'ru' ? 'Канбан' : 'Kanban')}</span>
           </button>
         </div>
       </motion.div>
@@ -667,17 +659,17 @@ export default function Leads() {
             <div className="flex items-center gap-2">
               <span className="font-bold text-slate-700 flex items-center gap-1.5">
                 <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                Lidlar Ma'lumotlar Jadvali
+                {t('leads.leadsDataTable') || (language === 'ru' ? "Таблица данных лидов" : "Lidlar Ma'lumotlar Jadvali")}
               </span>
               <span className="text-slate-300">|</span>
               <span className="text-slate-500 text-[11px]">
-                Ko'rsatilyapti: <strong className="text-slate-800 font-mono">{filtered.length}</strong> ta qator
+                {language === 'ru' ? 'Показано: ' : language === 'en' ? 'Showing: ' : "Ko'rsatilyapti: "}<strong className="text-slate-800 font-mono">{filtered.length}</strong> {language === 'ru' ? 'строк' : language === 'en' ? 'rows' : 'ta qator'}
               </span>
             </div>
 
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mr-1">
-                Grid: Excel Rejim
+                {language === 'ru' ? 'РЕЖИМ: EXCEL ТАБЛИЦА' : language === 'en' ? 'GRID: EXCEL MODE' : 'GRID: EXCEL REJIM'}
               </span>
             </div>
           </div>
@@ -707,13 +699,12 @@ export default function Leads() {
                 <thead>
                   <tr className="bg-slate-100/90 text-slate-600 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider select-none">
                     <th className="py-2.5 px-3 w-12 text-center border-r border-slate-200/80">#</th>
-                    <th className="py-2.5 px-3 min-w-[200px] border-r border-slate-200/80">Mijoz / Bemor Ismi</th>
-                    <th className="py-2.5 px-3 min-w-[170px] whitespace-nowrap border-r border-slate-200/80">Aloqa (Telefon)</th>
-                    <th className="py-2.5 px-3 min-w-[130px] whitespace-nowrap border-r border-slate-200/80">Manba</th>
-                    <th className="py-2.5 px-3 min-w-[130px] whitespace-nowrap border-r border-slate-200/80">Tashrif Sanasi</th>
-                    <th className="py-2.5 px-3 min-w-[120px] whitespace-nowrap border-r border-slate-200/80">Status</th>
-                    <th className="py-2.5 px-3 min-w-[180px] max-w-[260px] border-r border-slate-200/80">Izoh / Ma'lumot</th>
-                    <th className="py-2.5 px-3 text-right min-w-[130px]">Amallar</th>
+                    <th className="py-2.5 px-3 min-w-[200px] border-r border-slate-200/80">{t('leads.clientPatientName') || (language === 'ru' ? 'Имя клиента / пациента' : 'Mijoz / Bemor Ismi')}</th>
+                    <th className="py-2.5 px-3 min-w-[170px] whitespace-nowrap border-r border-slate-200/80">{t('leads.contactPhone') || (language === 'ru' ? 'Контакт (Телефон)' : 'Aloqa (Telefon)')}</th>
+                    <th className="py-2.5 px-3 w-16 text-center whitespace-nowrap border-r border-slate-200/80">{t('leads.source') || (language === 'ru' ? 'Источник' : 'Manba')}</th>
+                    <th className="py-2.5 px-3 min-w-[130px] whitespace-nowrap border-r border-slate-200/80">{t('leads.visitDateCol') || (language === 'ru' ? 'Дата обращения' : 'Tashrif Sanasi')}</th>
+                    <th className="py-2.5 px-3 min-w-[120px] whitespace-nowrap border-r border-slate-200/80">{t('leads.status') || (language === 'ru' ? 'Статус' : 'Status')}</th>
+                    <th className="py-2.5 px-3 text-center min-w-[140px]">{t('leads.actions') || (language === 'ru' ? 'Действия' : 'Amallar')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-xs">
@@ -765,7 +756,7 @@ export default function Leads() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigator.clipboard.writeText(l.phone);
-                                  toast.success("Raqam nusxalandi!");
+                                  toast.success(language === 'ru' ? 'Номер скопирован!' : 'Raqam nusxalandi!');
                                 }}
                                 className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-700 transition-opacity p-1 rounded hover:bg-slate-200/60"
                                 title="Nusxalash"
@@ -776,9 +767,11 @@ export default function Leads() {
                           </div>
                         </td>
 
-                        {/* Source with realistic badge */}
-                        <td className="py-2.5 px-3 whitespace-nowrap border-r border-slate-200/60">
-                          {renderSourceBadge(l.source)}
+                        {/* Source with compact icon badge */}
+                        <td className="py-2.5 px-3 text-center border-r border-slate-200/60">
+                          <div className="flex items-center justify-center">
+                            {renderSourceBadge(l.source)}
+                          </div>
                         </td>
 
                         {/* Visit Date */}
@@ -794,23 +787,16 @@ export default function Leads() {
                           {renderStatusBadge(l.status)}
                         </td>
 
-                        {/* Notes */}
-                        <td className="py-2.5 px-3 border-r border-slate-200/60">
-                          <p className="text-[11px] text-slate-500 truncate max-w-[240px] italic">
-                            {l.notes || <span className="text-slate-300 not-italic">—</span>}
-                          </p>
-                        </td>
-
                         {/* Actions */}
-                        <td className="py-2.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1">
+                        <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1.5">
                             {l.phone && (
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/70 rounded-md transition-all"
+                                className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/70 rounded-lg transition-all cursor-pointer"
                                 onClick={() => window.open(`tel:${l.phone}`, '_self')}
-                                title="Qo'ng'iroq qilish"
+                                title={language === 'ru' ? 'Позвонить' : "Qo'ng'iroq qilish"}
                               >
                                 <Phone className="w-3.5 h-3.5" />
                               </Button>
@@ -819,12 +805,12 @@ export default function Leads() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 text-sky-600 hover:text-sky-700 hover:bg-sky-100/70 rounded-md transition-all"
+                                className="h-7 w-7 text-sky-600 hover:text-sky-700 hover:bg-sky-100/70 rounded-lg transition-all cursor-pointer"
                                 onClick={() => {
                                   const phone = l.phone?.replace(/\D/g, '');
                                   if (phone) window.open(`https://t.me/+${phone}`, '_blank');
                                 }}
-                                title="Telegramda yozish"
+                                title={language === 'ru' ? 'Написать в Telegram' : 'Telegramda yozish'}
                               >
                                 <Send className="w-3.5 h-3.5" />
                               </Button>
@@ -832,18 +818,18 @@ export default function Leads() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-100/70 rounded-md transition-all"
+                              className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-100/70 rounded-lg transition-all cursor-pointer"
                               onClick={() => { setEditLead(l); setModalOpen(true); }}
-                              title="Tahrirlash"
+                              title={language === 'ru' ? 'Редактировать' : 'Tahrirlash'}
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-100/70 rounded-md transition-all"
+                              className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-100/70 rounded-lg transition-all cursor-pointer"
                               onClick={() => setDeleteId(l.id)}
-                              title="O'chirish"
+                              title={language === 'ru' ? 'Удалить' : "O'chirish"}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
@@ -860,14 +846,14 @@ export default function Leads() {
           {/* Excel Status Bar Footer */}
           <div className="bg-slate-100/90 border-t border-slate-200 px-4 py-2 flex flex-wrap items-center justify-between text-[11px] font-medium text-slate-600">
             <div className="flex items-center gap-4">
-              <span>Jami qatorlar: <strong className="text-slate-900 font-mono">{filtered.length}</strong></span>
+              <span>{language === 'ru' ? 'Всего строк: ' : 'Jami qatorlar: '}<strong className="text-slate-900 font-mono">{filtered.length}</strong></span>
               <span className="text-slate-300">|</span>
-              <span>Yangi: <strong className="text-blue-600 font-mono">{stats?.new || 0}</strong></span>
-              <span>Bog'lanildi: <strong className="text-purple-600 font-mono">{stats?.contacted || 0}</strong></span>
-              <span>Bemor: <strong className="text-emerald-600 font-mono">{stats?.converted || 0}</strong></span>
+              <span>{language === 'ru' ? 'Новые: ' : 'Yangi: '}<strong className="text-blue-600 font-mono">{stats?.new || 0}</strong></span>
+              <span>{language === 'ru' ? 'Связались: ' : 'Bog\'lanildi: '}<strong className="text-purple-600 font-mono">{stats?.contacted || 0}</strong></span>
+              <span>{language === 'ru' ? 'Пациенты: ' : 'Bemor: '}<strong className="text-emerald-600 font-mono">{stats?.converted || 0}</strong></span>
             </div>
             <div className="text-slate-400 text-[10px] hidden sm:block">
-              💡 Qator ustiga bosib batafsil ko'rish yoki bemorga o'tkazish mumkin
+              💡 {t('leads.hintClickRow') || (language === 'ru' ? 'Нажмите на строку для подробного просмотра или перевода в пациенты' : 'Qator ustiga bosib batafsil ko\'rish yoki bemorga o\'tkazish mumkin')}
             </div>
           </div>
         </motion.div>
@@ -1180,15 +1166,15 @@ export default function Leads() {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-lg font-bold">Leadni o'chirish</AlertDialogTitle>
+            <AlertDialogTitle className="text-lg font-bold">{t('leads.deleteConfirmTitle') || (language === 'ru' ? 'Удалить лид' : "Leadni o'chirish")}</AlertDialogTitle>
             <AlertDialogDescription className="text-xs">
-              Haqiqatan ham bu leadni o'chirmoqchimisiz? Ushbu amalni qaytarib bo'lmaydi.
+              {t('leads.deleteConfirmDesc') || (language === 'ru' ? 'Вы действительно хотите удалить этот лид? Это действие необратимо.' : 'Haqiqatan ham bu leadni o\'chirmoqchimisiz? Ushbu amalni qaytarib bo\'lmaydi.')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-lg text-xs">Bekor qilish</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-lg text-xs">{t('common.cancel') || (language === 'ru' ? 'Отмена' : 'Bekor qilish')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold">
-              O'chirish
+              {t('leads.deleteBtn') || (language === 'ru' ? 'Удалить' : "O'chirish")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

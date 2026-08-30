@@ -20,7 +20,7 @@ import { toast } from 'sonner';
  * TreatmentTracking Page - Professional Excel Spreadsheet View
  */
 export default function TreatmentTracking() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { user, isDoctor } = useAuth();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -296,35 +296,68 @@ export default function TreatmentTracking() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('treatmentTracking.title') || "Davolash Kuzatuvi"}</h1>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
-              • Ijro Monitoringi & Jarayonlar {plans.length} Rejalar
+              {language === 'ru' ? `• МОНИТОРИНГ ИСПОЛНЕНИЯ: ${plans.length} ПЛАНОВ` : language === 'en' ? `• EXECUTION MONITORING: ${plans.length} PLANS` : `• Ijro Monitoringi & Jarayonlar ${plans.length} Rejalar`}
             </span>
           </div>
           <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
-            Muolajalar ijrosi monitoringi, xizmatlar bajarilishi va klinik samaradorlik tahlili
+            {t('treatmentTracking.subtitle') || (language === 'ru' ? 'Мониторинг исполнения процедур, выполнение услуг и анализ клинической эффективности' : 'Muolajalar ijrosi monitoringi, xizmatlar bajarilishi va klinik samaradorlik tahlili')}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={exportCSV} 
-            className="gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs text-slate-700 h-9.5 px-3.5"
-            title="Excel formatida (.csv) yuklab olish"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Eksport (Excel)</span>
-          </Button>
+          
         </div>
       </div>
 
       {/* ─── Top Executive KPI Grid ─────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
-          { label: "JAMI REJALAR", value: total, icon: Target, color: "text-slate-700", bg: "bg-slate-50 border-slate-200", countText: "Barcha kuzatilayotgan rejalar", isNumber: true },
-          { label: "JARAYONDA", value: inProgress, icon: Clock, color: "text-amber-600", bg: "bg-amber-50 border-amber-100", countText: "Ayni paytda qilinayotgan", isNumber: true },
-          { label: "REJALASHTIRILGAN", value: planned, icon: Layers, color: "text-blue-600", bg: "bg-blue-50 border-blue-100", countText: "Kutilayotgan navbatlar", isNumber: true },
-          { label: "YAKUNLANGAN", value: completed, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", countText: "To'liq bajarilgan rejalar", isNumber: true },
-          { label: "SAMARADORLIK", value: overallEfficiency, icon: TrendingUp, color: "text-indigo-600", bg: "bg-indigo-50 border-indigo-100", countText: "Klinik muvaffaqiyat ko'rsatkichi", isNumber: false, isPercent: true },
+          { 
+            label: language === 'ru' ? "ВСЕГО ПЛАНОВ" : language === 'en' ? "TOTAL PLANS" : "JAMI REJALAR", 
+            value: total, 
+            icon: Target, 
+            color: "text-slate-700", 
+            bg: "bg-slate-50 border-slate-200", 
+            countText: language === 'ru' ? "Все отслеживаемые планы" : language === 'en' ? "All tracked plans" : "Barcha kuzatilayotgan rejalar", 
+            isNumber: true 
+          },
+          { 
+            label: language === 'ru' ? "В ПРОЦЕССЕ" : language === 'en' ? "IN PROGRESS" : "JARAYONDA", 
+            value: inProgress, 
+            icon: Clock, 
+            color: "text-amber-600", 
+            bg: "bg-amber-50 border-amber-100", 
+            countText: language === 'ru' ? "Выполняются сейчас" : language === 'en' ? "Currently in progress" : "Ayni paytda qilinayotgan", 
+            isNumber: true 
+          },
+          { 
+            label: language === 'ru' ? "ЗАПЛАНИРОВАНО" : language === 'en' ? "PLANNED" : "REJALASHTIRILGAN", 
+            value: planned, 
+            icon: Layers, 
+            color: "text-blue-600", 
+            bg: "bg-blue-50 border-blue-100", 
+            countText: language === 'ru' ? "Очередные этапы" : language === 'en' ? "Upcoming stages" : "Kutilayotgan navbatlar", 
+            isNumber: true 
+          },
+          { 
+            label: language === 'ru' ? "ЗАВЕРШЕНО" : language === 'en' ? "COMPLETED" : "YAKUNLANGAN", 
+            value: completed, 
+            icon: CheckCircle2, 
+            color: "text-emerald-600", 
+            bg: "bg-emerald-50 border-emerald-100", 
+            countText: language === 'ru' ? "Полностью выполненные планы" : language === 'en' ? "Fully completed plans" : "To'liq bajarilgan rejalar", 
+            isNumber: true 
+          },
+          { 
+            label: language === 'ru' ? "ЭФФЕКТИВНОСТЬ" : language === 'en' ? "EFFICIENCY" : "SAMARADORLIK", 
+            value: overallEfficiency, 
+            icon: TrendingUp, 
+            color: "text-indigo-600", 
+            bg: "bg-indigo-50 border-indigo-100", 
+            countText: language === 'ru' ? "Показатель успешности клиники" : language === 'en' ? "Clinic success rate" : "Klinik muvaffaqiyat ko'rsatkichi", 
+            isNumber: false, 
+            isPercent: true 
+          },
         ].map((s, i) => (
           <motion.div 
             key={s.label}
@@ -341,7 +374,7 @@ export default function TreatmentTracking() {
                 {s.isPercent ? (
                   <span>{s.value}%</span>
                 ) : (
-                  <span>{s.value} <span className="text-xs font-bold text-slate-400">ta</span></span>
+                  <span>{s.value} <span className="text-xs font-bold text-slate-400">{language === 'ru' ? '' : 'ta'}</span></span>
                 )}
               </div>
               <p className="text-[9.5px] font-medium text-slate-400 mt-0.5">{s.countText}</p>
@@ -363,7 +396,7 @@ export default function TreatmentTracking() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
             <input 
               type="text" 
-              placeholder="Bemor ismi, reja nomi yoki shifokor bo'yicha qidiruv..."
+              placeholder={t('treatmentTracking.searchPlaceholder') || (language === 'ru' ? "Поиск по имени пациента, названию плана или врачу..." : "Bemor ismi, reja nomi yoki shifokor bo'yicha qidiruv...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full h-9 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
@@ -381,10 +414,10 @@ export default function TreatmentTracking() {
           {/* Filter Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
-              { id: 'all', label: "Barchasi", count: total },
-              { id: 'in_progress', label: "Jarayonda", count: inProgress },
-              { id: 'planned', label: "Rejalashtirilgan", count: planned },
-              { id: 'completed', label: "Yakunlangan", count: completed },
+              { id: 'all', label: language === 'ru' ? "Все" : language === 'en' ? "All" : "Barchasi", count: total },
+              { id: 'in_progress', label: language === 'ru' ? "В процессе" : language === 'en' ? "In Progress" : "Jarayonda", count: inProgress },
+              { id: 'planned', label: language === 'ru' ? "Запланировано" : language === 'en' ? "Planned" : "Rejalashtirilgan", count: planned },
+              { id: 'completed', label: language === 'ru' ? "Завершено" : language === 'en' ? "Completed" : "Yakunlangan", count: completed },
             ].map(tab => {
               const isActive = activeStatusFilter === tab.id;
               return (
@@ -408,34 +441,6 @@ export default function TreatmentTracking() {
                 </button>
               );
             })}
-          </div>
-
-          {/* Density Switcher */}
-          <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 shrink-0">
-            <button
-              onClick={() => toggleDensity('compact')}
-              title="Ixcham Excel Jadvali"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'compact' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>Excel</span>
-            </button>
-            <button
-              onClick={() => toggleDensity('comfortable')}
-              title="Keng Jadval Ko'rinishi"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'comfortable' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-              <span>Keng</span>
-            </button>
           </div>
 
         </div>
@@ -475,7 +480,7 @@ export default function TreatmentTracking() {
                   className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
                 >
                   <div className="flex items-center justify-between gap-1.5">
-                    <span>Bemor (F.I.Sh)</span>
+                    <span>{t('treatmentTracking.patientCol') || (language === 'ru' ? 'Пациент (Ф.И.О)' : 'Bemor (F.I.Sh)')}</span>
                     {sortField === 'patient' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                     ) : (
@@ -490,7 +495,7 @@ export default function TreatmentTracking() {
                   className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
                 >
                   <div className="flex items-center justify-between gap-1.5">
-                    <span>Reja Nomi / Shifokor</span>
+                    <span>{t('treatmentTracking.planDoctorCol') || (language === 'ru' ? 'Название плана / Врач' : 'Reja Nomi / Shifokor')}</span>
                     {sortField === 'name' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                     ) : (
@@ -501,7 +506,7 @@ export default function TreatmentTracking() {
 
                 {/* TISHLAR */}
                 <th className="w-28 px-2.5 py-2.5 text-center border-r border-slate-200 select-none whitespace-nowrap">
-                  Tishlar
+                  {t('treatmentTracking.teethCol') || (language === 'ru' ? 'Зубы' : 'Tishlar')}
                 </th>
 
                 {/* IJRO HOLATI / PROGRESS */}
@@ -511,7 +516,7 @@ export default function TreatmentTracking() {
                   title="Ijro foizi bo'yicha saralash"
                 >
                   <div className="flex items-center justify-between gap-1.5 text-blue-900 font-mono">
-                    <span>Ijro Holati (Progress)</span>
+                    <span>{t('treatmentTracking.progressCol') || (language === 'ru' ? 'Статус исполнения (Прогресс)' : 'Ijro Holati (Progress)')}</span>
                     {sortField === 'progress' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
@@ -527,7 +532,7 @@ export default function TreatmentTracking() {
                   title="Jami qiymat bo'yicha saralash"
                 >
                   <div className="flex items-center justify-end gap-1.5 text-emerald-700 font-mono">
-                    <span>Qiymati</span>
+                    <span>{t('treatmentTracking.priceCol') || (language === 'ru' ? 'Стоимость' : 'Qiymati')}</span>
                     {sortField === 'price' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
                     ) : (
@@ -542,7 +547,7 @@ export default function TreatmentTracking() {
                   className="w-40 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                 >
                   <div className="flex items-center justify-center gap-1.5 text-slate-700">
-                    <span>Holat</span>
+                    <span>{t('treatmentTracking.statusCol') || (language === 'ru' ? 'Статус' : 'Holat')}</span>
                     {sortField === 'status' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
@@ -611,11 +616,11 @@ export default function TreatmentTracking() {
                       <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
                         <div className="min-w-0">
                           <span className="font-bold text-slate-800 group-hover:text-[#1499AD] transition-colors truncate block">
-                            {p.name}
+                            {language === 'ru' ? (p.name || '').replace(/Davolash rejasi/gi, 'План лечения') : (language === 'en' ? (p.name || '').replace(/Davolash rejasi/gi, 'Treatment plan') : p.name)}
                           </span>
                           {p.doctor_name && (
                             <span className="text-[10px] font-medium text-slate-400 block truncate">
-                              Shifokor: {p.doctor_name}
+                              {language === 'ru' ? 'Врач: ' : 'Shifokor: '}{p.doctor_name}
                             </span>
                           )}
                         </div>
@@ -641,7 +646,7 @@ export default function TreatmentTracking() {
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-[10.5px] font-mono">
                             <span className="font-bold text-slate-700">
-                              {doneSrv} / {totalSrv} xizmat
+                              {doneSrv} / {totalSrv} {language === 'ru' ? 'услуг' : 'xizmat'}
                             </span>
                             <span className="font-black text-blue-700">
                               {pct}%
@@ -684,9 +689,9 @@ export default function TreatmentTracking() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl font-bold text-xs">
-                            <SelectItem value="planned">Rejalashtirilgan</SelectItem>
-                            <SelectItem value="in_progress">Jarayonda</SelectItem>
-                            <SelectItem value="completed">Yakunlangan</SelectItem>
+                            <SelectItem value="planned">{language === 'ru' ? 'Запланировано' : 'Rejalashtirilgan'}</SelectItem>
+                            <SelectItem value="in_progress">{language === 'ru' ? 'В процессе' : 'Jarayonda'}</SelectItem>
+                            <SelectItem value="completed">{language === 'ru' ? 'Завершено' : 'Yakunlangan'}</SelectItem>
                           </SelectContent>
                         </Select>
                       </td>
@@ -701,7 +706,7 @@ export default function TreatmentTracking() {
                             className="h-7 px-2.5 rounded-lg border-slate-200 text-slate-700 hover:text-[#1499AD] hover:bg-[#1499AD]/10 text-[10.5px] font-bold gap-1"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                            <span>Ijro Nazorati</span>
+                            <span>{language === 'ru' ? 'Контроль исполнения' : language === 'en' ? 'Execution Control' : 'Ijro Nazorati'}</span>
                           </Button>
 
                           {p.patient_id && (
@@ -710,7 +715,7 @@ export default function TreatmentTracking() {
                               variant="ghost"
                               onClick={() => navigate(`/patients/${p.patient_id}`)}
                               className="w-7 h-7 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-                              title="Bemor Profiliga o'tish"
+                              title={language === 'ru' ? 'Перейти в профиль пациента' : "Bemor Profiliga o'tish"}
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
                             </Button>
@@ -746,41 +751,6 @@ export default function TreatmentTracking() {
             </tbody>
           </table>
         </div>
-
-        {/* ─── Excel Formula Summary Footer Bar ──────────────────── */}
-        <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-3 text-slate-600 font-bold">
-            <span className="flex items-center gap-1.5">
-              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>Jadvalda:</span>
-              <strong className="text-slate-900 font-mono">{sortedPlans.length}</strong> ta reja
-            </span>
-            <span className="text-slate-300">•</span>
-            <span>
-              Bajarilgan xizmatlar: <strong className="text-emerald-700 font-mono">{totalCompletedServicesCount} / {totalServicesCount} ta</strong>
-            </span>
-            <span className="text-slate-300">•</span>
-            <span>
-              Umumiy Samaradorlik: <strong className="text-indigo-700 font-mono">{overallEfficiency}%</strong>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-black uppercase text-slate-500">Σ Tanlangan Rejalar Qiymati:</span>
-              <span className="font-mono font-bold text-slate-800 text-sm">
-                {filteredTotalValue.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 border-l border-slate-300 pl-3">
-              <span className="text-[11px] font-black uppercase text-slate-500">Σ Umumiy Qiymat:</span>
-              <span className="font-mono font-black text-emerald-600 text-sm">
-                {totalValue.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
-              </span>
-            </div>
-          </div>
-        </div>
       </motion.div>
 
       {/* ─── Interactive Treatment Execution Checklist Modal ────────── */}
@@ -796,7 +766,7 @@ export default function TreatmentTracking() {
                     </div>
                     <div>
                       <DialogTitle className="text-base font-black text-slate-900 leading-tight">
-                        {activeDetailPlan.name}
+                        {language === 'ru' ? (activeDetailPlan.name || '').replace(/Davolash rejasi/gi, 'План лечения') : (language === 'en' ? (activeDetailPlan.name || '').replace(/Davolash rejasi/gi, 'Treatment plan') : activeDetailPlan.name)}
                       </DialogTitle>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
@@ -807,7 +777,7 @@ export default function TreatmentTracking() {
                           <>
                             <span className="text-slate-300">•</span>
                             <span className="text-[11px] font-bold text-slate-400">
-                              Dr. {activeDetailPlan.doctor_name}
+                              {language === 'ru' ? 'Врач: ' : 'Dr. '}{activeDetailPlan.doctor_name}
                             </span>
                           </>
                         )}
@@ -816,7 +786,7 @@ export default function TreatmentTracking() {
                   </div>
 
                   <div className="text-right">
-                    <span className="text-[10px] font-black uppercase text-slate-400 block">Jami Qiymati:</span>
+                    <span className="text-[10px] font-black uppercase text-slate-400 block">{language === 'ru' ? 'ОБЩАЯ СТОИМОСТЬ:' : 'Jami Qiymati:'}</span>
                     <span className="text-sm font-black font-mono text-emerald-700">
                       {Number(activeDetailPlan.total_price || 0).toLocaleString()} UZS
                     </span>
@@ -828,7 +798,7 @@ export default function TreatmentTracking() {
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-700">Reja holati:</span>
+                    <span className="text-xs font-bold text-slate-700">{language === 'ru' ? 'Статус плана:' : 'Reja holati:'}</span>
                     <Select 
                       value={normalizeStatus(activeDetailPlan.status)} 
                       onValueChange={(val) => updatePlanStatus(activeDetailPlan.id, val)}
@@ -837,16 +807,16 @@ export default function TreatmentTracking() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl font-bold text-xs">
-                        <SelectItem value="planned">Rejalashtirilgan</SelectItem>
-                        <SelectItem value="in_progress">Jarayonda</SelectItem>
-                        <SelectItem value="completed">Yakunlangan</SelectItem>
+                        <SelectItem value="planned">{language === 'ru' ? 'Запланировано' : 'Rejalashtirilgan'}</SelectItem>
+                        <SelectItem value="in_progress">{language === 'ru' ? 'В процессе' : 'Jarayonda'}</SelectItem>
+                        <SelectItem value="completed">{language === 'ru' ? 'Завершено' : 'Yakunlangan'}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   {activeDetailPlan.tooth_number && (
                     <div className="text-xs font-bold text-slate-600">
-                      Tishlar: <span className="font-mono text-blue-600">#{activeDetailPlan.tooth_number}</span>
+                      {language === 'ru' ? 'Зубы: ' : 'Tishlar: '}<span className="font-mono text-blue-600">#{activeDetailPlan.tooth_number}</span>
                     </div>
                   )}
                 </div>
@@ -862,7 +832,7 @@ export default function TreatmentTracking() {
                         <div className="space-y-1">
                           <div className="flex justify-between text-[11px] font-bold">
                             <span className="text-slate-600">
-                              Ijro: <strong className="text-slate-900">{doneSrv} / {totalSrv} ta xizmat bajarildi</strong>
+                              {language === 'ru' ? 'Исполнение: ' : 'Ijro: '}<strong className="text-slate-900">{doneSrv} / {totalSrv} {language === 'ru' ? 'услуг выполнено' : 'ta xizmat bajarildi'}</strong>
                             </span>
                             <span className="text-emerald-700 font-mono font-black">{pct}%</span>
                           </div>
@@ -883,10 +853,10 @@ export default function TreatmentTracking() {
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
                 <div className="bg-slate-100/90 px-3.5 py-2 border-b border-slate-200 flex items-center justify-between">
                   <span className="text-[11px] font-black uppercase text-slate-700">
-                    Rejadagi Muolajalar Ijrosi ({Array.isArray(activeDetailPlan.services) ? activeDetailPlan.services.length : 0})
+                    {language === 'ru' ? 'Исполнение процедур плана' : 'Rejadagi Muolajalar Ijrosi'} ({Array.isArray(activeDetailPlan.services) ? activeDetailPlan.services.length : 0})
                   </span>
                   <span className="text-[10px] font-bold text-slate-400">
-                    Bajarilgan xizmatlarni belgilang (Checkmark)
+                    {language === 'ru' ? 'Отметьте выполненные услуги' : 'Bajarilgan xizmatlarni belgilang (Checkmark)'}
                   </span>
                 </div>
 
@@ -895,10 +865,10 @@ export default function TreatmentTracking() {
                     <thead className="sticky top-0 bg-slate-50 z-10">
                       <tr className="border-b border-slate-200 text-slate-500 text-[10px] font-bold uppercase">
                         <th className="w-10 px-2.5 py-2 text-center border-r border-slate-200">№</th>
-                        <th className="w-10 px-2 py-2 text-center border-r border-slate-200">Holat</th>
-                        <th className="px-3 py-2 border-r border-slate-200">Xizmat Nomi</th>
-                        <th className="w-20 px-2 py-2 text-center border-r border-slate-200">Tish</th>
-                        <th className="px-3 py-2 text-right">Narxi (UZS)</th>
+                        <th className="w-10 px-2 py-2 text-center border-r border-slate-200">{language === 'ru' ? 'Статус' : 'Holat'}</th>
+                        <th className="px-3 py-2 border-r border-slate-200">{language === 'ru' ? 'Название услуги' : 'Xizmat Nomi'}</th>
+                        <th className="w-20 px-2 py-2 text-center border-r border-slate-200">{language === 'ru' ? 'Зуб' : 'Tish'}</th>
+                        <th className="px-3 py-2 text-right">{language === 'ru' ? 'Цена (UZS)' : 'Narxi (UZS)'}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200/70 font-mono">
@@ -939,7 +909,7 @@ export default function TreatmentTracking() {
                                   </span>
                                   {isDone && (
                                     <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 shrink-0">
-                                      Bajarildi
+                                      {language === 'ru' ? 'Выполнено' : 'Bajarildi'}
                                     </span>
                                   )}
                                 </div>
@@ -990,16 +960,16 @@ export default function TreatmentTracking() {
                     }}
                     className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
                   >
-                    <span>Bemor profiliga o'tish</span>
+                    <span>{language === 'ru' ? 'Перейти в профиль пациента' : "Bemor profiliga o'tish"}</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </button>
                 ) : <div />}
 
                 <Button
                   onClick={() => setSelectedDetailPlanId(null)}
-                  className="h-9 px-5 rounded-xl bg-slate-900 text-white text-xs font-black"
+                  className="h-9 px-5 rounded-xl bg-slate-900 text-white text-xs font-black cursor-pointer"
                 >
-                  Yopish
+                  {language === 'ru' ? 'Закрыть' : 'Yopish'}
                 </Button>
               </div>
             </div>

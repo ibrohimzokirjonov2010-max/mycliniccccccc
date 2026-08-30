@@ -260,34 +260,15 @@ export default function PatientExcelView({
   };
 
   const isCompact = density === 'compact';
-  const tablePadding = isCompact ? 'px-3 py-2 text-xs' : 'px-4 py-3.5 text-sm';
-  const thPadding = isCompact ? 'px-3 py-2 text-[10.5px]' : 'px-4 py-2.5 text-xs';
+  const tablePadding = isCompact ? 'px-3.5 py-3.5 text-xs' : 'px-4 py-4.5 text-sm';
+  const thPadding = isCompact ? 'px-3.5 py-3 text-[11px]' : 'px-4 py-3.5 text-xs';
 
   return (
     <div className="space-y-4 pb-12">
-      {/* ─── 1. EXCEL FORMULA & ACTION TOOLBAR ─────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-3 sm:p-4 space-y-3">
-        {/* Formula Bar (fx) */}
-        <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200/80 text-xs font-mono">
-          <span className="font-black text-[#1499AD] bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
-            fx
-          </span>
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar font-bold text-slate-700 whitespace-nowrap text-[11px]">
-            <span className="text-slate-400">=</span>
-            <span className="text-slate-600">SUM(Rejalar): <strong className="text-slate-900 font-mono">{totalPlansPrice.toLocaleString()} UZS</strong></span>
-            <span className="text-slate-300">|</span>
-            <span className="text-emerald-700">SUM(To'langan): <strong className="text-emerald-800 font-mono">{totalPaid.toLocaleString()} UZS</strong></span>
-            <span className="text-slate-300">|</span>
-            <span className={totalDebt > 0 ? "text-rose-700" : "text-slate-600"}>
-              BALANS(Qarz): <strong className="font-mono">{totalDebt.toLocaleString()} UZS</strong>
-            </span>
-            <span className="text-slate-300">|</span>
-            <span className="text-blue-700">QABULLAR: <strong className="font-mono">{completedAppts}/{appointments.length}</strong></span>
-          </div>
-        </div>
-
+      {/* ─── 1. TOOLBAR CONTROLS & ACTIONS ─────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-3 sm:p-4">
         {/* Toolbar Controls */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           {/* Search Box */}
           <div className="relative flex-1 group">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
@@ -347,44 +328,6 @@ export default function PatientExcelView({
 
           {/* Actions & Density */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Density */}
-            <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70">
-              <button
-                onClick={() => toggleDensity('compact')}
-                title="Ixcham Excel Jadvali"
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all cursor-pointer ${
-                  density === 'compact' 
-                    ? 'bg-white text-slate-900 shadow-xs' 
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-                <span>Excel</span>
-              </button>
-              <button
-                onClick={() => toggleDensity('comfortable')}
-                title="Keng Jadval Ko'rinishi"
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all cursor-pointer ${
-                  density === 'comfortable' 
-                    ? 'bg-white text-slate-900 shadow-xs' 
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-                <span>Keng</span>
-              </button>
-            </div>
-
-            {/* Export CSV / Excel Button */}
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-xs transition-all cursor-pointer"
-              title="Bemorning barcha ma'lumotlarini Excel formatida (.csv) yuklab olish"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Excelga yuklash</span>
-            </button>
-
             {/* Print */}
             <button
               onClick={handlePrint}
@@ -422,15 +365,15 @@ export default function PatientExcelView({
 
         <div className={cn(
           "p-3.5 rounded-2xl border shadow-2xs",
-          totalDebt > 0 ? "bg-rose-50/50 border-rose-200/80" : "bg-white border-slate-200/90"
+          totalDebt > 0 ? "bg-amber-50/50 border-amber-200/80" : "bg-white border-slate-200/90"
         )}>
-          <span className={cn("text-[10px] font-black uppercase tracking-wider block mb-0.5", totalDebt > 0 ? "text-rose-600" : "text-slate-400")}>
+          <span className={cn("text-[10px] font-black uppercase tracking-wider block mb-0.5", totalDebt > 0 ? "text-amber-800" : "text-slate-400")}>
             Qoldiq Qarzdorlik
           </span>
-          <div className={cn("text-lg font-black font-mono tabular-nums", totalDebt > 0 ? "text-rose-700" : "text-slate-900")}>
+          <div className={cn("text-lg font-black font-mono tabular-nums", totalDebt > 0 ? "text-amber-950" : "text-slate-900")}>
             {totalDebt.toLocaleString()} <span className="text-[10px] text-slate-400 font-bold">UZS</span>
           </div>
-          <p className={cn("text-[9.5px] font-bold mt-1", totalDebt > 0 ? "text-rose-600 font-black" : "text-slate-400")}>
+          <p className={cn("text-[9.5px] font-bold mt-1", totalDebt > 0 ? "text-amber-700 font-bold" : "text-slate-400")}>
             {totalDebt > 0 ? "⚠️ Qarzdorlik mavjud" : "✅ To'liq to'langan"}
           </p>
         </div>

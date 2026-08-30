@@ -21,6 +21,7 @@ import Paywall   from './components/layout/Paywall';
 import PageNotFound from './lib/PageNotFound';
 import { useFeature } from './hooks/useFeature';
 import { useIsMobile } from './hooks/useIsMobile';
+import { ShifoCrmLogoEmblem } from './components/ui/ShifoCrmLogo';
 
 // ─── Lazy page imports (loaded only when user navigates there) ──────────────
 // Core pages (lazy for faster initial load)
@@ -131,13 +132,15 @@ const PlanRoute = memo(({ feature, children }) => {
 
 // ─── Auth loading screen ──────────────────────────────────────────────────────
 const AuthLoadingScreen = memo(() => (
-  <div className="fixed inset-0 flex items-center justify-center bg-white">
+  <div className="fixed inset-0 flex items-center justify-center bg-slate-950/95 backdrop-blur-md z-[99999]">
     <div className="flex flex-col items-center gap-4">
-      <div className="relative w-16 h-16">
-        <div className="absolute inset-0 border-4 border-emerald-100 rounded-full" />
-        <div className="absolute inset-0 border-4 border-transparent border-t-emerald-500 rounded-full animate-spin" />
+      <div className="relative">
+        <ShifoCrmLogoEmblem className="w-16 h-16 animate-pulse" size={64} hasGlow={true} />
       </div>
-      <p className="text-xs font-black text-slate-300 uppercase tracking-[0.3em]">ShifoCRM</p>
+      <div className="flex items-center gap-1.5">
+        <span className="text-white font-[950] text-sm tracking-widest uppercase">SHIFO</span>
+        <span className="text-[#00D084] font-[950] text-sm tracking-widest uppercase">CRM</span>
+      </div>
     </div>
   </div>
 ));

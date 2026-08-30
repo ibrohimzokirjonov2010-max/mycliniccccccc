@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
+import LeadSourceIcon from '@/components/ui/LeadSourceIcon';
 import { 
   X, CheckCircle2, Facebook, 
   Phone, MessageSquare, Target, Instagram,
@@ -11,7 +12,7 @@ import {
 import { supabase } from '@/api/supabaseClient';
 
 export default function LeadQuickView({ lead, isOpen, onClose }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const navigate = useNavigate();
   const [isConverting, setIsConverting] = useState(false);
 
@@ -99,9 +100,7 @@ export default function LeadQuickView({ lead, isOpen, onClose }) {
               <div className="p-5 border-b border-slate-100">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${iconBgClass}`}>
-                      <PlatformIcon className="w-5 h-5" />
-                    </div>
+                    <LeadSourceIcon source={lead.source} className="w-10 h-10 rounded-xl shadow-xs" />
                     <div>
                       <h3 className="text-sm font-[900] text-slate-900 uppercase tracking-tight">{platformName}</h3>
                       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Integration ID: FB-{String(lead.id || '').substring(0, 8)}</p>
@@ -114,10 +113,10 @@ export default function LeadQuickView({ lead, isOpen, onClose }) {
 
                 <div className="bg-slate-50/50 rounded-xl p-3 border border-slate-100">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[9px] font-[900] text-slate-500 uppercase tracking-widest">Lid Holati</span>
+                    <span className="text-[9px] font-[900] text-slate-500 uppercase tracking-widest">{language === 'ru' ? 'Статус Лида' : 'Lid Holati'}</span>
                     <div className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Faol Jarayon</span>
+                      <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">{language === 'ru' ? 'Активный процесс' : 'Faol Jarayon'}</span>
                     </div>
                   </div>
                   
@@ -146,7 +145,7 @@ export default function LeadQuickView({ lead, isOpen, onClose }) {
                       </div>
                       <div className="pt-0.5">
                         <p className="text-[10px] font-[900] text-slate-900 uppercase tracking-tight">Initialization</p>
-                        <p className="text-[9px] font-medium text-slate-400">Ulanish tasdiqlandi</p>
+                        <p className="text-[9px] font-medium text-slate-400">{language === 'ru' ? 'Подключение подтверждено' : 'Ulanish tasdiqlandi'}</p>
                       </div>
                     </div>
 

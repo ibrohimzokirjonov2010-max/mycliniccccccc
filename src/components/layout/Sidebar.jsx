@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useFeature } from '@/hooks/useFeature';
 import { prefetchModuleData } from '@/utils/prefetcher';
 import { ImplantIcon } from '@/components/ui/Icons';
+import ShifoCrmLogo from '@/components/ui/ShifoCrmLogo';
 
 /**
  * Navigation menu items configuration
@@ -156,73 +157,92 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
 
   const renderSidebarContent = () => (
     <div className="flex flex-col h-full bg-white lg:bg-[#0C1222]/95 lg:backdrop-blur-2xl border-r border-slate-100 lg:border-white/5 shadow-2xl relative z-20 overflow-hidden">
-      {/* Premium Logo Section */}
+      {/* Premium High-Definition Logo Section */}
       <div className={cn(
         "flex items-center mb-1 flex-shrink-0 transition-all duration-300",
-        collapsed ? "justify-center px-2 py-4" : "gap-3 px-4 py-4"
+        collapsed ? "justify-center px-2 py-4" : "px-4 py-4"
       )}>
-        <motion.div 
-          whileHover={{ rotate: 360 }}
-          transition={{ duration: 1 }}
-          className={cn(
-            "bg-sky-500 lg:bg-[#1499AD] rounded-xl flex items-center justify-center shadow-lg text-white flex-shrink-0 transition-all duration-300",
-            collapsed ? "w-10 h-10 rounded-xl" : "w-10 h-10 lg:w-12 lg:h-12 lg:rounded-2xl"
-          )}
-        >
-          <Heart className={cn("fill-white/20 transition-all duration-300", collapsed ? "w-5 h-5" : "w-6 h-6 lg:w-7 lg:h-7")} />
-        </motion.div>
-        {!collapsed && (
-          <div className="flex flex-col">
-            <span className="text-slate-900 lg:text-white font-[900] text-lg lg:text-xl tracking-tighter leading-none uppercase">SHIFOCRM</span>
-            <span className="text-[10px] text-slate-400 lg:text-[#1499AD] font-bold tracking-wider mt-0.5 lg:mt-1 uppercase opacity-80">
-              {t('navigation.subtitle') || 'Klinika Boshqaruvi'}
-            </span>
-          </div>
-        )}
+        <Link to="/" className="outline-none group">
+          <ShifoCrmLogo 
+            collapsed={collapsed} 
+            size={collapsed ? "sm" : "md"} 
+            className="transition-transform duration-200 group-hover:scale-[1.02]"
+          />
+        </Link>
       </div>
 
-      {/* Enhanced Navigation Menu */}
-      <nav className="flex-1 overflow-y-auto px-3 space-y-0.5 py-2 no-scrollbar">
-        {filteredMenuItems.map((item, idx) => {
-          const Icon = item.icon;
-          const active = isActive(item.path);
-          
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => { onMobileClose(); prefetchModuleData(item.path); }}
-              onMouseEnter={() => prefetchModuleData(item.path)}
-              className={cn(
-                'flex items-center rounded-xl text-[10px] font-bold transition-all duration-200 relative group uppercase tracking-wider',
-                collapsed ? 'justify-center p-2 mx-1.5' : 'gap-3 px-3 py-1.5',
-                active
-                  ? 'bg-sky-500 lg:bg-[#1499AD] text-white shadow-md lg:shadow-[#1499AD]/15'
-                  : 'text-slate-500 lg:text-slate-400 hover:bg-slate-50 lg:hover:bg-white/5 hover:text-slate-900 lg:hover:text-white'
-              )}
-            >
-              {active && (
-                <motion.div 
-                  layoutId="sidebarActive"
-                  className="absolute inset-0 bg-gradient-to-r from-[#1499AD] to-[#0E7A8A] rounded-xl z-0"
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                />
-              )}
-              <Icon className={cn('w-5 h-5 flex-shrink-0 transition-all relative z-10', active ? 'text-white' : 'text-slate-400 lg:text-slate-500 group-hover:text-slate-900 lg:group-hover:text-white group-hover:scale-110')} />
-              {!collapsed && <span className="truncate relative z-10">{item.label}</span>}
-              
-              {active && !collapsed && (
-                <div className="absolute right-4 w-1.5 h-1.5 rounded-full bg-white z-10 shadow-sm" />
-              )}
-            </Link>
-          );
-        })}
+      {/* Enhanced Navigation Menu - Excel Spreadsheet Grid Style */}
+      <nav className="flex-1 overflow-y-auto px-2.5 py-2 no-scrollbar">
+        {!collapsed ? (
+          <div className="border border-slate-200 lg:border-slate-700/80 rounded-xl overflow-hidden bg-slate-50 lg:bg-[#091122]/90 shadow-sm divide-y divide-slate-200 lg:divide-slate-700/70">
+            {filteredMenuItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.path);
+
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => { onMobileClose(); prefetchModuleData(item.path); }}
+                  onMouseEnter={() => prefetchModuleData(item.path)}
+                  className={cn(
+                    'flex items-center justify-between px-3.5 py-2.5 text-[11.5px] font-bold transition-all duration-150 relative group uppercase tracking-wider select-none',
+                    active
+                      ? 'bg-gradient-to-r from-[#1499AD] to-[#0ea5e9] text-white shadow-md z-10 font-black'
+                      : 'text-slate-800 lg:text-slate-100 hover:bg-sky-100/70 lg:hover:bg-cyan-950/40 hover:text-slate-950 lg:hover:text-white'
+                  )}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Icon className={cn(
+                      'w-4 h-4 flex-shrink-0 transition-transform duration-200',
+                      active ? 'text-white scale-110' : 'text-slate-600 lg:text-slate-200 group-hover:text-[#1499AD] lg:group-hover:text-cyan-300 group-hover:scale-110'
+                    )} />
+                    <span className="truncate">{item.label}</span>
+                  </div>
+
+                  {active && (
+                    <div className="w-2 h-2 rounded-full bg-white shrink-0 shadow-xs ml-1 ring-2 ring-cyan-200" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          /* Collapsed Mode - Grid Cells */
+          <div className="space-y-1.5">
+            {filteredMenuItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.path);
+
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  title={item.label}
+                  onClick={() => { onMobileClose(); prefetchModuleData(item.path); }}
+                  onMouseEnter={() => prefetchModuleData(item.path)}
+                  className={cn(
+                    'flex items-center justify-center p-2.5 rounded-lg border transition-all duration-150 relative group',
+                    active
+                      ? 'bg-gradient-to-r from-[#1499AD] to-[#0ea5e9] text-white border-cyan-300 shadow-md ring-1 ring-cyan-400/40'
+                      : 'bg-slate-100 lg:bg-slate-800/90 border-slate-300 lg:border-slate-700 text-slate-700 lg:text-slate-200 hover:border-[#1499AD] hover:bg-[#1499AD]/20 hover:text-white'
+                  )}
+                >
+                  <Icon className={cn(
+                    'w-4 h-4 transition-transform',
+                    active ? 'text-white scale-110' : 'group-hover:scale-110'
+                  )} />
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </nav>
 
        {/* Premium User Profile Card */}
-      <div className={cn("border-t border-slate-50 lg:border-white/5 flex-shrink-0 transition-all duration-300", collapsed ? "p-2" : "p-4")}>
+      <div className={cn("border-t border-slate-200 lg:border-slate-800/80 flex-shrink-0 transition-all duration-300", collapsed ? "p-2" : "p-3")}>
         {!collapsed ? (
-          <div className="bg-white lg:bg-white/5 backdrop-blur-md rounded-[1.25rem] p-3 border border-slate-100 lg:border-white/5 flex items-center justify-between group transition-all shadow-sm lg:shadow-lg hover:shadow-md">
+          <div className="bg-slate-100 lg:bg-slate-800/80 backdrop-blur-md rounded-2xl p-3 border border-slate-200 lg:border-slate-700/80 flex items-center justify-between group transition-all shadow-sm">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-[#1499AD] flex items-center justify-center text-white font-black text-xs shadow-md overflow-hidden shrink-0">
                 {(user?.avatar_url || user?.photo || user?.avatar || user?.image) ? (
@@ -232,9 +252,9 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-[13px] font-bold text-slate-900 lg:text-white truncate tracking-tight leading-none uppercase">{user?.full_name || user?.name || 'Foydalanuvchi'}</p>
+                <p className="text-[13px] font-black text-slate-900 lg:text-white truncate tracking-tight leading-none uppercase">{user?.full_name || user?.name || 'Foydalanuvchi'}</p>
                 <div className="flex items-center gap-1.5 mt-1.5">
-                  <span className="text-[10px] font-bold text-[#1499AD] lg:text-emerald-400 tracking-wider uppercase bg-sky-50 lg:bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-sky-100 lg:border-emerald-500/10">
+                  <span className="text-[10.5px] font-black text-[#1499AD] lg:text-emerald-300 tracking-wider uppercase bg-sky-100 lg:bg-emerald-500/20 px-2 py-0.5 rounded-md border border-sky-200 lg:border-emerald-500/30">
                     {user?.role === 'doctor' ? 'Shifokor' : 'Admin'}
                   </span>
                 </div>
@@ -242,10 +262,10 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
             </div>
             <button
               onClick={handleLogout}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 transition-all active:scale-95"
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 lg:text-slate-300 hover:text-rose-500 hover:bg-rose-500/20 transition-all active:scale-95 cursor-pointer"
               title={t('common.logout')}
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-4.5 h-4.5" />
             </button>
           </div>
         ) : (
@@ -259,7 +279,7 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
             </div>
             <button
               onClick={handleLogout}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all active:scale-95"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-500/20 transition-all active:scale-95 cursor-pointer"
               title={t('common.logout')}
             >
               <LogOut className="w-5 h-5" />
@@ -269,14 +289,14 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
         
         <button
           onClick={onToggle}
-          className="w-full flex items-center justify-center py-3 mt-2 text-slate-500 hover:text-sky-500 lg:hover:text-white transition-colors active:scale-95"
+          className="w-full flex items-center justify-center py-2.5 mt-1.5 text-slate-600 lg:text-slate-300 hover:text-[#1499AD] lg:hover:text-white transition-colors active:scale-95 cursor-pointer"
         >
           {collapsed ? (
             <ChevronRight className="w-5 h-5" />
           ) : (
-            <div className="flex items-center gap-2 opacity-40 hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-2 opacity-80 hover:opacity-100 transition-opacity">
               <ChevronLeft className="w-4 h-4" />
-              <span className="text-[10px] font-bold uppercase tracking-wider leading-none">{t('common.close')}</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider leading-none">{t('common.close')}</span>
             </div>
           )}
         </button>

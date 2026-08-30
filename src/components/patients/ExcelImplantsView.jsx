@@ -1,4 +1,5 @@
 import { useState, useMemo, memo } from 'react';
+import { useTranslation } from '@/i18n/LanguageContext';
 import { 
   Search, ExternalLink, User, CheckCircle2,
   XCircle, Clock
@@ -15,6 +16,7 @@ function ExcelImplantsView({
   patient: _patient,
   implants = [],
 }) {
+  const { t, language } = useTranslation();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'Tugallangan' | 'Jarayonda' | 'Rejalashtirilgan'
   const [density, setDensity] = useState('compact');
@@ -45,98 +47,55 @@ function ExcelImplantsView({
 
   const getStatusBadge = (status) => {
     const s = (status || '').toLowerCase();
-    if (s.includes('tugallangan') || s.includes('done') || s.includes('complete')) {
+    if (s.includes('tugallangan') || s.includes('done') || s.includes('complete') || s.includes('завершено')) {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
           <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-          <span>Tugallangan</span>
+          <span>{language === 'ru' ? 'Завершено' : language === 'en' ? 'Completed' : 'Tugallangan'}</span>
         </span>
       );
     }
-    if (s.includes('fail') || s.includes('rad')) {
+    if (s.includes('fail') || s.includes('rad') || s.includes('отклонено')) {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[10px]">
           <XCircle className="w-3 h-3 text-rose-600 shrink-0" />
-          <span>Rad etildi</span>
+          <span>{language === 'ru' ? 'Отклонено' : language === 'en' ? 'Failed' : 'Rad etildi'}</span>
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[10px]">
         <Clock className="w-3 h-3 text-blue-600 shrink-0" />
-        <span>Integratsiyada</span>
+        <span>{language === 'ru' ? 'В процессе остеоинтеграции' : language === 'en' ? 'In Integration' : 'Integratsiyada'}</span>
       </span>
     );
   };
 
   return (
     <div className="space-y-4">
-      {/* ══ EXCEL SPREADSHEET TOOLBAR ══ */}
+      {/* ══ TOOLBAR CONTROLS & FILTERS ══ */}
       <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
-        {/* Formula Bar */}
-        <div className="bg-slate-50/90 px-4 py-2 border-b border-slate-200 flex items-center gap-3 text-xs font-mono">
-          <div className="flex items-center gap-1.5 text-slate-400 font-black shrink-0">
-            <span className="text-[#1a73e8] italic font-serif text-sm">fx</span>
-            <span>=</span>
-          </div>
-          <div className="flex items-center gap-4 flex-wrap text-slate-700 overflow-x-auto no-scrollbar">
-            <span>JAMI IMPLANTLAR: <b className="text-slate-900 font-black">{implants.length} ta</b></span>
-            <span className="text-slate-300">|</span>
-            <span>INTEGRATSIYADA: <b className="text-blue-700 font-black">{implants.filter(i => (i.lifecycle_status || '').includes('Integratsiyada') || !i.lifecycle_status).length} ta</b></span>
-            <span className="text-slate-300">|</span>
-            <span>TUGALLANGAN: <b className="text-emerald-700 font-black">{implants.filter(i => (i.lifecycle_status || '').includes('Tugallangan')).length} ta</b></span>
-          </div>
-        </div>
-
         {/* Action Controls & Filters */}
         <div className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap flex-1">
             {/* Search Input */}
-            <div className="relative min-w-[200px] max-w-xs flex-1">
+            <div className="relative min-w-[200px] max-w-sm flex-1">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Brend, tish #, shifokor qidirish..."
+                placeholder={language === 'ru' ? "Поиск фирмы, бренда, врача, лота..." : language === 'en' ? "Search brand, tooth #, doctor..." : "Brend, tish #, shifokor qidirish..."}
                 className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
               />
               {search && (
                 <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">✕</button>
               )}
             </div>
-
-            {/* Filter Pills */}
-            <div className="inline-flex p-0.5 bg-slate-100 rounded-lg border border-slate-200/60 gap-0.5">
-              {[
-                { id: 'all', label: 'Barchasi' },
-                { id: 'Integratsiyada', label: 'Integratsiyada' },
-                { id: 'Tugallangan', label: 'Tugallangan' },
-              ].map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setStatusFilter(f.id)}
-                  className={cn(
-                    "px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer",
-                    statusFilter === f.id
-                  ? "bg-white text-slate-900 shadow-2xs border border-slate-200/60 font-black"
-                  : "text-slate-600 hover:text-slate-900"
-                  )}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setDensity(d => d === 'compact' ? 'normal' : 'compact')}
-              className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-            >
-              {density === 'compact' ? '☷ Ixcham' : '☰ Keng'}
-            </button>
           </div>
         </div>
       </div>
@@ -144,18 +103,18 @@ function ExcelImplantsView({
       {/* ══ EXCEL SPREADSHEET TABLE ══ */}
       <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
         <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full border-collapse text-left font-sans text-xs">
+          <table className="w-full border-collapse text-left font-sans text-sm">
             <thead>
-              <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10.5px]">
-                <th className="py-2.5 px-3 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 font-mono text-center w-20">Tish FDI</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 min-w-[200px]">Implant Brendi / Tizimi</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 font-mono text-center min-w-[120px]">O'lchami (Ø × L)</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 font-mono text-center min-w-[120px]">Lot / Partiya #</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 font-mono min-w-[120px]">O'rnatilgan sana</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 min-w-[140px]">Jarroh</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 text-center min-w-[110px]">Holati</th>
-                <th className="py-2.5 px-3 text-center min-w-[90px]">Pasport</th>
+              <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-xs">
+                <th className="py-3 px-3.5 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
+                <th className="py-3 px-3.5 border-r border-slate-200 font-mono text-center w-20">Tish FDI</th>
+                <th className="py-3 px-3.5 border-r border-slate-200 min-w-[160px]">{t('patientProfile.brandSystemCol') || "Implant Brendi / Tizimi"}</th>
+                <th className="py-3 px-3.5 border-r border-slate-200 text-center min-w-[130px] font-mono">{t('patientProfile.sizeCol') || "O'lchami (Ø × L)"}</th>
+                <th className="py-3 px-3.5 border-r border-slate-200 text-center min-w-[120px] font-mono">{t('patientProfile.lotCol') || "Lot / Partiya #"}</th>
+                <th className="py-3 px-3.5 border-r border-slate-200 min-w-[130px] font-mono">{t('patientProfile.installedDateCol') || "O'rnatilgan Sana"}</th>
+                <th className="py-3 px-3.5 border-r border-slate-200 min-w-[140px]">{language === 'ru' ? "Хирург" : language === 'en' ? "Surgeon" : "Jarroh"}</th>
+                <th className="py-3 px-3.5 border-r border-slate-200 text-center min-w-[110px]">{t('common.status') || "Holati"}</th>
+                <th className="py-3 px-3.5 text-center min-w-[90px]">{language === 'ru' ? "Паспорт" : language === 'en' ? "Passport" : "Pasport"}</th>
               </tr>
             </thead>
             <tbody>
@@ -164,13 +123,14 @@ function ExcelImplantsView({
                   <td colSpan={9} className="py-12 text-center text-slate-400 italic bg-slate-50/50">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <ImplantIcon className="w-8 h-8 text-slate-300" />
-                      <span>Bu bemor uchun hali implantlar qayd etilmagan.</span>
+                      <span>{language === 'ru' ? "Импланты для данного пациента не внесены." : language === 'en' ? "No implants recorded for this patient." : "Bu bemor uchun hali implantlar qayd etilmagan."}</span>
                     </div>
                   </td>
                 </tr>
               ) : (
                 filteredImplants.map((imp, idx) => {
-                  const dateStr = imp.installed_date || imp.date ? new Date(imp.installed_date || imp.date).toLocaleDateString('uz-UZ') : '—';
+                  const locale = language === 'ru' ? 'ru-RU' : language === 'en' ? 'en-US' : 'uz-UZ';
+                  const dateStr = imp.installed_date || imp.date ? new Date(imp.installed_date || imp.date).toLocaleDateString(locale) : '—';
 
                   return (
                     <tr
@@ -182,70 +142,70 @@ function ExcelImplantsView({
                     >
                       {/* Row Index */}
                       <td className={cn(
-                        "border-r border-slate-200 text-center font-mono font-bold text-slate-400 bg-slate-100/40 text-[11px]",
-                        density === 'compact' ? 'py-2 px-2' : 'py-3 px-3'
+                        "border-r border-slate-200 text-center font-mono font-bold text-slate-500 bg-slate-100/40 text-xs",
+                        density === 'compact' ? 'py-3.5 px-3' : 'py-4.5 px-3.5'
                       )}>
                         {idx + 1}
                       </td>
 
                       {/* Tooth FDI # */}
                       <td className={cn(
-                        "border-r border-slate-200 font-mono font-black text-center text-purple-700 bg-purple-50/30",
-                        density === 'compact' ? 'py-2 px-2' : 'py-3 px-2'
+                        "border-r border-slate-200 font-mono font-black text-center text-purple-700 bg-purple-50/40 text-sm",
+                        density === 'compact' ? 'py-3.5 px-3' : 'py-4.5 px-3.5'
                       )}>
                         {imp.tooth_number ? `#${imp.tooth_number}` : '—'}
                       </td>
 
                       {/* Brand / System */}
                       <td className={cn(
-                        "border-r border-slate-200 font-bold text-slate-900",
-                        density === 'compact' ? 'py-2 px-3' : 'py-3 px-3'
+                        "border-r border-slate-200 font-bold text-slate-900 text-sm",
+                        density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4'
                       )}>
                         <div className="flex items-center gap-2">
-                          <ImplantIcon className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                          <span>{imp.brend || imp.firma || 'Implantat'}</span>
+                          <ImplantIcon className="w-4 h-4 text-purple-600 shrink-0" />
+                          <span>{imp.brend || imp.firma || (language === 'ru' ? 'Имплант' : 'Implantat')}</span>
                         </div>
                       </td>
 
                       {/* Diameter x Length */}
                       <td className={cn(
-                        "border-r border-slate-200 font-mono text-center text-slate-700 font-semibold",
-                        density === 'compact' ? 'py-2 px-3' : 'py-3 px-3'
+                        "border-r border-slate-200 font-mono text-center text-slate-800 font-bold text-xs sm:text-sm",
+                        density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4'
                       )}>
                         {imp.diameter && imp.length ? `Ø ${imp.diameter} × ${imp.length} mm` : (imp.size || '—')}
                       </td>
 
                       {/* Lot # */}
                       <td className={cn(
-                        "border-r border-slate-200 font-mono text-center text-slate-600",
-                        density === 'compact' ? 'py-2 px-3' : 'py-3 px-3'
+                        "border-r border-slate-200 font-mono text-center text-slate-700 font-semibold text-xs sm:text-sm",
+                        density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4'
                       )}>
                         {imp.lot_number || imp.lot || '—'}
                       </td>
 
                       {/* Installed Date */}
                       <td className={cn(
-                        "border-r border-slate-200 font-mono text-slate-600",
-                        density === 'compact' ? 'py-2 px-3' : 'py-3 px-3'
+                        "border-r border-slate-200 font-mono font-semibold text-slate-700 text-xs sm:text-sm",
+                        density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4'
                       )}>
                         {dateStr}
                       </td>
 
                       {/* Surgeon Doctor */}
                       <td className={cn(
-                        "border-r border-slate-200 font-medium text-slate-800",
-                        density === 'compact' ? 'py-2 px-3' : 'py-3 px-3'
+                        "border-r border-slate-200 font-semibold text-slate-800 text-xs sm:text-sm",
+                        density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4'
                       )}>
                         <div className="flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{imp.doctor || 'Jarroh'}</span>
+                          <User className="w-4 h-4 text-slate-400 shrink-0" />
+                          <span>{imp.doctor || (language === 'ru' ? 'Хирург' : language === 'en' ? 'Surgeon' : 'Jarroh')}</span>
                         </div>
                       </td>
 
                       {/* Status */}
                       <td className={cn(
                         "border-r border-slate-200 text-center",
-                        density === 'compact' ? 'py-2 px-2' : 'py-3 px-2'
+                        density === 'compact' ? 'py-3 px-3' : 'py-4 px-3.5'
                       )}>
                         {getStatusBadge(imp.lifecycle_status || imp.status)}
                       </td>
@@ -253,19 +213,19 @@ function ExcelImplantsView({
                       {/* Action / Passport Link */}
                       <td className={cn(
                         "text-center",
-                        density === 'compact' ? 'py-1.5 px-2' : 'py-2 px-2'
+                        density === 'compact' ? 'py-3 px-3' : 'py-4 px-3.5'
                       )}>
                         {imp.passport_id || imp.id ? (
                           <Link
                             to={`/implant-passport/${imp.passport_id || imp.id}`}
-                            className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded text-[10.5px] font-bold transition-all border border-purple-200"
-                            title="Implant Pasportini ko'rish"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-bold transition-all border border-purple-200 shadow-2xs"
+                            title={language === 'ru' ? "Открыть паспорт импланта" : "Implant Pasportini ko'rish"}
                           >
-                            <span>Pasport</span>
-                            <ExternalLink className="w-3 h-3" />
+                            <span>{language === 'ru' ? 'Паспорт' : language === 'en' ? 'Passport' : 'Pasport'}</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
                           </Link>
                         ) : (
-                          <span className="text-slate-400 text-[10px]">Mavjud emas</span>
+                          <span className="text-slate-400 text-xs">{language === 'ru' ? 'Отсутствует' : 'Mavjud emas'}</span>
                         )}
                       </td>
                     </tr>

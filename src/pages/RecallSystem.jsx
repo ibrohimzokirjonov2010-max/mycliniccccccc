@@ -541,15 +541,45 @@ export default function RecallSystem() {
   }, [filteredRecalls]);
 
   const getStatusBadge = (status) => {
+    if (language === 'ru') {
+      switch (status) {
+        case 'Completed':
+          return { label: 'Выполнено', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+        case 'Contacted':
+          return { label: 'Связались', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+        case 'Scheduled':
+          return { label: 'Запланировано', bg: 'bg-purple-50 text-purple-700 border-purple-200' };
+        case 'Missed':
+          return { label: 'Пропущено', bg: 'bg-rose-50 text-rose-700 border-rose-200' };
+        case 'Pending':
+        default:
+          return { label: 'В ожидании', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
+      }
+    }
+    if (language === 'en') {
+      switch (status) {
+        case 'Completed':
+          return { label: 'Completed', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+        case 'Contacted':
+          return { label: 'Contacted', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+        case 'Scheduled':
+          return { label: 'Scheduled', bg: 'bg-purple-50 text-purple-700 border-purple-200' };
+        case 'Missed':
+          return { label: 'Missed', bg: 'bg-rose-50 text-rose-700 border-rose-200' };
+        case 'Pending':
+        default:
+          return { label: 'Pending', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
+      }
+    }
     switch (status) {
       case 'Completed':
         return { label: 'Bajarildi', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
       case 'Contacted':
-        return { label: 'Bog\'lanildi', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+        return { label: "Bog'lanildi", bg: 'bg-blue-50 text-blue-700 border-blue-200' };
       case 'Scheduled':
         return { label: 'Rejalashtirilgan', bg: 'bg-purple-50 text-purple-700 border-purple-200' };
       case 'Missed':
-        return { label: 'O\'tkazib yuborildi', bg: 'bg-rose-50 text-rose-700 border-rose-200' };
+        return { label: "O'tkazib yuborildi", bg: 'bg-rose-50 text-rose-700 border-rose-200' };
       case 'Pending':
       default:
         return { label: 'Kutilmoqda', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
@@ -557,15 +587,45 @@ export default function RecallSystem() {
   };
 
   const getPriorityBadge = (priority) => {
+    if (language === 'ru') {
+      switch (priority) {
+        case 'overdue':
+          return { label: 'Просрочено', bg: 'bg-rose-100 text-rose-800 border-rose-200' };
+        case 'urgent':
+          return { label: '🔥 Срочно', bg: 'bg-amber-100 text-amber-800 border-amber-200' };
+        case 'high':
+          return { label: 'Высокий', bg: 'bg-orange-50 text-orange-700 border-orange-200' };
+        case 'medium':
+          return { label: 'Средний', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+        case 'low':
+        default:
+          return { label: 'Низкий', bg: 'bg-slate-100 text-slate-700 border-slate-200' };
+      }
+    }
+    if (language === 'en') {
+      switch (priority) {
+        case 'overdue':
+          return { label: 'Overdue', bg: 'bg-rose-100 text-rose-800 border-rose-200' };
+        case 'urgent':
+          return { label: '🔥 Urgent', bg: 'bg-amber-100 text-amber-800 border-amber-200' };
+        case 'high':
+          return { label: 'High', bg: 'bg-orange-50 text-orange-700 border-orange-200' };
+        case 'medium':
+          return { label: 'Medium', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+        case 'low':
+        default:
+          return { label: 'Low', bg: 'bg-slate-100 text-slate-700 border-slate-200' };
+      }
+    }
     switch (priority) {
       case 'overdue':
-        return { label: 'Muddati o\'tgan', bg: 'bg-rose-100 text-rose-800 border-rose-200' };
+        return { label: "Muddati o'tgan", bg: 'bg-rose-100 text-rose-800 border-rose-200' };
       case 'urgent':
         return { label: '🔥 Dolzarb', bg: 'bg-amber-100 text-amber-800 border-amber-200' };
       case 'high':
         return { label: 'Yuqori', bg: 'bg-orange-50 text-orange-700 border-orange-200' };
       case 'medium':
-        return { label: 'O\'rta', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+        return { label: "O'rta", bg: 'bg-blue-50 text-blue-700 border-blue-200' };
       case 'low':
       default:
         return { label: 'Past', bg: 'bg-slate-100 text-slate-700 border-slate-200' };
@@ -580,24 +640,16 @@ export default function RecallSystem() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('recall.title') || "Eslatmalar & Recall"}</h1>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
-              • Avtomatik Qayta Chaqirish {recalls.length} Yozuvlar
+              {language === 'ru' ? `• АВТОМАТИЧЕСКИЙ ПОВТОРНЫЙ ВЫЗОВ: ${recalls.length} ЗАПИСЕЙ` : language === 'en' ? `• AUTO RECALL: ${recalls.length} RECORDS` : `• Avtomatik Qayta Chaqirish ${recalls.length} Yozuvlar`}
             </span>
           </div>
           <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
-            Bemorlarni profilaktik ko'riklar, davolash bosqichlari va eslatmalari reyestri
+            {t('recall.subtitle') || (language === 'ru' ? 'Реестр профилактических осмотров, этапов лечения и напоминаний пациентов' : 'Bemorlarni profilaktik ko\'riklar, davolash bosqichlari va eslatmalari reyestri')}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={exportCSV} 
-            className="gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs text-slate-700 h-9.5 px-3.5"
-            title="Excel formatida (.csv) yuklab olish"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Eksport (Excel)</span>
-          </Button>
+          
 
           <Button 
             variant="outline" 
@@ -622,10 +674,38 @@ export default function RecallSystem() {
       {/* ─── Top Executive KPI Grid ─────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "JAMI ESLATMALAR", value: statusCounts.all, icon: Bell, color: "text-blue-600", bg: "bg-blue-50 border-blue-100", countText: "Barcha rejalashtirilgan eslatmalar" },
-          { label: "KUTILMOQDA (PENDING)", value: statusCounts.pending, icon: Clock, color: "text-amber-600", bg: "bg-amber-50 border-amber-100", countText: "Hali yuborilmagan eslatmalar" },
-          { label: "YAQINLASHAYOTGAN (7 KUN)", value: statusCounts.upcoming, icon: CheckCircle2, color: "text-purple-600", bg: "bg-purple-50 border-purple-100", countText: "Shu haftada chaqiriladiganlar" },
-          { label: "YUBORILGAN XABARLAR", value: statusCounts.history, icon: Send, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", countText: "Telegram va SMS orqali yuborilgan" },
+          { 
+            label: language === 'ru' ? "ВСЕГО НАПОМИНАНИЙ" : language === 'en' ? "TOTAL REMINDERS" : "JAMI ESLATMALAR", 
+            value: statusCounts.all, 
+            icon: Bell, 
+            color: "text-blue-600", 
+            bg: "bg-blue-50 border-blue-100", 
+            countText: language === 'ru' ? "Все запланированные напоминания" : language === 'en' ? "All scheduled reminders" : "Barcha rejalashtirilgan eslatmalar" 
+          },
+          { 
+            label: language === 'ru' ? "В ОЖИДАНИИ" : language === 'en' ? "PENDING" : "KUTILMOQDA (PENDING)", 
+            value: statusCounts.pending, 
+            icon: Clock, 
+            color: "text-amber-600", 
+            bg: "bg-amber-50 border-amber-100", 
+            countText: language === 'ru' ? "Еще не отправленные напоминания" : language === 'en' ? "Reminders not sent yet" : "Hali yuborilmagan eslatmalar" 
+          },
+          { 
+            label: language === 'ru' ? "ПРЕДСТОЯЩИЕ (7 ДНЕЙ)" : language === 'en' ? "UPCOMING (7 DAYS)" : "YAQINLASHAYOTGAN (7 KUN)", 
+            value: statusCounts.upcoming, 
+            icon: CheckCircle2, 
+            color: "text-purple-600", 
+            bg: "bg-purple-50 border-purple-100", 
+            countText: language === 'ru' ? "Вызовы на этой неделе" : language === 'en' ? "Scheduled for this week" : "Shu haftada chaqiriladiganlar" 
+          },
+          { 
+            label: language === 'ru' ? "ОТПРАВЛЕННЫЕ СООБЩЕНИЯ" : language === 'en' ? "SENT MESSAGES" : "YUBORILGAN XABARLAR", 
+            value: statusCounts.history, 
+            icon: Send, 
+            color: "text-emerald-600", 
+            bg: "bg-emerald-50 border-emerald-100", 
+            countText: language === 'ru' ? "Отправлено через Telegram и SMS" : language === 'en' ? "Sent via Telegram and SMS" : "Telegram va SMS orqali yuborilgan" 
+          },
         ].map((s, i) => (
           <motion.div 
             key={s.label}
@@ -639,7 +719,7 @@ export default function RecallSystem() {
                 {s.label}
               </span>
               <div className="text-lg sm:text-xl font-black font-mono tracking-tight text-slate-900 tabular-nums">
-                {s.value} <span className="text-xs font-bold text-slate-400">ta</span>
+                {s.value} <span className="text-xs font-bold text-slate-400">{language === 'ru' ? '' : 'ta'}</span>
               </div>
               <p className="text-[9.5px] font-medium text-slate-400 mt-0.5">{s.countText}</p>
             </div>
@@ -662,7 +742,9 @@ export default function RecallSystem() {
           >
             <div className="flex items-center gap-2">
               <CheckSquare className="w-4 h-4 text-emerald-400 animate-pulse" />
-              <span className="font-black text-xs">{selectedRecalls.size} ta eslatma tanlandi</span>
+              <span className="font-black text-xs">
+                {selectedRecalls.size} {language === 'ru' ? 'напоминаний выбрано' : language === 'en' ? 'reminders selected' : 'ta eslatma tanlandi'}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -672,7 +754,7 @@ export default function RecallSystem() {
                 className="bg-emerald-500 hover:bg-emerald-600 gap-1.5 h-8 px-3.5 text-xs font-bold border-none"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>Barchasiga yuborish</span>
+                <span>{language === 'ru' ? 'Отправить всем' : language === 'en' ? 'Send to all' : 'Barchasiga yuborish'}</span>
               </Button>
               <Button
                 variant="ghost"
@@ -680,7 +762,7 @@ export default function RecallSystem() {
                 onClick={() => setSelectedRecalls(new Set())}
                 className="text-white/70 hover:text-white hover:bg-white/10 h-8 px-2.5 text-xs font-bold"
               >
-                Bekor qilish
+                {language === 'ru' ? 'Отмена' : language === 'en' ? 'Cancel' : 'Bekor qilish'}
               </Button>
             </div>
           </motion.div>
@@ -696,7 +778,7 @@ export default function RecallSystem() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
             <input 
               type="text" 
-              placeholder="Bemor ismi, telefon raqami yoki muolaja turi bo'yicha qidiruv..."
+              placeholder={t('recall.searchPlaceholder') || (language === 'ru' ? "Поиск по имени пациента, номеру телефона или типу процедуры..." : "Bemor ismi, telefon raqami yoki muolaja turi bo'yicha qidiruv...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full h-9 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
@@ -714,12 +796,12 @@ export default function RecallSystem() {
           {/* Filter Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
-              { id: 'all', label: "Barchasi", count: statusCounts.all },
-              { id: 'upcoming', label: "Yaqinlashayotgan", count: statusCounts.upcoming },
-              { id: 'pending', label: "Kutilmoqda", count: statusCounts.pending },
-              { id: 'contacted', label: "Bog'lanildi", count: statusCounts.contacted },
-              { id: 'completed', label: "Bajarildi", count: statusCounts.completed },
-              { id: 'history', label: "Xabarlar Tarixi", count: statusCounts.history },
+              { id: 'all', label: language === 'ru' ? "Все" : language === 'en' ? "All" : "Barchasi", count: statusCounts.all },
+              { id: 'upcoming', label: language === 'ru' ? "Предстоящие" : language === 'en' ? "Upcoming" : "Yaqinlashayotgan", count: statusCounts.upcoming },
+              { id: 'pending', label: language === 'ru' ? "В ожидании" : language === 'en' ? "Pending" : "Kutilmoqda", count: statusCounts.pending },
+              { id: 'contacted', label: language === 'ru' ? "Связались" : language === 'en' ? "Contacted" : "Bog'lanildi", count: statusCounts.contacted },
+              { id: 'completed', label: language === 'ru' ? "Выполнено" : language === 'en' ? "Completed" : "Bajarildi", count: statusCounts.completed },
+              { id: 'history', label: language === 'ru' ? "История сообщений" : language === 'en' ? "History" : "Xabarlar Tarixi", count: statusCounts.history },
             ].map(tab => {
               const isActive = activeTab === tab.id;
               return (
@@ -744,35 +826,6 @@ export default function RecallSystem() {
               );
             })}
           </div>
-
-          {/* Density Switcher */}
-          <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 shrink-0">
-            <button
-              onClick={() => toggleDensity('compact')}
-              title="Ixcham Excel Jadvali"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'compact' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>Excel</span>
-            </button>
-            <button
-              onClick={() => toggleDensity('comfortable')}
-              title="Keng Jadval Ko'rinishi"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'comfortable' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-              <span>Keng</span>
-            </button>
-          </div>
-
         </div>
       </div>
 
@@ -887,7 +940,7 @@ export default function RecallSystem() {
                     className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
                   >
                     <div className="flex items-center justify-between gap-1.5">
-                      <span>Bemor (F.I.Sh)</span>
+                      <span>{t('recall.patientCol') || (language === 'ru' ? 'Пациент (Ф.И.О)' : 'Bemor (F.I.Sh)')}</span>
                       {sortField === 'patient' ? (
                         sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                       ) : (
@@ -902,7 +955,7 @@ export default function RecallSystem() {
                     className="w-36 px-3 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                   >
                     <div className="flex items-center justify-between gap-1.5">
-                      <span>Eslatma Sanasi</span>
+                      <span>{t('recall.reminderDateCol') || (language === 'ru' ? 'Дата напоминания' : 'Eslatma Sanasi')}</span>
                       {sortField === 'date' ? (
                         sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                       ) : (
@@ -917,7 +970,7 @@ export default function RecallSystem() {
                     className="w-32 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                   >
                     <div className="flex items-center justify-center gap-1.5">
-                      <span>Muhimlik</span>
+                      <span>{t('recall.priorityCol') || (language === 'ru' ? 'Приоритет' : 'Muhimlik')}</span>
                       {sortField === 'priority' ? (
                         sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                       ) : (
@@ -928,7 +981,7 @@ export default function RecallSystem() {
 
                   {/* TURI / IZOH */}
                   <th className="px-3.5 py-2.5 border-r border-slate-200 select-none min-w-[180px]">
-                    Davolash Turi / Izoh
+                    {t('recall.treatmentReasonCol') || (language === 'ru' ? 'Тип лечения / Примечание' : 'Davolash Turi / Izoh')}
                   </th>
 
                   {/* STATUS */}
@@ -937,7 +990,7 @@ export default function RecallSystem() {
                     className="w-40 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                   >
                     <div className="flex items-center justify-center gap-1.5 text-slate-700">
-                      <span>Holat</span>
+                      <span>{t('recall.statusCol') || (language === 'ru' ? 'Статус' : 'Holat')}</span>
                       {sortField === 'status' ? (
                         sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                       ) : (
@@ -1031,7 +1084,18 @@ export default function RecallSystem() {
                         <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
                           <div className="min-w-0">
                             <span className="font-bold text-slate-800 truncate block">
-                              {recall.reason || recall.treatment_type || 'Profilaktik ko\'rik'}
+                              {(() => {
+    const rText = recall.reason || recall.treatment_type || (language === 'ru' ? 'Профилактический осмотр' : "Profilaktik ko'rik");
+    if (language === 'ru') {
+      return rText
+        .replace(/Profilaktik ko'rik/gi, 'Профилактический осмотр')
+        .replace(/qayta ko'rik/gi, 'повторный осмотр')
+        .replace(/Tish tozalash/gi, 'Чистка зубов')
+        .replace(/Plomba/gi, 'Пломба')
+        .replace(/Implant nazorati/gi, 'Контроль импланта');
+    }
+    return rText;
+  })()}
                             </span>
                             {recall.notes && (
                               <span className="text-[10px] text-slate-400 truncate block">
@@ -1054,11 +1118,11 @@ export default function RecallSystem() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl font-bold text-xs">
-                              <SelectItem value="Pending">Kutilmoqda</SelectItem>
-                              <SelectItem value="Contacted">Bog'lanildi</SelectItem>
-                              <SelectItem value="Scheduled">Rejalashtirilgan</SelectItem>
-                              <SelectItem value="Completed">Bajarildi</SelectItem>
-                              <SelectItem value="Missed">O'tkazib yuborildi</SelectItem>
+                              <SelectItem value="Pending">{language === 'ru' ? 'В ожидании' : 'Kutilmoqda'}</SelectItem>
+                              <SelectItem value="Contacted">{language === 'ru' ? 'Связались' : "Bog'lanildi"}</SelectItem>
+                              <SelectItem value="Scheduled">{language === 'ru' ? 'Запланировано' : 'Rejalashtirilgan'}</SelectItem>
+                              <SelectItem value="Completed">{language === 'ru' ? 'Выполнено' : 'Bajarildi'}</SelectItem>
+                              <SelectItem value="Missed">{language === 'ru' ? 'Пропущено' : "O'tkazib yuborildi"}</SelectItem>
                             </SelectContent>
                           </Select>
                         </td>
@@ -1121,36 +1185,6 @@ export default function RecallSystem() {
                 )}
               </tbody>
             </table>
-          </div>
-
-          {/* ─── Excel Formula Summary Footer Bar ──────────────────── */}
-          <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-3 text-slate-600 font-bold">
-              <span className="flex items-center gap-1.5">
-                <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-                <span>Jadvalda:</span>
-                <strong className="text-slate-900 font-mono">{filteredRecalls.length}</strong> ta eslatma
-              </span>
-              <span className="text-slate-300">•</span>
-              <span>
-                Kutilmoqda: <strong className="text-amber-700 font-mono">{statusCounts.pending} ta</strong>
-              </span>
-              <span className="text-slate-300">•</span>
-              <span>
-                Yaqinlashayotgan: <strong className="text-purple-700 font-mono">{statusCounts.upcoming} ta</strong>
-              </span>
-              <span className="text-slate-300">•</span>
-              <span>
-                Bajarildi: <strong className="text-emerald-700 font-mono">{statusCounts.completed} ta</strong>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-black uppercase text-slate-500">Jami Yuborilgan Eslatmalar:</span>
-              <span className="font-mono font-bold text-slate-900 text-sm">
-                {notificationHistory.length} <span className="text-[10px] text-slate-500">ta</span>
-              </span>
-            </div>
           </div>
         </motion.div>
       )}
@@ -1315,13 +1349,13 @@ export default function RecallSystem() {
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="sm:max-w-md rounded-2xl p-5">
           <DialogHeader>
-            <DialogTitle className="text-lg font-black text-slate-900">Eslatma sozlamalari</DialogTitle>
+            <DialogTitle className="text-lg font-black text-slate-900">{language === 'ru' ? 'Настройки напоминаний' : 'Eslatma sozlamalari'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
               <div>
-                <p className="font-bold text-xs text-slate-900">Avtomatik eslatmalar</p>
-                <p className="text-[11px] text-slate-500">Recall sanasi kelganda avtomatik xabar yuborish</p>
+                <p className="font-bold text-xs text-slate-900">{language === 'ru' ? 'Автоматические напоминания' : 'Avtomatik eslatmalar'}</p>
+                <p className="text-[11px] text-slate-500">{language === 'ru' ? 'Автоматически отправлять сообщение при наступлении даты Recall' : 'Recall sanasi kelganda avtomatik xabar yuborish'}</p>
               </div>
               <Switch 
                 checked={settings.auto_reminder}
@@ -1330,27 +1364,27 @@ export default function RecallSystem() {
             </div>
             
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-slate-700">Eslatma vaqtlari</Label>
+              <Label className="text-xs font-bold text-slate-700">{language === 'ru' ? 'Время напоминания' : 'Eslatma vaqtlari'}</Label>
               <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <div className="flex items-center gap-2">
                   <Checkbox 
                     checked={settings.reminder_1_day}
                     onCheckedChange={v => setSettings({ ...settings, reminder_1_day: v })}
                   />
-                  <span className="text-xs font-semibold text-slate-700">1 kun oldin</span>
+                  <span className="text-xs font-semibold text-slate-700">{language === 'ru' ? 'За 1 день до' : '1 kun oldin'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox 
                     checked={settings.reminder_2_hours}
                     onCheckedChange={v => setSettings({ ...settings, reminder_2_hours: v })}
                   />
-                  <span className="text-xs font-semibold text-slate-700">2 soat oldin</span>
+                  <span className="text-xs font-semibold text-slate-700">{language === 'ru' ? 'За 2 часа до' : '2 soat oldin'}</span>
                 </div>
               </div>
             </div>
 
             <div>
-              <Label className="text-xs font-bold text-slate-700">Asosiy xabar kanali</Label>
+              <Label className="text-xs font-bold text-slate-700">{language === 'ru' ? 'Основной канал сообщений' : 'Asosiy xabar kanali'}</Label>
               <Select 
                 value={settings.default_channel}
                 onValueChange={v => setSettings({ ...settings, default_channel: v })}
@@ -1367,7 +1401,7 @@ export default function RecallSystem() {
             
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <Button onClick={() => setSettingsOpen(false)} className="rounded-xl h-10 px-5 text-xs font-black bg-slate-900 text-white">
-                Saqlash va Yopish
+                {language === 'ru' ? 'Сохранить и закрыть' : 'Saqlash va Yopish'}
               </Button>
             </div>
           </div>

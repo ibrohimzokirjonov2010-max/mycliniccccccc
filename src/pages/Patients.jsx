@@ -403,9 +403,6 @@ export default function Patients() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('patients.title') || "Bemorlar"}</h1>
-              <span className="px-2 py-0.5 bg-[#1499AD]/10 text-[#1499AD] text-[10px] font-black rounded-full uppercase tracking-wider">
-                Excel CRM Grid
-              </span>
             </div>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[11px] font-bold text-slate-500">
@@ -420,17 +417,6 @@ export default function Patients() {
         </motion.div>
 
         <div className="flex items-center gap-2">
-          {/* Export to Excel Button */}
-          <button
-            onClick={handleExportExcel}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-[11px] font-bold tracking-wide transition-all shadow-sm active:scale-95"
-            title="Excel formatida (.csv) yuklab olish"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span className="hidden sm:inline">{t('patients.exportExcel') || "Excelga yuklash"}</span>
-            <Download className="w-3.5 h-3.5 opacity-70" />
-          </button>
-
           {/* Add Patient Button */}
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -530,35 +516,6 @@ export default function Patients() {
               );
             })}
           </div>
-
-          {/* Density Switcher */}
-          <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 self-end lg:self-auto">
-            <button
-              onClick={() => toggleDensity('compact')}
-              title="Ixcham Excel Jadvali"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'compact' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>{t('patients.compact') || "Excel"}</span>
-            </button>
-            <button
-              onClick={() => toggleDensity('comfortable')}
-              title="Keng Jadval Ko'rinishi"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'comfortable' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-              <span>{t('patients.comfortable') || "Keng"}</span>
-            </button>
-          </div>
-
         </div>
       </div>
 
@@ -847,38 +804,6 @@ export default function Patients() {
             </div>
           )}
         </AnimatePresence>
-
-        {/* ─── Excel Spreadsheet Bottom Summary Bar ───────────────────── */}
-        {filteredPatients.length > 0 && (
-          <div className="bg-slate-100/90 border-t border-slate-200 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600 font-bold">
-            <div className="flex items-center gap-3">
-              <span>
-                {t('patients.showingCount') || "Jadvalda"}: <strong className="text-slate-900">{tableSummary.totalCount}</strong> ta bemor
-              </span>
-              <span className="text-slate-300">|</span>
-              <span>
-                Qarzdorlar: <strong className="text-rose-600">{tableSummary.debtorCount}</strong> ta ({tableSummary.totalCount > 0 ? Math.round((tableSummary.debtorCount / tableSummary.totalCount) * 100) : 0}%)
-              </span>
-            </div>
-
-            <div className="flex items-center gap-4 font-mono tabular-nums">
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-500 uppercase text-[10px] font-sans font-bold">Σ Jami Qarz:</span>
-                <span className="text-rose-600 font-black">{tableSummary.sumDebt.toLocaleString()} UZS</span>
-              </div>
-              <span className="text-slate-300">|</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-500 uppercase text-[10px] font-sans font-bold">Σ Jami To'lov:</span>
-                <span className="text-emerald-700 font-black">{tableSummary.sumPaid.toLocaleString()} UZS</span>
-              </div>
-              <span className="text-slate-300 hidden md:inline">|</span>
-              <div className="hidden md:flex items-center gap-1.5">
-                <span className="text-slate-500 uppercase text-[10px] font-sans font-bold">x̄ O'rtacha:</span>
-                <span className="text-slate-800 font-bold">{tableSummary.avgPaid.toLocaleString()} UZS</span>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Sentinel for Infinite Scrolling */}
         <div ref={loaderRef} className="py-2 flex justify-center min-h-[1px]">

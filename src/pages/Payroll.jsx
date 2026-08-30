@@ -64,7 +64,7 @@ function formatDateOnly(d) {
  * Doctor commission tracking and salary calculation system in Excel Spreadsheet layout.
  */
 export default function Payroll() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -596,16 +596,20 @@ export default function Payroll() {
   const monthOptions = useMemo(() => {
     const options = [];
     const today = new Date();
+    const RU_MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    const EN_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthNames = language === 'ru' ? RU_MONTHS : language === 'en' ? EN_MONTHS : UZ_MONTHS;
+    
     for (let i = 0; i < 18; i++) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
       const year = date.getFullYear();
       const monthIdx = date.getMonth();
       const value = `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
-      const label = `${UZ_MONTHS[monthIdx]} ${year}`;
+      const label = `${monthNames[monthIdx]} ${year}`;
       options.push({ value, label });
     }
     return options;
-  }, []);
+  }, [language]);
 
   /**
    * Export to CSV with UTF-8 BOM
@@ -699,7 +703,7 @@ export default function Payroll() {
             </tr>
             <tr>
               <th>Mutaxassislik:</th>
-              <td>${doc.specialty || 'Stomatolog'}</td>
+              <td>${doc.specialty || (language === 'ru' ? 'Стоматолог' : 'Stomatolog')}</td>
             </tr>
             <tr>
               <th>Maosh Toifasi:</th>
@@ -751,7 +755,7 @@ export default function Payroll() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('payroll.title') || "Maoshlar"}</h1>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
-              • Hisob-kitoblar {doctors.length} Shifokor
+              {language === 'ru' ? `• РАСЧЁТЫ ${doctors.length} ВРАЧЕЙ` : language === 'en' ? `• PAYROLL ${doctors.length} DOCTORS` : `• Hisob-kitoblar ${doctors.length} Shifokor`}
             </span>
           </div>
           <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
@@ -760,15 +764,7 @@ export default function Payroll() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={exportCSV} 
-            className="gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs text-slate-700 h-9.5 px-3.5"
-            title="Excel formatida (.csv) yuklab olish"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Eksport (Excel)</span>
-          </Button>
+          
 
           <Button 
             onClick={() => setAddDoctorOpen(true)} 
@@ -783,10 +779,10 @@ export default function Payroll() {
       {/* ─── Top Financial Dashboard KPI Grid ───────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "UMUMIY DAROMAD", value: totals.totalRevenue, icon: DollarSign, color: "text-blue-600", bg: "bg-blue-50 border-blue-100", countText: "Klinikaga tushum" },
-          { label: "DOKTORLAR ULUSHI", value: totals.totalCommission, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", countText: "Komissiya summasi" },
-          { label: "JAMI MAOSH", value: totals.totalSalary, icon: Users, color: "text-purple-600", bg: "bg-purple-50 border-purple-100", countText: "Chiqim vedomosti" },
-          { label: "BEMORLAR SONI", value: totals.totalPatients, icon: Calendar, color: "text-slate-800", bg: "bg-slate-50 border-slate-200", isNumber: true, countText: "Jami qabul qilingan" },
+          { label: t('payroll.totalRevenue') || (language === 'ru' ? "ОБЩИЙ ДОХОД" : "UMUMIY DAROMAD"), value: totals.totalRevenue, icon: DollarSign, color: "text-blue-600", bg: "bg-blue-50 border-blue-100", countText: t('payroll.clinicReceipts') || (language === 'ru' ? "Поступления клиники" : "Klinikaga tushum") },
+          { label: t('payroll.doctorsShare') || (language === 'ru' ? "ДОЛЯ ВРАЧЕЙ" : "DOKTORLAR ULUSHI"), value: totals.totalCommission, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", countText: t('payroll.commissionSum') || (language === 'ru' ? "Сумма комиссии" : "Komissiya summasi") },
+          { label: t('payroll.totalSalary') || (language === 'ru' ? "ОБЩАЯ ЗАРПЛАТА" : "JAMI MAOSH"), value: totals.totalSalary, icon: Users, color: "text-purple-600", bg: "bg-purple-50 border-purple-100", countText: t('payroll.expenseSheet') || (language === 'ru' ? "Ведомость расходов" : "Chiqim vedomosti") },
+          { label: t('payroll.patientCount') || (language === 'ru' ? "КОЛИЧЕСТВО ПАЦИЕНТОВ" : "BEMORLAR SONI"), value: totals.totalPatients, icon: Calendar, color: "text-slate-800", bg: "bg-slate-50 border-slate-200", isNumber: true, countText: t('payroll.totalTreated') || (language === 'ru' ? "Всего принято" : "Jami qabul qilingan") },
         ].map((s, i) => (
           <motion.div 
             key={s.label}
@@ -801,7 +797,7 @@ export default function Payroll() {
               </span>
               <div className="text-lg sm:text-xl font-black font-mono tracking-tight text-slate-900 tabular-nums">
                 {s.isNumber ? (
-                  <span>{s.value} <span className="text-xs font-bold text-slate-400">ta</span></span>
+                  <span>{s.value} <span className="text-xs font-bold text-slate-400">{language === 'ru' ? '' : 'ta'}</span></span>
                 ) : (
                   <span>{Number(s.value).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">UZS</span></span>
                 )}
@@ -825,7 +821,7 @@ export default function Payroll() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
             <input 
               type="text" 
-              placeholder="Shifokor ismi yoki mutaxassisligi bo'yicha qidiruv..."
+              placeholder={t('payroll.searchPlaceholder') || (language === 'ru' ? "Поиск по имени врача или специальности..." : "Shifokor ismi yoki mutaxassisligi bo'yicha qidiruv...")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-9 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
@@ -843,9 +839,9 @@ export default function Payroll() {
           {/* Quick Filter Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
-              { id: 'all', label: "Barchasi", count: doctors.length },
-              { id: 'percentage', label: "Foizda", count: doctors.filter(d => d.salary_type !== 'fixed').length },
-              { id: 'fixed', label: "Oylikda", count: doctors.filter(d => d.salary_type === 'fixed').length }
+              { id: 'all', label: t('payroll.all') || (language === 'ru' ? "Все" : "Barchasi"), count: doctors.length },
+              { id: 'percentage', label: t('payroll.percentage') || (language === 'ru' ? "На проценте" : "Foizda"), count: doctors.filter(d => d.salary_type !== 'fixed').length },
+              { id: 'fixed', label: t('payroll.fixed') || (language === 'ru' ? "На окладе" : "Oylikda"), count: doctors.filter(d => d.salary_type === 'fixed').length }
             ].map(tab => {
               const isActive = activeTypeFilter === tab.id;
               return (
@@ -900,34 +896,6 @@ export default function Payroll() {
             </Select>
           </div>
 
-          {/* Density Switcher */}
-          <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 self-end lg:self-auto shrink-0">
-            <button
-              onClick={() => toggleDensity('compact')}
-              title="Ixcham Excel Jadvali"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'compact' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>Excel</span>
-            </button>
-            <button
-              onClick={() => toggleDensity('comfortable')}
-              title="Keng Jadval Ko'rinishi"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'comfortable' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-              <span>Keng</span>
-            </button>
-          </div>
-
         </div>
       </div>
 
@@ -965,7 +933,7 @@ export default function Payroll() {
                   className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
                 >
                   <div className="flex items-center justify-between gap-1.5">
-                    <span>Shifokor (F.I.Sh)</span>
+                    <span>{t('payroll.doctorName') || (language === 'ru' ? 'Врач (Ф.И.О)' : 'Shifokor (F.I.Sh)')}</span>
                     {sortField === 'name' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                     ) : (
@@ -981,7 +949,7 @@ export default function Payroll() {
                   title="Bemorlar soni bo'yicha saralash"
                 >
                   <div className="flex items-center justify-center gap-1.5 text-blue-800 font-mono">
-                    <span>Bemorlar soni</span>
+                    <span>{t('payroll.patientCountCol') || (language === 'ru' ? 'Кол-во пациентов' : 'Bemorlar soni')}</span>
                     {sortField === 'patients' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
@@ -997,7 +965,7 @@ export default function Payroll() {
                   title="Umumiy daromad bo'yicha saralash"
                 >
                   <div className="flex items-center justify-end gap-1.5 text-slate-700 font-mono">
-                    <span>Umumiy daromad</span>
+                    <span>{t('payroll.totalRevenueCol') || (language === 'ru' ? 'Общий доход' : 'Umumiy daromad')}</span>
                     {sortField === 'revenue' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />
                     ) : (
@@ -1013,7 +981,7 @@ export default function Payroll() {
                   title="Doktorni ulushi bo'yicha saralash"
                 >
                   <div className="flex items-center justify-end gap-1.5 text-emerald-700 font-mono">
-                    <span>Doktorni ulushi</span>
+                    <span>{t('payroll.doctorShareCol') || (language === 'ru' ? 'Доля врача' : 'Doktorni ulushi')}</span>
                     {sortField === 'salary' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
                     ) : (
@@ -1090,7 +1058,7 @@ export default function Payroll() {
                               </span>
                               {isFixed ? (
                                 <span className="text-[9px] font-bold text-purple-700 bg-purple-50 px-1 py-0.2 rounded border border-purple-100">
-                                  Oylik
+                                  {language === 'ru' ? 'Оклад' : 'Oylik'}
                                 </span>
                               ) : (
                                 <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-100">
@@ -1105,7 +1073,7 @@ export default function Payroll() {
                       {/* BEMORLAR SONI Cell */}
                       <td className={`text-center border-r border-slate-200/70 whitespace-nowrap bg-blue-50/20 ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
                         <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-md text-[11px] font-mono font-black text-blue-800 bg-blue-100/70 border border-blue-200/60">
-                          <span>{doc.patientCount || doc.treatments} ta bemor</span>
+                          <span>{doc.patientCount || doc.treatments} {language === 'ru' ? 'пациентов' : 'ta bemor'}</span>
                         </span>
                       </td>
 
@@ -1137,7 +1105,7 @@ export default function Payroll() {
                             title="Maosh to'lash"
                           >
                             <TrendingUp className="w-3 h-3" />
-                            <span>To'lash</span>
+                            <span>{t('payroll.payBtn') || (language === 'ru' ? 'Выплатить' : 'To\'lash')}</span>
                           </Button>
 
                           <Button 
@@ -1147,7 +1115,7 @@ export default function Payroll() {
                             title="Batafsil hisob-kitob"
                           >
                             <Eye className="w-3 h-3 text-slate-500" />
-                            <span>Batafsil</span>
+                            <span>{t('payroll.detailsBtn') || (language === 'ru' ? 'Подробнее' : 'Batafsil')}</span>
                           </Button>
 
                           <button 
@@ -1188,37 +1156,6 @@ export default function Payroll() {
             </tbody>
           </table>
         </div>
-
-        {/* ─── Excel Formula Summary Footer Bar ──────────────────── */}
-        <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-3 text-slate-600 font-bold">
-            <span className="flex items-center gap-1.5">
-              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>Jadvalda:</span>
-              <strong className="text-slate-900 font-mono">{sortedPayrollData.length}</strong> ta shifokor
-            </span>
-            <span className="text-slate-300">•</span>
-            <span>
-              Σ Jami Bemorlar: <strong className="text-blue-700 font-mono">{totals.totalPatients} ta</strong>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-black uppercase text-slate-500">Σ Umumiy Daromad:</span>
-              <span className="font-mono font-bold text-slate-800 text-sm">
-                {totals.totalRevenue.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 border-l border-slate-300 pl-3">
-              <span className="text-[11px] font-black uppercase text-slate-500">Σ Doktorni Ulushi:</span>
-              <span className="font-mono font-black text-emerald-600 text-sm">
-                {totals.totalSalary.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
-              </span>
-            </div>
-          </div>
-        </div>
       </motion.div>
 
       {/* ─── Doctor Detailed Payroll Excel Breakdown Modal ──────────── */}
@@ -1242,7 +1179,7 @@ export default function Payroll() {
                     </div>
                     <div>
                       <DialogTitle className="text-base font-black text-slate-900">
-                        {activeDetailDoctor.name || activeDetailDoctor.full_name} — Maosh & Bemorlar Tafsiloti
+                        {activeDetailDoctor.name || activeDetailDoctor.full_name} — {language === 'ru' ? 'Детализация зарплаты и пациентов' : 'Maosh & Bemorlar Tafsiloti'}
                       </DialogTitle>
                       <p className="text-[11px] font-bold text-slate-400">
                         {activeDetailDoctor.specialty || 'Stomatolog'} • {activeDetailDoctor.salary_type === 'fixed' ? `Oylik: ${Number(activeDetailDoctor.base_salary).toLocaleString()} UZS` : `${activeDetailDoctor.commission_rate || 30}% foizda`}
@@ -1257,7 +1194,7 @@ export default function Payroll() {
                     className="h-8 px-3 rounded-xl border-slate-200 text-xs font-bold gap-1.5 text-slate-700 hover:bg-slate-50"
                   >
                     <Printer className="w-3.5 h-3.5 text-slate-600" />
-                    <span>Chop etish</span>
+                    <span>{language === 'ru' ? 'Печать' : 'Chop etish'}</span>
                   </Button>
                 </div>
               </DialogHeader>
@@ -1265,10 +1202,10 @@ export default function Payroll() {
               {/* Dynamic Period Selector Tabs: Hafta, Oy, Yil, Barchasi */}
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  { id: 'week', label: "Joriy Hafta", value: activeDetailDoctor.weeklyTotal },
-                  { id: 'month', label: "Joriy Oy", value: activeDetailDoctor.monthlyTotal },
-                  { id: 'year', label: "Joriy Yil", value: activeDetailDoctor.yearlyTotal },
-                  { id: 'all', label: "Barchasi", value: activeDetailDoctor.allTotal }
+                  { id: 'week', label: language === 'ru' ? "Эта неделя" : "Joriy Hafta", value: activeDetailDoctor.weeklyTotal },
+                  { id: 'month', label: language === 'ru' ? "Этот месяц" : "Joriy Oy", value: activeDetailDoctor.monthlyTotal },
+                  { id: 'year', label: language === 'ru' ? "Этот год" : "Joriy Yil", value: activeDetailDoctor.yearlyTotal },
+                  { id: 'all', label: language === 'ru' ? "Все" : "Barchasi", value: activeDetailDoctor.allTotal }
                 ].map(p => {
                   const currentMode = activeDetailDoctor.activeFilter?.mode || 'month';
                   const isActive = currentMode === p.id;
@@ -1308,7 +1245,7 @@ export default function Payroll() {
                     }`}
                   >
                     <Receipt className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Bemorlar va To'lovlar Ro'yxati ({activeDetailDoctor.rawPayments?.length || 0})</span>
+                    <span>{language === 'ru' ? 'Список пациентов и оплат' : 'Bemorlar va To\'lovlar Ro\'yxati'} ({activeDetailDoctor.rawPayments?.length || 0})</span>
                   </button>
                   <button
                     type="button"
@@ -1320,7 +1257,7 @@ export default function Payroll() {
                     }`}
                   >
                     <Layers className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Xizmatlar bo'yicha hisobot</span>
+                    <span>{language === 'ru' ? 'Отчёт по услугам' : 'Xizmatlar bo\'yicha hisobot'}</span>
                   </button>
                 </div>
 
@@ -1476,7 +1413,7 @@ export default function Payroll() {
               <DialogHeader>
                 <DialogTitle className="text-base font-black text-slate-900 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-emerald-600" />
-                  <span>Maosh To'lash Vedomosti</span>
+                  <span>{language === 'ru' ? 'Ведомость выплаты зарплаты' : 'Maosh To\'lash Vedomosti'}</span>
                 </DialogTitle>
               </DialogHeader>
 
@@ -1540,7 +1477,7 @@ export default function Payroll() {
                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    Naqd Pul
+                    {language === 'ru' ? 'Наличные' : 'Naqd Pul'}
                   </button>
                   <button
                     type="button"
@@ -1551,7 +1488,7 @@ export default function Payroll() {
                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    Karta / Bank
+                    {language === 'ru' ? 'Карта / Банк' : 'Karta / Bank'}
                   </button>
                 </div>
               </div>

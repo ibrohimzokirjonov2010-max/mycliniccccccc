@@ -1,4 +1,5 @@
 import { useState, useMemo, memo } from 'react';
+import { useTranslation } from '@/i18n/LanguageContext';
 import { 
   Plus, Search, FileSpreadsheet, 
   ArrowUpDown, ExternalLink, User,
@@ -18,6 +19,7 @@ function ExcelTreatmentsView({
   onOpenTreatmentModal,
   onOpenPlanInvoice,
 }) {
+  const { t, language } = useTranslation();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'completed' | 'in_progress' | 'planned'
   const [sortField, setSortField] = useState('date');
@@ -27,7 +29,14 @@ function ExcelTreatmentsView({
   // Flatten all services across plans with plan context
   const allServicesRows = useMemo(() => {
     const rows = [];
+    const effectiveTotalPaid = Math.max(Number(totalPaid || 0), Number(patient?.total_paid || 0));
+
     (plans || []).forEach((plan, pIdx) => {
+      const planPrice = Number(plan.total_price || 0);
+      const planPaid = plans.length === 1
+        ? Math.min(planPrice, Math.max(Number(plan.paid_amount || 0), effectiveTotalPaid))
+        : Number(plan.paid_amount || 0);
+
       const planServices = plan.services || [];
       if (planServices.length === 0) {
         rows.push({
@@ -37,14 +46,15 @@ function ExcelTreatmentsView({
           serviceName: plan.name || 'Davolash muolajasi',
           toothNumber: plan.tooth_number || '—',
           doctorName: plan.doctor_name || patient?.doctor_name || 'Shifokor',
-          price: Number(plan.total_price || 0),
-          paid: Number(plan.paid_amount || 0),
+          price: planPrice,
+          paid: planPaid,
           status: plan.status || 'planned',
           date: plan.created_date || plan.date || '',
-          planObj: plan,
+          planObj: { ...plan, paid_amount: planPaid },
         });
       } else {
         planServices.forEach((srv, sIdx) => {
+          const srvPrice = Number(srv.price || srv.cost || 0);
           rows.push({
             id: `srv-${plan.id || pIdx}-${sIdx}`,
             planId: plan.id,
@@ -52,17 +62,17 @@ function ExcelTreatmentsView({
             serviceName: srv.name || srv.service_name || 'Muolaja',
             toothNumber: srv.tooth_number || plan.tooth_number || '—',
             doctorName: srv.doctor || plan.doctor_name || patient?.doctor_name || 'Shifokor',
-            price: Number(srv.price || srv.cost || 0),
-            paid: Number(srv.paid_amount || 0),
+            price: srvPrice,
+            paid: Number(srv.paid_amount || 0) || (planPaid >= planPrice ? srvPrice : 0),
             status: srv.status || plan.status || 'planned',
             date: srv.date || plan.created_date || '',
-            planObj: plan,
+            planObj: { ...plan, paid_amount: planPaid },
           });
         });
       }
     });
     return rows;
-  }, [plans, patient]);
+  }, [plans, patient, totalPaid]);
 
   // Filtered & Sorted rows
   const filteredRows = useMemo(() => {
@@ -103,8 +113,44 @@ function ExcelTreatmentsView({
     return list;
   }, [allServicesRows, search, statusFilter, sortField, sortAsc]);
 
-  const totalPriceAmount = useMemo(() => {
-    return filteredRows.reduce((sum, r) => sum + r.price, 0);
+  const { totalOriginal, totalDiscount, totalFinal } = useMemo(() => {
+    let orig = 0;
+    let disc = 0;
+
+    // Sum service prices before discount
+    filteredRows.forEach(r => {
+      orig += Number(r.price || 0);
+    });
+
+    // Calculate discount from unique plans associated with filtered rows
+    const uniquePlansMap = new Map();
+    filteredRows.forEach(r => {
+      if (r.planObj && r.planObj.id) {
+        uniquePlansMap.set(r.planObj.id, r.planObj);
+      }
+    });
+
+    uniquePlansMap.forEach(plan => {
+      const planServicesRaw = (plan.services || []).reduce((s, x) => s + Number(x.price || x.cost || 0), 0);
+      const raw = planServicesRaw > 0 ? planServicesRaw : Number(plan.total_price || 0);
+      
+      let pDisc = Number(plan.discount_amount || 0);
+      if (!pDisc && Number(plan.discount_percent) > 0) {
+        pDisc = Math.floor(raw * (Number(plan.discount_percent) / 100));
+      } else if (!pDisc && Number(plan.total_price) > 0 && raw > Number(plan.total_price)) {
+        pDisc = raw - Number(plan.total_price);
+      }
+      disc += pDisc;
+    });
+
+    disc = Math.max(0, disc);
+    const fin = Math.max(0, orig - disc);
+
+    return {
+      totalOriginal: orig,
+      totalDiscount: disc,
+      totalFinal: fin,
+    };
   }, [filteredRows]);
 
   const toggleSort = (field) => {
@@ -144,77 +190,29 @@ function ExcelTreatmentsView({
 
   return (
     <div className="space-y-4">
-      {/* ══ EXCEL SPREADSHEET TOOLBAR ══ */}
+      {/* ══ TOOLBAR CONTROLS & FILTERS ══ */}
       <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
-        {/* Formula Bar */}
-        <div className="bg-slate-50/90 px-4 py-2 border-b border-slate-200 flex items-center gap-3 text-xs font-mono">
-          <div className="flex items-center gap-1.5 text-slate-400 font-black shrink-0">
-            <span className="text-[#1a73e8] italic font-serif text-sm">fx</span>
-            <span>=</span>
-          </div>
-          <div className="flex items-center gap-4 flex-wrap text-slate-700 overflow-x-auto no-scrollbar">
-            <span>SUM(NARX): <b className="text-slate-900 font-black font-mono">{totalPriceAmount.toLocaleString()} UZS</b></span>
-            <span className="text-slate-300">|</span>
-            <span>SUM(TO'LANGAN): <b className="text-emerald-700 font-black font-mono">{Number(totalPaid || 0).toLocaleString()} UZS</b></span>
-            <span className="text-slate-300">|</span>
-            <span>SUM(QARZ): <b className={Number(totalDebt || 0) > 0 ? "text-rose-600 font-black font-mono" : "text-emerald-600 font-black font-mono"}>{Number(totalDebt || 0).toLocaleString()} UZS</b></span>
-            <span className="text-slate-300">|</span>
-            <span>JAMI QATORLAR: <b className="text-slate-900 font-black">{filteredRows.length} ta</b></span>
-          </div>
-        </div>
-
         {/* Action Controls & Filters */}
         <div className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap flex-1">
             {/* Search Input */}
-            <div className="relative min-w-[200px] max-w-xs flex-1">
+            <div className="relative min-w-[200px] max-w-sm flex-1">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Muolaja, tish #, shifokor qidirish..."
+                placeholder={t('patientProfile.searchTreatments') || "Muolaja, tish #, shifokor qidirish..."}
                 className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
               />
               {search && (
                 <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">✕</button>
               )}
             </div>
-
-            {/* Filter Pills */}
-            <div className="inline-flex p-0.5 bg-slate-100 rounded-lg border border-slate-200/60 gap-0.5">
-              {[
-                { id: 'all', label: 'Barchasi' },
-                { id: 'completed', label: 'Bajarilgan' },
-                { id: 'in_progress', label: 'Jarayonda' },
-                { id: 'planned', label: 'Rejalashtirilgan' },
-              ].map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setStatusFilter(f.id)}
-                  className={cn(
-                    "px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer",
-                    statusFilter === f.id
-                      ? "bg-white text-slate-900 shadow-2xs border border-slate-200/60 font-black"
-                      : "text-slate-600 hover:text-slate-900"
-                  )}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Density Toggle */}
-            <button
-              onClick={() => setDensity(d => d === 'compact' ? 'normal' : 'compact')}
-              className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-            >
-              {density === 'compact' ? '☷ Ixcham' : '☰ Keng'}
-            </button>
-
             {/* Add Treatment Plan Button */}
             {onOpenTreatmentModal && (
               <button
@@ -222,7 +220,7 @@ function ExcelTreatmentsView({
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-lg text-xs font-black shadow-2xs transition-all cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>+ Yangi Reja</span>
+                <span>+ {t('patientProfile.newPlan') || 'Yangi Reja'}</span>
               </button>
             )}
           </div>
@@ -232,42 +230,41 @@ function ExcelTreatmentsView({
       {/* ══ EXCEL SPREADSHEET TABLE ══ */}
       <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
         <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full border-collapse text-left font-sans text-xs">
+          <table className="w-full border-collapse text-left font-sans text-sm">
             <thead>
-              <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10.5px]">
-                <th className="py-2.5 px-3 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 font-mono text-center w-16">Tish #</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 min-w-[180px]">Muolaja / Xizmat Nomi</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 min-w-[140px]">Reja / Paket</th>
-                <th className="py-2.5 px-3 border-r border-slate-200 min-w-[130px]">Shifokor</th>
+              <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-xs">
+                <th className="py-3 px-3.5 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
+                <th className="py-3 px-3.5 border-r border-slate-200 font-mono text-center w-16">{t('patientProfile.toothCol') || "Tish #"}</th>
+                <th className="py-3 px-3.5 border-r border-slate-200 min-w-[180px]">{t('patientProfile.treatmentServiceCol') || "Muolaja / Xizmat Nomi"}</th>
+                <th className="py-3 px-3.5 border-r border-slate-200 min-w-[140px]">{t('patientProfile.planPackageCol') || "Reja / Paket"}</th>
+                <th className="py-3 px-3.5 border-r border-slate-200 min-w-[130px]">{t('patientProfile.doctorCol') || "Shifokor"}</th>
                 <th 
-                  className="py-2.5 px-3 border-r border-slate-200 text-right cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[110px]"
+                  className="py-3 px-3.5 border-r border-slate-200 text-right cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[120px]"
                   onClick={() => toggleSort('price')}
                 >
-                  <div className="flex items-center justify-end gap-1 font-mono">
-                    <span>Narxi</span>
-                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                  <div className="flex items-center justify-end gap-1.5 font-mono">
+                    <span>{t('patientProfile.priceCol') || t('common.price') || "Narxi"}</span>
+                    <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                 </th>
-                <th className="py-2.5 px-3 border-r border-slate-200 text-center min-w-[110px]">Holati</th>
                 <th 
-                  className="py-2.5 px-3 border-r border-slate-200 font-mono cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[100px]"
+                  className="py-3 px-3.5 border-r border-slate-200 font-mono cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[110px]"
                   onClick={() => toggleSort('date')}
                 >
-                  <div className="flex items-center justify-between gap-1">
-                    <span>Sana</span>
-                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span>{t('patientProfile.dateCol') || t('common.date') || "Sana"}</span>
+                    <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                 </th>
-                <th className="py-2.5 px-3 text-center min-w-[90px]">Faktura</th>
+                <th className="py-3 px-3.5 text-center min-w-[90px]">{t('patientProfile.invoiceCol') || "Faktura"}</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400 italic bg-slate-50/50">
+                  <td colSpan={8} className="py-12 text-center text-slate-400 italic bg-slate-50/50">
                     <FileSpreadsheet className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    Hech qanday davolash muolajalari topilmadi.
+                    {t('patientProfile.noTreatmentsFound') || "Hech qanday davolash muolajalari topilmadi."}
                   </td>
                 </tr>
               ) : (
@@ -284,67 +281,59 @@ function ExcelTreatmentsView({
                     >
                       {/* Row Index */}
                       <td className={cn(
-                        "border-r border-slate-200 text-center font-mono font-bold text-slate-400 bg-slate-100/40 text-[11px]",
-                        density === 'compact' ? 'py-2 px-2' : 'py-3 px-3'
+                        "border-r border-slate-200 text-center font-mono font-bold text-slate-500 bg-slate-100/40 text-xs",
+                        density === 'compact' ? 'py-3.5 px-3' : 'py-4.5 px-3.5'
                       )}>
                         {idx + 1}
                       </td>
 
                       {/* Tooth # */}
                       <td className={cn(
-                        "border-r border-slate-200 font-mono font-black text-center text-indigo-700 bg-indigo-50/30",
-                        density === 'compact' ? 'py-2 px-2' : 'py-3 px-2'
+                        "border-r border-slate-200 font-mono font-black text-center text-indigo-700 bg-indigo-50/40 text-sm",
+                        density === 'compact' ? 'py-3.5 px-3' : 'py-4.5 px-3.5'
                       )}>
                         {row.toothNumber && row.toothNumber !== '—' ? `#${row.toothNumber}` : '—'}
                       </td>
 
                       {/* Service Name */}
                       <td className={cn(
-                        "border-r border-slate-200 font-bold text-slate-800",
-                        density === 'compact' ? 'py-2 px-3' : 'py-3 px-3'
+                        "border-r border-slate-200 font-bold text-slate-900 text-sm",
+                        density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4'
                       )}>
                         {row.serviceName}
                       </td>
 
                       {/* Plan Context */}
                       <td className={cn(
-                        "border-r border-slate-200 text-slate-600 text-[11px]",
-                        density === 'compact' ? 'py-2 px-3' : 'py-3 px-3'
+                        "border-r border-slate-200 text-slate-600 text-xs sm:text-sm font-medium",
+                        density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4'
                       )}>
                         {row.planName}
                       </td>
 
                       {/* Doctor */}
                       <td className={cn(
-                        "border-r border-slate-200 font-medium text-slate-700",
-                        density === 'compact' ? 'py-2 px-3' : 'py-3 px-3'
+                        "border-r border-slate-200 font-semibold text-slate-800 text-xs sm:text-sm",
+                        density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4'
                       )}>
                         <div className="flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <User className="w-4 h-4 text-slate-400 shrink-0" />
                           <span>{row.doctorName}</span>
                         </div>
                       </td>
 
                       {/* Price */}
                       <td className={cn(
-                        "border-r border-slate-200 text-right font-mono font-bold text-slate-900",
-                        density === 'compact' ? 'py-2 px-3' : 'py-3 px-3'
+                        "border-r border-slate-200 text-right font-mono font-black text-slate-950 text-sm sm:text-base tracking-tight",
+                        density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4'
                       )}>
                         {row.price.toLocaleString()} UZS
                       </td>
 
-                      {/* Status */}
-                      <td className={cn(
-                        "border-r border-slate-200 text-center",
-                        density === 'compact' ? 'py-2 px-2' : 'py-3 px-2'
-                      )}>
-                        {getStatusBadge(row.status)}
-                      </td>
-
                       {/* Date */}
                       <td className={cn(
-                        "border-r border-slate-200 font-mono text-slate-600",
-                        density === 'compact' ? 'py-2 px-3' : 'py-3 px-3'
+                        "border-r border-slate-200 font-mono font-semibold text-slate-700 text-xs sm:text-sm",
+                        density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4'
                       )}>
                         {dateStr}
                       </td>
@@ -352,15 +341,15 @@ function ExcelTreatmentsView({
                       {/* Action */}
                       <td className={cn(
                         "text-center",
-                        density === 'compact' ? 'py-1.5 px-2' : 'py-2 px-2'
+                        density === 'compact' ? 'py-3 px-3' : 'py-4 px-3.5'
                       )}>
                         <button
                           onClick={() => onOpenPlanInvoice && onOpenPlanInvoice(row.planObj)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded text-[10.5px] font-bold transition-all shadow-2xs cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
                           title="Faktura ko'rish va chop etish"
                         >
-                          <span>Faktura</span>
-                          <ExternalLink className="w-3 h-3" />
+                          <span>{t('patientProfile.invoiceBtn') || "Faktura"}</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
                         </button>
                       </td>
                     </tr>
@@ -371,15 +360,48 @@ function ExcelTreatmentsView({
             {/* Total Row */}
             {filteredRows.length > 0 && (
               <tfoot>
-                <tr className="bg-slate-100/95 font-mono font-black text-slate-900 border-t-2 border-slate-300 text-xs">
-                  <td colSpan={5} className="py-2.5 px-4 text-right uppercase tracking-wider font-sans text-[11px] border-r border-slate-200">
-                    JAMI HISOB-KITOB:
+                <tr className="bg-slate-100/95 font-sans border-t-2 border-slate-300">
+                  <td colSpan={5} className="py-3.5 px-4 text-right border-r border-slate-200">
+                    <span className="font-black uppercase tracking-wider text-slate-900 text-xs sm:text-sm block">
+                      {t('patientProfile.totalCalc') || "JAMI HISOB-KITOB:"}
+                    </span>
+                    <span className="text-xs text-slate-600 font-bold font-mono">
+                      {filteredRows.length} {t('patientProfile.proceduresCount') || "ta muolaja"}
+                    </span>
                   </td>
-                  <td className="py-2.5 px-3 text-right text-indigo-900 border-r border-slate-200">
-                    {totalPriceAmount.toLocaleString()} UZS
-                  </td>
-                  <td colSpan={3} className="py-2.5 px-3 text-slate-500 font-normal italic text-[11px]">
-                    {filteredRows.length} ta operatsiya
+                  <td colSpan={3} className="py-3 px-4 bg-slate-50/80">
+                    <div className="flex items-center justify-end gap-4 flex-wrap">
+                      {/* Chegirmasiz summa */}
+                      <div className="flex flex-col items-end">
+                        <span className="text-[11px] uppercase font-bold text-slate-500">{t('patientProfile.totalWithoutDiscount') || "Chegirmasiz summa"}</span>
+                        <span className={cn("font-mono font-bold text-sm text-slate-800", totalDiscount > 0 && "line-through text-slate-400")}>
+                          {totalOriginal.toLocaleString()} UZS
+                        </span>
+                      </div>
+
+                      {/* Chegirma */}
+                      {totalDiscount > 0 ? (
+                        <div className="flex flex-col items-end bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200/90">
+                          <span className="text-[10px] uppercase font-black text-amber-800">{t('patientProfile.discount') || "Chegirma"}</span>
+                          <span className="font-mono font-black text-amber-900 text-sm">
+                            -{totalDiscount.toLocaleString()} UZS
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-end">
+                          <span className="text-[11px] uppercase font-bold text-slate-500">{t('patientProfile.discount') || "Chegirma"}</span>
+                          <span className="font-mono font-medium text-slate-400 text-sm">0 UZS</span>
+                        </div>
+                      )}
+
+                      {/* Chegirmali yakuniy summa */}
+                      <div className="flex flex-col items-end bg-indigo-50 px-3.5 py-1.5 rounded-xl border border-indigo-200">
+                        <span className="text-[11px] uppercase font-black text-indigo-700">{t('patientProfile.totalWithDiscount') || "Chegirmali Jami Summa"}</span>
+                        <span className="font-mono font-black text-indigo-950 text-base sm:text-lg">
+                          {totalFinal.toLocaleString()} UZS
+                        </span>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               </tfoot>

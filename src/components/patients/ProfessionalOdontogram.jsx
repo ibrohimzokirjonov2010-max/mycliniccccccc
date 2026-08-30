@@ -158,10 +158,10 @@ const ToothColumn = memo(function ToothColumn({
   else if (isFocused)              filterStyle = `drop-shadow(0 0 6px #3b82f680)`;
   else if (hovered && !isDisabled) filterStyle = `drop-shadow(0 2px 6px ${st.color}50)`;
 
-  // Lateral view height (the tall side-profile) and occlusal view height (small oval)
-  const LATERAL_H  = compact ? 48 : 80;
-  const OCCLUSAL_H = compact ? 15 : 24;
-  const scaleFactor = compact ? 0.54 : 0.75;
+  // Lateral view height (compact & balanced) and occlusal view height
+  const LATERAL_H  = compact ? 50 : 66;
+  const OCCLUSAL_H = compact ? 16 : 22;
+  const scaleFactor = compact ? 0.65 : 0.94;
 
   const ToothImg = ({ src, alt, isCrown, transform }) => {
     const isRootAlert = !isCrown && isPsrAlert;
@@ -505,8 +505,12 @@ const ToothColumn = memo(function ToothColumn({
   };
 
   const labelCls = cn(
-    'relative z-10 text-[9px] font-[900] leading-none px-0.5 rounded transition-all duration-200 text-center tabular-nums w-full',
-    selected ? 'text-white' : hovered ? 'text-slate-700' : 'text-slate-400',
+    'relative z-10 font-mono font-black leading-none px-1.5 py-0.5 rounded-md transition-all duration-200 text-center tabular-nums w-full text-[11px] border shadow-2xs',
+    selected 
+      ? 'text-white border-transparent shadow-xs' 
+      : hovered 
+        ? 'text-slate-900 bg-white border-slate-300' 
+        : 'text-slate-700 bg-white/95 border-slate-200/80',
   );
 
   return (
@@ -695,7 +699,7 @@ function ProfessionalOdontogram({
   hideHeader      = false,
   hideLegend      = false,
   hideStats       = false,
-  compact         = true,
+  compact         = false,
   patientAge      = null
 }) {
   const { t } = useTranslation();
@@ -705,13 +709,14 @@ function ProfessionalOdontogram({
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth;
-      const baseWidth = compact ? 390 : 560;
-      // Chart base is 390px when compact.
-      // We calculate fluid scale to fit the viewport with layout safe margins.
-      const margin = width < 380 ? 32 : 48;
-      const targetWidth = Math.min(width - margin, baseWidth);
-      const calculatedScale = targetWidth / baseWidth;
-      setScale(Math.max(calculatedScale, 0.55));
+      const baseWidth = compact ? 490 : 760;
+      const margin = width < 640 ? 24 : 48;
+      if (width < baseWidth + margin) {
+        const calculatedScale = (width - margin) / baseWidth;
+        setScale(Math.max(calculatedScale, 0.6));
+      } else {
+        setScale(1);
+      }
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -926,39 +931,39 @@ function ProfessionalOdontogram({
           </div>
         ) : (
           <div
-            className="grid grid-cols-2 gap-0 relative select-none origin-top transition-transform duration-200"
+            className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100/70 rounded-2xl border border-slate-200/80 relative select-none origin-top transition-transform duration-200"
             style={{ 
               width: 'fit-content', 
               margin: '0 auto', 
-              minWidth: compact ? 390 : 560,
+              minWidth: compact ? 450 : 720,
               transform: scale < 1 ? `scale(${scale})` : undefined,
               marginBottom: scale < 1 ? `${-210 * (1 - scale)}px` : undefined
             }}
           >
             {/* Quadrant 1: Upper Right (teeth 18-11) */}
             {chartView !== 'mandible' && (
-              <div className="flex justify-end items-end pb-1 pr-0.5 border-b border-r border-slate-200 gap-0">
+              <div className="flex justify-end items-end pb-2 pr-1.5 pt-1.5 pl-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0">
                 {renderRow(upperRight, true)}
               </div>
             )}
 
             {/* Quadrant 2: Upper Left (teeth 21-28) */}
             {chartView !== 'mandible' && (
-              <div className="flex justify-start items-end pb-1 pl-0.5 border-b border-slate-200 gap-0">
+              <div className="flex justify-start items-end pb-2 pl-1.5 pt-1.5 pr-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0">
                 {renderRow(upperLeft, true)}
               </div>
             )}
 
             {/* Quadrant 4: Lower Right (teeth 48-41) */}
             {chartView !== 'maxilla' && (
-              <div className={cn("flex justify-end items-start pt-1 pr-0.5 border-r border-slate-200 gap-0", chartView === 'mandible' && "border-t-0")}>
+              <div className="flex justify-end items-start pt-2 pr-1.5 pb-1.5 pl-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0">
                 {renderRow(lowerRight, false)}
               </div>
             )}
 
             {/* Quadrant 3: Lower Left (teeth 31-38) */}
             {chartView !== 'maxilla' && (
-              <div className="flex justify-start items-start pt-1 pl-0.5 gap-0">
+              <div className="flex justify-start items-start pt-2 pl-1.5 pb-1.5 pr-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0">
                 {renderRow(lowerLeft, false)}
               </div>
             )}

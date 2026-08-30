@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
-  Plus, TrendingDown, TrendingUp, DollarSign, Calendar, 
+  Plus, TrendingDown, TrendingUp, DollarSign, Banknote, Wallet, Calendar, 
   Filter, PieChart, Building2, Zap, ShoppingCart, Wrench, Trash2, Pencil,
   Sparkles, Package, Coffee, Briefcase, Stethoscope, Car, Gift, Tag, Activity, Utensils, Truck, Shield, Laptop, Check, X,
   ArrowUp, ArrowDown, ArrowUpDown, Table as TableIcon, LayoutGrid, Search, FileSpreadsheet, Receipt,
@@ -25,7 +25,8 @@ const UZ_MONTHS = [
 
 // Available icons dictionary for category selection
 const AVAILABLE_ICONS = [
-  { name: 'DollarSign', icon: DollarSign, label: 'Pul / Ish haqi' },
+  { name: 'Banknote', icon: Banknote, label: 'Ish haqi / Naqd pul' },
+  { name: 'Wallet', icon: Wallet, label: 'Hamyon / Kassa' },
   { name: 'ShoppingCart', icon: ShoppingCart, label: 'Materiallar / Xarid' },
   { name: 'Wrench', icon: Wrench, label: 'Laboratoriya / Ta\'mirlash' },
   { name: 'Building2', icon: Building2, label: 'Bino / Arenda' },
@@ -58,7 +59,7 @@ const COLOR_OPTIONS = [
 ];
 
 const DEFAULT_CATEGORIES = [
-  { id: 'salary', value: 'salary', label: 'Ish haqi', icon: 'DollarSign', color: 'bg-emerald-100 text-emerald-700', isSystem: true, isArchived: false },
+  { id: 'salary', value: 'salary', label: 'Ish haqi', icon: 'Banknote', color: 'bg-emerald-100 text-emerald-700', isSystem: true, isArchived: false },
   { id: 'materials', value: 'materials', label: 'Materiallar', icon: 'ShoppingCart', color: 'bg-blue-100 text-blue-700', isSystem: true, isArchived: false },
   { id: 'lab', value: 'lab', label: 'Laboratoriya', icon: 'Wrench', color: 'bg-purple-100 text-purple-700', isSystem: true, isArchived: false },
   { id: 'rent', value: 'rent', label: 'Arenda', icon: 'Building2', color: 'bg-indigo-100 text-indigo-700', isSystem: true, isArchived: false },
@@ -72,8 +73,10 @@ const loadSavedCategories = () => {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Filter out 'other' / 'Boshqa' as requested by user
-        const cleaned = parsed.filter(c => c.value !== 'other' && c.id !== 'other' && (c.label || '').toLowerCase() !== 'boshqa');
+        // Filter out 'other' / 'Boshqa' and convert DollarSign to Banknote
+        const cleaned = parsed
+          .filter(c => c.value !== 'other' && c.id !== 'other' && (c.label || '').toLowerCase() !== 'boshqa')
+          .map(c => (c.icon === 'DollarSign' || c.value === 'salary' && c.icon === 'DollarSign') ? { ...c, icon: 'Banknote' } : c);
         if (cleaned.length > 0) return cleaned;
       }
     }
@@ -530,15 +533,7 @@ export default function Expenses() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={exportCSV} 
-            className="gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs text-slate-700 h-9.5 px-3.5"
-            title="Excel formatida (.csv) yuklab olish"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Eksport (Excel)</span>
-          </Button>
+          
 
           <Button 
             onClick={() => {
@@ -617,7 +612,7 @@ export default function Expenses() {
             </p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-xs shrink-0">
-            <DollarSign className="w-5 h-5" />
+            <Banknote className="w-5 h-5" />
           </div>
         </motion.div>
         
@@ -825,34 +820,6 @@ export default function Expenses() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Density Switcher */}
-          <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 self-end lg:self-auto shrink-0">
-            <button
-              onClick={() => toggleDensity('compact')}
-              title="Ixcham Excel Jadvali"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'compact' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>Excel</span>
-            </button>
-            <button
-              onClick={() => toggleDensity('comfortable')}
-              title="Keng Jadval Ko'rinishi"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'comfortable' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-              <span>Keng</span>
-            </button>
           </div>
 
         </div>
@@ -1083,37 +1050,6 @@ export default function Expenses() {
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* ─── Excel Formula Summary Footer Bar ──────────────────── */}
-        <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-3 text-slate-600 font-bold">
-            <span className="flex items-center gap-1.5">
-              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>Jadvalda:</span>
-              <strong className="text-slate-900 font-mono">{expenseSummary.totalCount}</strong> ta xarajat
-            </span>
-            <span className="text-slate-300">•</span>
-            <span>
-              x̄ O'rtacha xarajat: <strong className="text-slate-800 font-mono">{expenseSummary.avgExpense.toLocaleString()} UZS</strong>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-black uppercase text-slate-500">Σ Jami Xarajat:</span>
-              <span className="font-mono font-black text-rose-600 text-sm">
-                -{expenseSummary.sumExpense.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 border-l border-slate-300 pl-3">
-              <span className="text-[11px] font-black uppercase text-slate-500">Σ Sof Foyda:</span>
-              <span className={`font-mono font-black text-sm ${totals.profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {totals.profit < 0 ? '-' : '+'}{Math.abs(totals.profit).toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
-              </span>
-            </div>
-          </div>
         </div>
       </motion.div>
 

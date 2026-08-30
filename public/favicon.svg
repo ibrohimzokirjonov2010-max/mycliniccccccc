@@ -1,43 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192" shape-rendering="geometricPrecision">
   <defs>
-    <linearGradient id="shifo-grad-192" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="shifo-grad-fav" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#00E599" />
       <stop offset="35%" stop-color="#1499AD" />
       <stop offset="100%" stop-color="#0284C7" />
     </linearGradient>
-    <linearGradient id="shifo-glass-192" x1="0%" y1="0%" x2="0%" y2="100%">
+    <linearGradient id="shifo-glass-fav" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35" />
       <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.05" />
     </linearGradient>
-    <filter id="shifo-glow-192" x="-20%" y="-20%" width="140%" height="140%">
+    <filter id="shifo-glow-fav" x="-20%" y="-20%" width="140%" height="140%">
       <feGaussianBlur stdDeviation="4" result="blur" />
       <feComposite in="SourceGraphic" in2="blur" operator="over" />
     </filter>
   </defs>
 
   <!-- Squircle Base with Soft Border -->
-  <rect x="6" y="6" width="180" height="180" rx="52" fill="url(#shifo-grad-192)" stroke="rgba(255, 255, 255, 0.45)" stroke-width="4" />
+  <rect x="6" y="6" width="180" height="180" rx="52" fill="url(#shifo-grad-fav)" stroke="rgba(255, 255, 255, 0.45)" stroke-width="4" />
   
   <!-- Glass Highlight Top -->
-  <rect x="12" y="12" width="168" height="84" rx="40" fill="url(#shifo-glass-192)" />
+  <rect x="12" y="12" width="168" height="84" rx="40" fill="url(#shifo-glass-fav)" />
 
   <!-- Emblem Shape (Tooth & Vital Heart Care Fusion) -->
-  <g filter="url(#shifo-glow-192)">
-    <!-- Tooth Outer Contour -->
+  <g filter="url(#shifo-glow-fav)">
     <path 
       d="M96 42 C68 42 52 56 52 76 C52 93 60 110 66 128 C71 142 78 150 85 150 C91 150 93 142 96 132 C99 142 101 150 107 150 C114 150 121 142 126 128 C132 110 140 93 140 76 C140 56 124 42 96 42 Z" 
       fill="#FFFFFF" 
       fill-opacity="0.98"
     />
 
-    <!-- Inlay Heart & Care Emblem in Cyan/Deep Teal -->
     <path 
       d="M96 65 C88.8 55.4 74 59.4 74 73 C74 85 96 102 96 102 C96 102 118 85 118 73 C118 59.4 103.2 55.4 96 65 Z" 
       fill="#0E7490" 
       fill-opacity="0.92"
     />
 
-    <!-- Center Medical Spark -->
     <circle cx="96" cy="75.5" r="6.5" fill="#FFFFFF" />
   </g>
 

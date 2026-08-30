@@ -126,7 +126,7 @@ const formatDate = (dateStr) => {
  * Matching Exact Schema: hizmatlar | sana | tish raqami | firma nomi | narxi
  */
 export default function Implants() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { user, isDoctor } = useAuth();
   const navigate = useNavigate();
 
@@ -460,27 +460,19 @@ export default function Implants() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">Implantologiya Bo'limi</h1>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">{language === 'ru' ? 'Отделение имплантологии' : language === 'en' ? 'Implantology Department' : "Implantologiya Bo'limi"}</h1>
             <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-teal-50 text-teal-700 border border-teal-200 flex items-center gap-1.5">
               <ImplantIcon className="w-3.5 h-3.5 text-teal-600" />
-              {implants.length} ta amaliyot
+              {language === 'ru' ? `${implants.length} операций` : language === 'en' ? `${implants.length} procedures` : `${implants.length} ta amaliyot`}
             </span>
           </div>
           <p className="text-xs font-semibold text-slate-400 mt-0.5">
-            Implant, Formik, Karonka va jarrohlik xizmatlari reyestri hamda monitoringi
+            {language === 'ru' ? 'Реестр и мониторинг имплантов, формирователей, коронок и хирургических услуг' : 'Implant, Formik, Karonka va jarrohlik xizmatlari reyestri hamda monitoringi'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={exportCSV} 
-            className="gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs text-slate-700 h-9.5 px-3.5 cursor-pointer shadow-xs"
-            title="Excel (.csv) formatida yuklab olish"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Eksport (Excel)</span>
-          </Button>
+          
 
           <Button 
             variant="outline" 
@@ -489,7 +481,7 @@ export default function Implants() {
             className="gap-1.5 h-9.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white cursor-pointer shadow-xs"
           >
             <BrandStockIcon className="w-4 h-4 text-indigo-600" />
-            <span>Brendlar & Zaxira</span>
+            <span>{language === 'ru' ? 'Бренды и склад' : language === 'en' ? 'Brands & Stock' : 'Brendlar & Zaxira'}</span>
           </Button>
 
           <Button 
@@ -497,7 +489,7 @@ export default function Implants() {
             className="bg-[#00D084] hover:bg-[#00B875] text-white gap-1.5 border-none rounded-xl h-9.5 px-4 font-black text-xs shadow-md shadow-[#00D084]/20 transition-all active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Yangi implant qo'shish</span>
+            <span>{language === 'ru' ? '+ Добавить имплант' : language === 'en' ? '+ Add Implant' : '+ Yangi implant qo\'shish'}</span>
           </Button>
         </div>
       </div>
@@ -506,42 +498,42 @@ export default function Implants() {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
           { 
-            label: "JAMI AMALIYOTLAR", 
-            value: `${totalCount} ta`, 
-            sub: "Barcha xizmatlar yig'indisi", 
+            label: language === 'ru' ? "ВСЕГО ОПЕРАЦИЙ" : language === 'en' ? "TOTAL PROCEDURES" : "JAMI AMALIYOTLAR", 
+            value: `${totalCount} ${language === 'ru' ? '' : 'ta'}`, 
+            sub: language === 'ru' ? "Сумма всех услуг" : "Barcha xizmatlar yig'indisi", 
             icon: Tooth, 
             color: "text-indigo-600", 
             bg: "bg-indigo-50 border-indigo-100" 
           },
           { 
-            label: "JAMI QIYMAT (SUMMA)", 
-            value: `${totalRevenue.toLocaleString()} so'm`, 
-            sub: "Klinika umumiy tushumi", 
+            label: language === 'ru' ? "ОБЩАЯ СТОИМОСТЬ" : language === 'en' ? "TOTAL VALUE" : "JAMI QIYMAT (SUMMA)", 
+            value: `${totalRevenue.toLocaleString()} ${language === 'ru' ? 'UZS' : "so'm"}`, 
+            sub: language === 'ru' ? "Общая выручка клиники" : "Klinika umumiy tushumi", 
             icon: ClinicalRevenueIcon, 
             color: "text-emerald-600", 
             bg: "bg-emerald-50 border-emerald-100",
             highlight: true
           },
           { 
-            label: "IMPLANTLAR", 
-            value: `${serviceStats.implantCount} ta`, 
-            sub: `${serviceStats.implantSum.toLocaleString()} so'm`, 
+            label: language === 'ru' ? "ИМПЛАНТЫ" : language === 'en' ? "IMPLANTS" : "IMPLANTLAR", 
+            value: `${serviceStats.implantCount} ${language === 'ru' ? '' : 'ta'}`, 
+            sub: `${serviceStats.implantSum.toLocaleString()} ${language === 'ru' ? 'UZS' : "so'm"}`, 
             icon: ImplantIcon, 
             color: "text-teal-600", 
             bg: "bg-teal-50 border-teal-100" 
           },
           { 
-            label: "FORMIKLAR", 
-            value: `${serviceStats.formikCount} ta`, 
-            sub: `${serviceStats.formikSum.toLocaleString()} so'm`, 
+            label: language === 'ru' ? "ФОРМИРОВАТЕЛИ" : language === 'en' ? "HEALING ABUTMENTS" : "FORMIKLAR", 
+            value: `${serviceStats.formikCount} ${language === 'ru' ? '' : 'ta'}`, 
+            sub: `${serviceStats.formikSum.toLocaleString()} ${language === 'ru' ? 'UZS' : "so'm"}`, 
             icon: FormerIcon, 
             color: "text-amber-600", 
             bg: "bg-amber-50 border-amber-100" 
           },
           { 
-            label: "KARONKALAR", 
-            value: `${serviceStats.karonkaCount} ta`, 
-            sub: `${serviceStats.karonkaSum.toLocaleString()} so'm`, 
+            label: language === 'ru' ? "КОРОНКИ" : language === 'en' ? "CROWNS" : "KARONKALAR", 
+            value: `${serviceStats.karonkaCount} ${language === 'ru' ? '' : 'ta'}`, 
+            sub: `${serviceStats.karonkaSum.toLocaleString()} ${language === 'ru' ? 'UZS' : "so'm"}`, 
             icon: CrownIcon, 
             color: "text-purple-600", 
             bg: "bg-purple-50 border-purple-100" 
@@ -582,7 +574,7 @@ export default function Implants() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
             <input 
               type="text" 
-              placeholder="Xizmat, bemor ismi, telefon, firma yoki tish raqami bo'yicha qidirish..."
+              placeholder={language === 'ru' ? "Поиск по услуге, пациенту, телефону, бренду или номеру зуба..." : "Xizmat, bemor ismi, telefon, firma yoki tish raqami bo'yicha qidirish..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full h-9.5 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
@@ -600,14 +592,14 @@ export default function Implants() {
           {/* Filter Tabs matching Services & Logic */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
-              { id: 'all', label: "Barchasi", count: totalCount, icon: TableIcon, activeColor: "text-slate-200", defaultColor: "text-slate-500" },
-              { id: 'incomplete', label: "Kiritish talab", count: incompleteList.length, alert: incompleteList.length > 0, icon: KiritishTalabIcon, activeColor: "text-amber-300", defaultColor: "text-amber-500" },
-              { id: 'implant', label: "Implant", count: serviceStats.implantCount, icon: ImplantIcon, activeColor: "text-teal-300", defaultColor: "text-teal-600" },
-              { id: 'formik', label: "Formik", count: serviceStats.formikCount, icon: FormerIcon, activeColor: "text-amber-300", defaultColor: "text-amber-600" },
-              { id: 'karonka', label: "Karonka", count: serviceStats.karonkaCount, icon: CrownIcon, activeColor: "text-indigo-300", defaultColor: "text-indigo-600" },
-              { id: 'other', label: "Boshqa xizmatlar", count: serviceStats.otherCount, icon: DentalSurgicalIcon, activeColor: "text-sky-300", defaultColor: "text-sky-600" },
-              { id: 'control', label: "Nazorat talab", count: needsControl.length, alert: needsControl.length > 0, icon: ClinicalControlIcon, activeColor: "text-rose-300", defaultColor: "text-rose-500" },
-              { id: 'analytics', label: "Brendlar & Zaxira", count: brands.length, icon: BrandStockIcon, activeColor: "text-purple-300", defaultColor: "text-purple-600" },
+              { id: 'all', label: language === 'ru' ? "Все" : language === 'en' ? "All" : "Barchasi", count: totalCount, icon: TableIcon, activeColor: "text-slate-200", defaultColor: "text-slate-500" },
+              { id: 'incomplete', label: language === 'ru' ? "Требует ввода" : language === 'en' ? "Needs Entry" : "Kiritish talab", count: incompleteList.length, alert: incompleteList.length > 0, icon: KiritishTalabIcon, activeColor: "text-amber-300", defaultColor: "text-amber-500" },
+              { id: 'implant', label: language === 'ru' ? "Имплант" : "Implant", count: serviceStats.implantCount, icon: ImplantIcon, activeColor: "text-teal-300", defaultColor: "text-teal-600" },
+              { id: 'formik', label: language === 'ru' ? "Формирователь" : language === 'en' ? "Former" : "Formik", count: serviceStats.formikCount, icon: FormerIcon, activeColor: "text-amber-300", defaultColor: "text-amber-600" },
+              { id: 'karonka', label: language === 'ru' ? "Коронка" : language === 'en' ? "Crown" : "Karonka", count: serviceStats.karonkaCount, icon: CrownIcon, activeColor: "text-indigo-300", defaultColor: "text-indigo-600" },
+              { id: 'other', label: language === 'ru' ? "Другие услуги" : language === 'en' ? "Other Services" : "Boshqa xizmatlar", count: serviceStats.otherCount, icon: DentalSurgicalIcon, activeColor: "text-sky-300", defaultColor: "text-sky-600" },
+              { id: 'control', label: language === 'ru' ? "Требует контроля" : language === 'en' ? "Needs Control" : "Nazorat talab", count: needsControl.length, alert: needsControl.length > 0, icon: ClinicalControlIcon, activeColor: "text-rose-300", defaultColor: "text-rose-500" },
+              { id: 'analytics', label: language === 'ru' ? "Бренды и склад" : language === 'en' ? "Brands & Stock" : "Brendlar & Zaxira", count: brands.length, icon: BrandStockIcon, activeColor: "text-purple-300", defaultColor: "text-purple-600" },
             ].map(tab => {
               const isActive = activeTab === tab.id;
               const TabIcon = tab.icon;
@@ -640,10 +632,10 @@ export default function Implants() {
             {brandFirmOptions.length > 0 && activeTab !== 'analytics' && (
               <Select value={filterFirma} onValueChange={setFilterFirma}>
                 <SelectTrigger className="h-9 px-3 rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-slate-50 w-36">
-                  <SelectValue placeholder="Barcha Firmalar" />
+                  <SelectValue placeholder={language === 'ru' ? "Все фирмы" : "Barcha Firmalar"} />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl text-xs font-bold">
-                  <SelectItem value="all">Barcha Firmalar</SelectItem>
+                  <SelectItem value="all">{language === 'ru' ? "Все фирмы" : "Barcha Firmalar"}</SelectItem>
                   {brandFirmOptions.map(f => (
                     <SelectItem key={f} value={f}>{f}</SelectItem>
                   ))}
@@ -651,33 +643,6 @@ export default function Implants() {
               </Select>
             )}
 
-            {/* Density Switcher */}
-            <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 shrink-0">
-              <button
-                onClick={() => toggleDensity('compact')}
-                title="Ixcham Excel Jadvali"
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all cursor-pointer ${
-                  density === 'compact' 
-                    ? 'bg-white text-slate-900 shadow-xs' 
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-                <span>Excel</span>
-              </button>
-              <button
-                onClick={() => toggleDensity('comfortable')}
-                title="Keng Jadval Ko'rinishi"
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all cursor-pointer ${
-                  density === 'comfortable' 
-                    ? 'bg-white text-slate-900 shadow-xs' 
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-                <span>Keng</span>
-              </button>
-            </div>
           </div>
 
         </div>
@@ -819,7 +784,7 @@ export default function Implants() {
                     className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[190px]"
                   >
                     <div className="flex items-center justify-between gap-1.5">
-                      <span>1. Bemor (F.I.Sh)</span>
+                      <span>{language === 'ru' ? '1. Пациент (Ф.И.О)' : '1. Bemor (F.I.Sh)'}</span>
                       {sortField === 'patient' ? (
                         sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                       ) : (
@@ -834,7 +799,7 @@ export default function Implants() {
                     className="w-28 px-2.5 py-3 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                   >
                     <div className="flex items-center justify-center gap-1.5">
-                      <span>2. Tish raqamlari</span>
+                      <span>{language === 'ru' ? '2. Номера зубов' : '2. Tish raqamlari'}</span>
                       {sortField === 'tooth' ? (
                         sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                       ) : (
@@ -849,7 +814,7 @@ export default function Implants() {
                     className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[170px]"
                   >
                     <div className="flex items-center justify-between gap-1.5">
-                      <span>3. Firma nomi</span>
+                      <span>{language === 'ru' ? '3. Фирма / Бренд' : '3. Firma nomi'}</span>
                       {sortField === 'brand' ? (
                         sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                       ) : (
@@ -864,7 +829,7 @@ export default function Implants() {
                     className="w-36 px-3.5 py-3 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap bg-emerald-50/40"
                   >
                     <div className="flex items-center justify-end gap-1.5 text-emerald-900">
-                      <span>4. Narxi</span>
+                      <span>{language === 'ru' ? '4. Цена' : '4. Narxi'}</span>
                       {sortField === 'price' ? (
                         sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
                       ) : (
@@ -879,7 +844,7 @@ export default function Implants() {
                     className="w-36 px-3 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                   >
                     <div className="flex items-center justify-between gap-1.5">
-                      <span>5. Qo'yilgan sana</span>
+                      <span>{language === 'ru' ? '5. Дата установки' : '5. Qo\'yilgan sana'}</span>
                       {sortField === 'date' ? (
                         sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                       ) : (
@@ -890,7 +855,7 @@ export default function Implants() {
 
                   {/* 6. AMALLAR */}
                   <th className="px-3 py-3 text-center text-slate-700 whitespace-nowrap select-none min-w-[210px]">
-                    <span>6. Amallar</span>
+                    <span>{language === 'ru' ? '6. Действия' : '6. Amallar'}</span>
                   </th>
 
                 </tr>
@@ -944,7 +909,7 @@ export default function Implants() {
                                 {safeRender(i.patient_name)}
                               </span>
                               <span className="text-[10px] font-mono text-slate-400 block truncate">
-                                {safeRender(i.patient_phone, 'Telefon yo\'q')}
+                                {safeRender(i.patient_phone, language === 'ru' ? 'Нет телефона' : 'Telefon yo\'q')}
                               </span>
                             </div>
                           </div>
@@ -971,7 +936,7 @@ export default function Implants() {
                             {isIncomplete ? (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs">
                                 <KiritishTalabIcon className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                <span>Ma'lumot kiritish kerak</span>
+                                <span>{language === 'ru' ? 'Требуется ввести данные' : 'Ma\'lumot kiritish kerak'}</span>
                               </span>
                             ) : (
                               <>
@@ -990,7 +955,7 @@ export default function Implants() {
 
                         {/* 4. NARXI Cell */}
                         <td className={`text-right border-r border-slate-200/70 font-mono font-black text-emerald-700 whitespace-nowrap bg-emerald-50/20 text-xs sm:text-sm ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
-                          {priceVal.toLocaleString()} <span className="text-[10px] font-bold text-emerald-600/80 uppercase">so'm</span>
+                          {priceVal.toLocaleString()} <span className="text-[10px] font-bold text-emerald-600/80 uppercase">{language === 'ru' ? 'UZS' : "so'm"}</span>
                         </td>
 
                         {/* 5. QO'YILGAN SANA Cell */}
@@ -1024,10 +989,10 @@ export default function Implants() {
                               <button 
                                 onClick={() => setEditingImplant(i)}
                                 className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-xs transition-all cursor-pointer active:scale-95 shrink-0"
-                                title="Ma'lumotlarni to'ldirish"
+                                title={language === 'ru' ? 'Заполнить данные' : "Ma'lumotlarni to'ldirish"}
                               >
                                 <Edit2 className="w-3 h-3" />
-                                <span>Kiritish</span>
+                                <span>{language === 'ru' ? 'Ввести' : 'Kiritish'}</span>
                               </button>
                             )}
 
@@ -1035,7 +1000,7 @@ export default function Implants() {
                               <button 
                                 onClick={() => { window.location.href = `tel:${i.patient_phone}`; }}
                                 className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer"
-                                title="Qo'ng'iroq qilish"
+                                title={language === 'ru' ? 'Позвонить' : "Qo'ng'iroq qilish"}
                               >
                                 <Phone className="w-3.5 h-3.5" />
                               </button>
@@ -1044,7 +1009,7 @@ export default function Implants() {
                             <button 
                               onClick={() => navigate(`/implants/${i.id}`)}
                               className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all cursor-pointer"
-                              title="Tafsilotlar va tahrirlash"
+                              title={language === 'ru' ? 'Детали и редактирование' : "Tafsilotlar va tahrirlash"}
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </button>
@@ -1052,7 +1017,7 @@ export default function Implants() {
                             <button 
                               onClick={() => handleDeleteImplant(i.id)}
                               className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
-                              title="O'chirish"
+                              title={language === 'ru' ? 'Удалить' : "O'chirish"}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1086,39 +1051,6 @@ export default function Implants() {
                 )}
               </tbody>
             </table>
-          </div>
-
-          {/* ─── Excel Formula Summary Footer Bar ──────────────────── */}
-          <div className="bg-slate-100/95 border-t border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-3 text-slate-600 font-bold flex-wrap">
-              <span className="flex items-center gap-1.5">
-                <TableIcon className="w-4 h-4 text-[#1499AD]" />
-                <span>Jadvalda:</span>
-                <strong className="text-slate-900 font-mono">{sortedImplants.length}</strong> ta amaliyot
-              </span>
-              <span className="text-slate-300">•</span>
-              <span className="flex items-center gap-1">
-                <ImplantIcon className="w-3.5 h-3.5 text-teal-600" />
-                <span>Implantlar:</span> <strong className="text-teal-700 font-mono">{serviceStats.implantCount} ta</strong>
-              </span>
-              <span className="text-slate-300">•</span>
-              <span className="flex items-center gap-1">
-                <FormerIcon className="w-3.5 h-3.5 text-amber-600" />
-                <span>Formiklar:</span> <strong className="text-amber-700 font-mono">{serviceStats.formikCount} ta</strong>
-              </span>
-              <span className="text-slate-300">•</span>
-              <span className="flex items-center gap-1">
-                <CrownIcon className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Karonkalar:</span> <strong className="text-indigo-700 font-mono">{serviceStats.karonkaCount} ta</strong>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
-              <span className="text-[11px] font-black uppercase text-slate-500">Jadval Jami Qiymati:</span>
-              <span className="font-mono font-black text-emerald-600 text-sm">
-                {sortedImplants.reduce((acc, curr) => acc + resolvePrice(curr), 0).toLocaleString()} so'm
-              </span>
-            </div>
           </div>
         </motion.div>
       )}

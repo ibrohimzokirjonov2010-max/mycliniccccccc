@@ -38,7 +38,7 @@ const DEFAULT_INVENTORY_CATEGORIES = [
  * Inventory Page - Professional Excel Spreadsheet View
  */
 export default function Inventory() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -346,24 +346,16 @@ export default function Inventory() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('inventory.title') || "Ombor"}</h1>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
-              • Sklad va Materiallar {stats.totalItems} Yozuvlar
+              {language === 'ru' ? `• СКЛАД И МАТЕРИАЛЫ: ${stats.totalItems} ЗАПИСЕЙ` : language === 'en' ? `• INVENTORY: ${stats.totalItems} RECORDS` : `• Sklad va Materiallar ${stats.totalItems} Yozuvlar`}
             </span>
           </div>
           <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
-            Klinika stomatologik asbob-uskunalari va sarf materiallari zaxirasi
+            {t('inventory.subtitle') || (language === 'ru' ? 'Запас стоматологических инструментов и расходных материалов клиники' : 'Klinika stomatologik asbob-uskunalari va sarf materiallari zaxirasi')}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={exportCSV} 
-            className="gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs text-slate-700 h-9.5 px-3.5"
-            title="Excel formatida (.csv) yuklab olish"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Eksport (Excel)</span>
-          </Button>
+          
 
           <Button 
             onClick={() => { setEditItem(null); setModalOpen(true); }} 
@@ -399,7 +391,7 @@ export default function Inventory() {
               <div className="text-lg sm:text-xl font-black font-mono tracking-tight text-slate-900 tabular-nums">
                 {s.isNumber ? (
                   <span className={s.highlight ? 'text-rose-600' : ''}>
-                    {s.value} <span className="text-xs font-bold text-slate-400">ta</span>
+                    {s.value} <span className="text-xs font-bold text-slate-400">{language === 'ru' ? '' : 'ta'}</span>
                   </span>
                 ) : (
                   <span>{Number(s.value).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">UZS</span></span>
@@ -424,10 +416,10 @@ export default function Inventory() {
             </div>
             <div className="min-w-0">
               <span className="text-[10px] font-black uppercase tracking-wider text-rose-700 block">
-                Zaxira Ogohlantirishi: {lowStock.length} ta mahsulot tugamoqda!
+                {language === 'ru' ? `Предупреждение: ${lowStock.length} товар(ов) заканчивается!` : `Zaxira Ogohlantirishi: ${lowStock.length} ta mahsulot tugamoqda!`}
               </span>
               <p className="text-xs font-bold text-slate-700 truncate">
-                Kam qolganlar: {lowStock.map(i => `${i.name} (${i.quantity} ${i.unit || 'dona'})`).slice(0, 5).join(', ')}
+                {language === 'ru' ? 'Заканчивается: ' : 'Kam qolganlar: '}{lowStock.map(i => `${i.name} (${i.quantity} ${i.unit || (language === 'ru' ? 'шт' : 'dona')})`).slice(0, 5).join(', ')}
                 {lowStock.length > 5 && ` va yana ${lowStock.length - 5} ta...`}
               </p>
             </div>
@@ -443,7 +435,7 @@ export default function Inventory() {
             }}
             className="h-7.5 px-3 rounded-xl border-rose-300 text-rose-700 bg-white hover:bg-rose-100/60 font-black text-xs shrink-0"
           >
-            Ko'rish
+            {t('inventory.viewBtn') || (language === 'ru' ? 'Посмотреть' : "Ko'rish")}
           </Button>
         </div>
       )}
@@ -457,7 +449,7 @@ export default function Inventory() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
             <input 
               type="text" 
-              placeholder="Mahsulot nomi yoki toifasi bo'yicha qidiring..."
+              placeholder={t('inventory.searchPlaceholder') || (language === 'ru' ? "Поиск по названию товара или категории..." : "Mahsulot nomi yoki toifasi bo'yicha qidiring...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full h-9 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
@@ -480,36 +472,9 @@ export default function Inventory() {
               className="h-9 px-3 rounded-xl border-slate-200 text-[#1499AD] hover:bg-[#1499AD]/5 font-black text-xs gap-1.5"
             >
               <FolderPlus className="w-3.5 h-3.5" />
-              <span>+ Yangi bo'lim</span>
+              <span>{t('inventory.newCategory') || (language === 'ru' ? '+ Новая категория' : "+ Yangi bo'lim")}</span>
             </Button>
 
-            {/* Density Switcher */}
-            <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 shrink-0">
-              <button
-                onClick={() => toggleDensity('compact')}
-                title="Ixcham Excel Jadvali"
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                  density === 'compact' 
-                    ? 'bg-white text-slate-900 shadow-xs' 
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-                <span>Excel</span>
-              </button>
-              <button
-                onClick={() => toggleDensity('comfortable')}
-                title="Keng Jadval Ko'rinishi"
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                  density === 'comfortable' 
-                    ? 'bg-white text-slate-900 shadow-xs' 
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-                <span>Keng</span>
-              </button>
-            </div>
           </div>
 
         </div>
@@ -526,7 +491,7 @@ export default function Inventory() {
                 : "bg-slate-100/70 text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
             )}
           >
-            <span>Barchasi</span>
+            <span>{t('inventory.all') || (language === 'ru' ? 'Все' : 'Barchasi')}</span>
             <span className={cn("px-1.5 py-0.2 rounded-full text-[9px] font-black", selectedCategory === 'all' ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600")}>
               {categoryCounts.all || 0}
             </span>
@@ -591,7 +556,7 @@ export default function Inventory() {
                   className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
                 >
                   <div className="flex items-center justify-between gap-1.5">
-                    <span>Mahsulot Nomi</span>
+                    <span>{t('inventory.productName') || (language === 'ru' ? 'Наименование товара' : 'Mahsulot Nomi')}</span>
                     {sortField === 'name' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                     ) : (
@@ -606,7 +571,7 @@ export default function Inventory() {
                   className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap min-w-[140px]"
                 >
                   <div className="flex items-center justify-between gap-1.5">
-                    <span>Kategoriya</span>
+                    <span>{t('inventory.category') || (language === 'ru' ? 'Категория' : 'Kategoriya')}</span>
                     {sortField === 'category' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                     ) : (
@@ -622,7 +587,7 @@ export default function Inventory() {
                   title="Miqdor bo'yicha saralash"
                 >
                   <div className="flex items-center justify-center gap-1.5 text-blue-800 font-mono">
-                    <span>Miqdor / Birlik</span>
+                    <span>{t('inventory.qtyUnit') || (language === 'ru' ? 'Количество / Ед.' : 'Miqdor / Birlik')}</span>
                     {sortField === 'quantity' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
@@ -638,7 +603,7 @@ export default function Inventory() {
                   title="Minimal zaxira bo'yicha saralash"
                 >
                   <div className="flex items-center justify-center gap-1.5 text-slate-600 font-mono">
-                    <span>Min. Zaxira</span>
+                    <span>{t('inventory.minStock') || (language === 'ru' ? 'Мин. запас' : 'Min. Zaxira')}</span>
                     {sortField === 'min_quantity' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
@@ -654,7 +619,7 @@ export default function Inventory() {
                   title="Xarid narxi bo'yicha saralash"
                 >
                   <div className="flex items-center justify-end gap-1.5 text-slate-700 font-mono">
-                    <span>Xarid Narxi</span>
+                    <span>{t('inventory.purchasePrice') || (language === 'ru' ? 'Цена закупки' : 'Xarid Narxi')}</span>
                     {sortField === 'price' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />
                     ) : (
@@ -670,7 +635,7 @@ export default function Inventory() {
                   title="Jami qiymat bo'yicha saralash"
                 >
                   <div className="flex items-center justify-end gap-1.5 text-emerald-700 font-mono">
-                    <span>Jami Qiymat</span>
+                    <span>{t('inventory.totalVal') || (language === 'ru' ? 'Общая стоимость' : 'Jami Qiymat')}</span>
                     {sortField === 'total_value' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
                     ) : (
@@ -681,7 +646,7 @@ export default function Inventory() {
 
                 {/* HOLAT */}
                 <th className="w-28 px-3 py-2.5 text-center border-r border-slate-200 select-none whitespace-nowrap">
-                  Holat
+                  {t('inventory.status') || (language === 'ru' ? 'Статус' : 'Holat')}
                 </th>
 
                 {/* Actions */}
@@ -784,17 +749,17 @@ export default function Inventory() {
                         {isOut ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase text-rose-700 bg-rose-50 border border-rose-200">
                             <AlertOctagon className="w-3 h-3" />
-                            <span>Tugagan</span>
+                            <span>{t('inventory.statusOut') || (language === 'ru' ? 'Закончился' : 'Tugagan')}</span>
                           </span>
                         ) : isLow ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase text-amber-700 bg-amber-50 border border-amber-200">
                             <AlertTriangle className="w-3 h-3" />
-                            <span>Kam qolgan</span>
+                            <span>{t('inventory.statusLow') || (language === 'ru' ? 'Мало' : 'Kam qolgan')}</span>
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 border border-emerald-200">
                             <CheckCircle2 className="w-3 h-3" />
-                            <span>Yetarli</span>
+                            <span>{t('inventory.statusOk') || (language === 'ru' ? 'В наличии' : 'Yetarli')}</span>
                           </span>
                         )}
                       </td>
@@ -848,45 +813,6 @@ export default function Inventory() {
             </tbody>
           </table>
         </div>
-
-        {/* ─── Excel Formula Summary Footer Bar ──────────────────── */}
-        <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-3 text-slate-600 font-bold">
-            <span className="flex items-center gap-1.5">
-              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>Jadvalda:</span>
-              <strong className="text-slate-900 font-mono">{sortedItems.length}</strong> ta nom
-            </span>
-            <span className="text-slate-300">•</span>
-            <span>
-              Σ Jami Zaxira: <strong className="text-blue-700 font-mono">{stats.totalQuantity} birlik</strong>
-            </span>
-            {stats.lowStockCount > 0 && (
-              <>
-                <span className="text-slate-300">•</span>
-                <span>
-                  Kam qolgan: <strong className="text-rose-600 font-mono">{stats.lowStockCount} ta</strong>
-                </span>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-black uppercase text-slate-500">Σ Tanlangan Kategoriya Qiymati:</span>
-              <span className="font-mono font-bold text-slate-800 text-sm">
-                {stats.filteredTotalValue.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 border-l border-slate-300 pl-3">
-              <span className="text-[11px] font-black uppercase text-slate-500">Σ Umumiy Ombor Qiymati:</span>
-              <span className="font-mono font-black text-emerald-600 text-sm">
-                {stats.totalValue.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
-              </span>
-            </div>
-          </div>
-        </div>
       </motion.div>
 
       {/* ─── Add / Edit Item Dialog ──────────────────────────────────── */}
@@ -898,7 +824,7 @@ export default function Inventory() {
                 <h2 className="text-xl font-[900] tracking-tighter uppercase mb-0.5">
                   {editItem ? (t('inventory.modal.titleEdit') || 'Mahsulotni tahrirlash') : (t('inventory.modal.titleAddProduct') || 'Yangi mahsulot')}
                 </h2>
-                <p className="text-[9px] font-black text-white/40 tracking-[0.2em] uppercase">{t('inventory.modal.subtitle') || 'Mahsulot tafsilotlarini kiriting'}</p>
+                <p className="text-[9px] font-black text-white/40 tracking-[0.2em] uppercase">{language === 'ru' ? 'Введите данные товара' : language === 'en' ? 'Enter product details' : 'Mahsulot tafsilotlarini kiriting'}</p>
               </div>
               <ShoppingBag className="w-8 h-8 text-blue-500/30" />
             </div>
@@ -913,7 +839,7 @@ export default function Inventory() {
                     value={form.name} 
                     onChange={e => setForm({ ...form, name: e.target.value })} 
                     className="h-10 rounded-xl bg-slate-50 font-bold text-slate-900 text-xs"
-                    placeholder="Masalan: Lidokain 2%..."
+                    placeholder={language === 'ru' ? 'Например: Лидокаин 2%...' : language === 'en' ? 'e.g. Lidocaine 2%...' : 'Masalan: Lidokain 2%...'}
                     autoFocus
                   />
                 </div>
@@ -927,7 +853,7 @@ export default function Inventory() {
                       className="text-[10px] font-bold text-[#1499AD] hover:underline cursor-pointer flex items-center gap-0.5"
                     >
                       <Plus className="w-3 h-3" />
-                      {isAddingInlineCat ? 'Tanlash' : 'Yangi bo\'lim'}
+                      {isAddingInlineCat ? (language === 'ru' ? 'Выбрать' : 'Tanlash') : (language === 'ru' ? '+ Новая категория' : "+ Yangi bo'lim")}
                     </button>
                   </div>
                   
@@ -967,7 +893,7 @@ export default function Inventory() {
                       }}
                     >
                       <SelectTrigger className="h-10 rounded-xl bg-slate-50 font-bold text-slate-900 text-xs">
-                        <SelectValue placeholder={t('inventory.modal.categoryPlaceholder') || 'Bo\'limni tanlang...'} />
+                        <SelectValue placeholder={language === 'ru' ? 'Выберите категорию...' : language === 'en' ? 'Select category...' : "Bo'limni tanlang..."} />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-none shadow-xl max-h-60">
                         {allCategories.map((cat) => (
@@ -986,7 +912,7 @@ export default function Inventory() {
                     value={form.unit} 
                     onChange={e => setForm({ ...form, unit: e.target.value })} 
                     className="h-10 rounded-xl bg-slate-50 font-bold text-slate-900 text-xs"
-                    placeholder="Dona, quti, flakon, gramm..."
+                    placeholder={language === 'ru' ? 'Шт, коробка, флакон, грамм...' : 'Dona, quti, flakon, gramm...'}
                   />
                 </div>
               </div>
@@ -1006,7 +932,7 @@ export default function Inventory() {
 
                 <div className="grid grid-cols-2 gap-2.5">
                   <div className="space-y-1">
-                    <Label className="text-[10px] font-bold text-rose-600 block text-center">Min. Zaxira</Label>
+                    <Label className="text-[10px] font-bold text-rose-600 block text-center">{language === 'ru' ? 'Мин. запас' : 'Min. Zaxira'}</Label>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -1017,7 +943,7 @@ export default function Inventory() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[10px] font-bold text-emerald-700 block text-center">Dona Narxi (so'm)</Label>
+                    <Label className="text-[10px] font-bold text-emerald-700 block text-center">{language === 'ru' ? 'Цена за ед. (сум)' : "Dona Narxi (so'm)"}</Label>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -1030,7 +956,7 @@ export default function Inventory() {
                 </div>
 
                 <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center">
-                  <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">Jami Hisoblangan Qiymat:</span>
+                  <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">{language === 'ru' ? 'Общая расчётная стоимость:' : 'Jami Hisoblangan Qiymat:'}</span>
                   <span className="font-mono font-black text-emerald-700 text-sm">
                     {((Number(form.quantity) || 0) * (Number(form.price_per_unit) || 0)).toLocaleString()} UZS
                   </span>

@@ -28,7 +28,7 @@ const formatMoney = (val) => Number(val || 0).toLocaleString('uz-UZ') + " UZS";
  * Debts Page - Professional Excel Spreadsheet View
  */
 export default function Debts() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { user, isDoctor } = useAuth();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -422,7 +422,7 @@ export default function Debts() {
       ];
       const rows = sortedPatients.map((p, idx) => {
         const share = Math.round((p.real_paid / (p.real_debt + p.real_paid)) * 100 || 0);
-        const tg = p.telegram_chat_id ? 'Telegram faol' : 'Telegram yo\'q';
+        const tg = p.telegram_chat_id ? (language === 'ru' ? 'Telegram активен' : 'Telegram faol') : (language === 'ru' ? 'Нет Telegram' : "Telegram yo'q");
         const dateStr = p.last_update ? new Date(p.last_update).toLocaleDateString('uz-UZ') : '—';
 
         return [
@@ -462,31 +462,23 @@ export default function Debts() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('debts.title') || "Qarzdorliklar Paneli"}</h1>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200">
-              • Debitorlar Nazorati {patients.length} Bemorlar
+              {language === 'ru' ? `• КОНТРОЛЬ ДЕБИТОРОВ: ${patients.length} ПАЦИЕНТОВ` : language === 'en' ? `• DEBTOR CONTROL: ${patients.length} PATIENTS` : `• Debitorlar Nazorati ${patients.length} Bemorlar`}
             </span>
           </div>
           <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
-            Barcha qarzdor bemorlar, to'lov ulushlari va moliyaviy balans nazorati
+            {t('debts.subtitle') || (language === 'ru' ? 'Все пациенты-должники, доли оплаты и контроль финансового баланса' : 'Barcha qarzdor bemorlar, to\'lov ulushlari va moliyaviy balans nazorati')}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={exportCSV} 
-            className="gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs text-slate-700 h-9.5 px-3.5"
-            title="Excel formatida (.csv) yuklab olish"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Eksport (Excel)</span>
-          </Button>
+          
 
           <Button 
             onClick={() => navigate('/payments')} 
             className="bg-slate-900 hover:bg-slate-800 text-white gap-1.5 border-none rounded-xl h-9.5 px-4 font-black text-xs shadow-md transition-all active:scale-95"
           >
             <CreditCard className="w-4 h-4 text-emerald-400" />
-            <span>To'lovlar Bo'limi</span>
+            <span>{language === 'ru' ? 'Раздел платежей' : language === 'en' ? 'Payments Section' : 'To\'lovlar Bo\'limi'}</span>
           </Button>
         </div>
       </div>
@@ -494,10 +486,42 @@ export default function Debts() {
       {/* ─── Top Executive KPI Grid ─────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "UMUMIY QARZDORLIK", value: totalDebt, icon: AlertCircle, color: "text-rose-600", bg: "bg-rose-50 border-rose-100", isCurrency: true, countText: "Klinikaga to'lanishi kerak" },
-          { label: "QARZDOR BEMORLAR", value: patients.length, icon: User, color: "text-blue-600", bg: "bg-blue-50 border-blue-100", isCurrency: false, countText: "Faol debitorlar soni" },
-          { label: "YIRIK QARZDORLAR (>5M)", value: largeDebtsCount, icon: TrendingDown, color: "text-amber-600", bg: "bg-amber-50 border-amber-100", isCurrency: false, countText: "Diqqat talab qarzlar" },
-          { label: "JAMI TO'LANGAN ULUSH", value: totalPaid, icon: Wallet, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", isCurrency: true, countText: "Ushbu bemorlar to'lagan summa" },
+          { 
+            label: language === 'ru' ? "ОБЩАЯ ЗАДОЛЖЕННОСТЬ" : language === 'en' ? "TOTAL DEBT" : "UMUMIY QARZDORLIK", 
+            value: totalDebt, 
+            icon: AlertCircle, 
+            color: "text-rose-600", 
+            bg: "bg-rose-50 border-rose-100", 
+            isCurrency: true, 
+            countText: language === 'ru' ? "К выплате в клинику" : language === 'en' ? "Due to clinic" : "Klinikaga to'lanishi kerak" 
+          },
+          { 
+            label: language === 'ru' ? "ПАЦИЕНТЫ С ДОЛГОМ" : language === 'en' ? "DEBTOR PATIENTS" : "QARZDOR BEMORLAR", 
+            value: patients.length, 
+            icon: User, 
+            color: "text-blue-600", 
+            bg: "bg-blue-50 border-blue-100", 
+            isCurrency: false, 
+            countText: language === 'ru' ? "Количество активных дебиторов" : language === 'en' ? "Active debtors count" : "Faol debitorlar soni" 
+          },
+          { 
+            label: language === 'ru' ? "КРУПНЫЕ ДОЛЖНИКИ (>5M)" : language === 'en' ? "LARGE DEBTORS (>5M)" : "YIRIK QARZDORLAR (>5M)", 
+            value: largeDebtsCount, 
+            icon: TrendingDown, 
+            color: "text-amber-600", 
+            bg: "bg-amber-50 border-amber-100", 
+            isCurrency: false, 
+            countText: language === 'ru' ? "Долги, требующие внимания" : language === 'en' ? "High priority debts" : "Diqqat talab qarzlar" 
+          },
+          { 
+            label: language === 'ru' ? "ВСЕГО ОПЛАЧЕНО" : language === 'en' ? "TOTAL PAID SHARE" : "JAMI TO'LANGAN ULUSH", 
+            value: totalPaid, 
+            icon: Wallet, 
+            color: "text-emerald-600", 
+            bg: "bg-emerald-50 border-emerald-100", 
+            isCurrency: true, 
+            countText: language === 'ru' ? "Сумма, оплаченная этими пациентами" : language === 'en' ? "Total amount paid by debtors" : "Ushbu bemorlar to'lagan summa" 
+          },
         ].map((s, i) => (
           <motion.div 
             key={s.label}
@@ -514,7 +538,7 @@ export default function Debts() {
                 {s.isCurrency ? (
                   <span>{Number(s.value).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">UZS</span></span>
                 ) : (
-                  <span>{s.value} <span className="text-xs font-bold text-slate-400">nafar</span></span>
+                  <span>{s.value} <span className="text-xs font-bold text-slate-400">{language === 'ru' ? '' : 'nafar'}</span></span>
                 )}
               </div>
               <p className="text-[9.5px] font-medium text-slate-400 mt-0.5">{s.countText}</p>
@@ -536,7 +560,7 @@ export default function Debts() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
             <input 
               type="text" 
-              placeholder="Bemor ismi, telefon raqami yoki shifokor bo'yicha qidiruv..."
+              placeholder={t('debts.searchPlaceholder') || (language === 'ru' ? "Поиск по имени пациента, номеру телефона или врачу..." : "Bemor ismi, telefon raqami yoki shifokor bo'yicha qidiruv...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full h-9 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
@@ -554,11 +578,11 @@ export default function Debts() {
           {/* Filter Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
-              { id: 'all', label: "Barchasi", count: patients.length },
-              { id: 'large', label: "> 5M UZS", count: largeDebtsCount },
-              { id: 'medium', label: "1M - 5M UZS", count: mediumDebtsCount },
-              { id: 'small', label: "< 1M UZS", count: smallDebtsCount },
-              { id: 'telegram', label: "Telegram bor", count: telegramConnectedCount },
+              { id: 'all', label: language === 'ru' ? "Все" : language === 'en' ? "All" : "Barchasi", count: patients.length },
+              { id: 'large', label: language === 'ru' ? "> 5 млн UZS" : "> 5M UZS", count: largeDebtsCount },
+              { id: 'medium', label: language === 'ru' ? "1 - 5 млн UZS" : "1M - 5M UZS", count: mediumDebtsCount },
+              { id: 'small', label: language === 'ru' ? "< 1 млн UZS" : "< 1M UZS", count: smallDebtsCount },
+              { id: 'telegram', label: language === 'ru' ? "Есть Telegram" : language === 'en' ? "Has Telegram" : "Telegram bor", count: telegramConnectedCount },
             ].map(tab => {
               const isActive = activeFilterTab === tab.id;
               return (
@@ -582,34 +606,6 @@ export default function Debts() {
                 </button>
               );
             })}
-          </div>
-
-          {/* Density Switcher */}
-          <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 shrink-0">
-            <button
-              onClick={() => toggleDensity('compact')}
-              title="Ixcham Excel Jadvali"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'compact' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>Excel</span>
-            </button>
-            <button
-              onClick={() => toggleDensity('comfortable')}
-              title="Keng Jadval Ko'rinishi"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'comfortable' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-              <span>Keng</span>
-            </button>
           </div>
 
         </div>
@@ -649,7 +645,7 @@ export default function Debts() {
                   className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
                 >
                   <div className="flex items-center justify-between gap-1.5">
-                    <span>Bemor (F.I.Sh)</span>
+                    <span>{t('debts.patientCol') || (language === 'ru' ? 'Пациент (Ф.И.О)' : 'Bemor (F.I.Sh)')}</span>
                     {sortField === 'patient' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                     ) : (
@@ -661,13 +657,13 @@ export default function Debts() {
                 {/* QARZ MIQDORI */}
                 <th 
                   onClick={() => handleSort('debt')}
-                  className="w-48 px-3.5 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-rose-50/40 select-none whitespace-nowrap"
+                  className="w-48 px-3.5 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-amber-50/40 select-none whitespace-nowrap"
                   title="Qarz miqdori bo'yicha saralash"
                 >
-                  <div className="flex items-center justify-end gap-1.5 text-rose-700 font-mono">
-                    <span>Qarz Miqdori</span>
+                  <div className="flex items-center justify-end gap-1.5 text-amber-900 font-mono">
+                    <span>{t('debts.debtCol') || (language === 'ru' ? 'Сумма долга' : 'Qarz Miqdori')}</span>
                     {sortField === 'debt' ? (
-                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-rose-600" /> : <ArrowDown className="w-3 h-3 text-rose-600" />
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-amber-600" /> : <ArrowDown className="w-3 h-3 text-amber-600" />
                     ) : (
                       <ArrowUpDown className="w-3 h-3 opacity-40" />
                     )}
@@ -681,7 +677,7 @@ export default function Debts() {
                   title="To'langan summa bo'yicha saralash"
                 >
                   <div className="flex items-center justify-end gap-1.5 text-emerald-700 font-mono">
-                    <span>To'langan</span>
+                    <span>{t('debts.paidCol') || (language === 'ru' ? 'Оплачено' : 'To\'langan')}</span>
                     {sortField === 'paid' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
                     ) : (
@@ -696,7 +692,7 @@ export default function Debts() {
                   className="w-44 px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                 >
                   <div className="flex items-center justify-between gap-1.5 text-slate-700 font-mono">
-                    <span>To'lov Ulushi</span>
+                    <span>{t('debts.shareCol') || (language === 'ru' ? 'Доля оплаты' : 'To\'lov Ulushi')}</span>
                     {sortField === 'share' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
@@ -707,7 +703,7 @@ export default function Debts() {
 
                 {/* ALOQA HOLATI */}
                 <th className="w-36 px-3 py-2.5 text-center border-r border-slate-200 select-none whitespace-nowrap">
-                  Aloqa Holati
+                  {t('debts.contactCol') || (language === 'ru' ? 'Статус связи' : 'Aloqa Holati')}
                 </th>
 
                 {/* Actions */}
@@ -744,7 +740,7 @@ export default function Debts() {
                         <div className="flex items-center gap-2 min-w-0">
                           <div className={cn(
                             "w-6.5 h-6.5 rounded-lg font-black text-[10px] flex items-center justify-center border shrink-0",
-                            isLargeDebt ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-blue-50 text-blue-700 border-blue-100"
+                            isLargeDebt ? "bg-amber-50 text-amber-800 border-amber-200" : "bg-blue-50 text-blue-700 border-blue-100"
                           )}>
                             <User className="w-3.5 h-3.5" />
                           </div>
@@ -759,7 +755,7 @@ export default function Debts() {
                               {p.full_name}
                             </span>
                             <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
-                              <span>{p.phone ? formatPhone(p.phone) : 'Telefon yo\'q'}</span>
+                              <span>{p.phone ? formatPhone(p.phone) : (language === 'ru' ? 'Нет телефона' : 'Telefon yo\'q')}</span>
                               {p.phone && (
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); handleCopy(p.phone, p.id); }}
@@ -775,13 +771,13 @@ export default function Debts() {
                       </td>
 
                       {/* QARZ MIQDORI Cell */}
-                      <td className={`text-right border-r border-slate-200/70 whitespace-nowrap bg-rose-50/20 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                      <td className={`text-right border-r border-slate-200/70 whitespace-nowrap bg-amber-50/20 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
                         <span className={cn(
                           "font-mono font-black text-xs tabular-nums",
-                          isLargeDebt ? "text-rose-600 font-extrabold" : "text-amber-700"
+                          isLargeDebt ? "text-amber-950 font-extrabold" : "text-slate-900"
                         )}>
                           {Number(p.real_debt || 0).toLocaleString()}
-                          <span className="text-[9.5px] font-semibold text-rose-500 ml-1">UZS</span>
+                          <span className="text-[9.5px] font-semibold text-amber-700 ml-1">UZS</span>
                         </span>
                       </td>
 
@@ -797,7 +793,7 @@ export default function Debts() {
                       <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-[10.5px] font-mono">
-                            <span className="text-slate-500 font-semibold">Yopildi:</span>
+                            <span className="text-slate-500 font-semibold">{language === 'ru' ? 'Оплачено:' : 'Yopildi:'}</span>
                             <span className="font-bold text-slate-800">{share}%</span>
                           </div>
                           <div className="h-1.5 w-full bg-slate-200/80 rounded-full overflow-hidden">
@@ -818,7 +814,7 @@ export default function Debts() {
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-semibold text-slate-400">
-                            Telegram yo'q
+                            {language === 'ru' ? 'Нет Telegram' : 'Telegram yo\'q'}
                           </span>
                         )}
                       </td>
@@ -829,7 +825,7 @@ export default function Debts() {
                           <button 
                             onClick={() => handlePayDebt(p)}
                             className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer"
-                            title="To'lov qabul qilish"
+                            title={language === 'ru' ? 'Принять платёж' : "To'lov qabul qilish"}
                           >
                             <CreditCard className="w-3.5 h-3.5" />
                           </button>
@@ -838,7 +834,7 @@ export default function Debts() {
                             <button 
                               onClick={() => handleCall(p.phone)}
                               className="p-1.5 rounded-lg text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer"
-                              title="Qo'ng'iroq qilish"
+                              title={language === 'ru' ? 'Позвонить' : "Qo'ng'iroq qilish"}
                             >
                               <Phone className="w-3.5 h-3.5" />
                             </button>
@@ -847,7 +843,7 @@ export default function Debts() {
                           <button 
                             onClick={() => handleSendReminder(p)}
                             className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
-                            title="Telegram orqali eslatma yuborish"
+                            title={language === 'ru' ? 'Отправить напоминание в Telegram' : "Telegram orqali eslatma yuborish"}
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
                           </button>
@@ -855,7 +851,7 @@ export default function Debts() {
                           <button 
                             onClick={() => openPatientDebtDetail(p)}
                             className="p-1.5 rounded-lg text-slate-500 hover:text-[#1499AD] hover:bg-[#1499AD]/10 transition-all cursor-pointer"
-                            title="Davolash rejasi va qarz tafsilotlari"
+                            title={language === 'ru' ? 'План лечения и детали долга' : "Davolash rejasi va qarz tafsilotlari"}
                           >
                             <ChevronRight className="w-3.5 h-3.5" />
                           </button>
@@ -890,48 +886,6 @@ export default function Debts() {
             </tbody>
           </table>
         </div>
-
-        {/* ─── Excel Formula Summary Footer Bar ──────────────────── */}
-        <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-3 text-slate-600 font-bold">
-            <span className="flex items-center gap-1.5">
-              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>Jadvalda:</span>
-              <strong className="text-slate-900 font-mono">{sortedPatients.length}</strong> nafar qarzdor bemor
-            </span>
-            <span className="text-slate-300">•</span>
-            <span>
-              Yirik qarzlar (&gt;5M): <strong className="text-rose-700 font-mono">{largeDebtsCount} nafar</strong>
-            </span>
-            <span className="text-slate-300">•</span>
-            <span>
-              Telegram ulangan: <strong className="text-blue-700 font-mono">{telegramConnectedCount} nafar</strong>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-black uppercase text-slate-500">Σ Tanlangan Qarz:</span>
-              <span className="font-mono font-bold text-rose-600 text-sm">
-                {filteredTotalDebt.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 border-l border-slate-300 pl-3">
-              <span className="text-[11px] font-black uppercase text-slate-500">Σ To'langan:</span>
-              <span className="font-mono font-bold text-emerald-600 text-sm">
-                {filteredTotalPaid.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 border-l border-slate-300 pl-3">
-              <span className="text-[11px] font-black uppercase text-slate-500">Σ Umumiy Qarz Balansi:</span>
-              <span className="font-mono font-black text-rose-700 text-sm">
-                {totalDebt.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
-              </span>
-            </div>
-          </div>
-        </div>
       </motion.div>
 
       {/* ─── Treatment Plan & Debt Detail Dialog ─────────────────────── */}
@@ -947,23 +901,23 @@ export default function Debts() {
                 <X className="w-4 h-4" />
               </button>
               <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.3em] mb-1">
-                Davolash Rejalari & Qarz Tafsilotlari
+                {language === 'ru' ? 'ПЛАНЫ ЛЕЧЕНИЯ И ДЕТАЛИ ЗАДОЛЖЕННОСТИ' : 'Davolash Rejalari & Qarz Tafsilotlari'}
               </p>
               <h2 className="text-2xl sm:text-3xl font-[900] tracking-tight">
                 {selectedDebtPatient.full_name}
               </h2>
               <div className="flex flex-wrap items-center gap-2 mt-2">
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase bg-rose-500/20 text-white border border-rose-300/30">
-                  Qolgan qarz: {formatMoney(patientDetailData?.currentDebt ?? selectedDebtPatient.real_debt)}
+                  {language === 'ru' ? 'Остаток долга: ' : 'Qolgan qarz: '}{formatMoney(patientDetailData?.currentDebt ?? selectedDebtPatient.real_debt)}
                 </span>
                 {patientDetailData?.totalPaid > 0 && (
                   <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 text-white border border-emerald-300/30">
-                    To'langan: {formatMoney(patientDetailData.totalPaid)}
+                    {language === 'ru' ? 'Оплачено: ' : 'To\'langan: '}{formatMoney(patientDetailData.totalPaid)}
                   </span>
                 )}
                 {detailPlans.length > 0 && (
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white/80 bg-white/10 px-2.5 py-0.5 rounded-full">
-                    <Receipt className="w-3 h-3" /> {detailPlans.length} ta reja
+                    <Receipt className="w-3 h-3" /> {detailPlans.length} {language === 'ru' ? 'планов' : 'ta reja'}
                   </span>
                 )}
               </div>
@@ -974,7 +928,7 @@ export default function Debts() {
               {loadingDetail ? (
                 <div className="py-16 text-center space-y-3">
                   <div className="w-8 h-8 border-3 border-[#1499AD] border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Davolash rejalari yuklanmoqda...</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{language === 'ru' ? 'Загрузка планов лечения...' : 'Davolash rejalari yuklanmoqda...'}</p>
                 </div>
               ) : (
                 <>
@@ -983,7 +937,7 @@ export default function Debts() {
                     <div className="px-4 sm:px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                       <h3 className="text-[11px] font-black text-slate-700 uppercase tracking-[0.18em] flex items-center gap-2">
                         <User className="w-3.5 h-3.5 text-[#1499AD]" />
-                        Bemor va shifokor ma'lumotlari
+                        {language === 'ru' ? 'Информация о пациенте и враче' : 'Bemor va shifokor ma\'lumotlari'}
                       </h3>
                       {selectedDebtPatient.telegram_chat_id ? (
                         <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
@@ -1009,10 +963,10 @@ export default function Debts() {
                         </div>
                       </div>
                       <div className="grid grid-cols-[110px_1fr] gap-3 px-4 sm:px-5 py-3">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Shifokor</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{language === 'ru' ? 'Врач' : 'Shifokor'}</span>
                         <p className="text-[13px] sm:text-[14px] font-[900] text-slate-800 break-words flex items-center gap-1.5">
                           <Stethoscope className="w-3.5 h-3.5 text-blue-500" />
-                          {patientDetailData?.doctor?.name || patientDetailData?.doctor?.full_name || selectedDebtPatient.main_treatment_provider || 'Biriktirilmagan'}
+                          {patientDetailData?.doctor?.name || patientDetailData?.doctor?.full_name || selectedDebtPatient.main_treatment_provider || (language === 'ru' ? 'Не назначен' : 'Biriktirilmagan')}
                         </p>
                       </div>
                     </div>
@@ -1022,13 +976,13 @@ export default function Debts() {
                   {patientDetailData && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                       <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 text-center">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">Rejalar qiymati</span>
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">{language === 'ru' ? 'Стоимость планов' : 'Rejalar qiymati'}</span>
                         <span className="text-xs sm:text-sm font-black text-slate-800 font-mono block">
                           {formatMoney(patientDetailData.originalPrice || patientDetailData.finalPlanTotal)}
                         </span>
                       </div>
                       <div className="bg-purple-50 border border-purple-100 rounded-2xl p-3 text-center">
-                        <span className="text-[9px] font-black text-purple-500 uppercase tracking-wider block mb-1">Chegirma</span>
+                        <span className="text-[9px] font-black text-purple-500 uppercase tracking-wider block mb-1">{language === 'ru' ? 'Скидка' : 'Chegirma'}</span>
                         <span className="text-xs sm:text-sm font-black text-purple-700 font-mono block">
                           {patientDetailData.totalDiscount > 0 ? `-${formatMoney(patientDetailData.totalDiscount)} (${patientDetailData.discountPercent}%)` : "—"}
                         </span>
@@ -1040,7 +994,7 @@ export default function Debts() {
                         </span>
                       </div>
                       <div className="bg-rose-50 border border-rose-100 rounded-2xl p-3 text-center">
-                        <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider block mb-1">Qolgan Qarz</span>
+                        <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider block mb-1">{language === 'ru' ? 'Остаток долга' : 'Qolgan Qarz'}</span>
                         <span className="text-xs sm:text-sm font-black text-rose-700 font-mono block">
                           {formatMoney(patientDetailData.currentDebt)}
                         </span>
@@ -1054,7 +1008,7 @@ export default function Debts() {
                       <div className="px-4 sm:px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                         <h3 className="text-[11px] font-black text-slate-700 uppercase tracking-[0.18em] flex items-center gap-2">
                           <Receipt className="w-3.5 h-3.5 text-[#1499AD]" />
-                          Davolash Rejalari ({detailPlans.length})
+                          {language === 'ru' ? 'Планы лечения' : 'Davolash Rejalari'} ({detailPlans.length})
                         </h3>
                       </div>
                       <div className="divide-y divide-slate-100">
@@ -1063,7 +1017,7 @@ export default function Debts() {
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <h4 className="text-sm font-black text-slate-900">{plan.name}</h4>
+                                  <h4 className="text-sm font-black text-slate-900">{language === 'ru' ? (plan.name || '').replace(/Davolash rejasi/gi, 'План лечения') : plan.name}</h4>
                                   <span className={cn(
                                     "text-[9px] font-black uppercase px-2 py-0.5 rounded-full border",
                                     plan.status === 'Yakunlangan' || plan.status === 'Completed'
@@ -1077,7 +1031,7 @@ export default function Debts() {
                                 </div>
                                 {plan.tooth_number && (
                                   <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-                                    Tishlar: <span className="font-mono font-bold text-slate-600">#{plan.tooth_number}</span>
+                                    {language === 'ru' ? 'Зубы: ' : 'Tishlar: '}<span className="font-mono font-bold text-slate-600">#{plan.tooth_number}</span>
                                   </p>
                                 )}
                               </div>
@@ -1092,24 +1046,82 @@ export default function Debts() {
                                   className="h-8 px-3 rounded-xl border-slate-200 text-xs font-bold gap-1 text-slate-700"
                                 >
                                   <FileText className="w-3.5 h-3.5 text-[#1499AD]" />
-                                  Kvitansiya
+                                  {language === 'ru' ? 'Квитанция' : 'Kvitansiya'}
                                 </Button>
                               </div>
                             </div>
 
-                            {/* Xizmatlar */}
+                            {/* Excel Jadvali Ko'rinishidagi Xizmatlar Ro'yxati */}
                             {Array.isArray(plan.services) && plan.services.length > 0 && (
-                              <div className="bg-slate-50 rounded-xl p-3 space-y-1.5 text-xs font-mono">
-                                {plan.services.map((srv, sIdx) => (
-                                  <div key={sIdx} className="flex justify-between items-center text-slate-700">
-                                    <span className="font-sans font-medium text-slate-800 truncate mr-2">
-                                      {srv.service_name || srv.name || `Xizmat #${sIdx + 1}`}
-                                    </span>
-                                    <span className="font-bold text-slate-900 shrink-0">
-                                      {Number(srv.price || 0).toLocaleString()} UZS
-                                    </span>
-                                  </div>
-                                ))}
+                              <div className="mt-3 rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+                                <table className="w-full text-left text-xs border-collapse">
+                                  <thead>
+                                    <tr className="bg-slate-100/90 border-b border-slate-200 text-[10px] font-black text-slate-600 uppercase tracking-wider select-none">
+                                      <th className="w-10 px-2.5 py-2 text-center border-r border-slate-200 font-mono">№</th>
+                                      <th className="px-3.5 py-2 border-r border-slate-200">
+                                        {language === 'ru' ? 'Услуга / Процедура' : language === 'en' ? 'Service / Procedure' : 'Xizmat / Muolaja'}
+                                      </th>
+                                      <th className="w-28 px-3 py-2 text-center border-r border-slate-200">
+                                        {language === 'ru' ? 'Статус' : language === 'en' ? 'Status' : 'Holat'}
+                                      </th>
+                                      <th className="w-36 px-3.5 py-2 text-right">
+                                        {language === 'ru' ? 'Стоимость' : language === 'en' ? 'Price' : 'Narxi'}
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-200/80 bg-white">
+                                    {plan.services.map((srv, sIdx) => {
+                                      const isCompleted = !!(srv.completed || srv.status === 'completed' || srv.status === 'Yakunlangan');
+                                      return (
+                                        <tr 
+                                          key={sIdx}
+                                          className={`hover:bg-slate-50 transition-colors ${
+                                            sIdx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'
+                                          }`}
+                                        >
+                                          <td className="px-2.5 py-2 text-center font-mono font-bold text-slate-400 border-r border-slate-200/80 text-[11px]">
+                                            {sIdx + 1}
+                                          </td>
+                                          <td className="px-3.5 py-2 border-r border-slate-200/80">
+                                            <div className="font-bold text-slate-900 text-xs">
+                                              {srv.service_name || srv.name || (language === 'ru' ? `Услуга #${sIdx + 1}` : `Xizmat #${sIdx + 1}`)}
+                                            </div>
+                                            {srv.notes && (
+                                              <div className="text-[10px] text-slate-400 font-normal mt-0.5">
+                                                {srv.notes}
+                                              </div>
+                                            )}
+                                          </td>
+                                          <td className="px-3 py-2 text-center border-r border-slate-200/80">
+                                            <span className={cn(
+                                              "px-2 py-0.5 rounded-full text-[9.5px] font-black uppercase tracking-wider inline-block",
+                                              isCompleted 
+                                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
+                                                : "bg-amber-50 text-amber-700 border border-amber-200"
+                                            )}>
+                                              {isCompleted 
+                                                ? (language === 'ru' ? 'Выполнено' : 'Bajarildi') 
+                                                : (language === 'ru' ? 'В плане' : 'Rejada')}
+                                            </span>
+                                          </td>
+                                          <td className="px-3.5 py-2 text-right font-mono font-black text-slate-900 text-xs">
+                                            {Number(srv.price || 0).toLocaleString()} <span className="text-[10px] font-sans font-bold text-slate-400">{language === 'ru' ? 'UZS' : "so'm"}</span>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                  <tfoot>
+                                    <tr className="bg-slate-100/90 border-t border-slate-200 font-black text-xs">
+                                      <td colSpan={3} className="px-3.5 py-2 text-right border-r border-slate-200 text-slate-600 uppercase text-[10px] tracking-wider">
+                                        {language === 'ru' ? 'Итого по услугам:' : 'Jami xizmatlar summasi:'}
+                                      </td>
+                                      <td className="px-3.5 py-2 text-right font-mono text-emerald-700 text-xs">
+                                        {plan.services.reduce((acc, curr) => acc + (Number(curr.price) || 0), 0).toLocaleString()} <span className="text-[10px] font-sans font-bold text-slate-500">{language === 'ru' ? 'UZS' : "so'm"}</span>
+                                      </td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
                               </div>
                             )}
                           </div>
@@ -1127,10 +1139,10 @@ export default function Debts() {
                     >
                       <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-2">
                         <Wallet className="w-3.5 h-3.5 text-emerald-600" />
-                        Bemorning to'lovlar tarixi ({detailHistory.length})
+                        {language === 'ru' ? 'История платежей пациента' : 'Bemorning to\'lovlar tarixi'} ({detailHistory.length})
                       </span>
                       <span className="text-xs font-bold text-blue-600">
-                        {showDetailHistory ? "Yashirish ▲" : "Ko'rsatish ▼"}
+                        {showDetailHistory ? (language === 'ru' ? "Скрыть ▲" : "Yashirish ▲") : (language === 'ru' ? "Показать ▼" : "Ko'rsatish ▼")}
                       </span>
                     </button>
 
@@ -1173,7 +1185,7 @@ export default function Debts() {
                 }}
                 className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
               >
-                Bemor profiliga o'tish →
+                {language === 'ru' ? 'Перейти в профиль пациента →' : "Bemor profiliga o'tish →"}
               </button>
 
               <div className="flex items-center gap-2">
@@ -1186,14 +1198,14 @@ export default function Debts() {
                   className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs gap-1.5 shadow-md"
                 >
                   <CreditCard className="w-3.5 h-3.5" />
-                  <span>Qarzni To'lash</span>
+                  <span>{language === 'ru' ? 'Погасить долг' : 'Qarzni To\'lash'}</span>
                 </Button>
 
                 <Button
                   onClick={() => setSelectedDebtPatient(null)}
-                  className="h-9 px-4 rounded-xl bg-slate-900 text-white font-bold text-xs"
+                  className="h-9 px-4 rounded-xl bg-slate-900 text-white font-bold text-xs cursor-pointer"
                 >
-                  Yopish
+                  {language === 'ru' ? 'Закрыть' : 'Yopish'}
                 </Button>
               </div>
             </div>

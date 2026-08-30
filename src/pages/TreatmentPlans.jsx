@@ -31,7 +31,7 @@ import { useAuth } from '@/lib/AuthContext';
  */
 export default function TreatmentPlans() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { user, isDoctor } = useAuth();
   const queryClient = useQueryClient();
 
@@ -388,24 +388,16 @@ export default function TreatmentPlans() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('treatmentPlan.title') || "Davolash rejalari"}</h1>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
-              • Tibbiy Rejalar & Tahlillar {plans.length} Yozuvlar
+              {language === 'ru' ? `• ПЛАНЫ И АНАЛИЗЫ: ${plans.length} ЗАПИСЕЙ` : language === 'en' ? `• TREATMENT PLANS: ${plans.length} RECORDS` : `• Tibbiy Rejalar & Tahlillar ${plans.length} Yozuvlar`}
             </span>
           </div>
           <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
-            Bemorlar uchun shakllantirilgan davolash rejalari, muolaja bosqichlari va hisob-kitoblari
+            {t('treatmentPlan.subtitle') || (language === 'ru' ? 'Сформированные планы лечения пациентов, этапы процедур и расчеты' : 'Bemorlar uchun shakllantirilgan davolash rejalari, muolaja bosqichlari va hisob-kitoblari')}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={exportCSV} 
-            className="gap-1.5 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs text-slate-700 h-9.5 px-3.5"
-            title="Excel formatida (.csv) yuklab olish"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Eksport (Excel)</span>
-          </Button>
+          
 
           <Button 
             onClick={() => { setEditPlan(null); setModalOpen(true); }} 
@@ -420,10 +412,42 @@ export default function TreatmentPlans() {
       {/* ─── Top Executive KPI Grid ─────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: "JARAYONDA", value: statusCounts.in_progress, icon: Clock, color: "text-amber-600", bg: "bg-amber-50 border-amber-100", isNumber: true, countText: "Bajarilayotgan rejalar" },
-          { label: "REJALASHTIRILGAN", value: statusCounts.planned, icon: ClipboardList, color: "text-blue-600", bg: "bg-blue-50 border-blue-100", isNumber: true, countText: "Navbatdagi rejalar" },
-          { label: "YAKUNLANGAN", value: statusCounts.completed, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", isNumber: true, countText: "Muvaffaqiyatli yakunlangan" },
-          { label: "JAMI REJALAR QIYMATI", value: totalValue, icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-50 border-purple-100", isNumber: false, countText: "Klinikaga kutilayotgan tushum" },
+          { 
+            label: language === 'ru' ? "В ПРОЦЕССЕ" : language === 'en' ? "IN PROGRESS" : "JARAYONDA", 
+            value: statusCounts.in_progress, 
+            icon: Clock, 
+            color: "text-amber-600", 
+            bg: "bg-amber-50 border-amber-100", 
+            isNumber: true, 
+            countText: language === 'ru' ? "Планы на исполнении" : language === 'en' ? "Plans in progress" : "Bajarilayotgan rejalar" 
+          },
+          { 
+            label: language === 'ru' ? "ЗАПЛАНИРОВАНО" : language === 'en' ? "PLANNED" : "REJALASHTIRILGAN", 
+            value: statusCounts.planned, 
+            icon: ClipboardList, 
+            color: "text-blue-600", 
+            bg: "bg-blue-50 border-blue-100", 
+            isNumber: true, 
+            countText: language === 'ru' ? "Очередные планы" : language === 'en' ? "Upcoming plans" : "Navbatdagi rejalar" 
+          },
+          { 
+            label: language === 'ru' ? "ЗАВЕРШЕНО" : language === 'en' ? "COMPLETED" : "YAKUNLANGAN", 
+            value: statusCounts.completed, 
+            icon: CheckCircle2, 
+            color: "text-emerald-600", 
+            bg: "bg-emerald-50 border-emerald-100", 
+            isNumber: true, 
+            countText: language === 'ru' ? "Успешно завершенные" : language === 'en' ? "Successfully completed" : "Muvaffaqiyatli yakunlangan" 
+          },
+          { 
+            label: language === 'ru' ? "ОБЩАЯ СТОИМОСТЬ ПЛАНОВ" : language === 'en' ? "TOTAL PLANS VALUE" : "JAMI REJALAR QIYMATI", 
+            value: totalValue, 
+            icon: TrendingUp, 
+            color: "text-purple-600", 
+            bg: "bg-purple-50 border-purple-100", 
+            isNumber: false, 
+            countText: language === 'ru' ? "Ожидаемые поступления в клинику" : language === 'en' ? "Expected clinic revenue" : "Klinikaga kutilayotgan tushum" 
+          },
         ].map((s, i) => (
           <motion.div 
             key={s.label}
@@ -438,7 +462,7 @@ export default function TreatmentPlans() {
               </span>
               <div className="text-lg sm:text-xl font-black font-mono tracking-tight text-slate-900 tabular-nums">
                 {s.isNumber ? (
-                  <span>{s.value} <span className="text-xs font-bold text-slate-400">ta</span></span>
+                  <span>{s.value} <span className="text-xs font-bold text-slate-400">{language === 'ru' ? '' : 'ta'}</span></span>
                 ) : (
                   <span>{Number(s.value).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">UZS</span></span>
                 )}
@@ -462,7 +486,7 @@ export default function TreatmentPlans() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
             <input 
               type="text" 
-              placeholder="Bemor ismi, reja nomi yoki tish raqami bo'yicha qidiruv..."
+              placeholder={t('treatmentPlan.searchPlaceholder') || (language === 'ru' ? "Поиск по имени пациента, названию плана или номеру зуба..." : "Bemor ismi, reja nomi yoki tish raqami bo'yicha qidiruv...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full h-9 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
@@ -480,10 +504,10 @@ export default function TreatmentPlans() {
           {/* Status Filter Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
-              { id: 'all', label: "Barchasi", count: statusCounts.all },
-              { id: 'in_progress', label: "Jarayonda", count: statusCounts.in_progress },
-              { id: 'planned', label: "Rejalashtirilgan", count: statusCounts.planned },
-              { id: 'completed', label: "Yakunlangan", count: statusCounts.completed },
+              { id: 'all', label: language === 'ru' ? "Все" : language === 'en' ? "All" : "Barchasi", count: statusCounts.all },
+              { id: 'in_progress', label: language === 'ru' ? "В процессе" : language === 'en' ? "In Progress" : "Jarayonda", count: statusCounts.in_progress },
+              { id: 'planned', label: language === 'ru' ? "Запланировано" : language === 'en' ? "Planned" : "Rejalashtirilgan", count: statusCounts.planned },
+              { id: 'completed', label: language === 'ru' ? "Завершено" : language === 'en' ? "Completed" : "Yakunlangan", count: statusCounts.completed },
             ].map(tab => {
               const isActive = activeStatusFilter === tab.id;
               return (
@@ -507,34 +531,6 @@ export default function TreatmentPlans() {
                 </button>
               );
             })}
-          </div>
-
-          {/* Density Switcher */}
-          <div className="hidden sm:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 shrink-0">
-            <button
-              onClick={() => toggleDensity('compact')}
-              title="Ixcham Excel Jadvali"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'compact' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>Excel</span>
-            </button>
-            <button
-              onClick={() => toggleDensity('comfortable')}
-              title="Keng Jadval Ko'rinishi"
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10.5px] font-black transition-all ${
-                density === 'comfortable' 
-                  ? 'bg-white text-slate-900 shadow-xs' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-              <span>Keng</span>
-            </button>
           </div>
 
         </div>
@@ -574,7 +570,7 @@ export default function TreatmentPlans() {
                   className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
                 >
                   <div className="flex items-center justify-between gap-1.5">
-                    <span>Bemor (F.I.Sh)</span>
+                    <span>{t('treatmentPlan.patientCol') || (language === 'ru' ? 'Пациент (Ф.И.О)' : 'Bemor (F.I.Sh)')}</span>
                     {sortField === 'patient' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                     ) : (
@@ -589,7 +585,7 @@ export default function TreatmentPlans() {
                   className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
                 >
                   <div className="flex items-center justify-between gap-1.5">
-                    <span>Reja Nomi / Tavsif</span>
+                    <span>{t('treatmentPlan.planNameCol') || (language === 'ru' ? 'Название плана / Описание' : 'Reja Nomi / Tavsif')}</span>
                     {sortField === 'name' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
                     ) : (
@@ -600,7 +596,7 @@ export default function TreatmentPlans() {
 
                 {/* TISHLAR */}
                 <th className="w-32 px-3 py-2.5 text-center border-r border-slate-200 select-none whitespace-nowrap">
-                  Tishlar
+                  {t('treatmentPlan.teethCol') || (language === 'ru' ? 'Зубы' : 'Tishlar')}
                 </th>
 
                 {/* XIZMATLAR */}
@@ -610,7 +606,7 @@ export default function TreatmentPlans() {
                   title="Xizmatlar soni bo'yicha saralash"
                 >
                   <div className="flex items-center justify-center gap-1.5 text-blue-800 font-mono">
-                    <span>Xizmatlar</span>
+                    <span>{t('treatmentPlan.servicesCol') || (language === 'ru' ? 'Услуги' : 'Xizmatlar')}</span>
                     {sortField === 'services' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
@@ -626,7 +622,7 @@ export default function TreatmentPlans() {
                   title="Jami qiymat bo'yicha saralash"
                 >
                   <div className="flex items-center justify-end gap-1.5 text-emerald-700 font-mono">
-                    <span>Jami Qiymat</span>
+                    <span>{t('treatmentPlan.totalPriceCol') || (language === 'ru' ? 'Общая стоимость' : 'Jami Qiymat')}</span>
                     {sortField === 'price' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
                     ) : (
@@ -641,7 +637,7 @@ export default function TreatmentPlans() {
                   className="w-40 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                 >
                   <div className="flex items-center justify-center gap-1.5 text-slate-700">
-                    <span>Holat</span>
+                    <span>{t('treatmentPlan.statusCol') || (language === 'ru' ? 'Статус' : 'Holat')}</span>
                     {sortField === 'status' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
@@ -705,11 +701,11 @@ export default function TreatmentPlans() {
                       <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
                         <div className="min-w-0">
                           <span className="font-bold text-slate-800 group-hover:text-[#1499AD] transition-colors truncate block">
-                            {p.name}
+                            {language === 'ru' ? (p.name || '').replace(/Davolash rejasi/gi, 'План лечения') : (language === 'en' ? (p.name || '').replace(/Davolash rejasi/gi, 'Treatment plan') : p.name)}
                           </span>
                           {p.doctor_name && (
                             <span className="text-[10px] font-medium text-slate-400 block truncate">
-                              Shifokor: {p.doctor_name}
+                              {language === 'ru' ? 'Врач: ' : 'Shifokor: '}{p.doctor_name}
                             </span>
                           )}
                         </div>
@@ -733,7 +729,7 @@ export default function TreatmentPlans() {
                       {/* XIZMATLAR SONI Cell */}
                       <td className={`text-center border-r border-slate-200/70 whitespace-nowrap bg-blue-50/20 ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-bold text-blue-900 bg-blue-100/70 border border-blue-200/60">
-                          {(p.services || []).length} ta xizmat
+                          {(p.services || []).length} {language === 'ru' ? 'услуг' : 'ta xizmat'}
                         </span>
                       </td>
 
@@ -762,9 +758,9 @@ export default function TreatmentPlans() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl font-bold text-xs">
-                            <SelectItem value="planned">Rejalashtirilgan</SelectItem>
-                            <SelectItem value="in_progress">Jarayonda</SelectItem>
-                            <SelectItem value="completed">Yakunlangan</SelectItem>
+                            <SelectItem value="planned">{language === 'ru' ? 'Запланировано' : 'Rejalashtirilgan'}</SelectItem>
+                            <SelectItem value="in_progress">{language === 'ru' ? 'В процессе' : 'Jarayonda'}</SelectItem>
+                            <SelectItem value="completed">{language === 'ru' ? 'Завершено' : 'Yakunlangan'}</SelectItem>
                           </SelectContent>
                         </Select>
                       </td>
@@ -834,41 +830,6 @@ export default function TreatmentPlans() {
             </tbody>
           </table>
         </div>
-
-        {/* ─── Excel Formula Summary Footer Bar ──────────────────── */}
-        <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-3 text-slate-600 font-bold">
-            <span className="flex items-center gap-1.5">
-              <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>Jadvalda:</span>
-              <strong className="text-slate-900 font-mono">{sortedPlans.length}</strong> ta reja
-            </span>
-            <span className="text-slate-300">•</span>
-            <span>
-              Jarayonda: <strong className="text-amber-700 font-mono">{statusCounts.in_progress} ta</strong>
-            </span>
-            <span className="text-slate-300">•</span>
-            <span>
-              Rejalashtirilgan: <strong className="text-blue-700 font-mono">{statusCounts.planned} ta</strong>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-black uppercase text-slate-500">Σ Tanlangan Rejalar Qiymati:</span>
-              <span className="font-mono font-bold text-slate-800 text-sm">
-                {filteredTotalValue.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 border-l border-slate-300 pl-3">
-              <span className="text-[11px] font-black uppercase text-slate-500">Σ Umumiy Rejalar Qiymati:</span>
-              <span className="font-mono font-black text-emerald-600 text-sm">
-                {totalValue.toLocaleString()} <span className="text-[10px] text-slate-500">UZS</span>
-              </span>
-            </div>
-          </div>
-        </div>
       </motion.div>
 
       {/* ─── Interactive Treatment Plan Detail & Execution Modal ─────── */}
@@ -884,7 +845,7 @@ export default function TreatmentPlans() {
                     </div>
                     <div>
                       <DialogTitle className="text-base font-black text-slate-900 leading-tight">
-                        {activeDetailPlan.name}
+                        {language === 'ru' ? (activeDetailPlan.name || '').replace(/Davolash rejasi/gi, 'План лечения') : (language === 'en' ? (activeDetailPlan.name || '').replace(/Davolash rejasi/gi, 'Treatment plan') : activeDetailPlan.name)}
                       </DialogTitle>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
@@ -911,7 +872,7 @@ export default function TreatmentPlans() {
                       className="h-8 px-2.5 rounded-xl border-slate-200 text-xs font-bold gap-1 text-slate-700"
                     >
                       <Printer className="w-3.5 h-3.5 text-slate-600" />
-                      <span>Chop etish</span>
+                      <span>{language === 'ru' ? 'Печать' : 'Chop etish'}</span>
                     </Button>
 
                     <Button 
@@ -924,7 +885,7 @@ export default function TreatmentPlans() {
                       className="h-8 px-2.5 rounded-xl border-slate-200 text-xs font-bold gap-1 text-slate-700"
                     >
                       <FileText className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Kvitansiya</span>
+                      <span>{language === 'ru' ? 'Квитанция' : 'Kvitansiya'}</span>
                     </Button>
                   </div>
                 </div>
@@ -935,7 +896,7 @@ export default function TreatmentPlans() {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                      Reja Holati:
+                      {language === 'ru' ? 'СТАТУС ПЛАНА:' : 'Reja Holati:'}
                     </span>
                     <div className="mt-1">
                       <Select 
@@ -946,9 +907,9 @@ export default function TreatmentPlans() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl font-bold text-xs">
-                          <SelectItem value="planned">Rejalashtirilgan</SelectItem>
-                          <SelectItem value="in_progress">Jarayonda</SelectItem>
-                          <SelectItem value="completed">Yakunlangan</SelectItem>
+                          <SelectItem value="planned">{language === 'ru' ? 'Запланировано' : 'Rejalashtirilgan'}</SelectItem>
+                          <SelectItem value="in_progress">{language === 'ru' ? 'В процессе' : 'Jarayonda'}</SelectItem>
+                          <SelectItem value="completed">{language === 'ru' ? 'Завершено' : 'Yakunlangan'}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -956,7 +917,7 @@ export default function TreatmentPlans() {
 
                   <div className="text-right">
                     <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                      Jami Qiymati:
+                      {language === 'ru' ? 'ОБЩАЯ СТОИМОСТЬ:' : 'Jami Qiymati:'}
                     </span>
                     <span className="text-base font-black font-mono text-emerald-700">
                       {Number(activeDetailPlan.total_price || 0).toLocaleString()} UZS
@@ -975,7 +936,7 @@ export default function TreatmentPlans() {
                         <div className="space-y-1">
                           <div className="flex justify-between text-[11px] font-bold">
                             <span className="text-slate-600">
-                              Bajarilish: <strong className="text-slate-900">{doneSrv} / {totalSrv} ta xizmat</strong>
+                              {language === 'ru' ? 'Выполнение: ' : 'Bajarilish: '}<strong className="text-slate-900">{doneSrv} / {totalSrv} {language === 'ru' ? 'услуг' : 'ta xizmat'}</strong>
                             </span>
                             <span className="text-emerald-700 font-mono font-black">{pct}%</span>
                           </div>
@@ -996,10 +957,10 @@ export default function TreatmentPlans() {
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
                 <div className="bg-slate-100/90 px-3.5 py-2 border-b border-slate-200 flex items-center justify-between">
                   <span className="text-[11px] font-black uppercase text-slate-700">
-                    Rejadagi Xizmatlar & Muolajalar ({Array.isArray(activeDetailPlan.services) ? activeDetailPlan.services.length : 0})
+                    {language === 'ru' ? 'УСЛУГИ И ПРОЦЕДУРЫ В ПЛАНЕ' : 'Rejadagi Xizmatlar & Muolajalar'} ({Array.isArray(activeDetailPlan.services) ? activeDetailPlan.services.length : 0})
                   </span>
                   <span className="text-[10px] font-bold text-slate-400">
-                    Bajarilgan xizmatlarni belgilang (Checkmark)
+                    {language === 'ru' ? 'Отметьте выполненные услуги' : 'Bajarilgan xizmatlarni belgilang (Checkmark)'}
                   </span>
                 </div>
 
@@ -1008,10 +969,10 @@ export default function TreatmentPlans() {
                     <thead className="sticky top-0 bg-slate-50 z-10">
                       <tr className="border-b border-slate-200 text-slate-500 text-[10px] font-bold uppercase">
                         <th className="w-10 px-2.5 py-2 text-center border-r border-slate-200">№</th>
-                        <th className="w-10 px-2 py-2 text-center border-r border-slate-200">Holat</th>
-                        <th className="px-3 py-2 border-r border-slate-200">Xizmat Nomi</th>
-                        <th className="w-20 px-2 py-2 text-center border-r border-slate-200">Tish</th>
-                        <th className="px-3 py-2 text-right">Narxi (UZS)</th>
+                        <th className="w-10 px-2 py-2 text-center border-r border-slate-200">{language === 'ru' ? 'Статус' : 'Holat'}</th>
+                        <th className="px-3 py-2 border-r border-slate-200">{language === 'ru' ? 'Название услуги' : 'Xizmat Nomi'}</th>
+                        <th className="w-20 px-2 py-2 text-center border-r border-slate-200">{language === 'ru' ? 'Зуб' : 'Tish'}</th>
+                        <th className="px-3 py-2 text-right">{language === 'ru' ? 'Цена (UZS)' : 'Narxi (UZS)'}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200/70 font-mono">
@@ -1052,7 +1013,7 @@ export default function TreatmentPlans() {
                                   </span>
                                   {isDone && (
                                     <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 shrink-0">
-                                      Bajarildi
+                                      {language === 'ru' ? 'Выполнено' : 'Bajarildi'}
                                     </span>
                                   )}
                                 </div>
@@ -1103,7 +1064,7 @@ export default function TreatmentPlans() {
                     }}
                     className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
                   >
-                    <span>Bemor profiliga o'tish</span>
+                    <span>{language === 'ru' ? 'Перейти в профиль пациента' : "Bemor profiliga o'tish"}</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -1120,14 +1081,14 @@ export default function TreatmentPlans() {
                     className="h-9 px-3.5 rounded-xl border-slate-200 text-slate-700 text-xs font-bold gap-1.5"
                   >
                     <Edit2 className="w-3.5 h-3.5 text-slate-600" />
-                    <span>Rejani Tahrirlash (Wizard)</span>
+                    <span>{language === 'ru' ? 'Редактировать план' : 'Rejani Tahrirlash (Wizard)'}</span>
                   </Button>
 
                   <Button
                     onClick={() => setSelectedDetailPlanId(null)}
-                    className="h-9 px-4 rounded-xl bg-slate-900 text-white text-xs font-black"
+                    className="h-9 px-4 rounded-xl bg-slate-900 text-white text-xs font-black cursor-pointer"
                   >
-                    Yopish
+                    {language === 'ru' ? 'Закрыть' : 'Yopish'}
                   </Button>
                 </div>
               </div>
