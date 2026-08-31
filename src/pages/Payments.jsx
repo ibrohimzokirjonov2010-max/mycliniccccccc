@@ -22,6 +22,8 @@ import PatientSelect from '../components/patients/PatientSelect';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useClinic } from '@/lib/ClinicContext';
+import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
 import { toast } from 'sonner';
 import { formatPhone } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -142,10 +144,11 @@ const extractPaymentProcedures = (payment) => {
  * - Advanced Multi-step Modal for adding payments logic
  */
 export default function Payments() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isDoctor } = useAuth();
+  const { clinicName } = useClinic();
   const queryClient = useQueryClient();
 
   // ── Excel Grid & Pagination state ───────────────────────────────────
@@ -1280,18 +1283,18 @@ export default function Payments() {
           const rawToothId = pl.tooth_number || s.tooth_id || s.tooth || '—';
           allServices.push({
             name: s.service_name || s.name || pl.name || 'Davolash xizmati',
-            category: s.category || pl.department || 'Plomba / Davolash',
+            category: getServiceCategoryLabel(s.category || pl.department || 'Plomba / Davolash', language),
             tooth: rawToothId && rawToothId !== 'general' ? rawToothId : '—',
-            status: s.status || pl.status || 'completed',
+            status: getServiceStatusLabel(s.status || pl.status || 'completed', language),
             price: Number(s.price || s.cost || 0)
           });
         });
       } else if (pl.name) {
         allServices.push({
           name: pl.name,
-          category: pl.department || 'Davolash rejasi',
+          category: getServiceCategoryLabel(pl.department || 'Davolash rejasi', language),
           tooth: pl.tooth_number || '—',
-          status: pl.status || 'completed',
+          status: getServiceStatusLabel(pl.status || 'completed', language),
           price: Number(pl.total_price || 0)
         });
       }
@@ -1300,9 +1303,9 @@ export default function Payments() {
     if (allServices.length === 0) {
       allServices.push({
         name: payment.service_name || payment.category || 'Davolash muolajasi',
-        category: 'Davolash',
+        category: getServiceCategoryLabel(payment.category || 'Davolash', language),
         tooth: '—',
-        status: 'completed',
+        status: getServiceStatusLabel('completed', language),
         price: Number(payment.amount || 0)
       });
     }
@@ -1520,7 +1523,7 @@ export default function Payments() {
               <path d="M12 2C8.7 2 6 4.7 6 8c0 4 3 7 6 10 3-3 6-6 6-10 0-3.3-2.7-6-6-6z" />
             </svg>
             <div>
-              <h1 class="clinic-title">DentaCRM</h1>
+              <h1 class="clinic-title">${clinicName}</h1>
               <p class="clinic-sub">Professional stomatologiya klinikasi</p>
               <p class="clinic-contact">Tel: +998 71 123 45 67 | Toshkent sh.</p>
             </div>
@@ -1550,7 +1553,7 @@ export default function Payments() {
           </div>
           <div class="info-item">
             <span class="info-label">Davolash turi</span>
-            <span class="info-val">${payment.service_name || payment.category || 'Davolash rejasi'}</span>
+            <span class="info-val">${getTreatmentTypeLabel(payment.service_name || payment.category || 'Davolash rejasi', language)}</span>
           </div>
           <div class="info-item">
             <span class="info-label">Holati</span>
@@ -1634,7 +1637,7 @@ export default function Payments() {
         </div>
 
         <div class="footer-note">
-          Hujjat ${dateFormatted} sanasida DentaCRM tizimi tomonidan yaratildi | Ushbu hujjat rasmiy hisoblanadi
+          Hujjat ${dateFormatted} sanasida ${clinicName} tizimi tomonidan yaratildi | Ushbu hujjat rasmiy hisoblanadi
         </div>
 
         <script>
@@ -1707,14 +1710,6 @@ export default function Payments() {
           }
 
           setRealPatientDebt(realDebt);
-
-          // If amount is not explicitly set, auto-fill with real debt
-          setForm(prev => {
-            if (prev.amount === '' || prev.amount === 0 || prev.amount === undefined || prev.amount === null) {
-              return { ...prev, amount: realDebt > 0 ? realDebt : prev.amount };
-            }
-            return prev;
-          });
 
           const pat = patients.find(p => p.id === form.patient_id);
           if (pat && Number(pat.total_debt) !== realDebt) {
@@ -2528,11 +2523,17 @@ export default function Payments() {
                                       type="button"
                                       onClick={() => {
                                         setForm(prev => ({ ...prev, amount: debt }));
-                                        toast.success(`Qarz summasi (${debt.toLocaleString()} UZS) kiritildi`);
+                                        toast.success(
+                                          language === 'ru' 
+                                            ? `Сумма долга (${debt.toLocaleString()} UZS) введена` 
+                                            : language === 'en' 
+                                            ? `Debt amount (${debt.toLocaleString()} UZS) entered` 
+                                            : `Qarz summasi (${debt.toLocaleString()} UZS) kiritildi`
+                                        );
                                       }}
-                                      className="text-[9px] font-black text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded-md border border-emerald-300 transition-colors uppercase tracking-wider cursor-pointer active:scale-95"
+                                      className="text-[9px] font-black text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1 rounded-md border border-emerald-300 transition-colors uppercase tracking-wider cursor-pointer active:scale-95 shadow-xs"
                                     >
-                                      Qarzni qo'yish
+                                      {language === 'ru' ? 'Ввести сумму долга' : language === 'en' ? 'Fill debt amount' : 'Qarz summasini kiritish'}
                                     </button>
                                   )}
                                 </div>
@@ -3234,7 +3235,7 @@ export default function Payments() {
                 {/* Klinika ma'lumotlari */}
                 <div className="flex items-start justify-between mb-4 pb-4 border-b border-slate-100">
                   <div>
-                    <h3 className="text-base font-[900] text-slate-900">DentaCRM Klinikasi</h3>
+                    <h3 className="text-base font-[900] text-slate-900">{clinicName}</h3>
                     <p className="text-[10px] text-slate-400 font-bold">Sana: {invoiceData.date}</p>
                   </div>
                   <div className="text-right">

@@ -35,8 +35,9 @@ function PatientAppointments({ appointments = [] }) {
     return (
       <EmptyState 
         icon={CalendarDays} 
-        title={t('patientAppointments.emptyTitle')} 
-        description={t('patientAppointments.emptyDesc')}
+        variant="blue"
+        title={t('patientAppointments.emptyTitle') || "Uchrashuvlar mavjud emas"} 
+        description={t('patientAppointments.emptyDesc') || "Ushbu bemor uchun hali qabul yoki uchrashuv belgilanmagan."}
       />
     );
   }

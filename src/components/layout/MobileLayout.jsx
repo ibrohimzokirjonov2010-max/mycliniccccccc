@@ -11,6 +11,7 @@ import { Tooth, ImplantIcon } from '@/components/ui/Icons';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useClinic } from '@/lib/ClinicContext';
 import AdBanner from './AdBanner';
 
 /**
@@ -55,6 +56,7 @@ export default function MobileLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { t, changeLanguage, language, availableLanguages } = useTranslation();
+  const { clinicName } = useClinic();
   const [isInstalled, setIsInstalled] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -108,7 +110,7 @@ export default function MobileLayout({ children }) {
             <div className="w-8 h-8 bg-white border border-slate-100 rounded-lg flex items-center justify-center shadow-sm">
               <Tooth className="w-5 h-5 text-slate-800" />
             </div>
-            <span className="font-bold text-lg">My Clinic</span>
+            <span className="font-bold text-lg">{clinicName}</span>
           </div>
           <div className="flex items-center gap-2">
             {/* Language Switcher */}
@@ -163,7 +165,7 @@ export default function MobileLayout({ children }) {
                       <div className="w-8 h-8 bg-white border border-slate-100 rounded-lg flex items-center justify-center shadow-sm">
                         <Tooth className="w-5 h-5 text-slate-800" />
                       </div>
-                      <span className="font-bold">My Clinic</span>
+                      <span className="font-bold">{clinicName}</span>
                     </div>
                   </div>
                   <nav className="flex-1 p-2">

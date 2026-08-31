@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Wallet, CheckCircle2, FlaskConical, X, Phone, Calendar, Stethoscope, CreditCard, FileText, History, Receipt, Edit3, UserCircle, Camera, Upload } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatDateWithWeekday } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
 import { compressImage } from '@/utils/imageUpload';
@@ -93,7 +93,7 @@ const statusBadgeColors = {
    QUICK VIEW POPUP — cliniccards.com uslubi
    ═══════════════════════════════════════════════════ */
 export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const popupRef = useRef(null);
   const navigate = useNavigate();
   const [placement, setPlacement] = useState('bottom');
@@ -212,7 +212,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
     
     // Asynchronous fallback lookup by patient_id or patient_name
     if (a.patient_id) {
-      base44.entities.Patient.get(a.patient_id)
+      (base44.entities.Patient.get ? base44.entities.Patient.get(a.patient_id) : base44.entities.Patient.filter({ id: a.patient_id }).then(res => res[0]))
         .then(p => {
           const pPhoto = p?.photo_url || p?.photo || p?.avatar_url || p?.avatar || p?.image_url || p?.image;
           if (pPhoto) setCurrentPhoto(pPhoto);
@@ -270,12 +270,10 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
     return age;
   })();
 
-  // Sana formatlash
+  // Sana formatlash (ICU xatolarisiz to'liq lokalizatsiya qilingan)
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
-    const d = new Date(dateStr);
-    if (isNaN(d)) return dateStr;
-    return d.toLocaleDateString('uz-UZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    return formatDateWithWeekday(dateStr, language);
   };
 
   const style = {

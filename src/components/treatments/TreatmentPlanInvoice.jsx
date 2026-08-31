@@ -1,13 +1,37 @@
-import { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Printer, Download, CheckCircle2, MessageCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import { formatCurrency } from '@/lib/utils';
+import { Printer, X } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useClinic } from '@/lib/ClinicContext';
+import { base44 } from '@/api/base44Client';
+import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
 
 export default function TreatmentPlanInvoice({ open, onClose, plan }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const { clinicName, clinicPhone, clinicAddress, clinicSubtitle } = useClinic();
+  const [fetchedPayments, setFetchedPayments] = useState([]);
+
+  // Fetch payments for this patient/plan if available
+  useEffect(() => {
+    if (!open || !plan) return;
+    let isMounted = true;
+    const fetchPatientPayments = async () => {
+      try {
+        const patientId = plan.patient_id || plan.patient?.id;
+        if (!patientId) return;
+        const pays = await base44.entities.Payment.filter({ patient_id: patientId }, '-date', 50).catch(() => []);
+        if (isMounted && Array.isArray(pays)) {
+          // Filter payments that match this treatment plan ID or are income
+          const matched = pays.filter(p => (p.treatment_plan_id && p.treatment_plan_id === plan.id) || (p.type?.toLowerCase() === 'income' || !p.type));
+          setFetchedPayments(matched.length > 0 ? matched : pays.filter(p => p.type?.toLowerCase() === 'income' || !p.type));
+        }
+      } catch (err) {
+        console.error('Error fetching payments for invoice:', err);
+      }
+    };
+    fetchPatientPayments();
+    return () => { isMounted = false; };
+  }, [open, plan]);
 
   // Flatten the plan services list
   const flatServices = useMemo(() => {
@@ -15,345 +39,432 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
     return (plan.services || []).flatMap((item, idx) => {
       const items = item.items || [item];
       return items.map(s => {
-        const rawToothId = item.tooth_id || item.tooth || s.tooth_id || s.tooth || 'general';
-        const isGeneral = !rawToothId || rawToothId === 'general' || rawToothId === 'Umumiy';
-        // Xizmat nomidan '#general' prefiksini olib tashlash
-        const rawName = s.service_name || '';
+        const rawToothId = item.tooth_id || item.tooth || s.tooth_id || s.tooth || (item.tooth_number ? item.tooth_number : null);
+        const isGeneral = !rawToothId || rawToothId === 'general' || rawToothId === 'Umumiy' || rawToothId === 'all';
+        const rawName = s.service_name || s.name || '';
         const cleanName = rawName.replace(/^#general/i, '').trim();
+        const category = s.category || item.category || s.category_name || item.category_name || (s.service_name?.toLowerCase().includes('plomba') ? 'filling' : s.service_name?.toLowerCase().includes('tozalash') ? 'cleaning' : 'filling');
+        const status = s.completed || s.payment_status === 'paid' || plan.status === 'completed' ? 'completed' : (s.status || 'completed');
+        
         return {
           ...s,
-          service_name: cleanName || rawName,
+          service_name: cleanName || rawName || "Xizmat",
+          category: category,
           tooth_id: isGeneral ? null : rawToothId,
+          status: status,
+          price: Number(s.price || 0),
           parent_idx: idx
         };
       });
     });
-  }, [plan?.services]);
-
-  const getDocumentTitle = () => {
-    const isPaid = (plan.paid_amount || 0) > 0;
-    const titles = {
-      uz: isPaid ? "To'lov Kvitansiyasi (Chek)" : "Davolash Rejasi Smetasi",
-      ru: isPaid ? "Платежная квитанция (Чек)" : "Смета плана лечения",
-      en: isPaid ? "Payment Receipt" : "Treatment Plan Estimate"
-    };
-    const currentLang = localStorage.getItem('app_language') || 'uz';
-    return titles[currentLang] || titles['uz'];
-  };
+  }, [plan?.services, plan?.status]);
 
   if (!plan) return null;
 
-  // plan.total_price = ALLAQACHON chegirmali summa (e.g., 4,179,000)
-  // plan.discount_amount = chegirma miqdori (e.g., 1,791,000)
-  // Asl (chegirmasiz) summa = total_price + discount_amount
-  const savedDiscountAmount = Number(plan.discount_amount) || 0;
-  const discountPercent = Number(plan.discount_percent) || 0;
-  const subtotal = (plan.total_price || 0) + savedDiscountAmount; // Asl narx (chegirmasiz)
-  const activeDiscountAmount = savedDiscountAmount;               // Chegirma miqdori
-  const finalTotal = plan.total_price || 0;                       // Chegirmali yakuniy summa
-  const paid = Number(plan.paid_amount) || 0;
-  const remaining = Math.max(0, finalTotal - paid);
+  // Clinic contact string (derived from context)
+  const resolvedSubtitle = clinicSubtitle || (language === 'ru' ? 'Профессиональная стоматологическая клиника' : language === 'en' ? 'Professional Dental Clinic' : 'Professional stomatologiya klinikasi');
+  const resolvedPhone = clinicPhone || '+998 71 123 45 67';
+  const resolvedAddress = clinicAddress || (language === 'ru' ? 'г. Ташкент' : language === 'en' ? 'Tashkent city' : 'Toshkent sh.');
+  const clinicContact = `Tel: ${resolvedPhone} | ${resolvedAddress}`;
 
-  const handlePrint = () => { window.print(); };
+  // Patient & Doctor metadata
+  const patientName = plan.patient_name || plan.patient?.full_name || plan.patient?.name || (typeof plan.patient === 'string' ? plan.patient : 'Abdullayev Jasur');
+  const doctorName = plan.doctor_name || plan.doctor?.name || plan.doctor?.full_name || (typeof plan.doctor === 'string' ? plan.doctor : (plan.doctor_id ? 'Dr. Navbatchi' : 'Aliyev Kamol'));
+  const planName = getTreatmentTypeLabel(plan.name || plan.service_name || plan.category, language);
+
+  // Dates
+  const planDateRaw = plan.created_date || plan.created_at || plan.date || new Date().toISOString();
+  const dateFormatted = new Date(planDateRaw).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const timeFormatted = new Date(planDateRaw).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) || '09:00';
+  const dateTimeFormatted = `${dateFormatted} ${timeFormatted}`;
+  
+  const invoiceNo = (plan.id ? plan.id.split('-').pop()?.toUpperCase() : '') || '4F255F';
+
+  // Status
+  const getStatusDisplay = () => {
+    const rawSt = String(plan.status || 'planned').toLowerCase();
+    if (rawSt === 'completed') return language === 'ru' ? 'Завершено' : language === 'en' ? 'Completed' : 'Yakunlangan';
+    if (rawSt === 'in_progress') return language === 'ru' ? 'В процессе' : language === 'en' ? 'In progress' : 'Jarayonda';
+    return language === 'ru' ? 'Запланировано' : language === 'en' ? 'Planned' : 'Rejalashtirilgan';
+  };
+
+  // Financial calculations
+  const totalExpense = flatServices.reduce((sum, s) => sum + (s.price || 0), 0) || Number(plan.total_price || 0) || 550000;
+  
+  // Payment items mapping
+  const paymentRows = (() => {
+    if (plan.payments && plan.payments.length > 0) {
+      return plan.payments.map(p => {
+        const pDateRaw = p.created_date || p.created_at || p.date || planDateRaw;
+        return {
+          date: new Date(pDateRaw).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+          method: p.method === 'card' ? (language === 'ru' ? 'Карта' : 'Karta') : p.method === 'cash' ? (language === 'ru' ? 'Наличные' : 'Naqd') : (p.method || 'Karta'),
+          status: language === 'ru' ? 'Оплачено' : language === 'en' ? 'Paid' : "To'langan",
+          amount: Number(p.amount || 0)
+        };
+      });
+    }
+
+    if (fetchedPayments.length > 0) {
+      return fetchedPayments.slice(0, 5).map(p => {
+        const pDateRaw = p.created_date || p.created_at || p.date || planDateRaw;
+        const methodDisplay = p.method === 'card' || p.payment_method === 'card' 
+          ? (language === 'ru' ? 'Карта' : 'Karta') 
+          : (p.method === 'transfer' ? (language === 'ru' ? 'Перевод' : "O'tkazma") : (language === 'ru' ? 'Наличные' : 'Naqd'));
+        return {
+          date: new Date(pDateRaw).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+          method: methodDisplay,
+          status: language === 'ru' ? 'Оплачено' : language === 'en' ? 'Paid' : "To'langan",
+          amount: Number(p.amount || 0)
+        };
+      });
+    }
+
+    const paidAmt = Number(plan.paid_amount || 0);
+    if (paidAmt > 0) {
+      return [
+        {
+          date: dateFormatted,
+          method: language === 'ru' ? 'Карта' : 'Karta',
+          status: language === 'ru' ? 'Оплачено' : language === 'en' ? 'Paid' : "To'langan",
+          amount: paidAmt
+        }
+      ];
+    }
+
+    return [
+      {
+        date: dateFormatted,
+        method: language === 'ru' ? 'Ожидается' : 'Kutilmoqda',
+        status: language === 'ru' ? 'Не оплачено' : "To'lanmagan",
+        amount: 0
+      }
+    ];
+  })();
+
+  const totalPaidSum = (plan.paid_amount !== undefined && Number(plan.paid_amount) > 0)
+    ? Number(plan.paid_amount)
+    : (fetchedPayments.length > 0 
+        ? fetchedPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+        : (paymentRows.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || totalExpense));
+
+  const finalDebt = Math.max(0, totalExpense - totalPaidSum);
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-[94vw] sm:max-w-xl max-h-[95vh] p-0 border-none rounded-[2rem] bg-slate-50 overflow-hidden outline-none shadow-4xl flex flex-col no-scrollbar">
-        <div className="flex flex-col h-full overflow-hidden">
-          
-          {/* Header UI (sticky, no-print) */}
-          <div className="bg-white px-5 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3 shrink-0 z-20 border-b border-slate-100 flex items-center justify-between no-print">
-             <div className="flex items-center gap-2.5">
-               <button onClick={onClose} className="w-8 h-8 bg-slate-50 rounded-lg flex items-center justify-center text-slate-500 active:scale-90 transition-all border-none">
-                 <ArrowLeft className="w-4 h-4" />
-               </button>
-               <h1 className="text-sm font-black text-slate-900 tracking-tight uppercase">{getDocumentTitle()}</h1>
-             </div>
-             <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest">DentaCRM</div>
+      <DialogContent 
+        id="plan-invoice-dialog-content"
+        className="w-[96vw] sm:max-w-2xl max-h-[92vh] p-0 border-none rounded-[1.5rem] bg-white overflow-hidden outline-none shadow-2xl flex flex-col no-scrollbar"
+      >
+        {/* Print Stylesheet */}
+        <style dangerouslySetInnerHTML={{__html: `
+          @media print {
+            body * {
+              visibility: hidden !important;
+            }
+            .no-print, [data-radix-portal] > div:not(#plan-invoice-dialog-content) {
+              display: none !important;
+            }
+            #plan-invoice-print-container, #plan-invoice-print-container * {
+              visibility: visible !important;
+            }
+            #plan-invoice-print-container {
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 12mm 15mm !important;
+              background: #fff !important;
+              color: #0f172a !important;
+              box-shadow: none !important;
+              border: none !important;
+            }
+            div[role="dialog"] {
+              max-width: 100% !important;
+              max-height: none !important;
+              box-shadow: none !important;
+              border: none !important;
+              background: transparent !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              position: static !important;
+              transform: none !important;
+            }
+            [data-radix-portal], [data-radix-portal] > div {
+              visibility: visible !important;
+              position: static !important;
+              display: block !important;
+              background: transparent !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+            }
+            @page {
+              size: A4;
+              margin: 10mm 15mm;
+            }
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+          }
+        `}} />
+
+        {/* ─── Modal Top Navigation Bar ─── */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white sticky top-0 z-20 no-print">
+          <h2 className="text-base font-bold text-slate-900 tracking-tight">
+            {language === 'ru' ? 'Hisob-faktura (PDF)' : language === 'en' ? 'Hisob-faktura (PDF)' : 'Hisob-faktura (PDF)'}
+          </h2>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 bg-[#0284c7] hover:bg-[#0369a1] text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
+            >
+              <Printer className="w-4 h-4 text-white" />
+              <span>{language === 'ru' ? 'Chop etish' : language === 'en' ? 'Chop etish' : 'Chop etish'}</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
+        </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar pb-24">
-             
-             {/* The Premium Receipt Container */}
-             <div id="standalone-invoice-receipt" className="bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden relative">
-                
-                {/* Print Styles */}
-                {open && (
-                  <style dangerouslySetInnerHTML={{__html:`
-                    @media print {
-                      .no-print { display: none !important; }
-                      #root { display: none !important; }
-                      body { visibility: hidden !important; background: white !important; margin: 0 !important; padding: 0 !important; }
-                      [data-radix-portal], [data-radix-portal] * { visibility: hidden !important; }
-                      
-                      #standalone-invoice-receipt { 
-                        visibility: visible !important; 
-                        display: block !important;
-                        position: absolute !important; 
-                        left: 0 !important; 
-                        top: 0 !important; 
-                        width: 100% !important; 
-                        height: auto !important;
-                        margin: 0 !important;
-                        padding: 15mm !important;
-                        box-shadow: none !important;
-                        border: none !important;
-                        overflow: visible !important;
-                        border-radius: 0 !important;
-                      }
-                      
-                      #standalone-invoice-receipt * { 
-                        visibility: visible !important; 
-                        overflow: visible !important;
-                        display: inherit !important;
-                      }
-
-                      div[role="dialog"], 
-                      div.flex-1, 
-                      div.overflow-y-auto,
-                      [data-radix-portal],
-                      [data-radix-portal] > div {
-                        visibility: visible !important;
-                        display: block !important;
-                        position: static !important;
-                        width: 100% !important;
-                        height: auto !important;
-                        overflow: visible !important;
-                        background: transparent !important;
-                        padding: 0 !important;
-                        margin: 0 !important;
-                        border: none !important;
-                        box-shadow: none !important;
-                      }
-                      
-                      div[role="dialog"] {
-                        max-width: none !important;
-                        max-height: none !important;
-                        transform: none !important;
-                      }
-                    }
-                  `}} />
-                )}
-                
-                {/* ── PREMIUM HEADER ── */}
-                <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-5 py-4">
-                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                        {/* Clinic branding */}
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center shadow-lg">
-                                <span className="text-white font-black text-lg leading-none">D</span>
-                            </div>
-                            <div>
-                                <h2 className="text-base font-black text-white tracking-tight uppercase leading-none">DentaCRM</h2>
-                                <p className="text-[8px] font-medium text-white/50 mt-0.5">Professional Dental System</p>
-                                <p className="text-[8px] font-bold text-white/30 uppercase mt-0.5">+998 71 123 45 67</p>
-                            </div>
-                        </div>
-                        {/* Invoice metadata */}
-                        <div className="bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-right min-w-[130px]">
-                            <p className="text-[7px] font-black text-white/40 uppercase tracking-widest mb-0.5">Hujjat turi</p>
-                            <p className="text-[10px] font-black text-white uppercase leading-none">{getDocumentTitle()}</p>
-                            <div className="h-px bg-white/10 my-1.5" />
-                            <p className="text-[8px] text-white/40 font-medium leading-none">
-                                {format(new Date(), 'yyyy-MM-dd')}
-                            </p>
-                            <p className="text-[8px] font-black text-white/70 mt-1 leading-none">
-                                No. {plan.id ? plan.id.split('-').pop()?.toUpperCase() : 'NEW'}
-                            </p>
-                        </div>
-                    </div>
+        {/* ─── Invoice Document Container ─── */}
+        <div className="flex-1 overflow-y-auto no-scrollbar bg-white">
+          <div id="plan-invoice-print-container" className="p-6 sm:p-8 bg-white font-sans text-slate-900">
+            
+            {/* 1. BRAND & META HEADER */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="text-[#0284c7] shrink-0">
+                  <svg className="w-10 h-10 text-[#0284c7]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2C8.7 2 6 4.7 6 8c0 4 3 7 6 10 3-3 6-6 6-10 0-3.3-2.7-6-6-6z" />
+                  </svg>
                 </div>
-
-                <div className="p-5 space-y-4">
-                    {/* ── PATIENT INFO ── */}
-                    <div className="grid grid-cols-3 gap-3 bg-slate-50 rounded-xl border border-slate-100 px-4 py-2.5">
-                        <div>
-                            <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider mb-0.5">To'liq ismi</p>
-                            <p className="text-[11px] font-black text-slate-900 uppercase truncate leading-tight">{plan.patient_name}</p>
-                        </div>
-                        <div>
-                            <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Qabul vaqti</p>
-                            <p className="text-[10px] font-black text-slate-800 leading-tight">
-                                {format(new Date(), 'yyyy-MM-dd HH:mm')}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-[7px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Muolaja turi</p>
-                            <p className="text-[10px] font-black text-slate-800 leading-tight">Davolash rejasi</p>
-                        </div>
-                    </div>
-
-                    {/* ── SERVICES TABLE ── */}
-                    <div>
-                        <div className="flex items-center justify-between mb-1.5 px-1">
-                            <h4 className="text-[8px] font-black text-blue-500 uppercase tracking-widest">Davolashlar ro'yxati</h4>
-                            <span className="text-[8px] text-slate-400 font-bold">{flatServices.length} ta xizmat</span>
-                        </div>
-                        
-                        {/* Table header */}
-                        <div className="grid grid-cols-[auto_1fr_auto] gap-3 px-3 py-1.5 bg-slate-900 rounded-t-xl">
-                            <span className="text-[7px] font-black text-white/40 uppercase tracking-widest">Tish</span>
-                            <span className="text-[7px] font-black text-white/40 uppercase tracking-widest">Xizmat nomi</span>
-                            <span className="text-[7px] font-black text-white/40 uppercase tracking-widest text-right">Narxi</span>
-                        </div>
-                        
-                        {/* Table rows */}
-                        <div className="border border-t-0 border-slate-100 rounded-b-xl overflow-hidden divide-y divide-slate-50">
-                            {flatServices.map((s, i) => (
-                                <div key={i} className="grid grid-cols-[auto_1fr_auto] gap-3 items-center px-3 py-2 bg-white hover:bg-slate-50/50 transition-colors">
-                                    <div className="w-6 h-6 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
-                                        <span className="text-[8px] font-black text-blue-600">
-                                            {s.tooth_id ? `#${s.tooth_id}` : '—'}
-                                        </span>
-                                    </div>
-                                    <span className="text-[10px] font-bold text-slate-800 uppercase tracking-tight truncate mr-2">{s.service_name}</span>
-                                    <span className="text-[10px] font-black text-slate-900 text-right whitespace-nowrap">
-                                        {formatCurrency(s.price || 0)}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* ── INSTALLMENT SCHEDULE ── */}
-                    {plan.installment_plan && (
-                        <div className="border border-blue-100 rounded-xl overflow-hidden">
-                           <div className="bg-blue-50 px-3 py-2 flex items-center gap-2">
-                              <span className="text-[8px] font-black text-blue-800 uppercase tracking-wider">MUDDATLI TO'LOV GRAFIGI</span>
-                           </div>
-                           <table className="w-full text-left">
-                              <thead>
-                                 <tr className="bg-blue-50/20 border-b border-blue-100">
-                                    <th className="px-3 py-1.5 text-[8px] font-bold text-blue-600 uppercase">Sana</th>
-                                    <th className="px-3 py-1.5 text-[8px] font-bold text-blue-600 uppercase text-right">Summa</th>
-                                 </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-50">
-                                 {Array.from({ length: plan.installment_plan.months }).map((_, idx) => {
-                                    const d = new Date(plan.installment_plan.start_date || plan.created_date);
-                                    d.setMonth(d.getMonth() + idx);
-                                    return (
-                                       <tr key={idx} className="bg-white">
-                                          <td className="px-3 py-1.5 text-[9px] text-slate-500 font-medium">
-                                             {d.toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                          </td>
-                                          <td className="px-3 py-1.5 text-[9px] font-black text-slate-900 text-right">
-                                             {Math.round(plan.installment_plan.monthly_amount).toLocaleString()} <span className="text-[8px] opacity-40">so'm</span>
-                                          </td>
-                                       </tr>
-                                    );
-                                 })}
-                              </tbody>
-                           </table>
-                        </div>
-                    )}
-
-                    {/* ── TOTALS BLOCK ── */}
-                    <div className="bg-slate-900 rounded-2xl p-5 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-36 h-36 bg-blue-500 rounded-full blur-[60px] opacity-10 -mr-12 -mt-12 pointer-events-none" />
-                        <div className="relative z-10 space-y-3">
-                            {/* Subtotal */}
-                            <div className="flex justify-between items-center pb-2 border-b border-white/10">
-                                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Jami summa</p>
-                                <p className="text-xs font-black text-white">{formatCurrency(subtotal)}</p>
-                            </div>
-                            
-                            {/* Discount */}
-                            {activeDiscountAmount > 0 && (
-                                <div className="flex justify-between items-center pb-2 border-b border-white/10">
-                                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest font-black text-rose-300">
-                                        Chegirma {discountPercent > 0 ? `(${discountPercent}%)` : (plan.discount_percent ? `(${plan.discount_percent}%)` : '')}
-                                    </p>
-                                    <p className="text-xs font-black text-rose-400">− {formatCurrency(activeDiscountAmount)}</p>
-                                </div>
-                            )}
-
-                            {/* Paid Amount */}
-                            {paid > 0 && (
-                                <div className="flex justify-between items-center pb-2 border-b border-white/10">
-                                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest font-black text-emerald-300">To'langan summa</p>
-                                    <p className="text-xs font-black text-emerald-400">{formatCurrency(paid)}</p>
-                                </div>
-                            )}
-
-                            {/* Final total / Remaining Balance */}
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 pt-2">
-                                <div className="space-y-1">
-                                    <p className="text-[9px] font-black text-blue-400 uppercase tracking-[0.2em] block">
-                                        {paid > 0 ? "Qolgan qarz" : "To'lov uchun jami"}
-                                    </p>
-                                    <h3 className="text-2xl font-[950] text-white tracking-tighter tabular-nums leading-tight">
-                                        {formatCurrency(paid > 0 ? remaining : finalTotal)}
-                                    </h3>
-                                </div>
-                                <div className="px-3 py-1.5 bg-emerald-500/15 border border-emerald-500/25 rounded-lg flex items-center gap-1.5 self-start sm:self-auto">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                    <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">
-                                        {remaining === 0 && paid > 0 ? "TO'LANDI" : "TASDIQLANDI"}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ── TELEGRAM BLOCK ── */}
-                    <div className="bg-blue-50 border border-blue-100/60 rounded-xl p-3 flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 bg-white rounded-xl border border-blue-100 flex items-center justify-center shadow-sm shrink-0">
-                                <MessageCircle className="w-4 h-4 text-blue-500" />
-                            </div>
-                            <div>
-                                <h5 className="text-[9px] font-black text-blue-900 uppercase tracking-wide">Telegram Eslatmalar</h5>
-                                <p className="text-[8px] font-medium text-blue-400 mt-0.5">QR-kod orqali botga ulanish mumkin</p>
-                            </div>
-                        </div>
-                        <div className="w-11 h-11 bg-white p-1 rounded-lg border border-blue-100 shrink-0">
-                            <div className="w-full h-full bg-slate-100 rounded-sm" />
-                        </div>
-                    </div>
-
-                    {/* ── SIGNATURES ── */}
-                    <div className="grid grid-cols-2 gap-10 pt-5 mt-2 border-t border-dashed border-slate-200">
-                        <div className="text-center">
-                            <div className="h-8 mb-1.5" />
-                            <div className="h-px bg-slate-300 border-0" />
-                            <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-1">Shifokor imzosi</p>
-                        </div>
-                        <div className="text-center">
-                            <div className="h-8 mb-1.5" />
-                            <div className="h-px bg-slate-300 border-0" />
-                            <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-1">Bemor imzosi</p>
-                        </div>
-                    </div>
+                <div>
+                  <h1 className="text-xl font-black text-[#0284c7] tracking-tight leading-none">
+                    {clinicName}
+                  </h1>
+                  <p className="text-[11px] text-slate-500 font-medium mt-1">
+                    {resolvedSubtitle}
+                  </p>
+                  <p className="text-[11px] text-slate-600 font-semibold mt-0.5">
+                    {clinicContact}
+                  </p>
                 </div>
-             </div>
-          </div>
+              </div>
 
-          {/* Bottom Actions Footer (no-print) */}
-          <div className="bg-white p-5 shrink-0 border-t border-slate-100 flex flex-col gap-3 no-print">
-             <div className="grid grid-cols-2 gap-3">
-                <Button onClick={handlePrint} className="h-12 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10 border-none transition-all active:scale-[0.98]">
-                  <Download className="w-4 h-4" /> Saqlash
-                </Button>
-                <Button onClick={handlePrint} className="h-12 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-blue-500/10 border-none transition-all active:scale-[0.98]">
-                   <Printer className="w-4 h-4" /> Chop etish
-                </Button>
-             </div>
-             <Button onClick={onClose} className="w-full h-13 bg-slate-900 hover:bg-slate-950 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-slate-900/10 active:scale-[0.98] transition-all border-none">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Yakunlash
-             </Button>
+              <div className="text-right">
+                <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">
+                  HISOB-FAKTURA
+                </h2>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Sana: {dateFormatted}
+                </p>
+                <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+                  № <span className="font-mono font-bold text-slate-900">{invoiceNo}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Blue Divider Line */}
+            <div className="h-[2px] bg-[#0ea5e9] my-4 w-full" />
+
+            {/* 2. BEMOR MA'LUMOTLARI */}
+            <div className="text-[11.5px] font-black text-[#0284c7] uppercase tracking-wider mb-2.5">
+              BEMOR MA'LUMOTLARI
+            </div>
+            <div className="grid grid-cols-2 gap-y-3.5 gap-x-8 border-y border-slate-200/80 py-3.5 mb-5">
+              <div>
+                <span className="text-[10.5px] text-slate-600 font-bold block mb-0.5">
+                  To'liq ismi
+                </span>
+                <span className="text-xs font-black text-slate-900 block">
+                  {patientName}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10.5px] text-slate-600 font-bold block mb-0.5">
+                  Uchrashuv sanasi
+                </span>
+                <span className="text-xs font-black text-slate-900 block">
+                  {dateTimeFormatted}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10.5px] text-slate-600 font-bold block mb-0.5">
+                  Doktor
+                </span>
+                <span className="text-xs font-black text-slate-900 block">
+                  {doctorName}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10.5px] text-slate-600 font-bold block mb-0.5">
+                  Davolash turi
+                </span>
+                <span className="text-xs font-black text-slate-900 block">
+                  {planName}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10.5px] text-slate-600 font-bold block mb-0.5">
+                  Holati
+                </span>
+                <span className="text-xs font-black text-slate-900 block">
+                  {getStatusDisplay()}
+                </span>
+              </div>
+            </div>
+
+            {/* 3. DAVOLASHLAR RO'YXATI */}
+            <div className="text-[11.5px] font-black text-[#0284c7] uppercase tracking-wider mb-2.5">
+              DAVOLASHLAR RO'YXATI
+            </div>
+            <div className="overflow-x-auto mb-5">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-[#f1f5f9] border-y border-slate-300">
+                    <th className="py-2.5 px-3 font-extrabold text-slate-800">Davolash nomi</th>
+                    <th className="py-2.5 px-3 font-extrabold text-slate-800">Kategoriya</th>
+                    <th className="py-2.5 px-3 font-extrabold text-slate-800 text-center">Tish #</th>
+                    <th className="py-2.5 px-3 font-extrabold text-slate-800 text-center">Holati</th>
+                    <th className="py-2.5 px-3 font-extrabold text-slate-800 text-right">Narxi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {flatServices.map((s, idx) => (
+                    <tr key={idx}>
+                      <td className="py-2.5 px-3 font-bold text-slate-900">{s.service_name}</td>
+                      <td className="py-2.5 px-3 text-slate-500">{getServiceCategoryLabel(s.category, language)}</td>
+                      <td className="py-2.5 px-3 text-center font-bold text-slate-700">{s.tooth_id ? s.tooth_id : '—'}</td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className="text-[#0284c7] font-semibold">{getServiceStatusLabel(s.status, language)}</span>
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-bold text-slate-900">{s.price.toLocaleString()} so'm</td>
+                    </tr>
+                  ))}
+                  <tr className="border-t-[1.5px] border-slate-300 font-black">
+                    <td colSpan="4" className="py-3 px-3 text-sm text-slate-900">
+                      Jami xarajat
+                    </td>
+                    <td className="py-3 px-3 text-right text-sm text-slate-900 font-black">
+                      {totalExpense.toLocaleString()} so'm
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* 4. TO'LOVLAR */}
+            <div className="text-[11px] font-black text-[#0284c7] uppercase tracking-wider mb-2.5 mt-5">
+              TO'LOVLAR
+            </div>
+            <div className="overflow-x-auto mb-6">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-[#f8fafc] border-y border-slate-200">
+                    <th className="py-2.5 px-3 font-bold text-slate-600">Sana</th>
+                    <th className="py-2.5 px-3 font-bold text-slate-600">To'lov usuli</th>
+                    <th className="py-2.5 px-3 font-bold text-slate-600 text-center">Holati</th>
+                    <th className="py-2.5 px-3 font-bold text-slate-600 text-right">Summa</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paymentRows.map((p, idx) => (
+                    <tr key={idx}>
+                      <td className="py-2.5 px-3 text-slate-700">{p.date}</td>
+                      <td className="py-2.5 px-3 font-bold text-slate-900">{p.method}</td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className="text-[#16a34a] font-bold">{p.status}</span>
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-bold text-slate-900">{Number(p.amount || 0).toLocaleString()} so'm</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-[#dcfce7] text-[#166534]">
+                    <td colSpan="3" className="py-2.5 px-3 font-black text-sm text-[#166534]">
+                      To'langan jami
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-black text-sm text-[#166534]">
+                      {totalPaidSum.toLocaleString()} so'm
+                    </td>
+                  </tr>
+                  {finalDebt > 0 && (
+                    <tr>
+                      <td colSpan="3" className="py-2.5 px-3 font-black text-xs text-rose-600 pt-3">
+                        Qoldiq qarz:
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-black text-xs text-rose-600 pt-3">
+                        {finalDebt.toLocaleString()} so'm
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 5. MUDDATLI TO'LOV GRAFIGI (if installment exists) */}
+            {plan.installment_plan && (
+              <div className="mb-6">
+                <div className="text-[11px] font-black text-[#0284c7] uppercase tracking-wider mb-2.5">
+                  MUDDATLI TO'LOV GRAFIGI
+                </div>
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-[#f8fafc] border-y border-slate-200">
+                      <th className="py-2 px-3 font-bold text-slate-600">Sana</th>
+                      <th className="py-2 px-3 font-bold text-slate-600 text-right">Oylik to'lov</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {Array.from({ length: plan.installment_plan.months }).map((_, idx) => {
+                      const d = new Date(plan.installment_plan.start_date || plan.created_date || new Date());
+                      d.setMonth(d.getMonth() + idx);
+                      return (
+                        <tr key={idx}>
+                          <td className="py-2 px-3 text-slate-700">{d.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                          <td className="py-2 px-3 text-right font-bold text-slate-900">{Math.round(plan.installment_plan.monthly_amount || 0).toLocaleString()} so'm</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* 6. SIGNATURES */}
+            <div className="flex justify-between items-start pt-14 pb-4">
+              <div className="w-[42%]">
+                <div className="border-b border-slate-800 w-full mb-1.5" />
+                <p className="text-[11px] font-bold text-slate-700">
+                  Bemor imzosi: {patientName}
+                </p>
+              </div>
+              <div className="w-[42%]">
+                <div className="border-b border-slate-800 w-full mb-1.5" />
+                <p className="text-[11px] font-bold text-slate-700">
+                  Doktor imzosi: {doctorName}
+                </p>
+              </div>
+            </div>
+
+            {/* 7. FOOTER NOTE */}
+            <div className="text-center text-[10px] text-slate-400 font-medium mt-6">
+              Hujjat {dateFormatted} sanasida {clinicName} tizimi tomonidan yaratildi | Ushbu hujjat rasmiy hisoblanadi
+            </div>
+
           </div>
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function ArrowLeft(props) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m12 19-7-7 7-7" />
-      <path d="M19 12H5" />
-    </svg>
   );
 }

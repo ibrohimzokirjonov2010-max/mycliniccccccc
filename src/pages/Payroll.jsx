@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/lib/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useClinic } from '@/lib/ClinicContext';
 import { toast } from 'sonner';
 
 // Standard Uzbek Months
@@ -66,6 +67,7 @@ function formatDateOnly(d) {
 export default function Payroll() {
   const { t, language } = useTranslation();
   const { isAdmin } = useAuth();
+  const { clinicName } = useClinic();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -551,6 +553,10 @@ export default function Payroll() {
           valA = a.totalRevenue || 0;
           valB = b.totalRevenue || 0;
           return sortOrder === 'asc' ? valA - valB : valB - valA;
+        case 'commission':
+          valA = a.salary_type === 'fixed' ? 0 : Number(a.commission_rate || 30);
+          valB = b.salary_type === 'fixed' ? 0 : Number(b.commission_rate || 30);
+          return sortOrder === 'asc' ? valA - valB : valB - valA;
         case 'salary':
         default:
           valA = a.totalSalary || 0;
@@ -593,6 +599,9 @@ export default function Payroll() {
   /**
    * Month options generator with explicit Uzbek month names
    */
+  /**
+   * Month options generator with explicit localized month names and numerical code
+   */
   const monthOptions = useMemo(() => {
     const options = [];
     const today = new Date();
@@ -604,8 +613,9 @@ export default function Payroll() {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
       const year = date.getFullYear();
       const monthIdx = date.getMonth();
-      const value = `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
-      const label = `${monthNames[monthIdx]} ${year}`;
+      const monthNum = String(monthIdx + 1).padStart(2, '0');
+      const value = `${year}-${monthNum}`;
+      const label = `${monthNames[monthIdx]} ${year} (${monthNum}.${year})`;
       options.push({ value, label });
     }
     return options;
@@ -625,6 +635,7 @@ export default function Payroll() {
         "Shifokor (F.I.Sh)",
         "Mutaxassislik",
         "Maosh Turi",
+        "Komissiya (%)",
         "Bemorlar Soni",
         "Umumiy Daromad (UZS)",
         "Doktorni Ulushi (UZS)"
@@ -634,6 +645,7 @@ export default function Payroll() {
         `"${(d.name || d.full_name || '').replace(/"/g, '""')}"`,
         `"${(d.specialty || 'Stomatolog').replace(/"/g, '""')}"`,
         `"${d.salary_type === 'fixed' ? 'Oylikka' : 'Foizga'}"`,
+        d.salary_type === 'fixed' ? 'Oylik' : `${d.commission_rate || 30}%`,
         d.patientCount || d.treatments || 0,
         Number(d.totalRevenue || 0),
         Number(d.totalSalary || 0)
@@ -666,7 +678,19 @@ export default function Payroll() {
       return;
     }
 
-    const monthLabel = monthOptions.find(m => m.value === selectedMonth)?.label || selectedMonth;
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const startStr = `01.${String(month).padStart(2, '0')}.${year}`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endStr = `${String(lastDay).padStart(2, '0')}.${String(month).padStart(2, '0')}.${year}`;
+    const monthName = (language === 'ru' 
+      ? ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+      : language === 'en'
+      ? ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+      : UZ_MONTHS)[month - 1];
+
+    const periodLabel = `${startStr} — ${endStr} (${monthName} ${year})`;
+    const printDate = new Date();
+    const printDateFormatted = `${String(printDate.getDate()).padStart(2, '0')}.${String(printDate.getMonth() + 1).padStart(2, '0')}.${printDate.getFullYear()}, ${String(printDate.getHours()).padStart(2, '0')}:${String(printDate.getMinutes()).padStart(2, '0')}`;
     const finalSalary = Number(doc.totalSalary || 0) + Number(payForm.bonus || 0) - Number(payForm.deduction || 0);
 
     const html = `
@@ -692,8 +716,8 @@ export default function Payroll() {
       <body>
         <div class="receipt">
           <div class="header">
-            <h2>MY CLINIC • MAOSH TO'LOV VEDOMOSTI</h2>
-            <p>Davr: <strong>${monthLabel}</strong> | Chop etilgan: ${new Date().toLocaleDateString('uz-UZ')}</p>
+            <h2>${clinicName.toUpperCase()} • MAOSH TO'LOV VEDOMOSTI</h2>
+            <p>Davr: <strong>${periodLabel}</strong> | Chop etilgan: <strong>${printDateFormatted}</strong></p>
           </div>
           
           <table class="grid">
@@ -942,6 +966,22 @@ export default function Payroll() {
                   </div>
                 </th>
 
+                {/* KOMISSIYA % */}
+                <th 
+                  onClick={() => handleSort('commission')}
+                  className="w-32 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap bg-emerald-50/20"
+                  title="Komissiya foizi bo'yicha saralash"
+                >
+                  <div className="flex items-center justify-center gap-1.5 text-emerald-800 font-mono">
+                    <span>{t('payroll.commissionCol') || (language === 'ru' ? 'Комиссия %' : 'Komissiya %')}</span>
+                    {sortField === 'commission' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-40" />
+                    )}
+                  </div>
+                </th>
+
                 {/* BEMORLAR SONI */}
                 <th 
                   onClick={() => handleSort('patients')}
@@ -1056,18 +1096,22 @@ export default function Payroll() {
                               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider bg-slate-100 px-1.5 py-0.2 rounded shrink-0">
                                 {doc.specialty || 'Stomatolog'}
                               </span>
-                              {isFixed ? (
-                                <span className="text-[9px] font-bold text-purple-700 bg-purple-50 px-1 py-0.2 rounded border border-purple-100">
-                                  {language === 'ru' ? 'Оклад' : 'Oylik'}
-                                </span>
-                              ) : (
-                                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-100">
-                                  {doc.commission_rate || 30}%
-                                </span>
-                              )}
                             </div>
                           </div>
                         </div>
+                      </td>
+
+                      {/* KOMISSIYA % Cell */}
+                      <td className={`text-center border-r border-slate-200/70 whitespace-nowrap bg-emerald-50/15 ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
+                        {isFixed ? (
+                          <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200">
+                            {language === 'ru' ? 'Оклад' : 'Oylik'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-md text-[11px] font-mono font-black text-emerald-700 bg-emerald-100/80 border border-emerald-300">
+                            {doc.commission_rate || 30}%
+                          </span>
+                        )}
                       </td>
 
                       {/* BEMORLAR SONI Cell */}
@@ -1098,24 +1142,26 @@ export default function Payroll() {
                         <div className="flex items-center justify-center gap-1.5" onClick={(ev) => ev.stopPropagation()}>
                           <Button 
                             onClick={() => {
-                              setPayModalDoctor(doc);
-                              setPayForm({ method: 'cash', notes: '', bonus: 0, deduction: 0 });
+                              setSelectedDoctorForPayment(doc);
+                              setPayModalOpen(true);
                             }}
-                            className="h-6.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-wider flex items-center gap-1 border-none shadow-xs transition-all active:scale-95"
+                            size="sm"
+                            className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10.5px] gap-1 shadow-xs cursor-pointer active:scale-95"
                             title="Maosh to'lash"
                           >
                             <TrendingUp className="w-3 h-3" />
-                            <span>{t('payroll.payBtn') || (language === 'ru' ? 'Выплатить' : 'To\'lash')}</span>
+                            <span>{t('payroll.pay') || "To'lash"}</span>
                           </Button>
 
-                          <Button 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => setDetailDoctorId(doc.id)}
-                            variant="ghost" 
-                            className="h-6.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1"
-                            title="Batafsil hisob-kitob"
+                            className="h-7 px-2 rounded-lg text-slate-600 border-slate-200 text-[10.5px] font-bold gap-1 hover:bg-slate-100 cursor-pointer"
+                            title="Batafsil ko'rish"
                           >
-                            <Eye className="w-3 h-3 text-slate-500" />
-                            <span>{t('payroll.detailsBtn') || (language === 'ru' ? 'Подробнее' : 'Batafsil')}</span>
+                            <Eye className="w-3 h-3 text-slate-400" />
+                            <span>{t('payroll.details') || "Batafsil"}</span>
                           </Button>
 
                           <button 

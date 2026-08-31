@@ -96,7 +96,7 @@ const autoCategorize = (name) => {
   if (n.includes('olish') || n.includes('sug\'urish') || n.includes('xirurg') || n.includes('anesteziya')) return 'XIRURGIYA';
   if (n.includes('karonka') || n.includes('protez') || n.includes('sirkoniy') || n.includes('ko\'prik')) return 'ORTOPEDIYA';
   if (n.includes('breket') || n.includes('reteyner') || n.includes('plastinka') || n.includes('ortodont')) return 'ORTODONTIYA';
-  return 'TERAPIYA( ENDO +PLOMBA)';
+  return 'TERAPIYA (ENDO + PLOMBA)';
 };
 
 const fdiToInternal = (fdi) => {
@@ -111,7 +111,7 @@ const fdiToInternal = (fdi) => {
 const getCategoryName = (cat) => {
   if (!cat) return '';
   const c = cat.toUpperCase();
-  if (c === 'TERAPIYA( ENDO +PLOMBA)') return 'Terapiya';
+  if (c === 'TERAPIYA (ENDO + PLOMBA)' || c === 'TERAPIYA( ENDO +PLOMBA)') return 'Terapiya';
   if (c === 'ORTOPEDIYA') return 'Ortopediya';
   if (c === 'ESTETIK STOMATOLOGIYA') return 'Estetika';
   if (c === 'XIRURGIYA') return 'Xirurgiya';
@@ -128,7 +128,7 @@ const CategoryAccordion = ({ title, services, activeTooth, toothData, toggleServ
   const [open, setOpen] = useState(true);
 
   const friendlyTitle = (() => {
-    if (title === 'TERAPIYA( ENDO +PLOMBA)') return 'Terapiya';
+    if (title === 'TERAPIYA (ENDO + PLOMBA)' || title === 'TERAPIYA( ENDO +PLOMBA)') return 'Terapiya';
     if (title === 'ENDODONTIYA') return 'Endodontiya';
     if (title === 'XIRURGIYA') return 'Xirurgiya';
     if (title === 'ORTOPEDIYA') return 'Ortopediya';
@@ -1662,13 +1662,13 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     setActiveTooth(next.includes(internalId) ? internalId : null);
                   }}
                   className={cn(
-                    "w-6 sm:w-7 md:w-[25px] lg:w-7 h-7 sm:h-8 rounded-lg flex items-center justify-center text-[10px] sm:text-[11px] font-black transition-all cursor-pointer leading-none shrink-0 p-0 border",
+                    "w-7 h-7 rounded-lg flex items-center justify-center font-black transition-all cursor-pointer leading-none shrink-0 p-0 border touch-manipulation",
                     isActive    ? "bg-[#1499AD] text-white border-[#1499AD] ring-2 ring-[#1499AD]/30 shadow-md shadow-[#1499AD]/10 scale-105" :
                     isSelected  ? "bg-emerald-500 text-white border-emerald-500 shadow-sm" :
                                   "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                   )}
                 >
-                  <span className="text-[10px] sm:text-[11px] font-black">{fdi}</span>
+                  <span className="text-[10px] font-black">{fdi}</span>
                 </button>
               );
             };
@@ -1876,28 +1876,28 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                 {/* === MOBILE VIEW === */}
                 <div className="flex md:hidden flex-col h-full w-full overflow-hidden bg-white">
-                  {/* Top: 2-row anatomical tooth selector */}
-                  <div ref={mobileTeethScrollRef} className="overflow-x-auto py-2 px-1 no-scrollbar scrollbar-none shrink-0 select-none">
-                    <div className="min-w-[560px] flex flex-col gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                  {/* Top: 2-row anatomical tooth selector – fully fits phone screen */}
+                  <div className="py-2 px-2 shrink-0 select-none bg-slate-50 border-b border-slate-100">
+                    <div className="flex flex-col gap-1.5">
 
                       {/* YUQORI JAG' */}
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex gap-1.5">
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex flex-1 justify-end gap-[3px]">
                           {UPPER_RIGHT.map(num => <ToothBtn key={num} fdi={num} />)}
                         </div>
-                        <div className="w-[2px] h-10 bg-sky-500 rounded-full" />
-                        <div className="flex gap-1.5">
+                        <div className="w-[2px] h-8 bg-sky-500 rounded-full mx-1 shrink-0" />
+                        <div className="flex flex-1 justify-start gap-[3px]">
                           {UPPER_LEFT.map(num => <ToothBtn key={num} fdi={num} />)}
                         </div>
                       </div>
 
                       {/* PASTKI JAG' */}
-                      <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-200">
-                        <div className="flex gap-1.5">
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex flex-1 justify-end gap-[3px]">
                           {LOWER_RIGHT.map(num => <ToothBtn key={num} fdi={num} />)}
                         </div>
-                        <div className="w-[2px] h-10 bg-sky-500 rounded-full" />
-                        <div className="flex gap-1.5">
+                        <div className="w-[2px] h-8 bg-sky-500 rounded-full mx-1 shrink-0" />
+                        <div className="flex flex-1 justify-start gap-[3px]">
                           {LOWER_LEFT.map(num => <ToothBtn key={num} fdi={num} />)}
                         </div>
                       </div>
@@ -2457,7 +2457,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                 {/* Treatment List */}
                 <div className="p-4 sm:p-5 lg:px-8 bg-slate-50/50">
-                  <p className="text-[10px] sm:text-xs font-bold text-blue-500 uppercase tracking-wider mb-4">t('patients.wizard.treatmentList')</p>
+                  <p className="text-[10px] sm:text-xs font-bold text-blue-500 uppercase tracking-wider mb-4">{t('patients.wizard.treatmentList') || "DAVOLASHLAR RO'YXATI"}</p>
                   
                   <div className="hidden sm:grid grid-cols-12 gap-2 mb-2 pb-2 border-b border-slate-200">
                     <div className="col-span-8 text-[11px] font-bold text-slate-400 uppercase">{t('patients.wizard.treatmentName')}</div>

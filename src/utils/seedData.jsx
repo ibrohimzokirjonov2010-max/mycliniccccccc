@@ -14,10 +14,10 @@ export const runSeeder = async () => {
     // ==================== 1. XIZMATLAR (Services) ====================
     const services = [
       // Terapiya
-      { name: 'Karies davolash (oddiy)', category: 'TERAPIYA( ENDO +PLOMBA)', duration: 45, price: 250000, is_active: true },
-      { name: 'Karies davolash (murakkab)', category: 'TERAPIYA( ENDO +PLOMBA)', duration: 60, price: 350000, is_active: true },
-      { name: 'Pulpotomiya', category: 'TERAPIYA( ENDO +PLOMBA)', duration: 90, price: 450000, is_active: true },
-      { name: 'Kanal davolash (1 ta)', category: 'TERAPIYA( ENDO +PLOMBA)', duration: 120, price: 600000, is_active: true },
+      { name: 'Karies davolash (oddiy)', category: 'TERAPIYA (ENDO + PLOMBA)', duration: 45, price: 250000, is_active: true },
+      { name: 'Karies davolash (murakkab)', category: 'TERAPIYA (ENDO + PLOMBA)', duration: 60, price: 350000, is_active: true },
+      { name: 'Pulpotomiya', category: 'TERAPIYA (ENDO + PLOMBA)', duration: 90, price: 450000, is_active: true },
+      { name: 'Kanal davolash (1 ta)', category: 'TERAPIYA (ENDO + PLOMBA)', duration: 120, price: 600000, is_active: true },
       // Xirurgiya
       { name: 'Tish olish (oddiy)', category: 'XIRURGIYA', duration: 30, price: 150000, is_active: true },
       { name: 'Tish olish (murakkab)', category: 'XIRURGIYA', duration: 60, price: 300000, is_active: true },

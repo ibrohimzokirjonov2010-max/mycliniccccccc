@@ -17,7 +17,7 @@ import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const ALLOWED_CATEGORIES = [
-  'TERAPIYA( ENDO +PLOMBA)',
+  'TERAPIYA (ENDO + PLOMBA)',
   'ORTOPEDIYA',
   'XIRURGIYA',
   'ORTODONTIYA',
@@ -29,6 +29,7 @@ const ALLOWED_CATEGORIES = [
 ];
 
 const CATEGORY_MAP = {
+  'TERAPIYA (ENDO + PLOMBA)': { icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-l-blue-500' },
   'TERAPIYA( ENDO +PLOMBA)': { icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-l-blue-500' },
   'XIRURGIYA': { icon: Scissors, color: 'text-rose-500', bg: 'bg-rose-50', border: 'border-l-rose-500' },
   'ORTOPEDIYA': { icon: Layers, color: 'text-violet-500', bg: 'bg-violet-50', border: 'border-l-violet-500' },
@@ -40,7 +41,7 @@ const CATEGORY_MAP = {
   'ENDODONTIYA': { icon: Activity, color: 'text-teal-500', bg: 'bg-teal-50', border: 'border-l-teal-500' }
 };
 
-const getCategoryStyle = (cat) => CATEGORY_MAP[cat] || CATEGORY_MAP['TERAPIYA( ENDO +PLOMBA)'];
+const getCategoryStyle = (cat) => CATEGORY_MAP[cat] || CATEGORY_MAP['TERAPIYA (ENDO + PLOMBA)'] || CATEGORY_MAP['TERAPIYA( ENDO +PLOMBA)'];
 
 const autoCategorize = (name) => {
   const n = name?.toLowerCase() || '';
@@ -52,7 +53,7 @@ const autoCategorize = (name) => {
   if (n.includes('olish') || n.includes('sug\'urish') || n.includes('xirurg') || n.includes('anesteziya')) return 'XIRURGIYA';
   if (n.includes('karonka') || n.includes('protez') || n.includes('sirkoniy') || n.includes('ko\'prik')) return 'ORTOPEDIYA';
   if (n.includes('breket') || n.includes('reteyner') || n.includes('plastinka') || n.includes('ortodont')) return 'ORTODONTIYA';
-  return 'TERAPIYA( ENDO +PLOMBA)';
+  return 'TERAPIYA (ENDO + PLOMBA)';
 };
 
 export default function MobileServicesV2() {
@@ -72,7 +73,7 @@ export default function MobileServicesV2() {
   const [renamingCat, setRenamingCat] = useState({ old: '', new: '' });
 
   const [form, setForm] = useState({ 
-    name: '', category: 'TERAPIYA( ENDO +PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false, tooth_numbers: []
+    name: '', category: 'TERAPIYA (ENDO + PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false, tooth_numbers: []
   });
 
   const loadServices = async () => {
@@ -125,7 +126,7 @@ export default function MobileServicesV2() {
         tooth_numbers: editService.tooth_numbers || []
       });
     } else {
-      setForm({ name: '', category: 'TERAPIYA( ENDO +PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false, tooth_numbers: [] });
+      setForm({ name: '', category: 'TERAPIYA (ENDO + PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false, tooth_numbers: [] });
     }
   }, [editService, modalOpen]);
 

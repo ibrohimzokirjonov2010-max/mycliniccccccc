@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Loader2, Search, User } from 'lucide-react';
+import { Plus, Loader2, Search, User, CheckCircle2, X } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
+import { cn } from '@/lib/utils';
 
 export default function PatientSelect({ 
   patients = [], 
@@ -13,7 +14,7 @@ export default function PatientSelect({
   onAddPatient, 
   error,
   loading = false,
-  inputClassName = "border-emerald-200 focus:border-emerald-500 focus:ring-emerald-500",
+  inputClassName = "",
   buttonClassName = "bg-emerald-500 hover:bg-emerald-600 px-3 w-10 shadow-sm"
 }) {
   const { t } = useTranslation();
@@ -60,23 +61,60 @@ export default function PatientSelect({
     <div className="flex gap-2 relative z-[100] w-full" ref={wrapperRef}>
       <div className="relative flex-1">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none transition-colors", value ? "text-emerald-600" : "text-slate-400")} />
           <Input 
             placeholder={t('patientSelect.placeholder') || "Ism yoki telefon orqali qidiring..."} 
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setOpen(true);
-              if (value) onChange(''); // clear selected ID if user types
+              if (value) onChange('', null); // clear selected ID if user types
             }}
             onFocus={() => setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 200)}
-            className={`w-full font-medium transition-all duration-200 pl-9 ${inputClassName} ${error ? 'border-rose-500 ring-rose-200' : ''}`}
+            className={cn(
+              "w-full transition-all duration-200 pl-9 pr-8 text-sm",
+              value 
+                ? "font-extrabold text-slate-900 bg-emerald-50/40 border-emerald-300 ring-1 ring-emerald-400/30" 
+                : "font-medium text-slate-700 bg-slate-50 border-slate-200 placeholder:text-slate-400 placeholder:font-normal focus:bg-white focus:border-[#1499AD] focus:ring-1 focus:ring-[#1499AD]",
+              inputClassName,
+              error && "border-rose-500 ring-rose-200"
+            )}
             autoComplete="off"
           />
-          {isLoading && (
+          {isLoading ? (
             <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 animate-spin" />
-          )}
+          ) : value ? (
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSearch('');
+                  onChange('', null);
+                  setOpen(true);
+                }}
+                title="Bemor tanlovini bekor qilish"
+                className="w-4 h-4 rounded-full hover:bg-slate-200/80 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs transition-colors cursor-pointer border-none bg-transparent"
+              >
+                ✕
+              </button>
+            </div>
+          ) : search ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setSearch('');
+                onChange('', null);
+              }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs transition-colors cursor-pointer border-none bg-transparent"
+            >
+              ✕
+            </button>
+          ) : null}
         </div>
         
         {open && (

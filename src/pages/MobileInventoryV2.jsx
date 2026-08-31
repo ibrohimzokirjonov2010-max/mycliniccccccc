@@ -26,6 +26,16 @@ const DEFAULT_INVENTORY_CATEGORIES = [
   'Boshqa'
 ];
 
+const formatItemUnit = (unit) => {
+  if (!unit) return 'dona';
+  const u = String(unit).trim();
+  if (/^\d+$/.test(u) || u.toLowerCase() === 'gdfgdf') return 'dona';
+  if (u === 'pcs') return 'dona';
+  if (u === 'box') return 'quti';
+  if (u === 'pack') return 'pachka';
+  return u;
+};
+
 export default function MobileInventoryV2() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +65,7 @@ export default function MobileInventoryV2() {
     category: 'Restavratsiya',
     quantity: '',
     min_quantity: '10',
-    unit: 'pcs',
+    unit: 'dona',
     price: '',
     supplier: '',
     location: '',
@@ -224,7 +234,7 @@ export default function MobileInventoryV2() {
         <div className="flex items-center gap-2">
           <div className="text-right">
              <p className={`text-[13px] font-black ${isLowStock ? 'text-rose-500' : 'text-slate-850'}`}>
-               {item.quantity} {item.unit}
+               {item.quantity} <span className="text-[10px] font-bold text-slate-500 uppercase">{formatItemUnit(item.unit)}</span>
              </p>
              <p className="text-[9px] font-bold text-slate-400 mt-0.5">{item.price ? `${item.price.toLocaleString()} so'm` : 'Narxsiz'}</p>
           </div>
@@ -524,12 +534,16 @@ export default function MobileInventoryV2() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-none shadow-2xl">
-                      <SelectItem value="pcs" className="font-bold text-xs">dona</SelectItem>
-                      <SelectItem value="pack" className="font-bold text-xs">qop</SelectItem>
-                      <SelectItem value="box" className="font-bold text-xs">quti</SelectItem>
+                      <SelectItem value="dona" className="font-bold text-xs">dona</SelectItem>
+                      <SelectItem value="quti" className="font-bold text-xs">quti</SelectItem>
+                      <SelectItem value="flakon" className="font-bold text-xs">flakon</SelectItem>
+                      <SelectItem value="ampula" className="font-bold text-xs">ampula</SelectItem>
+                      <SelectItem value="to'plam" className="font-bold text-xs">to'plam</SelectItem>
+                      <SelectItem value="pachka" className="font-bold text-xs">pachka</SelectItem>
+                      <SelectItem value="gramm" className="font-bold text-xs">gramm</SelectItem>
                       <SelectItem value="ml" className="font-bold text-xs">ml</SelectItem>
-                      <SelectItem value="g" className="font-bold text-xs">g</SelectItem>
-                      <SelectItem value="kg" className="font-bold text-xs">kg</SelectItem>
+                      <SelectItem value="rulon" className="font-bold text-xs">rulon</SelectItem>
+                      <SelectItem value="dastak" className="font-bold text-xs">dastak</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

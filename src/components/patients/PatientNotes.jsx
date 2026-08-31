@@ -130,8 +130,9 @@ function PatientNotes({ patientId }) {
       ) : notes.length === 0 ? (
         <EmptyState 
           icon={FileText} 
-          title={t('patientNotes.emptyTitle')} 
-          description={t('patientNotes.emptyDesc')}
+          variant="amber"
+          title={t('patientNotes.emptyTitle') || "Eslatmalar mavjud emas"} 
+          description={t('patientNotes.emptyDesc') || "Bemor bo'yicha muhim eslatma yoki qo'shimcha yozuvlar kiritilmagan."}
         />
       ) : (
         <div className="space-y-3">

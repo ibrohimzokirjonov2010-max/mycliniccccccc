@@ -17,10 +17,18 @@ import { formatCurrency } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
 
-// Uzbek standard month names
+// Localized standard month names
 const UZ_MONTHS = [
   'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
   'Iyul', 'Avgust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'
+];
+const RU_MONTHS = [
+  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+];
+const EN_MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
 // Available icons dictionary for category selection
@@ -87,7 +95,7 @@ const loadSavedCategories = () => {
 };
 
 export default function Expenses() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   
   // Dynamic categories with localStorage persistence
   const [categories, setCategories] = useState(loadSavedCategories);
@@ -489,7 +497,7 @@ export default function Expenses() {
     }
   }, [sortedDisplayExpenses, selectedMonth, allResolvedCategories]);
 
-  // Standard Month options generator (fixes "2026 M08" bug with explicit Uzbek months)
+  // Standard Month options generator (harmonized with DD.MM.YYYY format)
   const monthOptions = useMemo(() => {
     const options = [];
     const today = new Date();
@@ -497,12 +505,18 @@ export default function Expenses() {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
       const year = date.getFullYear();
       const monthIdx = date.getMonth();
-      const value = `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
-      const label = `${UZ_MONTHS[monthIdx]} ${year}`;
+      const monthNum = String(monthIdx + 1).padStart(2, '0');
+      const value = `${year}-${monthNum}`;
+      const monthName = language === 'ru' 
+        ? RU_MONTHS[monthIdx] 
+        : language === 'en' 
+        ? EN_MONTHS[monthIdx] 
+        : UZ_MONTHS[monthIdx];
+      const label = `${monthName} ${year} (${monthNum}.${year})`;
       options.push({ value, label });
     }
     return options;
-  }, []);
+  }, [language]);
 
   // Standard date formatter (DD.MM.YYYY)
   const formatStandardDate = (dateVal) => {
@@ -654,18 +668,34 @@ export default function Expenses() {
           </div>
 
           <div className="flex items-center gap-1.5">
-            {/* Arxivlangan bo'limlar tugmasi */}
+            {/* Arxivlangan bo'limlar tugmasi (hoverda tushuntirish bilan) */}
             {archivedCategories.length > 0 && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setArchiveModalOpen(true)}
-                className="h-7 px-2.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 text-[9.5px] font-black uppercase tracking-wider gap-1 border border-amber-200/70"
-                title="Arxivlangan bo'limlarni ko'rish va qayta tiklash"
-              >
-                <FolderArchive className="w-3 h-3 text-amber-600" />
-                <span>Arxiv ({archivedCategories.length})</span>
-              </Button>
+              <div className="relative group/arxiv">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setArchiveModalOpen(true)}
+                  className="h-7 px-2.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 text-[9.5px] font-black uppercase tracking-wider gap-1.5 border border-amber-200/80 shadow-2xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  <FolderArchive className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Arxiv ({archivedCategories.length})</span>
+                </Button>
+
+                {/* Hover Tooltip - Nima uchun arxivlangan va qanday tiklash tushuntirishi */}
+                <div className="absolute right-0 top-full mt-1.5 hidden group-hover/arxiv:flex flex-col w-64 p-3 bg-slate-900 text-white rounded-xl shadow-2xl z-50 text-[10px] pointer-events-none transition-all animate-in fade-in duration-200 border border-slate-700">
+                  <div className="flex items-center gap-1.5 text-amber-400 font-black mb-1">
+                    <FolderArchive className="w-3.5 h-3.5" />
+                    <span>Arxivlangan Bo'limlar</span>
+                  </div>
+                  <p className="text-slate-300 leading-snug font-medium">
+                    {language === 'ru'
+                      ? `Эти категории (${archivedCategories.length}) временно скрыты из списка расходов. Нажмите, чтобы просмотреть или восстановить.`
+                      : language === 'en'
+                      ? `These categories (${archivedCategories.length}) are temporarily hidden. Click to view or restore.`
+                      : `Ushbu ${archivedCategories.length} ta kategoriya ro'yxatdan vaqtincha yashirilgan. Bosish orqali ularni ko'rishingiz yoki qayta faollashtirishingiz mumkin.`}
+                  </p>
+                </div>
+              </div>
             )}
 
             {/* + Bo'lim qo'shish */}
@@ -689,18 +719,25 @@ export default function Expenses() {
               : 0;
             const IconComp = cat.icon || Tag;
             const isSelected = selectedCategory === cat.value;
+            const hasExpense = amount > 0;
             
             return (
               <div 
                 key={cat.id || cat.value} 
                 onClick={() => setSelectedCategory(selectedCategory === cat.value ? 'all' : cat.value)}
-                className={`${cat.color} rounded-xl p-2.5 transition-all duration-200 hover:shadow-sm relative group cursor-pointer flex flex-col justify-between min-h-[76px] border ${
-                  isSelected ? 'ring-2 ring-[#1499AD] shadow-sm' : 'border-transparent'
+                className={`rounded-xl p-2.5 transition-all duration-200 hover:shadow-sm relative group cursor-pointer flex flex-col justify-between min-h-[76px] border ${
+                  hasExpense 
+                    ? `${cat.color} shadow-xs border-transparent` 
+                    : 'bg-slate-50/70 hover:bg-slate-100/90 border-slate-200/70 text-slate-500 hover:text-slate-700'
+                } ${
+                  isSelected ? 'ring-2 ring-[#1499AD] shadow-md border-transparent' : ''
                 }`}
               >
                 {/* Top row: Icon & Action buttons (Edit & Archive) */}
                 <div className="flex items-center justify-between mb-1">
-                  <div className="w-6 h-6 rounded-lg bg-white/80 flex items-center justify-center shrink-0 shadow-xs">
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 shadow-xs transition-colors ${
+                    hasExpense ? 'bg-white/80 text-current' : 'bg-slate-200/70 text-slate-400 group-hover:text-slate-600'
+                  }`}>
                     <IconComp className="w-3.5 h-3.5" />
                   </div>
                   
@@ -734,12 +771,23 @@ export default function Expenses() {
                 </div>
                 
                 <div>
-                  <p className="text-[9.5px] font-black uppercase tracking-wider opacity-85 truncate" title={cat.label}>
+                  <p className={`text-[9.5px] font-black uppercase tracking-wider truncate ${
+                    hasExpense ? 'opacity-85' : 'text-slate-400 group-hover:text-slate-600'
+                  }`} title={cat.label}>
                     {cat.label}
                   </p>
-                  <p className="text-[12px] font-black font-mono mt-0.5 tracking-tight tabular-nums">
-                    {formatCurrency(amount).replace(" so'm", "")}
-                  </p>
+                  <div className="flex items-center justify-between mt-0.5">
+                    <p className={`text-[12px] font-black font-mono tracking-tight tabular-nums ${
+                      hasExpense ? 'text-current' : 'text-slate-400 font-semibold'
+                    }`}>
+                      {hasExpense ? formatCurrency(amount).replace(" so'm", "") : '0'}
+                    </p>
+                    {!hasExpense && (
+                      <span className="text-[8px] font-bold uppercase text-slate-400 bg-slate-200/60 px-1 py-0.5 rounded group-hover:bg-slate-200">
+                        Bo'sh
+                      </span>
+                    )}
+                  </div>
                   {percentage > 0 && (
                     <div className="mt-1 h-0.5 bg-black/10 rounded-full overflow-hidden">
                       <div className="h-full bg-current opacity-40 rounded-full" style={{ width: `${percentage}%` }} />

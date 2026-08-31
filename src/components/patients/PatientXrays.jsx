@@ -139,8 +139,9 @@ export default function PatientXrays({ patientId }) {
       ) : xrays.length === 0 ? (
         <EmptyState 
           icon={Image} 
-          title="Rentgen rasmlari yo'q" 
-          description="Bu bemor uchun hali rentgen rasmlari mavjud emas"
+          variant="blue"
+          title={t('patientXrays.emptyTitle') || "Rentgen rasmlari yo'q"} 
+          description={t('patientXrays.emptyDesc') || "Ushbu bemor uchun hali rentgen yoki diagnostika rasmlari yuklanmagan."}
         />
       ) : (
         /* X-ray Grid */

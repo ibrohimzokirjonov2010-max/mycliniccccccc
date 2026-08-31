@@ -721,6 +721,25 @@ class HybridEntityLoader {
     }
   }
 
+  async get(id) {
+    if (!id) return null;
+    try {
+      const records = await this.filter({ id }, null, 1);
+      return records && records.length > 0 ? records[0] : null;
+    } catch (e) {
+      console.warn(`Error in ${this.entityName}.get(${id}):`, e);
+      return null;
+    }
+  }
+
+  async getById(id) {
+    return this.get(id);
+  }
+
+  async findById(id) {
+    return this.get(id);
+  }
+
   async create(payload) {
     this._checkAccess();
     RequestCache.invalidate(this.entityName);
@@ -1334,13 +1353,13 @@ const DEFAULT_USERS = [
 ];
 
 export const DEFAULT_SERVICES_DATA = [
-  // TERAPIYA( ENDO +PLOMBA)
-  { name: 'Kanal davolash (1 kanal)', category: 'TERAPIYA( ENDO +PLOMBA)', price: 150000, duration: 45, is_active: true },
-  { name: 'Kanal davolash (3 kanal)', category: 'TERAPIYA( ENDO +PLOMBA)', price: 400000, duration: 60, is_active: true },
-  { name: 'Fotopolimer plomba (estetik)', category: 'TERAPIYA( ENDO +PLOMBA)', price: 250000, duration: 40, is_active: true },
-  { name: 'Karies davolash (oddiy)', category: 'TERAPIYA( ENDO +PLOMBA)', price: 200000, duration: 30, is_active: true },
-  { name: 'Shtif qo’yish', category: 'TERAPIYA( ENDO +PLOMBA)', price: 200000, is_active: true },
-  { name: 'Rengen (RVG)', category: 'TERAPIYA( ENDO +PLOMBA)', price: 30000, is_active: true },
+  // TERAPIYA (ENDO + PLOMBA)
+  { name: 'Kanal davolash (1 kanal)', category: 'TERAPIYA (ENDO + PLOMBA)', price: 150000, duration: 45, is_active: true },
+  { name: 'Kanal davolash (3 kanal)', category: 'TERAPIYA (ENDO + PLOMBA)', price: 400000, duration: 60, is_active: true },
+  { name: 'Fotopolimer plomba (estetik)', category: 'TERAPIYA (ENDO + PLOMBA)', price: 250000, duration: 40, is_active: true },
+  { name: 'Karies davolash (oddiy)', category: 'TERAPIYA (ENDO + PLOMBA)', price: 200000, duration: 30, is_active: true },
+  { name: 'Shtif qo’yish', category: 'TERAPIYA (ENDO + PLOMBA)', price: 200000, is_active: true },
+  { name: 'Rengen (RVG)', category: 'TERAPIYA (ENDO + PLOMBA)', price: 30000, is_active: true },
   
   // ORTOPEDIYA
   { name: 'Metallokeramika karonka', category: 'ORTOPEDIYA', price: 800000, duration: 60, is_active: true },
@@ -1562,7 +1581,7 @@ const initializeSystem = () => {
               const catUpper = s.category.toUpperCase().trim();
               let newCat = s.category;
 
-              if (catUpper === 'THERAPY') newCat = 'TERAPIYA( ENDO +PLOMBA)';
+              if (catUpper === 'THERAPY' || catUpper === 'TERAPIYA( ENDO +PLOMBA)') newCat = 'TERAPIYA (ENDO + PLOMBA)';
               else if (catUpper === 'SURGERY') newCat = 'XIRURGIYA';
               else if (catUpper === 'HYGIENE') newCat = 'GIGIENA VA PROFILAKTIKA';
               else if (catUpper === 'IMPLANTOLOGY') newCat = 'IMPLANTATSIYA';

@@ -794,13 +794,28 @@ export default function Debts() {
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-[10.5px] font-mono">
                             <span className="text-slate-500 font-semibold">{language === 'ru' ? 'Оплачено:' : 'Yopildi:'}</span>
-                            <span className="font-bold text-slate-800">{share}%</span>
+                            <span className={cn(
+                              "font-bold",
+                              share === 0 ? "text-rose-600 font-black" : (share >= 75 ? "text-emerald-700 font-black" : "text-slate-800")
+                            )}>
+                              {share}%
+                            </span>
                           </div>
-                          <div className="h-1.5 w-full bg-slate-200/80 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                              style={{ width: `${Math.min(100, share)}%` }}
-                            />
+                          <div className={cn(
+                            "h-1.5 w-full rounded-full overflow-hidden",
+                            share === 0 ? "bg-rose-100 border border-rose-200/60" : "bg-slate-200/80"
+                          )}>
+                            {share === 0 ? (
+                              <div className="h-full w-2 bg-rose-500 rounded-full" />
+                            ) : (
+                              <div 
+                                className={cn(
+                                  "h-full rounded-full transition-all duration-500",
+                                  share >= 75 ? "bg-emerald-500" : (share >= 25 ? "bg-emerald-600" : "bg-amber-500")
+                                )}
+                                style={{ width: `${Math.min(100, Math.max(share, 3))}%` }}
+                              />
+                            )}
                           </div>
                         </div>
                       </td>
@@ -893,31 +908,36 @@ export default function Debts() {
         {selectedDebtPatient && (
           <DialogContent className="w-[95vw] max-w-3xl p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl [&>button]:hidden">
             {/* Header */}
-            <div className="bg-slate-900 px-6 py-5 text-white relative">
+            <div className="bg-white border-b border-slate-200/90 px-6 py-5 relative rounded-t-3xl">
               <button 
                 onClick={() => setSelectedDebtPatient(null)} 
-                className="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all cursor-pointer"
+                className="absolute right-5 top-5 w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
-              <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.3em] mb-1">
-                {language === 'ru' ? 'ПЛАНЫ ЛЕЧЕНИЯ И ДЕТАЛИ ЗАДОЛЖЕННОСТИ' : 'Davolash Rejalari & Qarz Tafsilotlari'}
-              </p>
-              <h2 className="text-2xl sm:text-3xl font-[900] tracking-tight">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-7 h-7 rounded-lg bg-[#1499AD]/10 text-[#1499AD] flex items-center justify-center">
+                  <Receipt className="w-3.5 h-3.5" />
+                </div>
+                <p className="text-[10px] font-black text-[#1499AD] uppercase tracking-wider">
+                  {language === 'ru' ? 'ПЛАНЫ ЛЕЧЕНИЯ И ДЕТАЛИ ЗАДОЛЖЕННОСТИ' : 'Davolash Rejalari & Qarz Tafsilotlari'}
+                </p>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 {selectedDebtPatient.full_name}
               </h2>
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase bg-rose-500/20 text-white border border-rose-300/30">
+              <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl text-xs font-black uppercase bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
                   {language === 'ru' ? 'Остаток долга: ' : 'Qolgan qarz: '}{formatMoney(patientDetailData?.currentDebt ?? selectedDebtPatient.real_debt)}
                 </span>
                 {patientDetailData?.totalPaid > 0 && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 text-white border border-emerald-300/30">
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl text-xs font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
                     {language === 'ru' ? 'Оплачено: ' : 'To\'langan: '}{formatMoney(patientDetailData.totalPaid)}
                   </span>
                 )}
                 {detailPlans.length > 0 && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white/80 bg-white/10 px-2.5 py-0.5 rounded-full">
-                    <Receipt className="w-3 h-3" /> {detailPlans.length} {language === 'ru' ? 'планов' : 'ta reja'}
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200/80">
+                    <Receipt className="w-3.5 h-3.5 text-[#1499AD]" /> {detailPlans.length} {language === 'ru' ? 'планов' : 'ta reja'}
                   </span>
                 )}
               </div>
@@ -1094,14 +1114,14 @@ export default function Debts() {
                                           </td>
                                           <td className="px-3 py-2 text-center border-r border-slate-200/80">
                                             <span className={cn(
-                                              "px-2 py-0.5 rounded-full text-[9.5px] font-black uppercase tracking-wider inline-block",
+                                              "px-2.5 py-0.5 rounded-full text-[9.5px] font-black uppercase tracking-wider inline-block",
                                               isCompleted 
                                                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
-                                                : "bg-amber-50 text-amber-700 border border-amber-200"
+                                                : "bg-blue-50 text-blue-700 border border-blue-200"
                                             )}>
                                               {isCompleted 
                                                 ? (language === 'ru' ? 'Выполнено' : 'Bajarildi') 
-                                                : (language === 'ru' ? 'В плане' : 'Rejada')}
+                                                : (language === 'ru' ? 'Запланировано' : 'Rejalashtirilgan')}
                                             </span>
                                           </td>
                                           <td className="px-3.5 py-2 text-right font-mono font-black text-slate-900 text-xs">
@@ -1112,14 +1132,52 @@ export default function Debts() {
                                     })}
                                   </tbody>
                                   <tfoot>
-                                    <tr className="bg-slate-100/90 border-t border-slate-200 font-black text-xs">
-                                      <td colSpan={3} className="px-3.5 py-2 text-right border-r border-slate-200 text-slate-600 uppercase text-[10px] tracking-wider">
-                                        {language === 'ru' ? 'Итого по услугам:' : 'Jami xizmatlar summasi:'}
-                                      </td>
-                                      <td className="px-3.5 py-2 text-right font-mono text-emerald-700 text-xs">
-                                        {plan.services.reduce((acc, curr) => acc + (Number(curr.price) || 0), 0).toLocaleString()} <span className="text-[10px] font-sans font-bold text-slate-500">{language === 'ru' ? 'UZS' : "so'm"}</span>
-                                      </td>
-                                    </tr>
+                                    {(() => {
+                                      const servicesTotal = (plan.services || []).reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+                                      const currentPrice = Number(plan.total_price) || 0;
+                                      const explicitDiscount = Number(plan.discount_amount) || 0;
+                                      const effectiveDiscountAmt = explicitDiscount > 100 
+                                        ? explicitDiscount 
+                                        : (servicesTotal > currentPrice ? servicesTotal - currentPrice : 0);
+                                      const effectiveDiscountPct = Number(plan.discount_percent) || (servicesTotal > 0 ? Math.round((effectiveDiscountAmt / servicesTotal) * 100) : 0);
+                                      const discountedPrice = servicesTotal > effectiveDiscountAmt ? servicesTotal - effectiveDiscountAmt : currentPrice;
+
+                                      return (
+                                        <>
+                                          {effectiveDiscountAmt > 0 && (
+                                            <tr className="bg-slate-50 border-t border-slate-200 font-bold text-xs text-slate-500">
+                                              <td colSpan={3} className="px-3.5 py-1.5 text-right border-r border-slate-200 uppercase text-[9px] tracking-wider">
+                                                {language === 'ru' ? 'Сумма без скидки:' : language === 'en' ? 'Original total:' : 'Chegirmasiz summa:'}
+                                              </td>
+                                              <td className="px-3.5 py-1.5 text-right font-mono line-through text-[11px] text-slate-400">
+                                                {servicesTotal.toLocaleString()} <span className="text-[9px] font-sans font-bold text-slate-400">{language === 'ru' ? 'UZS' : "so'm"}</span>
+                                              </td>
+                                            </tr>
+                                          )}
+                                          {effectiveDiscountAmt > 0 && (
+                                            <tr className="bg-rose-50/40 border-t border-slate-200 font-bold text-xs text-rose-700">
+                                              <td colSpan={3} className="px-3.5 py-1.5 text-right border-r border-slate-200 uppercase text-[9px] tracking-wider">
+                                                {language === 'ru' ? 'Скидка:' : language === 'en' ? 'Discount:' : 'Chegirma:'} {effectiveDiscountPct > 0 ? `(${effectiveDiscountPct}%)` : ''}
+                                              </td>
+                                              <td className="px-3.5 py-1.5 text-right font-mono text-[11px]">
+                                                -{effectiveDiscountAmt.toLocaleString()} <span className="text-[9px] font-sans font-bold text-rose-500">{language === 'ru' ? 'UZS' : "so'm"}</span>
+                                              </td>
+                                            </tr>
+                                          )}
+                                          <tr className="bg-slate-100/90 border-t border-slate-200 font-black text-xs">
+                                            <td colSpan={3} className="px-3.5 py-2 text-right border-r border-slate-200 text-slate-600 uppercase text-[10px] tracking-wider">
+                                              {effectiveDiscountAmt > 0 
+                                                ? (language === 'ru' ? 'Итого со скидкой:' : language === 'en' ? 'Total (with discount):' : 'Jami (chegirma bilan):') 
+                                                : (language === 'ru' ? 'Итого по услугам:' : language === 'en' ? 'Total services sum:' : 'Jami xizmatlar summasi:')
+                                              }
+                                            </td>
+                                            <td className="px-3.5 py-2 text-right font-mono text-emerald-700 text-xs">
+                                              {discountedPrice.toLocaleString()} <span className="text-[10px] font-sans font-bold text-slate-500">{language === 'ru' ? 'UZS' : "so'm"}</span>
+                                            </td>
+                                          </tr>
+                                        </>
+                                      );
+                                    })()}
                                   </tfoot>
                                 </table>
                               </div>

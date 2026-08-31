@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useClinic } from '@/lib/ClinicContext';
 import {
   ArrowLeft, Phone, Calendar, DollarSign, ClipboardList,
   Plus, MessageSquare, FileDown, AlertTriangle, Clock, Activity,
@@ -115,6 +116,7 @@ const DIAGNOSTIC_TRANSLATIONS = {
 
 export default function PatientProfile() {
   const { t, language } = useTranslation();
+  const { clinicName } = useClinic();
   const navigate = useNavigate();
   const { id } = useParams();
   const [patient, setPatient] = useState(null);
@@ -2535,7 +2537,7 @@ export default function PatientProfile() {
     const doc = new jsPDF();
     doc.setFontSize(22);
     doc.setTextColor(45, 212, 191);
-    doc.text('My Clinic', 20, 20);
+    doc.text(clinicName, 20, 20);
     doc.setTextColor(31, 41, 55);
     doc.setFontSize(16);
     doc.text('Bemor kartasi', 20, 32);
@@ -2609,7 +2611,7 @@ export default function PatientProfile() {
         
         {/* Patient Identity Row */}
         {/* ══ EXCEL EHR HEADER (Top Row) ══ */}
-        <div className="bg-white px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200/80 shadow-2xs print:hidden">
+        <div className="bg-white px-3 sm:px-4 py-3 flex flex-col gap-3 border-b border-slate-200/80 shadow-2xs print:hidden">
           {/* Left: Back Button + Avatar + Patient Info */}
           <div className="flex items-center gap-3.5 min-w-0">
             {/* Back Button */}
@@ -2712,93 +2714,151 @@ export default function PatientProfile() {
             </div>
           </div>
 
-          {/* Right side: Financial Quick Stats & Action Buttons */}
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            {/* KPI Summary Chips */}
-            <div className="hidden xl:flex items-center gap-2 mr-2">
+          {/* ══ MOBILE FINANCIAL & ACTION ROW ══ */}
+          <div className="flex flex-col gap-2 sm:hidden w-full">
+            {/* Financial Status Chips (Full Width on Mobile) */}
+            <div className="grid grid-cols-2 gap-2 w-full">
+              <div className="flex items-center justify-between px-3 py-2 bg-emerald-50/90 border border-emerald-100/90 rounded-xl">
+                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest leading-none">{t('patientProfile.paidLabel') || "To'langan"}</p>
+                <p className="text-xs font-black text-emerald-800 font-mono tabular-nums leading-none">
+                  {totalPaid.toLocaleString()} <span className="text-[9px] font-bold text-emerald-600">UZS</span>
+                </p>
+              </div>
+              <div className={`flex items-center justify-between px-3 py-2 rounded-xl border ${totalDebt > 0 ? 'bg-rose-50/90 border-rose-100/90 text-rose-700' : 'bg-slate-50 border-slate-200/80 text-slate-600'}`}>
+                <p className="text-[9px] font-black uppercase tracking-widest leading-none">
+                  {totalDebt > 0 ? (t('patientProfile.debtLabel') || 'Qarz') : (t('patientProfile.noDebtLabel') || "Qarz yo'q")}
+                </p>
+                <p className="text-xs font-black font-mono tabular-nums leading-none">
+                  {totalDebt.toLocaleString()} <span className="text-[9px] font-bold">UZS</span>
+                </p>
+              </div>
+            </div>
+
+            {/* 3 Main Action Buttons in a Balanced Mobile Grid */}
+            <div className="grid grid-cols-3 gap-2 w-full">
+              <button
+                onClick={() => setApptModalOpen(true)}
+                className="flex items-center justify-center gap-1.5 py-2.5 px-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black shadow-sm transition-all active:scale-95 cursor-pointer text-center"
+              >
+                <Calendar className="w-3.5 h-3.5 text-[#1499AD] shrink-0" />
+                <span className="truncate">+ {t('patientProfile.addApptBtn') || 'Qabul'}</span>
+              </button>
+
+              <button
+                onClick={openPayModal}
+                className="flex items-center justify-center gap-1.5 py-2.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-sm transition-all active:scale-95 cursor-pointer text-center"
+              >
+                <CreditCard className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">+ {t('patientProfile.addPayBtn') || "To'lov"}</span>
+              </button>
+
+              <button
+                onClick={openAdvanceModal}
+                className="flex items-center justify-center gap-1.5 py-2.5 px-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black shadow-sm transition-all active:scale-95 cursor-pointer text-center"
+                title="Bemor hisobiga avans (oldindan to'lov) kiritish"
+              >
+                <Wallet className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">+ {t('patientProfile.addAdvanceBtn') || 'Avans'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* ══ DESKTOP / TABLET FINANCIAL & ACTION ROW ══ */}
+          <div className="hidden sm:flex sm:items-center sm:justify-between sm:gap-3 w-full">
+            {/* Desktop Financial Chips */}
+            <div className="flex items-center gap-2 shrink-0">
               <div className="px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-xl text-right">
                 <p className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">{t('patientProfile.paidLabel') || "To'langan"}</p>
                 <p className="text-xs font-black text-emerald-800 font-mono tabular-nums">{totalPaid.toLocaleString()} UZS</p>
               </div>
               <div className={`px-3 py-1.5 rounded-xl text-right border ${totalDebt > 0 ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
-                <p className="text-[9px] font-bold uppercase tracking-wider">{totalDebt > 0 ? (t('patientProfile.debtLabel') || 'Qarzdorlik') : (t('patientProfile.noDebtLabel') || 'Qarz yo\'q')}</p>
+                <p className="text-[9px] font-bold uppercase tracking-wider">{totalDebt > 0 ? (t('patientProfile.debtLabel') || 'Qarzdorlik') : (t('patientProfile.noDebtLabel') || "Qarz yo'q")}</p>
                 <p className="text-xs font-black font-mono tabular-nums">{totalDebt.toLocaleString()} UZS</p>
               </div>
             </div>
 
-            {/* Actions */}
-            <button
-              onClick={() => setApptModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-xs transition-all cursor-pointer"
-            >
-              <Calendar className="w-3.5 h-3.5 text-[#1499AD]" />
-              <span>+ {t('patientProfile.addApptBtn') || 'Qabul'}</span>
-            </button>
+            {/* Desktop Action Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setApptModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+              >
+                <Calendar className="w-3.5 h-3.5 text-[#1499AD]" />
+                <span>+ {t('patientProfile.addApptBtn') || 'Qabul'}</span>
+              </button>
 
-            <button
-              onClick={openPayModal}
-              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-xs transition-all cursor-pointer"
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              <span>+ {t('patientProfile.addPayBtn') || 'To\'lov'}</span>
-            </button>
+              <button
+                onClick={openPayModal}
+                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>+ {t('patientProfile.addPayBtn') || "To'lov"}</span>
+              </button>
 
-            <button
-              onClick={openAdvanceModal}
-              className="flex items-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-xs transition-all cursor-pointer"
-              title="Bemor hisobiga avans (oldindan to'lov) kiritish"
-            >
-              <Wallet className="w-3.5 h-3.5" />
-              <span>+ {t('patientProfile.addAdvanceBtn') || 'Avans'}</span>
-            </button>
+              <button
+                onClick={openAdvanceModal}
+                className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                title="Bemor hisobiga avans (oldindan to'lov) kiritish"
+              >
+                <Wallet className="w-3.5 h-3.5" />
+                <span>+ {t('patientProfile.addAdvanceBtn') || 'Avans'}</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* ══ EXCEL SPREADSHEET TAB BAR WITH MEDICAL SVG ICONS ══ */}
-        <div className="w-full bg-slate-50/90 border-b border-slate-200 px-4 print:hidden">
-          <div className="overflow-x-auto no-scrollbar w-full">
-            <div className="flex items-center gap-1 py-1.5 min-w-max">
-              {[
-                { id: 'info',         label: t('patientProfile.tabs.dentalChart') || "Tish xaritasi",      icon: Tooth,           iconColor: "text-sky-600" },
-                { id: 'treatments',   label: t('patientProfile.tabs.treatments') || "Davolash Rejalari",  icon: ClipboardList,   iconColor: "text-indigo-600", count: (plans || []).length },
-                { id: 'appointments', label: t('patientProfile.tabs.appointments') || "Uchrashuvlar",        icon: Calendar,        iconColor: "text-blue-600",   count: (appointments || []).length },
-                { id: 'payments',     label: t('patientProfile.tabs.payments') || "To'lovlar & Qarz",   icon: CreditCard,      iconColor: "text-emerald-600", count: (payments || []).filter(p => { const t = (p.type || 'Income').toLowerCase(); return t !== 'debt' && t !== 'discount' && !(p.notes || '').toLowerCase().includes('linked to plan'); }).length },
-                { id: 'notes',        label: t('patientProfile.tabs.notes') || "Eslatmalar",         icon: FileText,        iconColor: "text-amber-600" },
-                { id: 'implants',     label: t('patientProfile.tabs.implants') || "Implantlar",         icon: ImplantIcon,     iconColor: "text-purple-600", count: (implants || []).length },
-                { id: 'photos',       label: t('patientProfile.tabs.photos') || "Rentgen & Rasmlar",  icon: XrayIcon,        iconColor: "text-cyan-600",   count: (xrays || []).length },
-              ].map(tabItem => {
-                const IconComponent = tabItem.icon;
-                const isActive = activeTab === tabItem.id;
-                return (
-                  <button
-                    key={tabItem.id}
-                    onClick={() => setActiveTab(tabItem.id)}
-                    className={`group flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-white text-slate-900 font-black shadow-xs border border-slate-200/80'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 font-semibold'
-                    }`}
-                  >
-                    <IconComponent className={cn("w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-110", isActive ? tabItem.iconColor : "text-slate-400 group-hover:text-slate-700")} />
-                    <span>{tabItem.label}</span>
-                    {tabItem.count !== undefined && tabItem.count > 0 && (
-                      <span className={`px-1.5 py-0.2 rounded-full text-[9.5px] font-black ${
-                        isActive ? 'bg-[#1499AD]/10 text-[#1499AD]' : 'bg-slate-200 text-slate-600'
-                      }`}>
-                        {tabItem.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+        {/* ══ TAB BAR ══ */}
+        <div className="w-full bg-slate-50/90 border-b border-slate-200 px-2 sm:px-4 print:hidden">
+          <div className="flex items-center gap-0.5 sm:gap-1 py-1.5 overflow-x-auto no-scrollbar">
+            {[
+              { id: 'info',         label: t('patientProfile.tabs.dentalChart') || "Tish xaritasi",      icon: Tooth,           iconColor: "text-sky-600",     shortLabel: "Tish" },
+              { id: 'treatments',   label: t('patientProfile.tabs.treatments') || "Davolash Rejalari",  icon: ClipboardList,   iconColor: "text-indigo-600",  shortLabel: "Reja", count: (plans || []).length },
+              { id: 'appointments', label: t('patientProfile.tabs.appointments') || "Uchrashuvlar",        icon: Calendar,        iconColor: "text-blue-600",    shortLabel: "Qabul", count: (appointments || []).length },
+              { id: 'payments',     label: t('patientProfile.tabs.payments') || "To'lovlar",   icon: CreditCard,      iconColor: "text-emerald-600", shortLabel: "To'lov", count: (payments || []).filter(p => { const t = (p.type || 'Income').toLowerCase(); return t !== 'debt' && t !== 'discount' && !(p.notes || '').toLowerCase().includes('linked to plan'); }).length },
+              { id: 'notes',        label: t('patientProfile.tabs.notes') || "Eslatmalar",         icon: FileText,        iconColor: "text-amber-600",   shortLabel: "Eslatma" },
+              { id: 'implants',     label: t('patientProfile.tabs.implants') || "Implantlar",         icon: ImplantIcon,     iconColor: "text-purple-600",  shortLabel: "Implant", count: (implants || []).length },
+              { id: 'photos',       label: t('patientProfile.tabs.photos') || "Rentgen & Rasmlar",  icon: XrayIcon,        iconColor: "text-cyan-600",    shortLabel: "Rentgen", count: (xrays || []).length },
+            ].map(tabItem => {
+              const IconComponent = tabItem.icon;
+              const isActive = activeTab === tabItem.id;
+              return (
+                <button
+                  key={tabItem.id}
+                  onClick={() => setActiveTab(tabItem.id)}
+                  className={`group relative flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-1.5 rounded-xl text-[10px] sm:text-xs transition-all cursor-pointer shrink-0 ${
+                    isActive
+                      ? 'bg-white text-slate-900 font-black shadow-sm border border-slate-200/80'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 font-semibold'
+                  }`}
+                >
+                  <IconComponent className={cn("w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0 transition-transform group-hover:scale-110", isActive ? tabItem.iconColor : "text-slate-400 group-hover:text-slate-600")} />
+                  <span className="hidden sm:inline leading-none">{tabItem.label}</span>
+                  <span className="sm:hidden text-[9px] font-black leading-none">{tabItem.shortLabel}</span>
+                  {tabItem.count !== undefined && tabItem.count > 0 && (
+                    <span className={`hidden sm:inline px-1.5 py-0.5 rounded-full text-[9px] font-black ${
+                      isActive ? 'bg-[#1499AD]/10 text-[#1499AD]' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      {tabItem.count}
+                    </span>
+                  )}
+                  {/* Mobile count dot */}
+                  {tabItem.count !== undefined && tabItem.count > 0 && (
+                    <span className={`sm:hidden absolute top-1 right-1 w-3.5 h-3.5 rounded-full text-[7px] font-black flex items-center justify-center ${
+                      isActive ? 'bg-[#1499AD] text-white' : 'bg-slate-300 text-slate-600'
+                    }`}>
+                      {tabItem.count > 9 ? '9+' : tabItem.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
       </div>
 
-      {/* ══ BCLINIC PAGE BODY ══ */}
-      <div className="w-full px-4 pt-4">
+      {/* ══ PAGE BODY ══ */}
+      <div className="w-full px-2 sm:px-4 pt-3 sm:pt-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="hidden" />
 

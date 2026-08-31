@@ -13,6 +13,7 @@ import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/lib/AuthContext';
+import { useClinic } from '@/lib/ClinicContext';
 
 /**
  * Topbar Component
@@ -28,6 +29,7 @@ export default function Topbar({ onMenuClick, sidebarCollapsed }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user, logout } = useAuth();
+  const { clinicName } = useClinic();
   const [notificationCount, setNotificationCount] = useState(0);
 
   /**
@@ -93,7 +95,7 @@ export default function Topbar({ onMenuClick, sidebarCollapsed }) {
           <Menu className="w-5 h-5" />
         </button>
         <h1 className="text-lg font-semibold text-foreground hidden sm:block">
-          My Clinic
+          {clinicName}
         </h1>
       </div>
 

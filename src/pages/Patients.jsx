@@ -2,9 +2,8 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Plus, Search, Edit2, Trash2, Users, UserPlus,
-  TrendingUp, Clock, FileSpreadsheet, 
-  Download, ArrowUpDown, ArrowUp, ArrowDown, Copy, Check, 
-  Phone, Eye, X, Table as TableIcon, LayoutGrid
+  TrendingUp, Clock, ArrowUpDown, ArrowUp, ArrowDown, Copy, Check, 
+  Phone, Eye, X
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -300,6 +299,13 @@ export default function Patients() {
     return list;
   }, [allPatients, activeFilter, sortField, sortOrder]);
 
+  const showAddressColumn = useMemo(() => {
+    return filteredPatients.some(p => {
+      const addr = String(p.address || p.region || '').trim().toLowerCase();
+      return addr && addr !== 'null' && addr !== 'undefined' && addr !== '—';
+    });
+  }, [filteredPatients]);
+
   // Excel Summary Stats
   const tableSummary = useMemo(() => {
     const totalCount = filteredPatients.length;
@@ -529,27 +535,28 @@ export default function Patients() {
               ))}
             </div>
           ) : filteredPatients.length === 0 ? (
-            <div className="py-20 text-center">
+            <div className="py-12 text-center">
               <EmptyState 
-                icon={Users} 
+                icon={Users}
+                variant="blue"
                 title={t('patients.notFound') || "Bemorlar topilmadi"} 
-                description="Qidiruv so'zini o'zgartiring yoki filtrlarni tozalang"
+                description={
+                  search || activeFilter !== 'all'
+                    ? "Qidiruv so'zi yoki tanlangan filtr bo'yicha bemorlar topilmadi."
+                    : "Hali birorta bemor ro'yxatga olinmagan. Birinchi bemorni tizimga qo'shing."
+                }
+                actionText="+ Yangi bemor qo'shish"
+                onAction={() => setIsNewPatientModalOpen(true)}
+                secondaryActionText={(search || activeFilter !== 'all') ? "Filtrlarni tozalash" : undefined}
+                onSecondaryAction={() => { setSearch(''); setActiveFilter('all'); }}
               />
-              {(search || activeFilter !== 'all') && (
-                <button
-                  onClick={() => { setSearch(''); setActiveFilter('all'); }}
-                  className="mt-3 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
-                >
-                  Filtrlarni tozalash
-                </button>
-              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left select-text min-w-[920px]">
                 {/* ─── Excel Table Header ────────────────── */}
                 <thead>
-                  <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 text-[10.5px] font-black uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
+                  <tr className="bg-slate-100/95 border-b border-slate-300/80 text-slate-800 text-[11px] font-black uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
                     
                     {/* № Col */}
                     <th 
@@ -596,17 +603,19 @@ export default function Patients() {
                     </th>
 
                     {/* Address / Region (Single line guaranteed) */}
-                    <th 
-                      onClick={() => handleSort('address')}
-                      className="min-w-[180px] px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
-                    >
-                      <div className="flex items-center justify-between gap-1.5">
-                        <span>{t('common.address') || "Manzil"}</span>
-                        {sortField === 'address' && (
-                          sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
-                        )}
-                      </div>
-                    </th>
+                    {showAddressColumn && (
+                      <th 
+                        onClick={() => handleSort('address')}
+                        className="min-w-[180px] px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                      >
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span>{t('common.address') || "Manzil"}</span>
+                          {sortField === 'address' && (
+                            sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1499AD]" /> : <ArrowDown className="w-3 h-3 text-[#1499AD]" />
+                          )}
+                        </div>
+                      </th>
+                    )}
 
                     {/* Total Debt */}
                     <th 
@@ -735,14 +744,16 @@ export default function Patients() {
                         </td>
 
                         {/* Address Cell (Always 1 Single Line) */}
-                        <td className={`border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-3' : 'py-3 px-3.5'}`}>
-                          <span 
-                            className="text-slate-700 font-semibold text-xs whitespace-nowrap block truncate max-w-[280px]" 
-                            title={p.address || p.region || ''}
-                          >
-                            {p.address || p.region || '—'}
-                          </span>
-                        </td>
+                        {showAddressColumn && (
+                          <td className={`border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-3' : 'py-3 px-3.5'}`}>
+                            <span 
+                              className="text-slate-700 font-semibold text-xs whitespace-nowrap block truncate max-w-[280px]" 
+                              title={p.address || p.region || ''}
+                            >
+                              {p.address || p.region || '—'}
+                            </span>
+                          </td>
+                        )}
 
                         {/* Total Debt Cell */}
                         <td className={`text-right border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-3' : 'py-3 px-3.5'}`}>

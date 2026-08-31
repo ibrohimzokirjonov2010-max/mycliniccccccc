@@ -621,7 +621,7 @@
   },
   "inventory": {
     "title": "Ombor",
-    "mainTitle": "Sklad va materiallar",
+    "mainTitle": "Ombor va materiallar",
     "report": "Hisobot",
     "stockWarning": "Stock Warning",
     "defaultUnit": "dona",
@@ -669,7 +669,7 @@
       "title": "Materialni o'chirish",
       "description": "Ushbu materialni ombor ro'yxatidan butunlay o'chirib tashlamoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi."
     },
-    "badgeRecords": "• Sklad va Materiallar {count} Yozuvlar",
+    "badgeRecords": "• Ombor va materiallar: {count} ta mahsulot",
     "exportExcel": "Eksport (Excel)",
     "totalItems": "JAMI NOMLAR",
     "materialTypes": "Material turlari",
@@ -710,7 +710,8 @@
     "active": "Faol",
     "inactive": "Nofaol",
     "categories": {
-      "TERAPIYA( ENDO +PLOMBA)": "TERAPIYA( ENDO +PLOMBA)",
+      "TERAPIYA (ENDO + PLOMBA)": "TERAPIYA (ENDO + PLOMBA)",
+      "TERAPIYA( ENDO +PLOMBA)": "TERAPIYA (ENDO + PLOMBA)",
       "ORTOPEDIYA": "ORTOPEDIYA",
       "XIRURGIYA": "XIRURGIYA",
       "ORTODONTIYA": "ORTODONTIYA"
@@ -1008,7 +1009,7 @@
       "value": "Qiymati",
       "actions": "Amallar"
     },
-    "badgeRecords": "• Tibbiy Rejalar & Tahlillar {count} Yozuvlar",
+    "badgeRecords": "• Davolash rejalari: {count} ta reja",
     "exportExcel": "Eksport (Excel)",
     "totalPlansValue": "JAMI REJALAR QIYMATI",
     "executingPlans": "Bajarilayotgan rejalar",
@@ -1077,7 +1078,7 @@
       "send": "Yuborish",
       "cancel": "Bekor"
     },
-    "badgeAutoRecall": "• Avtomatik Qayta Chaqirish {count} Yozuvlar",
+    "badgeAutoRecall": "• Avtomatik qayta chaqirish: {count} ta eslatma",
     "exportExcel": "Eksport (Excel)",
     "totalReminders": "JAMI ESLATMALAR",
     "allPlannedReminders": "Barcha rejalashtirilgan eslatmalar",
@@ -1638,6 +1639,7 @@
     "salary": "Maosh",
     "works": "Ishlar",
     "doctorName": "Shifokor (F.I.Sh)",
+    "commissionCol": "Komissiya %",
     "allDoctors": "Barcha shifokorlar",
     "noData": "Ma'lumot mavjud emas",
     "noDataSubtitle": "Tanlangan shartlar bo'yicha hisobotlar topilmadi",
@@ -1826,6 +1828,14 @@
       "deleteSuccess": "Rasm o'chirildi",
       "imageIndex": "{index}-rasm"
     },
+    "brandSystemCol": "Brend / Tizim",
+    "sizeCol": "O'lcham (Ø × L)",
+    "lotCol": "Lot / Seriya #",
+    "installedDateCol": "O'rnatilgan sana",
+    "surgeonCol": "Jarroh",
+    "passportCol": "Pasport",
+    "noImplantsFound": "Bu bemor uchun hali implantlar qayd etilmagan.",
+    "noPhotosFound": "Hech qanday rasmlar yoki rentgen tasvirlari topilmadi.",
     "implants": {
       "title": "Bemor implantlari",
       "emptyTitle": "Implantlar yo'q",

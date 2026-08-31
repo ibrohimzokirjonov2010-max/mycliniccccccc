@@ -1,14 +1,16 @@
 import { useState, useMemo, memo } from 'react';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useClinic } from '@/lib/ClinicContext';
 import { 
   CreditCard, Plus, Search, FileSpreadsheet,
   ArrowUpDown, ExternalLink, User, Building,
   Banknote, CheckCircle2, X, Printer, Trash2,
   Table as TableIcon, Copy, Check, Clock, Receipt
 } from 'lucide-react';
-import { cn, formatPhone } from '@/lib/utils';
+import { cn, formatPhone, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import EmptyState from '../ui/EmptyState';
 
 /**
  * ExcelPaymentsView Component
@@ -27,6 +29,7 @@ function ExcelPaymentsView({
   onDeletePayment,
 }) {
   const { t, language } = useTranslation();
+  const { clinicName } = useClinic();
   const [search, setSearch] = useState('');
   const [subTab, setSubTab] = useState('ledger'); // 'ledger' | 'plans' | 'installments'
   const [sortField, setSortField] = useState('date');
@@ -215,18 +218,18 @@ function ExcelPaymentsView({
           const rawToothId = pl.tooth_number || s.tooth_id || s.tooth || '—';
           allServices.push({
             name: s.service_name || s.name || pl.name || 'Davolash xizmati',
-            category: s.category || pl.department || 'Plomba / Davolash',
+            category: getServiceCategoryLabel(s.category || pl.department || 'Plomba / Davolash', language),
             tooth: rawToothId && rawToothId !== 'general' ? rawToothId : '—',
-            status: s.status || pl.status || 'completed',
+            status: getServiceStatusLabel(s.status || pl.status || 'completed', language),
             price: Number(s.price || s.cost || 0)
           });
         });
       } else if (pl.name) {
         allServices.push({
           name: pl.name,
-          category: pl.department || 'Davolash rejasi',
+          category: getServiceCategoryLabel(pl.department || 'Davolash rejasi', language),
           tooth: pl.tooth_number || '—',
-          status: pl.status || 'completed',
+          status: getServiceStatusLabel(pl.status || 'completed', language),
           price: Number(pl.total_price || 0)
         });
       }
@@ -235,9 +238,9 @@ function ExcelPaymentsView({
     if (allServices.length === 0) {
       allServices.push({
         name: p.treatment_name || p.service_name || p.category || 'Davolash muolajasi',
-        category: 'Davolash',
+        category: getServiceCategoryLabel(p.category || 'Davolash', language),
         tooth: '—',
-        status: 'completed',
+        status: getServiceStatusLabel('completed', language),
         price: Number(p.amount || 0)
       });
     }
@@ -451,7 +454,7 @@ function ExcelPaymentsView({
               <path d="M12 2C8.7 2 6 4.7 6 8c0 4 3 7 6 10 3-3 6-6 6-10 0-3.3-2.7-6-6-6z" />
             </svg>
             <div>
-              <h1 class="clinic-title">DentaCRM</h1>
+              <h1 class="clinic-title">${clinicName}</h1>
               <p class="clinic-sub">Professional stomatologiya klinikasi</p>
               <p class="clinic-contact">Tel: +998 71 123 45 67 | Toshkent sh.</p>
             </div>
@@ -481,7 +484,7 @@ function ExcelPaymentsView({
           </div>
           <div class="info-item">
             <span class="info-label">Davolash turi</span>
-            <span class="info-val">${p.treatment_name || p.service_name || p.category || 'Davolash rejasi'}</span>
+            <span class="info-val">${getTreatmentTypeLabel(p.treatment_name || p.service_name || p.category || 'Davolash rejasi', language)}</span>
           </div>
           <div class="info-item">
             <span class="info-label">Holati</span>
@@ -565,7 +568,7 @@ function ExcelPaymentsView({
         </div>
 
         <div class="footer-note">
-          Hujjat ${dateFormatted} sanasida DentaCRM tizimi tomonidan yaratildi | Ushbu hujjat rasmiy hisoblanadi
+          Hujjat ${dateFormatted} sanasida ${clinicName} tizimi tomonidan yaratildi | Ushbu hujjat rasmiy hisoblanadi
         </div>
 
         <script>
@@ -657,48 +660,114 @@ function ExcelPaymentsView({
         </div>
       </div>
 
-      {/* ══ VIEW 1: PAYMENTS KASSA LEDGER TABLE ══ */}
+      {/* ══ VIEW 1: PAYMENTS KASSA LEDGER ══ */}
       {subTab === 'ledger' && (
-        <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
+        <div className="space-y-2.5">
+          {/* MOBILE CARDS */}
+          <div className="md:hidden space-y-2.5">
+            {filteredPayments.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-100 py-12 text-center flex flex-col items-center gap-3">
+                <CreditCard className="w-10 h-10 text-slate-200" />
+                <p className="text-slate-400 text-sm font-semibold">
+                  {t('patientProfile.noPaymentsFound') || "To'lovlar topilmadi"}
+                </p>
+                {onOpenPayModal && (
+                  <button onClick={onOpenPayModal} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-black active:scale-95">
+                    <Plus className="w-4 h-4" />To'lov qabul qilish
+                  </button>
+                )}
+              </div>
+            ) : filteredPayments.map((p, idx) => {
+              const dateStr = p.date || p.created_date
+                ? new Date(p.date || p.created_date).toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : '—';
+              const amount = Number(p.amount || 0);
+              const doctorName = p.doctor_name || patient?.doctor_name || 'Shifokor';
+              const method = p.payment_method || p.method || 'Cash';
+              const receiptNo = p.receipt_number || `REC-${1000 + idx}`;
+              return (
+                <div
+                  key={p.id || idx}
+                  className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden cursor-pointer active:scale-[0.99] transition-all"
+                  onClick={() => setSelectedPayment({ ...p, calculatedReceiptNo: receiptNo })}
+                >
+                  <div className="p-3.5 flex items-start gap-3">
+                    <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                      <CreditCard className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-black text-emerald-700 leading-tight">
+                        +{amount.toLocaleString()} <span className="text-[10px] font-bold text-emerald-500">UZS</span>
+                      </p>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">{dateStr}</p>
+                    </div>
+                    {getMethodBadge(method)}
+                  </div>
+                  <div className="grid grid-cols-2 gap-px bg-slate-100 border-t border-slate-100">
+                    <div className="bg-white px-3 py-2">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Shifokor</p>
+                      <p className="text-[11px] font-bold text-slate-700 mt-0.5 truncate">{doctorName}</p>
+                    </div>
+                    <div className="bg-white px-3 py-2">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Izoh</p>
+                      <p className="text-[11px] font-semibold text-slate-600 mt-0.5 truncate">{p.notes || '—'}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* DESKTOP TABLE */}
+          <div className="hidden md:block bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full border-collapse text-left font-sans text-sm">
               <thead>
-                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-xs">
-                  <th className="py-3 px-3.5 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
+                <tr className="bg-slate-100/95 border-b border-slate-300 text-slate-800 font-extrabold uppercase tracking-wider text-xs">
+                  <th className="py-1.5 px-2.5.5 border-r border-slate-200 text-center w-12 bg-slate-200/70 font-mono">№</th>
                   <th 
-                    className="py-3 px-3.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors font-mono select-none"
+                    className="py-1.5 px-2.5.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors font-mono select-none"
                     onClick={() => toggleSort('date')}
                   >
                     <div className="flex items-center justify-between gap-1.5">
                       <span>{t('common.dateTime') || "Sana & Vaqt"}</span>
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-600" />
                     </div>
                   </th>
-                  <th className="py-3 px-3.5 border-r border-slate-200">{t('patientProfile.paymentTypeCol') || "To'lov Turi"}</th>
-                  <th className="py-3 px-3.5 border-r border-slate-200">{t('patientProfile.doctorCol') || "Shifokor"}</th>
+                  <th className="py-1.5 px-2.5.5 border-r border-slate-200">{t('patientProfile.paymentTypeCol') || "To'lov Turi"}</th>
+                  <th className="py-1.5 px-2.5.5 border-r border-slate-200">{t('patientProfile.doctorCol') || "Shifokor"}</th>
                   <th 
-                    className="py-3 px-3.5 border-r border-slate-200 text-right cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[130px]"
+                    className="py-1.5 px-2.5.5 border-r border-slate-200 text-right cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[130px]"
                     onClick={() => toggleSort('amount')}
                   >
                     <div className="flex items-center justify-end gap-1.5 font-mono">
                       <span>{t('patientProfile.paidAmountCol') || "To'langan Summa"}</span>
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-600" />
                     </div>
                   </th>
-                  <th className="py-3 px-3.5 min-w-[140px]">{t('common.notes') || "Izoh"}</th>
+                  <th className="py-1.5 px-2.5.5 min-w-[140px]">{t('common.notes') || "Izoh"}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPayments.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400 italic bg-slate-50/50">
-                      <CreditCard className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                      <div>Hozircha kassaga to'lov qabul qilinmagan.</div>
-                      {Number(totalDebt || 0) > 0 && (
-                        <div className="mt-2 text-xs text-rose-600 font-bold not-italic">
-                          Bemorning reja bo'yicha umumiy qarzdorligi: {Number(totalDebt).toLocaleString()} UZS
-                        </div>
-                      )}
+                    <td colSpan={6} className="py-10 bg-slate-50/40">
+                      <EmptyState
+                        icon={CreditCard}
+                        variant="emerald"
+                        title={t('patientProfile.noPaymentsFound') || "Hozircha kassaga to'lov qabul qilinmagan"}
+                        description={
+                          search
+                            ? "Qidiruv bo'yicha to'lovlar topilmadi. Qidiruv so'zini tekshiring."
+                            : Number(totalDebt || 0) > 0
+                            ? `Bemorning to'lov kutilayotgan umumiy qarzdorligi mavjud: ${Number(totalDebt).toLocaleString()} UZS`
+                            : "Bemor bo'yicha kassaga hali to'lov kiritilmagan."
+                        }
+                        actionText={onOpenPayModal ? "+ To'lov qabul qilish" : undefined}
+                        onAction={onOpenPayModal}
+                        secondaryActionText={search ? "Filtrni tozalash" : undefined}
+                        onSecondaryAction={() => setSearch('')}
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -719,23 +788,23 @@ function ExcelPaymentsView({
                         {/* Row Index */}
                         <td className={cn(
                           "border-r border-slate-200 text-center font-mono font-bold text-slate-500 bg-slate-100/40 text-xs",
-                          density === 'compact' ? 'py-3.5 px-3' : 'py-4.5 px-3.5'
+                          density === 'compact' ? 'py-1.5 px-2.5' : 'py-2.5 px-3'
                         )}>
                           {idx + 1}
                         </td>
 
                         {/* Date */}
-                        <td className={cn("border-r border-slate-200 font-mono font-semibold text-slate-700 whitespace-nowrap text-xs sm:text-sm", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
+                        <td className={cn("border-r border-slate-200 font-mono font-semibold text-slate-700 whitespace-nowrap text-xs sm:text-sm", density === 'compact' ? 'py-1.5 px-2.5.5' : 'py-2.5 px-3.5')}>
                           {dateStr}
                         </td>
 
                         {/* Payment Method */}
-                        <td className={cn("border-r border-slate-200 text-xs sm:text-sm", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
+                        <td className={cn("border-r border-slate-200 text-xs sm:text-sm", density === 'compact' ? 'py-1.5 px-2.5.5' : 'py-2.5 px-3.5')}>
                           {getMethodBadge(p.payment_method || p.method)}
                         </td>
 
                         {/* Doctor */}
-                        <td className={cn("border-r border-slate-200 font-semibold text-slate-800 text-xs sm:text-sm", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
+                        <td className={cn("border-r border-slate-200 font-semibold text-slate-800 text-xs sm:text-sm", density === 'compact' ? 'py-1.5 px-2.5.5' : 'py-2.5 px-3.5')}>
                           <div className="flex items-center gap-1.5">
                             <User className="w-4 h-4 text-slate-400 shrink-0" />
                             <span>{p.doctor_name || patient?.doctor_name || (language === 'ru' ? 'Врач' : language === 'en' ? 'Doctor' : 'Shifokor')}</span>
@@ -743,12 +812,12 @@ function ExcelPaymentsView({
                         </td>
 
                         {/* Amount */}
-                        <td className={cn("border-r border-slate-200 text-right font-mono font-black text-emerald-700 bg-emerald-50/40 text-sm sm:text-base tracking-tight", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
+                        <td className={cn("border-r border-slate-200 text-right font-mono font-black text-emerald-700 bg-emerald-50/40 text-sm sm:text-base tracking-tight", density === 'compact' ? 'py-1.5 px-2.5.5' : 'py-2.5 px-3.5')}>
                           +{Number(p.amount || 0).toLocaleString()} UZS
                         </td>
 
                         {/* Notes */}
-                        <td className={cn("text-slate-600 italic text-xs sm:text-sm", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
+                        <td className={cn("text-slate-600 italic text-xs sm:text-sm", density === 'compact' ? 'py-1.5 px-2.5.5' : 'py-2.5 px-3.5')}>
                           {p.notes || '—'}
                         </td>
                       </tr>
@@ -759,23 +828,24 @@ function ExcelPaymentsView({
             </table>
           </div>
         </div>
+        </div>
       )}
 
-      {/* ══ VIEW 2: PLANS INVOICES & DEBTS TABLE ══ */}
+      {/* ══ VIEW 2: PLANS INVOICES & DEBTS ══ */}
       {subTab === 'plans' && (
         <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full border-collapse text-left font-sans text-sm">
               <thead>
                 <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-xs">
-                  <th className="py-3 px-3.5 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
-                  <th className="py-3 px-3.5 border-r border-slate-200 min-w-[200px]">{language === 'ru' ? 'План / Процедура' : language === 'en' ? 'Plan / Treatment Name' : 'Reja / Muolaja Nomi'}</th>
-                  <th className="py-3 px-3.5 border-r border-slate-200 font-mono">{t('common.date') || 'Sana'}</th>
-                  <th className="py-3 px-3.5 border-r border-slate-200">{t('patientProfile.doctorCol') || 'Shifokor'}</th>
-                  <th className="py-3 px-3.5 border-r border-slate-200 text-right font-mono min-w-[130px]">{language === 'ru' ? 'Стоимость плана' : language === 'en' ? 'Plan Price' : 'Reja Narxi'}</th>
-                  <th className="py-3 px-3.5 border-r border-slate-200 text-right font-mono min-w-[130px]">{t('patientProfile.paidLabel') || 'To\'langan'}</th>
-                  <th className="py-3 px-3.5 border-r border-slate-200 text-right font-mono min-w-[130px]">{language === 'ru' ? 'Остаток долга' : language === 'en' ? 'Remaining Debt' : 'Qoldiq Qarz'}</th>
-                  <th className="py-3 px-3.5 text-center min-w-[100px]">{t('patientProfile.invoiceCol') || 'Faktura'}</th>
+                  <th className="py-1.5 px-2.5.5 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
+                  <th className="py-1.5 px-2.5.5 border-r border-slate-200 min-w-[200px]">{language === 'ru' ? 'План / Процедура' : language === 'en' ? 'Plan / Treatment Name' : 'Reja / Muolaja Nomi'}</th>
+                  <th className="py-1.5 px-2.5.5 border-r border-slate-200 font-mono">{t('common.date') || 'Sana'}</th>
+                  <th className="py-1.5 px-2.5.5 border-r border-slate-200">{t('patientProfile.doctorCol') || 'Shifokor'}</th>
+                  <th className="py-1.5 px-2.5.5 border-r border-slate-200 text-right font-mono min-w-[130px]">{language === 'ru' ? 'Стоимость плана' : language === 'en' ? 'Plan Price' : 'Reja Narxi'}</th>
+                  <th className="py-1.5 px-2.5.5 border-r border-slate-200 text-right font-mono min-w-[130px]">{t('patientProfile.paidLabel') || 'To\'langan'}</th>
+                  <th className="py-1.5 px-2.5.5 border-r border-slate-200 text-right font-mono min-w-[130px]">{language === 'ru' ? 'Остаток долга' : language === 'en' ? 'Remaining Debt' : 'Qoldiq Qarz'}</th>
+                  <th className="py-1.5 px-2.5.5 text-center min-w-[100px]">{t('patientProfile.invoiceCol') || 'Faktura'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -800,29 +870,29 @@ function ExcelPaymentsView({
                           idx % 2 === 1 ? "bg-slate-50/40" : "bg-white"
                         )}
                       >
-                        <td className="border-r border-slate-200 text-center font-mono font-bold text-slate-500 bg-slate-100/40 text-xs py-3.5 px-3">
+                        <td className="border-r border-slate-200 text-center font-mono font-bold text-slate-500 bg-slate-100/40 text-xs py-1.5 px-2.5">
                           {idx + 1}
                         </td>
-                        <td className="border-r border-slate-200 font-bold text-slate-900 text-sm py-3.5 px-3.5">
+                        <td className="border-r border-slate-200 font-bold text-slate-900 text-sm py-1.5 px-2.5.5">
                           {plan.name || `Davolash rejasi #${idx + 1}`}
                         </td>
-                        <td className="border-r border-slate-200 font-mono font-semibold text-slate-700 text-xs sm:text-sm py-3.5 px-3.5">
+                        <td className="border-r border-slate-200 font-mono font-semibold text-slate-700 text-xs sm:text-sm py-1.5 px-2.5.5">
                           {plan.created_date ? new Date(plan.created_date).toLocaleDateString('uz-UZ') : '—'}
                         </td>
-                        <td className="border-r border-slate-200 font-semibold text-slate-800 text-xs sm:text-sm py-3.5 px-3.5">
+                        <td className="border-r border-slate-200 font-semibold text-slate-800 text-xs sm:text-sm py-1.5 px-2.5.5">
                           <div className="flex items-center gap-1.5">
                             <User className="w-4 h-4 text-slate-400 shrink-0" />
                             <span>{plan.doctor_name || patient?.doctor_name || (language === 'ru' ? 'Врач' : language === 'en' ? 'Doctor' : 'Shifokor')}</span>
                           </div>
                         </td>
-                        <td className="border-r border-slate-200 text-right font-mono font-black text-slate-950 text-sm sm:text-base tracking-tight py-3.5 px-3.5">
+                        <td className="border-r border-slate-200 text-right font-mono font-black text-slate-950 text-sm sm:text-base tracking-tight py-1.5 px-2.5.5">
                           {price.toLocaleString()} UZS
                         </td>
-                        <td className="border-r border-slate-200 text-right font-mono font-black text-emerald-700 text-sm sm:text-base tracking-tight py-3.5 px-3.5">
+                        <td className="border-r border-slate-200 text-right font-mono font-black text-emerald-700 text-sm sm:text-base tracking-tight py-1.5 px-2.5.5">
                           {paid.toLocaleString()} UZS
                         </td>
                         <td className={cn(
-                          "border-r border-slate-200 text-right font-mono font-black text-sm sm:text-base tracking-tight py-3.5 px-3.5",
+                          "border-r border-slate-200 text-right font-mono font-black text-sm sm:text-base tracking-tight py-1.5 px-2.5.5",
                           debt > 0 ? "text-amber-950 bg-amber-50/30" : "text-emerald-700 bg-emerald-50/20"
                         )}>
                           {debt > 0 ? (
@@ -837,7 +907,7 @@ function ExcelPaymentsView({
                             </span>
                           )}
                         </td>
-                        <td className="text-center py-3 px-3">
+                        <td className="text-center py-1.5 px-2.5">
                           <button
                             onClick={() => onOpenPlanInvoice && onOpenPlanInvoice(plan)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"

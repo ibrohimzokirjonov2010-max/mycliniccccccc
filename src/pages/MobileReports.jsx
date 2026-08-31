@@ -190,7 +190,7 @@ export default function MobileReports() {
                 </div>
                 <div className="h-48 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ left: -10, right: 10, top: 10, bottom: 0 }}>
+                    <AreaChart data={chartData} margin={{ left: 5, right: 10, top: 10, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#10b981" stopOpacity={0.15}/>
@@ -203,7 +203,7 @@ export default function MobileReports() {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} />
-                      <YAxis tickFormatter={tick => formatCompactCurrency(tick)} axisLine={false} tickLine={false} tick={{ fontSize: 8, fontWeight: 700, fill: '#94a3b8' }} width={40} />
+                      <YAxis tickFormatter={tick => formatCompactCurrency(tick)} axisLine={false} tickLine={false} tick={{ fontSize: 8.5, fontWeight: 700, fill: '#94a3b8' }} width={50} />
                       <Tooltip 
                         formatter={(val, name) => [formatCurrency(val), name === 'income' ? 'Kirim' : 'Chiqim']}
                         contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', fontWeight: 'bold', fontSize: 11 }}
@@ -228,10 +228,10 @@ export default function MobileReports() {
                 </div>
                 <div className="h-48 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ left: -10, right: 10, top: 10, bottom: 0 }}>
+                    <BarChart data={chartData} margin={{ left: 5, right: 10, top: 10, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} />
-                      <YAxis tickFormatter={tick => formatCompactCurrency(tick)} axisLine={false} tickLine={false} tick={{ fontSize: 8, fontWeight: 700, fill: '#94a3b8' }} width={40} />
+                      <YAxis tickFormatter={tick => formatCompactCurrency(tick)} axisLine={false} tickLine={false} tick={{ fontSize: 8.5, fontWeight: 700, fill: '#94a3b8' }} width={50} />
                       <Tooltip 
                         formatter={(val) => [formatCurrency(val), "Sof foyda"]}
                         contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', fontWeight: 'bold', fontSize: 11 }}

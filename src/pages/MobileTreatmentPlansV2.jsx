@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import { Input } from '@/components/ui/input';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useClinic } from '@/lib/ClinicContext';
 import PatientSelect from '@/components/patients/PatientSelect';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -34,6 +35,7 @@ const idToFdi = (idStr) => {
 };
 
 const CATEGORY_MAP = {
+  'TERAPIYA (ENDO + PLOMBA)': { icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-l-blue-500' },
   'TERAPIYA( ENDO +PLOMBA)': { icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-l-blue-500' },
   'XIRURGIYA': { icon: Scissors, color: 'text-rose-500', bg: 'bg-rose-50', border: 'border-l-rose-500' },
   'ORTOPEDIYA': { icon: Layers, color: 'text-violet-500', bg: 'bg-violet-50', border: 'border-l-violet-500' },
@@ -84,6 +86,8 @@ const formatCompactCurrency = (value) => {
 
 export default function MobileTreatmentPlansV2() {
   const { t } = useTranslation();
+  const { clinicName } = useClinic();
+  const { user, isDoctor } = useAuth();
   const [plans, setPlans] = useState([]);
   const [patients, setPatients] = useState([]);
   const [services, setServices] = useState([]);
@@ -677,7 +681,7 @@ export default function MobileTreatmentPlansV2() {
                              {/* Header */}
                              <div className="bg-slate-900 text-white p-5 flex justify-between items-center">
                                 <div>
-                                   <h4 className="text-xs font-black tracking-widest uppercase leading-none">DentaCRM</h4>
+                                   <h4 className="text-xs font-black tracking-widest uppercase leading-none">{clinicName}</h4>
                                    <span className="text-[8px] text-white/50 font-bold block mt-1 uppercase tracking-wider">Davolash Rejasi Smetasi</span>
                                 </div>
                                 <span className="text-[9px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg uppercase tracking-wider">TAYYOR</span>

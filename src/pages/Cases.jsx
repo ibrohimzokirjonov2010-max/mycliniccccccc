@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Plus, Search, Image as ImageIcon, Sparkles, X, ChevronRight, ChevronLeft, Pen, Trash2, AlertCircle, Crop } from 'lucide-react';
+import { Camera, Plus, Search, Image as ImageIcon, Sparkles, X, ChevronRight, ChevronLeft, Pen, Trash2, AlertCircle, Crop, CheckCircle2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
@@ -130,16 +130,15 @@ export default function Cases() {
   }, [clinicId]);
 
   const handleDeleteCase = async (caseId) => {
-    if (!window.confirm("Haqiqatan ham ushbu klinik keysni o'chirmoqchimisiz?")) return;
     try {
       await base44.entities.Case.delete(caseId);
       await mediaStorage.deleteCaseMedia(caseId);
       setCases(prev => prev.filter(c => c.id !== caseId));
       setSelectedCase(null);
-      toast.success("Keys muvaffaqiyatli o'chirildi!");
+      toast.success(language === 'ru' ? "Кейс успешно удален!" : "Keys muvaffaqiyatli o'chirildi!");
     } catch (err) {
       console.error("Delete error:", err);
-      toast.error(err.message || "O'chirishda xatolik");
+      toast.error(err.message || (language === 'ru' ? "Ошибка при удалении" : "O'chirishda xatolik"));
     }
   };
 
@@ -458,9 +457,12 @@ function CaseCard({ data, onClick }) {
         />
         
         {/* Floating Badge */}
-        <div className="absolute top-3.5 right-3.5 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-md flex items-center gap-1.5 border border-white">
-          <Sparkles className="w-3.5 h-3.5 text-[#1499AD]" />
-          <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Natija</span>
+        <div 
+          className="absolute top-3.5 right-3.5 bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-xl shadow-md flex items-center gap-1.5 border border-white"
+          title="Davolashdan keyingi yakuniy klinik natija (Before/After taqqoslash uchun bosing)"
+        >
+          <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs" />
+          <span className="text-[9px] font-black text-slate-900 uppercase tracking-wider">Davolash Natijasi</span>
         </div>
         
         {/* Overlay gradient for text readability */}
@@ -491,10 +493,11 @@ function CaseCard({ data, onClick }) {
 /*                             BEFORE / AFTER MODAL                           */
 /* -------------------------------------------------------------------------- */
 function CaseDetailModal({ data, onClose, onDelete }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [sliderPos, setSliderPos] = useState(50);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [color, setColor] = useState('#1499AD');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   const canvasRef = useRef(null);
   const isDrawing = useRef(false);
@@ -603,6 +606,15 @@ function CaseDetailModal({ data, onClose, onDelete }) {
             {data.date && (
               <span className="shrink-0 px-2.5 py-0.5 rounded-md bg-[#1499AD]/15 border border-[#1499AD]/30 text-[#1499AD] text-[11px] font-bold tracking-wider">
                 {data.date}
+              </span>
+            )}
+            {data.consent_given && (
+              <span 
+                title="Bemor fotosuratlarni portfolioda namoyish etishga rasmiy rozilik bergan (KVKK/GDPR)"
+                className="hidden sm:inline-flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold tracking-wider"
+              >
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                <span>KVKK Rozilik</span>
               </span>
             )}
           </div>
@@ -750,22 +762,60 @@ function CaseDetailModal({ data, onClose, onDelete }) {
               {/* Description */}
               <div>
                 <h4 className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-2">{t('cases.detail.description') || "Tavsif va Izoh"}</h4>
-                <p className="text-slate-300 text-xs leading-relaxed bg-white/5 p-3 rounded-xl border border-white/5 whitespace-pre-wrap max-h-36 overflow-y-auto">
-                  {data.description || (t('cases.detail.noDescription') || "Izoh kiritilmagan.")}
-                </p>
+                {data.description ? (
+                  <p className="text-slate-300 text-xs leading-relaxed bg-white/5 p-3 rounded-xl border border-white/5 whitespace-pre-wrap max-h-36 overflow-y-auto">
+                    {data.description}
+                  </p>
+                ) : (
+                  <div className="bg-white/5 p-3 rounded-xl border border-white/5 space-y-1.5">
+                    <p className="text-slate-400 text-xs italic">
+                      {t('cases.detail.noDescription') || "Izoh kiritilmagan."}
+                    </p>
+                    <p className="text-[10px] text-teal-400/90 font-semibold leading-tight flex items-start gap-1">
+                      <span>💡</span>
+                      <span>{language === 'ru' ? 'Рекомендация: Добавьте описание клинического процесса для публикаций в соцсетях и портфолио.' : 'Tavsiya: Ijtimoiy tarmoqlar va marketingda foydalanish uchun davolash tafsilotlarini kiritish tavsiya etiladi.'}</span>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Actions */}
             {onDelete && (
               <div className="pt-3 border-t border-white/10">
-                <button 
-                  onClick={() => onDelete(data.id)}
-                  className="w-full py-2 px-3 bg-rose-500/15 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Keysni o'chirish</span>
-                </button>
+                {!showDeleteConfirm ? (
+                  <button 
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="w-full py-2 px-3 bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 border border-white/10 hover:border-rose-500/30 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{language === 'ru' ? 'Удалить кейс' : 'Keysni o\'chirish'}</span>
+                  </button>
+                ) : (
+                  <div className="bg-rose-950/40 border border-rose-500/30 p-3 rounded-2xl space-y-2.5 animate-in fade-in zoom-in-95">
+                    <div className="flex items-start gap-2 text-rose-200">
+                      <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                      <p className="text-[11px] font-semibold leading-snug">
+                        {language === 'ru' ? 'Вы уверены? Этот клинический кейс и медиаматериалы будут удалены.' : 'Haqiqatan ham o\'chirilsinmi? Ushbu foto-material va keys butunlay o\'chiriladi.'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowDeleteConfirm(false)}
+                        className="flex-1 py-1.5 px-3 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                      >
+                        {language === 'ru' ? 'Отмена' : 'Bekor qilish'}
+                      </button>
+                      <button
+                        onClick={() => onDelete(data.id)}
+                        className="flex-1 py-1.5 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-md transition-all cursor-pointer flex items-center justify-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>{language === 'ru' ? 'Да, удалить' : 'Ha, o\'chirilsin'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -818,7 +868,7 @@ const compressImage = (base64Str, maxWidth = 1200, quality = 0.75) => {
 /*                          UPLOAD/ADD NEW CASE MODAL                         */
 /* -------------------------------------------------------------------------- */
 function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients = [], doctors = [] }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [beforeImg, setBeforeImg] = useState(null);
   const [afterImg, setAfterImg] = useState(null);
   const [description, setDescription] = useState("");
@@ -827,8 +877,8 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
   const [patientSearch, setPatientSearch] = useState("");
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
- 
   const [selectedTags, setSelectedTags] = useState([]);
+  const [consentGiven, setConsentGiven] = useState(true);
 
   // Telegram-style Cropper Modal State
   const [cropperState, setCropperState] = useState({
@@ -874,7 +924,7 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
   const handleSave = (e) => {
     if (e) e.preventDefault();
     if(!selectedPatient) {
-      toast.error(t('cases.upload.errorSelectPatient') || "Iltimos bemorni tanlang");
+      toast.error(language === 'ru' ? "Выберите пациента или укажите 'Анонимный кейс'" : "Iltimos bemorni tanlang yoki 'Anonim keys'ni bosing");
       return;
     }
     if(!afterImg) {
@@ -893,7 +943,8 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
         before: beforeImg || afterImg, 
         after: afterImg
       },
-      description
+      description,
+      consent_given: consentGiven
     };
 
     onSave(caseData);
@@ -904,6 +955,7 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
     setPatientSearch("");
     setSelectedTags([]);
     setDescription("");
+    setConsentGiven(true);
   };
  
   const toggleTag = (tag) => {
@@ -1027,8 +1079,8 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
              ) : (
                <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 transition-colors p-4">
                  <input type="file" accept="image/*" className="hidden" capture="environment" onChange={(e) => handleImageUpload(e, 'after')} />
-                 <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-emerald-400 mb-2 shadow-xs group-hover:text-emerald-500 transition-colors">
-                   <Sparkles className="w-5 h-5" />
+                 <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-emerald-500 mb-2 shadow-xs group-hover:text-emerald-600 transition-colors">
+                   <CheckCircle2 className="w-5 h-5" />
                  </div>
                  <span className="text-emerald-600 font-black text-xs uppercase tracking-wider block">{t('cases.upload.afterPhoto') || "\"Keyin\" holati"}</span>
                  <span className="text-emerald-600/70 text-[9px] font-bold mt-0.5">Rasm yuklash & Qirqish</span>
@@ -1067,7 +1119,24 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
  
             {/* Bemor qidiruv */}
             <div className="relative">
-               <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1 mb-1.5 block">{t('cases.upload.selectPatient') || "Bemorni tanlash"}</label>
+              <div className="flex items-center justify-between ml-1 mb-1.5">
+                <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest block">
+                  {t('cases.upload.selectPatient') || "Bemorni tanlash"} <span className="text-rose-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPatient({
+                      id: 'anon-' + Date.now(),
+                      full_name: language === 'ru' ? 'Анонимный пациент' : 'Anonim bemor',
+                      phone: ''
+                    });
+                  }}
+                  className="text-[10px] text-[#1499AD] hover:underline font-bold lowercase cursor-pointer"
+                >
+                  + {language === 'ru' ? 'анонимный кейс' : 'anonim keys'}
+                </button>
+              </div>
                
                {selectedPatient ? (
                   <div className="flex items-center justify-between bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
@@ -1155,15 +1224,42 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
             </div>
  
             <div>
-               <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest ml-1 mb-1.5 block">{t('cases.upload.detailedNote') || "Batafsil Izoh (ixtiyoriy)"}</label>
+              <div className="flex items-center justify-between ml-1 mb-1.5">
+                <label className="text-slate-400 text-[10px] font-black uppercase tracking-widest block">{t('cases.upload.detailedNote') || "Batafsil Izoh (ixtiyoriy)"}</label>
+                <span className="text-[10px] text-[#1499AD] font-bold">
+                  {language === 'ru' ? '💡 Для SMM и портфолио' : '💡 SMM & Portfolio uchun tavsiya'}
+                </span>
+              </div>
               <textarea 
                 value={description} 
                 onChange={e => setDescription(e.target.value)} 
-                placeholder={t('cases.upload.notePlaceholder') || "Davolash jarayoni haqida qisqacha izoh..."} 
+                placeholder={t('cases.upload.notePlaceholder') || "Davolash jarayoni haqida qisqacha izoh (masalan: 21, 22-tishlarga zirkon tojbirlar o'rnatildi)..."} 
                 className="w-full bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-300 p-3 rounded-2xl focus:ring-2 focus:ring-[#1499AD]/10 focus:border-[#1499AD] outline-none min-h-[75px] text-xs leading-relaxed" 
               />
+              <p className="text-[10px] text-slate-400 font-semibold mt-1 ml-1 leading-tight">
+                {language === 'ru' ? 'Описание помогает при публикации результатов в соцсетях и демонстрации пациентам.' : 'Batafsil izoh bemorlarga ko\'rsatish va ijtimoiy tarmoqlarda sifatli taqdimot qilishda yordam beradi.'}
+              </p>
             </div>
           </div>
+        </div>
+
+        {/* KVKK / GDPR & Marketing Foto Roziligi Checkbox */}
+        <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-teal-50/70 border border-teal-200/80 mt-4">
+          <input
+            type="checkbox"
+            id="case-consent-checkbox"
+            checked={consentGiven}
+            onChange={e => setConsentGiven(e.target.checked)}
+            className="w-4 h-4 rounded mt-0.5 text-[#1499AD] accent-[#1499AD] cursor-pointer"
+          />
+          <label htmlFor="case-consent-checkbox" className="text-[11px] text-teal-950 font-semibold cursor-pointer select-none leading-snug">
+            <span className="font-black text-teal-900 block mb-0.5">
+              {language === 'ru' ? 'Согласие пациента на публикацию (KVKK / GDPR)' : 'Bemorning foto-roziligi olindi (KVKK / GDPR)'}
+            </span>
+            {language === 'ru' 
+              ? 'Пациент дал согласие на использование фотографий в клиническом портфолио и учебных/маркетинговых целях.' 
+              : 'Bemor fotosuratlarni klinik portfolio va marketing/o\'quv maqsadlarida namoyish etishga rozilik bergan.'}
+          </label>
         </div>
  
         <div className="flex items-center justify-end gap-3 mt-4 pt-3 border-t border-slate-100">

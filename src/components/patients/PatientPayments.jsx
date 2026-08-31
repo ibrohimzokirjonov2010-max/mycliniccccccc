@@ -150,8 +150,9 @@ function PatientPayments({ payments = [] }) {
     return (
       <EmptyState 
         icon={CreditCard} 
-        title={t('patientPayments.emptyTitle')} 
-        description={t('patientPayments.emptyDesc')}
+        variant="emerald"
+        title={t('patientPayments.emptyTitle') || "To'lovlar mavjud emas"} 
+        description={t('patientPayments.emptyDesc') || "Ushbu bemor bo'yicha kiritilgan to'lovlar tarixi topilmadi."}
       />
     );
   }

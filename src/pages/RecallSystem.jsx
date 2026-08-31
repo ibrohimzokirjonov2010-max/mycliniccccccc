@@ -204,7 +204,24 @@ export default function RecallSystem() {
     }
   }, [isDoctor, user?.id]);
 
+  /**
+   * Status Normalizer - prevents Radix Select case mismatch
+   */
+  const normalizeRecallStatus = (st) => {
+    if (!st) return 'Pending';
+    const lower = String(st).trim().toLowerCase();
+    if (lower === 'pending' || lower === 'kutilmoqda' || lower === 'в ожидании') return 'Pending';
+    if (lower === 'contacted' || lower === "bog'lanildi" || lower === 'boglanildi' || lower === 'связались') return 'Contacted';
+    if (lower === 'scheduled' || lower === 'rejalashtirilgan' || lower === 'запланировано') return 'Scheduled';
+    if (lower === 'completed' || lower === 'bajarildi' || lower === 'выполнено' || lower === 'yakunlangan') return 'Completed';
+    if (lower === 'missed' || lower === "o'tkazib yuborildi" || lower === 'пропущено') return 'Missed';
+    return 'Pending';
+  };
+
   const calculatePriority = (recall) => {
+    if (recall.priority && ['low', 'medium', 'high', 'urgent', 'overdue'].includes(String(recall.priority).toLowerCase())) {
+      return String(recall.priority).toLowerCase();
+    }
     if (!recall.recall_date) return 'low';
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -541,8 +558,9 @@ export default function RecallSystem() {
   }, [filteredRecalls]);
 
   const getStatusBadge = (status) => {
+    const s = normalizeRecallStatus(status);
     if (language === 'ru') {
-      switch (status) {
+      switch (s) {
         case 'Completed':
           return { label: 'Выполнено', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
         case 'Contacted':
@@ -557,7 +575,7 @@ export default function RecallSystem() {
       }
     }
     if (language === 'en') {
-      switch (status) {
+      switch (s) {
         case 'Completed':
           return { label: 'Completed', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
         case 'Contacted':
@@ -571,7 +589,7 @@ export default function RecallSystem() {
           return { label: 'Pending', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
       }
     }
-    switch (status) {
+    switch (s) {
       case 'Completed':
         return { label: 'Bajarildi', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
       case 'Contacted':
@@ -587,49 +605,75 @@ export default function RecallSystem() {
   };
 
   const getPriorityBadge = (priority) => {
+    const p = String(priority || 'low').toLowerCase();
     if (language === 'ru') {
-      switch (priority) {
+      switch (p) {
         case 'overdue':
-          return { label: 'Просрочено', bg: 'bg-rose-100 text-rose-800 border-rose-200' };
+          return { label: 'Просрочено', bg: 'bg-rose-100 text-rose-800 border-rose-300 font-black' };
         case 'urgent':
-          return { label: '🔥 Срочно', bg: 'bg-amber-100 text-amber-800 border-amber-200' };
+          return { label: '🔥 Срочно', bg: 'bg-red-50 text-red-700 border-red-200 font-black' };
         case 'high':
-          return { label: 'Высокий', bg: 'bg-orange-50 text-orange-700 border-orange-200' };
+          return { label: 'Высокий', bg: 'bg-amber-50 text-amber-800 border-amber-300 font-bold' };
         case 'medium':
-          return { label: 'Средний', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+          return { label: 'Средний', bg: 'bg-blue-50 text-blue-700 border-blue-200 font-bold' };
         case 'low':
         default:
-          return { label: 'Низкий', bg: 'bg-slate-100 text-slate-700 border-slate-200' };
+          return { label: 'Низкий', bg: 'bg-slate-100 text-slate-600 border-slate-200 font-medium' };
       }
     }
     if (language === 'en') {
-      switch (priority) {
+      switch (p) {
         case 'overdue':
-          return { label: 'Overdue', bg: 'bg-rose-100 text-rose-800 border-rose-200' };
+          return { label: 'Overdue', bg: 'bg-rose-100 text-rose-800 border-rose-300 font-black' };
         case 'urgent':
-          return { label: '🔥 Urgent', bg: 'bg-amber-100 text-amber-800 border-amber-200' };
+          return { label: '🔥 Urgent', bg: 'bg-red-50 text-red-700 border-red-200 font-black' };
         case 'high':
-          return { label: 'High', bg: 'bg-orange-50 text-orange-700 border-orange-200' };
+          return { label: 'High', bg: 'bg-amber-50 text-amber-800 border-amber-300 font-bold' };
         case 'medium':
-          return { label: 'Medium', bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+          return { label: 'Medium', bg: 'bg-blue-50 text-blue-700 border-blue-200 font-bold' };
         case 'low':
         default:
-          return { label: 'Low', bg: 'bg-slate-100 text-slate-700 border-slate-200' };
+          return { label: 'Low', bg: 'bg-slate-100 text-slate-600 border-slate-200 font-medium' };
       }
     }
-    switch (priority) {
+    switch (p) {
       case 'overdue':
-        return { label: "Muddati o'tgan", bg: 'bg-rose-100 text-rose-800 border-rose-200' };
+        return { label: "Muddati o'tgan", bg: 'bg-rose-100 text-rose-800 border-rose-300 font-black' };
       case 'urgent':
-        return { label: '🔥 Dolzarb', bg: 'bg-amber-100 text-amber-800 border-amber-200' };
+        return { label: '🔥 Dolzarb', bg: 'bg-red-50 text-red-700 border-red-200 font-black' };
       case 'high':
-        return { label: 'Yuqori', bg: 'bg-orange-50 text-orange-700 border-orange-200' };
+        return { label: 'Yuqori', bg: 'bg-amber-50 text-amber-800 border-amber-300 font-bold' };
       case 'medium':
-        return { label: "O'rta", bg: 'bg-blue-50 text-blue-700 border-blue-200' };
+        return { label: "O'rta", bg: 'bg-blue-50 text-blue-700 border-blue-200 font-bold' };
       case 'low':
       default:
-        return { label: 'Past', bg: 'bg-slate-100 text-slate-700 border-slate-200' };
+        return { label: 'Past', bg: 'bg-slate-100 text-slate-600 border-slate-200 font-medium' };
     }
+  };
+
+  const cleanRecallReason = (recall) => {
+    let rText = (recall.reason || recall.treatment_type || '').trim();
+    if (!rText || rText.toLowerCase().includes('fdsfds') || rText.toLowerCase().includes('sdfsdf') || rText === 'gdfgdf') {
+      rText = "Profilaktik ko'rik";
+    }
+    if (language === 'ru') {
+      return rText
+        .replace(/Profilaktik ko'rik/gi, 'Профилактический осмотр')
+        .replace(/qayta ko'rik/gi, 'повторный осмотр')
+        .replace(/Tish tozalash/gi, 'Чистка зубов')
+        .replace(/Plomba/gi, 'Пломба')
+        .replace(/Implant nazorati/gi, 'Контроль импланта');
+    }
+    return rText;
+  };
+
+  const cleanRecallNotes = (notes) => {
+    if (!notes) return null;
+    const trimmed = String(notes).trim();
+    if (!trimmed || trimmed.toLowerCase().includes('sdfsdf') || trimmed.toLowerCase().includes('fdsfds') || trimmed.toLowerCase().includes('test')) {
+      return null;
+    }
+    return trimmed;
   };
 
   return (
@@ -640,7 +684,7 @@ export default function RecallSystem() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('recall.title') || "Eslatmalar & Recall"}</h1>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
-              {language === 'ru' ? `• АВТОМАТИЧЕСКИЙ ПОВТОРНЫЙ ВЫЗОВ: ${recalls.length} ЗАПИСЕЙ` : language === 'en' ? `• AUTO RECALL: ${recalls.length} RECORDS` : `• Avtomatik Qayta Chaqirish ${recalls.length} Yozuvlar`}
+              {language === 'ru' ? `• АВТОМАТИЧЕСКИЙ ПОВТОРНЫЙ ВЫЗОВ: ${recalls.length} НАПОМИНАНИЙ` : language === 'en' ? `• AUTO RECALL: ${recalls.length} REMINDERS` : `• AVTOMATIK QAYTA CHAQIRISH: ${recalls.length} TA ESLATMA`}
             </span>
           </div>
           <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
@@ -649,21 +693,20 @@ export default function RecallSystem() {
         </div>
 
         <div className="flex items-center gap-2">
-          
-
           <Button 
             variant="outline" 
             size="sm"
             onClick={() => setSettingsOpen(true)}
-            className="gap-1.5 h-9.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white"
+            className="gap-1.5 h-9.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 hover:text-[#1499AD] hover:bg-slate-50 bg-white shadow-xs cursor-pointer"
+            title={language === 'ru' ? 'Настройка правил авто-напоминаний (1, 3, 6 месяцев, Telegram/SMS)' : 'Avtomatik eslatma va qayta chaqirish qoidalari sozlamalari'}
           >
-            <Settings className="w-3.5 h-3.5 text-slate-500" />
-            <span>{t('recall.settings') || "Sozlamalar"}</span>
+            <Settings className="w-3.5 h-3.5 text-[#1499AD]" />
+            <span>{language === 'ru' ? 'Авто-правила & Настройки' : language === 'en' ? 'Auto Rules & Settings' : "Avto-qoidalar & Sozlamalar"}</span>
           </Button>
 
           <Button 
             onClick={handleOpenNewModal} 
-            className="bg-[#00D084] hover:bg-[#00B875] text-white gap-1.5 border-none rounded-xl h-9.5 px-4 font-black text-xs shadow-md shadow-[#00D084]/20 transition-all active:scale-95"
+            className="bg-[#00D084] hover:bg-[#00B875] text-white gap-1.5 border-none rounded-xl h-9.5 px-4 font-black text-xs shadow-md shadow-[#00D084]/20 transition-all active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>{t('recall.newRecall') || "Yangi recall"}</span>
@@ -794,7 +837,7 @@ export default function RecallSystem() {
           </div>
 
           {/* Filter Tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
               { id: 'all', label: language === 'ru' ? "Все" : language === 'en' ? "All" : "Barchasi", count: statusCounts.all },
               { id: 'upcoming', label: language === 'ru' ? "Предстоящие" : language === 'en' ? "Upcoming" : "Yaqinlashayotgan", count: statusCounts.upcoming },
@@ -804,6 +847,7 @@ export default function RecallSystem() {
               { id: 'history', label: language === 'ru' ? "История сообщений" : language === 'en' ? "History" : "Xabarlar Tarixi", count: statusCounts.history },
             ].map(tab => {
               const isActive = activeTab === tab.id;
+              const hasCount = tab.count > 0;
               return (
                 <button
                   key={tab.id}
@@ -812,13 +856,17 @@ export default function RecallSystem() {
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
                     isActive 
                       ? "bg-slate-900 text-white shadow-xs font-black" 
-                      : "bg-slate-100/70 text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                      : (hasCount 
+                          ? "bg-slate-100/90 text-slate-700 hover:bg-slate-200/80 hover:text-slate-900 border border-slate-200/80" 
+                          : "bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 border border-slate-200/50 opacity-65")
                   )}
                 >
                   <span>{tab.label}</span>
                   <span className={cn(
-                    "px-1.5 py-0.2 rounded-full text-[9px] font-black",
-                    isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
+                    "px-1.5 py-0.2 rounded-full text-[9px] font-black font-mono",
+                    isActive 
+                      ? "bg-white/20 text-white" 
+                      : (hasCount ? "bg-slate-200 text-slate-800" : "bg-slate-100 text-slate-400")
                   )}>
                     {tab.count}
                   </span>
@@ -1084,22 +1132,11 @@ export default function RecallSystem() {
                         <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
                           <div className="min-w-0">
                             <span className="font-bold text-slate-800 truncate block">
-                              {(() => {
-    const rText = recall.reason || recall.treatment_type || (language === 'ru' ? 'Профилактический осмотр' : "Profilaktik ko'rik");
-    if (language === 'ru') {
-      return rText
-        .replace(/Profilaktik ko'rik/gi, 'Профилактический осмотр')
-        .replace(/qayta ko'rik/gi, 'повторный осмотр')
-        .replace(/Tish tozalash/gi, 'Чистка зубов')
-        .replace(/Plomba/gi, 'Пломба')
-        .replace(/Implant nazorati/gi, 'Контроль импланта');
-    }
-    return rText;
-  })()}
+                              {cleanRecallReason(recall)}
                             </span>
-                            {recall.notes && (
+                            {cleanRecallNotes(recall.notes) && (
                               <span className="text-[10px] text-slate-400 truncate block">
-                                {recall.notes}
+                                {cleanRecallNotes(recall.notes)}
                               </span>
                             )}
                           </div>
@@ -1107,24 +1144,30 @@ export default function RecallSystem() {
 
                         {/* STATUS Cell */}
                         <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1 px-2' : 'py-2 px-2.5'}`} onClick={(e) => e.stopPropagation()}>
-                          <Select 
-                            value={recall.status || 'Pending'} 
-                            onValueChange={(val) => updateStatus(recall.id, val)}
-                          >
-                            <SelectTrigger className={cn(
-                              "h-7 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider mx-auto border transition-colors focus:ring-0",
-                              status.bg
-                            )}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl font-bold text-xs">
-                              <SelectItem value="Pending">{language === 'ru' ? 'В ожидании' : 'Kutilmoqda'}</SelectItem>
-                              <SelectItem value="Contacted">{language === 'ru' ? 'Связались' : "Bog'lanildi"}</SelectItem>
-                              <SelectItem value="Scheduled">{language === 'ru' ? 'Запланировано' : 'Rejalashtirilgan'}</SelectItem>
-                              <SelectItem value="Completed">{language === 'ru' ? 'Выполнено' : 'Bajarildi'}</SelectItem>
-                              <SelectItem value="Missed">{language === 'ru' ? 'Пропущено' : "O'tkazib yuborildi"}</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          {(() => {
+                            const normStatus = normalizeRecallStatus(recall.status);
+                            const statusInfo = getStatusBadge(normStatus);
+                            return (
+                              <Select 
+                                value={normStatus} 
+                                onValueChange={(val) => updateStatus(recall.id, val)}
+                              >
+                                <SelectTrigger className={cn(
+                                  "h-7 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider mx-auto border transition-colors focus:ring-0 cursor-pointer",
+                                  statusInfo.bg
+                                )}>
+                                  <SelectValue>{statusInfo.label}</SelectValue>
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl font-bold text-xs">
+                                  <SelectItem value="Pending">{language === 'ru' ? 'В ожидании' : 'Kutilmoqda'}</SelectItem>
+                                  <SelectItem value="Contacted">{language === 'ru' ? 'Связались' : "Bog'lanildi"}</SelectItem>
+                                  <SelectItem value="Scheduled">{language === 'ru' ? 'Запланировано' : 'Rejalashtirilgan'}</SelectItem>
+                                  <SelectItem value="Completed">{language === 'ru' ? 'Выполнено' : 'Bajarildi'}</SelectItem>
+                                  <SelectItem value="Missed">{language === 'ru' ? 'Пропущено' : "O'tkazib yuborildi"}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            );
+                          })()}
                         </td>
 
                         {/* Actions Cell */}
@@ -1308,13 +1351,38 @@ export default function RecallSystem() {
             </div>
 
             <div>
-              <Label className="text-xs font-bold text-slate-700">{t('recall.modal.reason') || 'Davolash turi / Sabab'}</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-xs font-bold text-slate-700">{t('recall.modal.reason') || 'Davolash turi / Sabab'}</Label>
+                <span className="text-[10px] text-slate-400">
+                  {language === 'ru' ? '(По умолчанию: Профосмотр)' : '(Bo\'sh bo\'lsa: Profilaktik ko\'rik)'}
+                </span>
+              </div>
               <Input 
                 value={form.treatment_type} 
                 onChange={e => setForm({ ...form, treatment_type: e.target.value, reason: `${e.target.value} - qayta ko'rik` })} 
-                placeholder="Masalan: Tish tozalash, Plomba, Implant nazorati"
+                placeholder={language === 'ru' ? 'Например: Профосмотр, Чистка зубов, Пломба' : "Masalan: Profilaktik ko'rik, Tish tozalash, Plomba nazorati"}
                 className="h-10 rounded-xl bg-slate-50 border-slate-200 font-bold text-xs"
               />
+              
+              {/* Quick Choice Chips */}
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {[
+                  { label: language === 'ru' ? "Профосмотр" : "Profilaktik ko'rik", val: language === 'ru' ? "Профилактический осмотр" : "Profilaktik ko'rik" },
+                  { label: language === 'ru' ? "Чистка зубов" : "Tish tozalash", val: language === 'ru' ? "Чистка зубов (Air-Flow)" : "Tish tozalash (Air-Flow)" },
+                  { label: language === 'ru' ? "Пломба" : "Plomba nazorati", val: language === 'ru' ? "Контроль пломбы" : "Plomba nazorati" },
+                  { label: language === 'ru' ? "Брекеты" : "Breket tekshiruvi", val: language === 'ru' ? "Осмотр брекетов" : "Breket tekshiruvi" },
+                  { label: language === 'ru' ? "Имплант" : "Implant nazorati", val: language === 'ru' ? "Контроль импланта" : "Implant nazorati" },
+                ].map((chip, cIdx) => (
+                  <button
+                    key={cIdx}
+                    type="button"
+                    onClick={() => setForm({ ...form, treatment_type: chip.val, reason: `${chip.val} - qayta ko'rik` })}
+                    className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 hover:bg-[#1499AD]/15 hover:text-[#1499AD] text-slate-600 transition-all border border-slate-200/80 cursor-pointer"
+                  >
+                    + {chip.label}
+                  </button>
+                ))}
+              </div>
             </div>
             
             <div>
@@ -1323,22 +1391,23 @@ export default function RecallSystem() {
                 value={form.notes} 
                 onChange={e => setForm({ ...form, notes: e.target.value })} 
                 rows={2} 
-                className="rounded-xl bg-slate-50 border-slate-200 text-xs"
+                placeholder={language === 'ru' ? 'Дополнительные примечания для врача или пациента...' : "Shifokor yoki bemor uchun qo'shimcha eslatma..."}
+                className="rounded-xl bg-slate-50 border-slate-200 text-xs mt-1"
               />
             </div>
             
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-              <Button variant="outline" onClick={() => setModalOpen(false)} className="rounded-xl h-10 px-4 text-xs font-bold">
+              <Button variant="outline" onClick={() => setModalOpen(false)} className="rounded-xl h-10 px-4 text-xs font-bold cursor-pointer">
                 {t('common.cancel') || 'Bekor qilish'}
               </Button>
               <Button 
                 onClick={handleSave} 
                 disabled={saving || !form.patient_id || !form.recall_date}
-                className="bg-[#00D084] hover:bg-[#00B875] text-white rounded-xl h-10 px-5 text-xs font-black"
+                className="bg-[#00D084] hover:bg-[#00B875] text-white rounded-xl h-10 px-5 text-xs font-black shadow-md border-none cursor-pointer"
               >
                 {saving ? (
                   <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saqlanmoqda...</>
-                ) : 'Saqlash'}
+                ) : (t('common.save') || 'Saqlash')}
               </Button>
             </div>
           </div>
@@ -1349,7 +1418,7 @@ export default function RecallSystem() {
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="sm:max-w-md rounded-2xl p-5">
           <DialogHeader>
-            <DialogTitle className="text-lg font-black text-slate-900">{language === 'ru' ? 'Настройки напоминаний' : 'Eslatma sozlamalari'}</DialogTitle>
+            <DialogTitle className="text-lg font-black text-slate-900">{language === 'ru' ? 'Настройки авто-напоминаний' : 'Avtomatik eslatma sozlamalari'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
@@ -1363,9 +1432,17 @@ export default function RecallSystem() {
               />
             </div>
             
+            {/* Eslatma vaqtlari */}
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-slate-700">{language === 'ru' ? 'Время напоминания' : 'Eslatma vaqtlari'}</Label>
-              <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <Label className="text-xs font-bold text-slate-700">{language === 'ru' ? 'Время напоминания (интервалы)' : 'Eslatma vaqtlari (oraliqlar)'}</Label>
+              <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    checked={settings.reminder_3_days}
+                    onCheckedChange={v => setSettings({ ...settings, reminder_3_days: v })}
+                  />
+                  <span className="text-xs font-semibold text-slate-700">{language === 'ru' ? 'За 3 дня до' : '3 kun oldin'}</span>
+                </div>
                 <div className="flex items-center gap-2">
                   <Checkbox 
                     checked={settings.reminder_1_day}
@@ -1380,28 +1457,67 @@ export default function RecallSystem() {
                   />
                   <span className="text-xs font-semibold text-slate-700">{language === 'ru' ? 'За 2 часа до' : '2 soat oldin'}</span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    checked={settings.reminder_morning}
+                    onCheckedChange={v => setSettings({ ...settings, reminder_morning: v })}
+                  />
+                  <span className="text-xs font-semibold text-slate-700">{language === 'ru' ? 'Утром в день приёма' : 'Qabul kuni ertalab (08:00)'}</span>
+                </div>
               </div>
             </div>
 
-            <div>
+            {/* Asosiy xabar kanali va Fallback */}
+            <div className="space-y-2">
               <Label className="text-xs font-bold text-slate-700">{language === 'ru' ? 'Основной канал сообщений' : 'Asosiy xabar kanali'}</Label>
               <Select 
-                value={settings.default_channel}
+                value={settings.default_channel || 'telegram_with_fallback'}
                 onValueChange={v => setSettings({ ...settings, default_channel: v })}
               >
                 <SelectTrigger className="h-10 rounded-xl bg-slate-50 border-slate-200 font-bold text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  <SelectItem value="telegram" className="text-xs font-bold">Telegram</SelectItem>
-                  <SelectItem value="sms" className="text-xs font-bold">SMS</SelectItem>
+                  <SelectItem value="telegram_with_fallback" className="text-xs font-bold">
+                    {language === 'ru' ? 'Telegram (с авто-переходом на SMS при отсутствии)' : 'Telegram (Telegram bo\'lmasa SMS zaxira)'}
+                  </SelectItem>
+                  <SelectItem value="sms" className="text-xs font-bold">
+                    {language === 'ru' ? 'SMS уведомления' : 'SMS xabarnoma'}
+                  </SelectItem>
+                  <SelectItem value="telegram" className="text-xs font-bold">
+                    {language === 'ru' ? 'Только Telegram' : 'Faqat Telegram'}
+                  </SelectItem>
+                  <SelectItem value="both" className="text-xs font-bold">
+                    {language === 'ru' ? 'Telegram + SMS (Оба канала)' : 'Telegram + SMS (Ikkalasi ham)'}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Smart Fallback Switch */}
+            <div className="flex items-center justify-between p-3 bg-blue-50/60 rounded-xl border border-blue-200/80">
+              <div>
+                <p className="font-bold text-xs text-blue-900">{language === 'ru' ? 'Резервный канал SMS (Fallback)' : 'SMS zaxira kanali (Fallback)'}</p>
+                <p className="text-[11px] text-blue-700/80">{language === 'ru' ? 'Если у пациента нет Telegram бота, отправлять через SMS' : 'Bemor Telegram botdan foydalanmasa, eslatma SMS orqali yetkaziladi'}</p>
+              </div>
+              <Switch 
+                checked={settings.fallback_sms !== false}
+                onCheckedChange={v => setSettings({ ...settings, fallback_sms: v })}
+              />
+            </div>
             
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-              <Button onClick={() => setSettingsOpen(false)} className="rounded-xl h-10 px-5 text-xs font-black bg-slate-900 text-white">
-                {language === 'ru' ? 'Сохранить и закрыть' : 'Saqlash va Yopish'}
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <Button variant="outline" onClick={() => setSettingsOpen(false)} className="rounded-xl h-10 px-4 text-xs font-bold cursor-pointer">
+                {language === 'ru' ? 'Отмена' : 'Bekor qilish'}
+              </Button>
+              <Button 
+                onClick={() => {
+                  setSettingsOpen(false);
+                  toast.success(language === 'ru' ? 'Настройки сохранены!' : 'Sozlamalar muvaffaqiyatli saqlandi!');
+                }} 
+                className="rounded-xl h-10 px-5 text-xs font-black bg-[#00D084] hover:bg-[#00B875] text-white shadow-md border-none cursor-pointer"
+              >
+                {language === 'ru' ? 'Сохранить' : 'Saqlash'}
               </Button>
             </div>
           </div>

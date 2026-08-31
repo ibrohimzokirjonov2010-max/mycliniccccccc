@@ -617,6 +617,7 @@
     "active": "Active",
     "inactive": "Inactive",
     "categories": {
+      "TERAPIYA (ENDO + PLOMBA)": "THERAPY (ENDO + FILLING)",
       "TERAPIYA( ENDO +PLOMBA)": "THERAPY (ENDO + FILLING)",
       "ORTOPEDIYA": "ORTHOPEDICS",
       "XIRURGIYA": "SURGERY",
@@ -1729,6 +1730,14 @@
       "deleteSuccess": "Photo deleted",
       "imageIndex": "Photo {index}"
     },
+    "brandSystemCol": "Brand / System",
+    "sizeCol": "Size (Ø × L)",
+    "lotCol": "Lot / Batch #",
+    "installedDateCol": "Installed Date",
+    "surgeonCol": "Surgeon",
+    "passportCol": "Passport",
+    "noImplantsFound": "No implants recorded for this patient.",
+    "noPhotosFound": "No photos or X-Ray images found.",
     "implants": {
       "title": "Patient Implants",
       "emptyTitle": "No implants",

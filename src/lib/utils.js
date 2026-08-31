@@ -55,6 +55,116 @@ export function formatDate(date, options = {}) {
   return `${day}.${month}.${year}`;
 }
 
+const UZ_MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
+const UZ_WEEKDAYS = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
+
+const RU_MONTHS = ['Января', 'Февраля', 'Марта', 'Апреля', 'Мая', 'Июня', 'Июля', 'Августа', 'Сентября', 'Октября', 'Ноября', 'Декабря'];
+const RU_WEEKDAYS = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+
+const EN_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const EN_WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/**
+ * Format full date with localized month name and weekday
+ * Guarantees 100% clean formatting without ICU / M08 bugs on all browsers
+ */
+export function formatDateWithWeekday(date, lang = 'uz') {
+  if (!date) return '';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (!d || isNaN(d.getTime())) return String(date || '');
+  
+  const day = d.getDate();
+  const monthIdx = d.getMonth();
+  const dayOfWeek = d.getDay();
+  const year = d.getFullYear();
+
+  if (lang === 'ru') {
+    return `${day} ${RU_MONTHS[monthIdx]} ${year} г., ${RU_WEEKDAYS[dayOfWeek]}`;
+  }
+  if (lang === 'en') {
+    return `${EN_MONTHS[monthIdx]} ${day}, ${year}, ${EN_WEEKDAYS[dayOfWeek]}`;
+  }
+  return `${day}-${UZ_MONTHS[monthIdx]}, ${year} (${UZ_WEEKDAYS[dayOfWeek]})`;
+}
+
+/**
+ * Format service status label into current language
+ * Converts raw statuses ('planned', 'completed', 'in_progress', etc.) to localized user-friendly strings.
+ */
+export function getServiceStatusLabel(status, lang = 'uz') {
+  const s = String(status || '').toLowerCase().trim();
+  if (s === 'completed' || s === 'bajarildi' || s === 'zaversheno' || s === 'bajarilgan' || s === 'done' || s === 'paid') {
+    return lang === 'ru' ? 'Выполнено' : lang === 'en' ? 'Completed' : 'Bajarildi';
+  }
+  if (s === 'in_progress' || s === 'jarayonda' || s === 'v_processe' || s === 'progress') {
+    return lang === 'ru' ? 'В процессе' : lang === 'en' ? 'In Progress' : 'Jarayonda';
+  }
+  if (s === 'cancelled' || s === 'bekor_qilindi' || s === 'otmeneno') {
+    return lang === 'ru' ? 'Отменено' : lang === 'en' ? 'Cancelled' : 'Bekor qilindi';
+  }
+  // Default: planned / rejalashtirilgan
+  return lang === 'ru' ? 'Запланировано' : lang === 'en' ? 'Planned' : 'Rejalashtirilgan';
+}
+
+/**
+ * Format treatment plan name or category
+ */
+export function getTreatmentTypeLabel(typeOrCategory, lang = 'uz') {
+  if (!typeOrCategory) return lang === 'ru' ? 'План лечения' : lang === 'en' ? 'Treatment Plan' : 'Davolash rejasi';
+  const str = String(typeOrCategory).trim();
+  const lower = str.toLowerCase();
+  if (lower === 'treatment' || lower === 'davolash') {
+    return lang === 'ru' ? 'Лечение' : lang === 'en' ? 'Treatment' : 'Davolash';
+  }
+  if (lower === 'treatment plan' || lower === 'davolash rejasi') {
+    return lang === 'ru' ? 'План лечения' : lang === 'en' ? 'Treatment Plan' : 'Davolash rejasi';
+  }
+  if (lower === 'consultation' || lower === 'maslahat') {
+    return lang === 'ru' ? 'Консультация' : lang === 'en' ? 'Consultation' : 'Maslahat';
+  }
+  if (lower === 'filling' || lower === 'plomba' || lower === 'plombirovanie') {
+    return lang === 'ru' ? 'Пломбирование' : lang === 'en' ? 'Filling' : 'Plomba';
+  }
+  if (lower === 'cleaning' || lower === 'tozalash' || lower === 'chiska') {
+    return lang === 'ru' ? 'Чистка' : lang === 'en' ? 'Cleaning' : 'Tozalash';
+  }
+  if (lower === 'implant' || lower === 'implantatsiya') {
+    return lang === 'ru' ? 'Имплантация' : lang === 'en' ? 'Implant' : 'Implantatsiya';
+  }
+  if (lower === 'orthodontics' || lower === 'ortodontiya' || lower === 'breket') {
+    return lang === 'ru' ? 'Ортодонтия' : lang === 'en' ? 'Orthodontics' : 'Ortodontiya';
+  }
+  return str;
+}
+
+/**
+ * Format service category label
+ */
+export function getServiceCategoryLabel(category, lang = 'uz') {
+  if (!category) return lang === 'ru' ? 'Терапия / Лечение' : lang === 'en' ? 'Therapy / Treatment' : 'Plomba / Davolash';
+  const str = String(category).trim();
+  const lower = str.toLowerCase();
+  if (lower === 'filling' || lower === 'plomba') {
+    return lang === 'ru' ? 'Пломба / Лечение' : lang === 'en' ? 'Filling / Treatment' : 'Plomba / Davolash';
+  }
+  if (lower === 'cleaning' || lower === 'tozalash' || lower === 'chiska') {
+    return lang === 'ru' ? 'Чистка / Гигиена' : lang === 'en' ? 'Cleaning / Hygiene' : 'Tozalash / Gigiyena';
+  }
+  if (lower === 'terapiya' || lower === 'therapy') {
+    return lang === 'ru' ? 'Терапия' : lang === 'en' ? 'Therapy' : 'Terapiya';
+  }
+  if (lower === 'implant' || lower === 'implantologiya') {
+    return lang === 'ru' ? 'Имплантология' : lang === 'en' ? 'Implantology' : 'Implantologiya';
+  }
+  if (lower === 'ortodontiya' || lower === 'orthodontics') {
+    return lang === 'ru' ? 'Ортодонтия' : lang === 'en' ? 'Orthodontics' : 'Ortodontiya';
+  }
+  if (lower === 'protez' || lower === 'prosthetics' || lower === 'ortopediya') {
+    return lang === 'ru' ? 'Ортопедия / Протезирование' : lang === 'en' ? 'Prosthetics' : 'Ortopediya / Protez';
+  }
+  return str;
+}
+
 /**
  * Format date and time to Uzbek locale string
  * 

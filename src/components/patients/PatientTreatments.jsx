@@ -9,8 +9,8 @@ import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
+import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 
 const REMOVED_TOOTH_STATUS = 'Olib tashlangan';
 const EXTRACTION_SERVICE_REGEX = /(aqil\s*tish|tish).*(olish|sug'?urish)|olib\s*tashlash|ekstraks|extraction|удалени/i;
@@ -196,8 +196,9 @@ function PatientTreatments({
     return (
       <EmptyState 
         icon={ClipboardList} 
-        title={t('patientTreatments.emptyTitle')} 
-        description={t('patientTreatments.emptyDesc')}
+        variant="purple"
+        title={t('patientTreatments.emptyTitle') || "Davolash rejalari mavjud emas"} 
+        description={t('patientTreatments.emptyDesc') || "Ushbu bemor uchun hali davolash rejasi tuzilmagan."}
       />
     );
   }
@@ -976,162 +977,11 @@ function PatientTreatments({
       </Dialog>
 
       {/* ======== HISOB-FAKTURA MODAL ======== */}
-      {invoicePlan && (
-        <Dialog open={!!invoicePlan} onOpenChange={() => setInvoicePlan(null)}>
-          <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[95vh] overflow-y-auto rounded-[1.5rem] p-0 gap-0 border-0 shadow-2xl bg-white">
-            <div className="flex flex-col">
-              {/* Invoice Header Actions */}
-              <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50 no-print sticky top-0 z-10">
-                <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-indigo-500" />
-                  {t('patientTreatments.invoiceDetails.title')}
-                </h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => window.print()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-100 text-blue-700 text-[10px] font-black hover:bg-blue-100 transition-all"
-                  >
-                    <Printer className="w-3.5 h-3.5" /> {t('patientTreatments.invoiceDetails.print')}
-                  </button>
-                  <button
-                    onClick={() => setInvoicePlan(null)}
-                    className="p-1.5 rounded-xl hover:bg-slate-200 text-slate-400 transition-all"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Invoice Content */}
-              <div id="plan-invoice-print" className="p-6 sm:p-8">
-                {/* Clinic Header */}
-                <div className="flex items-start justify-between mb-6 pb-5 border-b border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                      <svg className="w-6 h-6 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.7 2 6 4.7 6 8c0 4 3 7 6 10 3-3 6-6 6-10 0-3.3-2.7-6-6-6z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h1 className="text-lg font-black text-slate-900 tracking-tight">DentaCRM</h1>
-                      <p className="text-[10px] text-slate-400 font-medium">{t('patientTreatments.invoiceDetails.clinicSubtitle')}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">{t('patientTreatments.invoiceDetails.title').toUpperCase()}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      {formatDate(new Date(), language)}
-                    </p>
-                    <p className="text-[10px] text-slate-300 font-mono">
-                      № {invoicePlan.id?.split('-').pop()?.toUpperCase() || 'XXXXX'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Patient + Plan Info */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('patientTreatments.invoiceDetails.patient')}</p>
-                    <p className="text-sm font-black text-slate-900">{invoicePlan.patient_name || '—'}</p>
-                  </div>
-                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('patientTreatments.invoiceDetails.plan')}</p>
-                    <p className="text-sm font-black text-slate-900 truncate">{formatPlanDepartmentName(invoicePlan, t)}</p>
-                    {invoicePlan.tooth_number && (
-                      <p className="text-[10px] text-emerald-600 font-bold mt-0.5">{t('patientTreatments.forTooth', { number: invoicePlan.tooth_number })}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Services Table */}
-                <div className="mb-6">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('patientTreatments.invoiceDetails.servicesList')}</p>
-                  <div className="rounded-xl border border-slate-100 overflow-hidden">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="bg-slate-50 border-b border-slate-100">
-                          <th className="px-3 py-2 text-left text-[9px] font-black text-slate-400 uppercase">{t('patientTreatments.invoiceDetails.plan')}</th>
-                          <th className="px-3 py-2 text-center text-[9px] font-black text-slate-400 uppercase">{t('patientTreatments.details.status')}</th>
-                          <th className="px-3 py-2 text-right text-[9px] font-black text-slate-400 uppercase">{t('patientTreatments.details.price')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(invoicePlan.services || []).map((svc, i) => (
-                          <tr key={i} className="border-b border-slate-50 last:border-0">
-                            <td className="px-3 py-2.5">
-                              <p className="text-[11px] font-black text-slate-800">{svc.service_name || svc.name || '—'}</p>
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${svc.completed || svc.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-50 text-amber-600'}`}>
-                                {svc.completed || svc.payment_status === 'paid' ? t('patientTreatments.invoiceDetails.completed') : t('patientTreatments.invoiceDetails.pending')}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2.5 text-right">
-                              <span className="text-[11px] font-black text-slate-900">{(svc.price || 0).toLocaleString()} {t('common.currency')}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Totals */}
-                <div className="space-y-2 border-t border-slate-100 pt-4">
-                  {(() => {
-                    const servicesTotal = (invoicePlan.services || []).reduce((s, sv) => s + (Number(sv.price) || 0), 0);
-                    const discountAmt = Number(invoicePlan.discount_amount) || Math.max(0, servicesTotal - (Number(invoicePlan.total_price) || 0));
-                    const discountPct = Number(invoicePlan.discount_percent) || (servicesTotal > 0 ? Math.round((discountAmt / servicesTotal) * 100) : 0);
-                    const finalTotal = Number(invoicePlan.total_price) || servicesTotal - discountAmt;
-                    const paid = Number(invoicePlan.paid_amount) || 0;
-                    const remaining = Math.max(0, finalTotal - paid);
-                    return (
-                      <>
-                        <div className="flex justify-between text-[11px]">
-                          <span className="font-bold text-slate-500">{t('patientTreatments.invoiceDetails.subtotal')}</span>
-                          <span className="font-black text-slate-800">{servicesTotal.toLocaleString()} {t('common.currency')}</span>
-                        </div>
-                        {discountAmt > 0 && (
-                          <div className="flex justify-between text-[11px]">
-                            <span className="font-bold text-amber-600">{t('patientTreatments.invoiceDetails.discount', { percent: discountPct })}</span>
-                            <span className="font-black text-amber-600">-{discountAmt.toLocaleString()} {t('common.currency')}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between text-[12px] border-t border-slate-100 pt-2 mt-1">
-                          <span className="font-black text-slate-700">{t('patientTreatments.invoiceDetails.total')}</span>
-                          <span className="font-black text-slate-900">{finalTotal.toLocaleString()} {t('common.currency')}</span>
-                        </div>
-                        {paid > 0 && (
-                          <div className="flex justify-between text-[11px]">
-                            <span className="font-bold text-emerald-600">{t('patientTreatments.invoiceDetails.paid')}</span>
-                            <span className="font-black text-emerald-700">-{paid.toLocaleString()} {t('common.currency')}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between text-[13px] bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 mt-2">
-                          <span className="font-black text-rose-700 uppercase tracking-wide">{t('patientTreatments.invoiceDetails.remaining')}</span>
-                          <span className="font-black text-rose-700">{remaining.toLocaleString()} {t('common.currency')}</span>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-
-                {/* Signature */}
-                <div className="grid grid-cols-2 gap-8 mt-10 pt-6 border-t border-slate-100">
-                  <div>
-                    <div className="border-b border-slate-300 mb-2 h-10" />
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">{t('patientTreatments.invoiceDetails.doctorSig')}</p>
-                  </div>
-                  <div>
-                    <div className="border-b border-slate-300 mb-2 h-10" />
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">{t('patientTreatments.invoiceDetails.patientSig')}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      <TreatmentPlanInvoice
+        open={!!invoicePlan}
+        onClose={() => setInvoicePlan(null)}
+        plan={invoicePlan}
+      />
     </div>
   );
 }

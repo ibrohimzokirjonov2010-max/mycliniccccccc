@@ -706,6 +706,7 @@
     "active": "Активна",
     "inactive": "Неактивна",
     "categories": {
+      "TERAPIYA (ENDO + PLOMBA)": "ТЕРАПИЯ (ЭНДО + ПЛОМБА)",
       "TERAPIYA( ENDO +PLOMBA)": "ТЕРАПИЯ (ЭНДО + ПЛОМБА)",
       "ORTOPEDIYA": "ОРТОПЕДИЯ",
       "XIRURGIYA": "ХИРУРГИЯ",
@@ -1913,6 +1914,14 @@
       "deleteSuccess": "Фотография удалена",
       "imageIndex": "Фото {index}"
     },
+    "brandSystemCol": "Бренд / Система",
+    "sizeCol": "Размер (Ø × L)",
+    "lotCol": "Лот / Партия #",
+    "installedDateCol": "Дата установки",
+    "surgeonCol": "Хирург",
+    "passportCol": "Паспорт",
+    "noImplantsFound": "Импланты для данного пациента не внесены.",
+    "noPhotosFound": "Снимки или фотографии не найдены.",
     "implants": {
       "title": "Импланты пациента",
       "emptyTitle": "Импланты отсутствуют",

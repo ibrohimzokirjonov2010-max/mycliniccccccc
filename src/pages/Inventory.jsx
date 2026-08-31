@@ -34,6 +34,26 @@ const DEFAULT_INVENTORY_CATEGORIES = [
   'Boshqa'
 ];
 
+export const STANDARD_UNITS = [
+  { value: 'dona', labelUz: 'dona (Dona)', labelRu: 'шт (Штука)', labelEn: 'pcs (Piece)' },
+  { value: 'quti', labelUz: 'quti (Quti / Korobka)', labelRu: 'упак (Упаковка / Коробка)', labelEn: 'box (Box)' },
+  { value: 'flakon', labelUz: 'flakon (Flakon)', labelRu: 'фл (Флакон)', labelEn: 'vial (Vial / Bottle)' },
+  { value: 'ampula', labelUz: 'ampula (Ampula)', labelRu: 'амп (Ампула)', labelEn: 'amp (Ampoule)' },
+  { value: 'to\'plam', labelUz: 'to\'plam (To\'plam / Set)', labelRu: 'набор (Набор / Комплект)', labelEn: 'set (Set)' },
+  { value: 'gramm', labelUz: 'gramm (Gramm / gr)', labelRu: 'г (Грамм)', labelEn: 'g (Gram)' },
+  { value: 'ml', labelUz: 'ml (Millilitr / ml)', labelRu: 'мл (Миллилитр)', labelEn: 'ml (Milliliter)' },
+  { value: 'pachka', labelUz: 'pachka (Pachka)', labelRu: 'пач (Пачка)', labelEn: 'pack (Pack)' },
+  { value: 'rulon', labelUz: 'rulon (Rulon)', labelRu: 'рул (Рулон)', labelEn: 'roll (Roll)' },
+  { value: 'dastak', labelUz: 'dastak (Dastak)', labelRu: 'рук (Рукоятка)', labelEn: 'handle (Handle)' }
+];
+
+export const formatItemUnit = (unit) => {
+  if (!unit) return 'dona';
+  const u = String(unit).trim();
+  if (/^\d+$/.test(u) || u.toLowerCase() === 'gdfgdf') return 'dona';
+  return u;
+};
+
 /**
  * Inventory Page - Professional Excel Spreadsheet View
  */
@@ -57,6 +77,7 @@ export default function Inventory() {
   });
 
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [hideEmptyCategories, setHideEmptyCategories] = useState(false);
   const [newCatModalOpen, setNewCatModalOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [inlineNewCat, setInlineNewCat] = useState('');
@@ -114,7 +135,11 @@ export default function Inventory() {
       } else {
         data = await base44.entities.Inventory.list('name', 300);
       }
-      setItems(data || []);
+      const sanitized = (data || []).map(item => ({
+        ...item,
+        unit: formatItemUnit(item?.unit)
+      }));
+      setItems(sanitized);
     } catch (error) {
       console.error('Inventory load error:', error);
     } finally {
@@ -126,12 +151,6 @@ export default function Inventory() {
     load(); 
   }, [load]);
 
-  // All distinct categories combined
-  const allCategories = useMemo(() => {
-    const fromItems = items.map(i => i.category).filter(Boolean);
-    return Array.from(new Set([...categories, ...fromItems]));
-  }, [categories, items]);
-
   const categoryCounts = useMemo(() => {
     const counts = { all: items.length };
     items.forEach(item => {
@@ -140,6 +159,24 @@ export default function Inventory() {
     });
     return counts;
   }, [items]);
+
+  // All distinct categories combined, with active categories (count > 0) prioritized first
+  const allCategories = useMemo(() => {
+    const fromItems = items.map(i => i.category).filter(Boolean);
+    const unique = Array.from(new Set([...categories, ...fromItems]));
+    return unique.sort((a, b) => {
+      const countA = categoryCounts[a] || 0;
+      const countB = categoryCounts[b] || 0;
+      if (countA > 0 && countB === 0) return -1;
+      if (countA === 0 && countB > 0) return 1;
+      return a.localeCompare(b);
+    });
+  }, [categories, items, categoryCounts]);
+
+  const displayedCategories = useMemo(() => {
+    if (!hideEmptyCategories) return allCategories;
+    return allCategories.filter(cat => (categoryCounts[cat] || 0) > 0 || selectedCategory.toLowerCase() === cat.toLowerCase());
+  }, [allCategories, categoryCounts, hideEmptyCategories, selectedCategory]);
 
   const handleAddCategory = (catNameInput) => {
     const trimmed = (catNameInput || newCatName).trim();
@@ -163,7 +200,7 @@ export default function Inventory() {
       setForm({ 
         name: editItem.name || '', 
         category: editItem.category || (allCategories[0] || 'Restavratsiya'), 
-        unit: editItem.unit || 'dona', 
+        unit: formatItemUnit(editItem.unit), 
         quantity: editItem.quantity || 0, 
         min_quantity: editItem.min_quantity || 5, 
         price_per_unit: editItem.price_per_unit || 0 
@@ -250,10 +287,18 @@ export default function Inventory() {
     }
     setSaving(true);
     try {
+      const sanitizedPayload = {
+        ...form,
+        name: form.name.trim(),
+        unit: formatItemUnit(form.unit),
+        quantity: Number(form.quantity) || 0,
+        min_quantity: Number(form.min_quantity) || 0,
+        price_per_unit: Number(form.price_per_unit) || 0
+      };
       if (editItem) {
-        await base44.entities.Inventory.update(editItem.id, form);
+        await base44.entities.Inventory.update(editItem.id, sanitizedPayload);
       } else {
-        await base44.entities.Inventory.create(form);
+        await base44.entities.Inventory.create(sanitizedPayload);
       }
       setModalOpen(false);
       setEditItem(null);
@@ -346,7 +391,7 @@ export default function Inventory() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('inventory.title') || "Ombor"}</h1>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
-              {language === 'ru' ? `• СКЛАД И МАТЕРИАЛЫ: ${stats.totalItems} ЗАПИСЕЙ` : language === 'en' ? `• INVENTORY: ${stats.totalItems} RECORDS` : `• Sklad va Materiallar ${stats.totalItems} Yozuvlar`}
+              {language === 'ru' ? `• СКЛАД И МАТЕРИАЛЫ: ${stats.totalItems} ЗАПИСЕЙ` : language === 'en' ? `• INVENTORY: ${stats.totalItems} RECORDS` : `• OMBOR VA MATERIALLAR: ${stats.totalItems} TA MAHSULOT`}
             </span>
           </div>
           <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
@@ -485,40 +530,66 @@ export default function Inventory() {
             type="button"
             onClick={() => setSelectedCategory('all')}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer",
+              "px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer border",
               selectedCategory === 'all'
-                ? "bg-slate-900 text-white shadow-xs"
-                : "bg-slate-100/70 text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                ? "bg-slate-900 border-slate-900 text-white shadow-xs"
+                : "bg-slate-100/80 border-slate-200/80 text-slate-700 hover:bg-slate-200 hover:text-slate-900"
             )}
           >
             <span>{t('inventory.all') || (language === 'ru' ? 'Все' : 'Barchasi')}</span>
-            <span className={cn("px-1.5 py-0.2 rounded-full text-[9px] font-black", selectedCategory === 'all' ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600")}>
+            <span className={cn("px-1.5 py-0.2 rounded-full text-[9px] font-black", selectedCategory === 'all' ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700")}>
               {categoryCounts.all || 0}
             </span>
           </button>
 
-          {allCategories.map((cat) => {
+          {displayedCategories.map((cat) => {
             const count = categoryCounts[cat] || 0;
             const isSelected = selectedCategory.toLowerCase() === cat.toLowerCase();
+            const isEmpty = count === 0;
+
             return (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer",
+                  "px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer border",
                   isSelected
-                    ? "bg-[#1499AD] text-white shadow-xs font-black"
-                    : "bg-slate-100/70 text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                    ? "bg-[#1499AD] text-white border-[#1499AD] shadow-xs font-black ring-2 ring-[#1499AD]/20"
+                    : !isEmpty
+                    ? "bg-white text-slate-800 border-slate-200 hover:border-[#1499AD]/60 hover:text-[#1499AD] hover:bg-[#1499AD]/5 shadow-2xs"
+                    : "bg-slate-50/70 text-slate-400 border-dashed border-slate-200/80 opacity-60 hover:opacity-100 hover:text-slate-700 hover:border-slate-300"
                 )}
+                title={isEmpty ? `${cat} (Hali material kiritilmagan)` : `${cat} (${count} ta material)`}
               >
                 <span>{cat}</span>
-                <span className={cn("px-1.5 py-0.2 rounded-full text-[9px] font-black", isSelected ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600")}>
+                <span className={cn(
+                  "px-1.5 py-0.2 rounded-full text-[9px] font-black",
+                  isSelected
+                    ? "bg-white/20 text-white"
+                    : !isEmpty
+                    ? "bg-[#1499AD]/10 text-[#1499AD]"
+                    : "bg-slate-200/50 text-slate-400 font-normal"
+                )}>
                   {count}
                 </span>
               </button>
             );
           })}
+
+          {/* Quick toggle to show/hide empty categories */}
+          {allCategories.some(cat => (categoryCounts[cat] || 0) === 0) && (
+            <button
+              type="button"
+              onClick={() => setHideEmptyCategories(!hideEmptyCategories)}
+              className="px-2.5 py-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-100/70 rounded-lg whitespace-nowrap transition-colors border border-transparent hover:border-slate-200 cursor-pointer ml-1"
+              title={hideEmptyCategories ? "Barcha bo'limlarni ko'rsatish" : "Bo'sh bo'limlarni yashirish"}
+            >
+              {hideEmptyCategories 
+                ? (language === 'ru' ? 'Показать все bo\'limlar' : "Barcha bo'limlarni ko'rsatish") 
+                : (language === 'ru' ? 'Скрыть пустые (0)' : "Bo'shlarni yashirish (0)")}
+            </button>
+          )}
         </div>
       </div>
 
@@ -712,20 +783,22 @@ export default function Inventory() {
 
                       {/* MIQDOR / BIRLIK Cell */}
                       <td className={`text-center border-r border-slate-200/70 whitespace-nowrap bg-blue-50/20 ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
-                        <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-md text-[11px] font-mono font-black border ${
+                        <div className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-mono border ${
                           isOut 
                             ? 'bg-rose-100 text-rose-800 border-rose-300' 
                             : isLow 
                             ? 'bg-amber-100 text-amber-900 border-amber-300' 
                             : 'bg-blue-100/70 text-blue-900 border-blue-200/60'
                         }`}>
-                          <span>{qty} {item.unit || 'dona'}</span>
-                        </span>
+                          <span className="font-black text-xs">{qty}</span>
+                          <span className="text-[10px] font-bold uppercase opacity-80">{formatItemUnit(item.unit)}</span>
+                        </div>
                       </td>
 
                       {/* MIN. ZAXIRA Cell */}
                       <td className={`text-center border-r border-slate-200/70 whitespace-nowrap text-slate-600 font-mono font-bold ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
-                        <span>{minQty} {item.unit || 'dona'}</span>
+                        <span className="text-slate-800 font-black">{minQty}</span>
+                        <span className="text-[10px] font-bold text-slate-400 ml-1 uppercase">{formatItemUnit(item.unit)}</span>
                       </td>
 
                       {/* XARID NARXI Cell */}
@@ -821,7 +894,7 @@ export default function Inventory() {
           <div className="bg-gradient-to-br from-slate-900 to-slate-800 px-8 py-6 text-white relative">
             <div className="relative z-10 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-[900] tracking-tighter uppercase mb-0.5">
+                <h2 className="text-xl font-[900] tracking-tight mb-0.5">
                   {editItem ? (t('inventory.modal.titleEdit') || 'Mahsulotni tahrirlash') : (t('inventory.modal.titleAddProduct') || 'Yangi mahsulot')}
                 </h2>
                 <p className="text-[9px] font-black text-white/40 tracking-[0.2em] uppercase">{language === 'ru' ? 'Введите данные товара' : language === 'en' ? 'Enter product details' : 'Mahsulot tafsilotlarini kiriting'}</p>
@@ -908,12 +981,21 @@ export default function Inventory() {
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-slate-700">{t('inventory.modal.unitLabel') || 'O\'lchov Birligi'}</Label>
-                  <Input 
-                    value={form.unit} 
-                    onChange={e => setForm({ ...form, unit: e.target.value })} 
-                    className="h-10 rounded-xl bg-slate-50 font-bold text-slate-900 text-xs"
-                    placeholder={language === 'ru' ? 'Шт, коробка, флакон, грамм...' : 'Dona, quti, flakon, gramm...'}
-                  />
+                  <Select 
+                    value={STANDARD_UNITS.some(u => u.value === form.unit) ? form.unit : 'dona'} 
+                    onValueChange={v => setForm({ ...form, unit: v })}
+                  >
+                    <SelectTrigger className="h-10 rounded-xl bg-slate-50 font-bold text-slate-900 text-xs border border-slate-200">
+                      <SelectValue placeholder="O'lchov birligini tanlang" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border border-slate-200 shadow-xl max-h-56">
+                      {STANDARD_UNITS.map(u => (
+                        <SelectItem key={u.value} value={u.value} className="font-bold py-2 text-xs">
+                          {language === 'ru' ? u.labelRu : language === 'en' ? u.labelEn : u.labelUz}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -999,8 +1081,8 @@ export default function Inventory() {
             <div className="w-10 h-10 rounded-2xl bg-[#1499AD]/10 text-[#1499AD] flex items-center justify-center mb-2">
               <FolderPlus className="w-5 h-5" />
             </div>
-            <DialogTitle className="text-lg font-black text-slate-900 uppercase">
-              Yangi bo'lim (kategoriya) yaratish
+            <DialogTitle className="text-lg font-black text-slate-900 tracking-tight">
+              Yangi bo'lim qo'shish
             </DialogTitle>
             <p className="text-xs text-slate-400 font-bold">
               Ombordagi materiallarni guruhlash uchun yangi bo'lim nomini kiriting (masalan: Restavratsiya, Plomba va h.k.)
@@ -1037,9 +1119,9 @@ export default function Inventory() {
                 type="button"
                 onClick={() => handleAddCategory()}
                 disabled={!newCatName.trim()}
-                className="h-10 rounded-xl px-5 bg-[#1499AD] hover:bg-[#0E7A8A] text-white font-bold text-xs"
+                className="h-10 rounded-xl px-5 bg-[#1499AD] hover:bg-[#0E7A8A] text-white font-bold text-xs shadow-xs"
               >
-                Yaratish
+                Qo'shish
               </Button>
             </DialogFooter>
           </div>
@@ -1053,7 +1135,7 @@ export default function Inventory() {
             <Trash2 className="w-10 h-10" />
           </div>
           <div className="p-6 text-center">
-            <AlertDialogTitle className="text-base font-black text-slate-900 uppercase tracking-tight mb-1">
+            <AlertDialogTitle className="text-base font-black text-slate-900 tracking-tight mb-1">
               O'chirishni tasdiqlaysizmi?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs font-bold text-slate-500 leading-relaxed">

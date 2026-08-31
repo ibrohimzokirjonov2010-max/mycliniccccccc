@@ -260,8 +260,8 @@ export default function PatientExcelView({
   };
 
   const isCompact = density === 'compact';
-  const tablePadding = isCompact ? 'px-3.5 py-3.5 text-xs' : 'px-4 py-4.5 text-sm';
-  const thPadding = isCompact ? 'px-3.5 py-3 text-[11px]' : 'px-4 py-3.5 text-xs';
+  const tablePadding = isCompact ? 'px-3 py-1.5 text-xs' : 'px-3.5 py-2.5 text-sm';
+  const thPadding = isCompact ? 'px-3 py-1 text-[11px]' : 'px-3.5 py-2 text-xs';
 
   return (
     <div className="space-y-4 pb-12">

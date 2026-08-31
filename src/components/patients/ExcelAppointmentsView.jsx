@@ -3,14 +3,11 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import { 
   Calendar, Plus, Search,
   ArrowUpDown, User, CheckCircle2,
-  XCircle, AlertTriangle
+  XCircle, AlertTriangle, Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import EmptyState from '../ui/EmptyState';
 
-/**
- * ExcelAppointmentsView Component
- * High-productivity Excel Spreadsheet View for Patient Appointments Registry.
- */
 function ExcelAppointmentsView({
   patient,
   appointments = [],
@@ -19,24 +16,15 @@ function ExcelAppointmentsView({
 }) {
   const { t, language } = useTranslation();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'Confirmed' | 'Completed' | 'Cancelled' | 'Pending'
   const [sortField, setSortField] = useState('date');
   const [sortAsc, setSortAsc] = useState(false);
-  const [density, setDensity] = useState('compact');
 
   const filteredAppointments = useMemo(() => {
     let list = [...appointments];
 
-    if (statusFilter !== 'all') {
-      list = list.filter(a => {
-        const s = a.status || 'Confirmed';
-        return s.toLowerCase().includes(statusFilter.toLowerCase());
-      });
-    }
-
     if (search) {
       const q = search.toLowerCase();
-      list = list.filter(a => 
+      list = list.filter(a =>
         (a.doctor_name && a.doctor_name.toLowerCase().includes(q)) ||
         (a.service_name && a.service_name.toLowerCase().includes(q)) ||
         (a.notes && a.notes.toLowerCase().includes(q)) ||
@@ -56,197 +44,212 @@ function ExcelAppointmentsView({
     });
 
     return list;
-  }, [appointments, search, statusFilter, sortField, sortAsc]);
-
-  const toggleSort = (field) => {
-    if (sortField === field) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortField(field);
-      setSortAsc(false);
-    }
-  };
+  }, [appointments, search, sortField, sortAsc]);
 
   const getStatusBadge = (status) => {
     const s = (status || '').toLowerCase();
     if (s.includes('complete') || s.includes('tugallandi') || s.includes('завершено')) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px]">
-          <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-          <span>{t('patientProfile.statusCompleted') || 'Tugallandi'}</span>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[9px] uppercase tracking-wide">
+          <CheckCircle2 className="w-3 h-3 shrink-0" />
+          {t('patientProfile.statusCompleted') || 'Tugallandi'}
         </span>
       );
     }
     if (s.includes('cancel') || s.includes('bekor') || s.includes('отменено')) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[10px]">
-          <XCircle className="w-3 h-3 text-rose-600 shrink-0" />
-          <span>{t('patientProfile.statusCancelled') || 'Bekor qilindi'}</span>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[9px] uppercase tracking-wide">
+          <XCircle className="w-3 h-3 shrink-0" />
+          {t('patientProfile.statusCancelled') || 'Bekor'}
         </span>
       );
     }
     if (s.includes('noshow') || s.includes('kelmadi') || s.includes('не явился')) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[10px]">
-          <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
-          <span>{t('patientProfile.statusNoShow') || 'Kelmadi'}</span>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[9px] uppercase tracking-wide">
+          <AlertTriangle className="w-3 h-3 shrink-0" />
+          Kelmadi
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[10px]">
-        <Calendar className="w-3 h-3 text-blue-600 shrink-0" />
-        <span>{t('patientProfile.statusConfirmed') || 'Tasdiqlangan'}</span>
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[9px] uppercase tracking-wide">
+        <Calendar className="w-3 h-3 shrink-0" />
+        {t('patientProfile.statusConfirmed') || 'Tasdiqlangan'}
       </span>
     );
   };
 
   return (
-    <div className="space-y-4">
-      {/* ══ TOOLBAR CONTROLS & FILTERS ══ */}
-      <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
-        {/* Filter Bar */}
-        <div className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap flex-1">
-            {/* Search Input */}
-            <div className="relative min-w-[200px] max-w-sm flex-1">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t('patientProfile.searchAppts') || "Shifokor, muolaja, xona qidirish..."}
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">✕</button>
-              )}
-            </div>
-          </div>
+    <div className="space-y-3">
 
-          <div className="flex items-center gap-2 shrink-0">
-            {onOpenApptModal && (
-              <button
-                onClick={onOpenApptModal}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-lg text-xs font-black shadow-2xs transition-all cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ {t('patientProfile.bookApptBtn') || 'Uchrashuv belgilash'}</span>
-              </button>
-            )}
-          </div>
+      {/* ── TOOLBAR ── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+        <div className="relative flex-1 min-w-0">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t('patientProfile.searchAppts') || "Shifokor, muolaja qidirish..."}
+            className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1499AD]/30 focus:border-[#1499AD] transition-all"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-100 text-xs transition-all">✕</button>
+          )}
         </div>
+        {onOpenApptModal && (
+          <button
+            onClick={onOpenApptModal}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-700 text-white rounded-xl text-sm font-black shadow-sm transition-all active:scale-95 whitespace-nowrap shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            {t('patientProfile.bookApptBtn') || 'Uchrashuv belgilash'}
+          </button>
+        )}
       </div>
 
-      {/* ══ EXCEL SPREADSHEET TABLE ══ */}
-      <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full border-collapse text-left font-sans text-sm">
-            <thead>
-              <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-xs">
-                <th className="py-3 px-3.5 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
-                <th 
-                  className="py-3 px-3.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors font-mono select-none"
-                  onClick={() => toggleSort('date')}
-                >
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span>{t('patientProfile.dateTimeCol') || 'Sana & Vaqt'}</span>
-                    <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+      {/* ── MOBILE CARDS ── */}
+      <div className="md:hidden space-y-2.5">
+        {filteredAppointments.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-100 py-14 text-center flex flex-col items-center gap-2">
+            <Calendar className="w-10 h-10 text-slate-200" />
+            <p className="text-slate-400 text-sm font-semibold">
+              {t('patientProfile.noApptsFound') || "Uchrashuvlar topilmadi"}
+            </p>
+            <p className="text-slate-300 text-xs">Yuqoridagi tugmadan yangi qabul belgilang</p>
+          </div>
+        ) : (
+          filteredAppointments.map((appt, idx) => {
+            const d = appt.date || appt.appointment_date || appt.created_date;
+            const dateObj = d ? new Date(d) : null;
+            const locale = language === 'ru' ? 'ru-RU' : language === 'en' ? 'en-US' : 'uz-UZ';
+            const dateFormatted = dateObj ? dateObj.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+            const timeFormatted = appt.time || (dateObj ? dateObj.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '');
+            const docName = appt.doctor_name || (doctors.find(doc => doc.id === appt.doctor_id)?.full_name) || patient?.doctor_name || 'Shifokor';
+            const chairText = appt.chair_number ? `Kreslo #${appt.chair_number}` : 'Kreslo #1';
+            const serviceName = appt.service_name || appt.reason || 'Davolash muolajasi';
+
+            return (
+              <div key={appt.id || idx} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                {/* Card top */}
+                <div className="p-3.5 flex items-start gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100 flex flex-col items-center justify-center shrink-0">
+                    <Calendar className="w-5 h-5 text-blue-600" />
                   </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-black text-slate-900 line-clamp-2 leading-tight">{serviceName}</p>
+                    <p className="text-[11px] font-bold text-slate-500 mt-0.5">{dateFormatted} {timeFormatted && `· ${timeFormatted}`}</p>
+                  </div>
+                  {getStatusBadge(appt.status)}
+                </div>
+
+                {/* Stats grid */}
+                <div className="grid grid-cols-3 gap-px bg-slate-100 border-t border-slate-100">
+                  <div className="bg-white px-3 py-2.5">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Shifokor</p>
+                    <p className="text-[11px] font-bold text-slate-700 mt-0.5 leading-none truncate">{docName}</p>
+                  </div>
+                  <div className="bg-white px-3 py-2.5">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Kreslo</p>
+                    <p className="text-[11px] font-bold text-slate-700 mt-0.5 leading-none">{chairText}</p>
+                  </div>
+                  <div className="bg-white px-3 py-2.5">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Tish #</p>
+                    <p className="text-[11px] font-bold text-indigo-700 mt-0.5 leading-none">
+                      {appt.tooth_number ? `#${appt.tooth_number}` : '—'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                {appt.notes && (
+                  <div className="px-3.5 py-2 bg-amber-50/40 border-t border-amber-100">
+                    <p className="text-[10px] font-semibold text-amber-800 italic leading-relaxed line-clamp-2">💬 {appt.notes}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ── DESKTOP TABLE ── */}
+      <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
+                <th className="py-3 px-4 border-r border-slate-100 w-10 text-center">№</th>
+                <th className="py-3 px-4 border-r border-slate-100 cursor-pointer hover:bg-slate-100 select-none min-w-[120px]"
+                  onClick={() => { setSortField('date'); setSortAsc(sortField === 'date' ? !sortAsc : false); }}>
+                  <div className="flex items-center gap-1">{t('patientProfile.dateTimeCol') || 'Sana & Vaqt'}<ArrowUpDown className="w-3 h-3 text-slate-400" /></div>
                 </th>
-                <th className="py-3 px-3.5 border-r border-slate-200 min-w-[150px]">{t('patientProfile.doctorCol') || 'Shifokor'}</th>
-                <th className="py-3 px-3.5 border-r border-slate-200 font-mono text-center">{t('patientProfile.chairCol') || 'Kreslo / Xona'}</th>
-                <th className="py-3 px-3.5 border-r border-slate-200 font-mono text-center w-16">{t('patientProfile.toothCol') || 'Tish #'}</th>
-                <th className="py-3 px-3.5 border-r border-slate-200 min-w-[180px]">{t('patientProfile.plannedTreatmentCol') || 'Rejalashtirilgan Muolaja'}</th>
-                <th className="py-3 px-3.5 border-r border-slate-200 font-mono text-center min-w-[90px]">{t('patientProfile.durationCol') || 'Davomiyligi'}</th>
-                <th className="py-3 px-3.5 border-r border-slate-200 text-center min-w-[110px]">{t('patientProfile.statusCol') || 'Holati'}</th>
-                <th className="py-3 px-3.5 min-w-[140px]">{t('patientProfile.notesCol') || 'Eslatma'}</th>
+                <th className="py-3 px-4 border-r border-slate-100 min-w-[140px]">{t('patientProfile.doctorCol') || 'Shifokor'}</th>
+                <th className="py-3 px-4 border-r border-slate-100 text-center">{t('patientProfile.chairCol') || 'Kreslo'}</th>
+                <th className="py-3 px-4 border-r border-slate-100 text-center w-16">Tish #</th>
+                <th className="py-3 px-4 border-r border-slate-100 min-w-[180px]">{t('patientProfile.plannedTreatmentCol') || 'Muolaja'}</th>
+                <th className="py-3 px-4 border-r border-slate-100 text-center">{t('common.duration') || 'Davom.'}</th>
+                <th className="py-3 px-4 border-r border-slate-100 text-center">{t('common.status') || 'Holati'}</th>
+                <th className="py-3 px-4">{t('patientProfile.notesCol') || 'Eslatma'}</th>
               </tr>
             </thead>
             <tbody>
               {filteredAppointments.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400 italic bg-slate-50/50">
-                    <Calendar className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    {t('patientProfile.noApptsFound') || 'Uchrashuvlar topilmadi.'}
+                  <td colSpan={9} className="py-14 text-center">
+                    <Calendar className="w-8 h-8 mx-auto mb-2 text-slate-200" />
+                    <p className="text-slate-400 text-sm font-semibold">
+                      {t('patientProfile.noApptsFound') || "Uchrashuvlar topilmadi"}
+                    </p>
+                    {onOpenApptModal && (
+                      <button onClick={onOpenApptModal} className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-black">
+                        <Plus className="w-4 h-4" />Yangi uchrashuv
+                      </button>
+                    )}
                   </td>
                 </tr>
-              ) : (
-                filteredAppointments.map((appt, idx) => {
-                  const d = appt.date || appt.appointment_date || appt.created_date;
-                  const dateObj = d ? new Date(d) : null;
-                  const locale = language === 'ru' ? 'ru-RU' : language === 'en' ? 'en-US' : 'uz-UZ';
-                  const dateFormatted = dateObj ? dateObj.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
-                  const timeFormatted = appt.time ? `${appt.time} - ${appt.end_time || ''}` : (dateObj ? dateObj.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '—');
-                  const docName = appt.doctor_name || (doctors.find(doc => doc.id === appt.doctor_id)?.full_name) || patient?.doctor_name || (t('patientProfile.doctorCol') || 'Shifokor');
-                  const chairText = appt.chair_number ? (language === 'ru' ? `Кресло #${appt.chair_number}` : language === 'en' ? `Chair #${appt.chair_number}` : `Kreslo #${appt.chair_number}`) : (language === 'ru' ? 'Кресло #1' : language === 'en' ? 'Chair #1' : 'Kreslo #1');
+              ) : filteredAppointments.map((appt, idx) => {
+                const d = appt.date || appt.appointment_date || appt.created_date;
+                const dateObj = d ? new Date(d) : null;
+                const locale = language === 'ru' ? 'ru-RU' : language === 'en' ? 'en-US' : 'uz-UZ';
+                const dateFormatted = dateObj ? dateObj.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+                const timeFormatted = appt.time ? appt.time : (dateObj ? dateObj.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) : '—');
+                const docName = appt.doctor_name || (doctors.find(doc => doc.id === appt.doctor_id)?.full_name) || patient?.doctor_name || 'Shifokor';
+                const chairText = appt.chair_number ? `Kreslo #${appt.chair_number}` : 'Kreslo #1';
 
-                  return (
-                    <tr
-                      key={appt.id || idx}
-                      className={cn(
-                        "border-b border-slate-200/70 hover:bg-sky-50/40 transition-colors",
-                        idx % 2 === 1 ? "bg-slate-50/40" : "bg-white"
-                      )}
-                    >
-                      {/* Row Index */}
-                      <td className={cn(
-                        "border-r border-slate-200 text-center font-mono font-bold text-slate-500 bg-slate-100/40 text-xs",
-                        density === 'compact' ? 'py-3.5 px-3' : 'py-4.5 px-3.5'
-                      )}>
-                        {idx + 1}
-                      </td>
-
-                      {/* Date & Time */}
-                      <td className={cn("border-r border-slate-200 font-mono text-slate-700 whitespace-nowrap text-xs sm:text-sm", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
-                        <span className="font-bold text-slate-900">{dateFormatted}</span> <span className="text-slate-500 font-medium text-xs">({timeFormatted})</span>
-                      </td>
-
-                      {/* Doctor */}
-                      <td className={cn("border-r border-slate-200 font-semibold text-slate-800 text-xs sm:text-sm", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
-                        <div className="flex items-center gap-1.5">
-                          <User className="w-4 h-4 text-slate-400 shrink-0" />
-                          <span>{docName}</span>
-                        </div>
-                      </td>
-
-                      {/* Chair */}
-                      <td className={cn("border-r border-slate-200 font-mono text-slate-700 font-medium text-center text-xs sm:text-sm", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
-                        {chairText}
-                      </td>
-
-                      {/* Tooth # */}
-                      <td className={cn("border-r border-slate-200 font-mono font-black text-center text-indigo-700 bg-indigo-50/40 text-sm", density === 'compact' ? 'py-3.5 px-3' : 'py-4.5 px-3.5')}>
-                        {appt.tooth_number ? `#${appt.tooth_number}` : '—'}
-                      </td>
-
-                      {/* Service / Reason */}
-                      <td className={cn("border-r border-slate-200 font-bold text-slate-900 text-sm", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
-                        {appt.service_name || appt.reason || (t('patientProfile.plannedTreatmentCol') || 'Davolash muolajasi')}
-                      </td>
-
-                      {/* Duration */}
-                      <td className={cn("border-r border-slate-200 font-mono text-center text-slate-700 font-bold text-xs sm:text-sm", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
-                        {appt.duration || 30} {t('common.minuteAbbr') || 'daq'}
-                      </td>
-
-                      {/* Status */}
-                      <td className={cn("border-r border-slate-200 text-center", density === 'compact' ? 'py-3 px-3' : 'py-4 px-3.5')}>
-                        {getStatusBadge(appt.status)}
-                      </td>
-
-                      {/* Notes */}
-                      <td className={cn("text-slate-600 italic text-xs sm:text-sm", density === 'compact' ? 'py-3.5 px-3.5' : 'py-4.5 px-4')}>
-                        {appt.notes || '—'}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
+                return (
+                  <tr key={appt.id || idx} className={cn("border-b border-slate-100 hover:bg-sky-50/30 transition-colors", idx % 2 === 1 && "bg-slate-50/30")}>
+                    <td className="py-2 px-4 text-center font-mono text-[11px] text-slate-400 border-r border-slate-100">{idx + 1}</td>
+                    <td className="py-2 px-4 font-mono text-slate-800 whitespace-nowrap text-xs border-r border-slate-100">
+                      <span className="font-bold">{dateFormatted}</span> <span className="text-slate-500">{timeFormatted}</span>
+                    </td>
+                    <td className="py-2 px-4 border-r border-slate-100">
+                      <div className="flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                        <span className="text-sm font-medium text-slate-700">{docName}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-4 text-center font-mono text-xs text-slate-600 border-r border-slate-100">{chairText}</td>
+                    <td className="py-2 px-4 text-center font-mono font-black text-indigo-600 border-r border-slate-100">
+                      {appt.tooth_number ? `#${appt.tooth_number}` : '—'}
+                    </td>
+                    <td className="py-2 px-4 font-bold text-slate-900 border-r border-slate-100">
+                      {appt.service_name || appt.reason || 'Davolash muolajasi'}
+                    </td>
+                    <td className="py-2 px-4 text-center font-mono text-xs text-slate-600 border-r border-slate-100">
+                      {appt.duration || 30} {t('common.minuteAbbr') || 'daq'}
+                    </td>
+                    <td className="py-2 px-4 text-center border-r border-slate-100">{getStatusBadge(appt.status)}</td>
+                    <td className="py-2 px-4 text-slate-500 italic text-xs">{appt.notes || '—'}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
+
     </div>
   );
 }

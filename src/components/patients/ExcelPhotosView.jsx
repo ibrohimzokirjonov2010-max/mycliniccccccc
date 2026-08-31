@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { XrayIcon } from '@/components/ui/Icons';
+import EmptyState from '../ui/EmptyState';
 
 /**
  * ExcelPhotosView Component
@@ -23,7 +24,7 @@ function ExcelPhotosView({
   const { t, language } = useTranslation();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'photo' | 'xray' | 'ct' | 'panoramic'
-  const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
+  const [viewMode, setViewMode] = useState('grid'); // 'table' | 'grid' — default grid for mobile
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
 
   const filteredPhotos = useMemo(() => {
@@ -109,79 +110,64 @@ function ExcelPhotosView({
   };
 
   return (
-    <div className="space-y-4">
-      {/* ══ TOOLBAR CONTROLS & FILTERS ══ */}
-      <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
-        {/* Action Controls & Filters */}
-        <div className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap flex-1">
-            {/* Search Input */}
-            <div className="relative min-w-[200px] max-w-sm flex-1">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={language === 'ru' ? "Поиск по описанию, врачу, номеру зуба..." : language === 'en' ? "Search notes, doctor, tooth #..." : "Izoh, shifokor, tish #..."}
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">✕</button>
-              )}
-            </div>
-
-            {/* Type Filter */}
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
-            >
-              <option value="all">{language === 'ru' ? "Все типы" : language === 'en' ? "All types" : "Barcha turlar"}</option>
-              <option value="photo">{language === 'ru' ? "Клинические фото" : "Klinik Rasmlar"}</option>
-              <option value="xray">{language === 'ru' ? "Рентген снимки" : "Rentgen Tasvirlar"}</option>
-              <option value="ct">{language === 'ru' ? "3D КТ томография" : "3D KT Tomografiya"}</option>
-              <option value="panoramic">{language === 'ru' ? "Панорамный (ОПТГ)" : "Panoramik (OPTG)"}</option>
-            </select>
+    <div className="space-y-3">
+      {/* ── TOOLBAR ── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 space-y-2.5">
+        <div className="flex gap-2">
+          {/* Search */}
+          <div className="relative flex-1 min-w-0">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder={language === 'ru' ? "Поиск..." : language === 'en' ? "Search..." : "Qidirish..."}
+              className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1499AD]/30 focus:border-[#1499AD] transition-all"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-100 text-xs">✕</button>
+            )}
           </div>
-
-          {/* Right: View Mode Toggle & Upload */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* View Mode */}
-            <div className="inline-flex p-0.5 bg-slate-100 rounded-lg border border-slate-200/60 gap-0.5">
-              <button
-                onClick={() => setViewMode('table')}
-                className={cn("px-2.5 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-1 cursor-pointer", viewMode === 'table' ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500")}
-              >
-                <TableIcon className="w-3.5 h-3.5" />
-                <span>{language === 'ru' ? "Таблица" : language === 'en' ? "Table" : "Jadval"}</span>
-              </button>
-              <button
-                onClick={() => setViewMode('grid')}
-                className={cn("px-2.5 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-1 cursor-pointer", viewMode === 'grid' ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500")}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>{language === 'ru' ? "Галерея" : language === 'en' ? "Gallery" : "Galereya"}</span>
-              </button>
-            </div>
-
-            {/* Upload Button */}
-            <label className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-lg text-xs font-black shadow-2xs transition-all cursor-pointer">
-              <Upload className="w-3.5 h-3.5" />
-              <span>+ {language === 'ru' ? "Загрузить фото" : language === 'en' ? "Upload Photo" : "Rasm Yuklash"}</span>
-              <input type="file" accept="image/*" multiple className="hidden" onChange={onPhotoUpload} />
-            </label>
+          {/* View Toggle */}
+          <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200 gap-0.5 shrink-0">
+            <button onClick={() => setViewMode('grid')} className={cn("p-2 rounded-lg text-xs font-bold transition-all cursor-pointer", viewMode === 'grid' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500")}>
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button onClick={() => setViewMode('table')} className={cn("p-2 rounded-lg text-xs font-bold transition-all cursor-pointer", viewMode === 'table' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500")}>
+              <TableIcon className="w-4 h-4" />
+            </button>
           </div>
+        </div>
+        <div className="flex gap-2">
+          {/* Type filter */}
+          <select
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+            className="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1499AD]/30"
+          >
+            <option value="all">{language === 'ru' ? "Все типы" : language === 'en' ? "All types" : "Barcha turlar"}</option>
+            <option value="photo">{language === 'ru' ? "Клинические фото" : "Klinik Rasmlar"}</option>
+            <option value="xray">{language === 'ru' ? "Рентген снимки" : "Rentgen Tasvirlar"}</option>
+            <option value="ct">{language === 'ru' ? "3D КТ томография" : "3D KT Tomografiya"}</option>
+            <option value="panoramic">{language === 'ru' ? "Панорамный" : "Panoramik OPTG"}</option>
+          </select>
+          {/* Upload Button */}
+          <label className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1499AD] hover:bg-[#117a8c] text-white rounded-xl text-sm font-black shadow-sm shadow-[#1499AD]/20 transition-all cursor-pointer whitespace-nowrap shrink-0">
+            <Upload className="w-4 h-4" />
+            <span className="hidden sm:inline">+ {language === 'ru' ? "Загрузить" : language === 'en' ? "Upload" : "Rasm"}</span>
+            <span className="sm:hidden">+</span>
+            <input type="file" accept="image/*" multiple className="hidden" onChange={onPhotoUpload} />
+          </label>
         </div>
       </div>
 
-      {/* ══ VIEW MODE 1: EXCEL SPREADSHEET TABLE ══ */}
       {viewMode === 'table' ? (
         <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full border-collapse text-left font-sans text-xs">
               <thead>
-                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-[10.5px]">
-                  <th className="py-2.5 px-3 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
+                <tr className="bg-slate-100/95 border-b border-slate-300 text-slate-800 font-extrabold uppercase tracking-wider text-[11px]">
+                  <th className="py-2.5 px-3 border-r border-slate-200 text-center w-12 bg-slate-200/70 font-mono">№</th>
                   <th className="py-2.5 px-3 border-r border-slate-200 text-center w-16">{language === 'ru' ? "Миниатюра" : language === 'en' ? "Thumbnail" : "Miniatyura"}</th>
                   <th className="py-2.5 px-3 border-r border-slate-200 min-w-[200px]">{language === 'ru' ? "Файл / Примечание" : language === 'en' ? "File / Notes" : "Fayl / Izoh"}</th>
                   <th className="py-2.5 px-3 border-r border-slate-200">{language === 'ru' ? "Тип снимка" : language === 'en' ? "Image Type" : "Tasvir Turi"}</th>
@@ -193,11 +179,19 @@ function ExcelPhotosView({
               <tbody>
                 {filteredPhotos.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400 italic bg-slate-50/50">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <XrayIcon className="w-8 h-8 text-slate-300" />
-                        <span>{language === 'ru' ? "Снимки или фотографии не найдены." : language === 'en' ? "No photos or X-Rays found." : "Hech qanday rasmlar yoki rentgen tasvirlari topilmadi."}</span>
-                      </div>
+                    <td colSpan={7} className="py-10 bg-slate-50/40">
+                      <EmptyState
+                        icon={Camera}
+                        variant="blue"
+                        title={t('patientProfile.photos.emptyTitle') || "Rentgen va rasmlar yo'q"}
+                        description={
+                          search || typeFilter !== 'all'
+                            ? "Qidiruv yoki tanlangan filtr bo'yicha rasmlar topilmadi."
+                            : (t('patientProfile.noPhotosFound') || "Bu bemor uchun hali rentgen yoki klinik suratlar yuklanmagan.")
+                        }
+                        secondaryActionText={(search || typeFilter !== 'all') ? "Filtrlarni tozalash" : undefined}
+                        onSecondaryAction={() => { setSearch(''); setTypeFilter('all'); }}
+                      />
                     </td>
                   </tr>
                 ) : (

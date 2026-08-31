@@ -129,6 +129,16 @@ export default function Reports() {
     return date.toLocaleDateString(chartLocale, { month: 'short', year: 'numeric' });
   }, [language, chartLocale]);
 
+  const formatChartYAxis = useCallback((val) => {
+    if (!val || val === 0) return '0';
+    const num = Number(val);
+    if (isNaN(num)) return '0';
+    if (num >= 1_000_000_000) return `${(num / 1_000_000_000).toFixed(1).replace(/\.0$/, '')} ${language === 'ru' ? 'млрд' : language === 'en' ? 'B' : 'mlrd'}`;
+    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1).replace(/\.0$/, '')} ${language === 'ru' ? 'млн' : language === 'en' ? 'M' : 'mln'}`;
+    if (num >= 1_000) return `${(num / 1_000).toFixed(0)} ${language === 'ru' ? 'тыс' : language === 'en' ? 'k' : 'ming'}`;
+    return num.toLocaleString();
+  }, [language]);
+
   // Date range filter helpers
   const now = new Date();
   const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -272,29 +282,35 @@ export default function Reports() {
         case 'appointments':
           valA = a.appointmentCount;
           valB = b.appointmentCount;
-          return docSortOrder === 'asc' ? valA - valB : valB - valA;
+          break;
         case 'patients':
           valA = a.uniquePatients;
           valB = b.uniquePatients;
-          return docSortOrder === 'asc' ? valA - valB : valB - valA;
+          break;
         case 'completed':
           valA = a.completedCount;
           valB = b.completedCount;
-          return docSortOrder === 'asc' ? valA - valB : valB - valA;
+          break;
         case 'avg_check':
           valA = a.avgCheck;
           valB = b.avgCheck;
-          return docSortOrder === 'asc' ? valA - valB : valB - valA;
+          break;
         case 'share':
           valA = a.revenueShare;
           valB = b.revenueShare;
-          return docSortOrder === 'asc' ? valA - valB : valB - valA;
+          break;
         case 'revenue':
         default:
           valA = a.revenue;
           valB = b.revenue;
-          return docSortOrder === 'asc' ? valA - valB : valB - valA;
+          break;
       }
+      if (valA !== valB) {
+        return docSortOrder === 'asc' ? valA - valB : valB - valA;
+      }
+      // Secondary tie-breaker: sort by revenue then completed appointments
+      if (b.revenue !== a.revenue) return b.revenue - a.revenue;
+      return b.completedCount - a.completedCount;
     });
 
     return result.map((doc, idx) => ({ ...doc, rank: idx + 1 }));
@@ -831,18 +847,19 @@ export default function Reports() {
                 {doctorLeaderboard.length > 0 ? (
                   doctorLeaderboard.map((doc, idx) => {
                     const isCompact = density === 'compact';
+                    const isInactive = doc.revenue === 0 && doc.appointmentCount === 0;
                     return (
                       <tr 
                         key={doc.id || idx}
                         className={`group hover:bg-[#1499AD]/10 transition-colors ${
-                          idx % 2 === 1 ? 'bg-slate-50/30' : 'bg-white'
+                          isInactive ? 'opacity-70 bg-slate-50/20' : (idx % 2 === 1 ? 'bg-slate-50/30' : 'bg-white')
                         }`}
                       >
                         <td className={`text-center font-mono font-bold text-slate-400 border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-2 px-2' : 'py-3 px-2.5'}`}>
-                          {idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : idx + 1}
+                          {doc.revenue > 0 && idx === 0 ? '🥇 1' : doc.revenue > 0 && idx === 1 ? '🥈 2' : doc.revenue > 0 && idx === 2 ? '🥉 3' : idx + 1}
                         </td>
                         <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
-                          <span className="font-extrabold text-slate-900 group-hover:text-[#1499AD] transition-colors truncate block">
+                          <span className={`font-extrabold group-hover:text-[#1499AD] transition-colors truncate block ${isInactive ? 'text-slate-600' : 'text-slate-900'}`}>
                             {doc.name}
                           </span>
                         </td>
@@ -854,30 +871,62 @@ export default function Reports() {
                           </span>
                         </td>
                         <td className={`text-center border-r border-slate-200/70 whitespace-nowrap bg-blue-50/20 ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
-                          <span className="font-mono font-bold text-blue-900">{doc.appointmentCount} {language === 'ru' ? '' : 'ta'}</span>
+                          {doc.appointmentCount > 0 ? (
+                            <span className="font-mono font-bold text-blue-900">{doc.appointmentCount} {language === 'ru' ? 'пр.' : 'ta'}</span>
+                          ) : (
+                            <span className="font-mono font-semibold text-slate-300">0 {language === 'ru' ? 'пр.' : 'ta'}</span>
+                          )}
                         </td>
                         <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
-                          <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                            {doc.completedCount} ({doc.completionRate}%)
-                          </span>
+                          {doc.completedCount > 0 ? (
+                            <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                              {doc.completedCount} ({doc.completionRate}%)
+                            </span>
+                          ) : (
+                            <span className="font-mono font-semibold text-slate-400 bg-slate-100/60 px-2 py-0.5 rounded border border-slate-200/60">
+                              0 (0%)
+                            </span>
+                          )}
                         </td>
                         <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
-                          <span className="font-mono font-bold text-slate-700">{doc.uniquePatients} {language === 'ru' ? 'пациентов' : 'nafar'}</span>
+                          {doc.uniquePatients > 0 ? (
+                            <span className="font-mono font-bold text-slate-700">{doc.uniquePatients} {language === 'ru' ? 'пац.' : 'ta'}</span>
+                          ) : (
+                            <span className="font-mono font-semibold text-slate-300">0 {language === 'ru' ? 'пац.' : 'ta'}</span>
+                          )}
                         </td>
                         <td className={`text-right border-r border-slate-200/70 whitespace-nowrap bg-emerald-50/30 ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
-                          <span className="font-mono font-black text-emerald-600 text-xs tabular-nums">
-                            {doc.revenue.toLocaleString()} <span className="text-[9.5px] text-emerald-500">UZS</span>
-                          </span>
+                          {doc.revenue > 0 ? (
+                            <span className="font-mono font-black text-emerald-600 text-xs tabular-nums">
+                              {doc.revenue.toLocaleString()} <span className="text-[9.5px] text-emerald-500">UZS</span>
+                            </span>
+                          ) : (
+                            <span className="font-mono font-semibold text-slate-300 text-xs tabular-nums">
+                              0 <span className="text-[9.5px] text-slate-300">UZS</span>
+                            </span>
+                          )}
                         </td>
                         <td className={`text-right border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
-                          <span className="font-mono font-bold text-slate-800 text-xs tabular-nums">
-                            {doc.avgCheck.toLocaleString()} <span className="text-[9.5px] text-slate-400">UZS</span>
-                          </span>
+                          {doc.avgCheck > 0 ? (
+                            <span className="font-mono font-bold text-slate-800 text-xs tabular-nums">
+                              {doc.avgCheck.toLocaleString()} <span className="text-[9.5px] text-slate-400">UZS</span>
+                            </span>
+                          ) : (
+                            <span className="font-mono font-semibold text-slate-300 text-xs tabular-nums">
+                              0 <span className="text-[9.5px] text-slate-300">UZS</span>
+                            </span>
+                          )}
                         </td>
                         <td className={`text-center whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
-                          <span className="font-mono font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
-                            {doc.revenueShare}%
-                          </span>
+                          {doc.revenueShare > 0 ? (
+                            <span className="font-mono font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                              {doc.revenueShare}%
+                            </span>
+                          ) : (
+                            <span className="font-mono font-semibold text-slate-300 bg-slate-50 px-2 py-0.5 rounded">
+                              0%
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -914,13 +963,40 @@ export default function Reports() {
             </div>
             <div className="h-[220px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={financeChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <BarChart data={financeChartData} margin={{ top: 15, right: 15, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="income" name="Tushum" fill="#10b981" radius={[6, 6, 0, 0]} barSize={22} />
-                  <Bar dataKey="expense" name="Xarajat" fill="#f43f5e" radius={[6, 6, 0, 0]} barSize={22} />
+                  <XAxis 
+                    dataKey="month" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} 
+                    dy={4}
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 9.5, fontWeight: 700, fill: '#94a3b8' }} 
+                    tickFormatter={formatChartYAxis}
+                    width={65}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      borderRadius: '16px', 
+                      border: '1px solid #e2e8f0', 
+                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', 
+                      padding: '10px 14px',
+                      backgroundColor: '#ffffff'
+                    }}
+                    itemStyle={{ fontWeight: 800, fontSize: '11px' }}
+                    labelStyle={{ fontWeight: 900, fontSize: '11px', marginBottom: '4px', color: '#1e293b' }}
+                    cursor={{ fill: 'rgba(20, 153, 173, 0.05)' }}
+                    formatter={(v, name) => [
+                      `${Number(v).toLocaleString()} UZS`, 
+                      name === 'Tushum' || name === 'income' ? (language === 'ru' ? 'Доход (Поступления)' : 'Tushum (Kirim)') : (language === 'ru' ? 'Расход' : 'Chiqim (Xarajat)')
+                    ]}
+                  />
+                  <Bar dataKey="income" name="income" fill="#10b981" radius={[6, 6, 0, 0]} barSize={22} />
+                  <Bar dataKey="expense" name="expense" fill="#f43f5e" radius={[6, 6, 0, 0]} barSize={22} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

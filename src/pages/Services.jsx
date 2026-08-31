@@ -39,7 +39,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 const DEFAULT_CATEGORIES = [
-  'TERAPIYA( ENDO +PLOMBA)',
+  'TERAPIYA (ENDO + PLOMBA)',
   'RESTAVRATSIYA',
   'ORTOPEDIYA',
   'XIRURGIYA',
@@ -52,6 +52,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 const CATEGORY_MAP = {
+  'TERAPIYA (ENDO + PLOMBA)': { icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
   'TERAPIYA( ENDO +PLOMBA)': { icon: Activity, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
   'RESTAVRATSIYA': { icon: Sparkles, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
   'XIRURGIYA': { icon: Scissors, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100' },
@@ -64,7 +65,7 @@ const CATEGORY_MAP = {
   'ENDODONTIYA': { icon: Activity, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-100' }
 };
 
-const getCategoryStyle = (cat) => CATEGORY_MAP[cat] || { icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100' };
+const getCategoryStyle = (cat) => CATEGORY_MAP[cat] || CATEGORY_MAP['TERAPIYA (ENDO + PLOMBA)'] || { icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100' };
 
 const autoCategorize = (name) => {
   const n = name?.toLowerCase() || '';
@@ -76,7 +77,7 @@ const autoCategorize = (name) => {
   if (n.includes('olish') || n.includes('sug\'urish') || n.includes('xirurg') || n.includes('anesteziya')) return 'XIRURGIYA';
   if (n.includes('karonka') || n.includes('protez') || n.includes('sirkoniy') || n.includes('ko\'prik')) return 'ORTOPEDIYA';
   if (n.includes('breket') || n.includes('reteyner') || n.includes('plastinka') || n.includes('ortodont')) return 'ORTODONTIYA';
-  return 'TERAPIYA( ENDO +PLOMBA)';
+  return 'TERAPIYA (ENDO + PLOMBA)';
 };
 
 // ─── Tish tugmasi ─────────────────────────────────────────────────────────────
@@ -223,7 +224,7 @@ function SortableServiceCard({ service, onView, onEdit, onDelete, isDragging, is
 }
 
 export default function Services() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [services, setServices] = useState([]);
   const [dbCategories, setDbCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -250,7 +251,7 @@ export default function Services() {
 
 
   const [form, setForm] = useState({ 
-    name: '', category: 'TERAPIYA( ENDO +PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false, description: '', tooth_numbers: []
+    name: '', category: 'TERAPIYA (ENDO + PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false, description: '', tooth_numbers: []
   });
 
   // Xizmatlar tartibi har bir kategoriya uchun localStorage da saqlanadi
@@ -362,14 +363,14 @@ export default function Services() {
   useEffect(() => {
     if (editService) {
       setForm({ 
-        name: editService.name || '', category: editService.category || 'TERAPIYA( ENDO +PLOMBA)', 
+        name: editService.name || '', category: editService.category || 'TERAPIYA (ENDO + PLOMBA)', 
         price: editService.price || '', duration: editService.duration || '30', 
         is_active: editService.is_active !== false, requires_tooth: editService.requires_tooth || false,
         description: editService.description || '',
         tooth_numbers: editService.tooth_numbers || []
       });
     } else if (!modalOpen) {
-      setForm({ name: '', category: categoryOrder[0] || 'TERAPIYA( ENDO +PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false, description: '', tooth_numbers: [] });
+      setForm({ name: '', category: categoryOrder[0] || 'TERAPIYA (ENDO + PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false, description: '', tooth_numbers: [] });
     }
   }, [editService, modalOpen, categoryOrder]);
 
@@ -498,7 +499,7 @@ export default function Services() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4">
-        <div className="w-full lg:w-64 flex-shrink-0 space-y-3">
+        <div className="w-full lg:w-72 xl:w-80 flex-shrink-0 space-y-3">
           <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm sticky top-3">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2"><Filter className="w-4 h-4 text-slate-900" /><h3 className="font-black text-slate-900 uppercase tracking-widest text-[10px]">{t('services.sidebar.categories')}</h3></div>
@@ -509,21 +510,51 @@ export default function Services() {
             </div>
             <div className="relative mb-3"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" /><Input placeholder={t('services.sidebar.search')} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-slate-900/10 font-bold text-slate-700 text-[12px]" /></div>
             <div className="space-y-1 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
-              <button onClick={() => setSelectedCategory('all')} className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all font-black text-[11px] ${selectedCategory === 'all' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}><span className="flex items-center gap-2"><ListFilter className="w-3.5 h-3.5" /> {t('services.sidebar.all')}</span><ChevronRight className={`w-3.5 h-3.5 opacity-30 ${selectedCategory === 'all' ? 'rotate-90' : ''}`} /></button>
+              <button 
+                onClick={() => setSelectedCategory('all')} 
+                title={t('services.sidebar.all') || "Barchasi"}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all font-black text-xs ${
+                  selectedCategory === 'all' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <ListFilter className="w-3.5 h-3.5" /> 
+                  {t('services.sidebar.all')}
+                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                    selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {services.length}
+                  </span>
+                  <ChevronRight className={`w-3.5 h-3.5 opacity-30 ${selectedCategory === 'all' ? 'rotate-90' : ''}`} />
+                </div>
+              </button>
               <Reorder.Group axis="y" values={categoryOrder} onReorder={handleReorder} className="space-y-1.5">
                 {categoryOrder.map((cat) => (
                   <Reorder.Item key={cat} value={cat} dragListener={isReordering}>
                     <div className="relative group">
                       <button
                         onClick={() => !isReordering && setSelectedCategory(cat)}
+                        title={cat}
                         className={classNames(
-                          "w-full flex items-center justify-between px-3 py-3 rounded-xl transition-all font-bold text-[13px] text-left border-2",
-                          selectedCategory === cat ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'text-slate-600 border-transparent hover:bg-slate-50',
+                          "w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all font-bold text-xs text-left border-2 gap-2",
+                          selectedCategory === cat ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'text-slate-700 border-transparent hover:bg-slate-50',
                           isReordering && "border-emerald-500 bg-emerald-50 text-emerald-700 animate-pulse cursor-move ring-4 ring-emerald-500/10"
                         )}
                       >
-                        <span className="truncate">{cat}</span>
-                        {!isReordering && <ChevronRight className="w-4 h-4 opacity-20" />}
+                        <span className="leading-snug break-words flex-1">{cat}</span>
+                        {!isReordering && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className={classNames(
+                              "text-[10px] font-bold px-1.5 py-0.2 rounded-full",
+                              selectedCategory === cat ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                            )}>
+                              {services.filter(s => (s.category || autoCategorize(s.name)) === cat).length}
+                            </span>
+                            <ChevronRight className={classNames("w-3.5 h-3.5", selectedCategory === cat ? "opacity-70" : "opacity-30")} />
+                          </div>
+                        )}
                       </button>
                       {isReordering && (
                         <div className="absolute top-1/2 -translate-y-1/2 right-2 flex gap-1 z-20">
@@ -659,8 +690,8 @@ export default function Services() {
       <Dialog open={modalOpen} onOpenChange={() => { setModalOpen(false); setEditService(null); }}>
         <DialogContent className="sm:max-w-xl max-h-[88vh] overflow-y-auto p-5 sm:p-6 rounded-[28px] border-none shadow-2xl bg-white flex flex-col no-scrollbar">
           <DialogHeader className="mb-3 text-center">
-            <DialogTitle className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-tight">
-              {editService ? (t('services.modals.editTitle') || 'XIZMATNI TAHRIRLASH') : (t('services.modals.addTitle') || 'YANGI XIZMAT QO\'SHISH')}
+            <DialogTitle className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              {editService ? (t('services.modals.editTitle') || 'Xizmatni tahrirlash') : (t('services.modals.addTitle') || 'Yangi xizmat qo\'shish')}
             </DialogTitle>
           </DialogHeader>
           
@@ -691,7 +722,41 @@ export default function Services() {
               </div>
             </div>
 
-            {/* Row 2: Asosiy narx & Minimal narx */}
+            {/* Quick Template Suggestions for New Service */}
+            {!editService && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-[#1499AD]" />
+                  {language === 'ru' ? 'Шаблоны:' : 'Tezkor shablonlar:'}
+                </span>
+                {[
+                  { name: "Tish tozalash (Air Flow)", cat: "GIGIENA VA PROFILAKTIKA", price: "150000", duration: "30" },
+                  { name: "Fotopolimer plomba", cat: "TERAPIYA (ENDO + PLOMBA)", price: "250000", duration: "40" },
+                  { name: "Tish sug'urish (Oddiy)", cat: "XIRURGIYA", price: "180000", duration: "30" },
+                  { name: "Metallokeramika toji", cat: "ORTOPEDIYA", price: "600000", duration: "45" },
+                  { name: "Rentgen (RVG)", cat: "TERAPIYA (ENDO + PLOMBA)", price: "30000", duration: "10" }
+                ].map(preset => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => {
+                      setForm(prev => ({
+                        ...prev,
+                        name: preset.name,
+                        category: categoryOrder.includes(preset.cat) ? preset.cat : prev.category,
+                        price: preset.price,
+                        duration: preset.duration
+                      }));
+                    }}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 hover:bg-[#1499AD]/10 text-slate-600 hover:text-[#1499AD] border border-slate-200/70 hover:border-[#1499AD]/30 transition-all cursor-pointer"
+                  >
+                    + {preset.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Row 2: Asosiy narx & Davomiyligi */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">{t('services.modals.basePrice') || 'ASOSIY NARX'} (UZS) *</Label>
@@ -713,32 +778,9 @@ export default function Services() {
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">UZS</span>
                 </div>
               </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">{t('services.modals.minPrice') || 'MINIMAL NARX'} (UZS)</Label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={form.min_price === '' || !form.min_price ? '' : Number(form.min_price).toLocaleString('uz-UZ')}
-                    onChange={e => {
-                      const raw = e.target.value.replace(/\s/g, '').replace(/,/g, '').replace(/\./g, '').replace(/'/g, '');
-                      if (raw === '') setForm({ ...form, min_price: '' });
-                      else if (/^\d+$/.test(raw)) setForm({ ...form, min_price: raw });
-                    }}
-                    onKeyDown={e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                    onWheel={e => e.target.blur()}
-                    placeholder={t('services.modals.minPricePlaceholder') || 'Chegirma chegarasi'}
-                    className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 font-black text-base tracking-tight px-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#1499AD]/30"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">UZS</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Row 3: Davomiyligi & Tavsif */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">{t('services.modals.durationMinutes') || 'DAVOMIYLIGI'} (MIN)</Label>
+                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">{t('services.modals.durationMinutes') || 'DAVOMIYLIGI (MIN)'}</Label>
                 <div className="relative">
                   <input
                     type="text"
@@ -756,15 +798,17 @@ export default function Services() {
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">min</span>
                 </div>
               </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">{t('services.modals.projectDescription') || 'LOYIHA TAVSIFI'}</Label>
-                <Input 
-                  value={form.description} 
-                  onChange={e => setForm({ ...form, description: e.target.value })} 
-                  placeholder={t('services.modals.descriptionPlaceholder') || "Qisqacha ma'lumot..."} 
-                  className="h-10 rounded-xl border border-slate-200 bg-slate-50 font-bold px-3 text-sm focus:bg-white focus:ring-1 focus:ring-[#1499AD]" 
-                />
-              </div>
+            </div>
+
+            {/* Row 3: Tavsif */}
+            <div className="space-y-1">
+              <Label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">{t('services.modals.projectDescription') || 'LOYIHA TAVSIFI'}</Label>
+              <Input 
+                value={form.description} 
+                onChange={e => setForm({ ...form, description: e.target.value })} 
+                placeholder={t('services.modals.descriptionPlaceholder') || "Qisqacha ma'lumot..."} 
+                className="h-10 rounded-xl border border-slate-200 bg-slate-50 font-bold px-3 text-sm focus:bg-white focus:ring-1 focus:ring-[#1499AD]" 
+              />
             </div>
 
             {/* Switches Card */}
@@ -940,23 +984,49 @@ export default function Services() {
             )}
 
             {/* Footer Action Buttons */}
-            <div className="pt-2.5 border-t border-slate-100 flex items-center justify-end gap-2.5">
-              <Button 
-                type="button"
-                variant="outline" 
-                onClick={() => { setModalOpen(false); setEditService(null); }} 
-                className="h-10 rounded-xl px-5 font-bold text-xs text-slate-600 border-slate-200 hover:bg-slate-50"
-              >
-                {t('common.cancel') || 'Bekor qilish'}
-              </Button>
-              <Button 
-                type="button"
-                onClick={handleSaveService} 
-                disabled={saving || !form.name || !form.price}
-                className="h-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-6 shadow-sm transition-all active:scale-95 disabled:opacity-50"
-              >
-                {saving ? (t('settings.publicPage.saving') || 'Saqlanmoqda...') : (t('common.save') || 'Saqlash')}
-              </Button>
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2.5">
+              {(!form.name || !form.price) ? (
+                <div className="text-[11px] font-bold text-amber-600 flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded-lg">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                  <span>{!form.name ? (language === 'ru' ? 'Введите название услуги' : "Xizmat nomini kiriting") : (language === 'ru' ? 'Введите цену услуги' : "Xizmat narxini kiriting")}</span>
+                </div>
+              ) : (
+                <div className="text-[11px] font-bold text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-lg">
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{language === 'ru' ? 'Готово к сохранению' : "Saqlashga tayyor"}</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  onClick={() => { setModalOpen(false); setEditService(null); }} 
+                  className="h-10 rounded-xl px-4 font-bold text-xs text-slate-600 border-slate-200 hover:bg-slate-50 cursor-pointer"
+                >
+                  {t('common.cancel') || 'Bekor qilish'}
+                </Button>
+                <Button 
+                  type="button"
+                  onClick={handleSaveService} 
+                  disabled={saving || !form.name || !form.price}
+                  className={cn(
+                    "h-10 rounded-xl font-bold text-xs px-6 shadow-sm transition-all active:scale-95 cursor-pointer flex items-center gap-1.5",
+                    (!form.name || !form.price)
+                      ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                      : "bg-[#1499AD] hover:bg-[#0E7A8A] text-white shadow-[#1499AD]/20"
+                  )}
+                >
+                  {saving ? (
+                    t('settings.publicPage.saving') || 'Saqlanmoqda...'
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{t('common.save') || 'Saqlash'}</span>
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>

@@ -1,4 +1,3 @@
-// App.jsx fayliga Cases sahifasini qoshamiz.
 import { useState, useEffect, lazy, Suspense, memo } from 'react';
 import { Toaster } from 'sonner';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -6,6 +5,7 @@ import { queryClientInstance } from '@/lib/query-client';
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { LanguageProvider } from '@/i18n/LanguageContext';
+import { ClinicProvider } from '@/lib/ClinicContext';
 import { motion } from 'framer-motion';
 
 // ─── Static imports (always needed) ────────────────────────────────────────
@@ -240,12 +240,14 @@ function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
-        <QueryClientProvider client={queryClientInstance}>
-          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <AuthenticatedApp />
-          </Router>
-          <Toaster richColors closeButton position="top-right" />
-        </QueryClientProvider>
+        <ClinicProvider>
+          <QueryClientProvider client={queryClientInstance}>
+            <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <AuthenticatedApp />
+            </Router>
+            <Toaster richColors closeButton position="top-right" duration={3000} expand={false} />
+          </QueryClientProvider>
+        </ClinicProvider>
       </AuthProvider>
     </LanguageProvider>
   );

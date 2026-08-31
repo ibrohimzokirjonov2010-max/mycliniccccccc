@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useClinic } from '@/lib/ClinicContext';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -14,7 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import ProfessionalOdontogram from '../patients/ProfessionalOdontogram';
 import PatientSelect from '../patients/PatientSelect';
-import { cn } from '@/lib/utils';
+import { cn, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
 
 const idToFdi = (idStr) => {
   if (!idStr) return '';
@@ -37,6 +38,7 @@ const fdiToInternal = (fdi) => {
 const REMOVED_TOOTH_STATUS = 'Olib tashlangan';
 
 const CATEGORY_MAP = {
+  'TERAPIYA (ENDO + PLOMBA)': { color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
   'TERAPIYA( ENDO +PLOMBA)': { color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
   'XIRURGIYA': { color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100' },
   'ORTOPEDIYA': { color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-100' },
@@ -44,7 +46,7 @@ const CATEGORY_MAP = {
 };
 
 const ALLOWED_CATEGORIES = [
-  'TERAPIYA( ENDO +PLOMBA)',
+  'TERAPIYA (ENDO + PLOMBA)',
   'ORTOPEDIYA',
   'XIRURGIYA',
   'ORTODONTIYA',
@@ -65,13 +67,13 @@ const autoCategorize = (name) => {
   if (n.includes('olish') || n.includes('sug\'urish') || n.includes('xirurg') || n.includes('anesteziya')) return 'XIRURGIYA';
   if (n.includes('karonka') || n.includes('protez') || n.includes('sirkoniy') || n.includes('ko\'prik')) return 'ORTOPEDIYA';
   if (n.includes('breket') || n.includes('reteyner') || n.includes('plastinka') || n.includes('ortodont')) return 'ORTODONTIYA';
-  return 'TERAPIYA( ENDO +PLOMBA)';
+  return 'TERAPIYA (ENDO + PLOMBA)';
 };
 
 const getCategoryName = (cat) => {
   if (!cat) return '';
   const c = cat.toUpperCase();
-  if (c === 'TERAPIYA( ENDO +PLOMBA)') return 'Terapiya';
+  if (c === 'TERAPIYA (ENDO + PLOMBA)' || c === 'TERAPIYA( ENDO +PLOMBA)') return 'Terapiya';
   if (c === 'ORTOPEDIYA') return 'Ortopediya';
   if (c === 'ESTETIK STOMATOLOGIYA') return 'Estetika';
   if (c === 'XIRURGIYA') return 'Xirurgiya';
@@ -88,7 +90,7 @@ const CategoryAccordion = ({ title, services, activeTooth, toothData, toggleServ
   const { t } = useTranslation();
 
   const friendlyTitle = (() => {
-    if (title === 'TERAPIYA( ENDO +PLOMBA)') return 'Terapiya';
+    if (title === 'TERAPIYA (ENDO + PLOMBA)' || title === 'TERAPIYA( ENDO +PLOMBA)') return 'Terapiya';
     if (title === 'ENDODONTIYA') return 'Endodontiya';
     if (title === 'XIRURGIYA') return 'Xirurgiya';
     if (title === 'ORTOPEDIYA') return 'Ortopediya';
@@ -157,7 +159,7 @@ const formatDepartmentPlanName = (services = [], selectedTeeth = []) => {
   if (!categories.length) return `Davolash rejasi${toothLabel}`;
 
   const normalized = categories.map((category) => {
-    if (category === 'TERAPIYA( ENDO +PLOMBA)') return 'Terapiya';
+    if (category === 'TERAPIYA (ENDO + PLOMBA)' || category === 'TERAPIYA( ENDO +PLOMBA)') return 'Terapiya';
     if (category === 'ORTOPEDIYA') return 'Ortopediya';
     if (category === 'XIRURGIYA') return 'Xirurgiya';
     if (category === 'ORTODONTIYA') return 'Ortodontiya';
@@ -177,7 +179,8 @@ const formatDepartmentPlanName = (services = [], selectedTeeth = []) => {
 };
 
 export default function TreatmentPlanModal({ open, onClose, plan, patients, services, onSaved, initialPatientId }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const { clinicName } = useClinic();
   const [step, setStep] = useState(1);
   const [patientId, setPatientId] = useState('');
   const [patientName, setPatientName] = useState('');
@@ -1021,12 +1024,12 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                               {lowerLeft.map(n => <ToothBtn key={n} fdi={n} />)}
                             </div>
                           </div>
-                          <div className="pl-6 pr-4 py-1.5 bg-slate-50 border-b border-slate-100 grid grid-cols-[minmax(0,1fr)_32px_64px_40px_64px_18px] gap-1 shrink-0">
-                            <span className="text-[9px] font-black text-slate-400 uppercase">{t('odontogram.tableHeaders.service') || 'Xizmat'}</span>
-                            <span className="text-[9px] font-black text-slate-400 uppercase text-center">{t('odontogram.tableHeaders.tooth') || 'T#'}</span>
-                            <span className="text-[9px] font-black text-slate-400 uppercase text-right">{t('odontogram.tableHeaders.price') || 'Narx'}</span>
-                            <span className="text-[9px] font-black text-slate-400 uppercase text-center">%</span>
-                            <span className="text-[9px] font-black text-slate-400 uppercase text-right">{t('odontogram.tableHeaders.total') || 'Jami'}</span>
+                          <div className="pl-6 pr-4 py-2 bg-slate-100/90 border-b border-slate-200 grid grid-cols-[minmax(0,1fr)_32px_64px_40px_64px_18px] gap-1 shrink-0 text-slate-700 font-bold">
+                            <span className="text-[10px] uppercase tracking-wider">{t('odontogram.tableHeaders.service') || 'Xizmat'}</span>
+                            <span className="text-[10px] uppercase tracking-wider text-center">{t('odontogram.tableHeaders.tooth') || 'T#'}</span>
+                            <span className="text-[10px] uppercase tracking-wider text-right">{t('odontogram.tableHeaders.price') || 'Narx'}</span>
+                            <span className="text-[10px] uppercase tracking-wider text-center">%</span>
+                            <span className="text-[10px] uppercase tracking-wider text-right">{t('odontogram.tableHeaders.total') || 'Jami'}</span>
                             <span />
                           </div>
                           <div className="flex-1 overflow-y-auto min-h-0">
@@ -1144,31 +1147,28 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                           </button>
                         </div>
 
-                        {/* Top: 2-row anatomical tooth selector */}
-                        <div 
-                          ref={mobileTeethScrollRef}
-                          className="overflow-x-auto py-2 px-1 no-scrollbar scrollbar-none shrink-0 select-none"
-                        >
-                          <div className="min-w-[560px] flex flex-col gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                        {/* Top: 2-row anatomical tooth selector – fits phone screen */}
+                        <div className="py-2 px-2 shrink-0 select-none bg-slate-50 border-b border-slate-100">
+                          <div className="flex flex-col gap-1.5">
 
                             {/* YUQORI JAG' */}
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex gap-1.5">
+                            <div className="flex items-center justify-between w-full">
+                              <div className="flex flex-1 justify-end gap-[3px]">
                                 {UPPER_RIGHT.map(num => <ToothBtn key={num} fdi={num} />)}
                               </div>
-                              <div className="w-[2px] h-10 bg-sky-500 rounded-full" />
-                              <div className="flex gap-1.5">
+                              <div className="w-[2px] h-8 bg-sky-500 rounded-full mx-1 shrink-0" />
+                              <div className="flex flex-1 justify-start gap-[3px]">
                                 {UPPER_LEFT.map(num => <ToothBtn key={num} fdi={num} />)}
                               </div>
                             </div>
 
                             {/* PASTKI JAG' */}
-                            <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-200">
-                              <div className="flex gap-1.5">
+                            <div className="flex items-center justify-between w-full">
+                              <div className="flex flex-1 justify-end gap-[3px]">
                                 {LOWER_RIGHT.map(num => <ToothBtn key={num} fdi={num} />)}
                               </div>
-                              <div className="w-[2px] h-10 bg-sky-500 rounded-full" />
-                              <div className="flex gap-1.5">
+                              <div className="w-[2px] h-8 bg-sky-500 rounded-full mx-1 shrink-0" />
+                              <div className="flex flex-1 justify-start gap-[3px]">
                                 {LOWER_LEFT.map(num => <ToothBtn key={num} fdi={num} />)}
                               </div>
                             </div>
@@ -1473,182 +1473,191 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                             `}} />
                             )}
 
-                            {/* -- INVOICE HEADER -- */}
-                            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-6 py-5">
-                                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                                    {/* Clinic branding */}
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shadow-lg">
-                                            <span className="text-white font-black text-xl leading-none tracking-tight">D</span>
+                            {/* 1. BRAND & META HEADER */}
+                            <div className="p-6 sm:p-8 bg-white font-sans text-slate-900">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-[#0284c7] shrink-0">
+                                            <svg className="w-10 h-10 text-[#0284c7]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M12 2C8.7 2 6 4.7 6 8c0 4 3 7 6 10 3-3 6-6 6-10 0-3.3-2.7-6-6-6z" />
+                                            </svg>
                                         </div>
                                         <div>
-                                            <h2 className="text-lg font-black text-white tracking-tight uppercase leading-none">DentaCRM</h2>
-                                            <p className="text-[9px] font-medium text-white/50 mt-0.5">Professional Dental System</p>
-                                            <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest mt-0.5">+998 71 123 45 67</p>
+                                            <h1 className="text-xl font-black text-[#0284c7] tracking-tight leading-none">{clinicName}</h1>
+                                            <p className="text-[11px] text-slate-500 font-medium mt-1">Professional stomatologiya klinikasi</p>
+                                            <p className="text-[11px] text-slate-600 font-semibold mt-0.5">Tel: +998 71 123 45 67 | Toshkent sh.</p>
                                         </div>
                                     </div>
-                                    {/* Invoice meta */}
-                                    <div className="bg-white/10 border border-white/15 rounded-xl px-4 py-3 text-right min-w-[160px]">
-                                        <p className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em] mb-1">Hujjat turi</p>
-                                        <p className="text-[11px] font-black text-white uppercase tracking-tight">Hisob-Faktura</p>
-                                        <div className="h-px bg-white/10 my-2" />
-                                        <p className="text-[8px] text-white/40 font-medium">
-                                            {new Date().toLocaleDateString('uz-UZ', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                                    <div className="text-right">
+                                        <h2 className="text-sm font-black text-slate-900 uppercase tracking-wide">HISOB-FAKTURA</h2>
+                                        <p className="text-[11px] text-slate-500 mt-1">
+                                            Sana: {new Date().toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                         </p>
-                                        <p className="text-[9px] font-black text-white/70 mt-0.5">
-                                            No. {savedPlanData?.id ? savedPlanData.id.split('-').pop()?.toUpperCase() : (plan?.id ? plan.id.split('-').pop()?.toUpperCase() : 'NEW')}
+                                        <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+                                            № <span className="font-mono font-bold text-slate-900">{savedPlanData?.id ? savedPlanData.id.split('-').pop()?.toUpperCase() : (plan?.id ? plan.id.split('-').pop()?.toUpperCase() : '4F255F')}</span>
                                         </p>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="p-5 space-y-5">
-                                {/* -- PATIENT INFO -- */}
-                                <div className="grid grid-cols-3 gap-4 bg-slate-50 rounded-xl border border-slate-100 px-4 py-3">
+                                {/* Blue Divider Line */}
+                                <div className="h-[2px] bg-[#0ea5e9] my-4 w-full" />
+
+                                {/* 2. BEMOR MA'LUMOTLARI */}
+                                <div className="text-[11px] font-black text-[#0284c7] uppercase tracking-wider mb-2.5">
+                                    BEMOR MA'LUMOTLARI
+                                </div>
+                                <div className="grid grid-cols-2 gap-y-3.5 gap-x-8 border-y border-slate-100 py-3.5 mb-5">
                                     <div>
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1">To'liq ismi</p>
-                                        <p className="text-[12px] font-black text-slate-900 uppercase leading-tight">{patientName}</p>
+                                        <span className="text-[10px] text-slate-400 font-semibold block mb-0.5">To'liq ismi</span>
+                                        <span className="text-xs font-black text-slate-900 block">{patientName}</span>
                                     </div>
                                     <div>
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1">Qabul vaqti</p>
-                                        <p className="text-[11px] font-black text-slate-800">
-                                            {new Date().toLocaleDateString('uz-UZ')} {new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
-                                        </p>
+                                        <span className="text-[10px] text-slate-400 font-semibold block mb-0.5">Uchrashuv sanasi</span>
+                                        <span className="text-xs font-black text-slate-900 block">
+                                            {new Date().toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
                                     </div>
                                     <div>
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1">Muolaja turi</p>
-                                        <p className="text-[11px] font-black text-slate-800">Davolash rejasi</p>
+                                        <span className="text-[10px] text-slate-400 font-semibold block mb-0.5">Doktor</span>
+                                        <span className="text-xs font-black text-slate-900 block">{doctorId ? (doctors.find(d => d.id === doctorId)?.name || 'Dr. Navbatchi') : 'Aliyev Kamol'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] text-slate-400 font-semibold block mb-0.5">Davolash turi</span>
+                                        <span className="text-xs font-black text-slate-900 block">{getTreatmentTypeLabel(planTitle || 'Davolash rejasi', language)}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] text-slate-400 font-semibold block mb-0.5">Holati</span>
+                                        <span className="text-xs font-black text-slate-900 block">{getServiceStatusLabel('planned', language)}</span>
                                     </div>
                                 </div>
 
-                                {/* -- SERVICES TABLE -- */}
-                                <div>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h4 className="text-[9px] font-black text-blue-500 uppercase tracking-[0.2em]">Davolashlar ro'yxati</h4>
-                                        <span className="text-[8px] text-slate-400 font-medium">{selectedTeeth.reduce((acc, tId) => acc + (toothData[tId]?.services?.length || 0), 0)} ta xizmat</span>
-                                    </div>
-                                    {/* Table header */}
-                                    <div className="grid grid-cols-[auto_1fr_auto] gap-3 px-3 py-2 bg-slate-900 rounded-t-xl">
-                                        <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Tish</span>
-                                        <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Xizmat nomi</span>
-                                        <span className="text-[8px] font-black text-white/40 uppercase tracking-widest text-right">Narxi</span>
-                                    </div>
-                                    {/* Table rows */}
-                                    <div className="border border-t-0 border-slate-100 rounded-b-xl overflow-hidden divide-y divide-slate-50">
-                                        {selectedTeeth.map(tId => {
-                                            const svcs = toothData[tId]?.services || [];
-                                            return svcs.map((s, idx) => (
-                                                <div key={`${tId}-${idx}`} className="grid grid-cols-[auto_1fr_auto] gap-3 items-center px-3 py-2.5 bg-white hover:bg-slate-50/50 transition-colors">
-                                                    <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center">
-                                                        <span className="text-[9px] font-black text-blue-600">#{idToFdi(tId)}</span>
-                                                    </div>
-                                                    <span className="text-[11px] font-bold text-slate-800 uppercase tracking-tight truncate">{s.service_name}</span>
-                                                    <span className="text-[11px] font-black text-slate-900 text-right whitespace-nowrap">{(s.price || 0).toLocaleString()} <span className="text-[9px] font-medium text-slate-400">so'm</span></span>
-                                                </div>
-                                            ));
-                                        })}
-                                    </div>
+                                {/* 3. DAVOLASHLAR RO'YXATI */}
+                                <div className="text-[11px] font-black text-[#0284c7] uppercase tracking-wider mb-2.5">
+                                    DAVOLASHLAR RO'YXATI
+                                </div>
+                                <div className="overflow-x-auto mb-5">
+                                    <table className="w-full text-left text-xs border-collapse">
+                                        <thead>
+                                            <tr className="bg-[#f8fafc] border-y border-slate-200">
+                                                <th className="py-2.5 px-3 font-bold text-slate-600">Davolash nomi</th>
+                                                <th className="py-2.5 px-3 font-bold text-slate-600">Kategoriya</th>
+                                                <th className="py-2.5 px-3 font-bold text-slate-600 text-center">Tish #</th>
+                                                <th className="py-2.5 px-3 font-bold text-slate-600 text-center">Holati</th>
+                                                <th className="py-2.5 px-3 font-bold text-slate-600 text-right">Narxi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {selectedTeeth.map(tId => {
+                                                const svcs = toothData[tId]?.services || [];
+                                                return svcs.map((s, idx) => (
+                                                    <tr key={`${tId}-${idx}`}>
+                                                        <td className="py-2.5 px-3 font-bold text-slate-900">{s.service_name}</td>
+                                                        <td className="py-2.5 px-3 text-slate-500">{getServiceCategoryLabel(s.category || (s.service_name?.toLowerCase().includes('plomba') ? 'filling' : s.service_name?.toLowerCase().includes('tozalash') ? 'cleaning' : 'terapiya'), language)}</td>
+                                                        <td className="py-2.5 px-3 text-center font-bold text-slate-700">{tId === 'general' ? '—' : `#${idToFdi(tId)}`}</td>
+                                                        <td className="py-2.5 px-3 text-center">
+                                                            <span className="text-[#0284c7] font-semibold">{getServiceStatusLabel(s.status || 'planned', language)}</span>
+                                                        </td>
+                                                        <td className="py-2.5 px-3 text-right font-bold text-slate-900">{(s.price || 0).toLocaleString()} so'm</td>
+                                                    </tr>
+                                                ));
+                                            })}
+                                            <tr className="border-t-[1.5px] border-slate-300 font-black">
+                                                <td colSpan="4" className="py-3 px-3 text-sm text-slate-900">Jami xarajat</td>
+                                                <td className="py-3 px-3 text-right text-sm text-slate-900 font-black">{rawTotal.toLocaleString()} so'm</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
 
-                                {/* -- BO'LIB TO'LASH -- */}
+                                {/* 4. TO'LOVLAR / MUDDATLI TO'LOV */}
+                                <div className="text-[11px] font-black text-[#0284c7] uppercase tracking-wider mb-2.5 mt-5">
+                                    TO'LOVLAR
+                                </div>
+                                <div className="overflow-x-auto mb-6">
+                                    <table className="w-full text-left text-xs border-collapse">
+                                        <thead>
+                                            <tr className="bg-[#f8fafc] border-y border-slate-200">
+                                                <th className="py-2.5 px-3 font-bold text-slate-600">Sana</th>
+                                                <th className="py-2.5 px-3 font-bold text-slate-600">To'lov usuli</th>
+                                                <th className="py-2.5 px-3 font-bold text-slate-600 text-center">Holati</th>
+                                                <th className="py-2.5 px-3 font-bold text-slate-600 text-right">Summa</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {isInstallment && installmentAdvance > 0 ? (
+                                                <tr>
+                                                    <td className="py-2.5 px-3 text-slate-700">{installmentStartDate}</td>
+                                                    <td className="py-2.5 px-3 font-bold text-slate-900">Boshlang'ich to'lov</td>
+                                                    <td className="py-2.5 px-3 text-center"><span className="text-[#16a34a] font-bold">To'langan</span></td>
+                                                    <td className="py-2.5 px-3 text-right font-bold text-slate-900">{installmentAdvance.toLocaleString()} so'm</td>
+                                                </tr>
+                                            ) : (
+                                                <tr>
+                                                    <td className="py-2.5 px-3 text-slate-700">{new Date().toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                                                    <td className="py-2.5 px-3 font-bold text-slate-900">Karta / Naqd</td>
+                                                    <td className="py-2.5 px-3 text-center"><span className="text-[#16a34a] font-bold">To'langan</span></td>
+                                                    <td className="py-2.5 px-3 text-right font-bold text-slate-900">{finalTotal.toLocaleString()} so'm</td>
+                                                </tr>
+                                            )}
+                                            <tr className="bg-[#dcfce7] text-[#166534]">
+                                                <td colSpan="3" className="py-2.5 px-3 font-black text-sm text-[#166534]">To'langan jami</td>
+                                                <td className="py-2.5 px-3 text-right font-black text-sm text-[#166534]">{((isInstallment && installmentAdvance > 0) ? installmentAdvance : finalTotal).toLocaleString()} so'm</td>
+                                            </tr>
+                                            {isInstallment && (finalTotal - installmentAdvance) > 0 && (
+                                                <tr>
+                                                    <td colSpan="3" className="py-2.5 px-3 font-black text-xs text-rose-600 pt-3">Qoldiq qarz:</td>
+                                                    <td className="py-2.5 px-3 text-right font-black text-xs text-rose-600 pt-3">{(finalTotal - installmentAdvance).toLocaleString()} so'm</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* 5. MUDDATLI TO'LOV GRAFIGI (if installment) */}
                                 {isInstallment && (
-                                    <div>
-                                        <h4 className="text-[9px] font-black text-blue-500 uppercase tracking-[0.2em] mb-2">Bo'lib to'lash rejasi</h4>
-                                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                            <div>
-                                                <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-1">Muddat</p>
-                                                <p className="text-[12px] font-black text-blue-900">{installmentMonths} <span className="text-[9px] font-medium">oy</span></p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-1">Boshlang'ich</p>
-                                                <p className="text-[12px] font-black text-emerald-700">{installmentAdvance.toLocaleString()} <span className="text-[9px] font-medium">so'm</span></p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-1">Oylik to'lov</p>
-                                                <p className="text-[12px] font-black text-blue-800">
-                                                    {Math.max(0, Math.floor((rawTotal * (1 - discount/100) - installmentAdvance) / installmentMonths)).toLocaleString()} <span className="text-[9px] font-medium">so'm</span>
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-1">Boshlanish</p>
-                                                <p className="text-[12px] font-black text-blue-900">{installmentStartDate}</p>
-                                            </div>
+                                    <div className="mb-6">
+                                        <div className="text-[11px] font-black text-[#0284c7] uppercase tracking-wider mb-2.5">
+                                            MUDDATLI TO'LOV GRAFIGI ({installmentMonths} oy)
                                         </div>
+                                        <table className="w-full text-left text-xs border-collapse">
+                                            <thead>
+                                                <tr className="bg-[#f8fafc] border-y border-slate-200">
+                                                    <th className="py-2 px-3 font-bold text-slate-600">Sana</th>
+                                                    <th className="py-2 px-3 font-bold text-slate-600 text-right">Oylik to'lov</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {Array.from({ length: installmentMonths }).map((_, idx) => {
+                                                    const d = new Date(installmentStartDate || new Date());
+                                                    d.setMonth(d.getMonth() + idx);
+                                                    const monthlyAmt = Math.max(0, Math.floor((finalTotal - installmentAdvance) / installmentMonths));
+                                                    return (
+                                                        <tr key={idx}>
+                                                            <td className="py-2 px-3 text-slate-700">{d.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                                                            <td className="py-2 px-3 text-right font-bold text-slate-900">{monthlyAmt.toLocaleString()} so'm</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 )}
 
-                                {/* -- TOTALS BLOCK -- */}
-                                <div className="bg-slate-900 rounded-2xl p-5 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500 rounded-full blur-[70px] opacity-10 -mr-16 -mt-16 pointer-events-none" />
-                                    <div className="relative z-10 space-y-2.5">
-                                        {/* Subtotal */}
-                                        {(discount > 0 || (isInstallment && installmentAdvance > 0)) && (
-                                            <div className="flex justify-between items-center pb-2 border-b border-white/10">
-                                                <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Jami summa</p>
-                                                <p className="text-[12px] font-black text-white">{rawTotal.toLocaleString()} <span className="text-[9px] font-normal text-white/40">so'm</span></p>
-                                            </div>
-                                        )}
-                                        {/* Discount */}
-                                        {discount > 0 && (
-                                            <div className="flex justify-between items-center pb-2 border-b border-white/10">
-                                                <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Chegirma ({discount}%)</p>
-                                                <p className="text-[12px] font-black text-rose-400">- {Math.floor(rawTotal * discount / 100).toLocaleString()} <span className="text-[9px] font-normal text-rose-400/60">so'm</span></p>
-                                            </div>
-                                        )}
-                                        {/* Advance */}
-                                        {isInstallment && installmentAdvance > 0 && (
-                                            <div className="flex justify-between items-center pb-2 border-b border-white/10">
-                                                <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Boshlang'ich to'lov</p>
-                                                <p className="text-[12px] font-black text-emerald-400">- {installmentAdvance.toLocaleString()} <span className="text-[9px] font-normal text-emerald-400/60">so'm</span></p>
-                                            </div>
-                                        )}
-                                        {/* Final total */}
-                                        <div className="flex justify-between items-end pt-1">
-                                            <div>
-                                                <p className="text-[8px] font-black text-blue-400 uppercase tracking-[0.2em] mb-1.5">To'lov uchun qolgan jami</p>
-                                                <h3 className="text-2xl font-[950] text-white tracking-tighter tabular-nums leading-none">
-                                                    {Math.max(0, Math.floor(finalTotal) - (isInstallment ? installmentAdvance : 0)).toLocaleString()}
-                                                    <span className="text-xs font-normal text-white/40 ml-1.5">so'm</span>
-                                                </h3>
-                                            </div>
-                                            <div className="flex flex-col items-end gap-1.5">
-                                                <div className="px-3 py-1.5 bg-emerald-500/15 border border-emerald-500/25 rounded-lg flex items-center gap-1.5">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                                    <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">TASDIQLANDI</span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                {/* 6. SIGNATURES */}
+                                <div className="flex justify-between items-start pt-14 pb-4">
+                                    <div className="w-[42%]">
+                                        <div className="border-b border-slate-800 w-full mb-1.5" />
+                                        <p className="text-[11px] font-bold text-slate-700">Bemor imzosi: {patientName}</p>
+                                    </div>
+                                    <div className="w-[42%]">
+                                        <div className="border-b border-slate-800 w-full mb-1.5" />
+                                        <p className="text-[11px] font-bold text-slate-700">Doktor imzosi: {doctorId ? (doctors.find(d => d.id === doctorId)?.name || 'Dr. Navbatchi') : 'Aliyev Kamol'}</p>
                                     </div>
                                 </div>
 
-                                {/* в”Ђв”Ђ TELEGRAM REMINDER в”Ђв”Ђ */}
-                                <div className="bg-blue-50 border border-blue-100/60 rounded-xl p-3.5 flex items-center justify-between gap-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 bg-white rounded-xl border border-blue-100 flex items-center justify-center shadow-sm shrink-0">
-                                            <MessageCircle className="w-4 h-4 text-blue-500" />
-                                        </div>
-                                        <div>
-                                            <h5 className="text-[10px] font-black text-blue-900 uppercase tracking-wide">Telegram Eslatmalar</h5>
-                                            <p className="text-[8px] font-medium text-blue-400 mt-0.5">QR-kod orqali botga ulanish mumkin</p>
-                                        </div>
-                                    </div>
-                                    <div className="w-11 h-11 bg-white p-1 rounded-lg border border-blue-100 shrink-0">
-                                        <div className="w-full h-full bg-slate-100 rounded-sm" />
-                                    </div>
-                                </div>
-
-                                {/* в”Ђв”Ђ SIGNATURES в”Ђв”Ђ */}
-                                <div className="grid grid-cols-2 gap-12 pt-6 mt-2 border-t border-dashed border-slate-200">
-                                    <div className="text-center">
-                                        <div className="h-10 mb-2" />
-                                        <div className="h-px bg-slate-300 border-0" />
-                                        <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-1.5">Shifokor imzosi</p>
-                                    </div>
-                                    <div className="text-center">
-                                        <div className="h-10 mb-2" />
-                                        <div className="h-px bg-slate-300 border-0" />
-                                        <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest mt-1.5">Bemor imzosi</p>
-                                    </div>
+                                {/* 7. FOOTER NOTE */}
+                                <div className="text-center text-[10px] text-slate-400 font-medium mt-6">
+                                    Hujjat {new Date().toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })} sanasida {clinicName} tizimi tomonidan yaratildi | Ushbu hujjat rasmiy hisoblanadi
                                 </div>
                             </div>
                         </div>
