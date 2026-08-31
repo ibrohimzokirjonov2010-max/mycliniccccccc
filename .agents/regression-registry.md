@@ -13,6 +13,248 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 💾 Davolash Rejalari (Treatment Plans): Tafsilot Modalida "Rejani Tahrirlash" O'rniga "Saqlash" Tugmasi O'rnatildi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/TreatmentPlans.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin 4/src/pages/TreatmentPlans.jsx)
+- **Muammo Tavsifi:** 
+  - Davolash rejalari tafsilot modalining pastki qismida "Rejani tahrirlash" tugmasi turgan edi, lekin foydalanuvchiga bajarilgan xizmatlar va holatni to'g'ridan-to'g'ri o'zgartirib saqlash uchun qulay "Saqlash" tugmasi kerak bo'lgan.
+- **Qanday tuzatildi:** 
+  - Pastki o'ng burchakdagi "Rejani tahrirlash" tugmasi olib tashlandi.
+  - O'rniga to'g'ridan-to'g'ri rejadagi barcha o'zgarishlarni bazaga saqlovchi va muvaffaqiyatli saqlanganligi haqida xabar beruvchi **"Saqlash"** (`Check` belgisi va chiroyli gradient bilan) tugmasi joylashtirildi.
+  - Loyiha `npm run build` orqali to'liq tekshirildi va muvaffaqiyatli o'tdi.
+
+### 🦷 Davolash Rejasi (Treatment Plans & New Patient Flow): Xizmatlarga Belgilangan Tishlar Bo'yicha Qat'iy Filtrlash va Tekshiruv O'rnatildi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/components/treatments/TreatmentPlanModal.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin 4/src/components/treatments/TreatmentPlanModal.jsx)
+  - [`src/components/patients/NewPatientFlow.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin 4/src/components/patients/NewPatientFlow.jsx)
+  - [`src/components/patients/DentalChartV2.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin 4/src/components/patients/DentalChartV2.jsx)
+  - [`src/pages/MobileTreatmentPlansV2.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin 4/src/pages/MobileTreatmentPlansV2.jsx)
+- **Muammo Tavsifi:** 
+  - Xizmatlar bo'limida muayyan tishlar uchun mo'ljallangan xizmat yaratilganda (masalan, `requires_tooth: true` va faqat 11-18 tishlar tanlanganda), davolash rejasi tuzishda boshqa belgilanmagan tishlar (masalan, 29, 36, 48 va h.k.) bosilganda ham shu xizmat ro'yxatda chiqib, biriktirilib qolayotgan edi.
+- **Qanday tuzatildi:** 
+  - `isServiceCompatibleWithTooth` yordamchi funksiyasi joriy qilindi.
+  - Odontogrammadan muayyan tish tanlanganda, faqat:
+    1. Umumiy (barcha tishlarga to'g'ri keladigan) xizmatlar, VA
+    2. Aynan shu tanlangan tish raqami biriktirilgan xizmatlargina ro'yxatda ko'rinadigan qilindi.
+  - Xizmatni qo'shish funksiyasida (`toggleService` / `toggleToothService`) boshqa tishga noto'g'ri xizmat biriktirilishini bloklovchi xavfsizlik tekshiruvi va ogohlantirish o'rnatildi.
+  - Desktop va mobil davolash rejasi modal oynalari to'liq moslashtirildi.
+  - Loyiha `npm run build` orqali to'liq tekshirildi va muvaffaqiyatli o'tdi.
+
+### ➕ Xizmatlar Bo'limi (Services): "Yangi Xizmat Qo'shish" Tugmalari Kattaroq, Ko'rinarli va Qulay Qilindi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Services.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin 4/src/pages/Services.jsx)
+- **Muammo Tavsifi:** 
+  - Xizmatlar bo'limida "Yangi xizmat" tugmasi kichik va noqulay bo'lib, tezkor xizmat qo'shishda e'tiborni yaxshi tortmayotgan edi.
+- **Qanday tuzatildi:** 
+  - Jadval sarlavhasidagi va sahifa tepasidagi **"+ YANGI XIZMAT QO'SHISH"** tugmalari kattalashtirildi (`h-10` / `h-11`, `px-5` / `px-6`, qalin shrift va kattaroq plyus belgisi bilan).
+  - Tugmaga feruza gradient, yorqin soya va qulay bosish animatsiyalari berildi.
+  - Loyiha `npm run build` orqali to'liq tekshirildi va muvaffaqiyatli o'tdi.
+
+### 🏷️ Xizmatlar Bo'limi (Services): Kategoriyalar Ro'yxatidagi Ikonkalar Olib Tashlandi (Minimalist va Toza Ko'rinish)
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Services.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin 4/src/pages/Services.jsx)
+- **Muammo Tavsifi:** 
+  - Chap paneldagi kategoriyalar ro'yxatida va jadval guruh sarlavhasida har bir kategoriya oldida rangli ikonkalar ko'rsatilib, ortiqcha yuklama hosil qilayotgan edi.
+- **Qanday tuzatildi:** 
+  - Kategoriyalar tugmalari va "Barchasi" bo'limidagi barcha rangli ikonkalar to'liq olib tashlandi.
+  - Kategoriya nomlari chap tomondan tekislangan, aniq, ixcham va toza minimalist matn formatiga keltirildi.
+  - Loyiha `npm run build` orqali to'liq tekshirildi va muvaffaqiyatli o'tdi.
+
+### 💎 Xizmatlar Bo'limi (Services): Zamonaviy, Premium va Yuqori Sifatli Excel Data Grid Dizayniga Takomillashtirildi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Services.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/Services.jsx)
+- **Muammo Tavsifi:** 
+  - Xizmatlar bo'limi jadval dizayni juda oddiy va tekis ko'rinishga ega bo'lib, shriftlar, har bir bo'lim belgilari va interaktiv amallar zamonaviy premium klinika darajasiga to'liq javob bermayotgan edi.
+- **Qanday tuzatildi:** 
+  - **Yuqori Statistika Kartochkalari:** Chiroyli rang-barang gradient belgilar, ochiq chegaralar, sonlar va ostki izohlar bilan boyitildi.
+  - **Chap Kategoriya Paneli:** Har bir bo'lim (Terapiya, Ortopediya, Xirurgiya, Ortodontiya, Gigiena, Estetika va b.) uchun maxsus rangli ikonka, faol holatda boy slate-900 gradient fon, aniq hisoblagich nishoni (`badge`) va qidiruv tozalash tugmasi qo'shildi.
+  - **Excel Jadval Tizimi (Data Grid):**
+    - Sarlavha qatorlari, o'sish/kamayish strelkalari, qulay qator oraliqlari va yorqin ranglar palitrasi o'rnatildi.
+    - Narxlar tiniq, qalin va yuqori kontrastli UZS formatida o'ng tomonga tekislandi.
+    - Kategoriya belgilari bo'lim rangiga mos chiroyli nishonlar (`pill badge`) bilan berildi.
+    - Faol/Nofaol holati yorqin rangli doira va interaktiv hover animatsiyasi bilan boyitildi.
+    - Amallar qatoriga har biri o'z rangiga ega (Ko'rish - moviy, Tahrirlash - feruza, O'chirish - qizil) zamonaviy tugmalar o'rnatildi.
+    - Pastki Excel formula barida jami, faol, nofaol va o'rtacha narx statistikasi professional chiqarildi.
+  - Loyiha `npm run build` orqali to'liq tekshirildi va muvaffaqiyatli o'tdi.
+
+### 🦷 Xizmatlar Bo'limi (Services): Kategoriya Nomlari Mosligi va Terapiya Xizmatlari To'liq Tiklandi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Services.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/Services.jsx)
+  - [`src/pages/MobileServicesV2.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/MobileServicesV2.jsx)
+  - [`src/api/base44Client.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/api/base44Client.jsx)
+- **Muammo Tavsifi:** 
+  - Xizmatlar bo'limida "TERAPIYA (ENDO + PLOMBA)" kategoriyasi tanlanganda 0 ta xizmat deb ko'rsatilib, "Ma'lumot yo'q" holatiga tushib qolayotgan edi. Buning sababi bazadagi xizmat kategoriyalari (`TERAPIYA( ENDO +PLOMBA)`, `Terapiya`, `TERAPIYA`, `Endodontiya`) qat'iy matn tengligi (`===`) tufayli mos kelmay qolgan va standart shablon yuklashda xatolik yuz bergan.
+- **Qanday tuzatildi:** 
+  - `normalizeCategory`, `autoCategorize` va `getServiceCategory` funksiyalari to'liq kiritildi.
+  - Barcha kategoriya variantlari va harf/probel farqlari xatosiz `TERAPIYA (ENDO + PLOMBA)` ga tenglashtirildi.
+  - Baza yuklanayotganda Terapiya xizmatlari avtomatik to'ldirilishi va default shablonlar barcha 10 ta bo'lim uchun kengaytirildi.
+  - Desktop va Mobil sahifalari yangilanib, `npm run build` orqali muvaffaqiyatli tekshirildi.
+
+### 📊 Xizmatlar Bo'limi (Services): Katta Kartochkalardan Professional Excel Spreadsheet (Jadval) Dizayniga O'tkazildi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Services.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/Services.jsx)
+- **Muammo Tavsifi:** 
+  - Xizmatlar bo'limi katta hajmdagi kartochkalarda ko'rsatilib, sahifada ko'p joy egallayotgan va boshqa bo'limlardagi (Bemorlar, Maosh, Xarajatlar) yagona Excel Spreadsheet uslubidan farq qilayotgan edi.
+- **Qanday tuzatildi:** 
+  - Hech qanday ortiqcha element yoki noqulay tugmalar qo'shilmagan holda, xizmatlar to'liq **Excel Spreadsheet Jadval tizimi**ga o'tkazildi.
+  - Ustunlar: `№`, `Xizmat Nomi` (🦷 tish belgisi bilan), `Bo'lim / Kategoriya`, `Asosiy Narx (UZS)`, `Davomiyligi (min)`, `Holati` (Faol/Nofaol interaktiv o'zgartirish tugmasi) va `Amallar` (Ko'rish, Tahrirlash, O'chirish).
+  - Barcha kategoriyalar bo'yicha chiroyli guruhlangan qatorlar, ustunlar bo'yicha tartiblash (sortlash) va pastki qismda Excel formula statistikasi (`Jami`, `Faol`, `Nofaol`, `O'rtacha narx`) joylashtirildi.
+  - Barcha mavjud funksiyalar (shablonlar, kategoriya qo'shish/tahrirlash/o'chirish, tish diagrammasi) to'liq saqlab qolindi va `npm run build` orqali muvaffaqiyatli sinovdan o'tkazildi.
+
+### 📅 Shifokor Maoshi Modali: Davrni Tanlash (Custom Date Range) va Sana Formatlari Mosligi To'liq Tuzatildi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Payroll.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/Payroll.jsx)
+  - [`src/pages/MobilePayroll.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/MobilePayroll.jsx)
+- **Muammo Tavsifi:** 
+  - Shifokor maoshi tafsilotlari modalida "Davrni tanlash" (Custom Date Range) sanalar kiritilganda yoki o'zgartirilganda to'lovlar va hisob-kitoblar to'g'ri filtrlanmayotgan yoki faqat joriy kun sanasini ko'rsatib qolayotgan edi. Buning sababi `parsePaymentDate` turli formatdagi (`DD.MM.YYYY` va `YYYY-MM-DD`) sanalarni noto'g'ri o'qigan va `mode: 'custom'` filtrlari to'liq bog'lanmagan edi.
+- **Qanday tuzatildi:** 
+  - `parseDateBoundary` va kengaytirilgan `parsePaymentDate` funksiyalari kiritildi, barcha sana formatlari (`YYYY-MM-DD`, `DD.MM.YYYY`, ISO) xatosiz mahalliy vaqtda tahlil qilinishi ta'minlandi.
+  - Davr tugmalari qatoriga 5-chi **"Maxsus Davr"** tugmasi qo'shildi.
+  - Sanalar oralig'i (Dan — Gacha) kiritilganda darhol avtomatik hisoblash va qo'shimcha **"Qo'llash"** hamda **"Tozalash"** tugmalari joylashtirildi.
+  - Desktop va Mobil sahifalari sinxron yangilandi va `npm run build` orqali to'liq tekshirildi.
+
+### 🧾 To'lov Kvitansiyasi Modali: "Davolash Rejasi" va "Bemorning To'lovlar Tarixi" Yonma-yon (2 Ustunli) Ixcham va Professional Holatga Keltirildi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Payments.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/Payments.jsx)
+  - [`src/components/patients/ExcelPaymentsView.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/patients/ExcelPaymentsView.jsx)
+- **Muammo Tavsifi:** 
+  - To'lov kvitansiyasida "Bemorning to'lovlar tarixi" pastki qismda accordion tugma ostida alohida turganligi sababli, foydalanuvchi doim pastga tushib ochishi kerak edi va o'ng tomonda bo'shliqlar yuzaga kelayotgan edi.
+- **Qanday tuzatildi:** 
+  - Modal kengligi qulay (`max-w-4xl lg:max-w-5xl`) kengaytirilib, **"Davolash rejasi & hisob-kitob"** (chap ustun) va **"Bemorning to'lovlar tarixi"** (o'ng ustun) yonma-yon 2 ustunli ixcham va zamonaviy gridga joylashtirildi.
+  - To'lovlar tarixi doimiy ko'rinadigan, skrollanadigan va joriy to'lov yashil rang bilan ajratilib turadigan professional ko'rinishga keltirildi.
+
+### 💵 Shifokor Maoshi Modali: "Joriy Hafta" o'rniga "Bugun" Qo'yildi va Ixtiyoriy Davrni Tanlash ("Shu kundan — Shu kungacha") Qo'shildi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Payroll.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/Payroll.jsx)
+  - [`src/pages/MobilePayroll.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/MobilePayroll.jsx)
+- **Muammo Tavsifi:** 
+  - Shifokor maoshi va bemorlar tafsiloti modalida davrlar bo'limida "Joriy Hafta" turgan edi. Shuningdek, sanalarni o'zi xohlagan davr bo'yicha ("Shu kundan — Shu kungacha") kiritib hisoblash imkoniyati yo'q edi.
+- **Qanday tuzatildi:** 
+  - "Joriy Hafta" tugmasi o'rniga **"Bugun"** davri joylashtirildi.
+  - Tugmalar ostiga **"Davrni tanlash: [ Boshlanish sanasi ] — [ Tugash sanasi ]"** (Date range picker) komponenti qo'shildi. Foydalanuvchi ixtiyoriy sanalar oralig'ini tanlaganda, shifokorning bemorlari, klinikaga tushumi va hisoblangan maoshi avtomatik qayta hisoblab ko'rsatiladi.
+
+### ⏱ To'lovlar Tarixi: Aniq Xronologik Tartib (Eng Yangi To'lov 1-O'rinda) To'liq To'g'rilandi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Payments.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/Payments.jsx)
+  - [`src/components/patients/ExcelPaymentsView.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/patients/ExcelPaymentsView.jsx)
+- **Muammo Tavsifi:** 
+  - To'lov kvitansiyasidagi "Bemorning to'lovlar tarixi" ro'yxatida to'lovlar vaqti aralashib (masalan, 13:36:03 birinchi, 16:45:19 ikkinchi, 16:32:23 uchinchi bo'lib) tartibsiz ko'rsatilayotgan edi.
+- **Qanday tuzatildi:** 
+  - To'lovlar ro'yxati `created_at` / `created_date` vaqt aniqligi bilan (millisekundigacha) saralanib, eng so'nggi amalga oshirilgan to'lov 1-o'ringa, oldingilari esa ketma-ket pastga tushadigan qat'iy xronologik tartibga solindi.
+
+### 🧾 To'lov Kvitansiyasi: "Holat / Formula" Ustuni Olib Tashlandi va Jadval Ixchamlashtirildi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Payments.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/Payments.jsx)
+  - [`src/components/patients/ExcelPaymentsView.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/patients/ExcelPaymentsView.jsx)
+- **Muammo Tavsifi:** 
+  - To'lov kvitansiyasi / hisob-kitob modalidagi jadvalda "Holat / Formula" degan ortiqcha 4-ustun ko'rsatilayotgan edi.
+- **Qanday tuzatildi:** 
+  - Jadvaldan "Holat / Formula" ustuni to'liq olib tashlandi. Endi jadval faqat 3 ta aniq ustundan iborat: `№`, `Moliyaviy Ko'rsatkich`, `Summa (UZS)`.
+
+### 🌙 23:30 va 00:00 (Yarim Kechasi) Uchrashuv Yozish va Setkaga Avtomatik Chiqishi To'liq Sozlandi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/components/appointments/DoctorDayGrid.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/appointments/DoctorDayGrid.jsx)
+  - [`src/components/appointments/AppointmentModal.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/appointments/AppointmentModal.jsx)
+- **Muammo Tavsifi:** 
+  - Shifokorlar setkasida 23:00 dan keyin `23:30` va `00:00` vaqtlari bo'lmagani uchun bu vaqtlarga uchrashuv yozib bo'lmayotgan yoki modalda `00:00` tanlanganda u o'tgan vaqt deb qabul qilinib yozilmay qolayotgan edi. Shuningdek, `00:00` qo'shilganda u alfavit tartibida sahifaning eng tepasiga (08:00 dan oldinga) chiqib ketish xavfi bor edi.
+- **Qanday tuzatildi:** 
+  - `DoctorDayGrid.jsx` da `BASE_TIME_SLOTS` ga `23:30` va `00:00` qo'shildi. `getClinicTimeWeight` orqali 08:00 dan boshlanib, 23:00 -> 23:30 -> 00:00 tartibida kunning oxiriga to'g'ri joylashtirildi.
+  - `AppointmentModal.jsx` da `getEffectiveMinutes` joriy qilinib, `00:00` kunning oxiri (24:00) sifatida to'g'ri hisoblandi, o'tgan vaqt xatosi va to'qnashuvlar (conflict) to'g'ri ishlashi ta'minlandi.
+
+### 🔄 Uchrashuv Modali: Xizmat va Davomiyligi Bloklarining O'rni Almashtirildi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/components/appointments/AppointmentModal.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/appointments/AppointmentModal.jsx)
+- **Muammo Tavsifi:** 
+  - Uchrashuv yaratish modalida `Davomiyligi (min)` yuqorida, `Xizmat` esa pastda joylashgan edi. Foydalanuvchi qulayligi uchun avval xizmat tanlanib, keyin davomiylik va holat belgilanishi so'ralgan.
+- **Qanday tuzatildi:** 
+  - `Xizmat` va `Narxi` bloki yuqoriga, `Davomiyligi (min)` va `Holati` bloki esa uning pastki qatoriga o'tkazildi.
+
+### 📋 Uchrashuvlar Ro'yxati (List View) Ixcham, Tartibli va 2-Ustunli Qilib Qayta Ishlandi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Appointments.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/Appointments.jsx)
+- **Muammo Tavsifi:** 
+  - Uchrashuvlar sahifasining `RO'YXAT` ko'rinishi butun 1920px ekran bo'yicha juda yoyilib, katta bo'sh oq oraliqlar bilan qatorlar haddan tashqari baland va noqulay turgan edi.
+- **Qanday tuzatildi:** 
+  - Katta ekranlarda 2-ustunli (`grid-cols-1 xl:grid-cols-2`) zamonaviy ixcham kartochka ko'rinishiga o'tkazildi.
+  - Har bir kartada vaqt nishoni (`13:00 / 30m`), bemor ismi, shifokor nishoni, xizmat va holat belgilari ixcham va qulay joylashtirildi.
+
+### 📏 Shifokorlar Setkasi: Sarlavha va Kataklar Yagona CSS Grid Orqali 100% To'g'ri Chiziqqa Keltirildi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/components/appointments/DoctorDayGrid.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/appointments/DoctorDayGrid.jsx)
+- **Muammo Tavsifi:** 
+  - Shifokorlar setkasida yuqori sarlavha (shifokorlar nomlari) alohida `grid` konteynerda, pastki qabullar jadvali esa boshqa skroll konteynerda bo'lgani sababli, katta ekranlarda shifokorlar sarlavhasi kengayib, pastki qabullar kataklari torayib siljigan. Natijada vertikal chiziqlar to'g'ri tushmay, bir shifokorning qabullari vizual ravishda boshqa shifokor sarlavhasi tagiga tushib qolgan edi.
+- **Qanday tuzatildi:** 
+  - Sarlavha (Header) va barcha qabullar kataklari (Body) **yagona umumiy CSS Grid konteyneriga** birlashtirildi. CSS Grid `contents` yordamida har bir ustun sarlavhasidan boshlab eng pastki soatgacha bitta to'g'ri vertikal chiziqda bir xil piksel kengligida qat'iy tekislandi.
+
+### 🩺 Uchrashuv Yaratishda Shifokorning Bemor Tanlanganda O'zgarib Ketishi va Setka Mosligi Tuzatildi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/components/appointments/AppointmentModal.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/appointments/AppointmentModal.jsx)
+  - [`src/components/appointments/DoctorDayGrid.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/appointments/DoctorDayGrid.jsx)
+- **Muammo Tavsifi:** 
+  - Shifokorlar setkasida (masalan, Dr. Zafar katagida) uchrashuv yaratish uchun bosilganda modal ochilib, bemor tanlangan paytda bemorning asosiy shifokori (`main_treatment_provider`) tanlangan shifokor ustiga yozilib (override bo'lib), uchrashuv Dr. Zafarga emas, boshqa shifokorga (Dr. Kamron) saqlanib qolayotgan edi.
+- **Qanday tuzatildi:** 
+  - `AppointmentModal.jsx` da foydalanuvchi tanlagan yoki katakdan bosilgan `doctor_id` bemor tanlanganda ustiga yozilmaydigan (`currentDocId` saqlanib qoladigan) qilindi.
+  - `DoctorDayGrid.jsx` da uchrashuvlar shifokorga ID va Name bo'yicha mustahkam bog'lanib, soatlar dinamik ravishda to'liq ro'yxatga olindi.
+
+### 🩺 Uchrashuvlar: Shifokorlar Setkasi (DoctorDayGrid) Kataklari va Ustunlari Aniq Ajratildi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/components/appointments/DoctorDayGrid.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/appointments/DoctorDayGrid.jsx)
+- **Muammo Tavsifi:** 
+  - Uchrashuvlar sahifasidagi `SETKA` rejimida har bir shifokorning ustunlari va vaqt kataklari bir-biridan yetarlicha farqlanmas, pastki soatlarga tushganda qaysi katak qaysi shifokorga tegishli ekanligi noaniq bo'lib qolayotgan edi.
+- **Qanday tuzatildi:** 
+  - Har bir shifokor ustuniga alohida professional rangli aksent (`DOCTOR_PALETTES`), yuqori fiksatsiyalangan (sticky) shifokor paneli, kunlik qabullar soni hisoblagichi, qalin va aniq vertikal ajratuvchi chiziqlar (`border-r-2 border-slate-300`) qo'shildi.
+  - Bo'sh katak ustiga borganda `+ [Shifokor Ismi] (Vaqt)` ko'rsatgichi chiqishi joriy etildi.
+  - Qabul kartalariga ham shifokor nomi ko'rsatuvchi belgi va rangli ramka berildi.
+
+### ⏱ Uchrashuv Modali: O'tib Ketgan Vaqt Bosilganda "O'tib ketgan" Bildirishnomasi Chiqishi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/components/appointments/AppointmentModal.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/appointments/AppointmentModal.jsx)
+  - [`src/i18n/translations/uz.json`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/i18n/translations/uz.json)
+  - [`src/i18n/translations/ru.json`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/i18n/translations/ru.json)
+  - [`src/i18n/translations/en.json`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/i18n/translations/en.json)
+- **Muammo Tavsifi:** 
+  - Uchrashuv yaratish modalida (`AppointmentModal.jsx`) o'tib ketgan vaqt tugmalari (`08:00`, `09:00` va h.k.) `disabled` bo'lgani sababli bosilganda hech qanday javob qaytarmasdi va foydalanuvchiga nima uchun tanlab bo'lmayotgani haqida bildirishnoma chiqmas edi.
+- **Qanday tuzatildi:** 
+  - Tugmadan `disabled` olib tashlandi va klik hodisasida (`onClick`) o'tgan vaqt bosilganda `toast.warning("Ushbu vaqt o'tib ketgan!")` bildirishnomasi va vaqt grafigi tepasida sariq/amber xabarnoma ko'rsatiladi.
+- **Qaytalamaslik choralari:** Foydalanuvchi interfeysida cheklangan yoki o'tgan slotlarni bosganda doimo nima sababdan tanlab bo'lmasligini tushuntiruvchi interaktiv xabar/toast chiqishini ta'minlang.
+
+### 🧾 Davolash Rejasi Hisob-fakturasida Jami Qarzdorlik va To'langan Jami Hisob-kitobi Tuzatildi
+- **Sana:** 2026-08-31
+- **Tuzatilgan Fayllar:**
+  - [`src/components/treatments/TreatmentPlanInvoice.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/treatments/TreatmentPlanInvoice.jsx)
+  - [`src/components/treatments/TreatmentPlanModal.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/treatments/TreatmentPlanModal.jsx)
+  - [`src/pages/Payments.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/Payments.jsx)
+  - [`src/components/patients/ExcelPaymentsView.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/patients/ExcelPaymentsView.jsx)
+- **Muammo Tavsifi:** 
+  - Davolash rejasi kvitansiyasi / hisob-fakturasida to'lov qilinmagan yoki 0 so'm to'langan holatlarda `totalPaidSum` noto'g'ri `totalExpense` qiymatiga teng bo'lib qolib, "To'langan jami" qatorida to'liq xarajat summasi chiqib turar edi. Natijada qoldiq qarz 0 bo'lib, "Jami qarzdorlik" satri umuman ko'rinmay qolgan edi.
+- **Sababi:** 
+  - `TreatmentPlanInvoice.jsx` da `paymentRows.reduce(...) || totalExpense` mantiqiy sharti yozilgan edi. To'lov summasi 0 bo'lganda `0 || totalExpense` xarajat summasiga teng bo'lib, hisob-kitobni buzayotgan edi.
+- **Qanday tuzatildi:** 
+  - `totalPaidSum` haqiqiy to'langan summaga qarab aniq hisoblanadigan qilindi (agar to'lov bo'lmasa 0).
+  - "To'langan jami" yashil fonda haqiqiy to'langan summani ko'rsatadi.
+  - "Jami qarzdorlik" (`finalDebt`) alohida satrda qizil/pushti fonda aniq ko'rsatiladi.
+  - O'zbek, rus va ingliz tillari uchun lokalizatsiya qilindi.
+- **Qaytalamaslik choralari:** Hisob-kitob kvitansiyalarida 0 so'mlik to'lovlar uchun hech qachon `|| totalExpense` kabi noto'g'ri fallback qiymatlardan foydalanmang; 0 to'lov har doim 0 bo'lishi va qarz to'liq ko'rsatilishi shart.
+
 ### 👤 Bemorlar Ro'yxati: Manzil Ustuni Dinamik Qilindi (Faqat Manzil Mavjud Bo'lsa Ko'rinadi)
 - **Sana:** 2026-08-31
 - **Tuzatilgan Fayllar:**

@@ -26,10 +26,79 @@ const UZ_MONTHS = [
   'Iyul', 'Avgust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'
 ];
 
+function parseDateBoundary(str, boundary = 'start') {
+  if (!str) {
+    return boundary === 'start' ? new Date(2000, 0, 1, 0, 0, 0, 0) : new Date(2099, 11, 31, 23, 59, 59, 999);
+  }
+  const s = String(str).trim();
+  
+  // 1. Check for YYYY-MM-DD
+  const ymd = s.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+  if (ymd) {
+    const year = parseInt(ymd[1], 10);
+    const month = parseInt(ymd[2], 10) - 1;
+    const day = parseInt(ymd[3], 10);
+    return boundary === 'start' 
+      ? new Date(year, month, day, 0, 0, 0, 0) 
+      : new Date(year, month, day, 23, 59, 59, 999);
+  }
+
+  // 2. Check for DD.MM.YYYY
+  const dmy = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})/);
+  if (dmy) {
+    const day = parseInt(dmy[1], 10);
+    const month = parseInt(dmy[2], 10) - 1;
+    const year = parseInt(dmy[3], 10);
+    return boundary === 'start' 
+      ? new Date(year, month, day, 0, 0, 0, 0) 
+      : new Date(year, month, day, 23, 59, 59, 999);
+  }
+
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    if (boundary === 'start') d.setHours(0, 0, 0, 0);
+    else d.setHours(23, 59, 59, 999);
+    return d;
+  }
+  return boundary === 'start' ? new Date(2000, 0, 1, 0, 0, 0, 0) : new Date(2099, 11, 31, 23, 59, 59, 999);
+}
+
 function parsePaymentDate(p) {
   if (!p) return new Date();
   const val = p.date || p.created_date || p.created_at || p.timestamp;
   if (!val) return new Date();
+  
+  if (typeof val === 'number') {
+    return new Date(val);
+  }
+  
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    // 1. Check for YYYY-MM-DD or YYYY/MM/DD
+    const ymdMatch = trimmed.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+    if (ymdMatch) {
+      const year = parseInt(ymdMatch[1], 10);
+      const month = parseInt(ymdMatch[2], 10) - 1;
+      const day = parseInt(ymdMatch[3], 10);
+      const hours = ymdMatch[4] ? parseInt(ymdMatch[4], 10) : 0;
+      const mins = ymdMatch[5] ? parseInt(ymdMatch[5], 10) : 0;
+      const secs = ymdMatch[6] ? parseInt(ymdMatch[6], 10) : 0;
+      return new Date(year, month, day, hours, mins, secs);
+    }
+
+    // 2. Check for DD.MM.YYYY or DD-MM-YYYY or DD/MM/YYYY
+    const dmyMatch = trimmed.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+    if (dmyMatch) {
+      const day = parseInt(dmyMatch[1], 10);
+      const month = parseInt(dmyMatch[2], 10) - 1;
+      const year = parseInt(dmyMatch[3], 10);
+      const hours = dmyMatch[4] ? parseInt(dmyMatch[4], 10) : 0;
+      const mins = dmyMatch[5] ? parseInt(dmyMatch[5], 10) : 0;
+      const secs = dmyMatch[6] ? parseInt(dmyMatch[6], 10) : 0;
+      return new Date(year, month, day, hours, mins, secs);
+    }
+  }
+
   const d = new Date(val);
   return isNaN(d.getTime()) ? new Date() : d;
 }
@@ -50,6 +119,16 @@ function formatDateOnly(d) {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
   return `${day}.${month}.${year}`;
+}
+
+function formatDateForInput(d) {
+  if (!d) return '';
+  const dateObj = typeof d === 'string' ? parsePaymentDate({ date: d }) : d;
+  if (!dateObj || isNaN(dateObj.getTime())) return '';
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export default function MobilePayroll() {
@@ -297,6 +376,12 @@ export default function MobilePayroll() {
       return isDoc && isIncome;
     });
 
+    // Today range
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+
     // Week range
     const startOfWeek = new Date(now);
     const dayOfWeek = startOfWeek.getDay() || 7;
@@ -327,12 +412,18 @@ export default function MobilePayroll() {
       }, 0);
       let sal = comm;
       if (isFixed) {
-        if (mode === 'week') sal = Math.round(baseSalary / 4);
+        if (mode === 'today') sal = Math.round(baseSalary / 30);
+        else if (mode === 'week') sal = Math.round(baseSalary / 4);
         else if (mode === 'year') sal = baseSalary * 12;
         else sal = baseSalary;
       }
       return { rev, comm, sal, count: list.length };
     };
+
+    const todayPayments = allDoctorIncomePayments.filter(p => {
+      const time = parsePaymentDate(p).getTime();
+      return time >= startOfDay.getTime() && time <= endOfDay.getTime();
+    });
 
     const weeklyPayments = allDoctorIncomePayments.filter(p => {
       const time = parsePaymentDate(p).getTime();
@@ -349,13 +440,18 @@ export default function MobilePayroll() {
       return time >= startOfYear.getTime() && time <= endOfYear.getTime();
     });
 
+    const todayStats = computeSubset(todayPayments, 'today');
     const weekStats = computeSubset(weeklyPayments, 'week');
     const monthStats = computeSubset(monthlyPayments, 'month');
     const yearStats = computeSubset(yearlyPayments, 'year');
     const allStats = computeSubset(allDoctorIncomePayments, 'all');
 
     let activeStartDate, activeEndDate, activePayments;
-    if (activeFilter.mode === 'week') {
+    if (activeFilter.mode === 'today') {
+      activeStartDate = startOfDay;
+      activeEndDate = endOfDay;
+      activePayments = todayPayments;
+    } else if (activeFilter.mode === 'week') {
       activeStartDate = startOfWeek;
       activeEndDate = endOfWeek;
       activePayments = weeklyPayments;
@@ -364,9 +460,16 @@ export default function MobilePayroll() {
       activeEndDate = endOfYear;
       activePayments = yearlyPayments;
     } else if (activeFilter.mode === 'all') {
-      activeStartDate = new Date(2000, 0, 1);
-      activeEndDate = new Date(2099, 11, 31);
+      activeStartDate = new Date(2000, 0, 1, 0, 0, 0, 0);
+      activeEndDate = new Date(2099, 11, 31, 23, 59, 59, 999);
       activePayments = allDoctorIncomePayments;
+    } else if (activeFilter.mode === 'custom') {
+      activeStartDate = parseDateBoundary(activeFilter.startDate || formatDateForInput(startOfMonth), 'start');
+      activeEndDate = parseDateBoundary(activeFilter.endDate || formatDateForInput(endOfMonth), 'end');
+      activePayments = allDoctorIncomePayments.filter(p => {
+        const time = parsePaymentDate(p).getTime();
+        return time >= activeStartDate.getTime() && time <= activeEndDate.getTime();
+      });
     } else {
       activeStartDate = startOfMonth;
       activeEndDate = endOfMonth;
@@ -416,6 +519,7 @@ export default function MobilePayroll() {
       totalRevenue,
       totalCommission,
       totalSalary: activeSalary,
+      todayTotal: todayStats.sal,
       weeklyTotal: weekStats.sal,
       monthlyTotal: monthStats.sal,
       yearlyTotal: yearStats.sal,
@@ -896,13 +1000,14 @@ export default function MobilePayroll() {
                   </div>
                 </DialogHeader>
 
-                {/* Period Selector Tabs: Hafta, Oy, Yil, Hammasi */}
-                <div className="grid grid-cols-4 gap-1.5">
+                {/* Period Selector Tabs: Bugun, Oy, Yil, Hammasi, Maxsus */}
+                <div className="grid grid-cols-5 gap-1">
                   {[
-                    { id: 'week', label: 'Hafta', value: activeDetailDoctor.weeklyTotal },
+                    { id: 'today', label: 'Bugun', value: activeDetailDoctor.todayTotal },
                     { id: 'month', label: 'Oy', value: activeDetailDoctor.monthlyTotal },
                     { id: 'year', label: 'Yil', value: activeDetailDoctor.yearlyTotal },
-                    { id: 'all', label: 'Hammasi', value: activeDetailDoctor.allTotal }
+                    { id: 'all', label: 'Barchasi', value: activeDetailDoctor.allTotal },
+                    { id: 'custom', label: 'Maxsus', value: activeDetailDoctor.activeFilter?.mode === 'custom' ? activeDetailDoctor.totalSalary : null }
                   ].map(p => {
                     const currentMode = activeDetailDoctor.activeFilter?.mode || 'month';
                     const isActive = currentMode === p.id;
@@ -911,22 +1016,102 @@ export default function MobilePayroll() {
                         key={p.id}
                         type="button"
                         onClick={() => {
-                          setDoctorPeriodFilters(prev => ({
-                            ...prev,
-                            [activeDetailDoctor.id]: { mode: p.id }
-                          }));
+                          if (p.id === 'custom') {
+                            const curStart = activeDetailDoctor.activeFilter?.startDate || formatDateForInput(activeDetailDoctor.startDate);
+                            const curEnd = activeDetailDoctor.activeFilter?.endDate || formatDateForInput(activeDetailDoctor.endDate);
+                            setDoctorPeriodFilters(prev => ({
+                              ...prev,
+                              [activeDetailDoctor.id]: {
+                                mode: 'custom',
+                                startDate: curStart,
+                                endDate: curEnd
+                              }
+                            }));
+                          } else {
+                            setDoctorPeriodFilters(prev => ({
+                              ...prev,
+                              [activeDetailDoctor.id]: { mode: p.id }
+                            }));
+                          }
                         }}
-                        className={`py-2 px-1 rounded-xl text-center transition-all ${
+                        className={`py-2 px-0.5 rounded-xl text-center transition-all ${
                           isActive 
                             ? 'bg-slate-900 text-white shadow-xs' 
                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                         }`}
                       >
-                        <p className="text-[8px] font-black uppercase tracking-wider opacity-80">{p.label}</p>
-                        <p className="text-[10px] font-black font-mono mt-0.5 truncate">{formatCurrency(p.value || 0)}</p>
+                        <p className="text-[7.5px] font-black uppercase tracking-wider opacity-80">{p.label}</p>
+                        <p className="text-[9.5px] font-black font-mono mt-0.5 truncate">
+                          {p.value != null ? formatCurrency(p.value) : 'Tanlash'}
+                        </p>
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Custom Date Range Picker: Shu kundan — Shu kungacha */}
+                <div className={`flex flex-col gap-1.5 p-2 rounded-xl border transition-all ${
+                  activeDetailDoctor.activeFilter?.mode === 'custom'
+                    ? 'bg-blue-50/70 border-blue-300 ring-1 ring-blue-200'
+                    : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-[#1499AD]" />
+                      Davrni tanlash:
+                    </span>
+                    {activeDetailDoctor.activeFilter?.mode === 'custom' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDoctorPeriodFilters(prev => ({
+                            ...prev,
+                            [activeDetailDoctor.id]: { mode: 'month' }
+                          }));
+                        }}
+                        className="text-[9px] font-black text-rose-600 uppercase"
+                      >
+                        ✕ Tozalash
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-200">
+                    <input 
+                      type="date"
+                      value={activeDetailDoctor.activeFilter?.startDate || formatDateForInput(activeDetailDoctor.startDate)}
+                      onChange={(e) => {
+                        const newStart = e.target.value;
+                        const curEnd = activeDetailDoctor.activeFilter?.endDate || formatDateForInput(activeDetailDoctor.endDate);
+                        setDoctorPeriodFilters(prev => ({
+                          ...prev,
+                          [activeDetailDoctor.id]: {
+                            mode: 'custom',
+                            startDate: newStart,
+                            endDate: curEnd
+                          }
+                        }));
+                      }}
+                      className="text-[11px] font-bold text-slate-800 bg-transparent outline-none flex-1"
+                    />
+                    <span className="text-slate-400 font-bold text-xs">—</span>
+                    <input 
+                      type="date"
+                      value={activeDetailDoctor.activeFilter?.endDate || formatDateForInput(activeDetailDoctor.endDate)}
+                      onChange={(e) => {
+                        const newEnd = e.target.value;
+                        const curStart = activeDetailDoctor.activeFilter?.startDate || formatDateForInput(activeDetailDoctor.startDate);
+                        setDoctorPeriodFilters(prev => ({
+                          ...prev,
+                          [activeDetailDoctor.id]: {
+                            mode: 'custom',
+                            startDate: curStart,
+                            endDate: newEnd
+                          }
+                        }));
+                      }}
+                      className="text-[11px] font-bold text-slate-800 bg-transparent outline-none flex-1"
+                    />
+                  </div>
                 </div>
 
                 {/* Sub-tabs: Bemorlar VS Xizmatlar */}

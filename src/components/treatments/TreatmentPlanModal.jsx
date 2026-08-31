@@ -85,6 +85,15 @@ const getCategoryName = (cat) => {
   return cat;
 };
 
+const isServiceCompatibleWithTooth = (svc, toothId) => {
+  if (!toothId) return true;
+  if (!svc?.requires_tooth) return true;
+  const allowed = Array.isArray(svc.tooth_numbers) ? svc.tooth_numbers.map(Number) : [];
+  if (allowed.length === 0) return true;
+  const targetFdi = Number(idToFdi(toothId));
+  return allowed.includes(targetFdi);
+};
+
 const CategoryAccordion = ({ title, services, activeTooth, toothData, toggleService }) => {
   const [open, setOpen] = useState(true);
   const { t } = useTranslation();
@@ -484,6 +493,15 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
     if (blockedTargets.length > 0) {
       toast.error(`Olib tashlangan tish uchun xizmat yozib bo'lmaydi: ${blockedTargets.map(idToFdi).join(', ')}`);
       return;
+    }
+
+    if (svc.requires_tooth && Array.isArray(svc.tooth_numbers) && svc.tooth_numbers.length > 0) {
+      const allowedNums = svc.tooth_numbers.map(Number);
+      const invalidTargets = targets.filter(tId => !allowedNums.includes(Number(idToFdi(tId))));
+      if (invalidTargets.length > 0) {
+        toast.error(`"${svc.name}" xizmati faqat quyidagi tishlar uchun mo'ljallangan: ${allowedNums.sort((a,b)=>a-b).join(', ')}`);
+        return;
+      }
     }
 
     setToothData(prev => {
@@ -1082,9 +1100,11 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                             </div>
                             <div className="flex-1 overflow-y-auto pl-2 pr-4 pt-1.5 pb-6 space-y-1 min-h-0">
                                 {(() => {
-                                    const allSvcs = serviceSearch.trim()
-                                        ? (services||[]).filter(s => (s.name||'').toLowerCase().includes(serviceSearch.trim().toLowerCase()))
-                                        : (services||[]);
+                                    const allSvcs = (services || []).filter(s => {
+                                        const qMatch = !serviceSearch.trim() || (s.name || '').toLowerCase().includes(serviceSearch.trim().toLowerCase());
+                                        if (!qMatch) return false;
+                                        return isServiceCompatibleWithTooth(s, activeTooth);
+                                    });
                                     const grouped = {};
                                     allSvcs.forEach(svc => {
                                         const cat = svc.category || autoCategorize(svc.name);
@@ -1291,16 +1311,17 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                         {/* Middle: Service cards list */}
                         <div className="flex-1 overflow-y-auto px-4 py-3 bg-[#f8fafc] space-y-2.5 min-h-0">
                           {(() => {
-                            const filtered = services.filter(s => {
-                              const cat = (s.category || autoCategorize(s.name)).toLowerCase().trim();
+                            const filtered = (services || []).filter(s => {
                               const q = serviceSearch.trim().toLowerCase();
                               const qMatch = !q || (s.name || '').toLowerCase().includes(q);
                               if (!qMatch) return false;
+                              if (!isServiceCompatibleWithTooth(s, activeTooth)) return false;
                               
                               if (!selectedCategory || selectedCategory === "" || selectedCategory === "all" || selectedCategory === "barchasi") {
                                 return true;
                               }
                               
+                              const cat = (s.category || autoCategorize(s.name)).toLowerCase().trim();
                               const sel = selectedCategory.toLowerCase().trim();
                               const selName = getCategoryName(selectedCategory).toLowerCase().trim();
                               return cat === sel || cat === selName || (cat.includes(sel) && sel.length > 3) || (sel.includes(cat) && cat.length > 3);
@@ -1584,31 +1605,33 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {isInstallment && installmentAdvance > 0 ? (
+                                            {isInstallment && Number(installmentAdvance) > 0 ? (
                                                 <tr>
                                                     <td className="py-2.5 px-3 text-slate-700">{installmentStartDate}</td>
-                                                    <td className="py-2.5 px-3 font-bold text-slate-900">Boshlang'ich to'lov</td>
-                                                    <td className="py-2.5 px-3 text-center"><span className="text-[#16a34a] font-bold">To'langan</span></td>
-                                                    <td className="py-2.5 px-3 text-right font-bold text-slate-900">{installmentAdvance.toLocaleString()} so'm</td>
+                                                    <td className="py-2.5 px-3 font-bold text-slate-900">{language === 'ru' ? 'Первоначальный взнос' : language === 'en' ? 'Advance payment' : "Boshlang'ich to'lov"}</td>
+                                                    <td className="py-2.5 px-3 text-center"><span className="text-[#16a34a] font-bold">{language === 'ru' ? 'Оплачено' : language === 'en' ? 'Paid' : "To'langan"}</span></td>
+                                                    <td className="py-2.5 px-3 text-right font-bold text-slate-900">{Number(installmentAdvance).toLocaleString()} so'm</td>
                                                 </tr>
                                             ) : (
                                                 <tr>
                                                     <td className="py-2.5 px-3 text-slate-700">{new Date().toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
-                                                    <td className="py-2.5 px-3 font-bold text-slate-900">Karta / Naqd</td>
-                                                    <td className="py-2.5 px-3 text-center"><span className="text-[#16a34a] font-bold">To'langan</span></td>
-                                                    <td className="py-2.5 px-3 text-right font-bold text-slate-900">{finalTotal.toLocaleString()} so'm</td>
+                                                    <td className="py-2.5 px-3 font-bold text-slate-900">{language === 'ru' ? 'Ожидается' : 'Kutilmoqda'}</td>
+                                                    <td className="py-2.5 px-3 text-center"><span className="text-amber-600 font-bold">{language === 'ru' ? 'Не оплачено' : "To'lanmagan"}</span></td>
+                                                    <td className="py-2.5 px-3 text-right font-bold text-slate-900">0 so'm</td>
                                                 </tr>
                                             )}
                                             <tr className="bg-[#dcfce7] text-[#166534]">
-                                                <td colSpan="3" className="py-2.5 px-3 font-black text-sm text-[#166534]">To'langan jami</td>
-                                                <td className="py-2.5 px-3 text-right font-black text-sm text-[#166534]">{((isInstallment && installmentAdvance > 0) ? installmentAdvance : finalTotal).toLocaleString()} so'm</td>
+                                                <td colSpan="3" className="py-2.5 px-3 font-black text-sm text-[#166534]">{language === 'ru' ? 'Всего оплачено' : language === 'en' ? 'Total Paid' : "To'langan jami"}</td>
+                                                <td className="py-2.5 px-3 text-right font-black text-sm text-[#166534]">{((isInstallment && Number(installmentAdvance) > 0) ? Number(installmentAdvance) : 0).toLocaleString()} so'm</td>
                                             </tr>
-                                            {isInstallment && (finalTotal - installmentAdvance) > 0 && (
-                                                <tr>
-                                                    <td colSpan="3" className="py-2.5 px-3 font-black text-xs text-rose-600 pt-3">Qoldiq qarz:</td>
-                                                    <td className="py-2.5 px-3 text-right font-black text-xs text-rose-600 pt-3">{(finalTotal - installmentAdvance).toLocaleString()} so'm</td>
-                                                </tr>
-                                            )}
+                                            <tr className={((isInstallment && Number(installmentAdvance) > 0) ? Math.max(0, finalTotal - Number(installmentAdvance)) : finalTotal) > 0 ? "bg-[#ffe4e6] text-[#9f1239]" : "bg-[#f8fafc] text-slate-700"}>
+                                                <td colSpan="3" className={`py-2.5 px-3 font-black text-sm ${((isInstallment && Number(installmentAdvance) > 0) ? Math.max(0, finalTotal - Number(installmentAdvance)) : finalTotal) > 0 ? 'text-[#9f1239]' : 'text-slate-700'}`}>
+                                                    {language === 'ru' ? 'Общая задолженность' : language === 'en' ? 'Total Debt' : "Jami qarzdorlik"}
+                                                </td>
+                                                <td className={`py-2.5 px-3 text-right font-black text-sm ${((isInstallment && Number(installmentAdvance) > 0) ? Math.max(0, finalTotal - Number(installmentAdvance)) : finalTotal) > 0 ? 'text-[#9f1239]' : 'text-slate-700'}`}>
+                                                    {((isInstallment && Number(installmentAdvance) > 0) ? Math.max(0, finalTotal - Number(installmentAdvance)) : finalTotal).toLocaleString()} so'm
+                                                </td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>

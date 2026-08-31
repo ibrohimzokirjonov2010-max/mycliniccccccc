@@ -26,6 +26,20 @@ const normalizeToDateOnly = (dateStr) => {
   return clean;
 };
 
+const getEffectiveMinutes = (timeStr) => {
+  if (!timeStr) return 0;
+  const [h, m] = timeStr.split(':').map(Number);
+  // Hours from 00:00 to 06:59 belong to night / end of day clinic shift (mapped to 24:00 - 30:59)
+  const effH = h < 7 ? h + 24 : h;
+  return effH * 60 + (m || 0);
+};
+
+const APPOINTMENT_TIME_SLOTS = [
+  ...Array.from({ length: 16 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`),
+  '23:30',
+  '00:00'
+];
+
 const autoCategorize = (name) => {
   const n = name?.toLowerCase() || '';
   if (n.includes('olish') || n.includes('sug\'urish') || n.includes('implant') || n.includes('xirurg') || n.includes('anesteziya')) return 'XIRURGIYA';
@@ -71,7 +85,7 @@ export default function AppointmentModal({
   prefillToothNumber,
   onSaved 
 }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { user, isDoctor } = useAuth();
   const [doctors, setDoctors] = useState([]);
   const [form, setForm] = useState({
@@ -144,9 +158,8 @@ export default function AppointmentModal({
         tooth_number: appointment.tooth_number || '',
       });
     } else {
-      // Find doctor name if prefillDoctorId is provided or patient has assigned doctor
-      const assignedDocFromPatient = patients.find(p => p.id === prefillPatientId)?.main_treatment_provider;
-      const targetDocId = isDoctor && user?.id ? user.id : (prefillDoctorId || assignedDocFromPatient || '');
+      // Find doctor name if prefillDoctorId is provided
+      const targetDocId = isDoctor && user?.id ? user.id : (prefillDoctorId || '');
       const foundDoc = doctors.find(d => String(d.id) === String(targetDocId));
       const targetDocName = isDoctor && user?.name ? user.name : (foundDoc?.name || '');
       
@@ -234,8 +247,7 @@ export default function AppointmentModal({
     const dateOnly = normalizeToDateOnly(form.date);
     if (!dateOnly || !form.time) return undefined;
     
-    const [h, m] = form.time.split(':').map(Number);
-    const newStartTotal = h * 60 + m;
+    const newStartTotal = getEffectiveMinutes(form.time);
     const newEndTotal = newStartTotal + (parseInt(form.duration) || 30);
     
     return appointmentsToUse.find(a => {
@@ -254,11 +266,10 @@ export default function AppointmentModal({
         return false;
       }
 
-      const [ah, am] = (a.time || '00:00').split(':').map(Number);
-      const existStartTotal = ah * 60 + am;
+      const existStartTotal = getEffectiveMinutes(a.time || '00:00');
       const existEndTotal = existStartTotal + (parseInt(a.duration) || 30);
 
-      // Overlap check in minutes (more robust than Date objects for same-day checks)
+      // Overlap check in effective minutes (more robust than Date objects for same-day checks)
       return newStartTotal < existEndTotal && newEndTotal > existStartTotal;
     });
   }, [appointmentsToUse, appointment?.id, form.date, form.time, form.duration, form.doctor_id]);
@@ -562,12 +573,16 @@ export default function AppointmentModal({
                 value={form.patient_id}
                 initialName={form.patient_name}
                 onChange={(id, p) => {
-                  const assignedDocId = isDoctor && user?.id ? user.id : (p?.main_treatment_provider || form.doctor_id);
-                  const foundDoc = doctors.find(doc => doc.id === assignedDocId);
+                  // Do NOT overwrite doctor if user already selected a doctor or clicked on a doctor's slot
+                  const currentDocId = form.doctor_id || prefillDoctorId;
+                  const assignedDocId = isDoctor && user?.id 
+                    ? user.id 
+                    : (currentDocId || p?.main_treatment_provider || '');
+                  const foundDoc = doctors.find(doc => String(doc.id) === String(assignedDocId));
                   setForm(prev => ({ 
                     ...prev, 
                     patient_id: id, 
-                    patient_name: p?.full_name || '',
+                    patient_name: p?.full_name || p?.name || '',
                     doctor_id: assignedDocId || prev.doctor_id,
                     doctor_name: isDoctor && user?.name ? user.name : (foundDoc?.name || prev.doctor_name)
                   }));
@@ -589,9 +604,9 @@ export default function AppointmentModal({
                 </Label>
                 <Select 
                   disabled={isDoctor}
-                  value={isDoctor && user?.id ? user.id : form.doctor_id} 
+                  value={String(isDoctor && user?.id ? user.id : (form.doctor_id || ''))} 
                   onValueChange={id => {
-                    const d = doctors.find(doc => doc.id === id);
+                    const d = doctors.find(doc => String(doc.id) === String(id));
                     setForm(prev => ({ ...prev, doctor_id: id, doctor_name: d?.name || '' }));
                     setBusyInfo(null);
                   }}
@@ -603,7 +618,7 @@ export default function AppointmentModal({
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-100">
                     {doctors.map(d => (
-                      <SelectItem key={d.id} value={d.id} className="rounded-lg font-bold">{d.name}</SelectItem>
+                      <SelectItem key={String(d.id)} value={String(d.id)} className="rounded-lg font-bold">{d.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -653,55 +668,67 @@ export default function AppointmentModal({
                 </div>
 
                 {busyInfo && (
-                  <div className="mb-2 px-2.5 py-1.5 bg-rose-50 border border-rose-100 rounded-xl text-[9px] font-black text-rose-600 uppercase tracking-wide flex items-center gap-1.5">
-                    <span>⚠️ {t('appointments.timeBusy', { time: busyInfo.time, patient: busyInfo.patient_name }) || `${busyInfo.time} da band: ${busyInfo.patient_name}`}</span>
+                  <div className={`mb-2 px-2.5 py-1.5 ${busyInfo.isPast ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-rose-50 border-rose-100 text-rose-600'} rounded-xl text-[9px] font-black uppercase tracking-wide flex items-center gap-1.5`}>
+                    <span>{busyInfo.isPast ? '⏳' : '⚠️'} {busyInfo.message || (t('appointments.timeBusy', { time: busyInfo.time, patient: busyInfo.patient_name }) || `${busyInfo.time} da band: ${busyInfo.patient_name}`)}</span>
                   </div>
                 )}
 
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
-                  {Array.from({ length: 16 }, (_, i) => i + 8).flatMap(hour => {
-                    const hStr = String(hour).padStart(2, '0');
-                    return [`${hStr}:00`].map(slotTime => {
-                      const [selH, selM] = (form.time || '00:00').split(':').map(Number);
-                      const selStart = selH * 60 + selM;
-                      const selEnd = selStart + (parseInt(form.duration) || 30);
-                      const [sh, sm] = slotTime.split(':').map(Number);
-                      const slotStart = sh * 60 + sm;
-                      const isSelected = form.time === slotTime;
+                  {APPOINTMENT_TIME_SLOTS.map(slotTime => {
+                    const slotStart = getEffectiveMinutes(slotTime);
+                    const isSelected = form.time === slotTime;
 
-                      // Check if this slot is in the past (only for today's date)
-                      const now = new Date();
-                      const todayStr = now.toISOString().split('T')[0];
-                      const selectedDateStr = normalizeToDateOnly(form.date);
-                      const isToday = selectedDateStr === todayStr;
-                      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-                      const isPast = isToday && slotStart < currentMinutes;
+                    // Check if this slot is in the past (today before current time, or any past date)
+                    const now = new Date();
+                    const todayStr = now.toISOString().split('T')[0];
+                    const selectedDateStr = normalizeToDateOnly(form.date);
+                    const isToday = selectedDateStr === todayStr;
+                    const isBeforeToday = Boolean(selectedDateStr) && selectedDateStr < todayStr;
+                    const nowH = now.getHours();
+                    const nowM = now.getMinutes();
+                    const currentMinutes = getEffectiveMinutes(`${String(nowH).padStart(2, '0')}:${String(nowM).padStart(2, '0')}`);
+                    const isPast = isBeforeToday || (isToday && slotStart < currentMinutes);
 
-                      const busyAppt = appointmentsToUse?.find(a => {
-                        if (a.id === appointment?.id) return false;
-                        if (a.status === 'Cancelled') return false;
-                        const aDateOnly = normalizeToDateOnly(a.date);
-                        const fDateOnly = normalizeToDateOnly(form.date);
-                        if (aDateOnly !== fDateOnly) return false;
-                        if (form.doctor_id && a.doctor_id && String(form.doctor_id) !== String(a.doctor_id)) return false;
-                        const [ah, am] = (a.time || '00:00').split(':').map(Number);
-                        const aStart = ah * 60 + am;
-                        const aEnd = aStart + (parseInt(a.duration) || 30);
-                        return slotStart < aEnd && (slotStart + 30) > aStart;
-                      });
+                    const busyAppt = appointmentsToUse?.find(a => {
+                      if (a.id === appointment?.id) return false;
+                      if (a.status === 'Cancelled') return false;
+                      const aDateOnly = normalizeToDateOnly(a.date);
+                      const fDateOnly = normalizeToDateOnly(form.date);
+                      if (aDateOnly !== fDateOnly) return false;
+                      if (form.doctor_id && a.doctor_id && String(form.doctor_id) !== String(a.doctor_id)) return false;
+                      const aStart = getEffectiveMinutes(a.time || '00:00');
+                      const aEnd = aStart + (parseInt(a.duration) || 30);
+                      return slotStart < aEnd && (slotStart + 30) > aStart;
+                    });
 
                       const busyPatName = busyAppt 
                         ? (busyAppt.patient_name || patients.find(p => String(p.id) === String(busyAppt.patient_id))?.full_name || 'Bemor') 
                         : '';
 
+                      const pastTooltip = language === 'ru' ? 'Время уже прошло' : language === 'en' ? 'Time has passed' : "Ushbu vaqt o'tib ketgan";
+
                       return (
                         <button
                           key={slotTime}
                           type="button"
-                          disabled={isPast}
-                          title={busyAppt ? `${t('appointments.legendBusy') || 'Band'}: ${busyPatName} (${busyAppt.service_name || t('appointments.defaultService') || 'Maslahat'})` : undefined}
+                          title={isPast ? `${slotTime} — ${pastTooltip}` : busyAppt ? `${t('appointments.legendBusy') || 'Band'}: ${busyPatName} (${busyAppt.service_name || t('appointments.defaultService') || 'Maslahat'})` : undefined}
                           onClick={() => {
-                            if (isPast) return;
+                            if (isPast) {
+                              const pastMsg = language === 'ru' ? 'Время уже прошло!' : language === 'en' ? 'This time has passed!' : "Ushbu vaqt o'tib ketgan!";
+                              const pastDesc = language === 'ru' ? 'Нельзя записать на прошедшее время' : language === 'en' ? 'Cannot schedule appointment for past time' : "O'tib ketgan vaqtga yangi uchrashuv belgilab bo'lmaydi.";
+                              
+                              toast.warning(`${slotTime} — ${pastMsg}`, {
+                                description: pastDesc,
+                                duration: 3500,
+                              });
+
+                              setBusyInfo({
+                                time: slotTime,
+                                isPast: true,
+                                message: `${slotTime} — ${pastMsg}`
+                              });
+                              return;
+                            }
                             if (busyAppt) {
                               const busyPatName = busyAppt.patient_name || patients.find(p => String(p.id) === String(busyAppt.patient_id))?.full_name || 'Bemor';
                               
@@ -713,6 +740,7 @@ export default function AppointmentModal({
 
                               setBusyInfo({
                                 time: slotTime,
+                                isPast: false,
                                 patient_name: busyPatName
                               });
                             } else {
@@ -722,7 +750,7 @@ export default function AppointmentModal({
                           }}
                           className={`py-1.5 rounded-xl text-[10px] font-black transition-all border ${
                             isPast
-                              ? 'bg-slate-100 border-slate-100 text-slate-300 cursor-not-allowed opacity-50'
+                              ? 'bg-slate-100/80 border-slate-200/80 text-slate-400 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 active:scale-95 cursor-pointer opacity-75'
                               : busyAppt
                                 ? 'bg-rose-50 border-rose-100 text-rose-500 hover:bg-rose-100/50 hover:border-rose-300 active:scale-95 cursor-pointer shadow-sm shadow-rose-100'
                                 : isSelected
@@ -733,47 +761,10 @@ export default function AppointmentModal({
                           {slotTime}
                         </button>
                       );
-                    });
-                  })}
+                    })}
                 </div>
               </div>
             )}
-
-            {/* Duration and Status */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('appointments.duration')} (min)</Label>
-                <Select 
-                  value={String(form.duration)} 
-                  onValueChange={v => setForm(prev => ({ ...prev, duration: Number(v) }))}
-                >
-                  <SelectTrigger className="h-10 rounded-xl border-slate-100 bg-slate-50 font-bold text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-100">
-                    {durations.map(d => (
-                      <SelectItem key={d} value={String(d)} className="rounded-lg font-bold">{d} min</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('appointments.status')}</Label>
-                <Select 
-                  value={form.status} 
-                  onValueChange={v => setForm(prev => ({ ...prev, status: v }))}
-                >
-                  <SelectTrigger className="h-10 rounded-xl border-slate-100 bg-slate-50 font-bold text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-100">
-                    {appointmentStatuses.map(s => (
-                      <SelectItem key={s} value={s} className="rounded-lg font-bold">{t(`appointments.statusLabels.${s.replace(/\s+/g, '')}`)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
             {/* Service Selection and Price */}
             <div className="grid grid-cols-3 gap-3">
@@ -829,6 +820,42 @@ export default function AppointmentModal({
                     className="w-full h-10 rounded-xl border border-slate-100 bg-slate-50 px-3 text-xs font-bold outline-none"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Duration and Status */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('appointments.duration')} (min)</Label>
+                <Select 
+                  value={String(form.duration)} 
+                  onValueChange={v => setForm(prev => ({ ...prev, duration: Number(v) }))}
+                >
+                  <SelectTrigger className="h-10 rounded-xl border-slate-100 bg-slate-50 font-bold text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-100">
+                    {durations.map(d => (
+                      <SelectItem key={d} value={String(d)} className="rounded-lg font-bold">{d} min</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('appointments.status')}</Label>
+                <Select 
+                  value={form.status} 
+                  onValueChange={v => setForm(prev => ({ ...prev, status: v }))}
+                >
+                  <SelectTrigger className="h-10 rounded-xl border-slate-100 bg-slate-50 font-bold text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-100">
+                    {appointmentStatuses.map(s => (
+                      <SelectItem key={s} value={s} className="rounded-lg font-bold">{t(`appointments.statusLabels.${s.replace(/\s+/g, '')}`)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

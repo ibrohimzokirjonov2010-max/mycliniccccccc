@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Plus, Search, Stethoscope, Edit2, Trash2, Clock, 
   Activity, Scissors, Layers, Baby, Syringe, 
   Sparkles, Filter, TrendingUp, DollarSign, ListFilter,
-  BarChart3, Settings2, CheckCircle2, ChevronRight, Pencil, Check, GripVertical
+  BarChart3, Settings2, CheckCircle2, ChevronRight, Pencil, Check, GripVertical,
+  Eye, ArrowUp, ArrowDown, ArrowUpDown
 } from 'lucide-react';
 import { cn, cn as classNames } from '@/lib/utils';
 import { base44, DEFAULT_SERVICES_DATA } from '@/api/base44Client';
@@ -65,19 +66,76 @@ const CATEGORY_MAP = {
   'ENDODONTIYA': { icon: Activity, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-100' }
 };
 
-const getCategoryStyle = (cat) => CATEGORY_MAP[cat] || CATEGORY_MAP['TERAPIYA (ENDO + PLOMBA)'] || { icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100' };
+export const normalizeCategory = (cat) => {
+  if (!cat) return 'TERAPIYA (ENDO + PLOMBA)';
+  const cleaned = String(cat).trim();
+  const upper = cleaned.toUpperCase().replace(/\s+/g, ' ');
+  
+  if (
+    upper.includes('TERAPIYA') || 
+    upper.includes('THERAPY') || 
+    (upper.includes('ENDO') && upper.includes('PLOMBA')) ||
+    upper.includes('PLOMBA') ||
+    upper.includes('KARIES')
+  ) {
+    return 'TERAPIYA (ENDO + PLOMBA)';
+  }
+  if (upper.includes('RESTAVRATSIYA') || upper.includes('RESTORATION')) {
+    return 'RESTAVRATSIYA';
+  }
+  if (upper.includes('ORTOPEDIYA') || upper.includes('PROTHETIC') || upper.includes('PROTEZ') || upper.includes('KARONKA') || upper.includes('KORONKA')) {
+    return 'ORTOPEDIYA';
+  }
+  if (upper.includes('XIRURGIYA') || upper.includes('SURGERY') || upper.includes('JARROHLIK') || upper.includes('TISH OLISH')) {
+    return 'XIRURGIYA';
+  }
+  if (upper.includes('ORTODONTIYA') || upper.includes('ORTHODONTIC') || upper.includes('BREKET')) {
+    return 'ORTODONTIYA';
+  }
+  if (upper.includes('GIGIENA') || upper.includes('GIGIYENA') || upper.includes('PROFILAKTIKA') || upper.includes('HYGIENE') || upper.includes('AIRFLOW') || upper.includes('TOZALASH')) {
+    return 'GIGIENA VA PROFILAKTIKA';
+  }
+  if (upper.includes('ESTETIK') || upper.includes('ESTHETIC') || upper.includes('VINIYR') || upper.includes('VINIR') || upper.includes('OQARTIRISH')) {
+    return 'ESTETIK STOMATOLOGIYA';
+  }
+  if (upper.includes('BOLALAR') || upper.includes('CHILD') || upper.includes('PEDIA')) {
+    return 'BOLALAR STOMATOLOGIYASI';
+  }
+  if (upper.includes('IMPLANT')) {
+    return 'IMPLANTATSIYA';
+  }
+  if (upper === 'ENDODONTIYA' || upper === 'ENDODONTICS') {
+    return 'ENDODONTIYA';
+  }
+  
+  return cleaned;
+};
 
-const autoCategorize = (name) => {
-  const n = name?.toLowerCase() || '';
+export const autoCategorize = (name, currentCat = '') => {
+  if (currentCat) return normalizeCategory(currentCat);
+  const n = (name || '').toLowerCase();
   if (n.includes('implant')) return 'IMPLANTATSIYA';
-  if (n.includes('bolalar') || n.includes('child')) return 'BOLALAR STOMATOLOGIYASI';
-  if (n.includes('gigiyena') || n.includes('profilaktika') || n.includes('toshlarni') || n.includes('skaler')) return 'GIGIENA VA PROFILAKTIKA';
-  if (n.includes('vinir') || n.includes('oqartirish') || n.includes('bleaching') || n.includes('estetik')) return 'ESTETIK STOMATOLOGIYA';
-  if (n.includes('endo') || n.includes('kanal')) return 'ENDODONTIYA';
-  if (n.includes('olish') || n.includes('sug\'urish') || n.includes('xirurg') || n.includes('anesteziya')) return 'XIRURGIYA';
-  if (n.includes('karonka') || n.includes('protez') || n.includes('sirkoniy') || n.includes('ko\'prik')) return 'ORTOPEDIYA';
+  if (n.includes('bolalar') || n.includes('child') || n.includes('pediatr')) return 'BOLALAR STOMATOLOGIYASI';
+  if (n.includes('gigiyena') || n.includes('gigiena') || n.includes('profilaktika') || n.includes('toshlarni') || n.includes('skaler') || n.includes('airflow') || n.includes('tozalash')) return 'GIGIENA VA PROFILAKTIKA';
+  if (n.includes('vinir') || n.includes('viniyr') || n.includes('oqartirish') || n.includes('bleaching') || n.includes('estetik')) return 'ESTETIK STOMATOLOGIYA';
+  if (n.includes('restavratsiya')) return 'RESTAVRATSIYA';
+  if (n.includes('olish') || n.includes('sug\'urish') || n.includes('xirurg') || n.includes('anesteziya') || n.includes('jarrohlik')) return 'XIRURGIYA';
+  if (n.includes('karonka') || n.includes('koronka') || n.includes('protez') || n.includes('sirkoniy') || n.includes('ko\'prik') || n.includes('e-max')) return 'ORTOPEDIYA';
   if (n.includes('breket') || n.includes('reteyner') || n.includes('plastinka') || n.includes('ortodont')) return 'ORTODONTIYA';
+  if (n.includes('endo') || n.includes('kanal') || n.includes('pulpotomiya')) return 'TERAPIYA (ENDO + PLOMBA)';
+  if (n.includes('plomba') || n.includes('karies') || n.includes('terapiya') || n.includes('shtif') || n.includes('rvg') || n.includes('rentgen')) return 'TERAPIYA (ENDO + PLOMBA)';
   return 'TERAPIYA (ENDO + PLOMBA)';
+};
+
+export const getServiceCategory = (s) => {
+  if (!s) return 'TERAPIYA (ENDO + PLOMBA)';
+  if (s.category) return normalizeCategory(s.category);
+  return autoCategorize(s.name);
+};
+
+const getCategoryStyle = (cat) => {
+  const norm = normalizeCategory(cat);
+  return CATEGORY_MAP[norm] || CATEGORY_MAP[cat] || CATEGORY_MAP['TERAPIYA (ENDO + PLOMBA)'] || { icon: Activity, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100' };
 };
 
 // ─── Tish tugmasi ─────────────────────────────────────────────────────────────
@@ -254,6 +312,58 @@ export default function Services() {
     name: '', category: 'TERAPIYA (ENDO + PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false, description: '', tooth_numbers: []
   });
 
+  const [sortField, setSortField] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const handleToggleActive = async (service) => {
+    try {
+      const updatedStatus = service.is_active === false ? true : false;
+      await base44.entities.Service.update(service.id, { is_active: updatedStatus });
+      setServices(prev => prev.map(s => s.id === service.id ? { ...s, is_active: updatedStatus } : s));
+    } catch (err) {
+      console.error('Failed to toggle service status:', err);
+    }
+  };
+
+  const sortItems = useCallback((items) => {
+    const list = [...items];
+    list.sort((a, b) => {
+      let valA, valB;
+      if (sortField === 'price') {
+        valA = Number(a.price) || 0;
+        valB = Number(b.price) || 0;
+        return sortOrder === 'asc' ? valA - valB : valB - valA;
+      } else if (sortField === 'duration') {
+        valA = Number(a.duration) || 0;
+        valB = Number(b.duration) || 0;
+        return sortOrder === 'asc' ? valA - valB : valB - valA;
+      } else if (sortField === 'category') {
+        valA = (a.category || autoCategorize(a.name) || '').toLowerCase();
+        valB = (b.category || autoCategorize(b.name) || '').toLowerCase();
+        return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      } else if (sortField === 'status') {
+        valA = a.is_active !== false ? 1 : 0;
+        valB = b.is_active !== false ? 1 : 0;
+        return sortOrder === 'asc' ? valB - valA : valA - valB;
+      } else {
+        // 'name' default
+        valA = (a.name || '').toLowerCase();
+        valB = (b.name || '').toLowerCase();
+        return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+    });
+    return list;
+  }, [sortField, sortOrder]);
+
   // Xizmatlar tartibi har bir kategoriya uchun localStorage da saqlanadi
   const [serviceOrders, setServiceOrders] = useState({});
 
@@ -305,12 +415,40 @@ export default function Services() {
     try {
       setLoading(true);
       const [svcData, catData] = await Promise.all([
-        base44.entities.Service.list('name', 300),
+        base44.entities.Service.list('name', 500),
         base44.entities.ServiceCategory.list('name', 100)
       ]);
+
+      let rawList = (svcData || []).map(s => ({
+        ...s,
+        category: getServiceCategory(s)
+      }));
+
+      // Check if TERAPIYA or other categories are missing or if total list is low
+      const therapyCount = rawList.filter(s => normalizeCategory(getServiceCategory(s)) === 'TERAPIYA (ENDO + PLOMBA)').length;
+      if (therapyCount === 0 || rawList.length < 5) {
+        for (const defaultSvc of DEFAULT_SERVICES_DATA) {
+          const alreadyExists = rawList.some(s => s.name?.toLowerCase().trim() === defaultSvc.name?.toLowerCase().trim());
+          if (!alreadyExists) {
+            try {
+              const created = await base44.entities.Service.create({
+                ...defaultSvc,
+                category: normalizeCategory(defaultSvc.category)
+              });
+              rawList.push({
+                ...created,
+                category: getServiceCategory(created)
+              });
+            } catch (err) {
+              console.error('Auto seed service failed:', err);
+            }
+          }
+        }
+      }
+
       // De-duplicate services by name only (case-insensitive, trimmed)
       const seen = new Map();
-      (svcData || []).forEach(s => {
+      rawList.forEach(s => {
         const key = s.name?.toLowerCase().trim();
         if (!key) return;
         if (!seen.has(key)) {
@@ -345,12 +483,12 @@ export default function Services() {
     } else {
       order = [...DEFAULT_CATEGORIES];
     }
-    const merged = new Set(order);
-    DEFAULT_CATEGORIES.forEach(cat => merged.add(cat));
-    (dbCategories || []).forEach(c => c.name && merged.add(c.name));
+    const merged = new Set(order.map(c => normalizeCategory(c)));
+    DEFAULT_CATEGORIES.forEach(cat => merged.add(normalizeCategory(cat)));
+    (dbCategories || []).forEach(c => c.name && merged.add(normalizeCategory(c.name)));
     (services || []).forEach(s => {
-      const cat = s.category || autoCategorize(s.name);
-      if (cat) merged.add(cat);
+      const cat = getServiceCategory(s);
+      if (cat) merged.add(normalizeCategory(cat));
     });
     setCategoryOrder(Array.from(merged));
   }, [dbCategories, services]);
@@ -363,7 +501,7 @@ export default function Services() {
   useEffect(() => {
     if (editService) {
       setForm({ 
-        name: editService.name || '', category: editService.category || 'TERAPIYA (ENDO + PLOMBA)', 
+        name: editService.name || '', category: getServiceCategory(editService), 
         price: editService.price || '', duration: editService.duration || '30', 
         is_active: editService.is_active !== false, requires_tooth: editService.requires_tooth || false,
         description: editService.description || '',
@@ -376,18 +514,18 @@ export default function Services() {
 
   const filtered = useMemo(() => {
     return services.filter(s => {
+      const sCat = getServiceCategory(s);
       const matchesSearch = s.name?.toLowerCase().includes(search.toLowerCase()) || 
-                           s.category?.toLowerCase().includes(search.toLowerCase());
+                           sCat?.toLowerCase().includes(search.toLowerCase());
       if (selectedCategory === 'all') return matchesSearch;
-      const displayCategory = s.category || autoCategorize(s.name);
-      return matchesSearch && displayCategory === selectedCategory;
+      return matchesSearch && normalizeCategory(sCat) === normalizeCategory(selectedCategory);
     });
   }, [services, search, selectedCategory]);
 
   const grouped = useMemo(() => {
     const groups = {};
     filtered.forEach(s => {
-      const cat = s.category || autoCategorize(s.name);
+      const cat = getServiceCategory(s);
       if (!groups[cat]) groups[cat] = [];
       groups[cat].push(s);
     });
@@ -409,8 +547,8 @@ export default function Services() {
     });
     // Kategoriyalarni categoryOrder tartibida saralash
     return entries.sort(([a], [b]) => {
-      const ai = categoryOrder.indexOf(a);
-      const bi = categoryOrder.indexOf(b);
+      const ai = categoryOrder.indexOf(normalizeCategory(a));
+      const bi = categoryOrder.indexOf(normalizeCategory(b));
       if (ai !== -1 && bi !== -1) return ai - bi;
       if (ai !== -1) return -1;
       if (bi !== -1) return 1;
@@ -432,10 +570,14 @@ export default function Services() {
     if (!form.name || !form.price) return;
     setSaving(true);
     try {
+      const payload = {
+        ...form,
+        category: normalizeCategory(form.category)
+      };
       if (editService) {
-        await base44.entities.Service.update(editService.id, form);
+        await base44.entities.Service.update(editService.id, payload);
       } else {
-        await base44.entities.Service.create(form);
+        await base44.entities.Service.create(payload);
       }
       setModalOpen(false);
       setEditService(null);
@@ -459,204 +601,708 @@ export default function Services() {
   const loadTemplates = async () => {
     setLoadingTemplates(true);
     try {
-      const filteredTemplates = DEFAULT_SERVICES_DATA.filter(svc => ALLOWED_CATEGORIES.includes(svc.category));
-      // Create all missing services in parallel (not sequential)
-      const missingServices = filteredTemplates.filter(svc =>
-        !services.find(s => s.name?.toLowerCase() === svc.name?.toLowerCase())
+      const missingServices = DEFAULT_SERVICES_DATA.filter(svc =>
+        !services.find(s => s.name?.toLowerCase().trim() === svc.name?.toLowerCase().trim())
       );
       if (missingServices.length > 0) {
-        await Promise.all(missingServices.map(svc => base44.entities.Service.create(svc)));
+        await Promise.all(missingServices.map(svc => base44.entities.Service.create({
+          ...svc,
+          category: normalizeCategory(svc.category)
+        })));
       }
-    } catch (e) { console.error(e); } finally { setLoadingTemplates(false); loadData(); }
+      toast.success("Barcha standart xizmat shablonlari muvaffaqiyatli yuklandi!");
+    } catch (e) { 
+      console.error(e); 
+      toast.error("Shablonlarni yuklashda xatolik yuz berdi");
+    } finally { 
+      setLoadingTemplates(false); 
+      loadData(); 
+    }
   };
 
   return (
-    <div className="space-y-3 pb-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-        <div className="space-y-0.5 min-w-0 flex-1">
-          <Badge variant="outline" className="bg-[#1499AD]/10 text-[#1499AD] border-[#1499AD]/20 mb-1 font-black px-2.5 py-0.5 uppercase tracking-widest text-[9px]">CRM XIZMATLARI</Badge>
-          <h1 className="text-xl premium-title">{t('services.title')}</h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1 whitespace-normal break-words">{t('services.subtitle')}</p>
+    <div className="space-y-4 pb-6">
+      {/* Top Banner Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div className="space-y-1 min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-[#1499AD]/10 text-[#1499AD] border-[#1499AD]/30 font-black px-2.5 py-0.5 uppercase tracking-widest text-[9.5px]">
+              CRM XIZMATLARI
+            </Badge>
+            <span className="text-[11px] font-bold text-slate-400 font-mono">v2.5 Excel Grid</span>
+          </div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            {t('services.title') || "Klinika Xizmatlari Katalogi"}
+          </h1>
+          <p className="text-xs font-medium text-slate-500 max-w-xl">
+            {t('services.subtitle') || "Barcha stomatologik muolajalar, narxlar va toifalarni professional boshqarish"}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={loadTemplates} disabled={loadingTemplates} className="h-9 px-4 rounded-xl border-slate-200 font-bold active:scale-95 transition-all text-[10px] uppercase tracking-widest text-slate-500">{loadingTemplates ? '...' : t('services.loadTemplates')}</Button>
-          <Button onClick={() => { setEditService(null); setModalOpen(true); }} className="h-9 px-5 rounded-xl bg-[#1499AD] hover:bg-[#0E7A8A] text-white font-black shadow-sm gap-2 active:scale-95 transition-all text-[10px] uppercase tracking-widest border-none"><Plus className="w-4 h-4" /> {t('services.newService')}</Button>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <Button 
+            variant="outline" 
+            onClick={loadTemplates} 
+            disabled={loadingTemplates} 
+            className="h-10 px-4 rounded-xl border-slate-200/90 hover:border-[#1499AD]/40 hover:bg-[#1499AD]/5 font-bold active:scale-95 transition-all text-xs text-slate-700 gap-2 shadow-2xs"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#1499AD]" />
+            <span>{loadingTemplates ? 'Yuklanmoqda...' : (t('services.loadTemplates') || "Shablonlarni yuklash")}</span>
+          </Button>
+          <Button 
+            onClick={() => { 
+              setEditService(null); 
+              setForm(f => ({ ...f, category: selectedCategory === 'all' ? (categoryOrder[0] || 'TERAPIYA (ENDO + PLOMBA)') : selectedCategory }));
+              setModalOpen(true); 
+            }} 
+            className="h-11 px-6 rounded-xl bg-gradient-to-r from-[#1499AD] to-[#0E7A8A] hover:from-[#118596] hover:to-[#0b6370] text-white font-black shadow-md hover:shadow-xl hover:scale-[1.02] gap-2 active:scale-95 transition-all text-xs sm:text-sm uppercase tracking-wider border-none cursor-pointer"
+          >
+            <Plus className="w-5 h-5 stroke-[2.5]" /> 
+            <span>{t('services.newService') || "Yangi Xizmat Qo'shish"}</span>
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* KPI Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {[
-          { label: t('services.stats.total'), value: stats.total, icon: ListFilter, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: t('services.stats.active'), value: stats.active, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: t('services.stats.avgPrice'), value: `${(Math.round(stats.avgPrice / 1000) * 1000).toLocaleString()} UZS`, icon: DollarSign, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: (!t('services.categories') || t('services.categories').toUpperCase().startsWith('SERVICES.')) ? 'Bo\'limlar' : t('services.categories'), value: categoryOrder.length, icon: BarChart3, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { 
+            label: t('services.stats.total') || "Jami Xizmatlar", 
+            value: `${stats.total} ta`, 
+            sub: "Ro'yxatdagi barcha xizmatlar",
+            icon: ListFilter, 
+            color: 'text-blue-600', 
+            bg: 'bg-blue-50/80', 
+            border: 'border-blue-100',
+            cardBg: 'hover:border-blue-300/80' 
+          },
+          { 
+            label: t('services.stats.active') || "Faol Xizmatlar", 
+            value: `${stats.active} ta`, 
+            sub: `${stats.total - stats.active} ta nofaol`,
+            icon: CheckCircle2, 
+            color: 'text-emerald-600', 
+            bg: 'bg-emerald-50/80', 
+            border: 'border-emerald-100',
+            cardBg: 'hover:border-emerald-300/80' 
+          },
+          { 
+            label: t('services.stats.avgPrice') || "O'rtacha Narx", 
+            value: `${(Math.round(stats.avgPrice / 1000) * 1000).toLocaleString()} UZS`, 
+            sub: "Har bir xizmat bo'yicha",
+            icon: DollarSign, 
+            color: 'text-amber-600', 
+            bg: 'bg-amber-50/80', 
+            border: 'border-amber-100',
+            cardBg: 'hover:border-amber-300/80' 
+          },
+          { 
+            label: (!t('services.categories') || t('services.categories').toUpperCase().startsWith('SERVICES.')) ? 'Bo\'limlar' : t('services.categories'), 
+            value: `${categoryOrder.length} ta toifa`, 
+            sub: "Stomatologiya yo'nalishlari",
+            icon: BarChart3, 
+            color: 'text-purple-600', 
+            bg: 'bg-purple-50/80', 
+            border: 'border-purple-100',
+            cardBg: 'hover:border-purple-300/80' 
+          },
         ].map((stat, i) => (
-          <div key={i} className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3 group hover:shadow-md transition-all">
-            <div className={`w-9 h-9 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0`}><stat.icon className="w-4 h-4" /></div>
-            <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">{stat.label}</p><p className="text-lg font-black text-slate-900">{stat.value}</p></div>
+          <div 
+            key={i} 
+            className={`bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5 group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${stat.cardBg}`}
+          >
+            <div className={`w-11 h-11 rounded-xl ${stat.bg} ${stat.color} border ${stat.border} flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0 shadow-2xs`}>
+              <stat.icon className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none mb-1">
+                {stat.label}
+              </p>
+              <p className="text-base sm:text-lg font-black text-slate-900 tracking-tight truncate font-mono">
+                {stat.value}
+              </p>
+              <p className="text-[10px] font-medium text-slate-400 truncate mt-0.5">
+                {stat.sub}
+              </p>
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4">
+      {/* Main Workspace: Sidebar + Excel Data Grid */}
+      <div className="flex flex-col lg:flex-row gap-4 items-start">
+        {/* Left Categories Sidebar */}
         <div className="w-full lg:w-72 xl:w-80 flex-shrink-0 space-y-3">
-          <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm sticky top-3">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2"><Filter className="w-4 h-4 text-slate-900" /><h3 className="font-black text-slate-900 uppercase tracking-widest text-[10px]">{t('services.sidebar.categories')}</h3></div>
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs sticky top-3">
+            {/* Sidebar Header */}
+            <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center">
+                  <Filter className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 uppercase tracking-wider text-[11px]">
+                    {t('services.sidebar.categories') || "Kategoriyalar"}
+                  </h3>
+                  <span className="text-[9.5px] font-medium text-slate-400">
+                    {categoryOrder.length} ta bo'lim
+                  </span>
+                </div>
+              </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => setNewCatModalOpen(true)} className="p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:bg-slate-100 transition-all"><Plus className="w-3.5 h-3.5" /></button>
-                <button onClick={() => setIsReordering(!isReordering)} className={classNames("p-1.5 rounded-lg transition-all", isReordering ? "bg-emerald-500 text-white shadow-lg" : "bg-slate-50 text-slate-400 hover:bg-slate-100")}>{isReordering ? <Check className="w-3.5 h-3.5" /> : <Settings2 className="w-3.5 h-3.5" />}</button>
+                <button 
+                  onClick={() => setNewCatModalOpen(true)} 
+                  title="Yangi kategoriya qo'shish"
+                  className="p-1.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-[#1499AD]/10 hover:text-[#1499AD] transition-all cursor-pointer border border-slate-200/60"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+                <button 
+                  onClick={() => setIsReordering(!isReordering)} 
+                  title={isReordering ? "Tartibni saqlash" : "Kategoriyalar tartibini o'zgartirish"}
+                  className={classNames(
+                    "p-1.5 rounded-lg transition-all cursor-pointer border", 
+                    isReordering ? "bg-emerald-500 text-white border-emerald-600 shadow-sm" : "bg-slate-50 text-slate-600 border-slate-200/60 hover:bg-slate-100"
+                  )}
+                >
+                  {isReordering ? <Check className="w-3.5 h-3.5" /> : <Settings2 className="w-3.5 h-3.5" />}
+                </button>
               </div>
             </div>
-            <div className="relative mb-3"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" /><Input placeholder={t('services.sidebar.search')} value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-slate-900/10 font-bold text-slate-700 text-[12px]" /></div>
-            <div className="space-y-1 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+
+            {/* Search input */}
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <Input 
+                placeholder={t('services.sidebar.search') || "Xizmat qidirish..."} 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+                className="pl-9 h-9 rounded-xl bg-slate-50 border-slate-200/80 focus:bg-white focus:ring-2 focus:ring-[#1499AD]/20 font-medium text-slate-800 text-xs" 
+              />
+              {search && (
+                <button 
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Category Navigation List */}
+            <div className="space-y-1 max-h-[520px] overflow-y-auto pr-1 custom-scrollbar">
+              {/* All Services Tab */}
               <button 
                 onClick={() => setSelectedCategory('all')} 
                 title={t('services.sidebar.all') || "Barchasi"}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all font-black text-xs ${
-                  selectedCategory === 'all' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all font-black text-xs cursor-pointer ${
+                  selectedCategory === 'all' 
+                    ? 'bg-slate-900 text-white shadow-md' 
+                    : 'text-slate-700 hover:bg-slate-50 hover:text-[#1499AD]'
                 }`}
               >
-                <span className="flex items-center gap-2">
-                  <ListFilter className="w-3.5 h-3.5" /> 
-                  {t('services.sidebar.all')}
+                <span className="truncate leading-tight">
+                  {t('services.sidebar.all') || "Barchasi"}
                 </span>
                 <div className="flex items-center gap-1 shrink-0">
-                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
-                    selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                  <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-full font-mono ${
+                    selectedCategory === 'all' ? 'bg-[#1499AD] text-white shadow-2xs' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {services.length}
                   </span>
-                  <ChevronRight className={`w-3.5 h-3.5 opacity-30 ${selectedCategory === 'all' ? 'rotate-90' : ''}`} />
+                  <ChevronRight className={`w-3.5 h-3.5 ${selectedCategory === 'all' ? 'text-white rotate-90' : 'opacity-30'}`} />
                 </div>
               </button>
-              <Reorder.Group axis="y" values={categoryOrder} onReorder={handleReorder} className="space-y-1.5">
-                {categoryOrder.map((cat) => (
-                  <Reorder.Item key={cat} value={cat} dragListener={isReordering}>
-                    <div className="relative group">
-                      <button
-                        onClick={() => !isReordering && setSelectedCategory(cat)}
-                        title={cat}
-                        className={classNames(
-                          "w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all font-bold text-xs text-left border-2 gap-2",
-                          selectedCategory === cat ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'text-slate-700 border-transparent hover:bg-slate-50',
-                          isReordering && "border-emerald-500 bg-emerald-50 text-emerald-700 animate-pulse cursor-move ring-4 ring-emerald-500/10"
-                        )}
-                      >
-                        <span className="leading-snug break-words flex-1">{cat}</span>
-                        {!isReordering && (
-                          <div className="flex items-center gap-1 shrink-0">
-                            <span className={classNames(
-                              "text-[10px] font-bold px-1.5 py-0.2 rounded-full",
-                              selectedCategory === cat ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
-                            )}>
-                              {services.filter(s => (s.category || autoCategorize(s.name)) === cat).length}
-                            </span>
-                            <ChevronRight className={classNames("w-3.5 h-3.5", selectedCategory === cat ? "opacity-70" : "opacity-30")} />
+
+              {/* Categorized Tabs */}
+              <Reorder.Group axis="y" values={categoryOrder} onReorder={handleReorder} className="space-y-1">
+                {categoryOrder.map((cat) => {
+                  const count = services.filter(s => normalizeCategory(getServiceCategory(s)) === normalizeCategory(cat)).length;
+                  const isSelected = selectedCategory === cat;
+
+                  return (
+                    <Reorder.Item key={cat} value={cat} dragListener={isReordering}>
+                      <div className="relative group">
+                        <button
+                          onClick={() => !isReordering && setSelectedCategory(cat)}
+                          title={cat}
+                          className={classNames(
+                            "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all font-bold text-xs text-left border gap-2 cursor-pointer",
+                            isSelected 
+                              ? 'bg-slate-900 text-white border-slate-900 shadow-md' 
+                              : 'text-slate-700 border-transparent hover:bg-slate-50 hover:border-slate-200/80 hover:text-slate-900',
+                            isReordering && "border-emerald-500 bg-emerald-50 text-emerald-700 animate-pulse cursor-move ring-2 ring-emerald-500/20"
+                          )}
+                        >
+                          <span className="truncate leading-snug flex-1">{cat}</span>
+
+                          {!isReordering && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span className={classNames(
+                                "text-[10.5px] font-black px-2 py-0.5 rounded-full font-mono",
+                                isSelected 
+                                  ? "bg-[#1499AD] text-white shadow-2xs" 
+                                  : count > 0 ? "bg-slate-100 text-slate-700 group-hover:bg-[#1499AD]/10 group-hover:text-[#1499AD]" : "bg-slate-50 text-slate-400"
+                              )}>
+                                {count}
+                              </span>
+                              <ChevronRight className={classNames("w-3.5 h-3.5", isSelected ? "text-white" : "opacity-30")} />
+                            </div>
+                          )}
+                        </button>
+
+                        {isReordering && (
+                          <div className="absolute top-1/2 -translate-y-1/2 right-2 flex gap-1 z-20">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setRenamingCat({ old: cat, new: cat }); setCatEditOpen(true); }}
+                              className="p-1.5 bg-white shadow-md rounded-lg text-blue-600 hover:bg-blue-50 transition-colors border border-slate-200"
+                              title="Nomini o'zgartirish"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setCatToDelete(cat); }}
+                              className="p-1.5 bg-white shadow-md rounded-lg text-rose-600 hover:bg-rose-50 transition-colors border border-slate-200"
+                              title="O'chirish"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         )}
-                      </button>
-                      {isReordering && (
-                        <div className="absolute top-1/2 -translate-y-1/2 right-2 flex gap-1 z-20">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setRenamingCat({ old: cat, new: cat }); setCatEditOpen(true); }}
-                            className="p-1.5 bg-white shadow-md rounded-lg text-blue-500 hover:bg-blue-50 transition-colors"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setCatToDelete(cat); }}
-                            className="p-1.5 bg-white shadow-md rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </Reorder.Item>
-                ))}
+                      </div>
+                    </Reorder.Item>
+                  );
+                })}
               </Reorder.Group>
             </div>
           </div>
         </div>
 
-        <div className="flex-1">
+        {/* Right Excel Data Grid Table Area */}
+        <div className="flex-1 min-w-0 w-full">
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">{[1, 2, 3, 4, 5, 6].map(i => (<div key={i} className="h-64 bg-white rounded-[40px] animate-pulse border border-slate-100" />))}</div>
+            <div className="bg-white rounded-2xl border border-slate-200 p-16 text-center shadow-xs">
+              <div className="w-10 h-10 border-3 border-[#1499AD] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-xs font-bold text-slate-600">{t('common.loading') || "Xizmatlar yuklanmoqda..."}</p>
+            </div>
           ) : filtered.length === 0 ? (
-            <div className="bg-white rounded-[40px] border border-slate-100 p-24 flex flex-col items-center justify-center text-center shadow-sm">
-              <div className="w-24 h-24 bg-slate-50 rounded-[32px] flex items-center justify-center mb-8"><Stethoscope className="w-10 h-10 text-slate-200" /></div>
-              <h3 className="text-3xl font-black text-slate-900">{t('common.noData')}</h3>
-              <p className="text-slate-500 max-w-xs mx-auto mt-3 font-medium">{t('services.subtitle')}</p>
-              <Button onClick={() => setModalOpen(true)} className="mt-10 rounded-2xl bg-slate-900 px-10 h-14 font-black">{t('services.newService')}</Button>
+            <div className="bg-white rounded-2xl border border-slate-200 p-16 flex flex-col items-center justify-center text-center shadow-xs">
+              <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4 text-slate-300 border border-slate-100">
+                <Stethoscope className="w-8 h-8" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900">{t('common.noData') || "Xizmatlar topilmadi"}</h3>
+              <p className="text-slate-400 text-xs mt-1 max-w-sm">Ushbu bo'limda hozircha xizmatlar mavjud emas yoki qidiruv natijasi bo'sh</p>
+              <div className="flex items-center gap-3 mt-6">
+                <Button 
+                  onClick={() => {
+                    setEditService(null);
+                    setForm(f => ({ ...f, category: selectedCategory === 'all' ? (categoryOrder[0] || 'TERAPIYA (ENDO + PLOMBA)') : selectedCategory }));
+                    setModalOpen(true);
+                  }}
+                  className="rounded-xl bg-[#1499AD] hover:bg-[#0E7A8A] text-white px-5 h-10 font-bold text-xs gap-1.5 cursor-pointer active:scale-95 border-none shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{t('services.newService') || "Yangi Xizmat Qo'shish"}</span>
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={loadTemplates}
+                  className="rounded-xl border-slate-200 px-4 h-10 font-bold text-xs gap-1.5 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#1499AD]" />
+                  <span>Standart Shablonlarni Tiklash</span>
+                </Button>
+              </div>
             </div>
           ) : (
-          <div className="space-y-6">
-              {grouped.map(([catName, items]) => {
-                const style = getCategoryStyle(catName); const Icon = style.icon;
-                return (
-                  <div key={catName} className="space-y-6">
-                    <div className="flex items-center justify-between px-4">
-                      <div className="flex items-center gap-4">
-                        <h2 className="text-xl font-bold text-slate-900 uppercase tracking-widest">{catName}</h2>
-                        <Badge variant="secondary" className="bg-slate-100 text-slate-500 rounded-xl px-2 py-0.5 text-[11px] font-bold">{items.length}</Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {/* Tartib o'zgartirish tugmasi — kategoriyalardagi kabi */}
-                        <button
-                          onClick={() => setReorderingCat(prev => prev === catName ? null : catName)}
-                          className={classNames(
-                            "w-9 h-9 rounded-xl flex items-center justify-center transition-all font-black text-xs",
-                            reorderingCat === catName
-                              ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200 scale-110"
-                              : "bg-slate-50 text-slate-400 hover:bg-slate-100"
-                          )}
-                          title={reorderingCat === catName ? "Tartibni saqlash" : "Tartibni o'zgartirish"}
-                        >
-                          {reorderingCat === catName ? <Check className="w-4 h-4" /> : <Settings2 className="w-4 h-4" />}
-                        </button>
-                        <Button variant="ghost" size="icon" className="w-9 h-9 rounded-xl bg-slate-50 shadow-sm hover:bg-white hover:shadow-md transition-all"
-                          onClick={() => { setEditService(null); setForm(f => ({ ...f, category: catName })); setModalOpen(true); }}>
-                          <Plus className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    {/* Reorder rejim yozuvi */}
-                    {reorderingCat === catName && (
-                      <div className="px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-2">
-                        <GripVertical className="w-4 h-4" />
-                        Nuqtani ushlab joyini o'zgartiring. Tugatgach ✅ tugmasini bosing.
-                      </div>
-                    )}
-                    {/* ✅ DnD Kit — drag & drop grid */}
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragStart={(e) => handleDragStart(e, items)}
-                      onDragEnd={(e) => handleDragEnd(e, catName, items)}
-                    >
-                      <SortableContext items={items.map(s => s.id)} strategy={rectSortingStrategy}>
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                          {items.map(s => (
-                            <SortableServiceCard
-                              key={s.id}
-                              service={s}
-                              onView={() => setViewService(s)}
-                              onEdit={() => { setEditService(s); setModalOpen(true); }}
-                              onDelete={() => setDeleteId(s.id)}
-                              isDragging={activeDragItem?.id === s.id}
-                              isReorderMode={reorderingCat === catName}
-                            />
-                          ))}
-                        </div>
-                      </SortableContext>
-                      {/* Drag overlay has been removed to support direct, offset-free in-place dragging */}
-                    </DndContext>
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
+              {/* Excel Table Top Header Bar */}
+              <div className="px-5 py-3.5 bg-gradient-to-r from-slate-50 via-white to-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#1499AD]/10 text-[#1499AD] border border-[#1499AD]/20 flex items-center justify-center shadow-2xs">
+                    <Stethoscope className="w-4.5 h-4.5" />
                   </div>
-                );
-              })}
-            </div>
+                  <div>
+                    <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <span>{selectedCategory === 'all' ? (t('services.sidebar.all') || "Barcha Xizmatlar") : selectedCategory}</span>
+                      <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-[#1499AD]/10 text-[#1499AD] border border-[#1499AD]/20 font-mono">
+                        {filtered.length} ta xizmat
+                      </span>
+                    </h2>
+                    <p className="text-[10.5px] font-medium text-slate-400">
+                      {selectedCategory === 'all' ? "Klinika bo'yicha barcha faol va rejalashtirilgan xizmatlar ro'yxati" : `${selectedCategory} yo'nalishidagi muolajalar va narxlar`}
+                    </p>
+                  </div>
+                </div>
 
+                <div className="flex items-center gap-2">
+                  <Button 
+                    onClick={() => {
+                      setEditService(null);
+                      setForm(f => ({ ...f, category: selectedCategory === 'all' ? (categoryOrder[0] || 'TERAPIYA (ENDO + PLOMBA)') : selectedCategory }));
+                      setModalOpen(true);
+                    }} 
+                    className="h-10 px-5 rounded-xl bg-gradient-to-r from-[#1499AD] to-[#0E7A8A] hover:from-[#118596] hover:to-[#0b6370] text-white font-black text-xs sm:text-[13px] gap-2 shadow-md hover:shadow-lg hover:scale-[1.02] cursor-pointer active:scale-95 border-none transition-all uppercase tracking-wider"
+                  >
+                    <Plus className="w-4.5 h-4.5 stroke-[2.5]" />
+                    <span>{t('services.newService') || "Yangi Xizmat Qo'shish"}</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Excel Spreadsheet Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left select-text">
+                  <thead>
+                    <tr className="bg-slate-100/90 border-b-2 border-slate-200/90 text-slate-700 text-[11px] font-extrabold uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
+                      <th className="w-12 px-2.5 py-3 text-center border-r border-slate-200 select-none">
+                        №
+                      </th>
+                      <th 
+                        onClick={() => handleSort('name')}
+                        className="px-4 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[220px]"
+                      >
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span>{t('services.modals.name') || "Xizmat Nomi"}</span>
+                          {sortField === 'name' ? (
+                            sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1499AD]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1499AD]" />
+                          ) : (
+                            <ArrowUpDown className="w-3.5 h-3.5 opacity-30" />
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('category')}
+                        className="w-48 px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                      >
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span>{t('services.modals.category') || "Kategoriya"}</span>
+                          {sortField === 'category' ? (
+                            sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1499AD]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1499AD]" />
+                          ) : (
+                            <ArrowUpDown className="w-3.5 h-3.5 opacity-30" />
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('price')}
+                        className="w-40 px-4 py-3 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-emerald-50/50 select-none whitespace-nowrap text-emerald-900"
+                      >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span>{t('services.price') || "Asosiy Narx"}</span>
+                          {sortField === 'price' ? (
+                            sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-700" /> : <ArrowDown className="w-3.5 h-3.5 text-emerald-700" />
+                          ) : (
+                            <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('duration')}
+                        className="w-32 px-3 py-3 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                      >
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span>{t('services.modals.duration') || "Davomiyligi"}</span>
+                          {sortField === 'duration' && (
+                            sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1499AD]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1499AD]" />
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        onClick={() => handleSort('status')}
+                        className="w-28 px-3 py-3 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                      >
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span>{t('services.modals.activeState') || "Holati"}</span>
+                          {sortField === 'status' && (
+                            sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1499AD]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1499AD]" />
+                          )}
+                        </div>
+                      </th>
+                      <th className="w-28 px-2 py-3 text-center text-slate-600 whitespace-nowrap select-none">
+                        {t('common.actions') || "Amallar"}
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-200 text-xs">
+                    {selectedCategory === 'all' ? (
+                      grouped.map(([catName, catItems]) => {
+                        const sortedCatItems = sortItems(catItems);
+                        const style = getCategoryStyle(catName);
+                        const Icon = style.icon || Activity;
+                        return (
+                          <React.Fragment key={catName}>
+                            {/* Category Group Header Row */}
+                            <tr className="bg-slate-100/90 border-y-2 border-slate-200/90 font-black text-slate-800 text-[11px] uppercase tracking-wider select-none">
+                              <td colSpan={7} className="py-2.5 px-3.5">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-slate-900 font-extrabold text-xs">{catName}</span>
+                                    <span className="text-[10px] font-black text-slate-600 bg-white px-2.5 py-0.5 rounded-full border border-slate-200 font-mono shadow-2xs">
+                                      {catItems.length} ta xizmat
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditService(null);
+                                      setForm(f => ({ ...f, category: catName }));
+                                      setModalOpen(true);
+                                    }}
+                                    className="text-[10.5px] font-bold text-[#1499AD] hover:text-[#0E7A8A] flex items-center gap-1 cursor-pointer bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-[#1499AD]/5 transition-all"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Xizmat qo'shish</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+
+                            {/* Service Rows inside this category */}
+                            {sortedCatItems.map((s, idx) => {
+                              const itemStyle = getCategoryStyle(s.category || catName);
+                              return (
+                                <tr
+                                  key={s.id}
+                                  onClick={() => setViewService(s)}
+                                  className={`group hover:bg-[#1499AD]/5 hover:shadow-2xs transition-colors cursor-pointer ${
+                                    idx % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'
+                                  }`}
+                                >
+                                  {/* № */}
+                                  <td className="text-center font-mono font-bold text-slate-400 border-r border-slate-200/70 py-2.5 px-2 whitespace-nowrap">
+                                    {idx + 1}
+                                  </td>
+
+                                  {/* Xizmat Nomi */}
+                                  <td className="border-r border-slate-200/70 py-2.5 px-4">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div className="min-w-0 flex-1">
+                                        <span className="font-bold text-slate-900 group-hover:text-[#1499AD] transition-colors block text-[12.5px] truncate">
+                                          {s.name}
+                                        </span>
+                                        {s.requires_tooth && (
+                                          <span className="inline-flex items-center gap-1 text-[9.5px] font-black text-[#1499AD] bg-[#1499AD]/10 px-2 py-0.2 rounded-md mt-0.5">
+                                            🦷 Tishli xizmat
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* Kategoriya */}
+                                  <td className="border-r border-slate-200/70 py-2.5 px-3.5 whitespace-nowrap">
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-[10.5px] font-bold border truncate max-w-[170px] ${itemStyle.bg} ${itemStyle.color} ${itemStyle.border}`} title={s.category || catName}>
+                                      {s.category || catName}
+                                    </span>
+                                  </td>
+
+                                  {/* Asosiy Narx */}
+                                  <td className="text-right border-r border-slate-200/70 py-2.5 px-4 bg-emerald-50/25 whitespace-nowrap">
+                                    <span className="font-mono font-black text-slate-900 text-sm tabular-nums tracking-tight">
+                                      {(Number(s.price) || 0).toLocaleString()}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-slate-400 ml-1">UZS</span>
+                                  </td>
+
+                                  {/* Davomiyligi */}
+                                  <td className="text-center border-r border-slate-200/70 py-2.5 px-3 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1 font-mono font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg text-[11px] border border-slate-200/60">
+                                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                      {s.duration || 30} min
+                                    </span>
+                                  </td>
+
+                                  {/* Holati */}
+                                  <td className="text-center border-r border-slate-200/70 py-2.5 px-2.5 whitespace-nowrap">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleToggleActive(s);
+                                      }}
+                                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold border transition-all cursor-pointer shadow-2xs ${
+                                        s.is_active !== false
+                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                          : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
+                                      }`}
+                                      title="Holatni o'zgartirish uchun bosing"
+                                    >
+                                      <span className={`w-1.5 h-1.5 rounded-full ${s.is_active !== false ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-slate-400'}`} />
+                                      <span>{s.is_active !== false ? (t('services.active') || 'Faol') : (t('services.inactive') || 'Nofaol')}</span>
+                                    </button>
+                                  </td>
+
+                                  {/* Amallar */}
+                                  <td className="text-center py-2.5 px-2 whitespace-nowrap">
+                                    <div className="flex items-center justify-center gap-1.5" onClick={e => e.stopPropagation()}>
+                                      <button
+                                        onClick={() => setViewService(s)}
+                                        className="w-7.5 h-7.5 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer border border-transparent hover:border-blue-200"
+                                        title="Batafsil ko'rish"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() => { setEditService(s); setModalOpen(true); }}
+                                        className="w-7.5 h-7.5 rounded-lg flex items-center justify-center text-slate-400 hover:text-[#1499AD] hover:bg-[#1499AD]/10 transition-all cursor-pointer border border-transparent hover:border-[#1499AD]/30"
+                                        title="Tahrirlash"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={() => setDeleteId(s.id)}
+                                        className="w-7.5 h-7.5 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer border border-transparent hover:border-rose-200"
+                                        title="O'chirish"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </React.Fragment>
+                        );
+                      })
+                    ) : (
+                      sortItems(filtered).map((s, idx) => {
+                        const cat = s.category || autoCategorize(s.name);
+                        const itemStyle = getCategoryStyle(cat);
+                        return (
+                          <tr
+                            key={s.id}
+                            onClick={() => setViewService(s)}
+                            className={`group hover:bg-[#1499AD]/5 hover:shadow-2xs transition-colors cursor-pointer ${
+                              idx % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'
+                            }`}
+                          >
+                            {/* № */}
+                            <td className="text-center font-mono font-bold text-slate-400 border-r border-slate-200/70 py-2.5 px-2 whitespace-nowrap">
+                              {idx + 1}
+                            </td>
+
+                            {/* Xizmat Nomi */}
+                            <td className="border-r border-slate-200/70 py-2.5 px-4">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="min-w-0 flex-1">
+                                  <span className="font-bold text-slate-900 group-hover:text-[#1499AD] transition-colors block text-[12.5px] truncate">
+                                    {s.name}
+                                  </span>
+                                  {s.requires_tooth && (
+                                    <span className="inline-flex items-center gap-1 text-[9.5px] font-black text-[#1499AD] bg-[#1499AD]/10 px-2 py-0.2 rounded-md mt-0.5">
+                                      🦷 Tishli xizmat
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Kategoriya */}
+                            <td className="border-r border-slate-200/70 py-2.5 px-3.5 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-[10.5px] font-bold border truncate max-w-[170px] ${itemStyle.bg} ${itemStyle.color} ${itemStyle.border}`} title={cat}>
+                                {cat}
+                              </span>
+                            </td>
+
+                            {/* Asosiy Narx */}
+                            <td className="text-right border-r border-slate-200/70 py-2.5 px-4 bg-emerald-50/25 whitespace-nowrap">
+                              <span className="font-mono font-black text-slate-900 text-sm tabular-nums tracking-tight">
+                                {(Number(s.price) || 0).toLocaleString()}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-400 ml-1">UZS</span>
+                            </td>
+
+                            {/* Davomiyligi */}
+                            <td className="text-center border-r border-slate-200/70 py-2.5 px-3 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 font-mono font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg text-[11px] border border-slate-200/60">
+                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                {s.duration || 30} min
+                              </span>
+                            </td>
+
+                            {/* Holati */}
+                            <td className="text-center border-r border-slate-200/70 py-2.5 px-2.5 whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleActive(s);
+                                }}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold border transition-all cursor-pointer shadow-2xs ${
+                                  s.is_active !== false
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                    : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
+                                }`}
+                                title="Holatni o'zgartirish uchun bosing"
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${s.is_active !== false ? 'bg-emerald-500 ring-2 ring-emerald-300' : 'bg-slate-400'}`} />
+                                <span>{s.is_active !== false ? (t('services.active') || 'Faol') : (t('services.inactive') || 'Nofaol')}</span>
+                              </button>
+                            </td>
+
+                            {/* Amallar */}
+                            <td className="text-center py-2.5 px-2 whitespace-nowrap">
+                              <div className="flex items-center justify-center gap-1.5" onClick={e => e.stopPropagation()}>
+                                <button
+                                  onClick={() => setViewService(s)}
+                                  className="w-7.5 h-7.5 rounded-lg flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer border border-transparent hover:border-blue-200"
+                                  title="Batafsil ko'rish"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => { setEditService(s); setModalOpen(true); }}
+                                  className="w-7.5 h-7.5 rounded-lg flex items-center justify-center text-slate-400 hover:text-[#1499AD] hover:bg-[#1499AD]/10 transition-all cursor-pointer border border-transparent hover:border-[#1499AD]/30"
+                                  title="Tahrirlash"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setDeleteId(s.id)}
+                                  className="w-7.5 h-7.5 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer border border-transparent hover:border-rose-200"
+                                  title="O'chirish"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Excel Table Summary Footer */}
+              <div className="px-5 py-3 bg-gradient-to-r from-slate-50 via-slate-100/70 to-slate-50 border-t-2 border-slate-200 flex flex-wrap items-center justify-between text-xs font-bold text-slate-700 gap-3">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400 uppercase text-[10px] font-extrabold tracking-wider">JAMI:</span>
+                    <strong className="text-slate-900 font-mono text-sm font-black">{filtered.length} ta xizmat</strong>
+                  </div>
+                  <span className="text-slate-300">|</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                    <span className="text-slate-400 uppercase text-[10px] font-extrabold tracking-wider">FAOL:</span>
+                    <strong className="text-emerald-700 font-mono text-xs">{filtered.filter(s => s.is_active !== false).length} ta</strong>
+                  </div>
+                  <span className="text-slate-300">|</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />
+                    <span className="text-slate-400 uppercase text-[10px] font-extrabold tracking-wider">NOFAOL:</span>
+                    <strong className="text-slate-600 font-mono text-xs">{filtered.filter(s => s.is_active === false).length} ta</strong>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400 uppercase text-[10px] font-extrabold tracking-wider">O'RTACHA NARX:</span>
+                  <strong className="text-slate-900 font-mono text-sm font-black bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                    {Number(Math.round((filtered.reduce((sum, s) => sum + (Number(s.price) || 0), 0) / (filtered.length || 1)) / 1000) * 1000).toLocaleString()} UZS
+                  </strong>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>

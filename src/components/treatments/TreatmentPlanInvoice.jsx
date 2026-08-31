@@ -19,11 +19,19 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
       try {
         const patientId = plan.patient_id || plan.patient?.id;
         if (!patientId) return;
-        const pays = await base44.entities.Payment.filter({ patient_id: patientId }, '-date', 50).catch(() => []);
+        const pays = await base44.entities.Payment.filter({ patient_id: patientId }, '-date', 100).catch(() => []);
         if (isMounted && Array.isArray(pays)) {
-          // Filter payments that match this treatment plan ID or are income
-          const matched = pays.filter(p => (p.treatment_plan_id && p.treatment_plan_id === plan.id) || (p.type?.toLowerCase() === 'income' || !p.type));
-          setFetchedPayments(matched.length > 0 ? matched : pays.filter(p => p.type?.toLowerCase() === 'income' || !p.type));
+          // Filter payments that match this treatment plan ID or have a note/category referencing this plan
+          const matched = pays.filter(p => 
+            p.type?.toLowerCase() !== 'debt' && 
+            p.type?.toLowerCase() !== 'discount' && 
+            (
+              (p.treatment_plan_id && p.treatment_plan_id === plan.id) ||
+              (plan.id && p.notes && p.notes.includes(plan.id)) ||
+              (plan.id && p.category && p.category.includes(plan.id))
+            )
+          );
+          setFetchedPayments(matched);
         }
       } catch (err) {
         console.error('Error fetching payments for invoice:', err);
@@ -89,24 +97,44 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
   };
 
   // Financial calculations
-  const totalExpense = flatServices.reduce((sum, s) => sum + (s.price || 0), 0) || Number(plan.total_price || 0) || 550000;
+  const totalExpense = flatServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0) || Number(plan.total_price || 0) || 0;
   
-  // Payment items mapping
+  // Explicitly calculate totalPaidSum
+  const totalPaidSum = (() => {
+    // 1. If explicit payments array on plan
+    if (plan.payments && Array.isArray(plan.payments) && plan.payments.length > 0) {
+      return plan.payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    }
+    // 2. If fetched payments matched this plan
+    if (fetchedPayments && fetchedPayments.length > 0) {
+      return fetchedPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    }
+    // 3. If plan.paid_amount is defined and numeric
+    if (plan.paid_amount !== undefined && plan.paid_amount !== null && !isNaN(Number(plan.paid_amount))) {
+      return Number(plan.paid_amount);
+    }
+    // 4. Default to 0
+    return 0;
+  })();
+
+  const finalDebt = Math.max(0, totalExpense - totalPaidSum);
+
+  // Payment items mapping for table
   const paymentRows = (() => {
-    if (plan.payments && plan.payments.length > 0) {
+    if (plan.payments && Array.isArray(plan.payments) && plan.payments.length > 0) {
       return plan.payments.map(p => {
         const pDateRaw = p.created_date || p.created_at || p.date || planDateRaw;
         return {
           date: new Date(pDateRaw).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-          method: p.method === 'card' ? (language === 'ru' ? 'Карта' : 'Karta') : p.method === 'cash' ? (language === 'ru' ? 'Наличные' : 'Naqd') : (p.method || 'Karta'),
+          method: p.method === 'card' ? (language === 'ru' ? 'Карта' : 'Karta') : p.method === 'cash' ? (language === 'ru' ? 'Наличные' : 'Naqd') : (p.method || (language === 'ru' ? 'Карта' : 'Karta')),
           status: language === 'ru' ? 'Оплачено' : language === 'en' ? 'Paid' : "To'langan",
           amount: Number(p.amount || 0)
         };
       });
     }
 
-    if (fetchedPayments.length > 0) {
-      return fetchedPayments.slice(0, 5).map(p => {
+    if (fetchedPayments && fetchedPayments.length > 0) {
+      return fetchedPayments.slice(0, 10).map(p => {
         const pDateRaw = p.created_date || p.created_at || p.date || planDateRaw;
         const methodDisplay = p.method === 'card' || p.payment_method === 'card' 
           ? (language === 'ru' ? 'Карта' : 'Karta') 
@@ -120,14 +148,13 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
       });
     }
 
-    const paidAmt = Number(plan.paid_amount || 0);
-    if (paidAmt > 0) {
+    if (totalPaidSum > 0) {
       return [
         {
           date: dateFormatted,
-          method: language === 'ru' ? 'Карта' : 'Karta',
+          method: language === 'ru' ? 'Карта / Наличные' : 'Karta / Naqd',
           status: language === 'ru' ? 'Оплачено' : language === 'en' ? 'Paid' : "To'langan",
-          amount: paidAmt
+          amount: totalPaidSum
         }
       ];
     }
@@ -141,14 +168,6 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
       }
     ];
   })();
-
-  const totalPaidSum = (plan.paid_amount !== undefined && Number(plan.paid_amount) > 0)
-    ? Number(plan.paid_amount)
-    : (fetchedPayments.length > 0 
-        ? fetchedPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-        : (paymentRows.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || totalExpense));
-
-  const finalDebt = Math.max(0, totalExpense - totalPaidSum);
 
   const handlePrint = () => {
     window.print();
@@ -392,22 +411,20 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
                   ))}
                   <tr className="bg-[#dcfce7] text-[#166534]">
                     <td colSpan="3" className="py-2.5 px-3 font-black text-sm text-[#166534]">
-                      To'langan jami
+                      {language === 'ru' ? 'Всего оплачено' : language === 'en' ? 'Total Paid' : "To'langan jami"}
                     </td>
                     <td className="py-2.5 px-3 text-right font-black text-sm text-[#166534]">
                       {totalPaidSum.toLocaleString()} so'm
                     </td>
                   </tr>
-                  {finalDebt > 0 && (
-                    <tr>
-                      <td colSpan="3" className="py-2.5 px-3 font-black text-xs text-rose-600 pt-3">
-                        Qoldiq qarz:
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-black text-xs text-rose-600 pt-3">
-                        {finalDebt.toLocaleString()} so'm
-                      </td>
-                    </tr>
-                  )}
+                  <tr className={finalDebt > 0 ? "bg-[#ffe4e6] text-[#9f1239]" : "bg-[#f8fafc] text-slate-700"}>
+                    <td colSpan="3" className={`py-2.5 px-3 font-black text-sm ${finalDebt > 0 ? 'text-[#9f1239]' : 'text-slate-700'}`}>
+                      {language === 'ru' ? 'Общая задолженность' : language === 'en' ? 'Total Debt' : "Jami qarzdorlik"}
+                    </td>
+                    <td className={`py-2.5 px-3 text-right font-black text-sm ${finalDebt > 0 ? 'text-[#9f1239]' : 'text-slate-700'}`}>
+                      {finalDebt.toLocaleString()} so'm
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>

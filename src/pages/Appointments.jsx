@@ -514,62 +514,89 @@ export default function Appointments() {
                     <div className="flex flex-col min-h-[600px]">
                       {/* Unified header now handles date switching */}
 
-                      <div className="p-6">
+                      <div className="p-3.5 sm:p-5">
                         {dayAppts.length === 0 ? (
                           <div className="py-20 text-center">
                             <div className="w-16 h-16 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-slate-100 text-slate-200"><CalendarDays className="w-8 h-8" /></div>
                             <p className="text-slate-400 font-bold text-sm tracking-tight">{isToday ? 'Bugun navbat yo\'q' : 'Ushbu kunda navbat yo\'q'}</p>
-                            <Button onClick={() => openNewAppt(viewDate, '', null)} className="mt-4 bg-[#1499AD] text-white rounded-xl uppercase text-[10px] font-black tracking-widest px-8 shadow-lg shadow-[#1499AD]/20">+ Yangi Navbat</Button>
+                            <Button onClick={() => openNewAppt(viewDate, '', selectedDoctorId)} className="mt-4 bg-[#1499AD] text-white rounded-xl uppercase text-[10px] font-black tracking-widest px-8 shadow-lg shadow-[#1499AD]/20">+ Yangi Qabul</Button>
                           </div>
                         ) : (
-                          <div className="grid gap-3">
-                            {dayAppts.map(a => (
-                              <div 
-                                key={a.id} 
-                                onClick={() => {
-                                  if (debouncedSearch.trim()) {
-                                    // Navigate to date if searching - Ensure YYYY-MM-DD format
-                                    const dStr = normalizeDateStr(a.date);
-                                    if (dStr) {
-                                      setViewDate(dStr);
-                                      setSearchQuery('');
-                                      setActiveTab('grid');
-                                    }
-                                  } else {
-                                    openEditAppt(a);
-                                  }
-                                }} 
-                                className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100 hover:border-[#1499AD]/30 hover:shadow-lg hover:shadow-slate-200/50 transition-all cursor-pointer group"
-                              >
-                                <div className="w-14 text-center">
-                                  <span className="text-sm font-black text-slate-900 block leading-tight">{a.time}</span>
-                                  <span className="text-[9px] font-bold text-slate-400 uppercase">{a.duration || 30} m</span>
-                                </div>
-                                <div className="w-px h-10 bg-slate-100" />
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-[13px] font-black text-slate-900 group-hover:text-[#1499AD] transition-colors">{a.patient_name || 'Bemor'}</p>
-                                    {debouncedSearch.trim() && (
-                                      <span className="px-2 py-0.5 bg-slate-100 rounded-md text-[8px] font-black text-slate-500 uppercase">
-                                        {String(a.date || '').split('T')[0]}
-                                      </span>
-                                    )}
+                          <div>
+                            {/* Compact Stats Sub-bar */}
+                            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 text-[10px] font-black uppercase tracking-wider text-slate-400 px-1">
+                              <span>Jami: <strong className="text-slate-900">{dayAppts.length}</strong> ta qabul</span>
+                              {selectedDoctorId && (
+                                <span className="text-[#1499AD]">
+                                  👨‍⚕️ {doctors.find(d => String(d.id) === String(selectedDoctorId))?.name || 'Shifokor'}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Compact 2-Column Responsive Card Grid */}
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+                              {dayAppts.map(a => {
+                                const doctorObj = doctors.find(d => String(d.id) === String(a.doctor_id)) || { name: a.doctor_name };
+                                return (
+                                  <div 
+                                    key={a.id} 
+                                    onClick={() => {
+                                      if (debouncedSearch.trim()) {
+                                        const dStr = normalizeDateStr(a.date);
+                                        if (dStr) {
+                                          setViewDate(dStr);
+                                          setSearchQuery('');
+                                          setActiveTab('grid');
+                                        }
+                                      } else {
+                                        openEditAppt(a);
+                                      }
+                                    }} 
+                                    className="flex items-center justify-between gap-3 bg-white p-2.5 px-3.5 rounded-xl border border-slate-200/80 hover:border-[#1499AD] hover:bg-slate-50/60 hover:shadow-xs transition-all cursor-pointer group"
+                                  >
+                                    {/* Left: Time badge */}
+                                    <div className="w-14 py-1 bg-slate-900 text-white rounded-lg flex flex-col items-center justify-center shrink-0 shadow-xs">
+                                      <span className="text-[11px] font-black leading-tight tracking-tight">{a.time}</span>
+                                      <span className="text-[8px] font-bold text-slate-400 uppercase leading-none mt-0.5">{a.duration || 30}m</span>
+                                    </div>
+
+                                    {/* Middle: Patient & Service info */}
+                                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <p className="text-xs font-black text-slate-900 truncate group-hover:text-[#1499AD] transition-colors uppercase tracking-tight">
+                                          {a.patient_name || 'Bemor'}
+                                        </p>
+                                        {debouncedSearch.trim() && (
+                                          <span className="px-1.5 py-0.2 bg-slate-100 rounded text-[8px] font-black text-slate-500 uppercase">
+                                            {String(a.date || '').split('T')[0]}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[8.5px] font-bold uppercase tracking-tight truncate max-w-[170px] border border-slate-200/50">
+                                          {a.tooth_number ? `${a.tooth_number}-tish: ` : ''}{a.service_name || t('appointments.defaultService') || 'Maslahat'}
+                                        </span>
+                                        {(!selectedDoctorId || debouncedSearch.trim()) && doctorObj?.name && (
+                                          <span className="px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 text-[8.5px] font-black uppercase tracking-tight border border-sky-200/50 truncate max-w-[110px]">
+                                            👨‍⚕️ {doctorObj.name}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Right: Badges & Arrow */}
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <div className="flex flex-col items-end gap-1">
+                                        <StatusBadge status={a.status} size="sm" />
+                                        <AppointmentConfirmationBadge appointment={a} size="sm" className="!text-[8px] !px-1.5 !py-0.2" />
+                                      </div>
+                                      <ChevronLeft className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#1499AD] group-hover:translate-x-0.5 transition-all rotate-180" />
+                                    </div>
                                   </div>
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                                    {a.tooth_number ? `${a.tooth_number}-tish: ` : ''}{a.service_name || t('appointments.defaultService') || 'Maslahat'}
-                                    {debouncedSearch.trim() && a.doctor_name && (
-                                      <span className="ml-2 text-[#1499AD]">· {a.doctor_name}</span>
-                                    )}
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <div className="flex flex-col items-end gap-1">
-                                    <StatusBadge status={a.status} size="sm" />
-                                    <AppointmentConfirmationBadge appointment={a} size="sm" />
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>

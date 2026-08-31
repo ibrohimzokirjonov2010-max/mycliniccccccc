@@ -1169,16 +1169,26 @@ export default function TreatmentPlans() {
                   </Button>
 
                   <Button
-                    onClick={() => {
-                      const pToEdit = activeDetailPlan;
-                      setSelectedDetailPlanId(null);
-                      setEditPlan(pToEdit);
-                      setModalOpen(true);
+                    onClick={async () => {
+                      try {
+                        if (activeDetailPlan?.id) {
+                          await base44.entities.TreatmentPlan.update(activeDetailPlan.id, {
+                            status: activeDetailPlan.status,
+                            services: activeDetailPlan.services || []
+                          });
+                          invalidatePlans();
+                        }
+                        toast.success(language === 'ru' ? 'План успешно сохранен!' : 'Reja muvaffaqiyatli saqlandi!');
+                        setSelectedDetailPlanId(null);
+                      } catch (err) {
+                        console.error(err);
+                        toast.error(language === 'ru' ? 'Ошибка при сохранении' : 'Saqlashda xatolik yuz berdi');
+                      }
                     }}
-                    className="h-9 px-4 rounded-xl bg-[#1499AD] hover:bg-[#0E7A8A] text-white text-xs font-black gap-1.5 shadow-md shadow-[#1499AD]/20 cursor-pointer border-none"
+                    className="h-9 px-5 rounded-xl bg-gradient-to-r from-[#1499AD] to-[#0E7A8A] hover:from-[#118596] hover:to-[#0b6370] text-white text-xs font-black gap-1.5 shadow-md shadow-[#1499AD]/20 cursor-pointer border-none active:scale-95 transition-all"
                   >
-                    <Edit2 className="w-3.5 h-3.5 text-white" />
-                    <span>{language === 'ru' ? 'Редактировать план' : 'Rejani tahrirlash'}</span>
+                    <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
+                    <span>{language === 'ru' ? 'Сохранить' : 'Saqlash'}</span>
                   </Button>
                 </div>
               </div>

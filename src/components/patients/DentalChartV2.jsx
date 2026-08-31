@@ -298,7 +298,12 @@ export default function DentalChartV2({
                     className="border-t border-slate-100"
                   >
                     <div className="p-4 space-y-2">
-                      {services.map(service => {
+                      {services.filter(service => {
+                        if (!service.requires_tooth) return true;
+                        const allowed = Array.isArray(service.tooth_numbers) ? service.tooth_numbers.map(Number) : [];
+                        if (allowed.length === 0) return true;
+                        return allowed.includes(Number(toothNumber));
+                      }).map(service => {
                         const isSelected = (toothServices[toothNumber] || []).includes(service.id);
                         return (
                           <button

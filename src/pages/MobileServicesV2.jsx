@@ -41,19 +41,76 @@ const CATEGORY_MAP = {
   'ENDODONTIYA': { icon: Activity, color: 'text-teal-500', bg: 'bg-teal-50', border: 'border-l-teal-500' }
 };
 
-const getCategoryStyle = (cat) => CATEGORY_MAP[cat] || CATEGORY_MAP['TERAPIYA (ENDO + PLOMBA)'] || CATEGORY_MAP['TERAPIYA( ENDO +PLOMBA)'];
+export const normalizeCategory = (cat) => {
+  if (!cat) return 'TERAPIYA (ENDO + PLOMBA)';
+  const cleaned = String(cat).trim();
+  const upper = cleaned.toUpperCase().replace(/\s+/g, ' ');
+  
+  if (
+    upper.includes('TERAPIYA') || 
+    upper.includes('THERAPY') || 
+    (upper.includes('ENDO') && upper.includes('PLOMBA')) ||
+    upper.includes('PLOMBA') ||
+    upper.includes('KARIES')
+  ) {
+    return 'TERAPIYA (ENDO + PLOMBA)';
+  }
+  if (upper.includes('RESTAVRATSIYA') || upper.includes('RESTORATION')) {
+    return 'RESTAVRATSIYA';
+  }
+  if (upper.includes('ORTOPEDIYA') || upper.includes('PROTHETIC') || upper.includes('PROTEZ') || upper.includes('KARONKA') || upper.includes('KORONKA')) {
+    return 'ORTOPEDIYA';
+  }
+  if (upper.includes('XIRURGIYA') || upper.includes('SURGERY') || upper.includes('JARROHLIK') || upper.includes('TISH OLISH')) {
+    return 'XIRURGIYA';
+  }
+  if (upper.includes('ORTODONTIYA') || upper.includes('ORTHODONTIC') || upper.includes('BREKET')) {
+    return 'ORTODONTIYA';
+  }
+  if (upper.includes('GIGIENA') || upper.includes('GIGIYENA') || upper.includes('PROFILAKTIKA') || upper.includes('HYGIENE') || upper.includes('AIRFLOW') || upper.includes('TOZALASH')) {
+    return 'GIGIENA VA PROFILAKTIKA';
+  }
+  if (upper.includes('ESTETIK') || upper.includes('ESTHETIC') || upper.includes('VINIYR') || upper.includes('VINIR') || upper.includes('OQARTIRISH')) {
+    return 'ESTETIK STOMATOLOGIYA';
+  }
+  if (upper.includes('BOLALAR') || upper.includes('CHILD') || upper.includes('PEDIA')) {
+    return 'BOLALAR STOMATOLOGIYASI';
+  }
+  if (upper.includes('IMPLANT')) {
+    return 'IMPLANTATSIYA';
+  }
+  if (upper === 'ENDODONTIYA' || upper === 'ENDODONTICS') {
+    return 'ENDODONTIYA';
+  }
+  
+  return cleaned;
+};
 
-const autoCategorize = (name) => {
-  const n = name?.toLowerCase() || '';
+const autoCategorize = (name, currentCat = '') => {
+  if (currentCat) return normalizeCategory(currentCat);
+  const n = (name || '').toLowerCase();
   if (n.includes('implant')) return 'IMPLANTATSIYA';
-  if (n.includes('bolalar') || n.includes('child')) return 'BOLALAR STOMATOLOGIYASI';
-  if (n.includes('gigiyena') || n.includes('profilaktika') || n.includes('toshlarni') || n.includes('skaler')) return 'GIGIENA VA PROFILAKTIKA';
-  if (n.includes('vinir') || n.includes('oqartirish') || n.includes('bleaching') || n.includes('estetik')) return 'ESTETIK STOMATOLOGIYA';
-  if (n.includes('endo') || n.includes('kanal')) return 'ENDODONTIYA';
-  if (n.includes('olish') || n.includes('sug\'urish') || n.includes('xirurg') || n.includes('anesteziya')) return 'XIRURGIYA';
-  if (n.includes('karonka') || n.includes('protez') || n.includes('sirkoniy') || n.includes('ko\'prik')) return 'ORTOPEDIYA';
+  if (n.includes('bolalar') || n.includes('child') || n.includes('pediatr')) return 'BOLALAR STOMATOLOGIYASI';
+  if (n.includes('gigiyena') || n.includes('gigiena') || n.includes('profilaktika') || n.includes('toshlarni') || n.includes('skaler') || n.includes('airflow') || n.includes('tozalash')) return 'GIGIENA VA PROFILAKTIKA';
+  if (n.includes('vinir') || n.includes('viniyr') || n.includes('oqartirish') || n.includes('bleaching') || n.includes('estetik')) return 'ESTETIK STOMATOLOGIYA';
+  if (n.includes('restavratsiya')) return 'RESTAVRATSIYA';
+  if (n.includes('olish') || n.includes('sug\'urish') || n.includes('xirurg') || n.includes('anesteziya') || n.includes('jarrohlik')) return 'XIRURGIYA';
+  if (n.includes('karonka') || n.includes('koronka') || n.includes('protez') || n.includes('sirkoniy') || n.includes('ko\'prik') || n.includes('e-max')) return 'ORTOPEDIYA';
   if (n.includes('breket') || n.includes('reteyner') || n.includes('plastinka') || n.includes('ortodont')) return 'ORTODONTIYA';
+  if (n.includes('endo') || n.includes('kanal') || n.includes('pulpotomiya')) return 'TERAPIYA (ENDO + PLOMBA)';
+  if (n.includes('plomba') || n.includes('karies') || n.includes('terapiya') || n.includes('shtif') || n.includes('rvg') || n.includes('rentgen')) return 'TERAPIYA (ENDO + PLOMBA)';
   return 'TERAPIYA (ENDO + PLOMBA)';
+};
+
+export const getServiceCategory = (s) => {
+  if (!s) return 'TERAPIYA (ENDO + PLOMBA)';
+  if (s.category) return normalizeCategory(s.category);
+  return autoCategorize(s.name);
+};
+
+const getCategoryStyle = (cat) => {
+  const norm = normalizeCategory(cat);
+  return CATEGORY_MAP[norm] || CATEGORY_MAP[cat] || CATEGORY_MAP['TERAPIYA (ENDO + PLOMBA)'] || { icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-l-blue-500' };
 };
 
 export default function MobileServicesV2() {
@@ -131,16 +188,17 @@ export default function MobileServicesV2() {
   }, [editService, modalOpen]);
 
   const filtered = services.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase());
+    const sCat = getServiceCategory(s);
+    const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) ||
+                         sCat.toLowerCase().includes(search.toLowerCase());
     if (selectedCategory === 'all') return matchesSearch;
-    const displayCategory = s.category || autoCategorize(s.name);
-    return matchesSearch && displayCategory === selectedCategory;
+    return matchesSearch && normalizeCategory(sCat) === normalizeCategory(selectedCategory);
   });
 
   const grouped = useMemo(() => {
     const groups = {};
     filtered.forEach(s => {
-      const cat = s.category || autoCategorize(s.name);
+      const cat = getServiceCategory(s);
       if (!groups[cat]) groups[cat] = [];
       groups[cat].push(s);
     });

@@ -472,6 +472,7 @@
     "legendSelected": "Selected",
     "legendBusy": "Busy",
     "legendPast": "Past",
+    "timePassed": "Time has passed",
     "timeBusy": "⚠️ Busy at {time}: {patient}",
     "calendar": "Calendar",
     "list": "List",

@@ -123,6 +123,15 @@ const getCategoryName = (cat) => {
   return cat;
 };
 
+const isServiceCompatibleWithTooth = (svc, toothId) => {
+  if (!toothId) return true;
+  if (!svc?.requires_tooth) return true;
+  const allowed = Array.isArray(svc.tooth_numbers) ? svc.tooth_numbers.map(Number) : [];
+  if (allowed.length === 0) return true;
+  const targetFdi = Number(idToFdi(toothId));
+  return allowed.includes(targetFdi);
+};
+
 const CategoryAccordion = ({ title, services, activeTooth, toothData, toggleService, isBulkMode, selectedTeeth }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(true);
@@ -621,6 +630,15 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   const toggleToothService = useCallback((service) => {
     const targets = isBulkMode ? planForm.tooth_numbers : [activeTooth].filter(Boolean);
     if (targets.length === 0 && !isBulkMode) return;
+    
+    if (service.requires_tooth && Array.isArray(service.tooth_numbers) && service.tooth_numbers.length > 0) {
+      const allowedNums = service.tooth_numbers.map(Number);
+      const invalidTargets = targets.filter(tId => !allowedNums.includes(Number(idToFdi(tId))));
+      if (invalidTargets.length > 0) {
+        toast.error(`"${service.name}" xizmati faqat quyidagi tishlar uchun mo'ljallangan: ${allowedNums.sort((a,b)=>a-b).join(', ')}`);
+        return;
+      }
+    }
     
     setToothData(prev => {
       const next = { ...prev };
@@ -1839,9 +1857,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     </div>
                     <div className="flex-1 overflow-y-auto pl-2 pr-4 pt-1.5 pb-6 space-y-1 min-h-0 bg-white">
                       {(() => {
-                        const allSvcs = serviceSearch.trim()
-                          ? (services||[]).filter(s => (s.name||'').toLowerCase().includes(serviceSearch.trim().toLowerCase()))
-                          : (services||[]);
+                        const allSvcs = (services || []).filter(s => {
+                          const qMatch = !serviceSearch.trim() || (s.name || '').toLowerCase().includes(serviceSearch.trim().toLowerCase());
+                          if (!qMatch) return false;
+                          return isServiceCompatibleWithTooth(s, activeTooth);
+                        });
                         const grouped = {};
                         allSvcs.forEach(svc => {
                           const cat = svc.category || autoCategorize(svc.name);
@@ -2020,16 +2040,17 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   {/* Middle: Service cards list */}
                   <div className="flex-1 overflow-y-auto px-4 py-3 bg-[#f8fafc] space-y-2.5 min-h-0">
                     {(() => {
-                      const filtered = services.filter(s => {
-                        const cat = (s.category || autoCategorize(s.name)).toLowerCase().trim();
+                      const filtered = (services || []).filter(s => {
                         const q = serviceSearch.trim().toLowerCase();
                         const qMatch = !q || (s.name || '').toLowerCase().includes(q);
                         if (!qMatch) return false;
+                        if (!isServiceCompatibleWithTooth(s, activeTooth)) return false;
                         
                         if (!selectedCategory || selectedCategory === "" || selectedCategory === "all" || selectedCategory === "barchasi") {
                           return true;
                         }
                         
+                        const cat = (s.category || autoCategorize(s.name)).toLowerCase().trim();
                         const sel = selectedCategory.toLowerCase().trim();
                         const selName = getCategoryName(selectedCategory).toLowerCase().trim();
                         return cat === sel || cat === selName || (cat.includes(sel) && sel.length > 3) || (sel.includes(cat) && cat.length > 3);

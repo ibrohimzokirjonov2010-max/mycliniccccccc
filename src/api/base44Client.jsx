@@ -1358,9 +1358,14 @@ export const DEFAULT_SERVICES_DATA = [
   { name: 'Kanal davolash (3 kanal)', category: 'TERAPIYA (ENDO + PLOMBA)', price: 400000, duration: 60, is_active: true },
   { name: 'Fotopolimer plomba (estetik)', category: 'TERAPIYA (ENDO + PLOMBA)', price: 250000, duration: 40, is_active: true },
   { name: 'Karies davolash (oddiy)', category: 'TERAPIYA (ENDO + PLOMBA)', price: 200000, duration: 30, is_active: true },
-  { name: 'Shtif qo’yish', category: 'TERAPIYA (ENDO + PLOMBA)', price: 200000, is_active: true },
-  { name: 'Rengen (RVG)', category: 'TERAPIYA (ENDO + PLOMBA)', price: 30000, is_active: true },
+  { name: 'Pulpotomiya', category: 'TERAPIYA (ENDO + PLOMBA)', price: 450000, duration: 60, is_active: true },
+  { name: 'Shtif qo’yish', category: 'TERAPIYA (ENDO + PLOMBA)', price: 200000, duration: 30, is_active: true },
+  { name: 'Rentgen (RVG)', category: 'TERAPIYA (ENDO + PLOMBA)', price: 30000, duration: 10, is_active: true },
   
+  // RESTAVRATSIYA
+  { name: 'Badiiy restavratsiya (1 ta tish)', category: 'RESTAVRATSIYA', price: 450000, duration: 60, is_active: true },
+  { name: 'Tish anatomiyasini tiklash', category: 'RESTAVRATSIYA', price: 500000, duration: 60, is_active: true },
+
   // ORTOPEDIYA
   { name: 'Metallokeramika karonka', category: 'ORTOPEDIYA', price: 800000, duration: 60, is_active: true },
   { name: 'Sirkoniy karonka', category: 'ORTOPEDIYA', price: 1800000, duration: 60, is_active: true },
@@ -1371,12 +1376,29 @@ export const DEFAULT_SERVICES_DATA = [
   { name: 'Tish olish (oddiy)', category: 'XIRURGIYA', price: 150000, duration: 20, is_active: true },
   { name: 'Donolik tishini olish', category: 'XIRURGIYA', price: 600000, duration: 45, is_active: true },
   { name: 'Implantat o\'rnatish', category: 'XIRURGIYA', price: 4000000, duration: 60, is_active: true },
-  { name: 'Anesteziya', category: 'XIRURGIYA', price: 30000, is_active: true },
+  { name: 'Anesteziya', category: 'XIRURGIYA', price: 30000, duration: 10, is_active: true },
 
   // ORTODONTIYA
   { name: 'Metall breket tizimi', category: 'ORTODONTIYA', price: 5000000, duration: 60, is_active: true },
   { name: 'Keramik breket tizimi', category: 'ORTODONTIYA', price: 7000000, duration: 60, is_active: true },
-  { name: 'Reteyner o\'rnatish', category: 'ORTODONTIYA', price: 400000, duration: 30, is_active: true }
+  { name: 'Reteyner o\'rnatish', category: 'ORTODONTIYA', price: 400000, duration: 30, is_active: true },
+
+  // GIGIENA VA PROFILAKTIKA
+  { name: 'Tish tozalash (Air Flow)', category: 'GIGIENA VA PROFILAKTIKA', price: 200000, duration: 30, is_active: true },
+  { name: 'Ultratovushli tozalash (Skaler)', category: 'GIGIENA VA PROFILAKTIKA', price: 180000, duration: 30, is_active: true },
+  { name: 'Ftorlash va profilaktika', category: 'GIGIENA VA PROFILAKTIKA', price: 100000, duration: 20, is_active: true },
+
+  // ESTETIK STOMATOLOGIYA
+  { name: 'Tishlarni oqartirish (Bleaching)', category: 'ESTETIK STOMATOLOGIYA', price: 1200000, duration: 60, is_active: true },
+  { name: 'E-Max Vinir', category: 'ESTETIK STOMATOLOGIYA', price: 2200000, duration: 60, is_active: true },
+
+  // BOLALAR STOMATOLOGIYASI
+  { name: 'Bolalar tishini davolash', category: 'BOLALAR STOMATOLOGIYASI', price: 150000, duration: 30, is_active: true },
+  { name: 'Sut tishini olish', category: 'BOLALAR STOMATOLOGIYASI', price: 80000, duration: 15, is_active: true },
+
+  // IMPLANTATSIYA
+  { name: 'Implantat (Janubiy Koreya)', category: 'IMPLANTATSIYA', price: 3500000, duration: 60, is_active: true },
+  { name: 'Sinus lifting', category: 'IMPLANTATSIYA', price: 2000000, duration: 60, is_active: true }
 ];
 
 // Initialize system if empty

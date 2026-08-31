@@ -12,7 +12,10 @@ import { Tooth, ImplantIcon, CrownIcon } from '@/components/ui/Icons';
  * Integrates the visual Professional Odontogram with an interactive Excel 32 FDI Teeth Matrix Spreadsheet.
  */
 function ExcelDentalChartView({
-  
+  search: externalSearch,
+  setSearch: externalSetSearch,
+  viewMode: externalViewMode,
+  setViewMode: externalSetViewMode,
   odontogramSelectedTeeth,
   stableOnOdontogramChange,
   handleInfoToothClick,
@@ -34,8 +37,13 @@ function ExcelDentalChartView({
   plans = [],
 }) {
   const { t, language } = useTranslation();
-  const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState('both'); // 'both' | 'chart' | 'table'
+  const [internalSearch, setInternalSearch] = useState('');
+  const search = externalSearch !== undefined ? externalSearch : internalSearch;
+  const setSearch = externalSetSearch || setInternalSearch;
+
+  const [internalViewMode, setInternalViewMode] = useState('both');
+  const viewMode = externalViewMode !== undefined ? externalViewMode : internalViewMode;
+  const setViewMode = externalSetViewMode || setInternalViewMode;
 
   // Standard 32 FDI Teeth Formula Matrix
   const toothNamesMap = {
@@ -242,55 +250,50 @@ function ExcelDentalChartView({
 
   return (
     <div className="space-y-4">
-      {/* ══ TOOLBAR CONTROLS & FILTERS ══ */}
-      <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
-        {/* Action Controls & Filters */}
-        <div className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Left: Search Input */}
-          <div className="flex items-center gap-2 flex-wrap flex-1">
-            <div className="relative min-w-[200px] max-w-sm flex-1">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t('patientProfile.searchTeethOrTreatment') || t('common.searchTooth') || "Tish #, tashxis qidirish..."}
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">✕</button>
-              )}
+      {/* ══ TOOLBAR CONTROLS & FILTERS (Only when not controlled from top) ══ */}
+      {externalSearch === undefined && (
+        <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
+          {/* Action Controls & Filters */}
+          <div className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            {/* Left: Search Input */}
+            <div className="flex items-center gap-2 flex-wrap flex-1">
+              <div className="relative min-w-[200px] max-w-sm flex-1">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t('patientProfile.searchTeethOrTreatment') || t('common.searchTooth') || "Tish #, tashxis qidirish..."}
+                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                />
+                {search && (
+                  <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">✕</button>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Right: View mode */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="inline-flex p-0.5 bg-slate-100 rounded-lg border border-slate-200/60 gap-0.5">
-              <button
-                onClick={() => setViewMode('both')}
-                className={cn("px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5", viewMode === 'both' ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500")}
-              >
-                <Tooth className="w-3.5 h-3.5 text-sky-600" />
-                <span>{t('patientProfile.chartAndTable') || "Xarita + Jadval"}</span>
-              </button>
-              <button
-                onClick={() => setViewMode('chart')}
-                className={cn("px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5", viewMode === 'chart' ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500")}
-              >
-                <Activity className="w-3.5 h-3.5 text-indigo-600" />
-                <span>{t('patientProfile.toothChart') || "Tish Grafiki"}</span>
-              </button>
-              <button
-                onClick={() => setViewMode('table')}
-                className={cn("px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5", viewMode === 'table' ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500")}
-              >
-                <ClipboardList className="w-3.5 h-3.5 text-indigo-600" />
-                <span>{t('patientProfile.onlyTable') || "Faqat Jadval"}</span>
-              </button>
+            {/* Right: View mode */}
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="inline-flex p-0.5 bg-slate-100 rounded-lg border border-slate-200/60 gap-0.5">
+                <button
+                  onClick={() => setViewMode('both')}
+                  className={cn("px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5", viewMode === 'both' ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500")}
+                >
+                  <Tooth className="w-3.5 h-3.5 text-sky-600" />
+                  <span>{t('patientProfile.chartAndTable') || "Xarita + Jadval"}</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={cn("px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5", viewMode === 'table' ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500")}
+                >
+                  <ClipboardList className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>{t('patientProfile.onlyTable') || "Faqat Jadval"}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ══ GRAPHICAL ODONTOGRAM CONTAINER ══ */}
       {(viewMode === 'both' || viewMode === 'chart') && (
@@ -308,62 +311,28 @@ function ExcelDentalChartView({
                 <span className="text-[10px] font-mono font-semibold text-slate-400">{t('patientProfile.odontogramSubtitle') || "ODONTOGRAMMA & DIAGNOSTIKA"}</span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setChartEditMode(v => !v)}
-                className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-black uppercase tracking-wider transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>{chartEditMode ? (t('patientProfile.finishEdit') || "Tahrirni yakunlash") : (t('patientProfile.edit') || "Tahrirlash")}</span>
-              </button>
-            </div>
           </div>
 
-          <div className="flex flex-col 2xl:flex-row gap-0">
-            <div className="flex-1 p-3 sm:p-5 overflow-x-auto no-scrollbar min-w-0 w-full flex justify-center bg-white">
-              <ProfessionalOdontogram
-                selectedTeeth={odontogramSelectedTeeth}
-                onChange={stableOnOdontogramChange}
-                onToothClick={handleInfoToothClick}
-                multi={!chartEditMode}
-                toothStatuses={toothStatuses}
-                patientType={patientType}
-                onPatientTypeChange={setPatientType}
-                patientAge={age}
-                chartView={chartView}
-                quadrantFilter="all"
-                showOcclusal={showOcclusal}
-                psrScores={psrScores}
-                occlusionNotes={occlusionNotes}
-                onOcclusionNotesChange={handleOcclusionNotesChange}
-                occlusionClass={occlusionClass}
-                onOcclusionClassChange={handleOcclusionClassChange}
-                compact={false}
-              />
-            </div>
-
-            {/* Right diagnostic panel */}
-            <div className="shrink-0 border-t 2xl:border-t-0 2xl:border-l border-slate-200/80 p-4 bg-slate-50/40 2xl:w-80">
-              <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 mb-3 flex items-center gap-1.5">
-                <Activity className="w-4 h-4 text-indigo-600" />
-                <span>{t('patientProfile.detectedDiagnoses') || "Aniqlangan Tashxislar"}</span>
-              </h4>
-              <div className="space-y-2 max-h-[360px] overflow-y-auto no-scrollbar">
-                {dentalFormulaSummaryList.map((item, idx) => (
-                  <div key={idx} className="p-2.5 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 flex items-center justify-between text-xs transition-all shadow-2xs">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: item.color }} />
-                      <span className="font-bold text-slate-800 truncate text-[12.5px]" style={{ color: item.color }}>{item.name}</span>
-                    </div>
-                    <span className="font-mono font-black text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg text-xs shrink-0 border border-slate-200/70">{item.teeth}</span>
-                  </div>
-                ))}
-                {dentalFormulaSummaryList.length === 0 && (
-                  <div className="text-xs text-slate-400 italic p-3 text-center bg-white rounded-lg border border-slate-100">{t('patientProfile.allTeethHealthy') || "Barcha tishlar sog'lom holatda"}</div>
-                )}
-              </div>
-            </div>
+          <div className="p-3 sm:p-5 overflow-x-auto no-scrollbar min-w-0 w-full flex justify-center bg-white">
+            <ProfessionalOdontogram
+              selectedTeeth={odontogramSelectedTeeth}
+              onChange={stableOnOdontogramChange}
+              onToothClick={handleInfoToothClick}
+              multi={!chartEditMode}
+              toothStatuses={toothStatuses}
+              patientType={patientType}
+              onPatientTypeChange={setPatientType}
+              patientAge={age}
+              chartView={chartView}
+              quadrantFilter="all"
+              showOcclusal={showOcclusal}
+              psrScores={psrScores}
+              occlusionNotes={occlusionNotes}
+              onOcclusionNotesChange={handleOcclusionNotesChange}
+              occlusionClass={occlusionClass}
+              onOcclusionClassChange={handleOcclusionClassChange}
+              compact={false}
+            />
           </div>
         </div>
       )}

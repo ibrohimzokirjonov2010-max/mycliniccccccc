@@ -8,7 +8,7 @@ import {
   Plus, MessageSquare, FileDown, AlertTriangle, Clock, Activity,
   CheckCircle2, XCircle, Shield, Image,
   Copy, Check, X, Wallet, CreditCard, Camera, Printer, FileSpreadsheet,
-  FileText
+  FileText, User, MapPin, Cake, ExternalLink, Share2, Info, ArrowUpRight, Search
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -349,6 +349,7 @@ export default function PatientProfile() {
   const [activeTab, setActiveTab] = useState(urlTab || 'info');
   const [subSection, setSubSection] = useState('dental');
   const [toothSearchQuery, setToothSearchQuery] = useState('');
+  const [dentalViewMode, setDentalViewMode] = useState('both');
   const [treatmentStatusFilter, setTreatmentStatusFilter] = useState('all'); // 'all', 'completed', 'in_progress', 'planned'
   const [chartView, setChartView] = useState('teeth'); // 'teeth', 'maxilla', 'mandible', 'occlusion'
   const [showOcclusal, setShowOcclusal] = useState(true);
@@ -2586,20 +2587,20 @@ export default function PatientProfile() {
     <div className="min-h-screen bg-[#f0f2f5] pb-20">
       <div className="print:hidden">
 
-      {/* ══ BCLINIC HEADER ══ */}
-      <div className="bg-white border-b border-[#e8eaed] sticky-profile-header shadow-sm">
+      {/* ══ TOP NAVIGATION & HEADER ══ */}
+      <div className="bg-white border-b border-[#e8eaed] sticky top-0 z-30 shadow-xs">
         {/* Warning Alerts Banner */}
         {medicalAlerts && medicalAlerts.length > 0 && (
-          <div className="bg-rose-50/90 backdrop-blur-sm border-b border-rose-100/60 px-4 py-2 flex flex-wrap items-center gap-3">
+          <div className="bg-rose-50 border-b border-rose-100 px-4 py-2 flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 text-rose-600 text-[10.5px] font-[900] uppercase tracking-wider shrink-0 mr-2">
-              <AlertTriangle className="w-4.5 h-4.5 text-rose-500 animate-pulse shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-rose-500 animate-pulse shrink-0" />
               <span>{t('patientProfile.medicalAlert')}:</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {medicalAlerts.map((alert, idx) => (
-                <span 
-                  key={idx} 
-                  className="inline-flex items-center gap-1.5 bg-gradient-to-r from-red-500 to-rose-600 text-white text-[9.5px] font-[900] uppercase tracking-wider px-2.5 py-1 rounded-lg shadow-sm border-none"
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-1.5 bg-gradient-to-r from-red-500 to-rose-600 text-white text-[9.5px] font-[900] uppercase tracking-wider px-2.5 py-1 rounded-lg shadow-sm"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping shrink-0" />
                   {t(`patientProfile.${alert.type}`)}
@@ -2608,31 +2609,90 @@ export default function PatientProfile() {
             </div>
           </div>
         )}
-        
-        {/* Patient Identity Row */}
-        {/* ══ EXCEL EHR HEADER (Top Row) ══ */}
-        <div className="bg-white px-3 sm:px-4 py-3 flex flex-col gap-3 border-b border-slate-200/80 shadow-2xs print:hidden">
-          {/* Left: Back Button + Avatar + Patient Info */}
-          <div className="flex items-center gap-3.5 min-w-0">
-            {/* Back Button */}
+
+        {/* ══ TOP ACTION & BREADCRUMB BAR ══ */}
+        <div className="px-3 sm:px-6 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+          {/* Left: Back button + Patient Name Breadcrumb */}
+          <div className="flex items-center gap-2 sm:gap-3 py-0.5 min-w-0">
             <button
               onClick={() => navigate('/patients')}
-              className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all active:scale-95 group shrink-0 border border-slate-200/60 cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all active:scale-95 group shrink-0 border border-slate-200/60 cursor-pointer"
               title="Bemorlar ro'yxatiga qaytish"
             >
-              <ArrowLeft className="w-4 h-4 text-slate-600 group-hover:-translate-x-0.5 transition-transform" />
-              <span className="hidden sm:inline">{t('patientProfile.backToPatients') || t('navigation.patients') || 'Bemorlar'}</span>
+              <ArrowLeft className="w-3.5 h-3.5 text-slate-600 group-hover:-translate-x-0.5 transition-transform" />
+              <span className="hidden sm:inline">{t('patientProfile.backToPatients') || 'Bemorlar'}</span>
             </button>
-            
-            {/* Avatar Upload */}
-            <div className="relative">
-              {medicalAlerts && medicalAlerts.length > 0 && (
-                <div className="absolute -top-1.5 -left-1 z-10 flex items-center gap-1 bg-gradient-to-r from-red-500 to-rose-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full shadow-md animate-bounce border-none">
-                  <span className="font-[1000]">{medicalAlerts.length}</span>
-                </div>
+
+            <div className="w-px h-5 bg-slate-200 shrink-0 hidden sm:block" />
+
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-sm font-black text-slate-900 truncate">{patient.full_name}</span>
+              {patient.gender && (
+                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold border border-slate-200/60 hidden sm:inline">
+                  {patient.gender === 'Female' ? 'Ayol' : 'Erkak'}
+                </span>
               )}
+              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/70 rounded-lg text-[10px] font-black uppercase tracking-wider hidden sm:inline">
+                {patient.status === 'New' ? 'Yangi' : (patient.status || 'Faol')}
+              </span>
+            </div>
+          </div>
+
+          {/* Right: Blue Quick Action Buttons (Matching Reference Design) */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={openPayModal}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              <span>To'lov</span>
+            </button>
+            <button
+              onClick={() => setApptModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Uchrashuv</span>
+            </button>
+            <button
+              onClick={() => setTreatmentModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Protsedura</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ══ MAIN 2-COLUMN LAYOUT (EXACT REFERENCE DESIGN) ══ */}
+      <div className="max-w-[1680px] mx-auto p-3 sm:p-5 flex flex-col lg:flex-row gap-5 items-start">
+
+        {/* ════ LEFT SIDEBAR: PATIENT CARD (Compact & Bold Style) ════ */}
+        <div className="w-full lg:w-[245px] xl:w-[260px] shrink-0 flex flex-col gap-2.5 sticky top-[65px]">
+
+          <div className="bg-white rounded-2xl p-3 sm:p-3.5 border border-slate-200/90 shadow-sm flex flex-col gap-2.5">
+            {/* Top header row with title and code badge */}
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black text-slate-900">Bemor ma'lumotlari</span>
+                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-800 rounded text-[10px] font-mono font-black border border-slate-200/60">
+                  #{String(id || '').slice(-4).toUpperCase() || '9870'}
+                </span>
+              </div>
+              <button
+                onClick={() => setPatientModalOpen(true)}
+                className="p-1 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Bemor ma'lumotlarini tahrirlash"
+              >
+                <Info className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* 1. Patient Avatar + Name + Info link */}
+            <div className="flex flex-col items-center text-center pt-0.5">
               <div
-                className="relative group cursor-pointer shrink-0"
+                className="relative group cursor-pointer"
                 onClick={() => { const inp = document.getElementById('avatar-upload-input'); if(inp) inp.click(); }}
                 title="Profil rasmini o'zgartirish"
               >
@@ -2640,184 +2700,210 @@ export default function PatientProfile() {
                   <img
                     src={patient.photo_url}
                     alt={patient.full_name}
-                    className="w-12 h-12 rounded-2xl object-cover border border-slate-200 shadow-xs"
+                    className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-md ring-2 ring-slate-200/60"
                   />
                 ) : (
                   <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-base font-black border border-slate-200 shadow-xs bg-slate-900"
+                    className="w-14 h-14 rounded-full flex items-center justify-center text-white text-lg font-black shadow-md border-2 border-white"
+                    style={{ background: 'linear-gradient(135deg, #38bdf8 0%, #3b82f6 50%, #6366f1 100%)' }}
                   >
                     {getInitials(patient.full_name)}
                   </div>
                 )}
-                <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                  <Camera className="w-4 h-4" />
+                <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                  <Camera className="w-3.5 h-3.5" />
                 </div>
               </div>
               <input id="avatar-upload-input" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+
+              <h2 className="text-sm sm:text-[15px] font-black text-slate-900 leading-snug mt-2 truncate max-w-full">{patient.full_name}</h2>
+
+              <button
+                onClick={() => setPatientModalOpen(true)}
+                className="flex items-center justify-center gap-1 text-[10.5px] font-bold text-slate-500 hover:text-slate-800 transition-colors mt-0.5 cursor-pointer"
+              >
+                <Info className="w-3 h-3 text-slate-400" />
+                <span>Ma'lumot</span>
+              </button>
             </div>
 
-            {/* Name + Badges + Phone */}
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-base sm:text-lg font-black text-slate-900 leading-tight truncate">
-                  {patient.full_name}
-                </h1>
-                {age !== null && (
-                  <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10.5px] font-bold">
-                    {age} {t('common.yearsOld') || 'yosh'}
-                  </span>
-                )}
-                {patient.gender && (
-                  <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10.5px] font-bold">
-                    {patient.gender === 'Female' ? (t('patients.female') || 'Ayol') : (t('patients.male') || 'Erkak')}
-                  </span>
-                )}
-                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-md text-[10px] font-black uppercase tracking-wider">
-                  {patient.status === 'New' ? (t('patients.statusNew') || 'Yangi') : (t('patients.statusActive') || patient.status || 'Faol')}
-                </span>
+            {/* 2. BALANS / QARZDORLIK Card */}
+            {totalDebt > 0 ? (
+              <div className="bg-[#fee2e2]/70 border border-rose-300/80 rounded-xl p-2.5 text-center shadow-2xs">
+                <div className="flex items-center justify-center gap-1.5">
+                  <span className="text-[10px] font-black text-rose-600 uppercase tracking-wider">QARZDORLIK</span>
+                  <button
+                    onClick={generatePDF}
+                    title="Qarzdorlik ma'lumotnomasini chop etish"
+                    className="w-5 h-5 rounded bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer"
+                  >
+                    <Printer className="w-3 h-3" />
+                  </button>
+                </div>
+                <p className="text-lg font-black text-rose-600 font-mono mt-0.5 leading-tight">
+                  {totalDebt.toLocaleString()} <span className="text-[11px] font-black">so'm</span>
+                </p>
               </div>
-              <div className="flex items-center gap-2 mt-1">
-                {patient.phone ? (
-                  <div className="flex items-center gap-1.5">
+            ) : (
+              <div className="bg-emerald-50/80 border border-emerald-300/80 rounded-xl p-2.5 text-center shadow-2xs">
+                <div className="flex items-center justify-center gap-1.5">
+                  <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">BALANS</span>
+                </div>
+                <p className="text-lg font-black text-emerald-700 font-mono mt-0.5 leading-tight">
+                  0 <span className="text-[11px] font-black">so'm</span>
+                </p>
+              </div>
+            )}
+
+            {/* 3. Patient Information List (Compact with Bold Text) */}
+            <div className="space-y-1.5">
+              {/* Tug'ilgan sana */}
+              <div className="bg-[#f8fafc] border border-slate-200/90 rounded-xl p-2 flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 text-slate-700 shadow-2xs">
+                  <Cake className="w-3.5 h-3.5 text-slate-700" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] font-black uppercase text-slate-500 leading-none">TUG'ILGAN SANA</p>
+                  <p className="text-xs font-black text-slate-900 leading-snug mt-0.5 truncate">
+                    {patient.birth_date || '—'} {age !== null ? `(${age} yosh)` : ''}
+                  </p>
+                </div>
+              </div>
+
+              {/* Telefon */}
+              <div className="bg-[#f8fafc] border border-slate-200/90 rounded-xl p-2 flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 text-slate-700 shadow-2xs">
+                  <Phone className="w-3.5 h-3.5 text-slate-700" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] font-black uppercase text-slate-500 leading-none">TELEFON</p>
+                  <div className="flex items-center justify-between gap-1 mt-0.5">
                     <a
-                      href={`tel:+${patient.phone.replace(/\D/g, '').startsWith('998') ? patient.phone.replace(/\D/g, '') : '998' + patient.phone.replace(/\D/g, '')}`}
-                      className="font-mono font-bold text-xs text-[#1499AD] hover:underline flex items-center gap-1 bg-[#1499AD]/10 px-2.5 py-0.5 rounded-lg border border-[#1499AD]/20"
-                      title="Qo'ng'iroq qilish"
+                      href={`tel:+${patient.phone ? patient.phone.replace(/\D/g, '') : ''}`}
+                      className="text-xs font-black text-[#0e7490] hover:underline font-mono truncate"
                     >
-                      <Phone className="w-3 h-3" />
-                      {formatPhone(patient.phone)}
+                      {patient.phone ? formatPhone(patient.phone) : '—'}
                     </a>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigator.clipboard.writeText(patient.phone);
-                        toast.success("Telefon raqami nusxalandi");
-                      }}
-                      className="p-1 text-slate-400 hover:text-slate-700 rounded transition-colors cursor-pointer"
-                      title="Nusxalash"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </button>
+                    {patient.phone && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(patient.phone); toast.success("Telefon raqami nusxalandi"); }}
+                        className="p-0.5 text-slate-400 hover:text-slate-800 cursor-pointer"
+                        title="Nusxalash"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
-                ) : (
-                  <span className="font-bold text-slate-400 text-xs">—</span>
-                )}
-                {patient.address && (
-                  <>
-                    <span className="w-1 h-1 rounded-full bg-slate-300 hidden sm:inline" />
-                    <span className="text-xs font-semibold text-slate-500 truncate max-w-[200px] hidden sm:inline">
-                      {patient.address}
-                    </span>
-                  </>
-                )}
+                </div>
+              </div>
+
+              {/* Hisob */}
+              <div className="bg-[#f8fafc] border border-slate-200/90 rounded-xl p-2 flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 text-slate-700 shadow-2xs">
+                  <User className="w-3.5 h-3.5 text-slate-700" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] font-black uppercase text-slate-500 leading-none">HISOB</p>
+                  <div className="flex items-center justify-between gap-1 mt-0.5">
+                    <p className="text-xs font-black text-slate-900 truncate">
+                      {patient.account_number || patient.full_name || patient.id}
+                    </p>
+                    <ExternalLink className="w-3 h-3 text-slate-500 shrink-0" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Manzili */}
+              <div className="bg-[#f8fafc] border border-slate-200/90 rounded-xl p-2 flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 text-slate-700 shadow-2xs">
+                  <MapPin className="w-3.5 h-3.5 text-slate-700" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] font-black uppercase text-slate-500 leading-none">MANZILI</p>
+                  <p className="text-xs font-black text-slate-900 leading-snug mt-0.5 truncate">
+                    {patient.address || '—'}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* ══ MOBILE FINANCIAL & ACTION ROW ══ */}
-          <div className="flex flex-col gap-2 sm:hidden w-full">
-            {/* Financial Status Chips (Full Width on Mobile) */}
-            <div className="grid grid-cols-2 gap-2 w-full">
-              <div className="flex items-center justify-between px-3 py-2 bg-emerald-50/90 border border-emerald-100/90 rounded-xl">
-                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest leading-none">{t('patientProfile.paidLabel') || "To'langan"}</p>
-                <p className="text-xs font-black text-emerald-800 font-mono tabular-nums leading-none">
-                  {totalPaid.toLocaleString()} <span className="text-[9px] font-bold text-emerald-600">UZS</span>
-                </p>
-              </div>
-              <div className={`flex items-center justify-between px-3 py-2 rounded-xl border ${totalDebt > 0 ? 'bg-rose-50/90 border-rose-100/90 text-rose-700' : 'bg-slate-50 border-slate-200/80 text-slate-600'}`}>
-                <p className="text-[9px] font-black uppercase tracking-widest leading-none">
-                  {totalDebt > 0 ? (t('patientProfile.debtLabel') || 'Qarz') : (t('patientProfile.noDebtLabel') || "Qarz yo'q")}
-                </p>
-                <p className="text-xs font-black font-mono tabular-nums leading-none">
-                  {totalDebt.toLocaleString()} <span className="text-[9px] font-bold">UZS</span>
-                </p>
-              </div>
-            </div>
-
-            {/* 3 Main Action Buttons in a Balanced Mobile Grid */}
-            <div className="grid grid-cols-3 gap-2 w-full">
-              <button
-                onClick={() => setApptModalOpen(true)}
-                className="flex items-center justify-center gap-1.5 py-2.5 px-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black shadow-sm transition-all active:scale-95 cursor-pointer text-center"
-              >
-                <Calendar className="w-3.5 h-3.5 text-[#1499AD] shrink-0" />
-                <span className="truncate">+ {t('patientProfile.addApptBtn') || 'Qabul'}</span>
-              </button>
-
+            {/* 4. Bottom Action Buttons (Green To'lov + Blue Uchrashuv) */}
+            <div className="grid grid-cols-2 gap-2 mt-0.5">
               <button
                 onClick={openPayModal}
-                className="flex items-center justify-center gap-1.5 py-2.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-sm transition-all active:scale-95 cursor-pointer text-center"
+                className="w-full py-2 px-2.5 bg-[#10b981] hover:bg-[#059669] text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
               >
-                <CreditCard className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">+ {t('patientProfile.addPayBtn') || "To'lov"}</span>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>To'lov</span>
               </button>
-
-              <button
-                onClick={openAdvanceModal}
-                className="flex items-center justify-center gap-1.5 py-2.5 px-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black shadow-sm transition-all active:scale-95 cursor-pointer text-center"
-                title="Bemor hisobiga avans (oldindan to'lov) kiritish"
-              >
-                <Wallet className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">+ {t('patientProfile.addAdvanceBtn') || 'Avans'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* ══ DESKTOP / TABLET FINANCIAL & ACTION ROW ══ */}
-          <div className="hidden sm:flex sm:items-center sm:justify-between sm:gap-3 w-full">
-            {/* Desktop Financial Chips */}
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-xl text-right">
-                <p className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">{t('patientProfile.paidLabel') || "To'langan"}</p>
-                <p className="text-xs font-black text-emerald-800 font-mono tabular-nums">{totalPaid.toLocaleString()} UZS</p>
-              </div>
-              <div className={`px-3 py-1.5 rounded-xl text-right border ${totalDebt > 0 ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
-                <p className="text-[9px] font-bold uppercase tracking-wider">{totalDebt > 0 ? (t('patientProfile.debtLabel') || 'Qarzdorlik') : (t('patientProfile.noDebtLabel') || "Qarz yo'q")}</p>
-                <p className="text-xs font-black font-mono tabular-nums">{totalDebt.toLocaleString()} UZS</p>
-              </div>
-            </div>
-
-            {/* Desktop Action Buttons */}
-            <div className="flex items-center gap-2">
               <button
                 onClick={() => setApptModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                className="w-full py-2 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
               >
-                <Calendar className="w-3.5 h-3.5 text-[#1499AD]" />
-                <span>+ {t('patientProfile.addApptBtn') || 'Qabul'}</span>
-              </button>
-
-              <button
-                onClick={openPayModal}
-                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap"
-              >
-                <CreditCard className="w-3.5 h-3.5" />
-                <span>+ {t('patientProfile.addPayBtn') || "To'lov"}</span>
-              </button>
-
-              <button
-                onClick={openAdvanceModal}
-                className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap"
-                title="Bemor hisobiga avans (oldindan to'lov) kiritish"
-              >
-                <Wallet className="w-3.5 h-3.5" />
-                <span>+ {t('patientProfile.addAdvanceBtn') || 'Avans'}</span>
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Uchrashuv</span>
               </button>
             </div>
           </div>
+
+          {/* Paid amount card */}
+          <div className="bg-white rounded-xl border border-slate-200/90 p-2.5 sm:p-3 shadow-2xs flex items-center justify-between">
+            <span className="text-[10.5px] font-black text-slate-600">Jami to'langan:</span>
+            <span className="text-xs font-black text-emerald-700 font-mono">{totalPaid.toLocaleString()} so'm</span>
+          </div>
+
         </div>
 
-        {/* ══ TAB BAR ══ */}
-        <div className="w-full bg-slate-50/90 border-b border-slate-200 px-2 sm:px-4 print:hidden">
-          <div className="flex items-center gap-0.5 sm:gap-1 py-1.5 overflow-x-auto no-scrollbar">
+        {/* ════ RIGHT WORKSPACE: TABS & VIEWS ════ */}
+        <div className="flex-1 min-w-0 w-full space-y-3.5">
+
+          {/* ── 1. TOP SEARCH & FILTER BAR ── */}
+          <div className="bg-white rounded-2xl p-2.5 sm:p-3 border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="relative min-w-[220px] max-w-md flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={toothSearchQuery}
+                onChange={(e) => setToothSearchQuery(e.target.value)}
+                placeholder="Tish yoki muolaja qidirish (#16, karies...)"
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+              {toothSearchQuery && (
+                <button onClick={() => setToothSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer">✕</button>
+              )}
+            </div>
+
+            {/* Right: View Mode Toggle (Xarita + Jadval / Faqat Jadval) */}
+            {activeTab === 'info' && (
+              <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200/60 gap-0.5 shrink-0 self-end md:self-auto">
+                <button
+                  onClick={() => setDentalViewMode('both')}
+                  className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5", dentalViewMode === 'both' ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500 hover:text-slate-800")}
+                >
+                  <Tooth className="w-3.5 h-3.5 text-sky-600" />
+                  <span>Xarita + Jadval</span>
+                </button>
+                <button
+                  onClick={() => setDentalViewMode('table')}
+                  className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5", dentalViewMode === 'table' ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500 hover:text-slate-800")}
+                >
+                  <ClipboardList className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Faqat Jadval</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── 2. BO'LIMLAR (TABS) ROW - DIRECTLY UNDER SEARCH BAR ── */}
+          <div className="bg-white rounded-2xl p-2 sm:p-2.5 border border-slate-200/90 shadow-xs flex items-center gap-2 overflow-x-auto no-scrollbar">
             {[
-              { id: 'info',         label: t('patientProfile.tabs.dentalChart') || "Tish xaritasi",      icon: Tooth,           iconColor: "text-sky-600",     shortLabel: "Tish" },
-              { id: 'treatments',   label: t('patientProfile.tabs.treatments') || "Davolash Rejalari",  icon: ClipboardList,   iconColor: "text-indigo-600",  shortLabel: "Reja", count: (plans || []).length },
-              { id: 'appointments', label: t('patientProfile.tabs.appointments') || "Uchrashuvlar",        icon: Calendar,        iconColor: "text-blue-600",    shortLabel: "Qabul", count: (appointments || []).length },
-              { id: 'payments',     label: t('patientProfile.tabs.payments') || "To'lovlar",   icon: CreditCard,      iconColor: "text-emerald-600", shortLabel: "To'lov", count: (payments || []).filter(p => { const t = (p.type || 'Income').toLowerCase(); return t !== 'debt' && t !== 'discount' && !(p.notes || '').toLowerCase().includes('linked to plan'); }).length },
-              { id: 'notes',        label: t('patientProfile.tabs.notes') || "Eslatmalar",         icon: FileText,        iconColor: "text-amber-600",   shortLabel: "Eslatma" },
-              { id: 'implants',     label: t('patientProfile.tabs.implants') || "Implantlar",         icon: ImplantIcon,     iconColor: "text-purple-600",  shortLabel: "Implant", count: (implants || []).length },
-              { id: 'photos',       label: t('patientProfile.tabs.photos') || "Rentgen & Rasmlar",  icon: XrayIcon,        iconColor: "text-cyan-600",    shortLabel: "Rentgen", count: (xrays || []).length },
+              { id: 'info',         label: "Tish xaritasi",      icon: Tooth,           iconColor: "text-sky-600" },
+              { id: 'treatments',   label: "Davolash rejalari",  icon: ClipboardList,   iconColor: "text-indigo-600", count: (plans || []).length },
+              { id: 'appointments', label: "Uchrashuvlar",       icon: Calendar,        iconColor: "text-blue-600", count: (appointments || []).length },
+              { id: 'payments',     label: "To'lovlar",          icon: CreditCard,      iconColor: "text-emerald-600", count: (payments || []).filter(p => { const t = (p.type || 'Income').toLowerCase(); return t !== 'debt' && t !== 'discount' && !(p.notes || '').toLowerCase().includes('linked to plan'); }).length },
+              { id: 'notes',        label: "Eslatmalar",         icon: FileText,        iconColor: "text-amber-600" },
+              { id: 'implants',     label: "Implantlar",         icon: ImplantIcon,     iconColor: "text-purple-600", count: (implants || []).length },
+              { id: 'photos',       label: "Rentgen & Rasmlar",  icon: XrayIcon,        iconColor: "text-cyan-600", count: (xrays || []).length },
             ].map(tabItem => {
               const IconComponent = tabItem.icon;
               const isActive = activeTab === tabItem.id;
@@ -2825,65 +2911,31 @@ export default function PatientProfile() {
                 <button
                   key={tabItem.id}
                   onClick={() => setActiveTab(tabItem.id)}
-                  className={`group relative flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-1.5 rounded-xl text-[10px] sm:text-xs transition-all cursor-pointer shrink-0 ${
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs transition-all cursor-pointer shrink-0 font-bold ${
                     isActive
-                      ? 'bg-white text-slate-900 font-black shadow-sm border border-slate-200/80'
-                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 font-semibold'
+                      ? 'bg-blue-50/80 text-blue-600 border-2 border-blue-500 shadow-xs ring-2 ring-blue-500/20 font-black'
+                      : 'bg-white text-slate-700 border border-slate-200/90 hover:bg-slate-50 hover:text-slate-900 shadow-2xs'
                   }`}
                 >
-                  <IconComponent className={cn("w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0 transition-transform group-hover:scale-110", isActive ? tabItem.iconColor : "text-slate-400 group-hover:text-slate-600")} />
-                  <span className="hidden sm:inline leading-none">{tabItem.label}</span>
-                  <span className="sm:hidden text-[9px] font-black leading-none">{tabItem.shortLabel}</span>
+                  <IconComponent className={cn("w-3.5 h-3.5 shrink-0", isActive ? "text-blue-600" : "text-slate-400")} />
+                  <span className="whitespace-nowrap">{tabItem.label}</span>
                   {tabItem.count !== undefined && tabItem.count > 0 && (
-                    <span className={`hidden sm:inline px-1.5 py-0.5 rounded-full text-[9px] font-black ${
-                      isActive ? 'bg-[#1499AD]/10 text-[#1499AD]' : 'bg-slate-200 text-slate-500'
+                    <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-black ${
+                      isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200/60'
                     }`}>
                       {tabItem.count}
-                    </span>
-                  )}
-                  {/* Mobile count dot */}
-                  {tabItem.count !== undefined && tabItem.count > 0 && (
-                    <span className={`sm:hidden absolute top-1 right-1 w-3.5 h-3.5 rounded-full text-[7px] font-black flex items-center justify-center ${
-                      isActive ? 'bg-[#1499AD] text-white' : 'bg-slate-300 text-slate-600'
-                    }`}>
-                      {tabItem.count > 9 ? '9+' : tabItem.count}
                     </span>
                   )}
                 </button>
               );
             })}
           </div>
-        </div>
 
-      </div>
+          {/* ── TAB CONTENT & VIEWS ── */}
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="hidden" />
 
-      {/* ══ PAGE BODY ══ */}
-      <div className="w-full px-2 sm:px-4 pt-3 sm:pt-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="hidden" />
-
-          {/* MAIN TAB CONTENT */}
-          <div className="min-w-0 space-y-0">
-
-        {/* ══ EXCEL SPREADSHEET MASTER VIEW ══ */}
-        <TabsContent value="excel" className="outline-none space-y-4">
-          {activeTab === 'excel' && (
-            <PatientExcelView
-              patient={patient}
-              plans={plans}
-              payments={payments}
-              appointments={appointments}
-              doctors={doctors}
-              card043Data={card043Data}
-              totalPaid={totalPaid}
-              totalDebt={totalDebt}
-              toothRecords={toothRecords}
-              onOpenApptModal={() => setApptModalOpen(true)}
-              onOpenPayModal={openPayModal}
-              onOpenPlanInvoice={(plan) => setInvoiceModalPlan(plan)}
-            />
-          )}
-        </TabsContent>
+            <div className="min-w-0 space-y-4">
 
         {/* ══ 4. TO'LOVLAR & QARZ (EXCEL FINANCIAL LEDGER) ══ */}
         <TabsContent value="payments" className="outline-none space-y-4">
@@ -2907,6 +2959,10 @@ export default function PatientProfile() {
           {activeTab === 'info' && (
             <ExcelDentalChartView
               patient={patient}
+              search={toothSearchQuery}
+              setSearch={setToothSearchQuery}
+              viewMode={dentalViewMode}
+              setViewMode={setDentalViewMode}
               odontogramSelectedTeeth={odontogramSelectedTeeth}
               stableOnOdontogramChange={stableOnOdontogramChange}
               handleInfoToothClick={handleInfoToothClick}
@@ -3004,9 +3060,11 @@ export default function PatientProfile() {
           {activeTab === 'xrays' && <PatientXraysOdontogram patientId={id} />}
         </TabsContent>
 
-          </div>
-        </Tabs>
-      </div>{/* end max-w-7xl */}
+            </div>
+          </Tabs>
+        </div>{/* end right workspace */}
+      </div>{/* end main 2-column layout */}
+
 
       {/* Appointment quick modal */}
       <AppointmentModal
@@ -4126,7 +4184,7 @@ export default function PatientProfile() {
         </DialogContent>
       </Dialog>
 
-      </div> {/* end print:hidden */}
+      </div>{/* end print:hidden */}
 
       {/* Printable 043/u Card */}
       <div className="hidden print:block font-serif text-black p-8 bg-white text-[13px] leading-relaxed w-full" id="printable-card-043">

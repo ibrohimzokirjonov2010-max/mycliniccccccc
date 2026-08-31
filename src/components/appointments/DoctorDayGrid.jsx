@@ -53,12 +53,19 @@ function useTestReminder() {
   return { sendTest, loadingId };
 }
 
-// Static base slots to build from (08:00 – 23:00)
-const BASE_TIME_SLOTS = Array.from({ length: 31 }, (_, i) => {
-  const h = Math.floor(8 + i / 2);
-  const m = i % 2 === 0 ? '00' : '30';
-  return `${String(h).padStart(2, '0')}:${m}`;
-});
+// Static base slots to build from (08:00 – 23:00, 23:30, 00:00)
+const BASE_TIME_SLOTS = [
+  ...Array.from({ length: 16 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`),
+  '23:30',
+  '00:00'
+];
+
+export const getClinicTimeWeight = (timeStr) => {
+  const [h, m] = (timeStr || '00:00').split(':').map(Number);
+  // Hours 00:00 to 06:59 belong to night / end of day shift
+  const effH = h < 7 ? h + 24 : h;
+  return effH * 60 + m;
+};
 
 const statusColors = {
   Scheduled: 'bg-[#E3F2FD] border-[#BBDEFB] text-[#1976D2]',
@@ -88,6 +95,17 @@ const statusBadgeColors = {
   'No-Show': 'bg-slate-100 text-slate-500',
   Planned: 'bg-teal-100 text-teal-700',
 };
+
+const DOCTOR_PALETTES = [
+  { id: 'sky', primary: '#0284c7', bg: 'bg-sky-50/20', headerBg: 'bg-sky-50/60', badgeBg: 'bg-sky-500 text-white', ring: 'ring-sky-400', lightBorder: 'border-sky-200' },
+  { id: 'teal', primary: '#0d9488', bg: 'bg-teal-50/20', headerBg: 'bg-teal-50/60', badgeBg: 'bg-teal-500 text-white', ring: 'ring-teal-400', lightBorder: 'border-teal-200' },
+  { id: 'indigo', primary: '#6366f1', bg: 'bg-indigo-50/20', headerBg: 'bg-indigo-50/60', badgeBg: 'bg-indigo-500 text-white', ring: 'ring-indigo-400', lightBorder: 'border-indigo-200' },
+  { id: 'purple', primary: '#8b5cf6', bg: 'bg-purple-50/20', headerBg: 'bg-purple-50/60', badgeBg: 'bg-purple-500 text-white', ring: 'ring-purple-400', lightBorder: 'border-purple-200' },
+  { id: 'emerald', primary: '#059669', bg: 'bg-emerald-50/20', headerBg: 'bg-emerald-50/60', badgeBg: 'bg-emerald-500 text-white', ring: 'ring-emerald-400', lightBorder: 'border-emerald-200' },
+  { id: 'amber', primary: '#d97706', bg: 'bg-amber-50/20', headerBg: 'bg-amber-50/60', badgeBg: 'bg-amber-500 text-white', ring: 'ring-amber-400', lightBorder: 'border-amber-200' },
+  { id: 'rose', primary: '#e11d48', bg: 'bg-rose-50/20', headerBg: 'bg-rose-50/60', badgeBg: 'bg-rose-500 text-white', ring: 'ring-rose-400', lightBorder: 'border-rose-200' },
+  { id: 'cyan', primary: '#0891b2', bg: 'bg-cyan-50/20', headerBg: 'bg-cyan-50/60', badgeBg: 'bg-cyan-500 text-white', ring: 'ring-cyan-400', lightBorder: 'border-cyan-200' },
+];
 
 /* ═══════════════════════════════════════════════════
    QUICK VIEW POPUP — cliniccards.com uslubi
@@ -543,10 +561,13 @@ export default function DoctorDayGrid({
     const data = {};
     doctors.forEach(doc => {
       data[doc.id] = {};
-      const docAppts = appointments.filter(a => 
-        String(a.doctor_id) === String(doc.id) && 
-        String(a.date).split('T')[0] === selectedDate
-      );
+      const docAppts = appointments.filter(a => {
+        if (String(a.date).split('T')[0] !== selectedDate) return false;
+        if (a.status === 'Cancelled') return false;
+        const matchId = a.doctor_id && String(a.doctor_id) === String(doc.id);
+        const matchName = a.doctor_name && doc.name && a.doctor_name.toLowerCase().trim() === doc.name.toLowerCase().trim();
+        return matchId || matchName;
+      });
       docAppts.forEach(a => {
         const timeKey = (a.time || '08:00').slice(0, 5);
         data[doc.id][timeKey] = a;
@@ -555,12 +576,29 @@ export default function DoctorDayGrid({
     return data;
   }, [appointments, doctors, selectedDate]);
 
-  const displayTimeSlots = useMemo(() => {
-    return BASE_TIME_SLOTS.filter(time => {
-      if (time.endsWith(':00')) return true;
-      return doctors.some(doc => !!gridData[doc.id]?.[time]);
+  const doctorApptCounts = useMemo(() => {
+    const counts = {};
+    doctors.forEach(doc => {
+      counts[doc.id] = Object.keys(gridData[doc.id] || {}).length;
     });
+    return counts;
   }, [doctors, gridData]);
+
+  const displayTimeSlots = useMemo(() => {
+    // 1. Standard base slots from 08:00 to 23:00, 23:30, 00:00
+    const slotSet = new Set(BASE_TIME_SLOTS);
+
+    // 2. Dynamic slots for any appointment scheduled on this day
+    appointments.forEach(a => {
+      if (String(a.date).split('T')[0] === selectedDate && a.time && a.status !== 'Cancelled') {
+        const t = a.time.slice(0, 5);
+        slotSet.add(t);
+      }
+    });
+
+    // 3. Chronological clinic sort: 08:00 -> 23:00 -> 23:30 -> 00:00
+    return Array.from(slotSet).sort((a, b) => getClinicTimeWeight(a) - getClinicTimeWeight(b));
+  }, [appointments, selectedDate]);
 
   const changeDate = (offset) => {
     const d = new Date(selectedDate);
@@ -599,67 +637,125 @@ export default function DoctorDayGrid({
         />
       )}
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Unified Single CSS Grid for 100% straight vertical alignment between header and body */}
+      <div ref={gridRef} className="flex-1 overflow-auto no-scrollbar scroll-smooth bg-white">
         <div 
-          className="grid border-b border-slate-300 bg-white sticky top-0 z-30"
-          style={{ gridTemplateColumns: `52px repeat(${doctors.length}, minmax(200px, 1fr))` }}
+          className="grid w-full min-w-max"
+          style={{ gridTemplateColumns: `56px repeat(${doctors.length}, minmax(210px, 1fr))` }}
         >
-          <div className="flex items-center justify-center border-r border-slate-300 bg-slate-50 text-slate-400">
-            <Clock className="w-4 h-4 stroke-[2.5]" />
-          </div>
-          {doctors.map((doc) => {
-            const avatarUrl = doc.avatar_url || doc.photo || doc.avatar || doc.image;
-            return (
-              <div key={doc.id} className="py-2 px-3 border-r border-slate-300 last:border-0 flex items-center justify-center gap-2.5 group relative bg-white overflow-hidden">
-                {/* Doctor Avatar / Photo */}
-                <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200/80 shadow-xs flex items-center justify-center overflow-hidden shrink-0">
-                  {avatarUrl ? (
-                    <img 
-                      src={avatarUrl} 
-                      alt={doc.name} 
-                      className="w-full h-full object-cover" 
-                    />
-                  ) : (
-                    <span className="text-xs font-black text-slate-600 uppercase">
-                      {(doc.name || doc.full_name)?.charAt(0)}
-                    </span>
+          {/* ══════════════════════════════════════════════
+              ROW 0: STICKY TOP DOCTOR HEADER
+              ══════════════════════════════════════════════ */}
+          <div className="contents">
+            {/* Top-Left Corner Cell: Sticky Top & Sticky Left */}
+            <div className="sticky top-0 left-0 z-40 bg-slate-100/95 backdrop-blur-sm border-r-2 border-b-2 border-slate-300 flex flex-col items-center justify-center py-2.5 shadow-sm">
+              <Clock className="w-4 h-4 stroke-[2.5] text-[#1499AD]" />
+              <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 mt-0.5">Vaqt</span>
+            </div>
+
+            {/* Doctor Column Headers: Sticky Top */}
+            {doctors.map((doc, docIdx) => {
+              const palette = DOCTOR_PALETTES[docIdx % DOCTOR_PALETTES.length];
+              const avatarUrl = doc.avatar_url || doc.photo || doc.avatar || doc.image;
+              const apptCount = doctorApptCounts[doc.id] || 0;
+              return (
+                <div 
+                  key={`hdr-${doc.id}`} 
+                  className={cn(
+                    "sticky top-0 z-30 py-2.5 px-3 border-r-2 border-b-2 border-slate-300 last:border-r-0 flex items-center justify-between gap-2.5 group relative overflow-hidden transition-colors border-t-4 shadow-sm backdrop-blur-sm",
+                    palette.headerBg
                   )}
-                </div>
+                  style={{ borderTopColor: palette.primary }}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {/* Doctor Avatar / Photo */}
+                    <div 
+                      className="w-9 h-9 rounded-xl border-2 shadow-xs flex items-center justify-center overflow-hidden shrink-0 bg-white"
+                      style={{ borderColor: palette.primary }}
+                    >
+                      {avatarUrl ? (
+                        <img 
+                          src={avatarUrl} 
+                          alt={doc.name} 
+                          className="w-full h-full object-cover" 
+                        />
+                      ) : (
+                        <span className="text-xs font-black uppercase" style={{ color: palette.primary }}>
+                          {(doc.name || doc.full_name)?.charAt(0)}
+                        </span>
+                      )}
+                    </div>
 
-                <div className="min-w-0 text-left">
-                  <h4 className="text-[11px] font-black text-slate-900 tracking-tight leading-tight uppercase truncate max-w-[135px]">
-                    {doc.name}
-                  </h4>
-                  <p className="text-[8px] font-bold text-[#1499AD] uppercase tracking-wider opacity-80 truncate max-w-[135px]">
-                    {doc.specialty || t('staff.roles.doctor')}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                    <div className="min-w-0 text-left">
+                      <h4 className="text-xs font-black text-slate-900 tracking-tight leading-tight uppercase truncate max-w-[130px]">
+                        {doc.name}
+                      </h4>
+                      <p className="text-[9px] font-bold uppercase tracking-wider truncate max-w-[130px]" style={{ color: palette.primary }}>
+                        {doc.specialty || t('staff.roles.doctor') || 'Stomatolog'}
+                      </p>
+                    </div>
+                  </div>
 
-        <div ref={gridRef} className="flex-1 overflow-y-auto no-scrollbar scroll-smooth bg-white">
-          <div 
-            className="grid min-w-max"
-            style={{ gridTemplateColumns: `52px repeat(${doctors.length}, minmax(200px, 1fr))` }}
-          >
-            {displayTimeSlots.map((time) => (
+                  {/* Today's appointments count badge */}
+                  <div 
+                    className="px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider shrink-0 shadow-xs border"
+                    style={{
+                      backgroundColor: apptCount > 0 ? `${palette.primary}18` : '#f1f5f9',
+                      color: apptCount > 0 ? palette.primary : '#94a3b8',
+                      borderColor: apptCount > 0 ? `${palette.primary}40` : '#e2e8f0'
+                    }}
+                  >
+                    {apptCount > 0 ? `${apptCount} ta qabul` : `Bo'sh`}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ══════════════════════════════════════════════
+              ROWS 1..N: TIME SLOTS & DOCTOR CELLS
+              ══════════════════════════════════════════════ */}
+          {displayTimeSlots.map((time) => {
+            const isHour = time.endsWith(':00');
+            return (
               <div key={time} className="contents">
-                <div className="h-20 flex items-center justify-center border-r-2 border-b-2 border-slate-200/60 bg-slate-50/80 backdrop-blur-sm text-[10px] font-bold text-slate-500 sticky left-0 z-20 shadow-[1px_0_3px_rgba(0,0,0,0.02)]">
-                  {time}
+                {/* Time column cell: Sticky Left */}
+                <div className={cn(
+                  "h-20 flex flex-col items-center justify-center border-r-2 border-b-2 border-slate-300 bg-slate-50/95 backdrop-blur-sm sticky left-0 z-20 shadow-[1px_0_3px_rgba(0,0,0,0.04)]",
+                  isHour ? "text-slate-800 font-black text-[11px]" : "text-slate-400 font-bold text-[9.5px]"
+                )}>
+                  <span>{time}</span>
                 </div>
-                {doctors.map((doc) => {
+
+                {/* Doctor schedule slots */}
+                {doctors.map((doc, docIdx) => {
+                  const palette = DOCTOR_PALETTES[docIdx % DOCTOR_PALETTES.length];
                   const appointment = gridData[doc.id]?.[time];
+                  const isEvenCol = docIdx % 2 === 0;
+
                   return (
                     <div
                       key={doc.id}
                       onClick={() => !appointment && onSlotClick?.(selectedDate, time, doc.id)}
+                      title={!appointment ? `${doc.name} — ${time} ga yangi uchrashuv belgilash` : undefined}
                       className={cn(
-                        "h-20 border-r-2 border-b-2 border-slate-200/60 p-1 relative transition-colors bg-white",
-                        !appointment && "hover:bg-[#1499AD]/5 cursor-pointer"
+                        "h-20 border-r-2 border-b-2 border-slate-300 last:border-r-0 p-1 relative transition-all group/slot",
+                        isEvenCol ? "bg-white" : "bg-slate-50/30",
+                        !appointment && "hover:bg-[#1499AD]/10 cursor-pointer"
                       )}
                     >
+                      {/* Subtle doctor watermark tag on hover for empty slot */}
+                      {!appointment && (
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/slot:opacity-100 transition-opacity pointer-events-none z-10">
+                          <span 
+                            className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg bg-white/95 shadow-sm border border-slate-200"
+                            style={{ color: palette.primary }}
+                          >
+                            + {doc.name} ({time})
+                          </span>
+                        </div>
+                      )}
+
                       {appointment && (() => {
                         const isMatch = searchQuery && (
                           (appointment.patient_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -670,74 +766,77 @@ export default function DoctorDayGrid({
                           <div
                             onClick={(e) => handleAppointmentClick(e, appointment)}
                             className={cn(
-                              "h-full w-full rounded-xl border-l-[4px] p-1.5 flex flex-col justify-between shadow-sm transition-all hover:brightness-95 active:scale-[0.98] cursor-pointer group/card relative overflow-hidden",
+                              "h-full w-full rounded-xl border-l-[4px] p-1.5 flex flex-col justify-between shadow-xs transition-all hover:brightness-95 active:scale-[0.98] cursor-pointer group/card relative overflow-hidden",
                               statusColors[appointment.status] || statusColors.Scheduled,
                               isMatch && "ring-2 ring-[#1499AD] ring-offset-1 animate-pulse scale-[1.02] z-10 shadow-lg shadow-[#1499AD]/20"
                             )}
+                            style={{ borderLeftColor: palette.primary }}
                           >
-                          <div className="flex flex-col gap-0.5">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5 min-w-0 max-w-[85%]">
-                                {(appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url) && (
-                                  <img 
-                                    src={appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url} 
-                                    alt={appointment.patient_name} 
-                                    className="w-4 h-4 rounded-full object-cover shrink-0 border border-white/80 shadow-xs" 
-                                  />
-                                )}
-                                <span className="text-[11px] font-black truncate leading-none uppercase tracking-tight text-slate-900">
-                                  {appointment.patient_name}
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 min-w-0 max-w-[85%]">
+                                  {(appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url) && (
+                                    <img 
+                                      src={appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url} 
+                                      alt={appointment.patient_name} 
+                                      className="w-4 h-4 rounded-full object-cover shrink-0 border border-white/80 shadow-xs" 
+                                    />
+                                  )}
+                                  <span className="text-[11px] font-black truncate leading-none uppercase tracking-tight text-slate-900">
+                                    {appointment.patient_name}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-0.5 opacity-40 group-hover/card:opacity-100 transition-opacity shrink-0">
+                                  {appointment.is_paid ? <Wallet className="w-2.5 h-2.5 text-emerald-600" /> : <Clock className="w-2.5 h-2.5" />}
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="text-[9px] font-bold opacity-75">
+                                  {appointment.time} — {(() => {
+                                      const [h, m] = appointment.time.split(':').map(Number);
+                                      const dur = appointment.duration || 30;
+                                      const endMin = h * 60 + m + Number(dur);
+                                      return `${String(Math.floor(endMin/60)).padStart(2,'0')}:${String(endMin%60).padStart(2,'0')}`;
+                                  })()}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-0.5 opacity-40 group-hover/card:opacity-100 transition-opacity shrink-0">
-                                {appointment.is_paid ? <Wallet className="w-2.5 h-2.5 text-emerald-600" /> : <Clock className="w-2.5 h-2.5" />}
-                              </div>
                             </div>
-                            <span className="text-[9px] font-bold opacity-60">
-                              {appointment.time} — {(() => {
-                                  const [h, m] = appointment.time.split(':').map(Number);
-                                  const dur = appointment.duration || 30;
-                                  const endMin = h * 60 + m + Number(dur);
-                                  return `${String(Math.floor(endMin/60)).padStart(2,'0')}:${String(endMin%60).padStart(2,'0')}`;
-                              })()}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center justify-between mt-1">
-                             <div className="flex items-center gap-1 min-w-0 max-w-[78%]">
-                               <div className="px-2 py-0.5 bg-white/60 rounded-lg text-[8px] font-black uppercase tracking-tighter truncate max-w-[85%] border border-black/5">
-                                   {appointment.tooth_number ? `${appointment.tooth_number}-tish: ` : ''}{appointment.service_name || t('appointments.defaultService') || 'Maslahat'}
+                            
+                            <div className="flex items-center justify-between mt-1">
+                               <div className="flex items-center gap-1 min-w-0 max-w-[78%]">
+                                 <div className="px-2 py-0.5 bg-white/70 rounded-lg text-[8px] font-black uppercase tracking-tighter truncate max-w-[85%] border border-black/5">
+                                     {appointment.tooth_number ? `${appointment.tooth_number}-tish: ` : ''}{appointment.service_name || t('appointments.defaultService') || 'Maslahat'}
+                                 </div>
+                                 <AppointmentConfirmationBadge appointment={appointment} size="sm" className="!text-[8px] !px-1.5 !py-0.5" />
                                </div>
-                               <AppointmentConfirmationBadge appointment={appointment} size="sm" className="!text-[8px] !px-1.5 !py-0.5" />
-                             </div>
-                             <div className="flex items-center gap-0.5 shrink-0">
-                               {/* Test eslatma tugmasi */}
-                               <button
-                                 title="Test Telegram eslatma yuborish"
-                                 onClick={(e) => sendTest(appointment, e)}
-                                 disabled={loadingId === String(appointment._id || appointment.id || '')}
-                                 className={cn(
-                                   "w-5 h-5 rounded-md flex items-center justify-center transition-all",
-                                   "opacity-0 group-hover/card:opacity-100",
-                                   "bg-violet-100 hover:bg-violet-500 hover:text-white text-violet-500",
-                                   "border border-violet-200 hover:border-violet-500",
-                                   loadingId === String(appointment._id || appointment.id || '') && "animate-pulse opacity-100"
-                                 )}
-                               >
-                                 <FlaskConical className="w-2.5 h-2.5" />
-                               </button>
-                               <CheckCircle2 className="w-3 h-3 opacity-10" />
-                             </div>
+                               <div className="flex items-center gap-0.5 shrink-0">
+                                 {/* Test eslatma tugmasi */}
+                                 <button
+                                   title="Test Telegram eslatma yuborish"
+                                   onClick={(e) => sendTest(appointment, e)}
+                                   disabled={loadingId === String(appointment._id || appointment.id || '')}
+                                   className={cn(
+                                     "w-5 h-5 rounded-md flex items-center justify-center transition-all",
+                                     "opacity-0 group-hover/card:opacity-100",
+                                     "bg-violet-100 hover:bg-violet-500 hover:text-white text-violet-500",
+                                     "border border-violet-200 hover:border-violet-500",
+                                     loadingId === String(appointment._id || appointment.id || '') && "animate-pulse opacity-100"
+                                   )}
+                                 >
+                                   <FlaskConical className="w-2.5 h-2.5" />
+                                 </button>
+                                 <CheckCircle2 className="w-3 h-3 opacity-10" />
+                               </div>
+                            </div>
                           </div>
-                        </div>
                         );
                       })()}
                     </div>
                   );
                 })}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
     </div>

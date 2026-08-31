@@ -562,6 +562,7 @@
     "legendSelected": "Выбрано",
     "legendBusy": "Занято",
     "legendPast": "Прошло",
+    "timePassed": "Время уже прошло",
     "timeBusy": "⚠️ В {time} занято: {patient}",
     "calendar": "Календарь",
     "list": "Список",
