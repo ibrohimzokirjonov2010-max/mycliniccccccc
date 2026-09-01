@@ -5,12 +5,14 @@ import {
   Plus, Search, Activity, AlertTriangle, CheckCircle2,
   ChevronRight, TrendingUp, Bell, Target, Phone, Calendar,
   Layers, MessageCircle, Zap, X, Filter, SlidersHorizontal,
-  Award, Clock, ArrowUpRight, RefreshCw, FileEdit
+  Award, Clock, ArrowUpRight, RefreshCw, FileEdit, Sparkles
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import ImplantForm, { EXTRA_SERVICES } from '@/components/implants/ImplantForm';
+import ExtraServiceModal from '@/components/implants/ExtraServiceModal';
+import ExtraServicesManagerModal from '@/components/implants/ExtraServicesManagerModal';
 import ImplantBrandsModal, { getOrSeedImplantBrands, calculateBrandStockStats } from '@/components/implants/ImplantBrandsModal';
 import { useFeature } from '@/hooks/useFeature';
 import { Package } from 'lucide-react';
@@ -478,6 +480,9 @@ export default function MobileImplants() {
   const [filterFirma, setFilterFirma] = useState(null);
   const [showFilter, setShowFilter] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [extraServiceModalOpen, setExtraServiceModalOpen] = useState(false);
+  const [editingExtraService, setEditingExtraService] = useState(null);
+  const [extraServicesManagerOpen, setExtraServicesManagerOpen] = useState(false);
   const [statusSheet, setStatusSheet] = useState({ open: false, implant: null });
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
@@ -613,19 +618,33 @@ export default function MobileImplants() {
                 <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
                   <ImplantIcon className="w-4.5 h-4.5 text-white" />
                 </div>
-                Implantlar
+                Implantlar & Xizmatlar
               </h1>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
-                {stats.total} ta implant · {stats.successRate}% muvaffaqiyat
+                {stats.total} ta amaliyot · {stats.successRate}% muvaffaqiyat
               </p>
             </div>
-            <motion.button
-              whileTap={{ scale: 0.92 }}
-              onClick={() => setAddOpen(true)}
-              className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200/60 text-white"
-            >
-              <Plus className="w-5 h-5" />
-            </motion.button>
+            
+            <div className="flex items-center gap-2">
+              <motion.button
+                whileTap={{ scale: 0.92 }}
+                onClick={() => setExtraServicesManagerOpen(true)}
+                className="h-10 px-3 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-2xl flex items-center gap-1.5 font-black text-xs shadow-xs"
+                title="Qo'shimcha xizmatlar prays-listi"
+              >
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <span>Prays-list</span>
+              </motion.button>
+
+              <motion.button
+                whileTap={{ scale: 0.92 }}
+                onClick={() => setAddOpen(true)}
+                className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200/60 text-white"
+                title="Yangi implant qo'shish"
+              >
+                <Plus className="w-5 h-5" />
+              </motion.button>
+            </div>
           </div>
 
           {/* ── Tabs ── */}
@@ -965,6 +984,22 @@ export default function MobileImplants() {
         patients={patients}
         services={services}
         onSaved={() => { load(); setAddOpen(false); toast.success('Implant qo\'shildi!'); }}
+      />
+
+      {/* ── Add/Edit Extra Service Modal (Patient operation) ── */}
+      <ExtraServiceModal
+        open={extraServiceModalOpen || !!editingExtraService}
+        onClose={() => { setExtraServiceModalOpen(false); setEditingExtraService(null); }}
+        patients={patients}
+        serviceItem={editingExtraService}
+        onSaved={() => { load(); setExtraServiceModalOpen(false); setEditingExtraService(null); }}
+      />
+
+      {/* ── Extra Services & Price List Management Modal ── */}
+      <ExtraServicesManagerModal
+        open={extraServicesManagerOpen}
+        onClose={() => setExtraServicesManagerOpen(false)}
+        onServicesUpdated={load}
       />
 
       {/* ── Brands & Stock Management Modal ── */}

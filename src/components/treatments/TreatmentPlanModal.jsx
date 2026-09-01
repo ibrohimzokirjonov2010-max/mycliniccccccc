@@ -830,7 +830,13 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
     }
   };
 
+  const currentAllServices = useMemo(() => {
+    return Object.entries(toothData || {}).flatMap(([tId, td]) =>
+      (td.services || []).map(s => ({ ...s, tooth: tId === '' ? 'general' : tId }))
+    );
+  }, [toothData]);
 
+  const currentPlanTitle = savedPlanData?.name || plan?.name || formatDepartmentPlanName(currentAllServices, selectedTeeth) || 'Davolash rejasi';
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -1544,7 +1550,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                     </div>
                                     <div>
                                         <span className="text-[10px] text-slate-400 font-semibold block mb-0.5">Davolash turi</span>
-                                        <span className="text-xs font-black text-slate-900 block">{getTreatmentTypeLabel(planTitle || 'Davolash rejasi', language)}</span>
+                                        <span className="text-xs font-black text-slate-900 block">{getTreatmentTypeLabel(currentPlanTitle, language)}</span>
                                     </div>
                                     <div>
                                         <span className="text-[10px] text-slate-400 font-semibold block mb-0.5">Holati</span>

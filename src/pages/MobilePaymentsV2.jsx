@@ -10,9 +10,7 @@ import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import { base44 } from '@/api/base44Client';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
-import PullToRefresh from '@/components/ui/PullToRefresh';
-import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { cn, resolveDoctorId } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -384,15 +382,16 @@ export default function MobilePaymentsV2() {
         }, 150);
       }
       const filter = isDoctor ? { doctor_id: user.id } : {};
-      const [pays, pats, docs] = await Promise.all([
+      const [pays, pats, allUsers] = await Promise.all([
         base44.entities.Payment.filter(filter, '-date', 100),
         base44.entities.Patient.list('-created_date', 50),
-        base44.entities.User.filter({ role: 'doctor' }, 'name', 50),
+        base44.entities.User.list('name', 100).catch(() => base44.entities.User.filter({ role: 'doctor' }, 'name', 50)),
         loadStats()
       ]);
+      const docs = (allUsers || []).filter(u => u.role?.toLowerCase() === 'doctor' || u.role?.toLowerCase() === 'admin');
       setPayments(pays);
       setPatients(pats);
-      setDoctors(docs || []);
+      setDoctors(docs.length > 0 ? docs : (allUsers || []));
       hasLoadedInitial.current = true;
     } catch (error) {
       console.error('Failed to load payments:', error);
@@ -558,6 +557,19 @@ export default function MobilePaymentsV2() {
             });
           });
           setPatientServices(unpaidServices);
+
+          // Shifokorni avtomatik biriktirish (agar tanlanmagan bo'lsa yoki noto'g'ri bo'lsa)
+          const currentPat = patients.find(p => p.id === formData.patient_id);
+          const autoDocId = resolveDoctorId(currentPat, plans, doctors, user, isDoctor);
+          if (autoDocId) {
+            setFormData(prev => {
+              const currentIsValid = prev.doctor_id && doctors.some(d => String(d.id) === String(prev.doctor_id));
+              if (!prev.doctor_id || !currentIsValid) {
+                return { ...prev, doctor_id: autoDocId };
+              }
+              return prev;
+            });
+          }
         } catch (error) {
           console.error('Error fetching patient plans & services:', error);
           setPatientServices([]);
@@ -571,7 +583,7 @@ export default function MobilePaymentsV2() {
       setPatientPayments([]);
       setSelectedPlanId('');
     }
-  }, [formData.patient_id, formData.type]);
+  }, [formData.patient_id, formData.type, doctors, isDoctor, patients, user]);
 
   const handlePlanSelect = (planId) => {
     setSelectedPlanId(planId);
@@ -589,11 +601,13 @@ export default function MobilePaymentsV2() {
       const planCategory = plan.tooth_number
         ? `${plan.name} (#${plan.tooth_number})`
         : plan.name;
+      const planDocId = resolveDoctorId(null, [plan], doctors, user, isDoctor);
       setFormData(prev => ({
         ...prev,
         amount: String(Math.round(remainingAmount)),
         category: planCategory,
-        notes: t('payments.planSelect') + `: ${plan.name}`
+        notes: t('payments.planSelect') + `: ${plan.name}`,
+        doctor_id: planDocId || prev.doctor_id || ''
       }));
     } else {
       setSelectedPlanServiceIds([]);
@@ -1135,12 +1149,21 @@ export default function MobilePaymentsV2() {
                             value={formData.patient_id}
                             initialName={location.state?.prefillPatientName || ''}
                             onChange={(id, pat) => {
+                              if (!id) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  patient_id: '',
+                                  doctor_id: isDoctor ? user?.id : ''
+                                }));
+                                setSelectedPlanId('');
+                                return;
+                              }
                               const p = pat || patients.find(x => x.id === id);
-                              const assignedDocId = isDoctor ? user?.id : (p?.main_treatment_provider || formData.doctor_id || '');
+                              const assignedDocId = resolveDoctorId(p, patientPlans, doctors, user, isDoctor);
                               setFormData(prev => ({
                                 ...prev, 
                                 patient_id: id, 
-                                doctor_id: assignedDocId
+                                doctor_id: assignedDocId || prev.doctor_id || ''
                               }));
                               setSelectedPlanId('');
                             }}
@@ -1230,19 +1253,26 @@ export default function MobilePaymentsV2() {
                           <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('payments.doctor')}</Label>
                           <Select 
                             disabled={isDoctor}
-                            value={isDoctor ? user?.id : formData.doctor_id} 
-                            onValueChange={(v) => setFormData({...formData, doctor_id: v})}
+                            value={isDoctor ? String(user?.id) : (formData.doctor_id ? String(formData.doctor_id) : '')} 
+                            onValueChange={(v) => setFormData(prev => ({ ...prev, doctor_id: v }))}
                           >
                             <SelectTrigger className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold">
                               <SelectValue placeholder={t('payments.doctor')} />
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl border-slate-100">
                               {isDoctor ? (
-                                <SelectItem value={user?.id} className="rounded-xl font-bold">{user?.name}</SelectItem>
+                                <SelectItem value={String(user?.id)} className="rounded-xl font-bold">{user?.name}</SelectItem>
                               ) : (
-                                doctors.map(d => (
-                                  <SelectItem key={d.id} value={d.id} className="rounded-xl font-bold">{d.name || d.full_name}</SelectItem>
-                                ))
+                                <>
+                                  {doctors.map(d => (
+                                    <SelectItem key={d.id} value={String(d.id)} className="rounded-xl font-bold">{d.name || d.full_name}</SelectItem>
+                                  ))}
+                                  {formData.doctor_id && !doctors.some(d => String(d.id) === String(formData.doctor_id)) && (
+                                    <SelectItem value={String(formData.doctor_id)} className="rounded-xl font-bold">
+                                      {doctors.find(d => (d.name || d.full_name) === formData.doctor_id)?.name || formData.doctor_id}
+                                    </SelectItem>
+                                  )}
+                                </>
                               )}
                             </SelectContent>
                           </Select>

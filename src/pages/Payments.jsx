@@ -23,7 +23,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
-import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
+import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel, resolveDoctorId } from '@/lib/utils';
 import { toast } from 'sonner';
 import { formatPhone } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -151,7 +151,10 @@ export default function Payments() {
   const { clinicName } = useClinic();
   const queryClient = useQueryClient();
 
-  // ── Excel Grid & Pagination state ───────────────────────────────────
+  // ── States ───────────────────────────────────────────────────────────
+  const [payments, setPayments] = useState([]);
+  const [patients, setPatients] = useState([]);
+  const [doctors, setDoctors] = useState([]);
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
   const [search, setSearch] = useState('');
@@ -236,6 +239,42 @@ export default function Payments() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
+  // ── React Query: Patients + Doctors + Treatment Plans (initial load) ─────
+  const { data: initialPatients = [] } = useQuery({
+    queryKey: QUERY_KEYS.patients,
+    queryFn: () => base44.entities.Patient.list('full_name', 200),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
+  const { data: initialDoctors = [] } = useQuery({
+    queryKey: QUERY_KEYS.doctors,
+    queryFn: async () => {
+      try {
+        const users = await base44.entities.User.list('name', 100);
+        const docs = (users || []).filter(u => u.role?.toLowerCase() === 'doctor' || u.role?.toLowerCase() === 'admin');
+        return docs.length > 0 ? docs : await base44.entities.User.filter({ role: 'doctor' }, 'name');
+      } catch {
+        return base44.entities.User.filter({ role: 'doctor' }, 'name').catch(() => []);
+      }
+    },
+    enabled: !!user,
+    staleTime: 10 * 60 * 1000,
+  });
+  const { data: allTreatmentPlans = [] } = useQuery({
+    queryKey: ['allTreatmentPlansForPayments'],
+    queryFn: () => base44.entities.TreatmentPlan.list('-created_date', 300),
+    enabled: !!user,
+    staleTime: 3 * 60 * 1000,
+  });
+
+  // Seed patients/doctors from query cache on first load
+  useEffect(() => {
+    if (initialPatients.length > 0 && patients.length === 0) setPatients(initialPatients);
+  }, [initialPatients, patients.length]);
+  useEffect(() => {
+    if (initialDoctors.length > 0 && doctors.length === 0) setDoctors(initialDoctors);
+  }, [initialDoctors, doctors.length]);
+
   // ── Debounce search ──────────────────────────────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -260,6 +299,10 @@ export default function Payments() {
       const localISOTime = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
       const localDate = new Date(now.getTime() - tzOffset).toISOString().split('T')[0];
 
+      const pat = patients.find(p => p.id === pId);
+      const plansForPat = (allTreatmentPlans || []).filter(p => p.patient_id === pId);
+      const resolvedDocId = resolveDoctorId(pat || { main_treatment_provider: pDoc }, plansForPat, doctors, user, isDoctor) || pDoc;
+
       setForm({
         patient_id: pId,
         patient_name: pName,
@@ -268,7 +311,7 @@ export default function Payments() {
         notes: pNotes,
         type: 'Income',
         method: 'Cash',
-        doctor_id: isDoctor ? user?.id : pDoc,
+        doctor_id: isDoctor ? user?.id : resolvedDocId,
         created_at: localISOTime,
         date: localDate,
         receipt_url: ''
@@ -279,7 +322,7 @@ export default function Payments() {
       // Clean up history state so page refresh doesn't reopen modal endlessly
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, isDoctor, user]);
+  }, [location.state, isDoctor, user, patients, allTreatmentPlans, doctors]);
 
   // Responsive check
   useEffect(() => {
@@ -315,10 +358,6 @@ export default function Payments() {
     placeholderData: (prev) => prev, // Eski ma'lumot search paytida ko'rinib turadi
   });
 
-  // Paginated payments with deduplication
-  const [payments, setPayments] = useState([]);
-  const [patients, setPatients] = useState([]);
-  const [doctors, setDoctors] = useState([]);
   const loading = paymentsFetching && payments.length === 0;
 
   // Merge paginated data + fetch missing patients
@@ -391,34 +430,6 @@ export default function Payments() {
       totalCount: filteredStats.length,
     };
   }, [statsData, isDoctor, user?.id]);
-
-  // ── React Query: Patients + Doctors (initial load only) ──────────────────
-  const { data: initialPatients = [] } = useQuery({
-    queryKey: QUERY_KEYS.patients,
-    queryFn: () => base44.entities.Patient.list('full_name', 200),
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000,
-  });
-  const { data: initialDoctors = [] } = useQuery({
-    queryKey: QUERY_KEYS.doctors,
-    queryFn: () => base44.entities.User.filter({ role: 'doctor' }, 'name'),
-    enabled: !!user,
-    staleTime: 10 * 60 * 1000,
-  });
-  const { data: allTreatmentPlans = [] } = useQuery({
-    queryKey: ['allTreatmentPlansForPayments'],
-    queryFn: () => base44.entities.TreatmentPlan.list('-created_date', 300),
-    enabled: !!user,
-    staleTime: 3 * 60 * 1000,
-  });
-
-  // Seed patients/doctors from query cache on first load
-  useEffect(() => {
-    if (initialPatients.length > 0 && patients.length === 0) setPatients(initialPatients);
-  }, [initialPatients]);
-  useEffect(() => {
-    if (initialDoctors.length > 0 && doctors.length === 0) setDoctors(initialDoctors);
-  }, [initialDoctors]);
 
   // Pagination: load next page
   useEffect(() => {
@@ -1063,7 +1074,13 @@ export default function Payments() {
 
   const handleNewPatientSaved = (newPatient) => {
     setPatients(prev => [newPatient, ...prev]);
-    setForm(prev => ({ ...prev, patient_id: newPatient.id, patient_name: newPatient.full_name }));
+    const assignedDocId = resolveDoctorId(newPatient, [], doctors, user, isDoctor);
+    setForm(prev => ({ 
+      ...prev, 
+      patient_id: newPatient.id, 
+      patient_name: newPatient.full_name,
+      doctor_id: assignedDocId || prev.doctor_id || ''
+    }));
     setNewPatientOpen(false);
   };
 
@@ -1691,6 +1708,19 @@ export default function Payments() {
             });
           });
           setPatientServices(unpaidServices);
+
+          // Shifokorni avtomatik biriktirish (agar tanlanmagan bo'lsa yoki noto'g'ri bo'lsa)
+          const currentPat = patients.find(p => p.id === form.patient_id);
+          const autoDocId = resolveDoctorId(currentPat, plans, doctors, user, isDoctor);
+          if (autoDocId) {
+            setForm(prev => {
+              const currentIsValid = prev.doctor_id && doctors.some(d => String(d.id) === String(prev.doctor_id));
+              if (!prev.doctor_id || !currentIsValid) {
+                return { ...prev, doctor_id: autoDocId };
+              }
+              return prev;
+            });
+          }
         } catch (e) {
           console.error('Error fetching patient services:', e);
           setPatientServices([]);
@@ -2363,12 +2393,27 @@ export default function Payments() {
                        value={form.patient_id} 
                        initialName={form.patient_name}
                        onChange={(id, pat) => {
-                          const assignedDocId = isDoctor ? user?.id : (pat?.main_treatment_provider || form.doctor_id || '');
+                          if (!id) {
+                            setForm(prev => ({ 
+                              ...prev, 
+                              patient_id: '', 
+                              patient_name: '', 
+                              doctor_id: isDoctor ? user?.id : '' 
+                            }));
+                            setPatientServices([]);
+                            setSelectedServiceId('');
+                            setPatientPlans([]);
+                            setRealPatientDebt(null);
+                            return;
+                          }
+                          const selectedPat = pat || patients.find(p => p.id === id);
+                          const plansForPat = (allTreatmentPlans || []).filter(p => p.patient_id === id);
+                          const assignedDocId = resolveDoctorId(selectedPat, plansForPat, doctors, user, isDoctor);
                           setForm(prev => ({ 
                             ...prev, 
                             patient_id: id, 
-                            patient_name: pat?.full_name || '',
-                            doctor_id: assignedDocId
+                            patient_name: selectedPat?.full_name || '',
+                            doctor_id: assignedDocId || prev.doctor_id || ''
                           }));
                        }} 
                        inputClassName="h-11 rounded-xl border-none bg-slate-50 px-5 font-black text-slate-900 text-sm"
@@ -2397,10 +2442,12 @@ export default function Payments() {
                               <div 
                                 key={plan.id} 
                                 onClick={() => {
+                                  const planDocId = resolveDoctorId(null, [plan], doctors, user, isDoctor);
                                   setForm(prev => ({
                                     ...prev,
                                     amount: remaining > 0 ? remaining : prev.amount,
-                                    service_name: `Reja: ${plan.name}`
+                                    service_name: `Reja: ${plan.name}`,
+                                    doctor_id: planDocId || prev.doctor_id || ''
                                   }));
                                   toast.info(`${plan.name} tanlandi (${remaining.toLocaleString()} UZS)`);
                                 }}
@@ -2439,8 +2486,8 @@ export default function Payments() {
                          <div className="space-y-1.5">
                            <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">{t('payments.doctor') || "Shifokor"}</Label>
                            <Select 
-                             value={form.doctor_id} 
-                             onValueChange={val => setForm({ ...form, doctor_id: val })}
+                             value={form.doctor_id ? String(form.doctor_id) : ''} 
+                             onValueChange={val => setForm(prev => ({ ...prev, doctor_id: val }))}
                              disabled={isDoctor}
                            >
                              <SelectTrigger className="h-11 rounded-xl border-none bg-slate-50 px-4 font-black text-slate-900 text-sm focus:ring-0">
@@ -2448,10 +2495,15 @@ export default function Payments() {
                              </SelectTrigger>
                              <SelectContent className="rounded-xl border-none shadow-2xl p-1">
                                {doctors.map(d => (
-                                 <SelectItem key={d.id} value={d.id} className="rounded-xl py-2 font-black text-xs uppercase tracking-widest">
+                                 <SelectItem key={d.id} value={String(d.id)} className="rounded-xl py-2 font-black text-xs uppercase tracking-widest">
                                    {d.name || d.full_name}
                                  </SelectItem>
                                ))}
+                               {form.doctor_id && !doctors.some(d => String(d.id) === String(form.doctor_id)) && (
+                                 <SelectItem value={String(form.doctor_id)} className="rounded-xl py-2 font-black text-xs uppercase tracking-widest">
+                                   {doctors.find(d => (d.name || d.full_name) === form.doctor_id)?.name || form.doctor_id}
+                                 </SelectItem>
+                               )}
                              </SelectContent>
                            </Select>
                          </div>

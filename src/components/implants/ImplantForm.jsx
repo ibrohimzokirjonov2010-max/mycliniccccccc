@@ -13,6 +13,7 @@ import PatientSelect from '../patients/PatientSelect';
 import ProfessionalOdontogram from '../patients/ProfessionalOdontogram';
 import ToothImplantModal from './ToothImplantModal';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { getOrSeedExtraServices } from './ExtraServicesManagerModal';
 
 // Constants
 const FIRMALAR = ['Nobel', 'Osstem', 'Straumann', 'Nucleoss', 'Boshqa'];
@@ -35,31 +36,36 @@ const REMINDER_OPTIONS = [
 
 export const EXTRA_SERVICES = [
   // Tashxis va rejalashtirish
-  { id: 'surgical_guide', label: 'Jarrohlik shabloni (Surgical Guide)', category: 'Diagnostika' },
+  { id: 'surgical_guide', label: 'Jarrohlik shabloni (Surgical Guide)', defaultPrice: 500000, category: 'Diagnostika' },
+
+  // Ortopediya va Karonkalar
+  { id: 'zirkon_crown', label: 'Zirkon Karonka', defaultPrice: 1500000, category: 'Ortopediya' },
+  { id: 'metal_crown', label: 'Metallokeramika Karonka', defaultPrice: 800000, category: 'Ortopediya' },
+  { id: 'emax_crown', label: 'E-Max Press Karonka', defaultPrice: 1800000, category: 'Ortopediya' },
+  { id: 'temp_crown', label: 'Vaqtinchalik toj (Provisional crown)', defaultPrice: 200000, category: 'Ortopediya' },
 
   // Abatment va komponentlar
-  { id: 'abutment', label: 'Abatment', category: 'Komponentlar' },
-  { id: 'healing_abutment', label: 'Healing abatment (Formirovatel)', category: 'Komponentlar' },
-  { id: 'cover_screw', label: 'Zaglushka (Cover screw)', category: 'Komponentlar' },
-  { id: 'multi_unit', label: 'Multi-unit abatment', category: 'Komponentlar' },
+  { id: 'abutment', label: 'Abatment', defaultPrice: 300000, category: 'Komponentlar' },
+  { id: 'healing_abutment', label: 'Healing abatment (Formirovatel)', defaultPrice: 100000, category: 'Komponentlar' },
+  { id: 'cover_screw', label: 'Zaglushka (Cover screw)', defaultPrice: 100000, category: 'Komponentlar' },
+  { id: 'multi_unit', label: 'Multi-unit abatment', defaultPrice: 500000, category: 'Komponentlar' },
   
   // Xirurgik operatsiyalar
-  { id: 'sinus_open', label: 'Ochiq sinus-lifting', category: 'Sinus' },
-  { id: 'sinus_closed', label: 'Yopiq sinus-lifting', category: 'Sinus' },
-  { id: 'sst_transplant', label: 'SST ko\'chirish (Soft Tissue Graft)', category: 'Transplant' },
-  { id: 'piezosurgery', label: 'Piezosurgery (Ultrasonik jarrohlik)', category: 'Xirurgiya' },
+  { id: 'sinus_open', label: 'Ochiq sinus-lifting', defaultPrice: 2500000, category: 'Sinus' },
+  { id: 'sinus_closed', label: 'Yopiq sinus-lifting', defaultPrice: 1500000, category: 'Sinus' },
+  { id: 'sst_transplant', label: 'SST ko\'chirish (Soft Tissue Graft)', defaultPrice: 800000, category: 'Transplant' },
+  { id: 'piezosurgery', label: 'Piezosurgery (Ultrasonik jarrohlik)', defaultPrice: 400000, category: 'Xirurgiya' },
   
   // Suyak regeneratsiyasi
-  { id: 'bone_graft', label: 'Suniy suyak (Bone graft)', category: 'Graft' },
-  { id: 'membrane', label: 'Membrana qo\'yish', category: 'Graft' },
-  { id: 'prf', label: 'PRF/A-PRF (Qon plazmasidan membrana)', category: 'Graft' },
-  { id: 'nkr', label: 'NKR qo\'yish (Guided bone regeneration)', category: 'Graft' },
+  { id: 'bone_graft', label: 'Suniy suyak (Bone graft)', defaultPrice: 1200000, category: 'Graft' },
+  { id: 'membrane', label: 'Membrana qo\'yish', defaultPrice: 800000, category: 'Graft' },
+  { id: 'prf', label: 'PRF/A-PRF (Qon plazmasidan membrana)', defaultPrice: 300000, category: 'Graft' },
+  { id: 'nkr', label: 'NKR qo\'yish (Guided bone regeneration)', defaultPrice: 1000000, category: 'Graft' },
   
   // Boshqa xizmatlar
-  { id: 'extraction', label: 'Atravmatik tish olish', category: 'Xirurgiya' },
-  { id: 'gingivoplasty', label: 'Gingivoplastika', category: 'Soft Tissue' },
-  { id: 'temp_crown', label: 'Vaqtinchalik toj (Provisional crown)', category: 'Ortopediya' },
-  { id: 'explantation', label: 'Implantni olib tashlash', category: 'Xirurgiya' }
+  { id: 'extraction', label: 'Atravmatik tish olish', defaultPrice: 250000, category: 'Xirurgiya' },
+  { id: 'gingivoplasty', label: 'Gingivoplastika', defaultPrice: 400000, category: 'Soft Tissue' },
+  { id: 'explantation', label: 'Implantni olib tashlash', defaultPrice: 500000, category: 'Xirurgiya' }
 ];
 
 // FDI tooth numbering visual layout
@@ -146,6 +152,8 @@ export default function ImplantForm({ open, onClose, patients, services, implant
   const [toothDataMap, setToothDataMap] = useState({});
   const [selectedToothForModal, setSelectedToothForModal] = useState(null);
   const [toothModalOpen, setToothModalOpen] = useState(false);
+  const [extraServicePrices, setExtraServicePrices] = useState({});
+  const [extraServicesList, setExtraServicesList] = useState(EXTRA_SERVICES);
   // Local storage check for schema optimization
   const [isSchemaOptimized, setIsSchemaOptimized] = useState(true);
 
@@ -153,6 +161,21 @@ export default function ImplantForm({ open, onClose, patients, services, implant
   useEffect(() => {
     setLocalPatients(patients);
   }, [patients]);
+
+  // Load dynamic extra services catalog
+  useEffect(() => {
+    if (!open) return;
+    getOrSeedExtraServices().then(res => {
+      if (Array.isArray(res) && res.length > 0) {
+        setExtraServicesList(res.map(s => ({
+          id: s.id,
+          label: s.name,
+          defaultPrice: Number(s.price) || 0,
+          category: s.category || 'Boshqa'
+        })));
+      }
+    }).catch(console.error);
+  }, [open]);
 
   // Klinikadagi shifokorlarni yuklash
   useEffect(() => {
@@ -1175,54 +1198,98 @@ export default function ImplantForm({ open, onClose, patients, services, implant
   /**
    * Render Step 2: Xizmatlar
    */
-  const renderStep2 = () => (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-      <div className="bg-muted/30 p-4 sm:p-5 rounded-2xl border border-border/50 shadow-sm space-y-4">
-        <Label className="text-xs sm:text-sm font-black text-slate-700 flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-            <Layers className="w-4 h-4" />
+  const renderStep2 = () => {
+    const totalExtraSum = (form.extra_services || []).reduce((acc, sid) => {
+      const preset = (extraServicesList || []).find(s => s.id === sid);
+      const customPrice = extraServicePrices[sid];
+      return acc + (customPrice !== undefined ? Number(customPrice) : (preset?.defaultPrice || 0));
+    }, 0);
+
+    return (
+      <div className="space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs sm:text-sm font-black text-slate-800 flex items-center gap-2">
+              <div className="w-8 h-8 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 border border-indigo-100">
+                <Layers className="w-4 h-4" />
+              </div>
+              <span>Implant uchun qo'shimcha xizmatlar va narxlar</span>
+            </Label>
+            {form.extra_services?.length > 0 && (
+              <span className="text-[11px] font-black font-mono text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
+                Jami: {totalExtraSum.toLocaleString()} so'm ({form.extra_services.length} ta)
+              </span>
+            )}
           </div>
-          {t('implants.form.extraServices') || "Implant uchun qo'shimcha xizmatlar"}
-        </Label>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {EXTRA_SERVICES.map(service => (
-            <button
-              key={service.id}
-              type="button"
-              onClick={() => toggleExtraService(service.id)}
-              className={`flex items-center justify-between p-3 sm:p-4 rounded-xl text-[11px] sm:text-xs font-black border-2 transition-all active:scale-95 ${
-                form.extra_services.includes(service.id)
-                  ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md shadow-emerald-100'
-                  : 'bg-white border-slate-100 text-slate-500 hover:border-slate-300'
-              }`}
-            >
-              <span className="text-left leading-tight">{t('implants.services.' + service.id) || service.label}</span>
-              {form.extra_services.includes(service.id) ? (
-                <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center text-white">
-                  <Check className="w-3 h-3 stroke-[3]" />
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
+            {(extraServicesList || []).map(service => {
+              const isSelected = (form.extra_services || []).includes(service.id);
+              const currentPrice = extraServicePrices[service.id] !== undefined ? extraServicePrices[service.id] : service.defaultPrice;
+
+              return (
+                <div
+                  key={service.id}
+                  className={`p-3 rounded-xl border-2 transition-all ${
+                    isSelected
+                      ? 'bg-indigo-50/60 border-indigo-500 text-indigo-950 shadow-xs'
+                      : 'bg-white border-slate-200/80 text-slate-700 hover:border-slate-300'
+                  }`}
+                >
+                  <div 
+                    onClick={() => toggleExtraService(service.id)}
+                    className="flex items-center justify-between cursor-pointer select-none mb-1"
+                  >
+                    <span className="text-[11px] sm:text-xs font-black leading-tight">
+                      {t('implants.services.' + service.id) || service.label}
+                    </span>
+                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all ${
+                      isSelected ? 'bg-indigo-600 text-white shadow-xs' : 'border-2 border-slate-300'
+                    }`}>
+                      {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    </div>
+                  </div>
+
+                  {isSelected && (
+                    <div className="mt-2 pt-2 border-t border-indigo-200/60 flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-bold text-slate-500">Narxi (so'm):</span>
+                      <div className="relative w-36">
+                        <Input
+                          type="number"
+                          step="10000"
+                          value={currentPrice}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setExtraServicePrices(prev => ({ ...prev, [service.id]: Number(val) || 0 }));
+                          }}
+                          className="h-8 text-xs font-mono font-black text-right pr-10 bg-white border-indigo-300 focus:border-indigo-500 rounded-lg shadow-2xs"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400">
+                          SO'M
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="w-5 h-5 border-2 border-slate-200 rounded-lg" />
-              )}
-            </button>
-          ))}
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex justify-between pt-2 sm:pt-4 gap-3">
+          <Button variant="outline" onClick={() => setStep(1)} className="h-10 sm:h-12 px-6 rounded-xl sm:rounded-2xl border-2 text-xs sm:text-sm font-black text-slate-600">
+            ← Orqaga
+          </Button>
+          <Button
+            onClick={() => setStep(3)}
+            className="h-10 sm:h-12 px-8 rounded-xl sm:rounded-2xl bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all active:scale-95 text-xs sm:text-sm font-black text-white cursor-pointer"
+          >
+            Keyingisi <Shield className="w-3.5 h-3.5 sm:w-4 h-4 ml-2" />
+          </Button>
         </div>
       </div>
-
-      <div className="flex justify-between pt-2 sm:pt-4 gap-3">
-        <Button variant="outline" onClick={() => setStep(1)} className="h-10 sm:h-12 px-6 rounded-xl sm:rounded-2xl border-2 text-xs sm:text-sm font-black text-slate-600">
-          ← Orqaga
-        </Button>
-        <Button
-          onClick={() => setStep(3)}
-          className="h-10 sm:h-12 px-8 rounded-xl sm:rounded-2xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95 text-xs sm:text-sm font-black text-white"
-        >
-          Keyingisi <Shield className="w-3.5 h-3.5 sm:w-4 h-4 ml-2" />
-        </Button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   /**
    * Render Step 3: Implant Texnik ma'lumotlari & Yakunlash

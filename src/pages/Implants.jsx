@@ -17,6 +17,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImplantForm from '../components/implants/ImplantForm';
+import ExtraServiceModal from '../components/implants/ExtraServiceModal';
+import ExtraServicesManagerModal, { getOrSeedExtraServices } from '../components/implants/ExtraServicesManagerModal';
+import ExtraServicesSection from '../components/implants/ExtraServicesSection';
 import ImplantBrandsModal, { getOrSeedImplantBrands, calculateBrandStockStats } from '@/components/implants/ImplantBrandsModal';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
@@ -57,12 +60,60 @@ export const resolveService = (implant) => {
 
 // Service Visual Config
 const SERVICE_CONFIG = {
-  'Implant':       { label: 'Implant',       icon: ImplantIcon,        badge: 'bg-teal-50 text-teal-700 border-teal-200' },
-  'Formik':        { label: 'Formik',        icon: FormerIcon,         badge: 'bg-amber-50 text-amber-800 border-amber-200' },
-  'Karonka':       { label: 'Karonka',       icon: CrownIcon,          badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-  'Abutment':      { label: 'Abutment',      icon: AbutmentIcon,       badge: 'bg-purple-50 text-purple-700 border-purple-200' },
-  'Sinus-lifting': { label: 'Sinus-lifting', icon: SinusLiftIcon,      badge: 'bg-sky-50 text-sky-700 border-sky-200' },
-  'Suyak ekish':   { label: 'Suyak ekish',   icon: BoneGraftIcon,      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'Implant':                       { label: 'Implant',              icon: ImplantIcon,        badge: 'bg-teal-50 text-teal-700 border-teal-200' },
+  'Formik':                        { label: 'Formik',               icon: FormerIcon,         badge: 'bg-amber-50 text-amber-800 border-amber-200' },
+  'Karonka':                       { label: 'Karonka',              icon: CrownIcon,          badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  'Zirkon Karonka':                { label: 'Zirkon Karonka',       icon: CrownIcon,          badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  'Metallokeramika Karonka':       { label: 'Metallokeramika',      icon: CrownIcon,          badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  'E-Max Press Karonka':           { label: 'E-Max Press',          icon: CrownIcon,          badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  'Vaqtinchalik toj (Provisional)':{ label: 'Vaqtinchalik toj',     icon: CrownIcon,          badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  'Vinir (E-Max)':                 { label: 'Vinir',                icon: CrownIcon,          badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  'Abutment':                      { label: 'Abutment',             icon: AbutmentIcon,       badge: 'bg-purple-50 text-purple-700 border-purple-200' },
+  'Standart Abutment':             { label: 'Standart Abutment',    icon: AbutmentIcon,       badge: 'bg-purple-50 text-purple-700 border-purple-200' },
+  'Individual Zirkon Abutment':    { label: 'Zirkon Abutment',      icon: AbutmentIcon,       badge: 'bg-purple-50 text-purple-700 border-purple-200' },
+  'Multi-unit Abatment':           { label: 'Multi-unit',           icon: AbutmentIcon,       badge: 'bg-purple-50 text-purple-700 border-purple-200' },
+  'Sinus-lifting':                 { label: 'Sinus-lifting',        icon: SinusLiftIcon,      badge: 'bg-sky-50 text-sky-700 border-sky-200' },
+  'Ochiq sinus-lifting':           { label: 'Ochiq sinus',          icon: SinusLiftIcon,      badge: 'bg-sky-50 text-sky-700 border-sky-200' },
+  'Yopiq sinus-lifting':           { label: 'Yopiq sinus',          icon: SinusLiftIcon,      badge: 'bg-sky-50 text-sky-700 border-sky-200' },
+  'Suyak ekish':                   { label: 'Suyak ekish',          icon: BoneGraftIcon,      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'Sun\'iy suyak ekish (Bone graft)': { label: 'Suyak ekish',       icon: BoneGraftIcon,      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'Membrana qo\'yish':             { label: 'Membrana',             icon: BoneGraftIcon,      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'PRF / A-PRF (Plazmolifting)':   { label: 'PRF / Plazma',         icon: BoneGraftIcon,      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'NKR qo\'yish (GBR)':            { label: 'NKR / GBR',            icon: BoneGraftIcon,      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'SST ko\'chirish (Soft Tissue Graft)': { label: 'SST Transplant', icon: BoneGraftIcon,     badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'Gingivoplastika':               { label: 'Gingivoplastika',      icon: BoneGraftIcon,      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'Jarrohlik shabloni (Surgical Guide)': { label: 'Jarrohlik shabloni', icon: DentalSurgicalIcon, badge: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  'Piezosurgery (Ultrasonik jarrohlik)': { label: 'Piezosurgery',   icon: DentalSurgicalIcon, badge: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  'Atravmatik tish olish':         { label: 'Tish olish',           icon: DentalSurgicalIcon, badge: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  'Implantni olib tashlash':       { label: 'Explantation',         icon: DentalSurgicalIcon, badge: 'bg-rose-50 text-rose-700 border-rose-200' },
+};
+
+export const getServiceConfig = (serviceName) => {
+  if (!serviceName) return { label: 'Implant', icon: ImplantIcon, badge: 'bg-teal-50 text-teal-700 border-teal-200' };
+  if (SERVICE_CONFIG[serviceName]) return SERVICE_CONFIG[serviceName];
+  const s = serviceName.toLowerCase();
+  if (s.includes('crown') || s.includes('karonka') || s.includes('toj') || s.includes('keramika') || s.includes('vinir') || s.includes('emax') || s.includes('zirkon')) {
+    return { label: serviceName, icon: CrownIcon, badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+  }
+  if (s.includes('abutment') || s.includes('abatment') || s.includes('multi-unit')) {
+    return { label: serviceName, icon: AbutmentIcon, badge: 'bg-purple-50 text-purple-700 border-purple-200' };
+  }
+  if (s.includes('formik') || s.includes('healing')) {
+    return { label: serviceName, icon: FormerIcon, badge: 'bg-amber-50 text-amber-800 border-amber-200' };
+  }
+  if (s.includes('sinus')) {
+    return { label: serviceName, icon: SinusLiftIcon, badge: 'bg-sky-50 text-sky-700 border-sky-200' };
+  }
+  if (s.includes('suyak') || s.includes('graft') || s.includes('membrana') || s.includes('prf') || s.includes('nkr') || s.includes('sst') || s.includes('gingivo')) {
+    return { label: serviceName, icon: BoneGraftIcon, badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+  }
+  if (s.includes('shablon') || s.includes('guide') || s.includes('olish') || s.includes('piezo') || s.includes('xirurg')) {
+    return { label: serviceName, icon: DentalSurgicalIcon, badge: 'bg-cyan-50 text-cyan-700 border-cyan-200' };
+  }
+  if (s.includes('implant')) {
+    return { label: serviceName, icon: ImplantIcon, badge: 'bg-teal-50 text-teal-700 border-teal-200' };
+  }
+  return { label: serviceName, icon: DentalSurgicalIcon, badge: 'bg-slate-100 text-slate-700 border-slate-200' };
 };
 
 // Resolve price in UZS
@@ -137,10 +188,14 @@ export default function Implants() {
   const [brandsModalOpen, setBrandsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState('all'); // all, implant, formik, karonka, other, control, analytics
+  const [activeTab, setActiveTab] = useState('all'); // all, incomplete, implant, formik, extra, control, analytics
   const [filterFirma, setFilterFirma] = useState('all');
   const [addOpen, setAddOpen] = useState(false);
   const [editingImplant, setEditingImplant] = useState(null);
+  const [extraServiceModalOpen, setExtraServiceModalOpen] = useState(false);
+  const [editingExtraService, setEditingExtraService] = useState(null);
+  const [extraServicesManagerOpen, setExtraServicesManagerOpen] = useState(false);
+  const [extraServicesCatalog, setExtraServicesCatalog] = useState([]);
 
   // Density switcher with localStorage
   const [density, setDensity] = useState(() => {
@@ -167,11 +222,12 @@ export default function Implants() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [imps, pats, svcs, brnds] = await Promise.all([
+      const [imps, pats, svcs, brnds, extraCatalog] = await Promise.all([
         base44.entities.Implant.list('-placement_date', 400),
         base44.entities.Patient.list('full_name', 100),
         base44.entities.Service.filter({ is_active: true }, 'name', 100),
         getOrSeedImplantBrands(),
+        getOrSeedExtraServices(),
       ]);
 
       let filteredImps = imps || [];
@@ -191,6 +247,7 @@ export default function Implants() {
       setPatients(pats || []);
       setServices(svcs || []);
       setBrands(brnds || []);
+      setExtraServicesCatalog(extraCatalog || []);
     } catch (error) {
       console.error('Error loading implants and brands:', error);
       toast.error("Ma'lumotlarni yuklashda xatolik");
@@ -217,10 +274,8 @@ export default function Implants() {
     let implantSum = 0;
     let formikCount = 0;
     let formikSum = 0;
-    let karonkaCount = 0;
-    let karonkaSum = 0;
-    let otherCount = 0;
-    let otherSum = 0;
+    let extraCount = 0;
+    let extraSum = 0;
 
     implants.forEach(i => {
       const svc = resolveService(i).toLowerCase();
@@ -228,23 +283,19 @@ export default function Implants() {
       if (svc.includes('formik') || svc.includes('healing')) {
         formikCount++;
         formikSum += p;
-      } else if (svc.includes('karonka') || svc.includes('crown')) {
-        karonkaCount++;
-        karonkaSum += p;
-      } else if (svc.includes('implant')) {
+      } else if (svc.includes('implant') && !svc.includes('olib') && !svc.includes('explantation') && !svc.includes('shablon')) {
         implantCount++;
         implantSum += p;
       } else {
-        otherCount++;
-        otherSum += p;
+        extraCount++;
+        extraSum += p;
       }
     });
 
     return {
       implantCount, implantSum,
       formikCount, formikSum,
-      karonkaCount, karonkaSum,
-      otherCount, otherSum
+      extraCount, extraSum
     };
   }, [implants]);
 
@@ -264,6 +315,16 @@ export default function Implants() {
       i.needs_fill === true || 
       (!i.firma && !i.brend && !i.firma_custom)
     );
+  }, [implants]);
+
+  // Qo'shimcha xizmat amaliyotlari (bemorlarga qo'llangan)
+  const extraPatientOperations = useMemo(() => {
+    return implants.filter(i => {
+      const svc = resolveService(i).toLowerCase();
+      if (svc.includes('formik') || svc.includes('healing')) return false;
+      if (svc.includes('implant') && !svc.includes('olib') && !svc.includes('explantation') && !svc.includes('shablon')) return false;
+      return true;
+    });
   }, [implants]);
 
   // Unique brand firms for filter
@@ -287,13 +348,12 @@ export default function Implants() {
         const isInc = i.incomplete_data === true || i.needs_fill === true || (!i.firma && !i.brend && !i.firma_custom);
         if (!isInc) return false;
       } else if (activeTab === 'implant') {
-        if (!svc.includes('implant')) return false;
+        if (!svc.includes('implant') || svc.includes('olib') || svc.includes('explantation') || svc.includes('shablon')) return false;
       } else if (activeTab === 'formik') {
         if (!svc.includes('formik') && !svc.includes('healing')) return false;
-      } else if (activeTab === 'karonka') {
-        if (!svc.includes('karonka') && !svc.includes('crown')) return false;
-      } else if (activeTab === 'other') {
-        if (svc.includes('implant') || svc.includes('formik') || svc.includes('healing') || svc.includes('karonka') || svc.includes('crown')) return false;
+      } else if (activeTab === 'extra') {
+        if (svc.includes('formik') || svc.includes('healing')) return false;
+        if (svc.includes('implant') && !svc.includes('olib') && !svc.includes('explantation') && !svc.includes('shablon')) return false;
       } else if (activeTab === 'control') {
         if (!i.reminder_date) return false;
         const rd = new Date(i.reminder_date);
@@ -467,13 +527,11 @@ export default function Implants() {
             </span>
           </div>
           <p className="text-xs font-semibold text-slate-400 mt-0.5">
-            {language === 'ru' ? 'Реестр и мониторинг имплантов, формирователей, коронок и хирургических услуг' : 'Implant, Formik, Karonka va jarrohlik xizmatlari reyestri hamda monitoringi'}
+            {language === 'ru' ? 'Реестр и мониторинг имплантов, формирователей, коронок и хирургических услуг' : 'Implant, Formik, Qo\'shimcha xizmatlar va jarrohlik amaliyotlari reyestri'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          
-
           <Button 
             variant="outline" 
             size="sm"
@@ -482,6 +540,16 @@ export default function Implants() {
           >
             <BrandStockIcon className="w-4 h-4 text-indigo-600" />
             <span>{language === 'ru' ? 'Бренды и склад' : language === 'en' ? 'Brands & Stock' : 'Brendlar & Zaxira'}</span>
+          </Button>
+
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setExtraServicesManagerOpen(true)}
+            className="gap-1.5 h-9.5 rounded-xl border-indigo-200 text-xs font-black text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 hover:text-indigo-900 transition-all cursor-pointer shadow-xs"
+          >
+            <Sparkles className="w-4 h-4 text-indigo-600" />
+            <span>{language === 'ru' ? 'Доп. услуги & Прайс-лист' : language === 'en' ? 'Extra Services & Prices' : "Qo'shimcha xizmatlar & Prays-list"}</span>
           </Button>
 
           <Button 
@@ -531,12 +599,12 @@ export default function Implants() {
             bg: "bg-amber-50 border-amber-100" 
           },
           { 
-            label: language === 'ru' ? "КОРОНКИ" : language === 'en' ? "CROWNS" : "KARONKALAR", 
-            value: `${serviceStats.karonkaCount} ${language === 'ru' ? '' : 'ta'}`, 
-            sub: `${serviceStats.karonkaSum.toLocaleString()} ${language === 'ru' ? 'UZS' : "so'm"}`, 
-            icon: CrownIcon, 
-            color: "text-purple-600", 
-            bg: "bg-purple-50 border-purple-100" 
+            label: language === 'ru' ? "ДОП. УСЛУГИ" : language === 'en' ? "EXTRA SERVICES" : "QO'SHIMCHA XIZMATLAR", 
+            value: `${serviceStats.extraCount} ${language === 'ru' ? '' : 'ta'}`, 
+            sub: `${serviceStats.extraSum.toLocaleString()} ${language === 'ru' ? 'UZS' : "so'm"}`, 
+            icon: Sparkles, 
+            color: "text-indigo-600", 
+            bg: "bg-indigo-50 border-indigo-100" 
           },
         ].map((s, i) => (
           <motion.div 
@@ -596,8 +664,7 @@ export default function Implants() {
               { id: 'incomplete', label: language === 'ru' ? "Требует ввода" : language === 'en' ? "Needs Entry" : "Kiritish talab", count: incompleteList.length, alert: incompleteList.length > 0, icon: KiritishTalabIcon, activeColor: "text-amber-300", defaultColor: "text-amber-500" },
               { id: 'implant', label: language === 'ru' ? "Имплант" : "Implant", count: serviceStats.implantCount, icon: ImplantIcon, activeColor: "text-teal-300", defaultColor: "text-teal-600" },
               { id: 'formik', label: language === 'ru' ? "Формирователь" : language === 'en' ? "Former" : "Formik", count: serviceStats.formikCount, icon: FormerIcon, activeColor: "text-amber-300", defaultColor: "text-amber-600" },
-              { id: 'karonka', label: language === 'ru' ? "Коронка" : language === 'en' ? "Crown" : "Karonka", count: serviceStats.karonkaCount, icon: CrownIcon, activeColor: "text-indigo-300", defaultColor: "text-indigo-600" },
-              { id: 'other', label: language === 'ru' ? "Другие услуги" : language === 'en' ? "Other Services" : "Boshqa xizmatlar", count: serviceStats.otherCount, icon: DentalSurgicalIcon, activeColor: "text-sky-300", defaultColor: "text-sky-600" },
+              { id: 'extra', label: language === 'ru' ? "Доп. услуги" : language === 'en' ? "Extra Services" : "Qo'shimcha xizmatlar", count: extraServicesCatalog.length > 0 ? extraServicesCatalog.length : (serviceStats.extraCount || 22), icon: Sparkles, activeColor: "text-indigo-300", defaultColor: "text-indigo-600" },
               { id: 'control', label: language === 'ru' ? "Требует контроля" : language === 'en' ? "Needs Control" : "Nazorat talab", count: needsControl.length, alert: needsControl.length > 0, icon: ClinicalControlIcon, activeColor: "text-rose-300", defaultColor: "text-rose-500" },
               { id: 'analytics', label: language === 'ru' ? "Бренды и склад" : language === 'en' ? "Brands & Stock" : "Brendlar & Zaxira", count: brands.length, icon: BrandStockIcon, activeColor: "text-purple-300", defaultColor: "text-purple-600" },
             ].map(tab => {
@@ -648,8 +715,17 @@ export default function Implants() {
         </div>
       </div>
 
-      {/* ─── Main Content (Excel Data Grid vs Analytics View) ────────── */}
-      {activeTab === 'analytics' ? (
+      {/* ─── Main Content (Extra Services Catalog vs Brand Analytics vs Excel Data Grid) ────────── */}
+      {activeTab === 'extra' ? (
+        <ExtraServicesSection 
+          onServicesUpdated={load}
+          patientOperations={extraPatientOperations}
+          patients={patients}
+          onOpenAddExtraPatientService={() => { setEditingExtraService(null); setExtraServiceModalOpen(true); }}
+          onEditPatientOperation={(item) => { setEditingExtraService(item); setExtraServiceModalOpen(true); }}
+          onDeletePatientOperation={(item) => handleDeleteImplant(item.id)}
+        />
+      ) : activeTab === 'analytics' ? (
         /* Brand Performance & Stock Analytics Grid */
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Brand Stock Card */}
@@ -1007,9 +1083,25 @@ export default function Implants() {
                             )}
 
                             <button 
+                              onClick={() => {
+                                const s = resolveService(i).toLowerCase();
+                                const isExtra = !s.includes('implant') || s.includes('olib') || s.includes('shablon');
+                                if (isExtra) {
+                                  setEditingExtraService(i);
+                                } else {
+                                  setEditingImplant(i);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all cursor-pointer"
+                              title={language === 'ru' ? 'Редактировать' : "Tahrirlash"}
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button 
                               onClick={() => navigate(`/implants/${i.id}`)}
                               className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all cursor-pointer"
-                              title={language === 'ru' ? 'Детали и редактирование' : "Tafsilotlar va tahrirlash"}
+                              title={language === 'ru' ? 'Детали' : "Tafsilotlar"}
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </button>
@@ -1063,6 +1155,22 @@ export default function Implants() {
         services={services}
         implant={editingImplant}
         onSaved={() => { load(); setActiveTab('all'); setEditingImplant(null); }}
+      />
+
+      {/* ─── Add/Edit Extra Service Modal (Patient operation) ───────────── */}
+      <ExtraServiceModal
+        open={extraServiceModalOpen || !!editingExtraService}
+        onClose={() => { setExtraServiceModalOpen(false); setEditingExtraService(null); }}
+        patients={patients}
+        serviceItem={editingExtraService}
+        onSaved={() => { load(); setActiveTab('all'); setEditingExtraService(null); }}
+      />
+
+      {/* ─── Extra Services & Price List Management Modal ─────────────── */}
+      <ExtraServicesManagerModal
+        open={extraServicesManagerOpen}
+        onClose={() => setExtraServicesManagerOpen(false)}
+        onServicesUpdated={load}
       />
 
       {/* ─── Brands & Stock Management Modal ─────────────────────────── */}

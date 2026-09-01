@@ -21,12 +21,14 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
 import LeadQuickView from '../components/marketing/LeadQuickView';
+import LeadNotesModal, { parseLeadNotes } from '../components/marketing/LeadNotesModal';
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { 
   Search, Phone, Edit2, Trash2, MessageCircle, TrendingUp, Target, 
   Calendar, UserPlus, Filter, Zap, Upload, Bell, Download, 
   FileSpreadsheet, Instagram, Send, Facebook, Globe, Copy, Check,
-  ExternalLink, UserCheck, CheckCircle2, MoreHorizontal, LayoutGrid, Table
+  ExternalLink, UserCheck, CheckCircle2, MoreHorizontal, LayoutGrid, Table,
+  MessageSquare, Plus
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -43,6 +45,7 @@ export default function Leads() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [form, setForm] = useState({ name: '', phone: '', visit_date: '', source: 'Call', status: 'new', notes: '' });
   const [selectedLead, setSelectedLead] = useState(null);
+  const [notesModalLead, setNotesModalLead] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
   const [botUsername, setBotUsername] = useState('shifocrm_bot');
   
@@ -178,6 +181,25 @@ export default function Leads() {
       toast.success("O'chirildi");
     }
   });
+
+  const handleConvertToPatient = async (targetLead) => {
+    try {
+      const userClinic = targetLead.clinic_id || localStorage.getItem('current_clinic_id') || 'default_clinic';
+      await base44.entities.Patient.create({
+        full_name: targetLead.name,
+        phone: targetLead.phone,
+        clinic_id: userClinic,
+        status: 'Active',
+        notes: `Marketing (Lidlar) bo'limidan o'tkazildi. Izoh: ${targetLead.notes || ''}`
+      });
+      await base44.entities.Lead.update(targetLead.id, { status: 'converted' });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast.success("Mijoz bemorlar bazasiga muvaffaqiyatli o'tkazildi!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Bemorga o'tkazishda xatolik: " + err.message);
+    }
+  };
 
   useEffect(() => {
     if (editLead) {
@@ -703,13 +725,21 @@ export default function Leads() {
                     <th className="py-2.5 px-3 min-w-[170px] whitespace-nowrap border-r border-slate-200/80">{t('leads.contactPhone') || (language === 'ru' ? 'Контакт (Телефон)' : 'Aloqa (Telefon)')}</th>
                     <th className="py-2.5 px-3 w-16 text-center whitespace-nowrap border-r border-slate-200/80">{t('leads.source') || (language === 'ru' ? 'Источник' : 'Manba')}</th>
                     <th className="py-2.5 px-3 min-w-[130px] whitespace-nowrap border-r border-slate-200/80">{t('leads.visitDateCol') || (language === 'ru' ? 'Дата обращения' : 'Tashrif Sanasi')}</th>
-                    <th className="py-2.5 px-3 min-w-[120px] whitespace-nowrap border-r border-slate-200/80">{t('leads.status') || (language === 'ru' ? 'Статус' : 'Status')}</th>
+                    <th className="py-2.5 px-3 min-w-[240px] border-r border-slate-200/80">
+                      <div className="flex items-center gap-1.5">
+                        <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>{language === 'ru' ? 'Статус и Изox (Заметки)' : 'Status & Izoh (Qaydlar)'}</span>
+                      </div>
+                    </th>
                     <th className="py-2.5 px-3 text-center min-w-[140px]">{t('leads.actions') || (language === 'ru' ? 'Действия' : 'Amallar')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-xs">
                   {filtered.map((l, index) => {
                     const initials = getInitials(l.name);
+                    const notesList = parseLeadNotes(l);
+                    const latestNote = notesList[0]?.text || l.notes;
+
                     return (
                       <tr 
                         key={l.id} 
@@ -731,15 +761,11 @@ export default function Leads() {
                               <p className="font-bold text-slate-900 text-[13px] leading-tight group-hover:text-purple-600 transition-colors truncate">
                                 {l.name}
                               </p>
-                              {l.interest ? (
+                              {l.interest && (
                                 <p className="text-[10px] text-purple-600 font-semibold truncate mt-0.5">
                                   {l.interest}
                                 </p>
-                              ) : l.notes ? (
-                                <p className="text-[10px] text-slate-400 truncate mt-0.5 max-w-[180px]">
-                                  {l.notes}
-                                </p>
-                              ) : null}
+                              )}
                             </div>
                           </div>
                         </td>
@@ -782,9 +808,48 @@ export default function Leads() {
                           </div>
                         </td>
 
-                        {/* Status */}
-                        <td className="py-2.5 px-3 whitespace-nowrap border-r border-slate-200/60">
-                          {renderStatusBadge(l.status)}
+                        {/* Status & Izoh (Qaydlar) */}
+                        <td 
+                          className="py-2.5 px-3 border-r border-slate-200/60"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setNotesModalLead(l);
+                          }}
+                        >
+                          <div className="flex flex-col gap-1.5 min-w-[210px] group/izoh cursor-pointer">
+                            <div className="flex items-center justify-between gap-1.5">
+                              {renderStatusBadge(l.status)}
+                              <button 
+                                type="button" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setNotesModalLead(l);
+                                }}
+                                className="opacity-0 group-hover/izoh:opacity-100 text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-all shadow-2xs"
+                                title="Izoh yozish yoki ko'rish"
+                              >
+                                <Edit2 className="w-2.5 h-2.5" />
+                                <span>Izoh yozish</span>
+                              </button>
+                            </div>
+
+                            {/* Latest Note / Comment display */}
+                            {latestNote ? (
+                              <div 
+                                className="flex items-start gap-1.5 text-[11px] font-semibold text-slate-700 bg-slate-50 hover:bg-indigo-50/80 hover:border-indigo-200 p-1.5 rounded-lg border border-slate-200/70 transition-all"
+                                title={latestNote}
+                              >
+                                <MessageSquare className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
+                                <span className="truncate max-w-[210px]">
+                                  {latestNote}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[10.5px] font-bold text-slate-400 group-hover/izoh:text-indigo-600 flex items-center gap-1 transition-colors">
+                                <Plus className="w-3 h-3 text-slate-300 group-hover/izoh:text-indigo-500" /> Izoh qoldirish
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Actions */}
@@ -968,9 +1033,16 @@ export default function Leads() {
                                   </div>
                                   
                                   {l.notes && (
-                                    <div className="mb-2.5">
-                                      <p className="text-[11px] text-slate-500 line-clamp-2 italic bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                        "{l.notes}"
+                                    <div 
+                                      className="mb-2.5 cursor-pointer group/knote"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setNotesModalLead(l);
+                                      }}
+                                    >
+                                      <p className="text-[11px] text-slate-600 line-clamp-2 bg-slate-50 hover:bg-indigo-50/80 p-2 rounded-lg border border-slate-100 hover:border-indigo-200 transition-all flex items-start gap-1.5">
+                                        <MessageSquare className="w-3 h-3 text-indigo-600 shrink-0 mt-0.5" />
+                                        <span>{l.notes}</span>
                                       </p>
                                     </div>
                                   )}
@@ -980,26 +1052,24 @@ export default function Leads() {
                                       {formatDate(l.created_date || l.visit_date)}
                                     </span>
                                     <div className="flex items-center gap-1">
+                                      <button 
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setNotesModalLead(l);
+                                        }}
+                                        className="w-7 h-7 flex items-center justify-center bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors"
+                                        title="Izoh va qaydlar"
+                                      >
+                                        <MessageSquare className="w-3.5 h-3.5" />
+                                      </button>
                                       {l.phone && (
                                         <button 
                                           className="w-7 h-7 flex items-center justify-center bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
                                           onClick={(e) => { e.stopPropagation(); window.open(`tel:${l.phone}`, '_self'); }}
-                                          title="Qo'ng'iroq qilish"
+                                          title="Qo'ng'iroq"
                                         >
-                                          <Phone className="w-3 h-3" />
-                                        </button>
-                                      )}
-                                      {l.phone && (
-                                        <button 
-                                          className="w-7 h-7 flex items-center justify-center bg-sky-50 text-sky-600 hover:bg-sky-100 border border-sky-200 rounded-lg transition-colors"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            const phone = l.phone?.replace(/\D/g, '');
-                                            if (phone) window.open(`https://t.me/+${phone}`, '_blank');
-                                          }}
-                                          title="Telegram"
-                                        >
-                                          <Send className="w-3 h-3" />
+                                          <Phone className="w-3.5 h-3.5" />
                                         </button>
                                       )}
                                     </div>
@@ -1185,6 +1255,18 @@ export default function Leads() {
         lead={selectedLead} 
         isOpen={!!selectedLead} 
         onClose={() => setSelectedLead(null)} 
+      />
+
+      {/* ─── Interactive Notes & Follow-up History Modal ─────────────────── */}
+      <LeadNotesModal
+        lead={notesModalLead}
+        open={!!notesModalLead}
+        onClose={() => setNotesModalLead(null)}
+        onSaveLead={async (id, data) => {
+          await updateMutation.mutateAsync({ id, data });
+          setNotesModalLead(prev => prev ? { ...prev, ...data } : null);
+        }}
+        onConvertToPatient={handleConvertToPatient}
       />
     </div>
   );

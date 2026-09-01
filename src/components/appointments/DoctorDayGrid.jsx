@@ -122,14 +122,14 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
   const goToProfile = () => {
     if (appointment?.patient_id) {
       onClose();
-      navigate(`/patients/${appointment.patient_id}`);
+      navigate(`/patients/${appointment.patient_id}`, { state: { from: '/appointments', fromName: 'Uchrashuvlar' } });
     }
   };
 
   const goToPayments = () => {
     if (appointment?.patient_id) {
       onClose();
-      navigate(`/patients/${appointment.patient_id}?tab=payments`);
+      navigate(`/patients/${appointment.patient_id}?tab=payments`, { state: { from: '/appointments', fromName: 'Uchrashuvlar' } });
     } else {
       onClose();
       navigate(`/payments`);
@@ -139,7 +139,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
   const goToAppointments = () => {
     if (appointment?.patient_id) {
       onClose();
-      navigate(`/patients/${appointment.patient_id}?tab=appointments`);
+      navigate(`/patients/${appointment.patient_id}?tab=appointments`, { state: { from: '/appointments', fromName: 'Uchrashuvlar' } });
     } else {
       onClose();
       navigate(`/appointments`);
@@ -149,7 +149,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
   const goToTreatmentPlans = () => {
     if (appointment?.patient_id) {
       onClose();
-      navigate(`/patients/${appointment.patient_id}?tab=treatments`);
+      navigate(`/patients/${appointment.patient_id}?tab=treatments`, { state: { from: '/appointments', fromName: 'Uchrashuvlar' } });
     } else {
       onClose();
       navigate(`/treatment-plans`);
@@ -159,7 +159,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
   const goToHistory = () => {
     if (appointment?.patient_id) {
       onClose();
-      navigate(`/patients/${appointment.patient_id}?tab=info`);
+      navigate(`/patients/${appointment.patient_id}?tab=info`, { state: { from: '/appointments', fromName: 'Uchrashuvlar' } });
     }
   };
 

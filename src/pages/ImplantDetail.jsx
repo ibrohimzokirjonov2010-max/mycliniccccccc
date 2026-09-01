@@ -812,56 +812,30 @@ export default function ImplantDetail() {
 
                     {/* Xizmatlar */}
                     <td className="border-r border-slate-200/70 py-2.5 px-4 font-black text-slate-900">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-lg bg-teal-50 flex items-center justify-center text-teal-700 shrink-0 border border-teal-100">
-                          {(() => {
-                            const sName = (svc.service_name || '').toLowerCase();
-                            if (sName.includes('karonka') || sName.includes('keramika') || sName.includes('zirkon') || sName.includes('crown')) {
-                              return <CrownIcon className="w-3.5 h-3.5 text-indigo-600" />;
-                            }
-                            if (sName.includes('sinus')) {
-                              return <SinusLiftIcon className="w-3.5 h-3.5 text-sky-600" />;
-                            }
-                            if (sName.includes('suyak') || sName.includes('graft') || sName.includes('membrana')) {
-                              return <BoneGraftIcon className="w-3.5 h-3.5 text-emerald-600" />;
-                            }
-                            if (sName.includes('abutment') || sName.includes('abatment')) {
-                              return <AbutmentIcon className="w-3.5 h-3.5 text-purple-600" />;
-                            }
-                            if (sName.includes('formik') || sName.includes('healing')) {
-                              return <FormerIcon className="w-3.5 h-3.5 text-amber-600" />;
-                            }
-                            if (sName.includes('implant')) {
-                              return <ImplantIcon className="w-3.5 h-3.5 text-teal-700" />;
-                            }
-                            return <DentalSurgicalIcon className="w-3.5 h-3.5 text-slate-600" />;
-                          })()}
-                        </div>
-                        <div>
-                          <span className="block font-black text-slate-900 text-xs">
-                            {language === 'ru' ? (svc.service_name || '')
-                              .replace(/Implant o'rnatish/gi, 'Установка импланта')
-                              .replace(/Metallokeramika Karonka/gi, 'Металлокерамическая коронка')
-                              .replace(/Zirkon Karonka/gi, 'Циркониевая коронка')
-                              .replace(/E-Max Karonka/gi, 'Коронка E-Max')
-                              .replace(/E-Max Press Karonka/gi, 'Коронка E-Max Press')
-                              .replace(/Yopiq Sinus-lifting/gi, 'Закрытый синус-лифтинг')
-                              .replace(/Ochiq Sinus-lifting/gi, 'Открытый синус-лифтинг')
-                              .replace(/Suyak ekish/gi, 'Костная пластика')
-                              .replace(/Membrana qo'yish/gi, 'Установка мембраны')
-                              .replace(/Standart Abutment/gi, 'Стандартный абатмент')
-                              .replace(/Individual Zirkon Abutment/gi, 'Индивидуальный циркониевый абатмент')
-                              .replace(/Formik qo'yish/gi, 'Установка формирователя')
-                              .replace(/Formik/gi, 'Формирователь')
-                              .replace(/Boshqa xizmat/gi, 'Другая услуга')
-                              : svc.service_name}
+                      <div>
+                        <span className="block font-black text-slate-900 text-xs">
+                          {language === 'ru' ? (svc.service_name || '')
+                            .replace(/Implant o'rnatish/gi, 'Установка импланта')
+                            .replace(/Metallokeramika Karonka/gi, 'Металлокерамическая коронка')
+                            .replace(/Zirkon Karonka/gi, 'Циркониевая коронка')
+                            .replace(/E-Max Karonka/gi, 'Коронка E-Max')
+                            .replace(/E-Max Press Karonka/gi, 'Коронка E-Max Press')
+                            .replace(/Yopiq Sinus-lifting/gi, 'Закрытый синус-лифтинг')
+                            .replace(/Ochiq Sinus-lifting/gi, 'Открытый синус-лифтинг')
+                            .replace(/Suyak ekish/gi, 'Костная пластика')
+                            .replace(/Membrana qo'yish/gi, 'Установка мембраны')
+                            .replace(/Standart Abutment/gi, 'Стандартный абатмент')
+                            .replace(/Individual Zirkon Abutment/gi, 'Индивидуальный циркониевый абатмент')
+                            .replace(/Formik qo'yish/gi, 'Установка формирователя')
+                            .replace(/Formik/gi, 'Формирователь')
+                            .replace(/Boshqa xizmat/gi, 'Другая услуга')
+                            : svc.service_name}
+                        </span>
+                        {svc.notes && (
+                          <span className="text-[10px] font-semibold text-slate-400 block truncate">
+                            {svc.notes}
                           </span>
-                          {svc.notes && (
-                            <span className="text-[10px] font-semibold text-slate-400 block truncate">
-                              {svc.notes}
-                            </span>
-                          )}
-                        </div>
+                        )}
                       </div>
                     </td>
 
@@ -1303,9 +1277,8 @@ export default function ImplantDetail() {
       <Dialog open={serviceModalOpen} onOpenChange={setServiceModalOpen}>
         <DialogContent className="sm:max-w-lg rounded-3xl p-6 border-slate-200 shadow-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
-              <PlusCircle className="w-5 h-5 text-[#00D084]" />
-              <span>{language === 'ru' ? 'Добавить услугу и операцию' : 'Yangi Xizmat & Amaliyot Qo\'shish'}</span>
+            <DialogTitle className="text-lg font-black text-slate-900">
+              {language === 'ru' ? 'Добавить услугу и операцию' : 'Yangi Xizmat & Amaliyot Qo\'shish'}
             </DialogTitle>
           </DialogHeader>
 
@@ -1319,7 +1292,6 @@ export default function ImplantDetail() {
               <div className="grid grid-cols-2 gap-2">
                 {PRESET_SERVICES.map(p => {
                   const isSelected = serviceForm.service_name === p.name;
-                  const PIcon = p.icon;
                   return (
                     <button
                       key={p.name}
@@ -1332,24 +1304,21 @@ export default function ImplantDetail() {
                           : "border-slate-200 bg-slate-50 hover:bg-slate-100/80"
                       )}
                     >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        {PIcon && <PIcon className={cn("w-3.5 h-3.5 shrink-0", p.iconColor || "text-slate-600")} />}
-                        <span className="font-bold text-xs text-slate-900 truncate">
-                          {language === 'ru' ? (p.label || '')
-                            .replace(/Metallokeramika Karonka/gi, 'Металлокерамика')
-                            .replace(/Zirkon Karonka/gi, 'Циркон коронка')
-                            .replace(/E-Max Press Karonka/gi, 'E-Max коронка')
-                            .replace(/Yopiq Sinus-lifting/gi, 'Закрытый синус-лифтинг')
-                            .replace(/Ochiq Sinus-lifting/gi, 'Открытый синус-лифтинг')
-                            .replace(/Suyak ekish \(Bone graft\)/gi, 'Костная пластика')
-                            .replace(/Membrana qo'yish/gi, 'Мембрана')
-                            .replace(/Standart Abutment/gi, 'Стандартный абатмент')
-                            .replace(/Individual Zirkon Abutment/gi, 'Индивидуальный циркон')
-                            .replace(/Formik \(Healing Abutment\)/gi, 'Формирователь десны')
-                            .replace(/Boshqa amaliyot/gi, 'Другая услуга')
-                            : p.label}
-                        </span>
-                      </div>
+                      <span className="font-bold text-xs text-slate-900 truncate">
+                        {language === 'ru' ? (p.label || '')
+                          .replace(/Metallokeramika Karonka/gi, 'Металлокерамика')
+                          .replace(/Zirkon Karonka/gi, 'Циркон коронка')
+                          .replace(/E-Max Press Karonka/gi, 'E-Max коронка')
+                          .replace(/Yopiq Sinus-lifting/gi, 'Закрытый синус-лифтинг')
+                          .replace(/Ochiq Sinus-lifting/gi, 'Открытый синус-лифтинг')
+                          .replace(/Suyak ekish \(Bone graft\)/gi, 'Костная пластика')
+                          .replace(/Membrana qo'yish/gi, 'Мембрана')
+                          .replace(/Standart Abutment/gi, 'Стандартный абатмент')
+                          .replace(/Individual Zirkon Abutment/gi, 'Индивидуальный циркон')
+                          .replace(/Formik \(Healing Abutment\)/gi, 'Формирователь десны')
+                          .replace(/Boshqa amaliyot/gi, 'Другая услуга')
+                          : p.label}
+                      </span>
                       <span className="text-[10px] font-mono font-black text-emerald-700 mt-1">
                         {p.defaultPrice.toLocaleString()} {language === 'ru' ? 'UZS' : "so'm"}
                       </span>

@@ -327,4 +327,99 @@ export function validateAddress(address) {
   return true;
 }
 
+/**
+ * Resolves the doctor ID for a patient based on:
+ * 1. Logged in user if doctor
+ * 2. Patient's main_treatment_provider / doctor_id / assigned_doctor / doctor / doctor_name / created_by_id
+ * 3. Patient's treatment plans (plan.doctor_id / plan.doctor_name / plan.doctor)
+ * 4. Matches name strings to actual doctor objects in doctors list if doctor is stored by name.
+ *
+ * @param {Object} patient - Patient object
+ * @param {Array} plans - Array of treatment plans
+ * @param {Array} doctorsList - Array of doctor user objects
+ * @param {Object} currentUser - Current authenticated user
+ * @param {boolean} isDoctorUser - Whether current user is a doctor
+ * @returns {string} Matching doctor ID or empty string
+ */
+export function resolveDoctorId(patient, plans = [], doctorsList = [], currentUser = null, isDoctorUser = false) {
+  if (isDoctorUser && currentUser?.id) return String(currentUser.id);
+  if (!patient && (!plans || plans.length === 0)) return '';
+
+  const docList = Array.isArray(doctorsList) ? doctorsList : [];
+
+  const matchDoctor = (ref) => {
+    if (!ref) return '';
+    const sRef = String(ref).trim();
+    if (!sRef) return '';
+
+    // 1. Match by exact ID
+    const byId = docList.find(d => String(d.id) === sRef);
+    if (byId) return String(byId.id);
+
+    // 2. Match by exact Name or Full Name
+    const sLower = sRef.toLowerCase();
+    const byName = docList.find(d => 
+      (d.name && d.name.trim().toLowerCase() === sLower) ||
+      (d.full_name && d.full_name.trim().toLowerCase() === sLower)
+    );
+    if (byName) return String(byName.id);
+
+    // 3. Match by prefix-stripped name (e.g. "Dr. Jamshid" -> "Jamshid")
+    const cleanRef = sLower.replace(/^(dr\.?|shifokor|doktor|dr)\s+/i, '').trim();
+    if (cleanRef.length >= 3) {
+      const byPartial = docList.find(d => {
+        const dName = (d.name || d.full_name || '').toLowerCase().replace(/^(dr\.?|shifokor|doktor|dr)\s+/i, '').trim();
+        return dName === cleanRef || dName.includes(cleanRef) || cleanRef.includes(dName);
+      });
+      if (byPartial) return String(byPartial.id);
+    }
+
+    return sRef;
+  };
+
+  // 1. Check patient's direct doctor fields
+  const pRefs = [
+    patient?.main_treatment_provider,
+    patient?.doctor_id,
+    patient?.assigned_doctor,
+    patient?.doctor,
+    patient?.doctor_name,
+    patient?.created_by_id
+  ];
+  for (const ref of pRefs) {
+    if (ref) {
+      const matched = matchDoctor(ref);
+      if (matched && docList.some(d => String(d.id) === String(matched))) {
+        return matched;
+      }
+    }
+  }
+
+  // 2. Check patient's treatment plans
+  if (Array.isArray(plans) && plans.length > 0) {
+    for (const pl of plans) {
+      const plRefs = [pl.doctor_id, pl.doctor_name, pl.doctor];
+      for (const ref of plRefs) {
+        if (ref) {
+          const matched = matchDoctor(ref);
+          if (matched && docList.some(d => String(d.id) === String(matched))) {
+            return matched;
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Fallback: if patient had any non-empty doctor reference that resolves to anything
+  for (const ref of pRefs) {
+    if (ref) {
+      const matched = matchDoctor(ref);
+      if (matched) return matched;
+    }
+  }
+
+  return '';
+}
+
 export default cn;
+

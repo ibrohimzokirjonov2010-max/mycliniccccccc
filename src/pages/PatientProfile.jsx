@@ -13,7 +13,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Tooth, ImplantIcon, XrayIcon } from '@/components/ui/Icons';
-import { cn } from '@/lib/utils';
+import { cn, resolveDoctorId } from '@/lib/utils';
 import {
   bootstrapTelegramBotConfig,
   getEnvBotUsername,
@@ -118,8 +118,21 @@ export default function PatientProfile() {
   const { t, language } = useTranslation();
   const { clinicName } = useClinic();
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const [patient, setPatient] = useState(null);
+
+  const handleBack = useCallback(() => {
+    if (location.state?.from) {
+      navigate(location.state.from);
+      return;
+    }
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/patients');
+    }
+  }, [location.state, navigate]);
 
   // Horizontal scroll shadow indicator states
   const tabScrollRef = useRef(null);
@@ -344,7 +357,6 @@ export default function PatientProfile() {
     selectedServiceIds: [] 
   });
   const [payingSaving, setPayingSaving] = useState(false);
-  const location = useLocation();
   const urlTab = new URLSearchParams(location.search).get('tab');
   const [activeTab, setActiveTab] = useState(urlTab || 'info');
   const [subSection, setSubSection] = useState('dental');
@@ -1815,6 +1827,7 @@ export default function PatientProfile() {
   const { totalPaid, totalDebt, totalPrepayment, totalDiscount, discountPercent } = financialData;
 
   const openPayModal = () => {
+    const assignedDocId = resolveDoctorId(patient, plans, doctors, user, isDoctor);
     setPayForm({ 
       type: 'Income', 
       amount: '', 
@@ -1822,7 +1835,7 @@ export default function PatientProfile() {
       category: 'Treatment', 
       date: getLocalDateTimeValue(), 
       notes: '', 
-      doctor_id: doctors[0]?.id || '', 
+      doctor_id: assignedDocId || doctors[0]?.id || '', 
       planId: '', 
       selectedServiceIds: [] 
     });
@@ -1830,6 +1843,7 @@ export default function PatientProfile() {
   };
 
   const openAdvanceModal = () => {
+    const assignedDocId = resolveDoctorId(patient, plans, doctors, user, isDoctor);
     setPayForm({ 
       type: 'Income', 
       amount: '', 
@@ -1837,7 +1851,7 @@ export default function PatientProfile() {
       category: "Avans to'lovi", 
       date: getLocalDateTimeValue(), 
       notes: "Bemor avans depoziti", 
-      doctor_id: doctors[0]?.id || '', 
+      doctor_id: assignedDocId || doctors[0]?.id || '', 
       planId: '', 
       selectedServiceIds: [] 
     });
@@ -2615,12 +2629,16 @@ export default function PatientProfile() {
           {/* Left: Back button + Patient Name Breadcrumb */}
           <div className="flex items-center gap-2 sm:gap-3 py-0.5 min-w-0">
             <button
-              onClick={() => navigate('/patients')}
+              onClick={handleBack}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all active:scale-95 group shrink-0 border border-slate-200/60 cursor-pointer"
-              title="Bemorlar ro'yxatiga qaytish"
+              title={language === 'ru' ? "Вернуться назад" : language === 'en' ? "Go back" : "Orqaga qaytish"}
             >
               <ArrowLeft className="w-3.5 h-3.5 text-slate-600 group-hover:-translate-x-0.5 transition-transform" />
-              <span className="hidden sm:inline">{t('patientProfile.backToPatients') || 'Bemorlar'}</span>
+              <span className="hidden sm:inline">
+                {location.state?.fromName 
+                  ? location.state.fromName 
+                  : (language === 'ru' ? 'Назад' : language === 'en' ? 'Back' : 'Orqaga')}
+              </span>
             </button>
 
             <div className="w-px h-5 bg-slate-200 shrink-0 hidden sm:block" />
@@ -2638,7 +2656,7 @@ export default function PatientProfile() {
             </div>
           </div>
 
-          {/* Right: Blue Quick Action Buttons (Matching Reference Design) */}
+          {/* Right: Quick Action Buttons (Matching Reference Design) */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={openPayModal}
@@ -2660,6 +2678,14 @@ export default function PatientProfile() {
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Protsedura</span>
+            </button>
+            <button
+              onClick={openAdvanceModal}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              title="Bemorga avans yoki depozit qabul qilish"
+            >
+              <Wallet className="w-3.5 h-3.5" />
+              <span>+ Avans</span>
             </button>
           </div>
         </div>
@@ -2727,7 +2753,7 @@ export default function PatientProfile() {
               </button>
             </div>
 
-            {/* 2. BALANS / QARZDORLIK Card */}
+            {/* 2. BALANS / QARZDORLIK / AVANS Card */}
             {totalDebt > 0 ? (
               <div className="bg-[#fee2e2]/70 border border-rose-300/80 rounded-xl p-2.5 text-center shadow-2xs">
                 <div className="flex items-center justify-center gap-1.5">
@@ -2744,12 +2770,24 @@ export default function PatientProfile() {
                   {totalDebt.toLocaleString()} <span className="text-[11px] font-black">so'm</span>
                 </p>
               </div>
-            ) : (
-              <div className="bg-emerald-50/80 border border-emerald-300/80 rounded-xl p-2.5 text-center shadow-2xs">
+            ) : totalPrepayment > 0 ? (
+              <div className="bg-emerald-50/90 border border-emerald-300 rounded-xl p-2.5 text-center shadow-2xs">
                 <div className="flex items-center justify-center gap-1.5">
-                  <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">BALANS</span>
+                  <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">AVANS BALANSI</span>
+                  <span className="px-1.5 py-0.2 bg-emerald-600 text-white rounded text-[8.5px] font-black uppercase tracking-wider">
+                    Haqdor
+                  </span>
                 </div>
                 <p className="text-lg font-black text-emerald-700 font-mono mt-0.5 leading-tight">
+                  +{totalPrepayment.toLocaleString()} <span className="text-[11px] font-black">so'm</span>
+                </p>
+              </div>
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-center shadow-2xs">
+                <div className="flex items-center justify-center gap-1.5">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">BALANS</span>
+                </div>
+                <p className="text-lg font-black text-slate-700 font-mono mt-0.5 leading-tight">
                   0 <span className="text-[11px] font-black">so'm</span>
                 </p>
               </div>
@@ -3945,12 +3983,17 @@ export default function PatientProfile() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Mas'ul Shifokor</Label>
-                      <Select value={payForm.doctor_id} onValueChange={v => setPayForm({ ...payForm, doctor_id: v })}>
+                      <Select value={payForm.doctor_id ? String(payForm.doctor_id) : ''} onValueChange={v => setPayForm({ ...payForm, doctor_id: v })}>
                         <SelectTrigger className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold"><SelectValue placeholder="Shifokorni tanlang" /></SelectTrigger>
                         <SelectContent className="rounded-2xl border-slate-100">
                           {doctors.map(d => (
-                            <SelectItem key={d.id} value={d.id} className="rounded-xl font-bold">{d.name || d.full_name}</SelectItem>
+                            <SelectItem key={d.id} value={String(d.id)} className="rounded-xl font-bold">{d.name || d.full_name}</SelectItem>
                           ))}
+                          {payForm.doctor_id && !doctors.some(d => String(d.id) === String(payForm.doctor_id)) && (
+                            <SelectItem value={String(payForm.doctor_id)} className="rounded-xl font-bold">
+                              {doctors.find(d => (d.name || d.full_name) === payForm.doctor_id)?.name || payForm.doctor_id}
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
