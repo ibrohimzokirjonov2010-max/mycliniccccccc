@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useAuth } from '@/lib/AuthContext';
 import { useClinic } from '@/lib/ClinicContext';
 import {
   ArrowLeft, Phone, Calendar, DollarSign, ClipboardList,
@@ -116,6 +117,7 @@ const DIAGNOSTIC_TRANSLATIONS = {
 
 export default function PatientProfile() {
   const { t, language } = useTranslation();
+  const { user, isDoctor } = useAuth();
   const { clinicName } = useClinic();
   const navigate = useNavigate();
   const location = useLocation();
@@ -3858,7 +3860,7 @@ export default function PatientProfile() {
       </Dialog>
 
       <Dialog open={payModalOpen} onOpenChange={setPayModalOpen}>
-        <DialogContent className="w-[95%] sm:max-w-xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl max-h-[90vh] flex flex-col">
+        <DialogContent className="w-[92%] sm:max-w-md rounded-2xl sm:rounded-3xl p-0 overflow-hidden border-none shadow-2xl max-h-[88vh] flex flex-col">
           {(() => {
             const currentType = payForm.type || 'Income';
             const headerBg = currentType === 'Income' ? 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600' :
@@ -3873,30 +3875,39 @@ export default function PatientProfile() {
 
             return (
               <>
-                <div className={`${headerBg} px-6 py-5 flex items-center justify-between shrink-0 transition-colors duration-300`}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm">
-                      <HeaderIcon className="w-5 h-5 stroke-[2.5]" />
+                <div className={`${headerBg} px-4 py-3 flex items-center justify-between shrink-0 transition-colors duration-300`}>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-xs">
+                      <HeaderIcon className="w-4 h-4 stroke-[2.5]" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-black text-white uppercase tracking-tight">To'lov qo'shish</h3>
-                      <p className="text-[10px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{patient.full_name}</p>
+                      <DialogTitle asChild>
+                        <h3 className="text-sm font-black text-white uppercase tracking-tight leading-tight">To'lov qo'shish</h3>
+                      </DialogTitle>
+                      <p className="text-[9.5px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{patient.full_name}</p>
                     </div>
                   </div>
                   <button 
                     onClick={() => setPayModalOpen(false)} 
-                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95"
+                    className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95 cursor-pointer"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="p-6 space-y-5 bg-white flex-1 overflow-y-auto no-scrollbar pb-8">
+                <div className="p-4 space-y-3 bg-white flex-1 overflow-y-auto no-scrollbar">
                   
                   {/* Fintech Summa Input */}
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">To'lov summasi</Label>
-                    <div className="relative flex items-center justify-center bg-slate-50 rounded-3xl border border-slate-100 px-6 py-4 shadow-inner">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 ml-1">To'lov summasi</Label>
+                      {totalDebt > 0 && (
+                        <span className="text-[10px] font-extrabold text-rose-500">
+                          Qarz: {totalDebt.toLocaleString()} so'm
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200/80 px-4 py-2 shadow-inner focus-within:border-emerald-500 focus-within:bg-white transition-colors">
                       <input
                         type="text"
                         inputMode="numeric"
@@ -3909,36 +3920,36 @@ export default function PatientProfile() {
                         onKeyDown={e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
                         onWheel={e => e.target.blur()}
                         placeholder="0"
-                        className="w-full text-center bg-transparent text-3xl font-[1000] text-slate-900 outline-none placeholder-slate-300"
+                        className="w-full text-center bg-transparent text-2xl font-[900] text-slate-900 outline-none placeholder-slate-300"
                       />
-                      <span className="absolute right-6 text-xs font-black text-slate-400 uppercase tracking-widest pointer-events-none">so'm</span>
+                      <span className="absolute right-4 text-[10.5px] font-black text-slate-400 uppercase tracking-wider pointer-events-none">so'm</span>
                     </div>
                     
                     {/* Sum shortcuts */}
-                    <div className="flex flex-wrap gap-1.5 mt-2 justify-center">
+                    <div className="flex flex-wrap items-center justify-center gap-1 pt-0.5">
                       {[50000, 100000, 500000, 1000000].map(val => (
                         <button
                           key={val}
                           type="button"
                           onClick={() => setPayForm(prev => ({ ...prev, amount: (Number(prev.amount) || 0) + val }))}
-                          className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 text-[10px] font-black text-slate-600 transition-all active:scale-95 shadow-sm"
+                          className="px-2 py-0.5 rounded-lg bg-slate-50 border border-slate-200/80 hover:bg-slate-100 text-[9.5px] font-bold text-slate-600 transition-all active:scale-95 shadow-2xs cursor-pointer"
                         >
-                          +{val.toLocaleString()}
+                          +{val >= 1000000 ? `${val / 1000000}M` : `${val / 1000}k`}
                         </button>
                       ))}
                       {totalDebt > 0 && (
                         <button
                           type="button"
                           onClick={() => setPayForm({ ...payForm, amount: totalDebt })}
-                          className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-100 hover:bg-amber-100 text-[10px] font-black text-amber-700 transition-all active:scale-95 shadow-sm"
+                          className="px-2 py-0.5 rounded-lg bg-rose-50 border border-rose-200/80 hover:bg-rose-100 text-[9.5px] font-black text-rose-700 transition-all active:scale-95 shadow-2xs cursor-pointer"
                         >
-                          Jami qarz ({totalDebt.toLocaleString()})
+                          To'liq qarz ({totalDebt.toLocaleString()})
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => setPayForm({ ...payForm, amount: 0 })}
-                        className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 text-[10px] font-black text-slate-500 transition-all active:scale-95 shadow-sm"
+                        className="px-2 py-0.5 rounded-lg bg-slate-100 border border-slate-200 hover:bg-slate-200 text-[9.5px] font-bold text-slate-500 transition-all active:scale-95 shadow-2xs cursor-pointer"
                       >
                         Tozalash
                       </button>
@@ -3946,8 +3957,8 @@ export default function PatientProfile() {
                   </div>
 
                   {/* To'lov usuli (Cards UI) */}
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">To'lov usuli</Label>
+                  <div className="space-y-1">
+                    <Label className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 ml-1">To'lov usuli</Label>
                     <div className="grid grid-cols-2 gap-2">
                       {[
                         { value: 'Cash', label: 'Naqd', icon: Wallet },
@@ -3960,16 +3971,16 @@ export default function PatientProfile() {
                             key={m.value}
                             type="button"
                             onClick={() => setPayForm({ ...payForm, method: m.value })}
-                            className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all duration-200 text-center relative ${
+                            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl border transition-all text-center relative cursor-pointer ${
                               isActive 
-                                ? 'border-slate-900 bg-slate-900 text-white shadow-md' 
-                                : 'border-slate-100 bg-slate-50 text-slate-500 hover:bg-slate-100/70 hover:border-slate-200'
+                                ? 'border-slate-900 bg-slate-900 text-white shadow-xs' 
+                                : 'border-slate-200/80 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
                             }`}
                           >
-                            <Icon className={`w-5 h-5 mb-1.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                            <span className="text-[11px] font-bold tracking-tight">{m.label}</span>
+                            <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                            <span className="text-xs font-black tracking-tight">{m.label}</span>
                             {isActive && (
-                              <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center">
+                              <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 ml-1">
                                 <Check className="w-2 h-2 stroke-[4]" />
                               </div>
                             )}
@@ -3980,51 +3991,51 @@ export default function PatientProfile() {
                   </div>
 
                   {/* Mas'ul shifokor va Sana */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Mas'ul Shifokor</Label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="space-y-1">
+                      <Label className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 ml-1">Mas'ul Shifokor</Label>
                       <Select value={payForm.doctor_id ? String(payForm.doctor_id) : ''} onValueChange={v => setPayForm({ ...payForm, doctor_id: v })}>
-                        <SelectTrigger className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold"><SelectValue placeholder="Shifokorni tanlang" /></SelectTrigger>
-                        <SelectContent className="rounded-2xl border-slate-100">
+                        <SelectTrigger className="h-9 rounded-xl border-slate-200 bg-slate-50 text-xs font-bold focus:bg-white"><SelectValue placeholder="Shifokor tanlang" /></SelectTrigger>
+                        <SelectContent className="rounded-xl border-slate-100">
                           {doctors.map(d => (
-                            <SelectItem key={d.id} value={String(d.id)} className="rounded-xl font-bold">{d.name || d.full_name}</SelectItem>
+                            <SelectItem key={d.id} value={String(d.id)} className="rounded-lg font-bold text-xs">{d.name || d.full_name}</SelectItem>
                           ))}
                           {payForm.doctor_id && !doctors.some(d => String(d.id) === String(payForm.doctor_id)) && (
-                            <SelectItem value={String(payForm.doctor_id)} className="rounded-xl font-bold">
+                            <SelectItem value={String(payForm.doctor_id)} className="rounded-lg font-bold text-xs">
                               {doctors.find(d => (d.name || d.full_name) === payForm.doctor_id)?.name || payForm.doctor_id}
                             </SelectItem>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">To'lov sanasi</Label>
-                      <Input type="datetime-local" value={payForm.date} onChange={e => setPayForm({ ...payForm, date: e.target.value })} className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold" />
+                    <div className="space-y-1">
+                      <Label className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 ml-1">To'lov sanasi</Label>
+                      <Input type="datetime-local" value={payForm.date} onChange={e => setPayForm({ ...payForm, date: e.target.value })} className="h-9 rounded-xl border-slate-200 bg-slate-50 text-xs font-bold focus:bg-white" />
                     </div>
                   </div>
 
                   {/* Davolash rejalari */}
                   {plans && plans.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Davolash rejasi</Label>
-                      <div className="flex flex-col gap-2.5">
+                    <div className="space-y-1">
+                      <Label className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 ml-1">Davolash rejasi</Label>
+                      <div className="flex flex-col gap-1.5 max-h-28 overflow-y-auto pr-0.5">
                         {plans.map(plan => {
                           const paid = Number(plan.paid_amount) || 0;
                           const total = Number(plan.total_price) || 0;
                           const remaining = Math.max(0, total - paid);
                           
                           return (
-                            <div key={plan.id} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-3.5 shadow-sm">
+                            <div key={plan.id} className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-slate-50/60 p-2 shadow-2xs">
                               <div className="min-w-0 flex-1 mr-2">
-                                <p className="text-[12px] font-black text-slate-800 truncate">{plan.name || 'Davolash rejasi'}</p>
-                                <p className="text-[10px] text-slate-500 font-bold mt-0.5">
-                                  Qarz: <span className={remaining > 0 ? 'text-rose-600 font-extrabold' : 'text-emerald-600 font-extrabold'}>{remaining.toLocaleString()} so'm</span>
+                                <p className="text-xs font-black text-slate-800 truncate leading-tight">{plan.name || 'Davolash rejasi'}</p>
+                                <p className="text-[9.5px] text-slate-500 font-bold mt-0.5">
+                                  Qarz: <span className={remaining > 0 ? 'text-rose-600 font-black' : 'text-emerald-600 font-black'}>{remaining.toLocaleString()} so'm</span>
                                 </p>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => setInvoiceModalPlan(plan)}
-                                className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 text-[9px] font-black uppercase hover:bg-blue-100 active:scale-95 transition-all"
+                                className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 text-[8.5px] font-black uppercase hover:bg-blue-100 active:scale-95 transition-all cursor-pointer"
                               >
                                 Faktura
                               </button>
@@ -4035,26 +4046,21 @@ export default function PatientProfile() {
                     </div>
                   )}
 
-                  
-
                   {/* Izoh */}
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Izoh (ixtiyoriy)</Label>
-                    <Textarea value={payForm.notes} onChange={e => setPayForm({ ...payForm, notes: e.target.value })} className="rounded-2xl border-slate-100 bg-slate-50 font-medium resize-none min-h-[72px] py-2 px-3 text-xs" placeholder="Qo'shimcha ma'lumot..." />
+                  <div className="space-y-1">
+                    <Label className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 ml-1">Izoh (ixtiyoriy)</Label>
+                    <Input value={payForm.notes} onChange={e => setPayForm({ ...payForm, notes: e.target.value })} className="h-8 rounded-xl border-slate-200 bg-slate-50 text-xs focus:bg-white" placeholder="Qo'shimcha ma'lumot..." />
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex gap-3 pt-3">
-                    <Button onClick={() => setPayModalOpen(false)} variant="ghost" className="flex-1 h-12 rounded-2xl font-black uppercase text-[10px] tracking-wider text-slate-400 hover:bg-slate-50">Bekor qilish</Button>
+                  <div className="flex gap-2 pt-1 shrink-0">
+                    <Button onClick={() => setPayModalOpen(false)} variant="ghost" className="flex-1 h-9 rounded-xl font-black uppercase text-[10px] tracking-wider text-slate-400 hover:bg-slate-100 cursor-pointer">Bekor qilish</Button>
                     <Button 
                       onClick={handleSavePay} 
                       disabled={payingSaving || !payForm.amount} 
-                      className={`flex-1 h-12 rounded-2xl bg-slate-950 hover:bg-slate-900 text-white font-black uppercase text-xs tracking-wider border-none relative overflow-hidden group shadow-lg`}
+                      className="flex-1 h-9 rounded-xl bg-slate-950 hover:bg-slate-900 text-white font-black uppercase text-[11px] tracking-wider border-none shadow-md cursor-pointer transition-all active:scale-98"
                     >
-                      <span className="relative z-10 transition-transform group-hover:scale-105 block">
-                        {payingSaving ? "Saqlanmoqda..." : "To'lovni saqlash"}
-                      </span>
-                      <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                      {payingSaving ? "Saqlanmoqda..." : "To'lovni saqlash"}
                     </Button>
                   </div>
 

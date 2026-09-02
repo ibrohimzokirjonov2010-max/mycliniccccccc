@@ -5,13 +5,58 @@ import {
   MapPin, Clock, Phone, Send, 
   Instagram, ChevronRight, Calendar, CheckCircle2,
   X, ChevronLeft, Star,
-  ShieldCheck, AlertCircle, Sparkles
+  ShieldCheck, AlertCircle, Sparkles, ExternalLink
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+
+// ─── Official Authentic Telegram Vector Icon ────────────────────────────────
+function TelegramOfficialIcon({ className = "w-10 h-10" }) {
+  return (
+    <svg viewBox="0 0 48 48" className={className} fill="none">
+      <circle cx="24" cy="24" r="24" fill="url(#tg_official_gradient)" />
+      <path 
+        d="M10.2 23.4l24.6-9.8c1.1-.4 2.1.3 1.8 1.9l-4.2 19.8c-.3 1.4-1.1 1.7-2.3 1.1l-6.4-4.7-3.1 3c-.3.3-.6.6-1.3.6l.5-6.5 11.9-10.8c.5-.5-.1-.7-.8-.3L16.2 26.5l-6.4-2c-1.4-.4-1.4-1.4.4-1.1z" 
+        fill="#ffffff" 
+      />
+      <defs>
+        <linearGradient id="tg_official_gradient" x1="24" y1="0" x2="24" y2="48" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#2AABEE" />
+          <stop offset="1" stopColor="#229ED9" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+// ─── Official Yandex Maps Icon ──────────────────────────────────────────────
+function YandexMapsIcon({ className = "w-10 h-10" }) {
+  return (
+    <div className={`${className} bg-gradient-to-tr from-[#e52d27] to-[#fc3f1d] rounded-full flex items-center justify-center shadow-xs text-white shrink-0`}>
+      <MapPin className="w-5 h-5 text-white fill-white" />
+    </div>
+  );
+}
+
+// Extract coords and build clean embeddable map widget
+const getMapEmbedUrl = (link) => {
+  let lat = 41.311081;
+  let lng = 69.240562;
+
+  if (link) {
+    const ptMatch = link.match(/[?&](?:pt|ll)=([0-9.]+)[, ]+([0-9.]+)/);
+    if (ptMatch) {
+      lng = parseFloat(ptMatch[1]);
+      lat = parseFloat(ptMatch[2]);
+    }
+  }
+
+  return `https://yandex.ru/map-widget/v1/?ll=${lng},${lat}&z=16&pt=${lng},${lat},pm2rdm`;
+};
 
 export default function PublicClinicPage() {
   const { slug } = useParams();
@@ -62,9 +107,31 @@ export default function PublicClinicPage() {
     fetchData();
   }, [slug]);
 
+  // Robust date normalizer: converts '2026-09-03', '03.09.2026', '03-09-2026', ISO to 'YYYY-MM-DD'
+  const normalizeToDateOnly = (dateStr) => {
+    if (!dateStr) return '';
+    const clean = String(dateStr).split('T')[0].trim().replace(/[\/\.]/g, '-');
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+      } else if (parts[2].length === 4) {
+        return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
+    }
+    return clean;
+  };
+
+  const getMinutes = (timeStr) => {
+    if (!timeStr) return 0;
+    const parts = String(timeStr).split(':').map(Number);
+    return (parts[0] || 0) * 60 + (parts[1] || 0);
+  };
+
   // Load available slots when doctor or date changes
   useEffect(() => {
     if (selectedDoctor && selectedDate && clinic) {
+      setSelectedTime(null); // Reset previously picked time
       loadSlots();
     }
   }, [selectedDoctor, selectedDate, clinic]);
@@ -72,27 +139,47 @@ export default function PublicClinicPage() {
   const loadSlots = async () => {
     if (!selectedDoctor || !clinic) return;
     setLoadingSlots(true);
-    console.log('🔍 Debug: Loading slots for', selectedDoctor.name, 'on', selectedDate);
     
     try {
-      // 1. Get existing appointments for this specific clinic
-      // Use .filter() which correctly handles passing a custom clinic_id
-      const appointments = await base44.entities.Appointment.filter({ 
-        clinic_id: clinic.id 
-      });
+      // 1. Get FRESH appointments directly from Supabase (bypasses 3-min in-memory RequestCache)
+      let appointments = [];
+      if (import.meta.env.VITE_SUPABASE_URL) {
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('clinic_id', clinic.id);
+        if (!error && data) {
+          appointments = data;
+        }
+      }
       
-      const doctorAppointments = appointments.filter(a => {
+      // Fallback to entities loader if Supabase direct query returned empty or failed
+      if (!appointments || appointments.length === 0) {
+        appointments = await base44.entities.Appointment.filter({ 
+          clinic_id: clinic.id 
+        });
+      }
+      
+      const normUiDate = normalizeToDateOnly(selectedDate);
+
+      const doctorAppointments = (appointments || []).filter(a => {
         if (!a.date) return false;
-        // Normalize DB date (handles both "YYYY-MM-DD" and ISO strings)
-        const dbDate = a.date.includes('T') ? a.date.split('T')[0] : a.date;
-        const uiDate = selectedDate.includes('T') ? selectedDate.split('T')[0] : selectedDate;
         
-        const docMatch = String(a.doctor_id) === String(selectedDoctor.id);
-        const dateMatch = dbDate === uiDate;
+        // Normalize DB appointment date
+        const normDbDate = normalizeToDateOnly(a.date);
+        const dateMatch = normDbDate === normUiDate;
+        
+        // Match doctor by ID or by Name (case-insensitive)
+        const docIdA = String(a.doctor_id || '').trim().toLowerCase();
+        const docIdB = String(selectedDoctor.id || '').trim().toLowerCase();
+        const docNameA = String(a.doctor_name || '').trim().toLowerCase();
+        const docNameB = String(selectedDoctor.name || '').trim().toLowerCase();
+        
+        const docMatch = (docIdA && docIdB && docIdA === docIdB) || (docNameA && docNameB && docNameA === docNameB);
         return docMatch && dateMatch && a.status !== 'Cancelled';
       });
 
-      console.log('📅 Found existing appointments:', doctorAppointments.length);
+      console.log('📅 Found busy appointments for', selectedDoctor.name, 'on', normUiDate, ':', doctorAppointments.length);
 
       // 2. Determine working hours
       let startHour = 8;
@@ -105,14 +192,12 @@ export default function PublicClinicPage() {
         startHour = parseInt(match[1]);
         endHour = parseInt(match[3]);
       }
-      console.log('⏰ Working hours range:', startHour, '-', endHour);
 
       // 3. Generate 30-min slots
       const slots = [];
       const currentNow = new Date();
-      // Ensure date format is same for comparison
-      const todayStr = currentNow.toISOString().split('T')[0];
-      const isToday = selectedDate === todayStr;
+      const todayStr = normalizeToDateOnly(currentNow.toISOString());
+      const isToday = normUiDate === todayStr;
       
       const currentTotalMin = currentNow.getHours() * 60 + currentNow.getMinutes();
 
@@ -121,20 +206,20 @@ export default function PublicClinicPage() {
         
         for (const min of timeConfigs) {
           const time = `${hour.toString().padStart(2, '0')}:${min}`;
+          const slotMin = getMinutes(time);
           
           // Skip past times if booking for today
           if (isToday) {
-            const slotTotalMin = hour * 60 + parseInt(min);
-            if (slotTotalMin <= currentTotalMin + 45) continue; // 45 min buffer
+            if (slotMin <= currentTotalMin + 45) continue; // 45 min buffer
           }
 
-          // Check if busy
+          // Check if slot falls within any existing appointment
           const isBusy = doctorAppointments.some(a => {
             if (!a.time) return false;
-            // Normalize appointment time to HH:MM
-            const aTime = a.time.includes(':') ? a.time.substring(0, 5) : a.time;
-            const normalizedATime = aTime.padStart(5, '0');
-            return normalizedATime === time;
+            const apptStartMin = getMinutes(a.time);
+            const duration = Number(a.duration || a.duration_minutes || 30);
+            const apptEndMin = apptStartMin + (duration > 0 ? duration : 30);
+            return slotMin >= apptStartMin && slotMin < apptEndMin;
           });
 
           if (!isBusy) {
@@ -143,7 +228,6 @@ export default function PublicClinicPage() {
         }
       }
       
-      console.log('✅ Calculated available slots:', slots.length);
       setAvailableSlots(slots);
     } catch (err) {
       console.error('❌ Failed to load slots:', err);
@@ -216,17 +300,16 @@ export default function PublicClinicPage() {
     } catch (err) {
       console.error('❌ Booking failed:', err);
       toast.error('Xatolik: ' + (err.message || 'Saqlashda xato yuz berdi'));
-    } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-[#0f8fa0] to-[#0a6b7a] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-slate-200 border-t-[#1499AD] rounded-full animate-spin" />
-          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Yuklanmoqda...</p>
+          <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+          <p className="text-sm font-bold text-white/60 uppercase tracking-widest">Yuklanmoqda...</p>
         </div>
       </div>
     );
@@ -247,179 +330,284 @@ export default function PublicClinicPage() {
     );
   }
 
+  const services = [
+    { name: 'Terapiya', desc: "Og'riqsiz davolash", icon: Star, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-100' },
+    { name: 'Ortopediya', desc: 'Vinir va karonkalar', icon: Sparkles, color: 'text-indigo-500', bg: 'bg-indigo-50', border: 'border-indigo-100' },
+    { name: 'Xirurgiya', desc: 'Implantatsiya', icon: ShieldCheck, color: 'text-rose-500', bg: 'bg-rose-50', border: 'border-rose-100' },
+    { name: 'Gigiyena', desc: 'Tishlarni oqartirish', icon: Sparkles, color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+  ];
+
   return (
-    <div className="min-h-screen bg-slate-50 font-sans selection:bg-[#1499AD] selection:text-white pb-20 overflow-x-hidden">
-      {/* Premium Header */}
-      <div className="relative h-[360px] w-full overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1499AD] to-[#0E7A8A]" />
-        
-        {/* Abstract background shapes */}
-        <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-white/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-white/5 rounded-full blur-[100px]" />
+    <div className="min-h-screen h-full overflow-y-auto bg-[#f4f7f9] font-sans pb-28 overflow-x-hidden">
 
-        <div className="relative max-w-4xl mx-auto px-6 pt-20 flex flex-col items-center text-center text-white h-full">
-          <motion.div 
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="w-20 h-20 bg-white/10 backdrop-blur-xl rounded-[30px] flex items-center justify-center mb-6 border border-white/20 shadow-2xl relative"
-          >
+      {/* ── HERO ───────────────────────────────────────────────── */}
+      <div className="relative bg-gradient-to-br from-[#1499AD] via-[#0f8fa0] to-[#0a6b7a] pt-14 pb-24 px-5 text-center overflow-hidden">
+        {/* Decorative circles */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+
+        {/* Logo */}
+        <motion.div
+          initial={{ scale: 0.7, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="relative inline-flex mb-5"
+        >
+          <div className="w-20 h-20 bg-white/15 backdrop-blur-xl rounded-[22px] flex items-center justify-center border border-white/25 shadow-2xl overflow-hidden">
             {clinic.logo ? (
-              <img src={clinic.logo} alt="Logo" className="w-14 h-14 object-contain drop-shadow-xl" />
+              <img src={clinic.logo} alt="Logo" className="w-16 h-16 object-contain" />
             ) : (
-              <div className="text-2xl font-black">{clinic.name?.[0]}</div>
+              <span className="text-3xl font-black text-white">{clinic.name?.[0]}</span>
             )}
-            <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center border-4 border-slate-50 text-white shadow-lg shadow-emerald-500/30">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-          </motion.div>
+          </div>
+          <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-400 rounded-xl flex items-center justify-center border-2 border-white shadow-lg">
+            <ShieldCheck className="w-4 h-4 text-white" />
+          </div>
+        </motion.div>
 
-          <motion.h1 
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="text-3xl md:text-4xl font-black mb-3 tracking-tight drop-shadow-sm"
-          >
-            {clinic.name}
-          </motion.h1>
+        {/* Clinic Name */}
+        <motion.h1
+          initial={{ y: 16, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.08 }}
+          className="text-2xl font-black text-white mb-2 tracking-tight leading-tight"
+        >
+          {clinic.name}
+        </motion.h1>
 
-          <motion.p 
-            initial={{ y: 20, opacity: 0 }}
+        {/* Description */}
+        {clinic.description && (
+          <motion.p
+            initial={{ y: 16, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-sm text-white/80 max-w-md font-medium leading-relaxed"
+            transition={{ delay: 0.14 }}
+            className="text-sm text-white/75 max-w-xs mx-auto leading-relaxed font-medium"
           >
-            {clinic.description || 'Zamonaviy dental tizim va yuqori sifatli stomatologik xizmatlar.'}
+            {clinic.description.length > 120 ? clinic.description.slice(0, 120) + '...' : clinic.description}
           </motion.p>
-        </div>
+        )}
       </div>
 
-      {/* Main Content Info Cards */}
-      <div className="max-w-4xl mx-auto px-6 -mt-32 relative z-10 space-y-10">
-        
-        {/* Quick Action Button */}
+      {/* ── FLOATING INFO CARD ──────────────────────────────────── */}
+      <div className="max-w-md mx-auto px-4 -mt-10 relative z-10">
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="flex justify-center"
+          transition={{ delay: 0.2 }}
+          className="bg-white rounded-3xl shadow-xl shadow-slate-200/80 border border-slate-100 overflow-hidden"
         >
-          <button 
-            onClick={() => setShowBooking(true)}
-            className="group relative bg-[#1499AD] text-white px-8 py-3.5 rounded-2xl font-black text-sm shadow-xl shadow-[#1499AD]/20 hover:shadow-[#1499AD]/40 active:scale-95 transition-all flex items-center gap-2.5 overflow-hidden border border-white/20"
+          {/* Address row */}
+          <a
+            href={clinic.yandex_map_link ? (clinic.yandex_map_link.startsWith('http') ? clinic.yandex_map_link : `https://${clinic.yandex_map_link}`) : '#'}
+            target={clinic.yandex_map_link ? "_blank" : "_self"}
+            rel="noreferrer"
+            className="flex items-center gap-3 px-5 py-4 border-b border-slate-50 hover:bg-slate-50/80 transition-colors group cursor-pointer"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-            <Calendar className="w-5 h-5" />
-            <span>ONLINE YOZILISH</span>
-            <Sparkles className="w-4 h-4 text-white/60 group-hover:text-yellow-300 transition-colors" />
-          </button>
-        </motion.div>
-
-        {/* Ultra-Compact Info Bar */}
-        <motion.div 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white/80 backdrop-blur-xl rounded-[28px] p-3 shadow-2xl shadow-slate-200/60 border border-white flex flex-col md:flex-row items-stretch md:items-center gap-3"
-        >
-          {/* Address Section */}
-          <div className="flex-1 flex items-center gap-3 px-3 py-2 border-b md:border-b-0 md:border-r border-slate-100">
-            <div className="w-10 h-10 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-500 shrink-0">
-              <MapPin className="w-4 h-4" />
+            <div className="w-10 h-10 bg-indigo-50 group-hover:bg-rose-50 rounded-2xl flex items-center justify-center shrink-0 transition-colors">
+              <MapPin className="w-4 h-4 text-indigo-500 group-hover:text-rose-500 transition-colors" />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Manzil</p>
-              <p className="text-[12px] font-bold text-slate-800 truncate leading-tight">
-                {clinic.address || 'Sahyhontohur, Tinchlik 45'}
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Manzil</p>
+              <p className="text-[13px] font-bold text-slate-800 truncate">
+                {clinic.address || "Manzil ko'rsatilmagan"}
               </p>
             </div>
-            {/* Mini Map Toggle/Trigger */}
-            <div className="w-12 h-10 bg-slate-50 rounded-xl overflow-hidden border border-slate-100 shrink-0 opacity-60 hover:opacity-100 transition-opacity">
-               <iframe src="https://yandex.ru/map-widget/v1/?ll=69.2401,41.2995&z=12" width="100%" height="100%" className="grayscale" />
-            </div>
-          </div>
-
-          {/* Time Section */}
-          <div className="flex-1 flex items-center gap-3 px-3 py-2">
-            <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-500 shrink-0">
-              <Clock className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Ish vaqti</p>
-              <div className="flex items-center gap-2">
-                <p className="text-[12px] font-bold text-slate-800 whitespace-nowrap">{clinic.working_hours || '08:00 - 22:00'}</p>
-                <div className="h-4 px-1.5 bg-emerald-50 text-emerald-600 rounded text-[7px] font-black flex items-center border border-emerald-100">
-                  OCHIQ
-                </div>
+            {clinic.yandex_map_link && (
+              <div
+                className="w-9 h-9 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100 group-hover:bg-rose-50 group-hover:border-rose-100 transition-colors shrink-0"
+                title="Xaritada ko'rish"
+              >
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-rose-500 transition-colors" />
               </div>
+            )}
+          </a>
+
+          {/* Working hours row */}
+          <div className="flex items-center gap-3 px-5 py-4">
+            <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4 text-emerald-500" />
             </div>
+            <div className="flex-1">
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Ish vaqti</p>
+              <p className="text-[13px] font-bold text-slate-800">{clinic.working_hours || '09:00 – 18:00'}</p>
+            </div>
+            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-lg tracking-wider">
+              OCHIQ
+            </span>
           </div>
         </motion.div>
+      </div>
 
-        {/* Services Section */}
-        <section className="space-y-8">
-          <div className="flex items-center gap-4">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Xizmatlarimiz</h2>
-            <div className="h-px bg-slate-100 flex-1" />
+      {/* ── MAIN CONTENT ────────────────────────────────────────── */}
+      <div className="max-w-md mx-auto px-4 mt-8 space-y-8">
+
+        {/* BOOK BUTTON */}
+        <motion.button
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.28 }}
+          onClick={() => setShowBooking(true)}
+          className="w-full group relative bg-gradient-to-r from-[#1499AD] to-[#0d7a8c] text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-[#1499AD]/25 active:scale-95 transition-all flex items-center justify-center gap-2.5 overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+          <Calendar className="w-5 h-5" />
+          <span>ONLINE NAVBAT OLISH</span>
+          <Sparkles className="w-4 h-4 text-white/50 group-hover:text-yellow-300 transition-colors" />
+        </motion.button>
+
+        {/* SERVICES */}
+        <section>
+          <div className="flex items-center gap-3 mb-4">
+            <h2 className="text-lg font-black text-slate-900 tracking-tight">Xizmatlarimiz</h2>
+            <div className="h-px bg-slate-200 flex-1" />
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {[
-              { name: 'Terapiya', desc: 'Og\'riqsiz davolash', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
-              { name: 'Ortopediya', desc: 'Vinir va karonkalar', icon: Sparkles, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-              { name: 'Xirurgiya', desc: 'Implantatsiya', icon: ShieldCheck, color: 'text-rose-500', bg: 'bg-rose-50' },
-              { name: 'Gigiyena', desc: 'Tishlarni oqartirish', icon: Sparkles, color: 'text-emerald-500', bg: 'bg-emerald-50' }
-            ].map((s, idx) => (
-              <motion.div 
+
+          <div className="grid grid-cols-2 gap-3">
+            {services.map((s, idx) => (
+              <motion.div
                 key={idx}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 + (idx * 0.05) }}
-                className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 hover:border-[#1499AD]/30 transition-all cursor-pointer group"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.32 + idx * 0.06 }}
+                className={`bg-white rounded-2xl p-4 border ${s.border} shadow-sm flex flex-col gap-3 hover:shadow-md transition-shadow cursor-pointer`}
               >
-                <div className={`w-10 h-10 ${s.bg} ${s.color} rounded-xl flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform`}>
+                <div className={`w-10 h-10 ${s.bg} ${s.color} rounded-xl flex items-center justify-center`}>
                   <s.icon className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-[13px] font-bold text-slate-900 leading-none">{s.name}</h4>
-                  <p className="text-[10px] text-slate-500 font-bold mt-1.5 opacity-60 uppercase tracking-tighter">{s.desc}</p>
+                  <p className="text-[13px] font-black text-slate-900 leading-tight">{s.name}</p>
+                  <p className="text-[11px] text-slate-400 font-semibold mt-0.5 uppercase tracking-tight">{s.desc}</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-200 ml-auto group-hover:text-[#1499AD] transition-colors" />
               </motion.div>
             ))}
           </div>
         </section>
 
-        {/* Social Links & Footer */}
-        <footer className="pt-20 pb-10 space-y-12">
-          <div className="text-center space-y-6">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Ijtimoiy tarmoqlar</p>
-            <div className="flex justify-center gap-6">
-              {[
-                { icon: Send, color: 'text-white bg-[#229ED9]', link: clinic.telegram_link },
-                { icon: Instagram, color: 'text-white bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7]', link: clinic.instagram_link },
-                { icon: Phone, color: 'text-white bg-[#25D366]', link: clinic.whatsapp_link },
-                { icon: MapPin, color: 'text-white bg-[#E62E2E]', link: clinic.yandex_map_link }
-              ].filter(s => s.link).map((social, idx) => (
-                <motion.a
-                  key={idx}
-                  href={social.link ? (social.link.startsWith('http') ? social.link : `https://${social.link}`) : '#'}
-                  target="_blank"
-                  whileHover={{ scale: 1.2, rotate: 10 }}
-                  whileTap={{ scale: 0.9 }}
-                  className={`w-14 h-14 ${social.color} rounded-[20px] flex items-center justify-center shadow-lg shadow-slate-200 cursor-pointer`}
-                >
-                  <social.icon className="w-6 h-6" />
-                </motion.a>
-              ))}
+        {/* INTERACTIVE MAP EMBED SECTION */}
+        {(clinic.yandex_map_link || clinic.address) && (
+          <section>
+            <div className="flex items-center gap-3 mb-4">
+              <h2 className="text-lg font-black text-slate-900 tracking-tight">Klinika joylashuvi</h2>
+              <div className="h-px bg-slate-200 flex-1" />
             </div>
-          </div>
-          
-          <div className="pt-10 border-t border-slate-200 text-center">
-            <p className="text-xs text-slate-400 font-bold tracking-widest uppercase mb-2">Powered by SHIFOCRM</p>
-            <p className="text-[10px] text-slate-300">© 2024 ShifoCRM. Barcha huquqlar himoyalangan.</p>
-          </div>
-        </footer>
+
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+              {/* Map Iframe */}
+              <div className="h-52 w-full bg-slate-100 relative">
+                <iframe
+                  title="Yandex Maps Widget"
+                  src={getMapEmbedUrl(clinic.yandex_map_link)}
+                  className="w-full h-full border-0 pointer-events-auto"
+                />
+              </div>
+
+              {/* Address row with direct Yandex Maps launcher button */}
+              <div className="p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-rose-50 text-[#fc3f1d] flex items-center justify-center shrink-0">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-900 truncate">{clinic.address || "Toshkent shahri"}</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Yandex Maps orqali yo'nalish olish</p>
+                  </div>
+                </div>
+
+                <a
+                  href={clinic.yandex_map_link ? (clinic.yandex_map_link.startsWith('http') ? clinic.yandex_map_link : `https://${clinic.yandex_map_link}`) : `https://yandex.uz/maps/?text=${encodeURIComponent(clinic.address || clinic.name)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-2 bg-[#fc3f1d] text-white rounded-xl text-xs font-bold shrink-0 hover:bg-[#e03415] transition-colors flex items-center gap-1.5 shadow-sm shadow-[#fc3f1d]/20"
+                >
+                  <span>Xaritada ochish</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* SOCIAL LINKS */}
+        {(clinic.telegram_link || clinic.instagram_link || clinic.whatsapp_link || clinic.yandex_map_link) && (
+          <section>
+            <div className="flex items-center gap-3 mb-4">
+              <h2 className="text-lg font-black text-slate-900 tracking-tight">Bog'lanish</h2>
+              <div className="h-px bg-slate-200 flex-1" />
+            </div>
+
+            <div className="flex flex-col gap-2.5">
+              {clinic.telegram_link && (
+                <a
+                  href={clinic.telegram_link.startsWith('http') ? clinic.telegram_link : `https://t.me/${clinic.telegram_link.replace('@', '')}`}
+                  target="_blank" rel="noreferrer"
+                  className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 border border-slate-100 shadow-sm hover:shadow-md transition-all group"
+                >
+                  <div className="w-10 h-10 flex items-center justify-center shrink-0 rounded-full overflow-hidden shadow-xs">
+                    <TelegramOfficialIcon className="w-10 h-10" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Telegram</p>
+                    <p className="text-[13px] font-bold text-slate-800 truncate">{clinic.telegram_link}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#229ED9] transition-colors" />
+                </a>
+              )}
+              {clinic.instagram_link && (
+                <a
+                  href={clinic.instagram_link.startsWith('http') ? clinic.instagram_link : `https://instagram.com/${clinic.instagram_link.replace('@', '')}`}
+                  target="_blank" rel="noreferrer"
+                  className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 border border-slate-100 shadow-sm hover:shadow-md transition-all group"
+                >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] shadow-xs">
+                    <Instagram className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Instagram</p>
+                    <p className="text-[13px] font-bold text-slate-800 truncate">{clinic.instagram_link}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-pink-400 transition-colors" />
+                </a>
+              )}
+              {clinic.whatsapp_link && (
+                <a
+                  href={clinic.whatsapp_link.startsWith('http') ? clinic.whatsapp_link : `https://wa.me/${clinic.whatsapp_link.replace(/\D/g,'')}`}
+                  target="_blank" rel="noreferrer"
+                  className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 border border-slate-100 shadow-sm hover:shadow-md transition-all group"
+                >
+                  <div className="w-10 h-10 bg-[#25D366] rounded-xl flex items-center justify-center shrink-0">
+                    <Phone className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">WhatsApp</p>
+                    <p className="text-[13px] font-bold text-slate-800 truncate">{clinic.whatsapp_link}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-400 transition-colors" />
+                </a>
+              )}
+              {clinic.yandex_map_link && (
+                <a
+                  href={clinic.yandex_map_link.startsWith('http') ? clinic.yandex_map_link : `https://${clinic.yandex_map_link}`}
+                  target="_blank" rel="noreferrer"
+                  className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 border border-slate-100 shadow-sm hover:shadow-md transition-all group"
+                >
+                  <YandexMapsIcon className="w-10 h-10" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Xarita (Yandex Maps)</p>
+                    <p className="text-[13px] font-bold text-slate-800 truncate">{clinic.address || "Xaritada ochish"}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#fc3f1d] transition-colors" />
+                </a>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* FOOTER */}
+        <div className="pt-6 pb-4 text-center border-t border-slate-200">
+          <p className="text-[11px] font-bold text-slate-400 tracking-widest uppercase">Powered by SHIFOCRM</p>
+          <p className="text-[10px] text-slate-300 mt-1">© {new Date().getFullYear()} ShifoCRM</p>
+        </div>
       </div>
+
 
       {/* Booking Modal / Drawer Overlay */}
       <AnimatePresence>
@@ -441,58 +629,60 @@ export default function PublicClinicPage() {
               className="relative w-full max-w-xl bg-white rounded-t-[40px] md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               {/* Modal Header */}
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500">
-                    <Calendar className="w-5 h-5" />
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500">
+                    <Calendar className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-black text-slate-900 leading-none">Online navbat</h3>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1.5">Bo'sh vaqtni tanlang</p>
+                    <h3 className="font-black text-slate-900 text-sm leading-none">Online navbat</h3>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">Bo'sh vaqtni tanlang</p>
                   </div>
                 </div>
                 <button 
                   onClick={() => setShowBooking(false)}
-                  className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-all"
+                  className="w-8 h-8 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-all"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Modal Content - Scrollable */}
-              <div className="overflow-y-auto p-6 flex-1 custom-scrollbar">
+              <div className="overflow-y-auto px-5 py-4 flex-1 custom-scrollbar">
                 
                 {/* Step Indicators */}
-                <div className="flex items-center gap-2 mb-8">
+                <div className="flex items-center gap-2 mb-5">
                   {[1, 2, 3].map(s => (
-                    <div key={s} className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${step >= s ? 'bg-[#1499AD]' : 'bg-slate-100'}`} />
+                    <div key={s} className={`h-1 flex-1 rounded-full transition-all duration-500 ${step >= s ? 'bg-[#1499AD]' : 'bg-slate-100'}`} />
                   ))}
                 </div>
 
                 {/* STEP 1: Select Doctor */}
                 {step === 1 && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                    <h4 className="text-xl font-black text-slate-900">Shifokorni tanlang</h4>
-                    <div className="grid grid-cols-1 gap-3">
-                      {doctors.length > 0 ? doctors.map((doc) => (
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
+                    <h4 className="text-sm font-black text-slate-500 uppercase tracking-widest">Shifokorni tanlang</h4>
+                    <div className="bg-slate-50 rounded-2xl overflow-hidden border border-slate-100">
+                      {doctors.length > 0 ? doctors.map((doc, idx) => (
                         <button
                           key={doc.id}
                           onClick={() => { setSelectedDoctor(doc); setStep(2); }}
-                          className="flex items-center gap-4 p-5 rounded-3xl border-2 border-slate-50 hover:border-[#1499AD] hover:bg-indigo-50/30 transition-all text-left bg-slate-50/50 group"
+                          className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-[#1499AD]/5 active:bg-[#1499AD]/10 transition-colors text-left group ${idx !== 0 ? 'border-t border-slate-200/70' : ''}`}
                         >
-                          <div className="w-16 h-16 rounded-2xl bg-white shadow-sm flex items-center justify-center font-black text-xl text-[#1499AD] shrink-0 border border-slate-100 uppercase group-hover:scale-105 transition-transform">
+                          {/* Avatar circle */}
+                          <div className="w-9 h-9 rounded-full bg-[#1499AD]/10 flex items-center justify-center font-black text-sm text-[#1499AD] shrink-0 uppercase">
                             {doc.name?.[0]}
                           </div>
+                          {/* Info */}
                           <div className="flex-1 min-w-0">
-                            <p className="font-black text-slate-900 text-lg leading-none uppercase tracking-tight">{doc.name}</p>
-                            <p className="text-xs text-[#1499AD] font-bold mt-2 uppercase tracking-widest bg-white inline-block px-3 py-1 rounded-lg border border-indigo-100">
+                            <p className="font-bold text-slate-900 text-[13px] leading-tight truncate">{doc.name}</p>
+                            <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider leading-tight">
                               {doc.specialty || 'Stomatolog'}
                             </p>
                           </div>
-                          <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-[#1499AD] transition-colors" />
+                          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#1499AD] transition-colors shrink-0" />
                         </button>
                       )) : (
-                        <p className="text-center py-10 text-slate-400 font-bold">Klinikada shifokorlar topilmadi.</p>
+                        <p className="text-center py-6 text-slate-400 font-bold text-sm">Klinikada shifokorlar topilmadi.</p>
                       )}
                     </div>
                   </motion.div>
@@ -500,10 +690,25 @@ export default function PublicClinicPage() {
 
                 {/* STEP 2: Select Date & Time */}
                 {step === 2 && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                    <button onClick={() => setStep(1)} className="flex items-center gap-2 text-[#1499AD] font-bold text-xs uppercase tracking-widest hover:translate-x-[-4px] transition-transform">
-                      <ChevronLeft className="w-4 h-4" /> Shifokorni o'zgartirish
-                    </button>
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
+                    {/* Selected Doctor Header Card */}
+                    <div className="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-2xl">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-full bg-[#1499AD]/10 text-[#1499AD] font-black text-sm flex items-center justify-center uppercase shrink-0">
+                          {selectedDoctor?.name?.[0]}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-bold text-slate-900 leading-tight truncate">{selectedDoctor?.name}</p>
+                          <p className="text-[10px] text-[#1499AD] font-bold uppercase tracking-wider">{selectedDoctor?.specialty || 'Stomatolog'}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setStep(1)} 
+                        className="text-[11px] font-bold text-[#1499AD] hover:bg-[#1499AD]/10 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
+                      >
+                        O'zgartirish
+                      </button>
+                    </div>
                     
                     <div className="space-y-4">
                       <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sana</Label>

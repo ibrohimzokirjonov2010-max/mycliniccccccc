@@ -7,7 +7,7 @@ import {
   Settings as SettingsIcon, User, Plus, Trash2, 
   Globe, ImagePlus, Layout as LayoutIcon, ShieldCheck,
   Users, Languages, Clock, KeyRound, Phone, CheckCircle2,
-  Camera
+  Camera, Table, Lock, Check, Sparkles, LogOut
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PublicPageSettings from '@/components/settings/PublicPageSettings';
 import WebsiteIntegrationSettings from '@/components/settings/WebsiteIntegrationSettings';
 import { useAuth } from '@/lib/AuthContext';
+import { useClinic } from '@/lib/ClinicContext';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 
 const defaultSchedule = {
@@ -37,6 +38,7 @@ const hourOptions = [
 export default function Settings() {
   const { t } = useTranslation();
   const { user: authUser, isDoctor, isAdmin, setAuthData, logout } = useAuth();
+  const { refresh: refreshClinic } = useClinic();
   
   const [currentUser, setCurrentUser] = useState(authUser || null);
   const [users, setUsers] = useState([]);
@@ -105,6 +107,7 @@ export default function Settings() {
     setSaving(true);
     try {
       await base44.clinic.updateClinic(clinic.id, clinic);
+      if (refreshClinic) await refreshClinic();
       toast.success("Klinika ma'lumotlari saqlandi!");
     } catch (err) {
       toast.error("Saqlashda xatolik yuz berdi");
@@ -229,8 +232,6 @@ export default function Settings() {
     }
   };
 
-
-
   // Admin uchun: Boshqa shifokor ish vaqtini saqlash
   const saveWorkingHours = async (doctor, schedule) => {
     try {
@@ -330,400 +331,580 @@ export default function Settings() {
   const avatarSource = currentUser?.avatar_url || currentUser?.photo || currentUser?.avatar || currentUser?.image;
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-           <h1 className="text-3xl font-black text-slate-900">{t('settings.title')}</h1>
-           <p className="text-sm text-slate-500 mt-1 font-medium">{t('settings.general')}</p>
+    <div className="space-y-5 max-w-7xl mx-auto">
+      
+      {/* Header Bar */}
+      <div className="border border-slate-300 rounded-2xl bg-white shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-black shadow-xs">
+            <Table className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('settings.title') || "Sozlamalar"}</h1>
+            <p className="text-xs text-slate-500 font-medium">{t('settings.general') || "Klinika va profil sozlamalarini boshqarish"}</p>
+          </div>
         </div>
-        <Button variant="destructive" className="rounded-xl px-6 font-bold" onClick={logout || (() => {
-           localStorage.removeItem('is_authenticated');
-           localStorage.removeItem('user_name');
-           localStorage.removeItem('clinic_id');
-           window.location.href = '/login';
-        })}>
+
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="rounded-xl px-4 font-bold text-xs border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 self-start sm:self-auto"
+          onClick={logout || (() => {
+            localStorage.removeItem('is_authenticated');
+            localStorage.removeItem('user_name');
+            localStorage.removeItem('clinic_id');
+            window.location.href = '/login';
+          })}
+        >
+          <LogOut className="w-3.5 h-3.5 mr-1.5" />
           {t('settings.logout') || "Chiqish"}
         </Button>
       </div>
 
-      <Tabs defaultValue={isDoctor ? "profile" : "public-page"} className="space-y-6">
-        <TabsList className="bg-slate-100/50 p-1 rounded-2xl border border-slate-100 inline-flex flex-wrap h-auto gap-1">
+      <Tabs defaultValue="profile" className="space-y-5">
+        
+        {/* Sheet Tabs Bar */}
+        <TabsList className="bg-slate-200/80 p-1 rounded-xl border border-slate-300 inline-flex flex-wrap h-auto gap-1 w-full justify-start">
           {isAdmin && (
             <>
-              <TabsTrigger value="website-integration" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-sm flex items-center gap-2">
-                <Globe className="w-4 h-4 text-indigo-500" /> {t('settings.tabs.websiteIntegration') || "Vebsayt Integratsiyasi"}
+              <TabsTrigger 
+                value="website-integration" 
+                className="rounded-lg px-3.5 py-2 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs font-bold text-xs flex items-center gap-1.5 transition-all text-slate-600"
+              >
+                <Globe className="w-3.5 h-3.5 text-indigo-600" /> 
+                {t('settings.tabs.websiteIntegration') || "Vebsayt Integratsiyasi"}
               </TabsTrigger>
-              <TabsTrigger value="public-page" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-sm flex items-center gap-2">
-                <LayoutIcon className="w-4 h-4" /> {t('settings.tabs.publicPage') || "Ommaviy sahifa"}
+
+              <TabsTrigger 
+                value="public-page" 
+                className="rounded-lg px-3.5 py-2 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs font-bold text-xs flex items-center gap-1.5 transition-all text-slate-600"
+              >
+                <LayoutIcon className="w-3.5 h-3.5 text-emerald-600" /> 
+                {t('settings.tabs.publicPage') || "Ommaviy sahifa"}
               </TabsTrigger>
-              <TabsTrigger value="general" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-sm flex items-center gap-2">
-                <SettingsIcon className="w-4 h-4" /> {t('settings.tabs.clinicSettings') || "Klinika sozlamalari"}
+
+              <TabsTrigger 
+                value="general" 
+                className="rounded-lg px-3.5 py-2 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs font-bold text-xs flex items-center gap-1.5 transition-all text-slate-600"
+              >
+                <SettingsIcon className="w-3.5 h-3.5 text-blue-600" /> 
+                {t('settings.tabs.clinicSettings') || "Klinika sozlamalari"}
               </TabsTrigger>
-              <TabsTrigger value="staff" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-sm flex items-center gap-2">
-                <Users className="w-4 h-4" /> {t('settings.tabs.staff') || "Xodimlar"}
+
+              <TabsTrigger 
+                value="staff" 
+                className="rounded-lg px-3.5 py-2 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs font-bold text-xs flex items-center gap-1.5 transition-all text-slate-600"
+              >
+                <Users className="w-3.5 h-3.5 text-purple-600" /> 
+                {t('settings.tabs.staff') || "Xodimlar"}
               </TabsTrigger>
             </>
           )}
-          <TabsTrigger value="profile" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-sm flex items-center gap-2">
-            <User className="w-4 h-4" /> {t('settings.tabs.myProfile') || "Mening profilim"}
+
+          <TabsTrigger 
+            value="profile" 
+            className="rounded-lg px-3.5 py-2 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs font-bold text-xs flex items-center gap-1.5 transition-all text-slate-600"
+          >
+            <User className="w-3.5 h-3.5 text-amber-600" /> 
+            {t('settings.tabs.myProfile') || "Mening profilim"}
           </TabsTrigger>
-          <TabsTrigger value="language" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-sm flex items-center gap-2">
-             <Languages className="w-4 h-4" /> {t('settings.tabs.language') || "Til sozlamalari"}
+
+          <TabsTrigger 
+            value="language" 
+            className="rounded-lg px-3.5 py-2 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs font-bold text-xs flex items-center gap-1.5 transition-all text-slate-600"
+          >
+             <Languages className="w-3.5 h-3.5 text-sky-600" /> 
+             {t('settings.tabs.language') || "Til sozlamalari"}
           </TabsTrigger>
         </TabsList>
 
         {isAdmin && (
           <>
+            {/* TAB 1: WEBSITE INTEGRATION */}
             <TabsContent value="website-integration">
                <WebsiteIntegrationSettings />
             </TabsContent>
 
+            {/* TAB 2: PUBLIC PAGE SETTINGS */}
             <TabsContent value="public-page">
                <PublicPageSettings />
             </TabsContent>
 
-            <TabsContent value="general" className="max-w-2xl space-y-6">
-              <div className="bg-white rounded-3xl border border-slate-100 p-8 shadow-sm">
-                <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-indigo-500" /> 
-                  {t('settings.clinicSettings')}
-                </h3>
-                <div className="space-y-6">
-                  <div>
-                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 mb-2 block">
-                      {t('superAdmin.clinicId')}
-                    </Label>
-                    <div className="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-xl px-4 h-12">
-                      <ShieldCheck className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                      <span className="font-mono text-slate-700 font-bold flex-1 text-sm">{localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id') || 'default_clinic'}</span>
-                      <span className="text-[9px] uppercase font-black text-slate-400 tracking-widest bg-slate-200 px-2 py-1 rounded-lg">{t('settings.clinic.immutable') || "O'zgarmaydi"}</span>
+            {/* TAB 3: CLINIC SETTINGS (GENERAL) */}
+            <TabsContent value="general" className="max-w-3xl space-y-6">
+              <div className="border border-slate-300 rounded-2xl bg-white shadow-sm overflow-hidden">
+                
+                {/* Header */}
+                <div className="bg-slate-100 border-b border-slate-300 px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-blue-700 text-white flex items-center justify-center font-black text-xs">
+                      <ShieldCheck className="w-4 h-4" />
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1.5 uppercase font-black tracking-widest">
-                      {t('settings.clinic.immutableIdText') || "Klinika ID xavfsizlik uchun o'zgartirib bo'lmaydi"}
-                    </p>
-                  </div>
-                  
-                  <div className="pt-4 border-t border-slate-50">
-                    <Label className="flex items-center gap-2 mb-4 font-bold text-slate-700">
-                      <ImagePlus className="w-4 h-4 text-indigo-500" />
-                      {t('settings.clinic.clinicLogo') || "Klinika Logotipi"}
-                    </Label>
-                    <div className="flex items-center gap-6 bg-slate-50 p-4 rounded-2xl border border-slate-100 border-dashed">
-                      <div className="relative">
-                        <Input 
-                          type="file" 
-                          accept="image/*" 
-                          id="logo-upload"
-                          className="hidden"
-                          onChange={async (e) => {
-                            const file = e.target.files[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = async () => {
-                                const currentClinic = await base44.clinic.getCurrentClinic();
-                                if (currentClinic) {
-                                  await base44.clinic.updateClinic(currentClinic.id, { logo: reader.result });
-                                  toast.success(t('settings.clinic.logoSaved') || "Logotip muvaffaqiyatli saqlandi!");
-                                  setTimeout(() => window.location.reload(), 1500);
-                                }
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }} 
-                        />
-                        <Button variant="outline" className="h-10 rounded-xl px-6 bg-white border-slate-200 font-bold" asChild>
-                          <label htmlFor="logo-upload" className="cursor-pointer">
-                            {t('settings.clinic.upload') || "Yuklash"}
-                          </label>
-                        </Button>
-                      </div>
-                      <p className="text-xs text-slate-500 font-medium">{t('settings.clinic.logoDescription') || "Ixtiyoriy PNG yoki JPG rasm. Bemorlar sahifasida va hisob-fakturalarda ko'rinadi."}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                     <div className="space-y-1.5">
-                        <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1">{t('settings.clinicName')}</Label>
-                        <Input 
-                          value={clinic?.name || ''} 
-                          onChange={e => setClinic({...clinic, name: e.target.value})}
-                          className="h-12 rounded-xl border-slate-100" 
-                        />
-                     </div>
-                     <div className="space-y-1.5">
-                        <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1">{t('common.phone')}</Label>
-                        <Input 
-                          value={clinic?.phone || ''} 
-                          onChange={e => setClinic({...clinic, phone: e.target.value})}
-                          placeholder="+998..." 
-                          className="h-12 rounded-xl border-slate-100" 
-                        />
-                     </div>
-                  </div>
-                  <div className="pt-2">
-                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1">{t('common.address')}</Label>
-                    <Input 
-                      value={clinic?.address || ''} 
-                      onChange={e => setClinic({...clinic, address: e.target.value})}
-                      placeholder="Klinika manzili..." 
-                      className="h-12 rounded-xl border-slate-100 mt-1.5" 
-                    />
-                  </div>
-
-                  <div className="pt-6 border-t border-slate-50">
-                     <Button 
-                       onClick={handleSaveClinic} 
-                       disabled={saving}
-                       className="w-full h-12 bg-slate-900 rounded-xl font-bold"
-                     >
-                       {saving ? (t('settings.publicPage.saving') || 'Saqlanmoqda...') : (t('settings.clinic.save') || 'SAQLASH')}
-                     </Button>
+                    <h3 className="font-bold text-slate-900 text-sm">
+                      {t('settings.clinicSettings') || "Klinika sozlamalari"}
+                    </h3>
                   </div>
                 </div>
+
+                {/* Excel Column Headers */}
+                <div className="grid grid-cols-12 bg-slate-50/80 border-b border-slate-300 text-[10px] font-black uppercase tracking-wider text-slate-500 font-mono">
+                  <div className="col-span-1 py-1.5 px-2 border-r border-slate-200 text-center">#</div>
+                  <div className="col-span-4 py-1.5 px-3 border-r border-slate-200">Parametr</div>
+                  <div className="col-span-7 py-1.5 px-3">Qiymat / Ma'lumot</div>
+                </div>
+
+                {/* Table Rows */}
+                <div className="divide-y divide-slate-200 text-xs">
+                  
+                  {/* Row 1: Clinic ID */}
+                  <div className="grid grid-cols-12 hover:bg-slate-50/50 transition-colors">
+                    <div className="col-span-1 bg-slate-50 border-r border-slate-200 font-mono text-[11px] text-slate-400 flex items-center justify-center font-bold">
+                      1
+                    </div>
+                    <div className="col-span-4 p-3 border-r border-slate-200 bg-slate-50/40 flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-slate-400 shrink-0" />
+                      <span className="font-bold text-slate-800">{t('superAdmin.clinicId') || "Klinika ID"}</span>
+                    </div>
+                    <div className="col-span-7 p-2 flex items-center justify-between">
+                      <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                        {localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id') || 'default_clinic'}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded border border-slate-200">
+                        {t('settings.clinic.immutable') || "O'zgarmas ID"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Clinic Logo */}
+                  <div className="grid grid-cols-12 hover:bg-slate-50/50 transition-colors">
+                    <div className="col-span-1 bg-slate-50 border-r border-slate-200 font-mono text-[11px] text-slate-400 flex items-center justify-center font-bold">
+                      2
+                    </div>
+                    <div className="col-span-4 p-3 border-r border-slate-200 bg-slate-50/40 flex items-center gap-2">
+                      <ImagePlus className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <div>
+                        <span className="font-bold text-slate-800 block">{t('settings.clinic.clinicLogo') || "Klinika Logotipi"}</span>
+                        <span className="text-[10px] text-slate-400 font-normal">PNG yoki JPG</span>
+                      </div>
+                    </div>
+                    <div className="col-span-7 p-2 flex items-center gap-3">
+                      <Input 
+                        type="file" 
+                        accept="image/*" 
+                        id="logo-upload"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = async () => {
+                              const currentClinic = await base44.clinic.getCurrentClinic();
+                              if (currentClinic) {
+                                await base44.clinic.updateClinic(currentClinic.id, { logo: reader.result });
+                                toast.success(t('settings.clinic.logoSaved') || "Logotip muvaffaqiyatli saqlandi!");
+                                setTimeout(() => window.location.reload(), 1500);
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }} 
+                      />
+                      <Button variant="outline" size="sm" className="h-8 rounded-lg px-3 bg-white border-slate-300 font-bold text-xs text-slate-700" asChild>
+                        <label htmlFor="logo-upload" className="cursor-pointer flex items-center gap-1.5">
+                          <ImagePlus className="w-3.5 h-3.5 text-indigo-600" />
+                          {t('settings.clinic.upload') || "Logotip yuklash"}
+                        </label>
+                      </Button>
+                      <p className="text-[10px] text-slate-500 font-medium">Hisob-faktura va cheklarda ko'rinadi</p>
+                    </div>
+                  </div>
+
+                  {/* Row 3: Clinic Name */}
+                  <div className="grid grid-cols-12 hover:bg-slate-50/50 transition-colors">
+                    <div className="col-span-1 bg-slate-50 border-r border-slate-200 font-mono text-[11px] text-slate-400 flex items-center justify-center font-bold">
+                      3
+                    </div>
+                    <div className="col-span-4 p-3 border-r border-slate-200 bg-slate-50/40 flex items-center gap-2">
+                      <span className="font-bold text-slate-800">{t('settings.clinicName') || "Klinika Nomi"}</span>
+                    </div>
+                    <div className="col-span-7 p-2">
+                      <Input 
+                        value={clinic?.name || ''} 
+                        onChange={e => setClinic({...clinic, name: e.target.value})}
+                        className="h-9 text-xs font-bold border-slate-200 rounded-lg focus:border-indigo-500" 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 4: Phone */}
+                  <div className="grid grid-cols-12 hover:bg-slate-50/50 transition-colors">
+                    <div className="col-span-1 bg-slate-50 border-r border-slate-200 font-mono text-[11px] text-slate-400 flex items-center justify-center font-bold">
+                      4
+                    </div>
+                    <div className="col-span-4 p-3 border-r border-slate-200 bg-slate-50/40 flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="font-bold text-slate-800">{t('common.phone') || "Telefon"}</span>
+                    </div>
+                    <div className="col-span-7 p-2">
+                      <Input 
+                        value={clinic?.phone || ''} 
+                        onChange={e => setClinic({...clinic, phone: e.target.value})}
+                        placeholder="+998..." 
+                        className="h-9 text-xs font-bold border-slate-200 rounded-lg focus:border-indigo-500 font-mono" 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 5: Address */}
+                  <div className="grid grid-cols-12 hover:bg-slate-50/50 transition-colors">
+                    <div className="col-span-1 bg-slate-50 border-r border-slate-200 font-mono text-[11px] text-slate-400 flex items-center justify-center font-bold">
+                      5
+                    </div>
+                    <div className="col-span-4 p-3 border-r border-slate-200 bg-slate-50/40 flex items-center gap-2">
+                      <span className="font-bold text-slate-800">{t('common.address') || "Manzil"}</span>
+                    </div>
+                    <div className="col-span-7 p-2">
+                      <Input 
+                        value={clinic?.address || ''} 
+                        onChange={e => setClinic({...clinic, address: e.target.value})}
+                        placeholder="Klinika manzili..." 
+                        className="h-9 text-xs border-slate-200 rounded-lg focus:border-indigo-500" 
+                      />
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Footer Toolbar */}
+                <div className="bg-slate-50 p-3 border-t border-slate-300 flex justify-end">
+                  <Button 
+                    onClick={handleSaveClinic} 
+                    disabled={saving}
+                    className="h-9 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-xs px-6 shadow-sm flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    {saving ? (t('settings.publicPage.saving') || 'Saqlanmoqda...') : (t('settings.clinic.save') || 'SAQLASH')}
+                  </Button>
+                </div>
+
               </div>
             </TabsContent>
 
-            <TabsContent value="staff" className="max-w-2xl space-y-6">
-              <div className="bg-white rounded-3xl border border-slate-100 p-8 shadow-sm">
-                <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
-                  <Plus className="w-5 h-5 text-emerald-600" /> 
-                  {t('settings.staff.addDoctor') || "Shifokor qo'shish"}
-                </h3>
-                
-                <div className="grid grid-cols-1 gap-4 mb-8 bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 mb-2 block">{t('settings.staff.fullName') || "To'liq ismi"} *</Label>
+            {/* TAB 4: STAFF SETTINGS (XODIMLAR) */}
+            <TabsContent value="staff" className="space-y-6">
+              
+              {/* Part 1: Add Doctor Form */}
+              <div className="border border-slate-300 rounded-2xl bg-white shadow-sm overflow-hidden">
+                <div className="bg-slate-100 border-b border-slate-300 px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-700 text-white flex items-center justify-center font-black text-xs">
+                      <Plus className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-bold text-slate-900 text-sm">
+                      {t('settings.staff.addDoctor') || "Shifokor qo'shish"}
+                    </h3>
+                  </div>
+                </div>
+
+                {/* Form Row */}
+                <div className="p-4 bg-slate-50/50">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    <div className="sm:col-span-3 space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider font-mono">
+                        {t('settings.staff.fullName') || "To'liq ism"} *
+                      </label>
                       <Input 
                         placeholder="Dr. Alisher" 
                         value={newStaff.full_name}
-                        className="h-12 rounded-xl border-none shadow-sm"
+                        className="h-9 text-xs font-bold border-slate-300 rounded-lg bg-white"
                         onChange={e => setNewStaff({...newStaff, full_name: e.target.value})}
                       />
                     </div>
-                    <div>
-                      <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 mb-2 block">{t('settings.staff.passwordLogin') || "Parol * (login parol)"}</Label>
+
+                    <div className="sm:col-span-3 space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider font-mono">
+                        {t('settings.staff.passwordLogin') || "Parol"} *
+                      </label>
                       <Input 
                         type="text"
-                        placeholder="Masalan: doctor2024" 
+                        placeholder="Parol (kamida 4 belgi)" 
                         value={newStaff.password}
-                        className="h-12 rounded-xl border-none shadow-sm font-mono"
+                        className="h-9 text-xs font-mono font-bold border-slate-300 rounded-lg bg-white"
                         onChange={e => setNewStaff({...newStaff, password: e.target.value})}
                       />
                     </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                    <div>
-                      <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 mb-2 block">{t('settings.staff.share') || "Ulush (%)"}</Label>
+
+                    <div className="sm:col-span-2 space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider font-mono">
+                        {t('settings.staff.share') || "Ulush (%)"}
+                      </label>
                       <Input 
                         type="number"
                         value={newStaff.commission === 0 || newStaff.commission === '' ? '' : newStaff.commission}
-                        placeholder="Masalan: 40"
-                        className="h-12 rounded-xl border-none shadow-sm"
+                        placeholder="40"
+                        className="h-9 text-xs font-bold border-slate-300 rounded-lg bg-white font-mono"
                         onChange={e => {
                           const val = e.target.value;
                           setNewStaff({...newStaff, commission: val === '' ? '' : Number(val)});
                         }}
                       />
                     </div>
-                    <div className="sm:col-span-2">
-                      <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 mb-2 block">{t('settings.staff.role') || "Lavozimi"}</Label>
+
+                    <div className="sm:col-span-2 space-y-1">
+                      <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider font-mono">
+                        {t('settings.staff.role') || "Lavozimi"}
+                      </label>
                       <Input 
-                        placeholder="Masalan: Stomatolog" 
+                        placeholder="Stomatolog" 
                         value={newStaff.specialty}
-                        className="h-12 rounded-xl border-none shadow-sm"
+                        className="h-9 text-xs border-slate-300 rounded-lg bg-white"
                         onChange={e => setNewStaff({...newStaff, specialty: e.target.value})}
                       />
                     </div>
-                    <div className="flex items-end">
-                      <Button onClick={addStaff} className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold">
+
+                    <div className="sm:col-span-2 flex items-end">
+                      <Button 
+                        onClick={addStaff} 
+                        className="w-full h-9 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm"
+                      >
+                        <Plus className="w-4 h-4" />
                         {t('common.add') || "Qo'shish"}
                       </Button>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="space-y-4">
-                  <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1">
-                    {t('settings.staff.availableDoctors', { count: users.filter(u => u.role === 'doctor').length }) || `Mavjud shifokorlar (${users.filter(u => u.role === 'doctor').length} ta)`}
-                  </Label>
-                  <div className="grid grid-cols-1 gap-2">
-                    {users.filter(u => u.role === 'doctor').map(doctor => {
-                      const isEditingSchedule = editingScheduleDoctorId === doctor.id;
-                      return (
-                        <div key={doctor.id} className="p-4 rounded-2xl bg-white border border-slate-100 hover:border-slate-200 transition-all space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center font-bold text-emerald-700 overflow-hidden">
-                                {(doctor.avatar_url || doctor.photo || doctor.avatar || doctor.image) ? (
-                                  <img src={doctor.avatar_url || doctor.photo || doctor.avatar || doctor.image} alt={doctor.name} className="w-full h-full object-cover" />
-                                ) : (
-                                  doctor.name?.[0]
-                                )}
-                              </div>
-                              <div>
-                                <p className="font-bold text-slate-900">{doctor.name}</p>
-                                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">
-                                  {doctor.specialty || t('settings.staff.doctor') || 'Shifokor'} • {t('settings.staff.shareLabel', { rate: doctor.commission_rate || 0 }) || `${doctor.commission_rate || 0}% ulush`}
-                                </p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-[10px] bg-slate-100 text-slate-600 font-mono px-2 py-0.5 rounded-md">
-                                    Login: {doctor.username || doctor.name?.toLowerCase().replace(/\s+/g, '.')}
-                                  </span>
-                                  <span className="text-[10px] bg-amber-50 text-amber-700 font-mono px-2 py-0.5 rounded-md border border-amber-100">
-                                    {t('settings.staff.passwordLabel', { pass: doctor.password || '—' }) || `Parol: ${doctor.password || '—'}`}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                title={t('settings.staff.settingWorkingHours') || "Ish vaqtlari"}
-                                onClick={() => {
-                                  if (isEditingSchedule) {
-                                    setEditingScheduleDoctorId(null);
-                                  } else {
-                                    setEditingScheduleDoctorId(doctor.id);
-                                    setCurrentSchedule(doctor.workingHours || defaultSchedule);
-                                  }
-                                }} 
-                                className={`rounded-xl transition-all ${isEditingSchedule ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-50'}`}
-                              >
-                                <Clock className="w-5 h-5" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                title={t('common.delete') || "O'chirish"}
-                                onClick={() => deleteStaff(doctor.id)} 
-                                className="text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                              >
-                                <Trash2 className="w-5 h-5" />
-                              </Button>
-                            </div>
-                          </div>
-
-                          {/* 📅 Ish vaqtini tahrirlash paneli (Inline collapse) */}
-                          {isEditingSchedule && (
-                            <div className="pt-4 border-t border-slate-100 space-y-4 bg-slate-50/50 p-4 rounded-xl">
-                              <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
-                                <Clock className="w-3.5 h-3.5 text-indigo-500" />
-                                {t('settings.staff.settingWorkingHours') || "Ish vaqtlarini sozlash"}
-                              </h4>
-                              
-                              <div className="space-y-2.5">
-                                {[
-                                  { label: 'Dushanba', dayId: '1' },
-                                  { label: 'Seshanba', dayId: '2' },
-                                  { label: 'Chorshanba', dayId: '3' },
-                                  { label: 'Payshanba', dayId: '4' },
-                                  { label: 'Juma', dayId: '5' },
-                                  { label: 'Shanba', dayId: '6' },
-                                  { label: 'Yakshanba', dayId: '0' },
-                                ].map(({ label, dayId }) => {
-                                  const daySettings = currentSchedule[dayId] || { active: false, start: '09:00', end: '18:00' };
-                                  return (
-                                    <div key={dayId} className="flex flex-wrap items-center justify-between gap-2 p-2 bg-white rounded-xl border border-slate-100 shadow-sm">
-                                      <div className="flex items-center gap-2">
-                                        <input 
-                                          type="checkbox" 
-                                          id={`check-${doctor.id}-${dayId}`}
-                                          checked={daySettings.active}
-                                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
-                                          onChange={(e) => {
-                                            setCurrentSchedule({
-                                              ...currentSchedule,
-                                              [dayId]: { ...daySettings, active: e.target.checked }
-                                            });
-                                          }}
-                                        />
-                                        <label htmlFor={`check-${doctor.id}-${dayId}`} className="text-xs font-bold text-slate-700 cursor-pointer w-20">
-                                          {label}
-                                        </label>
-                                      </div>
-
-                                      {daySettings.active ? (
-                                        <div className="flex items-center gap-2">
-                                          <select 
-                                            value={daySettings.start}
-                                            className="h-8 rounded-lg border-slate-200 bg-white text-xs font-bold text-slate-700 px-2 focus:ring-1 focus:ring-indigo-500"
-                                            onChange={(e) => {
-                                              setCurrentSchedule({
-                                                ...currentSchedule,
-                                                [dayId]: { ...daySettings, start: e.target.value }
-                                              });
-                                            }}
-                                          >
-                                            {hourOptions.map(h => (
-                                              <option key={h} value={h}>{h}</option>
-                                            ))}
-                                          </select>
-                                          <span className="text-[10px] font-bold text-slate-400">{t('common.from') || "dan"}</span>
-                                          <select 
-                                            value={daySettings.end}
-                                            className="h-8 rounded-lg border-slate-200 bg-white text-xs font-bold text-slate-700 px-2 focus:ring-1 focus:ring-indigo-500"
-                                            onChange={(e) => {
-                                              setCurrentSchedule({
-                                                ...currentSchedule,
-                                                [dayId]: { ...daySettings, end: e.target.value }
-                                              });
-                                            }}
-                                          >
-                                            {hourOptions.map(h => (
-                                              <option key={h} value={h}>{h}</option>
-                                            ))}
-                                          </select>
-                                          <span className="text-[10px] font-bold text-slate-400">{t('common.to') || "gacha"}</span>
-                                        </div>
-                                      ) : (
-                                        <span className="text-[10px] font-bold text-slate-400 italic pr-4">{t('settings.staff.dayOff') || "Dam olish kuni"}</span>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-
-                              <div className="flex justify-end gap-2 pt-2">
-                                <Button 
-                                  variant="outline" 
-                                  onClick={() => setEditingScheduleDoctorId(null)}
-                                  className="h-9 rounded-lg text-xs font-bold px-4"
-                                >
-                                  {t('common.cancel') || "Bekor qilish"}
-                                </Button>
-                                <Button 
-                                  onClick={() => saveWorkingHours(doctor, currentSchedule)}
-                                  disabled={saving}
-                                  className="h-9 bg-slate-900 text-white rounded-lg text-xs font-bold px-4"
-                                >
-                                  {saving ? (t('settings.publicPage.saving') || 'Saqlanmoqda...') : (t('settings.clinic.save') || 'Saqlash')}
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    {users.filter(u => u.role === 'doctor').length === 0 && (
-                      <p className="text-xs text-slate-400 italic py-8 text-center bg-slate-50/50 rounded-2xl border border-dashed">{t('settings.staff.noDoctorsYet') || "Hali shifokorlar qo'shilmagan"}</p>
-                    )}
+              {/* Part 2: Existing Doctors Table */}
+              <div className="border border-slate-300 rounded-2xl bg-white shadow-sm overflow-hidden">
+                <div className="bg-slate-100 border-b border-slate-300 px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-purple-700 text-white flex items-center justify-center font-black text-xs">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <h3 className="font-bold text-slate-900 text-sm">
+                      {t('settings.staff.availableDoctors', { count: users.filter(u => u.role === 'doctor').length }) || `Mavjud shifokorlar (${users.filter(u => u.role === 'doctor').length} ta)`}
+                    </h3>
                   </div>
                 </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-300 text-[10px] font-black uppercase text-slate-500 font-mono tracking-wider">
+                        <th className="py-2.5 px-3 border-r border-slate-200 w-12 text-center">#</th>
+                        <th className="py-2.5 px-4 border-r border-slate-200">Shifokor</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200">Mutaxassisligi</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200">Ulush (%)</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200">Login</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200">Parol</th>
+                        <th className="py-2.5 px-3 border-r border-slate-200 text-center">Ish jadvali</th>
+                        <th className="py-2.5 px-3 text-center">Amallar</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {users.filter(u => u.role === 'doctor').map((doctor, index) => {
+                        const isEditingSchedule = editingScheduleDoctorId === doctor.id;
+                        return (
+                          <>
+                            <tr key={doctor.id} className="hover:bg-slate-50/70 transition-colors">
+                              <td className="py-2.5 px-3 bg-slate-50 border-r border-slate-200 font-mono text-center font-bold text-slate-400">
+                                {index + 1}
+                              </td>
+                              <td className="py-2.5 px-4 border-r border-slate-200">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-7 h-7 bg-emerald-100 rounded-lg flex items-center justify-center font-bold text-emerald-700 overflow-hidden shrink-0 text-xs">
+                                    {(doctor.avatar_url || doctor.photo || doctor.avatar || doctor.image) ? (
+                                      <img src={doctor.avatar_url || doctor.photo || doctor.avatar || doctor.image} alt={doctor.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      doctor.name?.[0]?.toUpperCase()
+                                    )}
+                                  </div>
+                                  <span className="font-bold text-slate-900">{doctor.name}</span>
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3 border-r border-slate-200">
+                                <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                  {doctor.specialty || 'Stomatolog'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 border-r border-slate-200 font-mono font-bold text-indigo-700">
+                                {doctor.commission_rate || 0}%
+                              </td>
+                              <td className="py-2.5 px-3 border-r border-slate-200 font-mono text-slate-700">
+                                {doctor.username || doctor.name?.toLowerCase().replace(/\s+/g, '.')}
+                              </td>
+                              <td className="py-2.5 px-3 border-r border-slate-200 font-mono text-amber-700 bg-amber-50/40">
+                                {doctor.password || '—'}
+                              </td>
+                              <td className="py-2.5 px-3 border-r border-slate-200 text-center">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => {
+                                    if (isEditingSchedule) {
+                                      setEditingScheduleDoctorId(null);
+                                    } else {
+                                      setEditingScheduleDoctorId(doctor.id);
+                                      setCurrentSchedule(doctor.workingHours || defaultSchedule);
+                                    }
+                                  }} 
+                                  className={`h-7 text-xs font-bold px-2.5 rounded-lg border ${isEditingSchedule ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-300 text-slate-700'}`}
+                                >
+                                  <Clock className="w-3.5 h-3.5 mr-1 text-indigo-600" />
+                                  {isEditingSchedule ? "Yopish" : "Jadval"}
+                                </Button>
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => deleteStaff(doctor.id)} 
+                                  className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                                  title="O'chirish"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </td>
+                            </tr>
+
+                            {/* Inline Schedule Sub-Table */}
+                            {isEditingSchedule && (
+                              <tr key={`schedule-${doctor.id}`} className="bg-slate-50/90">
+                                <td colSpan={8} className="p-4 border-b border-slate-300">
+                                  <div className="border border-slate-300 rounded-xl bg-white p-4 space-y-3 shadow-xs">
+                                    <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                                      <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                        <Clock className="w-4 h-4 text-indigo-600" />
+                                        {doctor.name} — Haftalik ish jadvalini sozlash
+                                      </h4>
+                                    </div>
+
+                                    {/* Weekly Schedule Grid */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                      {[
+                                        { label: 'Dushanba', dayId: '1' },
+                                        { label: 'Seshanba', dayId: '2' },
+                                        { label: 'Chorshanba', dayId: '3' },
+                                        { label: 'Payshanba', dayId: '4' },
+                                        { label: 'Juma', dayId: '5' },
+                                        { label: 'Shanba', dayId: '6' },
+                                        { label: 'Yakshanba', dayId: '0' },
+                                      ].map(({ label, dayId }) => {
+                                        const daySettings = currentSchedule[dayId] || { active: false, start: '09:00', end: '18:00' };
+                                        return (
+                                          <div key={dayId} className="border border-slate-200 rounded-lg p-2 bg-slate-50/50 space-y-1.5">
+                                            <div className="flex items-center justify-between">
+                                              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 cursor-pointer">
+                                                <input 
+                                                  type="checkbox" 
+                                                  checked={daySettings.active}
+                                                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
+                                                  onChange={(e) => {
+                                                    setCurrentSchedule({
+                                                      ...currentSchedule,
+                                                      [dayId]: { ...daySettings, active: e.target.checked }
+                                                    });
+                                                  }}
+                                                />
+                                                {label}
+                                              </label>
+                                              <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${daySettings.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-500'}`}>
+                                                {daySettings.active ? 'Ish' : 'Dam'}
+                                              </span>
+                                            </div>
+
+                                            {daySettings.active && (
+                                              <div className="flex items-center gap-1 text-xs">
+                                                <select 
+                                                  value={daySettings.start}
+                                                  className="h-7 rounded border-slate-200 bg-white text-xs font-bold text-slate-700 px-1 w-full"
+                                                  onChange={(e) => {
+                                                    setCurrentSchedule({
+                                                      ...currentSchedule,
+                                                      [dayId]: { ...daySettings, start: e.target.value }
+                                                    });
+                                                  }}
+                                                >
+                                                  {hourOptions.map(h => (
+                                                    <option key={h} value={h}>{h}</option>
+                                                  ))}
+                                                </select>
+                                                <span className="text-slate-400 font-bold">-</span>
+                                                <select 
+                                                  value={daySettings.end}
+                                                  className="h-7 rounded border-slate-200 bg-white text-xs font-bold text-slate-700 px-1 w-full"
+                                                  onChange={(e) => {
+                                                    setCurrentSchedule({
+                                                      ...currentSchedule,
+                                                      [dayId]: { ...daySettings, end: e.target.value }
+                                                    });
+                                                  }}
+                                                >
+                                                  {hourOptions.map(h => (
+                                                    <option key={h} value={h}>{h}</option>
+                                                  ))}
+                                                </select>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+
+                                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => setEditingScheduleDoctorId(null)}
+                                        className="h-8 text-xs font-bold border-slate-300"
+                                      >
+                                        Bekor qilish
+                                      </Button>
+                                      <Button 
+                                        size="sm"
+                                        onClick={() => saveWorkingHours(doctor, currentSchedule)}
+                                        disabled={saving}
+                                        className="h-8 bg-slate-900 text-white text-xs font-bold px-4"
+                                      >
+                                        {saving ? 'Saqlanmoqda...' : 'Jadvalni saqlash'}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })}
+
+                      {users.filter(u => u.role === 'doctor').length === 0 && (
+                        <tr>
+                          <td colSpan={8} className="py-8 text-center text-xs text-slate-400 italic">
+                            Hozircha shifokorlar qo'shilmagan
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+
             </TabsContent>
           </>
         )}
 
-        <TabsContent value="profile" className="max-w-3xl space-y-6">
-          <div className="bg-white rounded-3xl border border-slate-100 p-8 shadow-sm space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
-              <div className="flex items-center gap-5">
+        {/* TAB 5: MY PROFILE SETTINGS */}
+        <TabsContent value="profile" className="max-w-4xl space-y-6">
+          <div className="border border-slate-300 rounded-2xl bg-white shadow-sm overflow-hidden">
+            
+            {/* Header / Summary Bar */}
+            <div className="bg-slate-100 border-b border-slate-300 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
                 
-                {/* 📸 Avatar / Rasm yuklash containeri */}
+                {/* Avatar */}
                 <div className="relative group/avatar shrink-0">
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl flex items-center justify-center text-white text-3xl font-black shadow-lg shadow-emerald-500/20 border-2 border-white overflow-hidden">
+                  <div className="w-16 h-16 bg-emerald-700 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-xs border border-white overflow-hidden">
                     {avatarSource ? (
                       <img 
                         src={avatarSource} 
@@ -735,13 +916,12 @@ export default function Settings() {
                     )}
                   </div>
 
-                  {/* Rasm yuklash kamera tugmasi */}
                   <label 
                     htmlFor="desktop-avatar-upload"
-                    className="absolute -bottom-1.5 -right-1.5 w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center cursor-pointer shadow-md hover:bg-emerald-600 hover:scale-110 active:scale-95 transition-all"
-                    title="Profil rasmini tanlash / yuklash"
+                    className="absolute -bottom-1 -right-1 w-6 h-6 rounded-lg bg-slate-900 text-white flex items-center justify-center cursor-pointer shadow-xs hover:bg-emerald-600 transition-all"
+                    title="Profil rasmini yuklash"
                   >
-                    <Camera className="w-4 h-4" />
+                    <Camera className="w-3.5 h-3.5" />
                   </label>
                   <input 
                     id="desktop-avatar-upload" 
@@ -751,142 +931,171 @@ export default function Settings() {
                     onChange={handleAvatarUpload} 
                   />
 
-                  {/* Rasmni o'chirish tugmasi */}
                   {avatarSource && (
                     <button
                       type="button"
                       onClick={handleRemoveAvatar}
-                      className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-lg bg-rose-500 text-white flex items-center justify-center shadow-md hover:bg-rose-600 hover:scale-110 active:scale-95 transition-all"
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-md bg-rose-500 text-white flex items-center justify-center shadow-xs hover:bg-rose-600 transition-all"
                       title="Rasmni o'chirish"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3 h-3" />
                     </button>
                   )}
                 </div>
 
                 <div>
-                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">{currentUser?.name || currentUser?.full_name || t('common.username')}</h3>
-                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100">
-                      {currentUser?.role === 'doctor' || isDoctor ? (t('settings.staff.doctor') || 'Shifokor') : 'Administrator'}
+                  <h3 className="text-base font-black text-slate-900 tracking-tight">{currentUser?.name || currentUser?.full_name || t('common.username')}</h3>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200">
+                      {currentUser?.role === 'doctor' || isDoctor ? 'Shifokor' : 'Administrator'}
                     </span>
                     {currentUser?.specialty && (
-                      <span className="text-[10px] font-bold text-slate-500 px-3 py-1 bg-slate-100 rounded-full">
+                      <span className="text-[10px] font-semibold text-slate-600 px-2 py-0.5 bg-slate-100 rounded border border-slate-200">
                         {currentUser.specialty}
                       </span>
                     )}
                     {(currentUser?.role === 'doctor' || isDoctor) && (
-                      <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+                      <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 font-mono">
                         {currentUser.commission_rate ?? currentUser.commission ?? 40}% ulush
                       </span>
                     )}
                   </div>
-                  
-                  <div className="mt-2">
-                    <label 
-                      htmlFor="desktop-avatar-upload"
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 cursor-pointer hover:underline"
-                    >
-                      <ImagePlus className="w-3.5 h-3.5" />
-                      {avatarSource ? "Rasmni almashtirish" : "Profil rasmini yuklash"}
-                    </label>
-                  </div>
                 </div>
               </div>
 
-              <div className="text-left sm:text-right bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded-xl">
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest block">Login (Username)</span>
-                <span className="font-mono font-bold text-sm text-slate-700">{currentUser?.username || '—'}</span>
+              <div className="bg-white border border-slate-200 p-2.5 rounded-xl text-left sm:text-right">
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block font-mono">Login</span>
+                <span className="font-mono font-bold text-xs text-slate-800">{currentUser?.username || '—'}</span>
               </div>
             </div>
 
-            {/* Profile Form */}
-            <form onSubmit={handleSaveMyProfile} className="space-y-6">
-              <div>
-                <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">Shaxsiy ma'lumotlar</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1">{t('common.name')} *</Label>
+            {/* Profile Table */}
+            <form onSubmit={handleSaveMyProfile}>
+              
+              {/* Table Headers */}
+              <div className="grid grid-cols-12 bg-slate-50/80 border-b border-slate-300 text-[10px] font-black uppercase tracking-wider text-slate-500 font-mono">
+                <div className="col-span-1 py-1.5 px-2 border-r border-slate-200 text-center">#</div>
+                <div className="col-span-4 py-1.5 px-3 border-r border-slate-200">Maydon</div>
+                <div className="col-span-7 py-1.5 px-3">Qiymat</div>
+              </div>
+
+              <div className="divide-y divide-slate-200 text-xs">
+                
+                {/* Row 1: Name */}
+                <div className="grid grid-cols-12 hover:bg-slate-50/50 transition-colors">
+                  <div className="col-span-1 bg-slate-50 border-r border-slate-200 font-mono text-[11px] text-slate-400 flex items-center justify-center font-bold">
+                    1
+                  </div>
+                  <div className="col-span-4 p-3 border-r border-slate-200 bg-slate-50/40 flex items-center gap-2">
+                    <User className="w-4 h-4 text-slate-500 shrink-0" />
+                    <span className="font-bold text-slate-800">{t('common.name') || "Ism"} *</span>
+                  </div>
+                  <div className="col-span-7 p-2">
                     <Input 
                       value={myProfileForm.name} 
                       onChange={e => setMyProfileForm({ ...myProfileForm, name: e.target.value })}
-                      className="h-12 rounded-xl font-bold border-slate-200" 
+                      className="h-9 text-xs font-bold border-slate-200 rounded-lg focus:border-indigo-500" 
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1">{t('common.phone')}</Label>
+                </div>
+
+                {/* Row 2: Phone */}
+                <div className="grid grid-cols-12 hover:bg-slate-50/50 transition-colors">
+                  <div className="col-span-1 bg-slate-50 border-r border-slate-200 font-mono text-[11px] text-slate-400 flex items-center justify-center font-bold">
+                    2
+                  </div>
+                  <div className="col-span-4 p-3 border-r border-slate-200 bg-slate-50/40 flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="font-bold text-slate-800">{t('common.phone') || "Telefon"}</span>
+                  </div>
+                  <div className="col-span-7 p-2">
                     <Input 
                       value={myProfileForm.phone} 
                       onChange={e => setMyProfileForm({ ...myProfileForm, phone: e.target.value })}
                       placeholder="+998..."
-                      className="h-12 rounded-xl font-bold border-slate-200" 
+                      className="h-9 text-xs font-mono font-bold border-slate-200 rounded-lg focus:border-indigo-500" 
                     />
                   </div>
                 </div>
-              </div>
 
-              <div className="pt-4 border-t border-slate-100">
-                <h4 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4 flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5 text-indigo-500" /> Parolni o'zgartirish
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1">Yangi parol</Label>
+                {/* Row 3: New Password */}
+                <div className="grid grid-cols-12 hover:bg-slate-50/50 transition-colors">
+                  <div className="col-span-1 bg-slate-50 border-r border-slate-200 font-mono text-[11px] text-slate-400 flex items-center justify-center font-bold">
+                    3
+                  </div>
+                  <div className="col-span-4 p-3 border-r border-slate-200 bg-slate-50/40 flex items-center gap-2">
+                    <KeyRound className="w-4 h-4 text-amber-500 shrink-0" />
+                    <div>
+                      <span className="font-bold text-slate-800 block">Yangi parol</span>
+                      <span className="text-[10px] text-slate-400">Ixtiyoriy</span>
+                    </div>
+                  </div>
+                  <div className="col-span-7 p-2">
                     <Input 
                       type="password"
                       placeholder="Kamida 4 ta belgi" 
                       value={myProfileForm.password}
                       onChange={e => setMyProfileForm({ ...myProfileForm, password: e.target.value })}
-                      className="h-12 rounded-xl font-mono text-sm border-slate-200" 
+                      className="h-9 text-xs font-mono border-slate-200 rounded-lg focus:border-indigo-500" 
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1">Parolni tasdiqlash</Label>
+                </div>
+
+                {/* Row 4: Confirm Password */}
+                <div className="grid grid-cols-12 hover:bg-slate-50/50 transition-colors">
+                  <div className="col-span-1 bg-slate-50 border-r border-slate-200 font-mono text-[11px] text-slate-400 flex items-center justify-center font-bold">
+                    4
+                  </div>
+                  <div className="col-span-4 p-3 border-r border-slate-200 bg-slate-50/40 flex items-center gap-2">
+                    <KeyRound className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span className="font-bold text-slate-800">Parolni tasdiqlash</span>
+                  </div>
+                  <div className="col-span-7 p-2">
                     <Input 
                       type="password"
                       placeholder="Parolni qayta kiriting" 
                       value={myProfileForm.confirmPassword}
                       onChange={e => setMyProfileForm({ ...myProfileForm, confirmPassword: e.target.value })}
-                      className="h-12 rounded-xl font-mono text-sm border-slate-200" 
+                      className="h-9 text-xs font-mono border-slate-200 rounded-lg focus:border-indigo-500" 
                     />
                   </div>
                 </div>
+
               </div>
 
-              <div className="flex justify-end pt-2">
+              {/* Action Toolbar */}
+              <div className="bg-slate-50 p-3 border-t border-slate-300 flex justify-end">
                 <Button 
                   type="submit"
                   disabled={savingMyProfile}
-                  className="h-11 px-8 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs uppercase tracking-wider shadow-md"
+                  className="h-9 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-xs px-6 shadow-sm flex items-center gap-1.5"
                 >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                   {savingMyProfile ? 'Saqlanmoqda...' : 'Ma\'lumotlarni saqlash'}
                 </Button>
               </div>
+
             </form>
 
-            {/* Shifokorning shaxsiy ish jadvali */}
+            {/* Doctor's Own Schedule Table */}
             {isDoctor && (
-              <div className="pt-6 border-t border-slate-100 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                      <Clock className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-base">Mening ish vaqtlarim</h4>
-                      <p className="text-xs text-slate-400">Qaysi kunlari qaysi soatlarda qabul qilishingizni belgilang</p>
-                    </div>
-                  </div>
+              <div className="border-t border-slate-300 p-4 bg-slate-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-900 text-xs flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-indigo-600" />
+                    Mening ish vaqtlarim (Haftalik jadval)
+                  </h4>
                   <Button 
                     onClick={handleSaveMySchedule}
                     disabled={savingMySchedule}
-                    className="h-10 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-md shadow-indigo-100"
+                    size="sm"
+                    className="h-8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs px-4"
                   >
                     {savingMySchedule ? 'Saqlanmoqda...' : 'Jadvalni saqlash'}
                   </Button>
                 </div>
 
-                <div className="space-y-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                   {[
                     { label: 'Dushanba', dayId: '1' },
                     { label: 'Seshanba', dayId: '2' },
@@ -898,30 +1107,33 @@ export default function Settings() {
                   ].map(({ label, dayId }) => {
                     const daySettings = mySchedule[dayId] || { active: false, start: '09:00', end: '18:00' };
                     return (
-                      <div key={dayId} className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div className="flex items-center gap-3">
-                          <input 
-                            type="checkbox" 
-                            id={`my-check-${dayId}`}
-                            checked={daySettings.active}
-                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
-                            onChange={(e) => {
-                              setMySchedule({
-                                ...mySchedule,
-                                [dayId]: { ...daySettings, active: e.target.checked }
-                              });
-                            }}
-                          />
-                          <label htmlFor={`my-check-${dayId}`} className="text-xs font-bold text-slate-800 cursor-pointer w-24">
+                      <div key={dayId} className="border border-slate-200 rounded-lg p-2.5 bg-white space-y-1.5 shadow-xs">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              id={`my-check-${dayId}`}
+                              checked={daySettings.active}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
+                              onChange={(e) => {
+                                setMySchedule({
+                                  ...mySchedule,
+                                  [dayId]: { ...daySettings, active: e.target.checked }
+                                });
+                              }}
+                            />
                             {label}
                           </label>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${daySettings.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                            {daySettings.active ? 'Faol' : 'Dam'}
+                          </span>
                         </div>
 
-                        {daySettings.active ? (
-                          <div className="flex items-center gap-2">
+                        {daySettings.active && (
+                          <div className="flex items-center gap-1 text-xs">
                             <select 
                               value={daySettings.start}
-                              className="h-8 rounded-lg border-slate-200 bg-white text-xs font-bold text-slate-700 px-2 focus:ring-1 focus:ring-indigo-500"
+                              className="h-7 rounded border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 px-1 w-full"
                               onChange={(e) => {
                                 setMySchedule({
                                   ...mySchedule,
@@ -933,10 +1145,10 @@ export default function Settings() {
                                 <option key={h} value={h}>{h}</option>
                               ))}
                             </select>
-                            <span className="text-[10px] font-bold text-slate-400">{t('common.from') || "dan"}</span>
+                            <span className="text-slate-400 font-bold">-</span>
                             <select 
                               value={daySettings.end}
-                              className="h-8 rounded-lg border-slate-200 bg-white text-xs font-bold text-slate-700 px-2 focus:ring-1 focus:ring-indigo-500"
+                              className="h-7 rounded border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 px-1 w-full"
                               onChange={(e) => {
                                 setMySchedule({
                                   ...mySchedule,
@@ -948,10 +1160,7 @@ export default function Settings() {
                                 <option key={h} value={h}>{h}</option>
                               ))}
                             </select>
-                            <span className="text-[10px] font-bold text-slate-400">{t('common.to') || "gacha"}</span>
                           </div>
-                        ) : (
-                          <span className="text-[10px] font-bold text-slate-400 italic pr-4">{t('settings.staff.dayOff') || "Dam olish kuni"}</span>
                         )}
                       </div>
                     );
@@ -959,27 +1168,36 @@ export default function Settings() {
                 </div>
               </div>
             )}
+
           </div>
         </TabsContent>
 
+        {/* TAB 6: LANGUAGE SETTINGS */}
         <TabsContent value="language" className="max-w-2xl">
-          <div className="bg-white rounded-3xl border border-slate-100 p-8 shadow-sm">
-            <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
-              <Languages className="w-5 h-5 text-blue-500" /> 
-              {t('settings.language')}
-            </h3>
-            <div>
-              <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 mb-3 block">
-                {t('settings.selectLanguage')}
-              </Label>
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+          <div className="border border-slate-300 rounded-2xl bg-white shadow-sm overflow-hidden">
+            <div className="bg-slate-100 border-b border-slate-300 px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-sky-700 text-white flex items-center justify-center font-black text-xs">
+                  <Languages className="w-4 h-4" />
+                </div>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  {t('settings.language') || "Til sozlamalari"}
+                </h3>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-3">
+              <label className="text-[10px] uppercase font-black text-slate-500 tracking-wider block font-mono">
+                {t('settings.selectLanguage') || "Tizim tilini tanlang"}
+              </label>
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <LanguageSwitcher />
               </div>
             </div>
           </div>
         </TabsContent>
-      </Tabs>
 
+      </Tabs>
 
     </div>
   );

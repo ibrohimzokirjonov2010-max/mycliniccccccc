@@ -97,7 +97,35 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
   };
 
   // Financial calculations
-  const totalExpense = flatServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0) || Number(plan.total_price || 0) || 0;
+  const rawTotal = (() => {
+    const sumServices = flatServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+    if (sumServices > 0) return sumServices;
+    if (plan.raw_total && Number(plan.raw_total) > 0) return Number(plan.raw_total);
+    if (plan.discount_amount && Number(plan.discount_amount) > 0 && plan.total_price) {
+      return Number(plan.total_price) + Number(plan.discount_amount);
+    }
+    return Number(plan.total_price || 0);
+  })();
+
+  const discountPercent = Number(plan.discount_percent) || (
+    plan.discount_amount && rawTotal > 0
+      ? Math.round((Number(plan.discount_amount) / rawTotal) * 100)
+      : (rawTotal > Number(plan.total_price || 0) && rawTotal > 0 && plan.total_price
+          ? Math.round(((rawTotal - Number(plan.total_price)) / rawTotal) * 100)
+          : 0)
+  );
+
+  const discountAmount = Number(plan.discount_amount) || (
+    rawTotal && discountPercent > 0
+      ? Math.floor((rawTotal * discountPercent) / 100)
+      : (rawTotal > Number(plan.total_price || 0) && plan.total_price ? rawTotal - Number(plan.total_price) : 0)
+  );
+
+  const discountedTotal = Number(plan.total_price) > 0
+    ? Number(plan.total_price)
+    : Math.max(0, rawTotal - discountAmount);
+
+  const totalExpense = discountedTotal;
   
   // Explicitly calculate totalPaidSum
   const totalPaidSum = (() => {
@@ -117,7 +145,7 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
     return 0;
   })();
 
-  const finalDebt = Math.max(0, totalExpense - totalPaidSum);
+  const finalDebt = Math.max(0, discountedTotal - totalPaidSum);
 
   // Payment items mapping for table
   const paymentRows = (() => {
@@ -223,6 +251,10 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
               margin: 0 !important;
               border: none !important;
               box-shadow: none !important;
+            }
+            table, tr, td, th {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
             }
             @page {
               size: A4;
@@ -372,12 +404,50 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
                       <td className="py-2.5 px-3 text-right font-bold text-slate-900">{s.price.toLocaleString()} so'm</td>
                     </tr>
                   ))}
-                  <tr className="border-t-[1.5px] border-slate-300 font-black">
-                    <td colSpan="4" className="py-3 px-3 text-sm text-slate-900">
-                      Jami xarajat
+                  {/* 1. Davolash rejasining chegirmasiz narxi */}
+                  <tr className="border-t-[1.5px] border-slate-300 bg-slate-50/70">
+                    <td colSpan="4" className="py-2.5 px-3 text-xs font-bold text-slate-700">
+                      {language === 'ru' ? 'Стоимость плана лечения без скидки' : language === 'en' ? 'Treatment plan price without discount' : 'Davolash rejasining chegirmasiz narxi'}
                     </td>
-                    <td className="py-3 px-3 text-right text-sm text-slate-900 font-black">
-                      {totalExpense.toLocaleString()} so'm
+                    <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-900 font-mono">
+                      {rawTotal.toLocaleString()} so'm
+                    </td>
+                  </tr>
+
+                  {/* 2. Chegirmali narxi */}
+                  <tr className="border-t border-slate-200 bg-slate-50/90 font-black">
+                    <td colSpan="4" className="py-2.5 px-3 text-xs font-black text-slate-900">
+                      <div className="flex items-center gap-2">
+                        <span>{language === 'ru' ? 'Стоимость со скидкой' : language === 'en' ? 'Discounted price' : 'Chegirmali narxi'}</span>
+                        {discountPercent > 0 && (
+                          <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100/80 border border-emerald-300 px-1.5 py-0.5 rounded">
+                            -{discountPercent}% ({discountAmount.toLocaleString()} so'm)
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-3 text-right text-xs font-black text-slate-900 font-mono">
+                      {discountedTotal.toLocaleString()} so'm
+                    </td>
+                  </tr>
+
+                  {/* 3. Jami to'langan */}
+                  <tr className="border-t border-slate-200 bg-[#dcfce7] text-[#166534] font-black">
+                    <td colSpan="4" className="py-2.5 px-3 text-xs font-black text-[#166534]">
+                      {language === 'ru' ? 'Всего оплачено' : language === 'en' ? 'Total Paid' : "Jami to'langan"}
+                    </td>
+                    <td className="py-2.5 px-3 text-right text-xs font-black text-[#166534] font-mono">
+                      {totalPaidSum.toLocaleString()} so'm
+                    </td>
+                  </tr>
+
+                  {/* 4. Qoldiq qarzdorlik */}
+                  <tr className={`border-t border-slate-200 font-black ${finalDebt > 0 ? "bg-[#ffe4e6] text-[#9f1239]" : "bg-emerald-50/60 text-emerald-800"}`}>
+                    <td colSpan="4" className={`py-2.5 px-3 text-xs font-black ${finalDebt > 0 ? 'text-[#9f1239]' : 'text-emerald-800'}`}>
+                      {language === 'ru' ? 'Остаток задолженности' : language === 'en' ? 'Remaining debt' : (finalDebt > 0 ? "Qoldiq qarzdorlik" : "Qarz yo'q (To'liq to'langan)")}
+                    </td>
+                    <td className={`py-2.5 px-3 text-right text-xs font-black font-mono ${finalDebt > 0 ? 'text-[#9f1239]' : 'text-emerald-800'}`}>
+                      {finalDebt.toLocaleString()} so'm
                     </td>
                   </tr>
                 </tbody>

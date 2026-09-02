@@ -1803,7 +1803,55 @@ export const base44 = {
   },
   
   clinic: {
-    getAll: async () => {
+    // ── Klinika qo'shimcha maydonlarini 'logo' ustuniga prefix sifatida encode ──
+    // Supabase clinics jadvalida FAQAT bular bor:
+    //   id, name, password, logo, expires_at, status,
+    //   created_at, monthly_fee, last_payment_date, plan
+    // Qolgan maydonlarni logo ustuniga '[EXT_DATA]{...}[/EXT_DATA]' prefix
+    // sifatida encode qilamiz. Logo base64 shu prefixdan keyin davom etadi.
+    _EXTRA_FIELDS: [
+      'slug', 'is_public', 'description', 'address', 'working_hours',
+      'telegram_link', 'instagram_link', 'whatsapp_link', 'yandex_map_link',
+      'phone', 'subtitle', 'api_key'
+    ],
+
+    _encodeClinicNotes(clinic) {
+      const extra = {};
+      this._EXTRA_FIELDS.forEach(f => {
+        if (clinic[f] !== undefined && clinic[f] !== null && clinic[f] !== '') {
+          extra[f] = clinic[f];
+        }
+      });
+      // Faqat DB ustunlari payloadda bo'ladi
+      const payload = {};
+      ['id','name','status','created_at','monthly_fee','last_payment_date','plan'].forEach(f => {
+        if (clinic[f] !== undefined) payload[f] = clinic[f];
+      });
+      // logo = '[EXT]{...}[/EXT]base64...' yoki oddiy base64
+      const rawLogo = typeof clinic.logo === 'string' && clinic.logo.startsWith('[EXT]')
+        ? clinic.logo.replace(/^\[EXT\].*?\[\/EXT\]/, '') // eski encodeni tozalash
+        : (clinic.logo || '');
+      payload.logo = Object.keys(extra).length > 0
+        ? '[EXT]' + JSON.stringify(extra) + '[/EXT]' + rawLogo
+        : rawLogo;
+      return payload;
+    },
+
+    _decodeClinicNotes(clinic) {
+      if (!clinic) return clinic;
+      const logo = clinic.logo || '';
+      if (!logo.startsWith('[EXT]')) return clinic;
+      try {
+        const end = logo.indexOf('[/EXT]');
+        if (end === -1) return clinic;
+        const extra = JSON.parse(logo.substring(5, end)); // 5 = '[EXT]'.length
+        const realLogo = logo.substring(end + 6); // 6 = '[/EXT]'.length
+        return { ...clinic, ...extra, logo: realLogo };
+      } catch { return clinic; }
+    },
+    // ──────────────────────────────────────────────────────────────────────
+
+    getAll: async function() {
       if (!import.meta.env.VITE_SUPABASE_URL) {
         const stored = localStorage.getItem('system_clinics');
         if (!stored) {
@@ -1818,11 +1866,15 @@ export const base44 = {
         if (clinics.length === 0) {
           // Insert default clinics
           for (const clinic of DEFAULT_CLINICS) {
-            await db.clinics.create(clinic);
+            await db.clinics.create(this._encodeClinicNotes(clinic));
           }
           return DEFAULT_CLINICS;
         }
-        return clinics;
+        // Decode notes to restore extra fields
+        const decoded = clinics.map(c => this._decodeClinicNotes(c));
+        // Also keep localStorage in sync
+        try { localStorage.setItem('system_clinics', JSON.stringify(decoded)); } catch {}
+        return decoded;
       } catch (error) {
         console.error('Error fetching clinics from Supabase:', error);
         // Fallback to localStorage
@@ -1831,20 +1883,21 @@ export const base44 = {
       }
     },
 
-    saveAll: async (clinics) => {
-      if (!import.meta.env.VITE_SUPABASE_URL) {
-        localStorage.setItem('system_clinics', JSON.stringify(clinics));
-        return;
-      }
+    saveAll: async function(clinics) {
+      // Always keep localStorage in sync immediately
+      try { localStorage.setItem('system_clinics', JSON.stringify(clinics)); } catch {}
+
+      if (!import.meta.env.VITE_SUPABASE_URL) return;
       
       try {
-        // Update or insert each clinic
+        // Update or insert each clinic — encode extra fields into notes
         for (const clinic of clinics) {
+          const payload = this._encodeClinicNotes(clinic);
           const { data: existing } = await supabase.from('clinics').select('id').eq('id', clinic.id).single();
           if (existing) {
-            await db.clinics.update(clinic.id, clinic);
+            await db.clinics.update(clinic.id, payload);
           } else {
-            await db.clinics.create(clinic);
+            await db.clinics.create(payload);
           }
         }
         console.log('✅ Clinics saved to Supabase');
@@ -1961,7 +2014,7 @@ export const base44 = {
       return current;
     },
 
-    updateClinic: async (id, dataToUpdate) => {
+    updateClinic: async function(id, dataToUpdate) {
       try {
         if (dataToUpdate.api_key) {
           localStorage.setItem(`clinic_api_key_${id}`, dataToUpdate.api_key);
@@ -1970,8 +2023,23 @@ export const base44 = {
         const index = clinics.findIndex(c => c.id === id);
         if (index !== -1) {
           clinics[index] = { ...clinics[index], ...dataToUpdate };
-          await base44.clinic.saveAll(clinics);
+        } else if (clinics.length > 0) {
+          clinics[0] = { ...clinics[0], ...dataToUpdate, id: id || clinics[0].id };
+        } else {
+          clinics.push({ id: id || 'default_clinic', name: 'Dental Clinic', ...dataToUpdate });
         }
+        
+        // Save merged clinics to localStorage IMMEDIATELY for instant persistence
+        try {
+          localStorage.setItem('system_clinics', JSON.stringify(clinics));
+          const currentUpdated = clinics.find(c => c.id === id) || clinics[0];
+          if (currentUpdated) {
+            localStorage.setItem('clinic_settings', JSON.stringify(currentUpdated));
+          }
+        } catch(e) {}
+
+        // Save to Supabase (encode extra fields into notes)
+        await base44.clinic.saveAll(clinics);
       } catch (error) {
         console.error('Error updating clinic:', error);
       }
