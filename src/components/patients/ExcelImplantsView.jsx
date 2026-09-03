@@ -45,23 +45,23 @@ function ExcelImplantsView({
     const s = (status || '').toLowerCase();
     if (s.includes('tugallangan') || s.includes('done') || s.includes('complete')) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[9px] uppercase tracking-wide">
-          <CheckCircle2 className="w-3 h-3" />
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[8.5px] uppercase tracking-wide whitespace-nowrap">
+          <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
           {language === 'ru' ? 'Завершено' : language === 'en' ? 'Completed' : 'Tugallangan'}
         </span>
       );
     }
     if (s.includes('fail') || s.includes('rad')) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[9px] uppercase tracking-wide">
-          <XCircle className="w-3 h-3" />
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[8.5px] uppercase tracking-wide whitespace-nowrap">
+          <XCircle className="w-2.5 h-2.5 shrink-0" />
           {language === 'ru' ? 'Отклонено' : language === 'en' ? 'Failed' : 'Rad etildi'}
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-bold text-[9px] uppercase tracking-wide">
-        <Clock className="w-3 h-3" />
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-bold text-[8.5px] uppercase tracking-wide whitespace-nowrap">
+        <Clock className="w-2.5 h-2.5 shrink-0" />
         {language === 'ru' ? 'В интеграции' : language === 'en' ? 'In Integration' : 'Integratsiyada'}
       </span>
     );
@@ -170,15 +170,15 @@ function ExcelImplantsView({
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
-                <th className="py-3 px-4 border-r border-slate-100 w-10 text-center">№</th>
-                <th className="py-3 px-4 border-r border-slate-100 w-20 text-center">Tish FDI</th>
-                <th className="py-3 px-4 border-r border-slate-100 min-w-[160px]">{t('patientProfile.brandSystemCol') || "Brend / Tizim"}</th>
-                <th className="py-3 px-4 border-r border-slate-100 text-center min-w-[120px]">{t('patientProfile.sizeCol') || "O'lchami"}</th>
-                <th className="py-3 px-4 border-r border-slate-100 text-center min-w-[110px]">Lot #</th>
-                <th className="py-3 px-4 border-r border-slate-100 min-w-[120px]">{t('patientProfile.installedDateCol') || "Sana"}</th>
-                <th className="py-3 px-4 border-r border-slate-100 min-w-[130px]">{t('patientProfile.surgeonCol') || "Jarroh"}</th>
-                <th className="py-3 px-4 border-r border-slate-100 text-center">{t('common.status') || "Holati"}</th>
-                <th className="py-3 px-4 text-center">{t('patientProfile.passportCol') || "Pasport"}</th>
+                <th className="py-2.5 px-2 border-r border-slate-100 w-8 min-w-[28px] text-center">№</th>
+                <th className="py-2.5 px-1.5 border-r border-slate-100 w-14 min-w-[46px] text-center">Tish FDI</th>
+                <th className="py-2.5 px-2 border-r border-slate-100 min-w-[105px] max-w-[145px]">{t('patientProfile.brandSystemCol') || "Brend / Tizim"}</th>
+                <th className="py-2.5 px-1.5 border-r border-slate-100 text-center w-24 min-w-[78px]">{t('patientProfile.sizeCol') || "O'lchami"}</th>
+                <th className="py-2.5 px-1.5 border-r border-slate-100 text-center w-20 min-w-[68px]">Lot #</th>
+                <th className="py-2.5 px-1.5 border-r border-slate-100 text-center w-20 min-w-[72px]">{t('patientProfile.installedDateCol') || "Sana"}</th>
+                <th className="py-2.5 px-2 border-r border-slate-100 min-w-[85px] max-w-[120px]">{t('patientProfile.surgeonCol') || "Jarroh"}</th>
+                <th className="py-2.5 px-1.5 border-r border-slate-100 text-center w-24 min-w-[80px]">{t('common.status') || "Holati"}</th>
+                <th className="py-2.5 px-1.5 text-center w-20 min-w-[68px]">{t('patientProfile.passportCol') || "Pasport"}</th>
               </tr>
             </thead>
             <tbody>
@@ -198,38 +198,48 @@ function ExcelImplantsView({
 
                 return (
                   <tr key={imp.id || idx} className={cn("border-b border-slate-100 hover:bg-purple-50/20 transition-colors", idx % 2 === 1 && "bg-slate-50/30")}>
-                    <td className="py-2 px-4 text-center font-mono text-[11px] text-slate-400 border-r border-slate-100">{idx + 1}</td>
-                    <td className="py-2 px-4 text-center font-mono font-black text-purple-600 border-r border-slate-100">
-                      {imp.tooth_number ? `#${imp.tooth_number}` : '—'}
+                    <td className="py-2 px-1 text-center font-mono text-[11px] text-slate-400 border-r border-slate-100">{idx + 1}</td>
+                    <td className="py-2 px-1.5 text-center border-r border-slate-100">
+                      {imp.tooth_number ? (
+                        <span className="inline-flex items-center justify-center font-mono font-black text-purple-600 text-xs bg-purple-50/70 px-1.5 py-0.5 rounded border border-purple-100">
+                          #{imp.tooth_number}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300 font-mono text-xs">—</span>
+                      )}
                     </td>
-                    <td className="py-2 px-4 font-bold text-slate-900 border-r border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <ImplantIcon className="w-4 h-4 text-purple-500 shrink-0" />
-                        <span>{brandName}</span>
+                    <td className="py-2 px-2 border-r border-slate-100">
+                      <div className="flex items-center gap-1.5 min-w-0 max-w-[145px]" title={brandName}>
+                        <ImplantIcon className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                        <span className="font-bold text-slate-900 text-xs truncate">{brandName}</span>
                       </div>
                     </td>
-                    <td className="py-2 px-4 text-center font-mono font-bold text-slate-700 text-xs border-r border-slate-100">
-                      {imp.diameter && imp.length ? `Ø${imp.diameter}×${imp.length}mm` : (imp.size || '—')}
+                    <td className="py-2 px-1 text-center font-mono font-bold text-slate-700 text-xs border-r border-slate-100 whitespace-nowrap">
+                      {imp.diameter && imp.length ? `Ø${imp.diameter}×${imp.length}` : (imp.size || '—')}
                     </td>
-                    <td className="py-2 px-4 text-center font-mono text-slate-600 text-xs border-r border-slate-100">
+                    <td className="py-2 px-1 text-center font-mono text-slate-600 text-xs border-r border-slate-100 whitespace-nowrap">
                       {imp.lot_number || imp.lot || '—'}
                     </td>
-                    <td className="py-2 px-4 font-mono text-slate-600 text-xs border-r border-slate-100">{dateStr}</td>
-                    <td className="py-2 px-4 border-r border-slate-100">
-                      <div className="flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-                        <span className="text-sm text-slate-700 font-medium">{imp.doctor || 'Jarroh'}</span>
+                    <td className="py-2 px-1 text-center font-mono text-slate-600 text-xs border-r border-slate-100 whitespace-nowrap">
+                      {dateStr}
+                    </td>
+                    <td className="py-2 px-2 border-r border-slate-100">
+                      <div className="flex items-center gap-1 min-w-0 max-w-[120px]" title={imp.doctor || 'Jarroh'}>
+                        <User className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className="text-xs text-slate-700 font-medium truncate">{imp.doctor || 'Jarroh'}</span>
                       </div>
                     </td>
-                    <td className="py-2 px-4 text-center border-r border-slate-100">{getStatusBadge(imp.lifecycle_status || imp.status)}</td>
-                    <td className="py-2 px-4 text-center">
+                    <td className="py-2 px-1 text-center border-r border-slate-100 whitespace-nowrap">
+                      {getStatusBadge(imp.lifecycle_status || imp.status)}
+                    </td>
+                    <td className="py-2 px-1 text-center whitespace-nowrap">
                       {(imp.passport_id || imp.id) ? (
                         <Link
                           to={`/implant-passport/${imp.passport_id || imp.id}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-bold transition-all border border-purple-200"
+                          className="inline-flex items-center justify-center gap-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-[10.5px] font-bold transition-all border border-purple-200 shadow-2xs"
                         >
-                          {language === 'ru' ? 'Паспорт' : language === 'en' ? 'Passport' : 'Pasport'}
-                          <ExternalLink className="w-3 h-3" />
+                          <span>{language === 'ru' ? 'Паспорт' : language === 'en' ? 'Passport' : 'Pasport'}</span>
+                          <ExternalLink className="w-2.5 h-2.5 opacity-70" />
                         </Link>
                       ) : (
                         <span className="text-slate-400 text-xs">—</span>

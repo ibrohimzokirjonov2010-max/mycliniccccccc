@@ -13,6 +13,53 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Bemor Profili (Implantlar): Jadval Ustunlari Ixchamlashtirildi, Jarroh, Holati va Pasport Ustunlari Bitta Ekranga Sig'dirildi
+- **Sana:** 2026-09-03
+- **Tuzatilgan Fayllar:**
+  - [`src/components/patients/ExcelImplantsView.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/patients/ExcelImplantsView.jsx)
+- **Muammo Tavsifi:** 
+  - Bemor profilidagi "Implantlar" jadvalida katakchalar paddinglari (`px-4`) va ustun kengliklari katta bo'lgani sababli oxirgi ustunlar («Jarroh», «Holati», «Pasport») ekrandan tashqariga chiqib ketayotgan va gorizontal skroll paydo bo'layotgan edi.
+- **Sababi:** 
+  - `min-w-[160px]`, `min-w-[120px]` kabi katta o'lchamlar va `px-4` paddinglar 9 ta ustunli jadvalni 1200px dan ortiqqa cho'zib yuborgan edi.
+- **Qanday tuzatildi:** 
+  - Jadval ustunlari va paddinglari ixchamlashtirildi (`№`: w-8, `Tish FDI`: w-14 [#36 nishoni bilan], `Brend / Tizim`: max-w-[145px], `O'lchami`: w-24, `Lot #`: w-20, `Sana`: w-20, `Jarroh`: max-w-[120px], `Holati`: w-24, `Pasport`: w-20).
+  - `getStatusBadge` nishonlari ixcham va `whitespace-nowrap` qilib sozlandi.
+  - Barcha 9 ta ustun bitta ekranga to'liq sig'di va gorizontal skroll yo'qotildi.
+- **Qaytalamaslik choralari:** CRM ma'lumotlar jadvallarida doimo ixcham paddinglar va moslashuvchan ustun o'lchamlaridan foydalaning.
+
+
+### 📅 Bemor Profili (Uchrashuvlar): Jadval Ustunlari Ixchamlashtirildi, Davomiyligi, Holati va Eslatma Ustunlari Bitta Ekranga Sig'dirildi
+- **Sana:** 2026-09-03
+- **Tuzatilgan Fayllar:**
+  - [`src/components/patients/ExcelAppointmentsView.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/patients/ExcelAppointmentsView.jsx)
+- **Muammo Tavsifi:** 
+  - Bemor profilidagi "Uchrashuvlar" jadvalida katakchalarning kengligi va paddinglari katta bo'lgani sababli oxirgi 3 ta ustun («Davomiyligi», «Holati», «Eslatma») ekranga sig'masdan o'ngga surilib ketayotgan va gorizontal skroll talab qilayotgan edi.
+- **Sababi:** 
+  - `py-3 px-4` paddinglar va katta `min-w-[180px]`, `min-w-[140px]` o'lchamlari 9 ta ustunli jadval kengligini 1050px dan oshirib yuborgan edi (mavjud joy esa ~740px).
+- **Qanday tuzatildi:** 
+  - Jadval ustunlari va paddinglari ixchamlashtirildi (`№`: w-8, `Sana & Vaqt`: w-28 [sana va vaqt vertikal joylashuvi bilan], `Shifokor`: max-w-[120px], `Kreslo`: w-14 [#1 nishoni bilan], `Tish #`: w-12, `Muolaja`: max-w-[160px], `Davom.`: w-16, `Holati`: w-24, `Eslatma`: max-w-[120px]).
+  - `getStatusBadge` nishonlari ixcham va `whitespace-nowrap` qilib sozlandi.
+  - Barcha 9 ta ustun 100% bitta ekranga to'liq sig'di va hech qanday gorizontal skroll talab etilmaydi.
+- **Qaytalamaslik choralari:** Ko'p ustunli jadvallarda (7+ ustun) `px-4` o'rniga doimo `px-1.5` / `px-2` ixcham paddinglardan foydalaning, sana va vaqtni ixcham stack qiling.
+
+
+### 📊 Bemor Profili (Davolash Rejalari): Jadval Ustunlari Ixchamlashtirildi, Sana va Faktura Ko'rinishi hamda Jami Hisob-Kitobning Yonga Surilmasdan Ko'rinishi Ta'minlandi
+- **Sana:** 2026-09-03
+- **Tuzatilgan Fayllar:**
+  - [`src/components/patients/ExcelTreatmentsView.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/patients/ExcelTreatmentsView.jsx)
+- **Muammo Tavsifi:** 
+  - Bemor profilidagi "Davolash rejalari" jadvalida haddan tashqari keng `min-w` va `px-4` paddinglar sababli o'ng tomondagi "Sana" va "Faktura" ustunlari ekrandan chiqib ketayotgan edi.
+  - "JAMI HISOB-KITOB" ma'lumotlari esa jadvalning `tfoot` qismidagi oxirgi 3 ustunga siqib qo'yilganligi sababli, gorizontal skroll bo'lganda jami summa o'ng tomonga surilib, ko'rinmay qolayotgan edi. Shuningdek chegirma bo'lmagan taqdirda ham "Asosiy" va "Jami" degan ikkita bir xil summa takroran chiqarilib joyni ortiqcha band qilayotgan edi.
+- **Sababi:** 
+  - Ustunlar kengliklari va hujayra paddinglari juda katta bo'lgan, shuningdek `tfoot`dagi keng elementlar jadvalning o'zini ham sun'iy kengaytirib yuborgan.
+- **Qanday tuzatildi:** 
+  - Jadval ustunlari va hujayra paddinglari ixcham Excel Spreadsheet standartiga keltirildi (`№`: w-8, `Tish`: w-14, `Muolaja`: min-w-[130px], `Reja`: max-w-[135px], `Shifokor`: max-w-[120px], `Narxi`: w-24, `Sana`: w-20, `Faktura`: w-20). Natijada barcha 8 ta ustun 100% ekranga to'liq sig'di va hech qanday gorizontal skroll talab etilmaydi.
+  - "Faktura" tugmasi ixcham, zamonaviy va chiroyli dizaynga keltirildi.
+  - "JAMI HISOB-KITOB" bloki `tfoot` ichidan chiqarilib, kartochkaning butun kengligini egallaydigan, doimiy ko'rinib turuvchi (persistent full-width footer) zamonaviy status-bar ko'rinishiga o'tkazildi.
+  - Agar chegirma bo'lmasa, takrorlanuvchi "Asosiy" summasi yashirilib, faqat yakuniy "Jami Summa" ko'rsatiladi; chegirma mavjud bo'lsa, asl summa, chegirma va yakuniy summa chiroyli ko'rsatiladi.
+- **Qaytalamaslik choralari:** Jadvallarda jami hisob-kitoblar uchun `tfoot` ichiga sig'dira olmaslik va jadvalni kengaytirib yuborishdan saqlaning; jami ko'rsatkichlarni jadval konteynerining to'liq eniga mos pastki panelda joylashtiring.
+
+
 ### 💾 Davolash Rejalari (Treatment Plans): Tafsilot Modalida "Rejani Tahrirlash" O'rniga "Saqlash" Tugmasi O'rnatildi
 - **Sana:** 2026-08-31
 - **Tuzatilgan Fayllar:**
