@@ -2106,83 +2106,118 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     })()}
                   </div>
 
-                  {/* Bottom Sticky Bar */}
-                  <div 
-                    className="p-4 border-t border-slate-150 bg-white flex flex-col gap-3 shrink-0 shadow-lg sticky bottom-0 z-50 rounded-b-[2.5rem]"
+
+                  {/* ── BOTTOM STICKY BAR ── */}
+                  <div
+                    className="shrink-0 bg-white border-t border-slate-100 px-4 pt-3 pb-4 space-y-3 shadow-[0_-8px_24px_rgba(0,0,0,0.08)]"
                     style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
                   >
-                    {/* Chegirma tanlash (Mobile) */}
-                    <div className="flex items-center gap-1.5 flex-wrap px-1 pb-2 border-b border-slate-100">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider mr-1">Chegirma:</span>
-                      {[0,10,20,30].map(val => (
-                        <button key={val} type="button" onClick={() => { handleApplyDiscount(val); setShowCustomDiscount(false); setCustomDiscountAmount(''); }}
-                          className={cn("px-2 py-0.5 rounded text-[9px] font-black transition-all border-none cursor-pointer",
-                            discountPercent === val && !showCustomDiscount ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                          )}>
-                          {val === 0 ? t('patients.wizard.noDiscount') : `${val}%`}
+                    {/* Discount row */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider shrink-0">Chegirma:</span>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {[0, 10, 20, 30].map(val => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => { handleApplyDiscount(val); setShowCustomDiscount(false); setCustomDiscountAmount(''); }}
+                            className={cn(
+                              "px-3 py-1.5 rounded-xl text-[11px] font-black transition-all border cursor-pointer",
+                              discountPercent === val && !showCustomDiscount
+                                ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-200"
+                                : "bg-slate-100 border-slate-100 text-slate-500"
+                            )}
+                          >
+                            {val === 0 ? "Yo'q" : `${val}%`}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setShowCustomDiscount(!showCustomDiscount)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-[11px] font-black transition-all border cursor-pointer",
+                            showCustomDiscount
+                              ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
+                              : "bg-slate-100 border-slate-100 text-slate-500"
+                          )}
+                        >
+                          Boshqa
                         </button>
-                      ))}
-                      <button type="button" onClick={() => setShowCustomDiscount(!showCustomDiscount)}
-                        className={cn("px-2 py-0.5 rounded text-[9px] font-black transition-all border-none cursor-pointer",
-                          showCustomDiscount ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200")}>
-                        Boshqa
-                      </button>
-                      {showCustomDiscount && (
-                        <div className="flex gap-1 ml-1">
-                          <input type="text" inputMode="numeric" value={customDiscountAmount}
-                            onChange={e => setCustomDiscountAmount(e.target.value.replace(/\D/g,''))}
-                            placeholder="%" className="w-12 h-6 rounded border border-slate-200 text-center text-[10px] font-bold outline-none" />
-                          <button type="button" onClick={() => { const v=parseInt(customDiscountAmount); if(v>=0&&v<=100){handleApplyDiscount(v);setShowCustomDiscount(false);}}}
-                            className="h-6 px-2 rounded bg-slate-900 text-white text-[9px] font-black border-none cursor-pointer">OK</button>
-                        </div>
-                      )}
+                        {showCustomDiscount && (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={customDiscountAmount}
+                              onChange={e => setCustomDiscountAmount(e.target.value.replace(/\D/g, ''))}
+                              placeholder="%"
+                              className="w-14 h-8 rounded-xl border border-slate-200 text-center text-sm font-black outline-none focus:border-blue-400"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => { const v = parseInt(customDiscountAmount); if (v >= 0 && v <= 100) { handleApplyDiscount(v); setShowCustomDiscount(false); } }}
+                              className="h-8 px-3 rounded-xl bg-slate-900 text-white text-[11px] font-black border-none cursor-pointer"
+                            >
+                              OK
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex justify-between items-end px-1">
-                      <div className="flex flex-col text-left">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
-                          {t('patients.wizard.planTreatmentsCount', { count: allSelectedServices.length })}
-                        </span>
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="text-lg font-black text-slate-900 leading-none tabular-nums">
-                            {Math.floor(grandTotal * (1 - discountPercent/100)).toLocaleString()}
+                    {/* Summary + Action */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <p className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider leading-none mb-0.5">
+                          {t('patients.wizard.planTreatmentsCount', { count: allSelectedServices.length })} · Jami
+                        </p>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-xl font-black text-slate-900 leading-none tabular-nums">
+                            {Math.floor(grandTotal * (1 - discountPercent / 100)).toLocaleString()}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-bold">{t('common.currency')}</span>
+                          <span className="text-[11px] text-slate-400 font-bold">so'm</span>
                           {discountPercent > 0 && (
-                            <span className="text-[10px] text-slate-400 line-through ml-1.5 font-medium tabular-nums">
+                            <span className="text-[10px] text-slate-400 line-through font-medium tabular-nums">
                               {grandTotal.toLocaleString()}
                             </span>
                           )}
                         </div>
-                      </div>
-                      
-                      {discountPercent > 0 && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] font-bold text-slate-400 uppercase">Chegirma: </span>
-                          <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
-                            {discountPercent}%
+                        {discountPercent > 0 && (
+                          <span className="text-[10px] font-black text-emerald-600">
+                            {discountPercent}% chegirma — -{Math.floor(grandTotal * discountPercent / 100).toLocaleString()} so'm
                           </span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" onClick={() => setStep(1)} className="h-12 rounded-xl font-bold px-4 shrink-0">
-                        <ArrowLeft className="w-4 h-4" />
-                      </Button>
-                      <button
-                        type="button"
-                        onClick={handleSavePlan}
-                        disabled={saving || allSelectedServices.length === 0}
-                        className="flex-grow h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase text-xs tracking-wider rounded-xl shadow-md border-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.98] transition-all"
-                      >
-                        {saving ? t('common.saving') : t('patients.wizard.saveAndFinish')}
-                      </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setStep(1)}
+                          className="w-11 h-11 rounded-xl border border-slate-200 bg-white flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
+                        >
+                          <ArrowLeft className="w-4 h-4 text-slate-600" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSavePlan}
+                          disabled={saving || allSelectedServices.length === 0}
+                          className={cn(
+                            "h-11 px-5 rounded-xl font-black text-xs tracking-wider border-none flex items-center justify-center gap-2 cursor-pointer transition-all",
+                            allSelectedServices.length > 0
+                              ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 active:scale-[0.98]"
+                              : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                          )}
+                        >
+                          {saving
+                            ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                            : t('patients.wizard.saveAndFinish')}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Bottom Navigation buttons (Desktop) */}
+
                 <div className="hidden md:flex flex-shrink-0 flex-col gap-3 p-4 sm:p-5 border-t bg-white z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe-offset-4 w-full rounded-b-[2.5rem]">
                   {savingError && (
                     <div className="bg-rose-50 border border-rose-100 rounded-2xl p-3 text-xs font-bold text-rose-600 w-full flex items-start gap-2 shadow-inner">

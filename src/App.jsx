@@ -44,7 +44,8 @@ const Register            = lazy(() => import('./pages/Register'));
 
 // Clinical pages
 const MobilePatientsV2    = lazy(() => import('./pages/MobilePatientsV2'));
-const PatientProfile      = lazy(() => import('./pages/PatientProfile'));
+const PatientProfile         = lazy(() => import('./pages/PatientProfile'));
+const MobilePatientProfile   = lazy(() => import('./pages/MobilePatientProfile'));
 const MobileAppointmentsV2 = lazy(() => import('./pages/MobileAppointmentsV2'));
 const MobileLeadsV6       = lazy(() => import('./pages/MobileLeadsV6'));
 const Payments            = lazy(() => import('./pages/Payments'));
@@ -197,7 +198,7 @@ const AuthenticatedApp = memo(() => {
               <Route path="/technicians"
                 element={<PlanRoute feature="technicians"><Technicians /></PlanRoute>} />
               <Route path="/patients"          element={M(<Patients />, <MobilePatientsV2 />)} />
-              <Route path="/patients/:id"      element={<PatientProfile />} />
+              <Route path="/patients/:id"      element={M(<PatientProfile />, <MobilePatientProfile />)} />
               <Route path="/appointments"      element={M(<Appointments />, <MobileAppointmentsV2 />)} />
               <Route path="/leads"             element={M(<Leads />, <MobileLeadsV6 />)} />
               <Route path="/payments"          element={M(<Payments />, <MobilePaymentsV2 />)} />

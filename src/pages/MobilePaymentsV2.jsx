@@ -18,6 +18,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
 import PatientSelect from '@/components/patients/PatientSelect';
 import { useTranslation } from '@/i18n/LanguageContext';
+import PullToRefresh from '@/components/ui/PullToRefresh';
 
 const CATEGORY_TRANSLATIONS = {
   'treatment': 'Davolash',
