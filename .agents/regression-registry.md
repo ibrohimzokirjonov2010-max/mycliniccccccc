@@ -13,6 +13,26 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🧾 Hisob-Faktura: "Jami xarajat" o'rniga Chegirmasiz narx, Chegirmali narx va Jami to'langan kiritildi
+- **Sana:** 2026-09-03
+- **Tuzatilgan Fayllar:**
+  - [`src/components/patients/ExcelPaymentsView.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/patients/ExcelPaymentsView.jsx)
+  - [`src/pages/Payments.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/pages/Payments.jsx)
+  - [`src/components/treatments/TreatmentPlanModal.jsx`](file:///c:/Users/aveks/Desktop/app%20shahobidin%204/src/components/treatments/TreatmentPlanModal.jsx)
+- **Muammo Tavsifi:** 
+  - Hisob-faktura chop etilganda (kvitansiya yoki hisob-faktura PDF/print oynasida) "DAVOLASHLAR RO'YXATI" jadvalining ostida faqat bitta "Jami xarajat" qatori chiqib, chegirmasiz summa, chegirma va to'langan summalar ketma-ketligi aniq ko'rsatilmagan edi.
+- **Sababi:** 
+  - `ExcelPaymentsView.jsx` va `Payments.jsx` dagi `handlePrintReceipt` funksiyalarida faqat `totalExpense` hisoblanib, jadval ostida bitta `total-expense-row` render qilinayotgan edi.
+- **Qanday tuzatildi:** 
+  - `rawTotal` (Davolash rejasining chegirmasiz narxi), `totalDiscountAmount`, `discountedTotal` (Chegirmali narxi), `totalPaidSum` (Jami to'langan) va `finalDebt` (Qoldiq qarzdorlik) to'liq hisoblandi.
+  - "DAVOLASHLAR RO'YXATI" jadvali ostidagi qatorlar so'ralgan tartibda 4 qatorli professional moliyaviy blok qilib yangilandi:
+    1. Davolash rejasining chegirmasiz narxi
+    2. Chegirmali narxi (agar chegirma bo'lsa nishoni bilan)
+    3. Jami to'langan
+    4. Qoldiq qarzdorlik
+- **Qaytalamaslik choralari:** Hisob-fakturalarni chop etishda har doim barcha 4 ta moliyaviy bosqich (chegirmasiz, chegirmali, to'langan va qarz) to'liq ko'rsatilishini ta'minlang.
+
+
 ### 🦷 Bemor Profili (Implantlar): Jadval Ustunlari Ixchamlashtirildi, Jarroh, Holati va Pasport Ustunlari Bitta Ekranga Sig'dirildi
 - **Sana:** 2026-09-03
 - **Tuzatilgan Fayllar:**

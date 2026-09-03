@@ -252,7 +252,35 @@ function ExcelPaymentsView({
       });
     }
 
-    const totalExpense = allServices.reduce((sum, s) => sum + (s.price || 0), 0) || Number(p.amount || 0);
+    const rawTotal = allServices.reduce((sum, s) => sum + (Number(s.price) || 0), 0) || Number(p.amount || 0);
+
+    // Calculate total discount across plans or payment
+    let totalDiscountAmount = 0;
+    (plans || []).forEach(pl => {
+      let pDisc = Number(pl.discount_amount || 0);
+      if (!pDisc && Number(pl.discount_percent) > 0) {
+        const planServicesRaw = (pl.services || []).reduce((s, x) => s + Number(x.price || x.cost || 0), 0);
+        const raw = planServicesRaw > 0 ? planServicesRaw : Number(pl.total_price || 0);
+        pDisc = Math.floor(raw * (Number(pl.discount_percent) / 100));
+      } else if (!pDisc && Number(pl.total_price) > 0) {
+        const planServicesRaw = (pl.services || []).reduce((s, x) => s + Number(x.price || x.cost || 0), 0);
+        if (planServicesRaw > Number(pl.total_price)) {
+          pDisc = planServicesRaw - Number(pl.total_price);
+        }
+      }
+      totalDiscountAmount += Math.max(0, pDisc);
+    });
+
+    if (totalDiscountAmount === 0 && p.discount_amount) {
+      totalDiscountAmount = Number(p.discount_amount || 0);
+    }
+
+    const discountPayments = (payments || []).filter(item => item.type?.toLowerCase() === 'discount');
+    if (totalDiscountAmount === 0 && discountPayments.length > 0) {
+      totalDiscountAmount = discountPayments.reduce((s, d) => s + Math.abs(Number(d.amount) || 0), 0);
+    }
+
+    const discountedTotal = Math.max(0, rawTotal - totalDiscountAmount);
 
     // Payments list
     let validPayments = (payments || []).filter(item => item.type?.toLowerCase() === 'income' || !item.type);
@@ -260,7 +288,7 @@ function ExcelPaymentsView({
       validPayments = [p];
     }
     const totalPaidSum = validPayments.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) || Number(p.amount || 0);
-    const finalDebt = Math.max(0, totalExpense - totalPaidSum);
+    const finalDebt = Math.max(0, discountedTotal - totalPaidSum);
 
     const win = window.open('', '_blank');
     if (!win) return;
@@ -416,6 +444,51 @@ function ExcelPaymentsView({
             padding-top: 11px;
             font-size: 13px;
           }
+          .raw-total-row td {
+            font-weight: 700;
+            border-top: 1.5px solid #cbd5e1;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+            font-size: 12px;
+            color: #334155;
+            padding: 8px 10px;
+          }
+          .discounted-total-row td {
+            font-weight: 900;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f1f5f9;
+            font-size: 12.5px;
+            color: #0f172a;
+            padding: 8px 10px;
+          }
+          .paid-summary-row td {
+            background: #dcfce7 !important;
+            color: #166534 !important;
+            font-weight: 900 !important;
+            font-size: 12.5px !important;
+            border: none !important;
+            padding: 8px 10px !important;
+          }
+          .debt-summary-row td {
+            background: #ffe4e6 !important;
+            color: #9f1239 !important;
+            font-weight: 900 !important;
+            font-size: 12.5px !important;
+            border: none !important;
+            padding: 8px 10px !important;
+          }
+          .discount-badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 800;
+            color: #047857;
+            background: #d1fae5;
+            border: 1px solid #a7f3d0;
+            padding: 1px 5px;
+            border-radius: 4px;
+            margin-left: 6px;
+          }
           .paid-total-row td {
             background: #dcfce7 !important;
             color: #166534 !important;
@@ -528,9 +601,28 @@ function ExcelPaymentsView({
                 <td class="text-right font-bold">${Number(s.price || 0).toLocaleString()} so'm</td>
               </tr>
             `).join('')}
-            <tr class="total-expense-row">
-              <td colspan="4">Jami xarajat</td>
-              <td class="text-right font-black">${totalExpense.toLocaleString()} so'm</td>
+            <tr class="raw-total-row">
+              <td colspan="4">Davolash rejasining chegirmasiz narxi</td>
+              <td class="text-right font-bold">${rawTotal.toLocaleString()} so'm</td>
+            </tr>
+            <tr class="discounted-total-row">
+              <td colspan="4">
+                Chegirmali narxi
+                ${totalDiscountAmount > 0 ? `<span class="discount-badge">-${totalDiscountAmount.toLocaleString()} so'm</span>` : ''}
+              </td>
+              <td class="text-right font-black">${discountedTotal.toLocaleString()} so'm</td>
+            </tr>
+            <tr class="paid-summary-row">
+              <td colspan="4">Jami to'langan</td>
+              <td class="text-right font-black">${totalPaidSum.toLocaleString()} so'm</td>
+            </tr>
+            <tr class="${finalDebt > 0 ? 'debt-summary-row' : ''}">
+              <td colspan="4" style="font-weight:900; ${finalDebt > 0 ? '' : 'color:#166534; background:#f0fdf4;'}">
+                ${finalDebt > 0 ? 'Qoldiq qarzdorlik' : "Qarz yo'q (To'liq to'langan)"}
+              </td>
+              <td class="text-right font-black" style="${finalDebt > 0 ? '' : 'color:#166534; background:#f0fdf4;'}">
+                ${finalDebt.toLocaleString()} so'm
+              </td>
             </tr>
           </tbody>
         </table>

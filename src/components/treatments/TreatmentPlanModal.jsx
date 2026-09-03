@@ -1588,9 +1588,46 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                                     </tr>
                                                 ));
                                             })}
-                                            <tr className="border-t-[1.5px] border-slate-300 font-black">
-                                                <td colSpan="4" className="py-3 px-3 text-sm text-slate-900">Jami xarajat</td>
-                                                <td className="py-3 px-3 text-right text-sm text-slate-900 font-black">{rawTotal.toLocaleString()} so'm</td>
+                                            <tr className="border-t-[1.5px] border-slate-300 bg-slate-50/70">
+                                                <td colSpan="4" className="py-2.5 px-3 text-xs font-bold text-slate-700">
+                                                    {language === 'ru' ? 'Стоимость плана лечения без скидки' : language === 'en' ? 'Treatment plan price without discount' : 'Davolash rejasining chegirmasiz narxi'}
+                                                </td>
+                                                <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-900 font-mono">
+                                                    {rawTotal.toLocaleString()} so'm
+                                                </td>
+                                            </tr>
+                                            <tr className="border-t border-slate-200 bg-slate-50/90 font-black">
+                                                <td colSpan="4" className="py-2.5 px-3 text-xs font-black text-slate-900">
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{language === 'ru' ? 'Стоимость со скидкой' : language === 'en' ? 'Discounted price' : 'Chegirmali narxi'}</span>
+                                                        {discount > 0 && (
+                                                            <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100/80 border border-emerald-300 px-1.5 py-0.5 rounded">
+                                                                -{discount}% ({Math.floor(rawTotal * (discount / 100)).toLocaleString()} so'm)
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="py-2.5 px-3 text-right text-xs font-black text-slate-900 font-mono">
+                                                    {finalTotal.toLocaleString()} so'm
+                                                </td>
+                                            </tr>
+                                            <tr className="border-t border-slate-200 bg-[#dcfce7] text-[#166534] font-black">
+                                                <td colSpan="4" className="py-2.5 px-3 text-xs font-black text-[#166534]">
+                                                    {language === 'ru' ? 'Всего оплачено' : language === 'en' ? 'Total Paid' : "Jami to'langan"}
+                                                </td>
+                                                <td className="py-2.5 px-3 text-right text-xs font-black text-[#166534] font-mono">
+                                                    {((isInstallment && Number(installmentAdvance) > 0) ? Number(installmentAdvance) : 0).toLocaleString()} so'm
+                                                </td>
+                                            </tr>
+                                            <tr className={`border-t border-slate-200 font-black ${((isInstallment && Number(installmentAdvance) > 0) ? Math.max(0, finalTotal - Number(installmentAdvance)) : finalTotal) > 0 ? "bg-[#ffe4e6] text-[#9f1239]" : "bg-emerald-50/60 text-emerald-800"}`}>
+                                                <td colSpan="4" className={`py-2.5 px-3 text-xs font-black ${((isInstallment && Number(installmentAdvance) > 0) ? Math.max(0, finalTotal - Number(installmentAdvance)) : finalTotal) > 0 ? 'text-[#9f1239]' : 'text-emerald-800'}`}>
+                                                    {((isInstallment && Number(installmentAdvance) > 0) ? Math.max(0, finalTotal - Number(installmentAdvance)) : finalTotal) > 0 
+                                                        ? (language === 'ru' ? 'Остаток задолженности' : language === 'en' ? 'Remaining debt' : "Qoldiq qarzdorlik") 
+                                                        : (language === 'ru' ? 'Задолженность отсутствует' : language === 'en' ? 'No debt' : "Qarz yo'q (To'liq to'langan)")}
+                                                </td>
+                                                <td className={`py-2.5 px-3 text-right text-xs font-black font-mono ${((isInstallment && Number(installmentAdvance) > 0) ? Math.max(0, finalTotal - Number(installmentAdvance)) : finalTotal) > 0 ? 'text-[#9f1239]' : 'text-emerald-800'}`}>
+                                                    {((isInstallment && Number(installmentAdvance) > 0) ? Math.max(0, finalTotal - Number(installmentAdvance)) : finalTotal).toLocaleString()} so'm
+                                                </td>
                                             </tr>
                                         </tbody>
                                     </table>
