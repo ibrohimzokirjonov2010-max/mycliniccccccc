@@ -236,7 +236,8 @@ export default function NativeMobileLayout({ children }) {
       className="fixed inset-0 w-full h-full bg-[#F8FAFC] overflow-hidden"
       style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, width: '100%', height: '100dvh' }}
     >
-      {/* iOS-style Premium Header */}
+      {/* iOS-style Premium Header — hidden on patient profile (owns a full-bleed teal header) */}
+      {!isPatientProfile && (
       <header 
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           isScrolled 
@@ -300,6 +301,7 @@ export default function NativeMobileLayout({ children }) {
           </div>
         </div>
       </header>
+      )}
  
       {/* Global Notifications Panel */}
       <NotificationPanel 
@@ -314,13 +316,17 @@ export default function NativeMobileLayout({ children }) {
         style={{ 
           WebkitOverflowScrolling: 'touch',
           overscrollBehavior: 'contain',
-          paddingTop: 'calc(3.5rem + max(env(safe-area-inset-top, 12px), 12px))',
+          paddingTop: isPatientProfile
+            ? 0
+            : 'calc(3.5rem + max(env(safe-area-inset-top, 12px), 12px))',
           paddingBottom: 'calc(54px + env(safe-area-inset-bottom, 0px))'
         }}
       >
+        {!isPatientProfile && (
         <div className="px-5 mt-4">
           <SubscriptionBanner />
         </div>
+        )}
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
@@ -339,7 +345,9 @@ export default function NativeMobileLayout({ children }) {
         </AnimatePresence>
 
         {/* Universal scroll spacer */}
+        {!isPatientProfile && (
         <div className="h-10 w-full pointer-events-none shrink-0" aria-hidden="true" />
+        )}
       </main>
 
       {/* iOS-style Native Bottom Navigation Bar */}
