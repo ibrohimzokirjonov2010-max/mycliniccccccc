@@ -7,12 +7,30 @@ import {
   LIFECYCLE_COLORS,
 } from './ClinicalStepper';
 
-const safeRender = (val, fallback = 'вЂ”') => {
+const EM = '\u2014'; // —
+const DIA = '\u00D8'; // Ø
+const MUL = '\u00D7'; // ×
+
+const safeRender = (val, fallback = EM) => {
   if (val == null || val === '') return fallback;
   if (typeof val === 'string' || typeof val === 'number') return val;
-  if (typeof val === 'object') return val.label || val.name || val.title || 'вЂ”';
+  if (typeof val === 'object') return val.label || val.name || val.title || EM;
   return String(val);
 };
+
+/** Format implant size with proper UTF-8 diameter/multiply symbols */
+export function formatImplantSize(diameter, length, { withUnits = false, compact = false } = {}) {
+  const d = diameter != null && diameter !== '' ? String(diameter) : null;
+  const l = length != null && length !== '' ? String(length) : null;
+  if (!d && !l) return null;
+  if (withUnits) {
+    return `${DIA} ${d || EM} mm ${MUL} L ${l || EM} mm`;
+  }
+  if (compact) {
+    return `${DIA}${d || EM}${MUL}${l || EM}`;
+  }
+  return `${DIA}${d || EM}${MUL}${l || EM}`;
+}
 
 export function toothIdToFdi(id) {
   if (!id) return id;
@@ -35,13 +53,14 @@ const LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
 /** Compact FDI arch highlighting active implant teeth */
 export function MiniFdiChart({ activeFdis = [], className }) {
   const set = new Set(activeFdis.map(String));
+  const primary = activeFdis.length ? String(activeFdis[0]) : null;
   const Tooth = ({ n }) => {
     const on = set.has(String(n));
     return (
       <div
         title={`#${n}`}
         className={cn(
-          'w-4 h-5 sm:w-[18px] sm:h-6 rounded-sm text-[8px] font-black flex items-center justify-center border',
+          'w-4 h-5 sm:w-[18px] sm:h-6 rounded-sm text-[8px] font-black flex items-center justify-center border transition-colors',
           on
             ? 'bg-teal-600 text-white border-teal-700 shadow-sm'
             : 'bg-slate-100 text-slate-400 border-slate-200'
@@ -58,8 +77,14 @@ export function MiniFdiChart({ activeFdis = [], className }) {
       <div className="h-px bg-slate-200 mx-4" />
       <div className="flex justify-center gap-0.5 flex-wrap">{LOWER.map((n) => <Tooth key={n} n={n} />)}</div>
       <div className="flex items-center justify-center gap-3 pt-1 text-[10px] font-bold text-slate-500">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-600" /> Implant</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-300" /> Tabiiy / yo&apos;q</span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-teal-600" />
+          Implant joylashgan{primary ? ` (#${primary})` : ''}
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-slate-300" />
+          Tabiiy tish / Yo&apos;q
+        </span>
       </div>
     </div>
   );
@@ -84,7 +109,7 @@ export function ImplantSwitcher({
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-1.5">
         {[
-          { label: language === 'ru' ? 'РёРјРїР»Р°РЅС‚' : 'implant', val: counts.total },
+          { label: language === 'ru' ? 'имплант' : 'implant', val: counts.total },
           { label: 'integratsiya', val: counts.healing },
           { label: 'protez', val: counts.crown },
         ].map((c) => (
@@ -97,15 +122,12 @@ export function ImplantSwitcher({
 
       <div className="space-y-2 max-h-[520px] overflow-y-auto pr-0.5">
         {implants.map((imp) => {
-          const fdi = getToothFdiList(imp)[0] || 'вЂ”';
+          const fdi = getToothFdiList(imp)[0] || EM;
           const display = normalizeLifecycleStatus(imp.lifecycle_status || imp.status);
           const short = SHORT_STATUS_LABEL[display] || display;
           const selected = imp.id === selectedId;
-          const brand = (imp.firma === 'Boshqa' ? imp.firma_custom : imp.firma) || imp.brend || 'вЂ”';
-          const size =
-            imp.diameter || imp.length
-              ? `Г${imp.diameter || 'вЂ”'}Г—${imp.length || 'вЂ”'}`
-              : '';
+          const brand = (imp.firma === 'Boshqa' ? imp.firma_custom : imp.firma) || imp.brend || EM;
+          const size = formatImplantSize(imp.diameter, imp.length, { compact: true }) || '';
 
           return (
             <button
@@ -129,7 +151,7 @@ export function ImplantSwitcher({
                   </div>
                   <div className="min-w-0">
                     <div className="text-xs font-black text-slate-900 truncate">{brand}</div>
-                    <div className="text-[10px] font-mono font-bold text-slate-500">{size || 'вЂ”'}</div>
+                    <div className="text-[10px] font-mono font-bold text-slate-500">{size || EM}</div>
                   </div>
                 </div>
                 <span className={cn(
@@ -152,17 +174,23 @@ export function PassportSpecsCard({ implant, language = 'uz' }) {
   const diameter = implant?.diameter;
   const length = implant?.length;
   const sizeText =
-    diameter || length
-      ? `Г ${diameter || 'вЂ”'} mm Г— L ${length || 'вЂ”'} mm`
-      : language === 'ru' ? 'Р Р°Р·РјРµСЂ РЅРµ СѓРєР°Р·Р°РЅ' : "O'lcham kiritilmagan";
+    formatImplantSize(diameter, length, { withUnits: true })
+    || (language === 'ru' ? 'Размер не указан' : "O'lcham kiritilmagan");
+
+  const torqueVal = implant?.torque != null && implant?.torque !== ''
+    ? `${implant.torque} Ncm`
+    : EM;
+  const isqVal = implant?.isq != null && implant?.isq !== ''
+    ? String(implant.isq)
+    : EM;
 
   const fields = [
-    { label: 'LOT / Seria', value: implant?.lot_number || 'вЂ”', mono: true, accent: !!implant?.lot_number },
-    { label: 'Torque', value: implant?.torque ? `${implant.torque} Ncm` : 'вЂ”' },
-    { label: 'ISQ', value: implant?.isq ? String(implant.isq) : 'вЂ”' },
-    { label: language === 'ru' ? 'РљРѕСЃС‚СЊ' : 'Suyak turi', value: safeRender(implant?.bone_type) },
-    { label: language === 'ru' ? 'Р”Р°С‚Р°' : 'Joylash sanasi', value: safeRender(implant?.placement_date) },
-    { label: language === 'ru' ? 'РҐРёСЂСѓСЂРі' : 'Jarroh', value: safeRender(implant?.doctor) },
+    { label: 'LOT / Seria', value: implant?.lot_number || EM, mono: true, accent: !!implant?.lot_number },
+    { label: 'Torque', value: torqueVal },
+    { label: 'ISQ (Istabilnost)', value: isqVal },
+    { label: language === 'ru' ? 'Кость' : 'Suyak turi', value: safeRender(implant?.bone_type) },
+    { label: language === 'ru' ? 'Дата' : 'Joylash sanasi', value: safeRender(implant?.placement_date) },
+    { label: language === 'ru' ? 'Хирург' : 'Jarroh', value: safeRender(implant?.doctor) },
   ];
 
   const protocol = implant?.loading_protocol || implant?.protocol || null;
@@ -174,7 +202,7 @@ export function PassportSpecsCard({ implant, language = 'uz' }) {
           <ImplantIcon className="w-4 h-4" />
         </div>
         <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">
-          {language === 'ru' ? 'РљР»РёРЅРёС‡РµСЃРєРёР№ РїР°СЃРїРѕСЂС‚' : 'Klinik pasport'}
+          {language === 'ru' ? 'Клинический паспорт' : 'Klinik pasport'}
         </h3>
       </div>
 
@@ -209,18 +237,17 @@ export function PassportSpecsCard({ implant, language = 'uz' }) {
 }
 
 const MEDIA_LABELS = [
-  { key: 'preop', uz: 'Pre-op', ru: 'Р”Рѕ РѕРїРµСЂР°С†РёРё' },
-  { key: 'postop', uz: 'Post-op', ru: 'РџРѕСЃР»Рµ РѕРїРµСЂР°С†РёРё' },
-  { key: 'healing', uz: 'Healing', ru: 'Р—Р°Р¶РёРІР»РµРЅРёРµ' },
-  { key: 'final', uz: 'Final', ru: 'Р¤РёРЅР°Р»' },
+  { key: 'preop', uz: 'Pre-op', ru: 'До операции' },
+  { key: 'postop', uz: 'Post-op', ru: 'После операции' },
+  { key: 'healing', uz: 'Healing', ru: 'Заживление' },
+  { key: 'final', uz: 'Final', ru: 'Финал' },
 ];
 
-/** Stage-tagged media rail вЂ” labels existing xray_urls / passport_url slots */
+/** Stage-tagged media rail — labels existing xray_urls / passport_url slots */
 export function StageMediaRail({ implant, language = 'uz', onZoom, onOpenPassport }) {
   const xrays = Array.isArray(implant?.xray_urls) ? implant.xray_urls : [];
   const slots = MEDIA_LABELS.map((lab, idx) => {
     let url = xrays[idx] || null;
-    // Prefer passport sticker for Final if present
     if (idx === 3 && implant?.passport_url) url = implant.passport_url;
     return { ...lab, url };
   });
@@ -232,7 +259,7 @@ export function StageMediaRail({ implant, language = 'uz', onZoom, onOpenPasspor
           <Camera className="w-4 h-4" />
         </div>
         <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">
-          {language === 'ru' ? 'Р­С‚Р°РїРЅС‹Рµ СЃРЅРёРјРєРё' : 'Bosqich rasm va yozuvlar'}
+          {language === 'ru' ? 'Этапные снимки' : 'Bosqich rasm va yozuvlar'}
         </h3>
       </div>
 
@@ -268,7 +295,7 @@ export function StageMediaRail({ implant, language = 'uz', onZoom, onOpenPasspor
       <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
           <FileText className="w-3.5 h-3.5" />
-          <span>{language === 'ru' ? 'РџР°СЃРїРѕСЂС‚ СЃС‚РёРєРµСЂ (PDF)' : 'Pasport stikeri (PDF)'}</span>
+          <span>{language === 'ru' ? 'Паспорт стикер (PDF)' : 'Pasport stikeri (PDF)'}</span>
         </div>
         <button
           type="button"
@@ -276,7 +303,7 @@ export function StageMediaRail({ implant, language = 'uz', onZoom, onOpenPasspor
           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black bg-slate-900 text-white hover:bg-slate-800 cursor-pointer"
         >
           <Download className="w-3 h-3" />
-          {language === 'ru' ? 'РЎРєР°С‡Р°С‚СЊ' : "Ko'rish / Yuklab olish"}
+          {language === 'ru' ? 'Скачать' : "Ko'rish / Yuklab olish"}
         </button>
       </div>
     </div>
@@ -296,7 +323,7 @@ export function ClinicalTimeline({ implant, language = 'uz' }) {
             implant.torque ? `Torque: ${implant.torque} Ncm` : null,
             implant.isq ? `ISQ: ${implant.isq}` : null,
             implant.doctor ? `Jarroh: ${implant.doctor}` : null,
-          ].filter(Boolean).join(' | ') || (language === 'ru' ? 'РРјРїР»Р°РЅС‚ СѓСЃС‚Р°РЅРѕРІР»РµРЅ' : 'Implant joylandi'),
+          ].filter(Boolean).join(' | ') || (language === 'ru' ? 'Имплант установлен' : 'Implant joylandi'),
         }]
       : []);
 
@@ -307,7 +334,7 @@ export function ClinicalTimeline({ implant, language = 'uz' }) {
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 h-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">
-          {language === 'ru' ? 'РСЃС‚РѕСЂРёСЏ РєР»РёРЅРёС‡РµСЃРєРёС… СЌС‚Р°РїРѕРІ' : 'Klinik bosqichlar tarixi'}
+          {language === 'ru' ? 'История клинических этапов' : 'Klinik bosqichlar tarixi'}
         </h3>
         {done && (
           <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -318,7 +345,7 @@ export function ClinicalTimeline({ implant, language = 'uz' }) {
 
       {items.length === 0 ? (
         <p className="text-xs font-bold text-slate-400 py-6 text-center">
-          {language === 'ru' ? 'РСЃС‚РѕСЂРёСЏ РїРѕРєР° РїСѓСЃС‚Р°' : 'Hozircha tarix yoвЂq'}
+          {language === 'ru' ? 'История пока пуста' : "Hozircha tarix yo'q"}
         </p>
       ) : (
         <div className="relative pl-4 space-y-3 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-0.5 before:bg-teal-200">
@@ -327,13 +354,13 @@ export function ClinicalTimeline({ implant, language = 'uz' }) {
               ? (String(item.date).includes('T')
                 ? new Date(item.date).toLocaleDateString('ru-RU')
                 : item.date)
-              : 'вЂ”';
+              : EM;
             return (
               <div key={idx} className="relative flex gap-3">
                 <div className="absolute -left-4 mt-1.5 w-3 h-3 rounded-full bg-teal-600 ring-4 ring-white shrink-0" />
                 <div className="min-w-0 flex-1">
                   <div className="text-[10px] font-mono font-bold text-slate-400">{dateStr}</div>
-                  <div className="text-xs font-black text-slate-900">{item.status || 'вЂ”'}</div>
+                  <div className="text-xs font-black text-slate-900">{item.status || EM}</div>
                   {item.note && <p className="text-[11px] font-semibold text-slate-500 mt-0.5 leading-snug">{item.note}</p>}
                 </div>
               </div>
@@ -358,7 +385,7 @@ export function LinkedServicesCard({
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 sm:p-5 h-full opacity-95">
       <div className="flex items-center justify-between gap-2 mb-3">
         <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
-          {language === 'ru' ? 'РЈСЃР»СѓРіРё (СЃРІСЏР·Р°РЅРЅС‹Рµ)' : "Xizmatlar (bog'langan)"}
+          {language === 'ru' ? 'Услуги (связанные)' : "Xizmatlar (bog'langan)"}
         </h3>
         {onAdd && (
           <button
@@ -379,7 +406,7 @@ export function LinkedServicesCard({
           >
             <div className="min-w-0">
               <div className="font-bold text-slate-700 truncate">{svc.service_name}</div>
-              <div className="text-[10px] text-slate-400 font-mono">#{svc.tooth_number} В· {svc.date || 'вЂ”'}</div>
+              <div className="text-[10px] text-slate-400 font-mono">#{svc.tooth_number} · {svc.date || EM}</div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="font-mono font-bold text-slate-500 text-[11px]">
@@ -387,11 +414,11 @@ export function LinkedServicesCard({
               </span>
               {svc.is_primary ? (
                 onEditPrimary && (
-                  <button type="button" onClick={onEditPrimary} className="text-[10px] text-slate-400 hover:text-teal-600 cursor-pointer">вњЋ</button>
+                  <button type="button" onClick={onEditPrimary} className="text-[10px] text-slate-400 hover:text-teal-600 cursor-pointer">✎</button>
                 )
               ) : (
                 onDelete && (
-                  <button type="button" onClick={() => onDelete(svc.id)} className="text-[10px] text-slate-400 hover:text-rose-600 cursor-pointer">вњ•</button>
+                  <button type="button" onClick={() => onDelete(svc.id)} className="text-[10px] text-slate-400 hover:text-rose-600 cursor-pointer">✕</button>
                 )
               )}
             </div>
@@ -408,4 +435,3 @@ export function LinkedServicesCard({
     </div>
   );
 }
-
