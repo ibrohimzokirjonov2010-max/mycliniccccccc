@@ -1,4 +1,4 @@
-import { useState, useCallback, memo, useMemo, useEffect } from 'react';
+import { useState, useCallback, memo, useMemo, useLayoutEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -704,24 +704,33 @@ function ProfessionalOdontogram({
 }) {
   const { t } = useTranslation();
 
+  const chartBoxRef = useRef(null);
+  const gridRef = useRef(null);
   const [scale, setScale] = useState(1);
 
-  useEffect(() => {
+  // Fit full adult arch (incl. FDI 18/28/38/48) into container without clipping
+  useLayoutEffect(() => {
+    const box = chartBoxRef.current;
+    const grid = gridRef.current;
+    if (!box) return undefined;
     const handleResize = () => {
-      const width = window.innerWidth;
-      const baseWidth = compact ? 490 : 800;
-      const margin = width < 640 ? 24 : 48;
-      if (width < baseWidth + margin) {
-        const calculatedScale = (width - margin) / baseWidth;
-        setScale(Math.max(calculatedScale, 0.6));
-      } else {
-        setScale(1);
-      }
+      const width = box.clientWidth || 0;
+      if (!width) return;
+      const natural = (grid && (grid.scrollWidth || grid.offsetWidth)) || (compact ? 490 : 860);
+      const pad = compact ? 8 : 16;
+      const next = Math.min(1, (width - pad) / natural);
+      setScale(Number.isFinite(next) && next > 0 ? Math.max(next, compact ? 0.4 : 0.55) : 1);
     };
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(handleResize) : null;
+    ro?.observe(box);
+    if (grid) ro?.observe(grid);
     handleResize();
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [compact]);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [compact, patientType, chartView, quadrantFilter, showOcclusal]);
   const upperRight = patientType === 'child' ? CHILD_UPPER_RIGHT : UPPER_RIGHT;
   const upperLeft  = patientType === 'child' ? CHILD_UPPER_LEFT  : UPPER_LEFT;
   const lowerRight = patientType === 'child' ? CHILD_LOWER_RIGHT : LOWER_RIGHT;
@@ -869,9 +878,10 @@ function ProfessionalOdontogram({
 
   return (
     <div
+      ref={chartBoxRef}
       className={cn(
-        "bg-white w-full",
-        !hideHeader && "rounded-xl border border-slate-200/90 overflow-hidden shadow-xs"
+        "bg-white w-full min-w-0",
+        !hideHeader && "rounded-xl border border-slate-200/90 shadow-xs"
       )}
     >
       {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -900,7 +910,7 @@ function ProfessionalOdontogram({
       )}
 
       {/* ── Chart Area ──────────────────────────────────────────────────── */}
-      <div className="pt-3 pb-2 px-2 flex justify-center w-full overflow-hidden">
+      <div className="pt-3 pb-2 px-1 sm:px-2 flex justify-center w-full min-w-0 overflow-x-auto overflow-y-visible no-scrollbar">
         {quadrantFilter === 'Q1' ? (
           <div className="flex flex-col items-center gap-2 p-3 bg-slate-50/70 border border-slate-200 rounded-xl shadow-2xs">
             <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono">Q1 — O'ng Yuqori Jag' (18 - 11)</span>
@@ -931,39 +941,42 @@ function ProfessionalOdontogram({
           </div>
         ) : (
           <div
-            className="grid grid-cols-2 gap-1.5 p-1.5 bg-slate-100/70 rounded-2xl border border-slate-200/80 relative select-none origin-top transition-transform duration-200"
+            ref={gridRef}
+            data-odonto-grid
+            className="grid grid-cols-2 gap-1 p-1 bg-slate-100/70 rounded-2xl border border-slate-200/80 relative select-none origin-top-center transition-transform duration-150"
             style={{ 
-              width: 'fit-content', 
+              width: 'max-content', 
               margin: '0 auto', 
-              minWidth: compact ? 450 : 780,
+              minWidth: compact ? 460 : 860,
               transform: scale < 1 ? `scale(${scale})` : undefined,
-              marginBottom: scale < 1 ? `${-210 * (1 - scale)}px` : undefined
+              transformOrigin: 'top center',
+              marginBottom: scale < 1 ? `${-220 * (1 - scale)}px` : undefined
             }}
           >
             {/* Quadrant 1: Upper Right (teeth 18-11) */}
             {chartView !== 'mandible' && (
-              <div className="flex justify-end items-end pb-2 pr-1.5 pt-1.5 pl-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0">
+              <div className="flex justify-end items-end pb-2 pr-1.5 pt-1.5 pl-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0 overflow-visible">
                 {renderRow(upperRight, true)}
               </div>
             )}
 
             {/* Quadrant 2: Upper Left (teeth 21-28) */}
             {chartView !== 'mandible' && (
-              <div className="flex justify-start items-end pb-2 pl-1.5 pt-1.5 pr-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0">
+              <div className="flex justify-start items-end pb-2 pl-1.5 pt-1.5 pr-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0 overflow-visible">
                 {renderRow(upperLeft, true)}
               </div>
             )}
 
             {/* Quadrant 4: Lower Right (teeth 48-41) */}
             {chartView !== 'maxilla' && (
-              <div className="flex justify-end items-start pt-2 pr-1.5 pb-1.5 pl-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0">
+              <div className="flex justify-end items-start pt-2 pr-1.5 pb-1.5 pl-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0 overflow-visible">
                 {renderRow(lowerRight, false)}
               </div>
             )}
 
             {/* Quadrant 3: Lower Left (teeth 31-38) */}
             {chartView !== 'maxilla' && (
-              <div className="flex justify-start items-start pt-2 pl-1.5 pb-1.5 pr-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0">
+              <div className="flex justify-start items-start pt-2 pl-1.5 pb-1.5 pr-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0 overflow-visible">
                 {renderRow(lowerLeft, false)}
               </div>
             )}
