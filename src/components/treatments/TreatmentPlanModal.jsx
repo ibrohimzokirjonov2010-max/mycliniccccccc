@@ -840,7 +840,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="!p-0 w-[95vw] sm:w-[94vw] md:w-[90vw] max-w-4xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden rounded-[2.5rem] border-0 shadow-2xl bg-white gap-0 !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
+      <DialogContent className="!p-0 w-[95vw] sm:w-[94vw] md:w-[92vw] max-w-6xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden rounded-[2.5rem] border-0 shadow-2xl bg-white gap-0 !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
         
         {/* Gradient Header */}
         <div className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between shrink-0 rounded-t-[2.5rem] text-white no-print">
@@ -960,7 +960,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                     const lowerRight = LOWER_RIGHT;
                     const lowerLeft  = LOWER_LEFT;
 
-                    const ToothBtn = ({ fdi }) => {
+                    const ToothBtn = ({ fdi, large = false }) => {
                       const internalId = fdiToInternal(String(fdi));
                       const isSelected = selectedTeeth.includes(internalId);
                       const isActive   = activeTooth === internalId;
@@ -983,14 +983,17 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                             applySelectableTeeth(next, next.includes(internalId) ? internalId : null);
                           }}
                           className={cn(
-                            "w-6 sm:w-7 md:w-[25px] lg:w-7 h-7 sm:h-8 rounded-lg flex items-center justify-center text-[10px] sm:text-[11px] font-black transition-all cursor-pointer leading-none shrink-0 p-0 border",
+                            "flex items-center justify-center font-black transition-all cursor-pointer leading-none shrink-0 p-0 border",
+                            large
+                              ? "w-9 h-10 lg:w-10 lg:h-11 rounded-xl text-xs lg:text-[13px]"
+                              : "w-6 sm:w-7 md:w-[25px] lg:w-7 h-7 sm:h-8 rounded-lg text-[10px] sm:text-[11px]",
                             isDisabled  ? "bg-slate-100 text-slate-350 border-slate-200 cursor-not-allowed" :
                             isActive    ? "bg-[#1499AD] text-white border-[#1499AD] ring-2 ring-[#1499AD]/30 shadow-md shadow-[#1499AD]/10 scale-105" :
                             isSelected  ? "bg-emerald-500 text-white border-emerald-500 shadow-sm" :
                                           "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                           )}
                         >
-                          <span className="text-[10px] sm:text-[11px] font-black">{fdi}</span>
+                          <span className={cn("font-black", large ? "text-xs lg:text-[13px]" : "text-[10px] sm:text-[11px]")}>{fdi}</span>
                         </button>
                       );
                     };
@@ -1001,13 +1004,14 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                       className="h-full bg-white overflow-hidden flex flex-col"
                     >
                       <div className="hidden md:flex flex-row flex-1 min-h-0 w-full overflow-hidden">
-                        <div className="flex-[0_0_52%] flex flex-col border-r border-slate-100 overflow-hidden bg-white min-h-0">
+                        <div className="flex-[0_0_58%] xl:flex-[0_0_60%] flex flex-col border-r border-slate-100 overflow-hidden bg-white min-h-0">
                           <div className="pl-5 pr-3 py-1.5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
                             <span className="text-[11px] font-bold text-slate-700">{t('odontogram.labelTreatments') || 'Odontogramma'}</span>
                             <span className="text-[10px] font-medium text-slate-500 truncate max-w-[55%]">{t('treatmentPlan.patient') || 'Bemor'}: {patientName}</span>
                           </div>
-                          <div className="flex-1 min-h-0 overflow-y-auto bg-[#fafafa] py-2 px-2.5">
-                            <div className="w-full mx-auto scale-[0.92] origin-top">
+                          <div className="flex-1 min-h-0 overflow-hidden bg-[#fafafa] py-2 px-3 flex flex-col">
+                            <div className="w-full flex-1 min-h-0 overflow-y-auto flex items-start justify-center">
+                              <div className="w-full max-w-full">
                               <ProfessionalOdontogram
                                 selectedTeeth={selectedTeeth}
                                 onChange={() => {}}
@@ -1035,31 +1039,43 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                 hideLegend={true}
                                 hideStats={true}
                               />
+                              </div>
                             </div>
-                            <div className="flex items-center justify-center gap-1 mt-1.5 flex-wrap pb-1">
-                              {upperRight.map(n => <ToothBtn key={n} fdi={n} />)}
-                              <span className="text-slate-300 mx-0.5">|</span>
-                              {upperLeft.map(n => <ToothBtn key={n} fdi={n} />)}
-                              <span className="text-slate-300 mx-1">/</span>
-                              {lowerRight.map(n => <ToothBtn key={n} fdi={n} />)}
-                              <span className="text-slate-300 mx-0.5">|</span>
-                              {lowerLeft.map(n => <ToothBtn key={n} fdi={n} />)}
+                            <div className="shrink-0 mt-2 mb-1 flex flex-col gap-1.5 select-none">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <div className="flex items-center justify-end gap-1 flex-1">
+                                  {upperRight.map(n => <ToothBtn key={n} fdi={n} large />)}
+                                </div>
+                                <div className="w-px h-8 bg-slate-300 shrink-0" />
+                                <div className="flex items-center justify-start gap-1 flex-1">
+                                  {upperLeft.map(n => <ToothBtn key={n} fdi={n} large />)}
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-center gap-1.5">
+                                <div className="flex items-center justify-end gap-1 flex-1">
+                                  {lowerRight.map(n => <ToothBtn key={n} fdi={n} large />)}
+                                </div>
+                                <div className="w-px h-8 bg-slate-300 shrink-0" />
+                                <div className="flex items-center justify-start gap-1 flex-1">
+                                  {lowerLeft.map(n => <ToothBtn key={n} fdi={n} large />)}
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
                         <div className="flex-1 flex flex-col overflow-hidden bg-white min-h-0">
-                            <div className="pl-3 pr-5 py-1.5 border-b border-slate-100 shrink-0">
+                            <div className="pl-3 pr-4 py-1 border-b border-slate-100 shrink-0">
                                 <div className="flex items-center justify-between mb-1">
-                                    <span className="text-[11px] font-bold text-slate-600">{t('odontogram.serviceCatalog') || "Xizmatlar katalogi"}</span>
+                                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">{t('odontogram.serviceCatalog') || "Xizmatlar katalogi"}</span>
                                 </div>
-                                <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-2.5 h-7 border border-slate-100">
+                                <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-2 h-7 border border-slate-100">
                                     <Search className="w-3 h-3 text-slate-300 shrink-0" />
                                     <input type="text" value={serviceSearch} onChange={e => setServiceSearch(e.target.value)}
                                         placeholder="Xizmat qidirish..."
                                         className="flex-1 bg-transparent border-none text-[11px] text-slate-700 placeholder:text-slate-300 outline-none font-medium" />
                                 </div>
                             </div>
-                            <div className="flex-1 overflow-y-auto pl-2 pr-4 pt-1.5 pb-3 space-y-1 min-h-0">
+                            <div className="flex-1 overflow-y-auto pl-2 pr-3 pt-1 pb-2 space-y-0.5 min-h-0">
                                 {(() => {
                                     const allSvcs = (services || []).filter(s => {
                                         const qMatch = !serviceSearch.trim() || (s.name || '').toLowerCase().includes(serviceSearch.trim().toLowerCase());
@@ -1099,20 +1115,20 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
 
                       {/* Sticky selected-services panel (desktop) — always above Orqaga/Keyingi footer */}
                       <div className="hidden md:flex shrink-0 border-t-[3px] border-[#1499AD] bg-white shadow-[0_-4px_16px_rgba(15,23,42,0.06)] z-20">
-                        <div className="flex-1 min-w-0 px-4 py-2.5 flex flex-col gap-1.5 border-r border-slate-100">
-                          <div className="text-[10px] font-black uppercase tracking-widest text-[#1499AD]">
+                        <div className="flex-1 min-w-0 px-4 py-2 flex flex-col border-r border-slate-100 min-h-0">
+                          <div className="text-[10px] font-black uppercase tracking-widest text-[#1499AD] shrink-0 mb-1.5">
                             {t('odontogram.selectedServices') || 'TANLANGAN XIZMATLAR'}
                           </div>
                           {allSelectedServices.length === 0 ? (
-                            <p className="text-[12px] font-medium text-slate-400 py-1">
+                            <p className="text-[12px] font-medium text-slate-400 py-0.5 shrink-0">
                               {t('odontogram.errors.noServiceSelectedYet') || 'Hali xizmat tanlanmagan'}
                             </p>
                           ) : (
-                            <div className="max-h-[88px] overflow-y-auto no-scrollbar space-y-1 pr-1">
+                            <div className="max-h-[7.5rem] overflow-y-auto space-y-1 pr-1 overscroll-contain">
                               {allSelectedServices.map((s, idx) => (
                                 <div
                                   key={s.key || idx}
-                                  className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-1.5"
+                                  className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-1"
                                 >
                                   <span className="w-6 h-6 rounded-md bg-[#1499AD]/10 text-[#1499AD] text-[10px] font-black flex items-center justify-center shrink-0" title={"Tish #" + idToFdi(s.toothId)}>
                                     🦷
@@ -1138,7 +1154,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                             </div>
                           )}
                         </div>
-                        <div className="w-[168px] shrink-0 px-4 py-2.5 flex flex-col items-end justify-center gap-0.5">
+                        <div className="w-[168px] shrink-0 px-4 py-2 flex flex-col items-end justify-center gap-0.5 self-stretch">
                           <span className="text-[10px] font-black uppercase tracking-widest text-[#1499AD]">
                             {t('odontogram.tableHeaders.total') || 'JAMI'}
                           </span>
