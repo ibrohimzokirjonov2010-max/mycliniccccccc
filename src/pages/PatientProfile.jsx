@@ -38,6 +38,7 @@ import ExcelPaymentsView from '../components/patients/ExcelPaymentsView';
 import ExcelNotesView from '../components/patients/ExcelNotesView';
 import ExcelImplantsView from '../components/patients/ExcelImplantsView';
 import ExcelPhotosView from '../components/patients/ExcelPhotosView';
+import ChairsidePatientProfile from '../components/patients/ChairsidePatientProfile';
 import { exportPatientToExcel } from '@/lib/patientExcelExport';
 import AppointmentModal from '../components/appointments/AppointmentModal';
 import PatientModal from '../components/patients/PatientModal';
@@ -364,6 +365,7 @@ export default function PatientProfile() {
   const [subSection, setSubSection] = useState('dental');
   const [toothSearchQuery, setToothSearchQuery] = useState('');
   const [dentalViewMode, setDentalViewMode] = useState('both');
+  const [profileViewMode, setProfileViewMode] = useState('chairside'); // chairside | reyestr
   const [treatmentStatusFilter, setTreatmentStatusFilter] = useState('all'); // 'all', 'completed', 'in_progress', 'planned'
   const [chartView, setChartView] = useState('teeth'); // 'teeth', 'maxilla', 'mandible', 'occlusion'
   const [showOcclusal, setShowOcclusal] = useState(true);
@@ -375,9 +377,9 @@ export default function PatientProfile() {
   const [xraysLoading, setXraysLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Lazy load Appointments
+  // Load Appointments (chairside Bugungi reja + appointments tab)
   useEffect(() => {
-    if (activeTab === 'appointments' && id) {
+    if ((activeTab === 'appointments' || profileViewMode === 'chairside') && id) {
       (async () => {
         try {
           setAppointmentsLoading(true);
@@ -390,7 +392,7 @@ export default function PatientProfile() {
         }
       })();
     }
-  }, [activeTab, id, refreshTrigger]);
+  }, [activeTab, profileViewMode, id, refreshTrigger]);
 
   // Lazy load Payments
   useEffect(() => {
@@ -448,8 +450,10 @@ export default function PatientProfile() {
 
   // Memoized stable properties for ProfessionalOdontogram
   const odontogramSelectedTeeth = useMemo(() => {
-    return chartEditMode && editSelectedTooth ? [editSelectedTooth.id] : [];
-  }, [chartEditMode, editSelectedTooth]);
+    if (chartEditMode && editSelectedTooth) return [editSelectedTooth.id];
+    if (selectedTooth?.id) return [selectedTooth.id];
+    return [];
+  }, [chartEditMode, editSelectedTooth, selectedTooth]);
 
   const odontogramEmptySelectedTeeth = useMemo(() => [], []);
 
@@ -474,9 +478,11 @@ export default function PatientProfile() {
       setEditSelectedTooth({ id: toothId, fdi });
     } else {
       setSelectedTooth({ id: toothId, fdi });
-      setHistoryModalOpen(true);
+      if (profileViewMode === 'reyestr') {
+        setHistoryModalOpen(true);
+      }
     }
-  }, [chartEditMode]);
+  }, [chartEditMode, profileViewMode]);
 
   const handleNotesToothClick = useCallback((toothId) => {
     let fdi = '';
@@ -1441,8 +1447,8 @@ export default function PatientProfile() {
       }
     });
 
-    // 4. Pending edits
-    if (chartEditMode) {
+    // 4. Pending edits (chart edit mode + chairside quick-add)
+    if (chartEditMode || Object.keys(pendingToothEdits || {}).length > 0) {
       Object.entries(pendingToothEdits).forEach(([fdi, editData]) => {
         const internalId = getInternalId(fdi);
         if (!internalId) return;
@@ -2597,12 +2603,124 @@ export default function PatientProfile() {
     doc.save(`bemor-${patient.full_name}.pdf`);
   };
 
+
+  const handleChairsideQuickStatus = useCallback((fdi, toothId, statusKey) => {
+    if (!fdi) return;
+    const conditionMap = {
+      caries: 'Kariyes',
+      filling: 'Plomba',
+      crown: 'Toj',
+      implant: 'Implant',
+      extracted: "Olib tashlangan",
+      other: 'Boshqa',
+    };
+    setPendingToothEdits(prev => ({
+      ...prev,
+      [String(fdi)]: {
+        ...prev[String(fdi)],
+        condition: conditionMap[statusKey] || statusKey,
+      }
+    }));
+    if (toothId) {
+      setSelectedTooth(prev => prev ? { ...prev, id: toothId, fdi: String(fdi) } : { id: toothId, fdi: String(fdi) });
+    }
+    toast.success(`Tish #${fdi}: ${conditionMap[statusKey] || statusKey}`);
+  }, []);
+
+  const handleChairsideSaveToothNote = useCallback(async (fdi, toothId, note, statusKey) => {
+    if (!fdi || !id) return;
+    try {
+      const conditionMap = {
+        caries: 'Kariyes',
+        filling: 'Plomba',
+        crown: 'Toj',
+        implant: 'Implant',
+        extracted: "Olib tashlangan",
+        other: 'Boshqa',
+      };
+      const existingRecord = (toothRecords || []).find(r => String(r.tooth_number) === String(fdi));
+      const clinicId = patient?.clinic_id || 'ava-dent';
+      const payload = {
+        patient_id: id,
+        clinic_id: clinicId,
+        tooth_number: String(fdi),
+        condition: conditionMap[statusKey] || pendingToothEdits[String(fdi)]?.condition || null,
+        treatment: pendingToothEdits[String(fdi)]?.treatment || null,
+        notes: note || pendingToothEdits[String(fdi)]?.notes || 'Chairside eslatma',
+      };
+      if (existingRecord) {
+        await base44.entities.ToothRecord.update(existingRecord.id, payload);
+      } else {
+        await base44.entities.ToothRecord.create(payload);
+      }
+      setPendingToothEdits(prev => {
+        const next = { ...prev };
+        delete next[String(fdi)];
+        return next;
+      });
+      toast.success('Tish holati saqlandi');
+      load();
+    } catch (e) {
+      console.error(e);
+      toast.error('Saqlashda xatolik');
+    }
+  }, [id, toothRecords, patient, pendingToothEdits]);
+
   const getInitials = (name) => name?.split(' ')?.map(n => n[0])?.join('')?.substring(0, 2)?.toUpperCase() || '?';
 
   return (
     <div className="min-h-screen bg-[#f4f6f8] pb-20">
       <div className="print:hidden">
 
+      {profileViewMode === 'chairside' && (
+        <ChairsidePatientProfile
+          patient={patient}
+          age={age}
+          totalDebt={totalDebt}
+          totalPrepayment={totalPrepayment}
+          medicalAlerts={medicalAlerts}
+          selectedTooth={selectedTooth}
+          onSelectTooth={setSelectedTooth}
+          onClearTooth={() => setSelectedTooth(null)}
+          toothStatuses={toothStatuses}
+          plans={plans}
+          toothRecords={toothRecords}
+          implants={implants}
+          doctors={doctors}
+          appointments={appointments}
+          odontogramSelectedTeeth={odontogramSelectedTeeth}
+          onOdontogramChange={stableOnOdontogramChange}
+          handleInfoToothClick={handleInfoToothClick}
+          patientType={patientType}
+          setPatientType={setPatientType}
+          chartView={chartView}
+          showOcclusal={showOcclusal}
+          psrScores={psrScores}
+          occlusionNotes={occlusionNotes}
+          handleOcclusionNotesChange={handleOcclusionNotesChange}
+          occlusionClass={occlusionClass}
+          handleOcclusionClassChange={handleOcclusionClassChange}
+          onBack={handleBack}
+          backLabel={location.state?.fromName
+            ? location.state.fromName
+            : (language === 'ru' ? 'Назад' : language === 'en' ? 'Back' : 'Orqaga')}
+          onPay={openPayModal}
+          onAppointment={() => setApptModalOpen(true)}
+          onNewPlan={() => setTreatmentModalOpen(true)}
+          onEditPatient={() => setPatientModalOpen(true)}
+          onAvatarUpload={handleAvatarUpload}
+          onQuickStatus={handleChairsideQuickStatus}
+          onSaveToothNote={handleChairsideSaveToothNote}
+          onOpenFullProfile={() => { setProfileViewMode('reyestr'); setActiveTab('info'); }}
+          profileViewMode={profileViewMode}
+          setProfileViewMode={setProfileViewMode}
+          locationState={location.state}
+          language={language}
+        />
+      )}
+
+      {profileViewMode === 'reyestr' && (
+      <>
       {/* ══ TOP NAVIGATION & HEADER ══ */}
       <div className="bg-white border-b border-[#e8eaed] sticky top-0 z-30 shadow-xs">
         {/* Warning Alerts Banner */}
@@ -2660,6 +2778,11 @@ export default function PatientProfile() {
 
           {/* Right: Quick Action Buttons (Matching Reference Design) */}
           <div className="flex items-center gap-2 shrink-0">
+            <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200/70">
+              <button type="button" onClick={() => setProfileViewMode('chairside')} className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide cursor-pointer text-slate-500 hover:text-slate-800">Chairside</button>
+              <button type="button" onClick={() => setProfileViewMode('reyestr')} className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide cursor-pointer bg-white text-slate-900 shadow-sm">Reyestr</button>
+            </div>
+
             <button
               onClick={openPayModal}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
@@ -3098,6 +3221,10 @@ export default function PatientProfile() {
         </div>{/* end right workspace */}
       </div>{/* end main 2-column layout */}
 
+
+
+      </>
+      )}
 
       {/* Appointment quick modal */}
       <AppointmentModal
