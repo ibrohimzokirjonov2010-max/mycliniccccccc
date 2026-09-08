@@ -2600,7 +2600,7 @@ export default function PatientProfile() {
   const getInitials = (name) => name?.split(' ')?.map(n => n[0])?.join('')?.substring(0, 2)?.toUpperCase() || '?';
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] pb-20">
+    <div className="min-h-screen bg-[#f4f6f8] pb-20">
       <div className="print:hidden">
 
       {/* ══ TOP NAVIGATION & HEADER ══ */}
@@ -2662,7 +2662,7 @@ export default function PatientProfile() {
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={openPayModal}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
             >
               <CreditCard className="w-3.5 h-3.5" />
               <span>To'lov</span>
@@ -2676,10 +2676,11 @@ export default function PatientProfile() {
             </button>
             <button
               onClick={() => setTreatmentModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              title="Yangi davolash rejasini ochish"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Protsedura</span>
+              <span>Yangi reja</span>
             </button>
             <button
               onClick={openAdvanceModal}
@@ -2694,12 +2695,12 @@ export default function PatientProfile() {
       </div>
 
       {/* ══ MAIN 2-COLUMN LAYOUT (EXACT REFERENCE DESIGN) ══ */}
-      <div className="max-w-[1680px] mx-auto p-3 sm:p-5 flex flex-col lg:flex-row gap-5 items-start">
+      <div className="max-w-[1680px] mx-auto p-3 sm:p-5 lg:p-6 flex flex-col lg:flex-row gap-4 lg:gap-6 items-start">
 
         {/* ════ LEFT SIDEBAR: PATIENT CARD (Compact & Bold Style) ════ */}
-        <div className="w-full lg:w-[245px] xl:w-[260px] shrink-0 flex flex-col gap-2.5 sticky top-[65px]">
+        <div className="w-full lg:w-[250px] xl:w-[270px] shrink-0 flex flex-col gap-3 sticky top-[68px]">
 
-          <div className="bg-white rounded-2xl p-3 sm:p-3.5 border border-slate-200/90 shadow-sm flex flex-col gap-2.5">
+          <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/90 shadow-sm flex flex-col gap-3">
             {/* Top header row with title and code badge */}
             <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
               <div className="flex items-center gap-1.5">
@@ -2867,23 +2868,15 @@ export default function PatientProfile() {
               </div>
             </div>
 
-            {/* 4. Bottom Action Buttons (Green To'lov + Blue Uchrashuv) */}
-            <div className="grid grid-cols-2 gap-2 mt-0.5">
-              <button
-                onClick={openPayModal}
-                className="w-full py-2 px-2.5 bg-[#10b981] hover:bg-[#059669] text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>To'lov</span>
-              </button>
-              <button
-                onClick={() => setApptModalOpen(true)}
-                className="w-full py-2 px-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-              >
-                <Calendar className="w-3.5 h-3.5" />
-                <span>Uchrashuv</span>
-              </button>
-            </div>
+            {/* Secondary action — primary To'lov/Uchrashuv live in the top bar */}
+            <button
+              onClick={() => setTreatmentModalOpen(true)}
+              className="w-full py-2 px-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+              title="Yangi davolash rejasini ochish"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Yangi reja</span>
+            </button>
           </div>
 
           {/* Paid amount card */}
@@ -2935,7 +2928,7 @@ export default function PatientProfile() {
           </div>
 
           {/* ── 2. BO'LIMLAR (TABS) ROW - DIRECTLY UNDER SEARCH BAR ── */}
-          <div className="bg-white rounded-2xl p-2 sm:p-2.5 border border-slate-200/90 shadow-xs flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <div className="bg-white rounded-2xl p-1.5 sm:p-2 border border-slate-200/90 shadow-xs flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {[
               { id: 'info',         label: "Tish xaritasi",      icon: Tooth,           iconColor: "text-sky-600" },
               { id: 'treatments',   label: "Davolash rejalari",  icon: ClipboardList,   iconColor: "text-indigo-600", count: (plans || []).length },
