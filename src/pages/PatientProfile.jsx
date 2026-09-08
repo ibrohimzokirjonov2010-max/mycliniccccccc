@@ -2387,6 +2387,70 @@ export default function PatientProfile() {
     return null;
   }, [patient?.birth_date]);
 
+
+
+  const handleChairsideQuickStatus = useCallback((fdi, toothId, statusKey) => {
+    if (!fdi) return;
+    const conditionMap = {
+      caries: 'Kariyes',
+      filling: 'Plomba',
+      crown: 'Toj',
+      implant: 'Implant',
+      extracted: "Olib tashlangan",
+      other: 'Boshqa',
+    };
+    setPendingToothEdits(prev => ({
+      ...prev,
+      [String(fdi)]: {
+        ...prev[String(fdi)],
+        condition: conditionMap[statusKey] || statusKey,
+      }
+    }));
+    if (toothId) {
+      setSelectedTooth(prev => prev ? { ...prev, id: toothId, fdi: String(fdi) } : { id: toothId, fdi: String(fdi) });
+    }
+    toast.success(`Tish #${fdi}: ${conditionMap[statusKey] || statusKey}`);
+  }, []);
+
+  const handleChairsideSaveToothNote = useCallback(async (fdi, toothId, note, statusKey) => {
+    if (!fdi || !id) return;
+    try {
+      const conditionMap = {
+        caries: 'Kariyes',
+        filling: 'Plomba',
+        crown: 'Toj',
+        implant: 'Implant',
+        extracted: "Olib tashlangan",
+        other: 'Boshqa',
+      };
+      const existingRecord = (toothRecords || []).find(r => String(r.tooth_number) === String(fdi));
+      const clinicId = patient?.clinic_id || 'ava-dent';
+      const payload = {
+        patient_id: id,
+        clinic_id: clinicId,
+        tooth_number: String(fdi),
+        condition: conditionMap[statusKey] || pendingToothEdits[String(fdi)]?.condition || null,
+        treatment: pendingToothEdits[String(fdi)]?.treatment || null,
+        notes: note || pendingToothEdits[String(fdi)]?.notes || 'Chairside eslatma',
+      };
+      if (existingRecord) {
+        await base44.entities.ToothRecord.update(existingRecord.id, payload);
+      } else {
+        await base44.entities.ToothRecord.create(payload);
+      }
+      setPendingToothEdits(prev => {
+        const next = { ...prev };
+        delete next[String(fdi)];
+        return next;
+      });
+      toast.success('Tish holati saqlandi');
+      load();
+    } catch (e) {
+      console.error(e);
+      toast.error('Saqlashda xatolik');
+    }
+  }, [id, toothRecords, patient, pendingToothEdits]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f8f9fa]">
@@ -2602,69 +2666,6 @@ export default function PatientProfile() {
 
     doc.save(`bemor-${patient.full_name}.pdf`);
   };
-
-
-  const handleChairsideQuickStatus = useCallback((fdi, toothId, statusKey) => {
-    if (!fdi) return;
-    const conditionMap = {
-      caries: 'Kariyes',
-      filling: 'Plomba',
-      crown: 'Toj',
-      implant: 'Implant',
-      extracted: "Olib tashlangan",
-      other: 'Boshqa',
-    };
-    setPendingToothEdits(prev => ({
-      ...prev,
-      [String(fdi)]: {
-        ...prev[String(fdi)],
-        condition: conditionMap[statusKey] || statusKey,
-      }
-    }));
-    if (toothId) {
-      setSelectedTooth(prev => prev ? { ...prev, id: toothId, fdi: String(fdi) } : { id: toothId, fdi: String(fdi) });
-    }
-    toast.success(`Tish #${fdi}: ${conditionMap[statusKey] || statusKey}`);
-  }, []);
-
-  const handleChairsideSaveToothNote = useCallback(async (fdi, toothId, note, statusKey) => {
-    if (!fdi || !id) return;
-    try {
-      const conditionMap = {
-        caries: 'Kariyes',
-        filling: 'Plomba',
-        crown: 'Toj',
-        implant: 'Implant',
-        extracted: "Olib tashlangan",
-        other: 'Boshqa',
-      };
-      const existingRecord = (toothRecords || []).find(r => String(r.tooth_number) === String(fdi));
-      const clinicId = patient?.clinic_id || 'ava-dent';
-      const payload = {
-        patient_id: id,
-        clinic_id: clinicId,
-        tooth_number: String(fdi),
-        condition: conditionMap[statusKey] || pendingToothEdits[String(fdi)]?.condition || null,
-        treatment: pendingToothEdits[String(fdi)]?.treatment || null,
-        notes: note || pendingToothEdits[String(fdi)]?.notes || 'Chairside eslatma',
-      };
-      if (existingRecord) {
-        await base44.entities.ToothRecord.update(existingRecord.id, payload);
-      } else {
-        await base44.entities.ToothRecord.create(payload);
-      }
-      setPendingToothEdits(prev => {
-        const next = { ...prev };
-        delete next[String(fdi)];
-        return next;
-      });
-      toast.success('Tish holati saqlandi');
-      load();
-    } catch (e) {
-      console.error(e);
-      toast.error('Saqlashda xatolik');
-    }
-  }, [id, toothRecords, patient, pendingToothEdits]);
 
   const getInitials = (name) => name?.split(' ')?.map(n => n[0])?.join('')?.substring(0, 2)?.toUpperCase() || '?';
 
