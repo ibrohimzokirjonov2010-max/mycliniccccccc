@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/Icons';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,8 +25,6 @@ import { cn } from '@/lib/utils';
 import ImplantForm from '../components/implants/ImplantForm';
 import ClinicalStepper, {
   LIFECYCLE_COLORS,
-  STATUS_SELECT_OPTIONS,
-  DISPLAY_TO_ENUM,
   normalizeLifecycleStatus,
   SHORT_STATUS_LABEL,
 } from '../components/implants/ClinicalStepper';
@@ -86,7 +83,6 @@ export default function ImplantDetail() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('excel'); // 'excel' | 'clinical' | 'docs' | 'timeline'
   const [editOpen, setEditOpen] = useState(false);
-  const [statusUpdating, setStatusUpdating] = useState(false);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [zoomImg, setZoomImg] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -187,36 +183,6 @@ export default function ImplantDetail() {
   };
 
   const displayStatus = getCurrentStatus();
-
-  const updateStatus = async (newStatus) => {
-    setStatusUpdating(true);
-    const now = new Date().toISOString();
-    const statusMap = DISPLAY_TO_ENUM;
-
-    try {
-      const t = activeTooth;
-      const timeline = [...(t.timeline || []), {
-        date: now, status: newStatus, note: `Holat o'zgartirildi: ${newStatus}`, user: 'Dr.'
-      }];
-      const audit_log = [...(t.audit_log || []), { date: now, user: 'Dr.', action: `Holat: ${newStatus}` }];
-
-      await base44.entities.Implant.update(t.id, {
-        ...t,
-        lifecycle_status: newStatus,
-        status: statusMap[newStatus] || newStatus.toLowerCase(),
-        timeline,
-        audit_log
-      });
-
-      toast.success("Implant holati yangilandi!");
-      load();
-    } catch (e) {
-      console.error(e);
-      toast.error("Holatni yangilashda xatolik");
-    } finally {
-      setStatusUpdating(false);
-    }
-  };
 
   // Build the unified list of services for this tooth/implant
   const baseServiceRow = {
@@ -550,10 +516,10 @@ export default function ImplantDetail() {
   ];
 
   return (
-    <div className="space-y-4 pb-12 max-w-7xl mx-auto">
+    <div className="space-y-3 pb-12 max-w-7xl mx-auto">
 
       {/* ─── Header: patient + actions ─────────────────────────────── */}
-      <div className="bg-white border border-slate-200/90 rounded-3xl p-4 sm:p-5 shadow-sm">
+      <div className="bg-white border border-slate-200/90 rounded-3xl p-3 sm:p-4 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-start sm:items-center gap-3 min-w-0">
             <Link to="/implants">
@@ -651,24 +617,7 @@ export default function ImplantDetail() {
             </Button>
           </div>
         </div>
-
-        {/* Status select (kept, compact) */}
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
-            <span className="text-[10px] font-black uppercase text-slate-400">Holat</span>
-            <Select value={displayStatus} onValueChange={updateStatus} disabled={statusUpdating}>
-              <SelectTrigger className="h-7 w-[180px] px-2 text-[10px] font-black uppercase border-0 bg-transparent shadow-none">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl text-xs font-bold">
-                {STATUS_SELECT_OPTIONS.map(s => (
-                  <SelectItem key={s} value={s} className="uppercase text-[11px] font-black">{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
+</div>
 
       {/* ─── Clinical Stepper ─────────────────────────────────────── */}
       <div className="bg-white border border-slate-200/90 rounded-3xl px-3 sm:px-5 py-3 shadow-sm">
