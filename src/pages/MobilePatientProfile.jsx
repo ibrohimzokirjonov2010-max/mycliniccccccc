@@ -508,30 +508,31 @@ export default function MobilePatientProfile() {
             <ArrowLeft className="w-5 h-5 text-white" />
           </button>
 
-          <button
-            type="button"
-            onClick={() => setPatientModalOpen(true)}
-            className="flex-1 min-w-0 text-center px-1"
-          >
-            <h1 className="text-[20px] font-black leading-tight truncate drop-shadow-sm">{patient.full_name}</h1>
-            <p className="text-[11px] font-semibold text-white/80 mt-0.5 truncate">
-              {age != null
-                ? t('patientProfile.mobile.ageClinic', { age, clinic: clinicLabel })
-                : clinicLabel}
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => document.getElementById('mob-avatar-input')?.click()}
-            className="w-10 h-10 rounded-full bg-white/18 border border-white/30 flex items-center justify-center text-[11px] font-black shrink-0 overflow-hidden"
-            title={t('patientProfile.uploadPhoto', 'Rasm yuklash')}
-          >
-            {patient.photo_url
-              ? <img src={patient.photo_url} alt="" className="w-full h-full object-cover" />
-              : (photoUploading ? <Camera className="w-4 h-4" /> : getInitials(patient.full_name))}
-          </button>
-          <input id="mob-avatar-input" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+          <div className="flex-1 min-w-0 flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPatientModalOpen(true)}
+              className="min-w-0 text-center px-0.5"
+            >
+              <h1 className="text-[20px] font-black leading-tight truncate drop-shadow-sm max-w-[200px]">{patient.full_name}</h1>
+              <p className="text-[11px] font-semibold text-white/80 mt-0.5 truncate max-w-[220px]">
+                {age != null
+                  ? t('patientProfile.mobile.ageClinic', { age, clinic: clinicLabel })
+                  : clinicLabel}
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => document.getElementById('mob-avatar-input')?.click()}
+              className="w-9 h-9 rounded-full bg-white/20 border border-white/35 flex items-center justify-center text-[11px] font-black shrink-0 overflow-hidden"
+              title={t('patientProfile.uploadPhoto', 'Rasm yuklash')}
+            >
+              {patient.photo_url
+                ? <img src={patient.photo_url} alt="" className="w-full h-full object-cover" />
+                : (photoUploading ? <Camera className="w-4 h-4" /> : getInitials(patient.full_name))}
+            </button>
+            <input id="mob-avatar-input" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+          </div>
 
           {phoneHref ? (
             <a
@@ -539,7 +540,7 @@ export default function MobilePatientProfile() {
               className="w-10 h-10 rounded-full bg-white/18 border border-white/25 flex items-center justify-center shrink-0 active:scale-95 transition-transform"
               aria-label={t('patientProfile.call', "Qo'ng'iroq qilish")}
             >
-              <Phone className="w-4.5 h-4.5 text-white" />
+              <Phone className="w-5 h-5 text-white" />
             </a>
           ) : (
             <span className="w-10 h-10 rounded-full bg-white/10 border border-white/15 flex items-center justify-center shrink-0 opacity-50">
@@ -549,7 +550,7 @@ export default function MobilePatientProfile() {
         </div>
 
         {financials.debt > 0 && (
-          <div className="mx-3 mb-4 flex items-center justify-between gap-3 rounded-2xl px-3.5 py-2.5 bg-black/20 border border-white/10 backdrop-blur-[6px]">
+          <div className="mx-3 mb-5 flex items-center justify-between gap-3 rounded-2xl px-3.5 py-2.5 bg-black/22 border border-white/10 backdrop-blur-[6px]">
             <div className="flex items-center gap-2 min-w-0">
               <AlertTriangle className="w-3.5 h-3.5 text-white shrink-0" />
               <span className="text-[12px] font-bold text-white/90">{t('patientProfile.mobile.debt', 'Qarzdorlik')}</span>
@@ -563,7 +564,7 @@ export default function MobilePatientProfile() {
       </div>
 
       {/* ACTION CARDS */}
-      <div className="px-3 -mt-5 grid grid-cols-3 gap-2 relative z-10">
+      <div className="px-3 -mt-6 grid grid-cols-3 gap-2 relative z-10">
         <button
           type="button"
           onClick={() => openPayModal()}

@@ -53,7 +53,7 @@ const ToothPill = memo(function ToothPill({ fdi, selected, statusKey, onSelect }
       aria-pressed={selected}
       aria-label={`FDI ${fdi}`}
       className={cn(
-        'relative flex items-center justify-center w-full max-w-[22px] mx-auto h-8 rounded-full text-[9px] font-black tabular-nums leading-none transition-transform active:scale-90',
+        'relative flex items-center justify-center w-full max-w-[22px] mx-auto h-[34px] rounded-full text-[9px] font-black tabular-nums leading-none transition-transform active:scale-90',
         selected
           ? 'bg-[#1499AD] text-white shadow-[0_4px_10px_rgba(20,153,173,0.35)]'
           : 'bg-white text-slate-500 border border-slate-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
