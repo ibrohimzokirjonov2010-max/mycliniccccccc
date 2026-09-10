@@ -29,7 +29,6 @@ import ClinicalStepper, {
   SHORT_STATUS_LABEL,
 } from '../components/implants/ClinicalStepper';
 import {
-  ImplantSwitcher,
   PassportSpecsCard,
   MiniFdiChart,
   StageMediaRail,
@@ -152,42 +151,67 @@ export default function ImplantDetail() {
   useEffect(() => { setSelectedRelatedTooth(id || null); }, [id]);
 
   // Build case teeth items for left rail switcher (placed before early returns for React Rules of Hooks)
+  // Prefer expanding the CURRENT multi-tooth case over dumping all patient-related implants
+  // (relatedTeeth > 1 previously hid per-tooth FDI labels and made both chips show #11).
   const switcherItems = useMemo(() => {
-    if (relatedTeeth.length > 1) {
-      return relatedTeeth;
-    }
     const cur = implant;
     if (!cur) return [];
-    const teeth = cur.tooth_numbers || (cur.tooth_number ? [cur.tooth_number] : []);
-    const uniqueTeeth = [...new Set(teeth.map(String))].filter(Boolean);
-    if (uniqueTeeth.length <= 1) {
-      return [cur];
+
+    const expandMultiTooth = (rec) => {
+      const teeth = rec.tooth_numbers || (rec.tooth_number ? [rec.tooth_number] : (rec.tooth_id ? [rec.tooth_id] : []));
+      const uniqueTeeth = [...new Set(teeth.map(String))].filter(Boolean);
+      if (uniqueTeeth.length <= 1) return null;
+      return uniqueTeeth.map((tId) => {
+        const match = String(tId).match(/^(ur|ul|lr|ll)(\d+)$/);
+        const fdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : String(tId);
+        const tData = rec.tooth_data_map?.[tId] || rec.tooth_data_map?.[fdi] || {};
+        const toothTimeline = Array.isArray(tData.timeline) ? tData.timeline : null;
+        return {
+          ...rec,
+          id: `${rec.id}__${tId}`,
+          syntheticToothKey: tId,
+          tooth_id: tId,
+          tooth_number: fdi,
+          tooth_numbers: [tId],
+          firma: tData.firma || rec.firma,
+          firma_custom: tData.firma_custom || rec.firma_custom,
+          brend: tData.brend || rec.brend,
+          diameter: tData.diameter != null && tData.diameter !== '' ? tData.diameter : rec.diameter,
+          length: tData.length != null && tData.length !== '' ? tData.length : rec.length,
+          lot_number: tData.lot_number != null && tData.lot_number !== '' ? tData.lot_number : rec.lot_number,
+          torque: tData.torque != null && tData.torque !== '' ? tData.torque : rec.torque,
+          isq: tData.isq != null && tData.isq !== '' ? tData.isq : rec.isq,
+          bone_type: tData.bone_type || rec.bone_type,
+          price: (tData.price != null && tData.price !== '') ? tData.price : rec.price,
+          narxi: (tData.price != null && tData.price !== '') ? tData.price : (rec.narxi || rec.price),
+          service_name: tData.service_name || rec.service_name,
+          lifecycle_status: tData.lifecycle_status || rec.lifecycle_status,
+          status: tData.lifecycle_status || rec.status || rec.lifecycle_status,
+          timeline: toothTimeline && toothTimeline.length > 0 ? toothTimeline : (rec.timeline || []),
+        };
+      });
+    };
+
+    const currentExpanded = expandMultiTooth(cur);
+    if (currentExpanded) return currentExpanded;
+
+    if (relatedTeeth.length > 1) {
+      return relatedTeeth.flatMap((rec) => {
+        const expanded = expandMultiTooth(rec);
+        if (expanded) return expanded;
+        const key = rec.tooth_id || (Array.isArray(rec.tooth_numbers) && rec.tooth_numbers[0]) || rec.tooth_number;
+        const match = key ? String(key).match(/^(ur|ul|lr|ll)(\d+)$/) : null;
+        const fdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : (key ? String(key) : null);
+        return [{
+          ...rec,
+          tooth_id: key || rec.tooth_id,
+          tooth_number: fdi || rec.tooth_number,
+          tooth_numbers: key ? [key] : (rec.tooth_numbers || (rec.tooth_number ? [rec.tooth_number] : [])),
+        }];
+      });
     }
-    return uniqueTeeth.map(tId => {
-      const match = tId.match(/^(ur|ul|lr|ll)(\d+)$/);
-      const fdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : tId;
-      const tData = cur.tooth_data_map?.[tId] || cur.tooth_data_map?.[fdi] || {};
-      return {
-        ...cur,
-        id: `${cur.id}__${tId}`,
-        syntheticToothKey: tId,
-        tooth_number: fdi,
-        tooth_numbers: [tId],
-        firma: tData.firma || cur.firma,
-        firma_custom: tData.firma_custom || cur.firma_custom,
-        brend: tData.brend || cur.brend,
-        diameter: tData.diameter != null && tData.diameter !== '' ? tData.diameter : cur.diameter,
-        length: tData.length != null && tData.length !== '' ? tData.length : cur.length,
-        lot_number: tData.lot_number != null && tData.lot_number !== '' ? tData.lot_number : cur.lot_number,
-        torque: tData.torque != null && tData.torque !== '' ? tData.torque : cur.torque,
-        isq: tData.isq != null && tData.isq !== '' ? tData.isq : cur.isq,
-        bone_type: tData.bone_type || cur.bone_type,
-        price: (tData.price != null && tData.price !== '') ? tData.price : cur.price,
-        narxi: (tData.price != null && tData.price !== '') ? tData.price : (cur.narxi || cur.price),
-        service_name: tData.service_name || cur.service_name,
-        lifecycle_status: cur.lifecycle_status,
-      };
-    });
+
+    return [cur];
   }, [relatedTeeth, implant]);
 
   // Active tooth selection with resolution of tooth_data_map properties
@@ -228,6 +252,14 @@ export default function ImplantDetail() {
         ? toothData.price
         : (raw.price || raw.narxi || ''),
       service_name: pick(toothData.service_name, raw.service_name) || raw.hizmat_turi || '',
+      lifecycle_status: pick(toothData.lifecycle_status, raw.lifecycle_status || raw.status) || raw.lifecycle_status,
+      status: pick(toothData.lifecycle_status, raw.status || raw.lifecycle_status) || raw.status,
+      timeline: (Array.isArray(toothData.timeline) && toothData.timeline.length > 0)
+        ? toothData.timeline
+        : (raw.timeline || []),
+      tooth_number: toothFdi || raw.tooth_number,
+      tooth_numbers: toothKey ? [toothKey] : rawTeeth,
+      syntheticToothKey: raw.syntheticToothKey || toothKey || null,
     };
   }, [selectedRelatedTooth, switcherItems, relatedTeeth, implant]);
 
@@ -359,32 +391,84 @@ export default function ImplantDetail() {
     const newStatus = step.lifecycleValue;
     if (!newStatus) return;
 
-    // Optimistic local state update
-    setImplant((prev) =>
-      prev && prev.id === realImplantId
-        ? { ...prev, lifecycle_status: newStatus, status: newStatus }
-        : prev
-    );
+    const toothKey = activeTooth.syntheticToothKey
+      || (Array.isArray(activeTooth.tooth_numbers) && activeTooth.tooth_numbers.length === 1 ? activeTooth.tooth_numbers[0] : null)
+      || activeTooth.tooth_id
+      || null;
+    const toothFdi = toothIdToFdi(toothKey || activeTooth.tooth_number) || null;
+
+    const newEntry = {
+      id: 'stage-' + Date.now(),
+      date: new Date().toISOString(),
+      status: step.label,
+      note: language === 'ru'
+        ? `Этап переведён в "${step.labelRu || step.label}"`
+        : `Bosqich "${step.label}" holatiga o'tkazildi`,
+      user: activeTooth.doctor || 'Shifokor',
+      tooth_fdi: toothFdi || undefined,
+      tooth_key: toothKey || undefined,
+      lifecycle_value: newStatus,
+    };
+
+    const baseTimeline = Array.isArray(activeTooth.timeline) ? [...activeTooth.timeline] : [];
+    const last = baseTimeline[baseTimeline.length - 1];
+    const updatedTimeline = (last && (last.status === step.label || last.lifecycle_value === newStatus))
+      ? [...baseTimeline.slice(0, -1), { ...last, ...newEntry, id: last.id || newEntry.id }]
+      : [...baseTimeline, newEntry];
+
+    let nextToothDataMap = implant?.tooth_data_map ? { ...implant.tooth_data_map } : {};
+    if (toothKey) {
+      const fdiKey = toothFdi || toothIdToFdi(toothKey);
+      const prevEntry = { ...(nextToothDataMap[toothKey] || nextToothDataMap[fdiKey] || {}) };
+      prevEntry.lifecycle_status = newStatus;
+      prevEntry.timeline = updatedTimeline;
+      nextToothDataMap[toothKey] = prevEntry;
+      if (fdiKey && fdiKey !== toothKey) nextToothDataMap[fdiKey] = prevEntry;
+    }
+
+    // Optimistic local state so bottom history updates immediately
+    setImplant((prev) => {
+      if (!prev || String(prev.id) !== String(realImplantId)) return prev;
+      const caseTimeline = toothKey
+        ? [...(Array.isArray(prev.timeline) ? prev.timeline : []), newEntry]
+        : updatedTimeline;
+      return {
+        ...prev,
+        lifecycle_status: newStatus,
+        status: newStatus,
+        timeline: caseTimeline,
+        tooth_data_map: toothKey ? nextToothDataMap : prev.tooth_data_map,
+      };
+    });
     setRelatedTeeth((prev) =>
-      prev.map((t) => (t.id === realImplantId ? { ...t, lifecycle_status: newStatus, status: newStatus } : t))
+      prev.map((t) => (String(t.id) === String(realImplantId)
+        ? {
+            ...t,
+            lifecycle_status: newStatus,
+            status: newStatus,
+            timeline: toothKey
+              ? [...(Array.isArray(t.timeline) ? t.timeline : []), newEntry]
+              : updatedTimeline,
+            tooth_data_map: toothKey ? nextToothDataMap : t.tooth_data_map,
+          }
+        : t))
     );
 
     try {
-      const newEntry = {
-        date: new Date().toISOString(),
-        status: step.label,
-        note: `Bosqich "${step.label}" holatiga o'tkazildi`,
-        user: activeTooth.doctor || 'Shifokor'
-      };
-      const updatedTimeline = [...(activeTooth.timeline || []), newEntry];
-
-      await base44.entities.Implant.update(realImplantId, {
+      const payload = {
         lifecycle_status: newStatus,
         status: newStatus,
-        timeline: updatedTimeline,
-      });
+        timeline: toothKey
+          ? [...(Array.isArray(implant?.timeline) ? implant.timeline : []), newEntry]
+          : updatedTimeline,
+      };
+      if (toothKey) {
+        payload.tooth_data_map = nextToothDataMap;
+      }
 
-      toast.success(`Implant #${toothIdToFdi(activeTooth.tooth_number || activeTooth.tooth_numbers?.[0]) || activeTooth.id}: "${step.label}" bosqichiga o'tkazildi!`, {
+      await base44.entities.Implant.update(realImplantId, payload);
+
+      toast.success(`Implant #${toothFdi || activeTooth.id}: "${step.label}" bosqichiga o'tkazildi!`, {
         icon: '🦷',
       });
       load();
@@ -695,211 +779,180 @@ export default function ImplantDetail() {
     }
   ];
 
+  const brandLine = firmaNom + (activeTooth?.brend && String(activeTooth.brend).trim() && String(activeTooth.brend).trim() !== String(firmaNom).trim() ? ` · ${activeTooth.brend}` : '');
+
   return (
     <div className="space-y-4 pb-12 max-w-7xl mx-auto">
 
-      {/* ─── Header: Patient Badge & Actions matching reference design ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link to="/implants">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-10 px-3 rounded-2xl border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-black text-xs gap-1.5 shrink-0 shadow-xs"
-              title={language === 'ru' ? 'Назад к списку имплантов' : "Implantlar ro'yxatiga qaytish"}
-            >
-              <ArrowLeft className="w-4 h-4 text-[#1499AD]" />
-              <span className="hidden sm:inline">{language === 'ru' ? 'Назад' : 'Orqaga'}</span>
-            </Button>
-          </Link>
-
-          <div className="w-11 h-11 rounded-full bg-[#1499AD] text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
-            <UserRound className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-base sm:text-lg font-black text-slate-900 leading-tight">
-              {safeRender(activeTooth.patient_name, 'Malika Murodova')}
-            </div>
-            <div className="text-xs font-semibold text-slate-400">
-              {language === 'ru' ? 'Пациент' : 'Bemor'}
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={exportPDF}
-            className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 gap-1.5 shadow-xs bg-white hover:bg-slate-50"
-          >
-            <Download className="w-4 h-4 text-indigo-600" />
-            <span>{language === 'ru' ? 'PDF Паспорт' : 'PDF Pasport'}</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setEditOpen(true)}
-            className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-black text-slate-800 gap-1.5 shadow-xs bg-white hover:bg-slate-50"
-          >
-            <Edit2 className="w-3.5 h-3.5 text-[#1499AD]" />
-            <span>{language === 'ru' ? 'Редактировать' : 'Tahrirlash'}</span>
-          </Button>
-          {activeTooth.patient_id && (
-            <Link to={`/patients/${activeTooth.patient_id}`}>
+      {/* ─── SHIFO CRM — Implant Pasporti header ─── */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <Link to="/implants">
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 px-3.5 rounded-xl border-teal-200 text-xs font-black text-teal-800 bg-teal-50/60 gap-1.5 shadow-xs hover:bg-teal-100/60"
+                className="h-10 px-3 rounded-2xl border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-black text-xs gap-1.5 shrink-0"
+                title={language === 'ru' ? 'Назад к списку имплантов' : "Implantlar ro'yxatiga qaytish"}
               >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>{language === 'ru' ? 'Профиль пациента' : 'Bemor profili'}</span>
+                <ArrowLeft className="w-4 h-4 text-[#1499AD]" />
+                <span className="hidden sm:inline">{language === 'ru' ? 'Назад' : 'Orqaga'}</span>
               </Button>
             </Link>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setDeleteConfirm(true)}
-            className="h-9 w-9 p-0 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-            title={language === 'ru' ? 'Удалить' : "O'chirish"}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+            <div className="min-w-0">
+              <div className="text-[11px] font-black uppercase tracking-[0.14em] text-[#1499AD]">
+                {language === 'ru' ? 'Имплант-паспорт' : 'Implant Pasporti'}
+              </div>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight truncate">
+                {safeRender(activeTooth.patient_name, 'Bemor')}
+              </h1>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-slate-900 text-white font-mono text-[11px]">
+                  #{activeToothNumberFdi}
+                </span>
+                <span className="truncate">{brandLine}</span>
+                {activeTooth.diameter || activeTooth.length ? (
+                  <span className="font-mono text-slate-700">
+                    {activeTooth.diameter || '—'}×{activeTooth.length || '—'} mm
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            <Button variant="outline" size="sm" onClick={exportPDF} className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 gap-1.5 bg-white hover:bg-slate-50">
+              <Download className="w-4 h-4 text-indigo-600" />
+              <span>{language === 'ru' ? 'PDF Паспорт' : 'PDF Pasport'}</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-black text-slate-800 gap-1.5 bg-white hover:bg-slate-50">
+              <Edit2 className="w-3.5 h-3.5 text-[#1499AD]" />
+              <span>{language === 'ru' ? 'Редактировать' : 'Tahrirlash'}</span>
+            </Button>
+            {activeTooth.patient_id && (
+              <Link to={`/patients/${activeTooth.patient_id}`}>
+                <Button variant="outline" size="sm" className="h-9 px-3.5 rounded-xl border-teal-200 text-xs font-black text-teal-800 bg-teal-50/60 gap-1.5 hover:bg-teal-100/60">
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>{language === 'ru' ? 'Профиль пациента' : 'Bemor profili'}</span>
+                </Button>
+              </Link>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(true)} className="h-9 w-9 p-0 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50" title={language === 'ru' ? 'Удалить' : "O'chirish"}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
+
+        {/* Multi-implant chips with correct FDI per tooth */}
+        {switcherItems.length > 1 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0">
+              {language === 'ru' ? 'Импланты в кейсе' : 'Keys implantlari'}
+            </span>
+            {switcherItems.map((imp) => {
+              const key = imp.syntheticToothKey || imp.tooth_id || (Array.isArray(imp.tooth_numbers) && imp.tooth_numbers[0]) || imp.tooth_number;
+              const fdi = toothIdToFdi(key) || toothIdToFdi(imp.tooth_number) || '—';
+              const selected = imp.id === activeTooth?.id;
+              const short = SHORT_STATUS_LABEL[normalizeLifecycleStatus(imp.lifecycle_status || imp.status)] || '—';
+              return (
+                <button
+                  key={imp.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedRelatedTooth(imp.id);
+                    if (imp.id && !String(imp.id).includes('__') && imp.id !== id) {
+                      navigate(`/implants/${imp.id}`, { replace: true });
+                    }
+                  }}
+                  className={cn(
+                    'shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-2xl border text-left transition-all',
+                    selected
+                      ? 'bg-[#1499AD] border-[#1499AD] text-white shadow-sm'
+                      : 'bg-white border-slate-200 text-slate-800 hover:border-slate-300'
+                  )}
+                >
+                  <span className={cn('font-mono font-black text-sm', selected ? 'text-white' : 'text-slate-900')}>#{fdi}</span>
+                  <span className={cn('text-[10px] font-bold', selected ? 'text-teal-50' : 'text-slate-500')}>{short}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Main Page Title matching screenshot */}
-      <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-        {safeRender(activeTooth?.patient_name, 'Bemor')} — {language === 'ru' ? 'Случай имплантации' : 'Implant keysi'} ({switcherItems.length > 1 ? `${switcherItems.length} ta implant` : '1 ta implant'})
-      </h1>
-
-      {/* ─── Top KPI Counters & Stepper Bar ────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
-        {/* Left: 4 Metric Columns */}
-        <div className="flex items-center divide-x divide-slate-200 shrink-0 overflow-x-auto pb-1 xl:pb-0 scrollbar-none">
-          <div className="pr-5 sm:pr-6 text-center sm:text-left shrink-0">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono leading-none">
-              {switcherItems.length || 1}
-            </div>
-            <div className="text-xs font-bold text-slate-500 mt-1">implant</div>
+      {/* ─── Clinical stepper (full width) ─── */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm px-4 py-4 sm:px-6">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            {language === 'ru' ? 'Клинические этапы' : 'Klinik bosqichlar'}
           </div>
-          <div className="px-5 sm:px-6 text-center sm:text-left shrink-0">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono leading-none">
-              {counts.healing}
-            </div>
-            <div className="text-xs font-bold text-slate-500 mt-1">integratsiya</div>
-          </div>
-          <div className="px-5 sm:px-6 text-center sm:text-left shrink-0">
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono leading-none">
-              {counts.crown}
-            </div>
-            <div className="text-xs font-bold text-slate-500 mt-1">protez</div>
-          </div>
-          <div className="pl-5 sm:pr-2 sm:pl-6 text-center sm:text-left shrink-0">
-            <div className="text-base sm:text-xl font-black text-slate-900 font-mono leading-none truncate max-w-[150px]">
-              {totalAllServicesPrice.toLocaleString()}
-            </div>
-            <div className="text-xs font-bold text-slate-500 mt-1">
-              {language === 'ru' ? 'общая сумма' : 'jami summa'}
-            </div>
+          <div className="text-[11px] font-bold text-slate-500">
+            {switcherItems.length} {language === 'ru' ? 'имплант' : 'implant'} · {totalAllServicesPrice.toLocaleString()} {language === 'ru' ? 'UZS' : "so'm"}
           </div>
         </div>
-
-        {/* Right: Horizontal Stepper */}
-        <div className="flex-1 xl:max-w-2xl min-w-0">
-          <ClinicalStepper
-            status={activeTooth?.lifecycle_status || activeTooth?.status || 'Rejalashtirilgan'}
-            language={language}
-            onSelectStep={handleStepChange}
-          />
-        </div>
+        <ClinicalStepper
+          status={activeTooth?.lifecycle_status || activeTooth?.status || 'Rejalashtirilgan'}
+          language={language}
+          onSelectStep={handleStepChange}
+        />
       </div>
 
-      {/* ─── Body: Left Switcher + Right Cards Grid ────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr] gap-4 items-start">
-        {/* Left Column: Implants list in this case */}
-        <div className="space-y-3">
-          <ImplantSwitcher
-            implants={switcherItems}
-            selectedId={activeTooth?.id}
-            onSelect={(rid) => {
-              setSelectedRelatedTooth(rid);
-              if (rid && !rid.includes('__') && rid !== id) {
-                navigate(`/implants/${rid}`, { replace: true });
+      {/* ─── Passport grid: Pasport + FDI + Media + Tarix ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        <PassportSpecsCard implant={activeTooth} language={language} />
+
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 flex flex-col">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#1499AD] flex items-center justify-center">
+              <Tooth className="w-4 h-4" />
+            </div>
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+              {language === 'ru' ? 'Место зуба (FDI)' : 'Tish joyi (FDI)'}
+            </h3>
+          </div>
+          <DentalArchFdi
+            activeFdis={[activeToothNumberFdi]}
+            caseFdis={caseFdis}
+            onSelectTooth={(fdi) => {
+              const found = switcherItems.find((it) => {
+                const raw = it.tooth_numbers || (it.tooth_number ? [it.tooth_number] : []);
+                return raw.map(toothIdToFdi).includes(String(fdi));
+              });
+              if (found) {
+                setSelectedRelatedTooth(found.id);
+                if (!String(found.id).includes('__') && found.id !== id) {
+                  navigate(`/implants/${found.id}`, { replace: true });
+                }
+              } else {
+                toast.info(`Tish #${fdi} tanlandi`);
               }
             }}
-            language={language}
           />
         </div>
 
-        {/* Right Column: 2 Top cards (Pasport + Tish joyi) & 1 Full-width Bottom card (Tarix) */}
-        <div className="space-y-4 min-w-0">
-          {/* Top Row: Klinik Pasport + Tish Joyi (FDI) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* 1. Klinik Pasport */}
-            <PassportSpecsCard implant={activeTooth} language={language} />
-
-            {/* 2. Tish Joyi (FDI) with Horseshoe Anatomical Dental Arch */}
-            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 relative flex flex-col justify-between">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#1499AD] flex items-center justify-center">
-                  <Tooth className="w-4 h-4" />
-                </div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-                  {language === 'ru' ? 'Место зуба (FDI)' : 'Tish joyi (FDI)'}
-                </h3>
-              </div>
-
-              <DentalArchFdi
-                activeFdis={[activeToothNumberFdi]}
-                caseFdis={caseFdis}
-                onSelectTooth={(fdi) => {
-                  const found = switcherItems.find((it) => {
-                    const raw = it.tooth_numbers || (it.tooth_number ? [it.tooth_number] : []);
-                    return raw.map(toothIdToFdi).includes(String(fdi));
-                  });
-                  if (found) {
-                    setSelectedRelatedTooth(found.id);
-                    if (!found.id.includes('__') && found.id !== id) {
-                      navigate(`/implants/${found.id}`, { replace: true });
-                    }
-                  } else {
-                    toast.info(`Tish #${fdi} tanlandi`);
-                  }
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Bottom Row: Full-width Klinik Bosqichlar Tarixi */}
-          <ClinicalTimeline
-            implant={activeTooth}
-            language={language}
-            onAddMilestone={() => setAddMilestoneOpen(true)}
-          />
-        </div>
-      </div>
-
-      {/* ─── Preserved Secondary Operations: Media & Services ──────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
         <StageMediaRail
           implant={activeTooth}
           language={language}
           onZoom={setZoomImg}
           onOpenPassport={exportPDF}
         />
-        <LinkedServicesCard
-          services={allServices}
-          total={totalAllServicesPrice}
+
+        <ClinicalTimeline
+          implant={activeTooth}
           language={language}
-          onAdd={handleOpenAddService}
-          onDelete={handleDeleteService}
-          onEditPrimary={() => setEditOpen(true)}
+          onAddMilestone={() => setAddMilestoneOpen(true)}
         />
       </div>
 
+      {/* ─── Linked services (full width clean table) ─── */}
+      <LinkedServicesCard
+        services={allServices}
+        total={totalAllServicesPrice}
+        language={language}
+        onAdd={handleOpenAddService}
+        onDelete={handleDeleteService}
+        onEditPrimary={() => setEditOpen(true)}
+      />
 
       {/* ─── Xray Zoom Lightbox Dialog ──────────────────────────────── */}
       <Dialog open={!!zoomImg} onOpenChange={() => setZoomImg(null)}>
