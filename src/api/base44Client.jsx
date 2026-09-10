@@ -177,7 +177,7 @@ class HybridEntityLoader {
               'extra_services', 'tooth_numbers', 'timeline', 'audit_log',
               'complications', 'xray_urls', 'passport_url', 'reminder_months', 'reminder_date',
               'tooth_data', 'tooth_data_map', 'placement_date', 'lifecycle_status', 'tooth_id',
-              'service_name', 'hizmat_turi', 'price', 'narxi', 'stage_items', 'services_list'];
+              'service_name', 'hizmat_turi', 'price', 'narxi', 'stage_items', 'services_list', 'stage_media'];
     }
     if (this.entityName === 'Payment') {
       return ['doctor_id', 'commission_rate', 'patient_name', 'category', 'debt_amount', 'method'];

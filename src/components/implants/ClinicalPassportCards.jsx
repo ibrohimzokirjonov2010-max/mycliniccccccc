@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+﻿import React, { useRef, useState } from 'react';
 import {
   Camera, FileText, Download, CheckCircle2,
   Calendar, UserRound, Layers, Target, Hash,
-  Tag, Clock, AlertCircle, Plus, Check, Lightbulb, Activity
+  Tag, Clock, AlertCircle, Plus, Check, Lightbulb, Activity, Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ImplantIcon } from '@/components/ui/Icons';
@@ -453,21 +453,89 @@ export function ClinicalTimeline({ implant, language = 'uz', onAddMilestone }) {
   );
 }
 
-const MEDIA_LABELS = [
+export const MEDIA_LABELS = [
   { key: 'preop', uz: 'Pre-op', ru: 'Pre-op' },
   { key: 'postop', uz: 'Post-op', ru: 'Post-op' },
   { key: 'healing', uz: 'Healing', ru: 'Healing' },
   { key: 'final', uz: 'Final', ru: 'Final' },
 ];
 
-/** Stage-tagged media rail */
-export function StageMediaRail({ implant, language = 'uz', onZoom, onOpenPassport }) {
+/** Resolve stage photo URL for a slot index from implant.xray_urls (and optional stage_media). */
+export function getStagePhotoUrl(implant, slotKeyOrIndex) {
+  const stageMedia = implant?.stage_media && typeof implant.stage_media === 'object'
+    ? implant.stage_media
+    : null;
   const xrays = Array.isArray(implant?.xray_urls) ? implant.xray_urls : [];
-  const slots = MEDIA_LABELS.map((lab, idx) => {
-    let url = xrays[idx] || null;
-    if (idx === 3 && implant?.passport_url) url = implant.passport_url;
-    return { ...lab, url };
+
+  let idx = typeof slotKeyOrIndex === 'number'
+    ? slotKeyOrIndex
+    : MEDIA_LABELS.findIndex((m) => m.key === slotKeyOrIndex);
+  if (idx < 0) idx = 0;
+
+  const key = MEDIA_LABELS[idx]?.key;
+  if (stageMedia && key && stageMedia[key]) return stageMedia[key];
+
+  // Prefer keyed objects inside xray_urls: { stage: 'preop', url } or { key, url }
+  const keyed = xrays.find((item) => {
+    if (!item || typeof item !== 'object') return false;
+    const k = item.stage || item.key || item.slot;
+    return k === key;
   });
+  if (keyed?.url) return keyed.url;
+
+  const byIndex = xrays[idx];
+  if (typeof byIndex === 'string' && byIndex) return byIndex;
+  if (byIndex && typeof byIndex === 'object' && byIndex.url) return byIndex.url;
+
+  return null;
+}
+
+/** Stage-tagged media rail — camera opens file picker and uploads via onUpload */
+export function StageMediaRail({
+  implant,
+  language = 'uz',
+  onZoom,
+  onOpenPassport,
+  onUpload,
+  uploadingSlot = null,
+}) {
+  const inputRefs = useRef({});
+  const [localPreview, setLocalPreview] = useState({});
+
+  const slots = MEDIA_LABELS.map((lab, idx) => {
+    const persisted = getStagePhotoUrl(implant, idx);
+    const url = persisted || localPreview[lab.key] || null;
+    return { ...lab, url, index: idx };
+  });
+
+  const triggerPicker = (slotKey) => {
+    if (uploadingSlot) return;
+    inputRefs.current[slotKey]?.click();
+  };
+
+  const handleFileChange = async (slotKey, slotIndex, e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !onUpload) return;
+
+    // Instant local preview while upload/compress runs
+    const objectUrl = URL.createObjectURL(file);
+    setLocalPreview((prev) => ({ ...prev, [slotKey]: objectUrl }));
+
+    try {
+      await onUpload({ slotKey, slotIndex, file });
+      // Keep showing object URL until parent reloads persisted base64 into implant.xray_urls
+      setLocalPreview((prev) => ({ ...prev, [slotKey]: objectUrl }));
+    } catch {
+      // Parent toasts; clear optimistic preview on failure
+      setLocalPreview((prev) => {
+        const next = { ...prev };
+        delete next[slotKey];
+        return next;
+      });
+      URL.revokeObjectURL(objectUrl);
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 h-full flex flex-col">
@@ -481,35 +549,65 @@ export function StageMediaRail({ implant, language = 'uz', onZoom, onOpenPasspor
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 flex-1">
-        {slots.map((slot) => (
-          <button
-            key={slot.key}
-            type="button"
-            onClick={() => slot.url && onZoom?.(slot.url)}
-            className={cn(
-              'relative aspect-[4/3] rounded-xl border overflow-hidden text-left group',
-              slot.url
-                ? 'border-slate-200 cursor-pointer'
-                : 'border-dashed border-slate-200 bg-slate-50 cursor-pointer hover:border-teal-300'
-            )}
-          >
-            {slot.url ? (
-              <img src={slot.url} alt={slot.uz} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-1.5 bg-gradient-to-b from-slate-50 to-slate-100/80">
-                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 text-[#14b8a6] flex items-center justify-center shadow-sm group-hover:border-teal-300">
-                  <Camera className="w-4 h-4" />
-                </div>
-              </div>
-            )}
-            <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wide bg-white/90 text-slate-700 border border-slate-200/80">
-              {language === 'ru' ? slot.ru : slot.uz}
-            </span>
-            <span className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-[#14b8a6] text-white flex items-center justify-center shadow-sm opacity-90 group-hover:opacity-100">
-              <Camera className="w-3.5 h-3.5" />
-            </span>
-          </button>
-        ))}
+        {slots.map((slot) => {
+          const isUploading = uploadingSlot === slot.key;
+          return (
+            <div
+              key={slot.key}
+              className={cn(
+                'relative aspect-[4/3] rounded-xl border overflow-hidden text-left group',
+                slot.url
+                  ? 'border-slate-200'
+                  : 'border-dashed border-slate-200 bg-slate-50 hover:border-teal-300'
+              )}
+            >
+              <input
+                ref={(el) => { inputRefs.current[slot.key] = el; }}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleFileChange(slot.key, slot.index, e)}
+              />
+              {slot.url ? (
+                <button
+                  type="button"
+                  disabled={isUploading}
+                  onClick={() => onZoom?.(slot.url)}
+                  className="absolute inset-0 cursor-pointer"
+                  title={language === 'ru' ? 'Увеличить' : 'Kattalashtirish'}
+                >
+                  <img src={slot.url} alt={slot.uz} className="w-full h-full object-cover" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isUploading}
+                  onClick={() => triggerPicker(slot.key)}
+                  className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 gap-1.5 bg-gradient-to-b from-slate-50 to-slate-100/80 cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-full bg-white border border-slate-200 text-[#14b8a6] flex items-center justify-center shadow-sm group-hover:border-teal-300">
+                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                  </div>
+                  <span className="text-[9px] font-bold text-slate-400 px-2 text-center">
+                    {language === 'ru' ? 'Загрузить фото' : 'Rasm yuklash'}
+                  </span>
+                </button>
+              )}
+              <span className="absolute bottom-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wide bg-white/90 text-slate-700 border border-slate-200/80 pointer-events-none">
+                {language === 'ru' ? slot.ru : slot.uz}
+              </span>
+              <button
+                type="button"
+                disabled={isUploading}
+                onClick={() => triggerPicker(slot.key)}
+                title={language === 'ru' ? (slot.url ? 'Заменить фото' : 'Загрузить фото') : (slot.url ? 'Rasmni almashtirish' : 'Rasm yuklash')}
+                className="absolute top-1.5 right-1.5 z-10 w-7 h-7 rounded-lg bg-[#14b8a6] text-white flex items-center justify-center shadow-sm opacity-90 hover:opacity-100 hover:bg-teal-600 cursor-pointer disabled:opacity-60"
+              >
+                {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       <div className="mt-4 rounded-xl border border-dashed border-teal-300/80 bg-teal-50/30 px-3 py-2.5 flex items-center justify-between gap-2">
@@ -624,4 +722,3 @@ export function LinkedServicesCard({
     </div>
   );
 }
-
