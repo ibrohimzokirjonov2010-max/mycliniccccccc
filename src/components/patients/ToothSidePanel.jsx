@@ -2,13 +2,14 @@ import { useMemo, useState, useEffect } from 'react';
 import { X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+const TEAL = '#14b8a6';
 const QUICK_STATUSES = [
   { key: 'caries', label: 'Karies', color: '#ef4444', bg: 'bg-rose-50', border: 'border-rose-200' },
   { key: 'filling', label: 'Plomba', color: '#3b82f6', bg: 'bg-blue-50', border: 'border-blue-200' },
   { key: 'crown', label: 'Koronka', color: '#eab308', bg: 'bg-amber-50', border: 'border-amber-200' },
   { key: 'implant', label: 'Implant', color: '#94a3b8', bg: 'bg-slate-100', border: 'border-slate-300' },
   { key: 'extracted', label: "Yo'q", color: '#0f172a', bg: 'bg-slate-200', border: 'border-slate-400' },
-  { key: 'other', label: 'Boshqa', color: '#1499AD', bg: 'bg-cyan-50', border: 'border-cyan-200' },
+  { key: 'other', label: 'Boshqa', color: TEAL, bg: 'bg-teal-50', border: 'border-teal-200' },
 ];
 
 const STATUS_LABEL = {
@@ -138,7 +139,7 @@ export default function ToothSidePanel({
   if (!tooth) return null;
 
   return (
-    <aside className="w-full lg:w-[300px] xl:w-[320px] shrink-0 bg-white rounded-2xl border border-slate-200/90 shadow-sm flex flex-col max-h-[calc(100vh-180px)] sticky top-[72px]">
+    <aside className="w-full lg:w-[300px] xl:w-[320px] shrink-0 bg-white rounded-2xl border border-slate-200/90 shadow-sm flex flex-col max-h-[calc(100vh-180px)] sticky top-[76px]">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
         <div className="min-w-0">
           <h3 className="text-sm font-black text-slate-900 truncate">
@@ -170,8 +171,8 @@ export default function ToothSidePanel({
                 <div key={item.id} className="relative pl-4">
                   <span className={cn(
                     'absolute left-0 top-1.5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm',
-                    item.highlight ? 'bg-rose-500' : 'bg-[#1499AD]'
-                  )} />
+                    item.highlight ? 'bg-rose-500' : ''
+                  )} style={!item.highlight ? { backgroundColor: TEAL } : undefined} />
                   <p className="text-[10px] font-bold text-slate-400">{item.date}</p>
                   <p className={cn('text-xs font-bold leading-snug', item.highlight ? 'text-rose-600' : 'text-slate-800')}>
                     {item.title}
@@ -205,7 +206,7 @@ export default function ToothSidePanel({
                 className={cn(
                   'flex flex-col items-center gap-1.5 rounded-xl border px-2 py-2.5 text-[10px] font-black transition-all cursor-pointer',
                   activeQuick === s.key
-                    ? 'ring-2 ring-[#1499AD]/40 border-[#1499AD] bg-cyan-50/80'
+                    ? 'ring-2 ring-teal-400/50 border-teal-500 bg-teal-50/80'
                     : `${s.bg} ${s.border} hover:shadow-sm`
                 )}
               >
@@ -229,7 +230,7 @@ export default function ToothSidePanel({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Tish haqida eslatma yozing..."
-            className="w-full min-h-[88px] rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1499AD]/25 focus:border-[#1499AD] resize-none"
+            className="w-full min-h-[88px] rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:border-teal-500 resize-none"
           />
         </section>
 
@@ -245,7 +246,8 @@ export default function ToothSidePanel({
         <button
           type="button"
           onClick={handleSave}
-          className="w-full py-2.5 rounded-xl bg-[#1499AD] hover:bg-[#118a9c] text-white text-xs font-black shadow-sm active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1.5"
+          className="w-full py-2.5 rounded-xl text-white text-xs font-black shadow-sm active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1.5 hover:opacity-95"
+          style={{ backgroundColor: TEAL }}
         >
           <CheckCircle2 className="w-3.5 h-3.5" />
           Saqlash
