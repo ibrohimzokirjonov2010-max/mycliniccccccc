@@ -1,6 +1,8 @@
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+const TEAL = '#14b8a6';
+
 /**
  * Bottom bar: Bugungi reja stepper + Tez to'lov card.
  */
@@ -11,21 +13,22 @@ export default function TodayPlanBar({
 }) {
   const completed = steps.filter((s) => s.state === 'done').length;
   const total = steps.length || 0;
-  const badge = total > 0 ? `${completed}/${total} bajarilgan` : 'Reja yo\'q';
+  const badge = total > 0 ? `${completed}/${total}` : "Reja yo'q";
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-3">
-      {/* Bugungi reja */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm px-4 py-3.5">
         <div className="flex items-center justify-between gap-3 mb-3">
           <h3 className="text-sm font-black text-slate-900">Bugungi reja</h3>
           <span className={cn(
-            'px-2.5 py-1 rounded-full text-[10px] font-black',
+            'px-2.5 py-1 rounded-full text-[10px] font-black border',
             total > 0 && completed === total
-              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-              : 'bg-slate-100 text-slate-600 border border-slate-200'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : total > 0
+                ? 'bg-teal-50 text-teal-800 border-teal-200'
+                : 'bg-slate-100 text-slate-600 border-slate-200'
           )}>
-            {badge}
+            {total > 0 ? `${badge} bajarilgan` : badge}
           </span>
         </div>
 
@@ -45,15 +48,17 @@ export default function TodayPlanBar({
                   <div className={cn(
                     'flex items-start gap-2.5 rounded-xl border px-3 py-2.5 flex-1 min-w-0',
                     isDone && 'bg-emerald-50/80 border-emerald-200',
-                    isActive && 'bg-cyan-50/80 border-[#1499AD]/50 ring-1 ring-[#1499AD]/20',
+                    isActive && 'bg-teal-50/80 border-teal-300 ring-1 ring-teal-400/20',
                     !isDone && !isActive && 'bg-slate-50 border-slate-200'
                   )}>
-                    <div className={cn(
-                      'w-7 h-7 rounded-full flex items-center justify-center shrink-0',
-                      isDone && 'bg-emerald-500 text-white',
-                      isActive && 'bg-[#1499AD] text-white',
-                      !isDone && !isActive && 'bg-white border border-slate-300 text-slate-400'
-                    )}>
+                    <div
+                      className={cn(
+                        'w-7 h-7 rounded-full flex items-center justify-center shrink-0',
+                        isDone && 'bg-emerald-500 text-white',
+                        !isDone && !isActive && 'bg-white border border-slate-300 text-slate-400'
+                      )}
+                      style={isActive ? { backgroundColor: TEAL, color: '#fff' } : undefined}
+                    >
                       {isDone ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : (
                         <span className="text-[11px] font-black">{idx + 1}</span>
                       )}
@@ -63,12 +68,14 @@ export default function TodayPlanBar({
                         {step.title}
                         {step.tooth ? ` (#${step.tooth})` : ''}
                       </p>
-                      <p className={cn(
-                        'text-[10px] font-bold mt-0.5',
-                        isDone && 'text-emerald-600',
-                        isActive && 'text-[#1499AD]',
-                        !isDone && !isActive && 'text-slate-400'
-                      )}>
+                      <p
+                        className={cn(
+                          'text-[10px] font-bold mt-0.5',
+                          isDone && 'text-emerald-600',
+                          !isDone && !isActive && 'text-slate-400'
+                        )}
+                        style={isActive ? { color: TEAL } : undefined}
+                      >
                         {isDone ? 'Bajarildi' : isActive ? 'Jarayonda' : 'Kutilmoqda'}
                       </p>
                     </div>
@@ -85,7 +92,6 @@ export default function TodayPlanBar({
         )}
       </div>
 
-      {/* Tez to'lov */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm px-4 py-3.5 flex flex-col justify-between gap-3">
         <div>
           <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Tez to&apos;lov</p>
