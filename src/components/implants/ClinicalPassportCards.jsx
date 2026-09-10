@@ -30,12 +30,12 @@ const safeRender = (val, fallback = EM) => {
 export function formatImplantSize(diameter, length, { withUnits = false, compact = false } = {}) {
   const d = diameter != null && diameter !== '' ? String(diameter).trim() : null;
   const l = length != null && length !== '' ? String(length).trim() : null;
-  if (!d && !l) return '—';
+  if (!d && !l) return EM;
   if (d && l) {
-    if (withUnits) return `${d} mm ${MUL} ${l} mm`;
-    return `${d}${MUL}${l}`;
+    if (withUnits) return `${DIA} ${d} mm ${MUL} L ${l} mm`;
+    return `${DIA}${d}${MUL}${l}`;
   }
-  if (d) return withUnits ? `Ø ${d} mm` : `Ø ${d}`;
+  if (d) return withUnits ? `${DIA} ${d} mm` : `${DIA}${d}`;
   return withUnits ? `L ${l} mm` : `L ${l}`;
 }
 
@@ -97,7 +97,7 @@ export function ImplantSwitcher({
               className={cn(
                 'rounded-2xl p-4 transition-all cursor-pointer select-none bg-white',
                 selected
-                  ? 'border-2 border-[#1499AD] ring-4 ring-[#1499AD]/10 shadow-sm'
+                  ? 'border-2 border-[#14b8a6] ring-4 ring-[#14b8a6]/10 shadow-sm'
                   : 'border border-slate-200 hover:border-slate-300 hover:bg-slate-50/40 shadow-xs'
               )}
             >
@@ -125,7 +125,7 @@ export function ImplantSwitcher({
               {/* Status Action Pill/Button matching screenshot */}
               <div className="mt-3">
                 {selected ? (
-                  <div className="w-full py-2 px-3 rounded-xl bg-[#1499AD] text-white font-black text-xs text-center shadow-xs">
+                  <div className="w-full py-2 px-3 rounded-xl bg-[#14b8a6] text-white font-black text-xs text-center shadow-xs">
                     {short}
                   </div>
                 ) : (
@@ -143,182 +143,13 @@ export function ImplantSwitcher({
 }
 
 export function formatProtocol(protocol, language = 'uz') {
-  if (!protocol) return language === 'ru' ? 'Отсроченная' : 'Kechiktirilgan';
+  // Mockup badge uses English Delayed / Immediate / Early
+  if (!protocol) return 'Delayed';
   const s = String(protocol).toLowerCase();
-  if (s.includes('delay')) return language === 'ru' ? 'Отсроченная' : 'Kechiktirilgan';
-  if (s.includes('immed')) return language === 'ru' ? 'Немедленная' : 'Darhol';
-  if (s.includes('early')) return language === 'ru' ? 'Ранняя' : 'Erta';
+  if (s.includes('delay') || s.includes('kechik') || s.includes('отсроч')) return 'Delayed';
+  if (s.includes('immed') || s.includes('darhol') || s.includes('немедл')) return 'Immediate';
+  if (s.includes('early') || s.includes('erta') || s.includes('ранн')) return 'Early';
   return protocol;
-}
-
-/** Large clinical passport specs card matching reference screenshot */
-export function PassportSpecsCard({ implant, language = 'uz' }) {
-  const diameter = implant?.diameter != null && String(implant.diameter).trim() !== '' ? String(implant.diameter).trim() : null;
-  const length = implant?.length != null && String(implant.length).trim() !== '' ? String(implant.length).trim() : null;
-  const sizeText = formatImplantSize(diameter, length, { withUnits: true });
-
-  const torqueVal = (implant?.torque != null && String(implant.torque).trim() !== '')
-    ? `${implant.torque} Ncm`
-    : '—';
-  const isqVal = (implant?.isq != null && String(implant.isq).trim() !== '')
-    ? String(implant.isq).trim()
-    : '—';
-  const lotVal = (implant?.lot_number && String(implant.lot_number).trim())
-    ? String(implant.lot_number).trim()
-    : '—';
-  const boneVal = (implant?.bone_type && String(implant.bone_type).trim())
-    ? String(implant.bone_type).trim()
-    : '—';
-  const dateVal = (implant?.placement_date && String(implant.placement_date).trim())
-    ? String(implant.placement_date).split('T')[0]
-    : '—';
-  const doctorVal = (implant?.doctor && String(implant.doctor).trim())
-    ? String(implant.doctor).trim()
-    : '—';
-  const protocolVal = (implant?.loading_protocol || implant?.protocol)
-    ? formatProtocol(implant.loading_protocol || implant.protocol, language)
-    : (language === 'ru' ? 'Отсроченная' : 'Kechiktirilgan');
-
-  return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 h-full flex flex-col justify-between">
-      <div>
-        {/* Header */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#1499AD] flex items-center justify-center">
-            <ImplantIcon className="w-4 h-4" />
-          </div>
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-            {language === 'ru' ? 'Клинический паспорт' : 'Klinik pasport'}
-          </h3>
-        </div>
-
-        {/* Large Size Display */}
-        <div className="text-3xl sm:text-4xl font-black tracking-tight text-[#0d7685] mb-2 font-mono leading-none">
-          {sizeText}
-        </div>
-
-        {/* Brand / Model for selected tooth */}
-        {(() => {
-          const brand = (implant?.firma === 'Boshqa'
-            ? (implant?.firma_custom || 'Boshqa')
-            : implant?.firma) || '';
-          const model = (implant?.brend && String(implant.brend).trim() && String(implant.brend).trim() !== String(brand).trim())
-            ? String(implant.brend).trim()
-            : '';
-          if (!brand && !model) return null;
-          return (
-            <div className="mb-5 flex flex-wrap items-center gap-2">
-              {brand && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black bg-indigo-50 text-indigo-800 border border-indigo-200">
-                  <Tag className="w-3 h-3" />
-                  {brand}
-                </span>
-              )}
-              {model && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-50 text-slate-700 border border-slate-200">
-                  {language === 'ru' ? 'Модель' : 'Model'}: {model}
-                </span>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* 2-Column Specs Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-          {/* LOT / Seria */}
-          <div className="flex items-start gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#1499AD] flex items-center justify-center shrink-0 mt-0.5">
-              <Lightbulb className="w-3.5 h-3.5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                {language === 'ru' ? 'Серия / LOT' : 'Partiya / Seriya'}
-              </div>
-              <div className="text-sm font-black font-mono text-[#0d9488] truncate">{lotVal}</div>
-            </div>
-          </div>
-
-          {/* Torque */}
-          <div className="flex items-start gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#1499AD] flex items-center justify-center shrink-0 mt-0.5">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                {language === 'ru' ? 'Торк (усилие)' : 'Torque (Burish kuchi)'}
-              </div>
-              <div className="text-sm font-black text-slate-900 truncate">{torqueVal}</div>
-            </div>
-          </div>
-
-          {/* ISQ (Istabilnost) */}
-          <div className="flex items-start gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#1499AD] flex items-center justify-center shrink-0 mt-0.5">
-              <Target className="w-3.5 h-3.5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                {language === 'ru' ? 'ISQ (Стабильность)' : 'ISQ (Barqarorlik)'}
-              </div>
-              <div className="text-sm font-black text-slate-900 truncate">{isqVal}</div>
-            </div>
-          </div>
-
-          {/* Suyak turi */}
-          <div className="flex items-start gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#1499AD] flex items-center justify-center shrink-0 mt-0.5">
-              <Layers className="w-3.5 h-3.5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                {language === 'ru' ? 'Тип кости' : 'Suyak turi (D1-D4)'}
-              </div>
-              <div className="text-sm font-black text-slate-900 truncate">{boneVal}</div>
-            </div>
-          </div>
-
-          {/* Jarroh */}
-          <div className="flex items-start gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#1499AD] flex items-center justify-center shrink-0 mt-0.5">
-              <UserRound className="w-3.5 h-3.5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                {language === 'ru' ? 'Хирург' : 'Jarroh shifokor'}
-              </div>
-              <div className="text-sm font-black text-slate-900 truncate">{doctorVal}</div>
-            </div>
-          </div>
-
-          {/* Joylash sanasi */}
-          <div className="flex items-start gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#1499AD] flex items-center justify-center shrink-0 mt-0.5">
-              <Calendar className="w-3.5 h-3.5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                {language === 'ru' ? 'Дата установки' : "O'rnatilgan sana"}
-              </div>
-              <div className="text-sm font-black text-slate-900 truncate">{dateVal}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Loading Protocol Badge */}
-      <div className="mt-5 pt-3 border-t border-slate-100 flex items-center gap-2.5">
-        <div className="w-6 h-6 rounded-full bg-teal-50 text-[#1499AD] flex items-center justify-center">
-          <Activity className="w-3.5 h-3.5" />
-        </div>
-        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          {language === 'ru' ? 'Протокол нагрузки:' : 'Yuklama protokoli:'}
-        </div>
-        <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-teal-50 text-teal-700 border border-teal-200">
-          {protocolVal}
-        </span>
-      </div>
-    </div>
-  );
 }
 
 /** Parse assorted date strings into a Date (or null) */
@@ -343,6 +174,152 @@ function formatTimelineDate(raw) {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   return `${day}.${month}.${d.getFullYear()}`;
 }
+
+/** Large clinical passport specs card matching reference screenshot */
+export function PassportSpecsCard({ implant, language = 'uz' }) {
+  const diameter = implant?.diameter != null && String(implant.diameter).trim() !== '' ? String(implant.diameter).trim() : null;
+  const length = implant?.length != null && String(implant.length).trim() !== '' ? String(implant.length).trim() : null;
+  const sizeText = formatImplantSize(diameter, length, { withUnits: true });
+
+  const torqueVal = (implant?.torque != null && String(implant.torque).trim() !== '')
+    ? `${implant.torque}${String(implant.torque).toLowerCase().includes('ncm') ? '' : ' Ncm'}`
+    : EM;
+  const isqVal = (implant?.isq != null && String(implant.isq).trim() !== '')
+    ? String(implant.isq).trim()
+    : EM;
+  const lotVal = (implant?.lot_number && String(implant.lot_number).trim())
+    ? String(implant.lot_number).trim()
+    : EM;
+  const boneVal = (implant?.bone_type && String(implant.bone_type).trim())
+    ? String(implant.bone_type).trim()
+    : EM;
+  const dateVal = (implant?.placement_date && String(implant.placement_date).trim())
+    ? formatTimelineDate(implant.placement_date)
+    : EM;
+  const doctorVal = (implant?.doctor && String(implant.doctor).trim())
+    ? String(implant.doctor).trim()
+    : EM;
+  const protocolVal = formatProtocol(implant?.loading_protocol || implant?.protocol, language);
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 h-full flex flex-col justify-between">
+      <div>
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#14b8a6] flex items-center justify-center">
+            <ImplantIcon className="w-4 h-4" />
+          </div>
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+            {language === 'ru' ? 'Клинический паспорт' : 'Klinik Pasport'}
+          </h3>
+        </div>
+
+        {/* Large Size Display — mockup HUGE Ø × L */}
+        <div className="text-[1.85rem] sm:text-[2.15rem] font-black tracking-tight text-[#14b8a6] mb-5 font-mono leading-none">
+          {sizeText}
+        </div>
+
+        {/* 2-Column Specs Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+          {/* LOT / Seria */}
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#14b8a6] flex items-center justify-center shrink-0 mt-0.5">
+              <Lightbulb className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {language === 'ru' ? 'LOT / Серия' : 'LOT / Seria'}
+              </div>
+              <div className="text-sm font-black font-mono text-[#14b8a6] truncate">{lotVal}</div>
+            </div>
+          </div>
+
+          {/* Torque */}
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#14b8a6] flex items-center justify-center shrink-0 mt-0.5">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {language === 'ru' ? 'Torque' : 'Torque'}
+              </div>
+              <div className="text-sm font-black text-slate-900 truncate">{torqueVal}</div>
+            </div>
+          </div>
+
+          {/* ISQ (Istabilnost) */}
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#14b8a6] flex items-center justify-center shrink-0 mt-0.5">
+              <Target className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {language === 'ru' ? 'ISQ' : 'ISQ'}
+              </div>
+              <div className="text-sm font-black text-slate-900 truncate">{isqVal}</div>
+            </div>
+          </div>
+
+          {/* Suyak turi */}
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#14b8a6] flex items-center justify-center shrink-0 mt-0.5">
+              <Layers className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {language === 'ru' ? 'Тип кости' : 'Suyak turi'}
+              </div>
+              <div className="text-sm font-black text-slate-900 truncate">{boneVal}</div>
+            </div>
+          </div>
+
+          {/* Jarroh */}
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#14b8a6] flex items-center justify-center shrink-0 mt-0.5">
+              <UserRound className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {language === 'ru' ? 'Хирург' : 'Jarroh'}
+              </div>
+              <div className="text-sm font-black text-slate-900 truncate">{doctorVal}</div>
+            </div>
+          </div>
+
+          {/* Joylash sanasi */}
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#14b8a6] flex items-center justify-center shrink-0 mt-0.5">
+              <Calendar className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {language === 'ru' ? 'Дата установки' : 'Joylash sanasi'}
+              </div>
+              <div className="text-sm font-black text-slate-900 truncate">{dateVal}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Loading Protocol Badge */}
+      <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2.5 flex-wrap">
+        <div className="w-7 h-7 rounded-full bg-teal-50 text-[#14b8a6] flex items-center justify-center shrink-0">
+          <Activity className="w-3.5 h-3.5" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            {language === 'ru' ? 'Протокол нагрузки' : 'Loading protokoli'}
+          </div>
+          <span className="inline-flex mt-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-teal-50 text-[#0f766e] border border-teal-200">
+            {protocolVal}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 
 /**
  * Build clinical stage history from REAL implant.timeline (and optional per-tooth timeline).
@@ -397,28 +374,39 @@ export function buildClinicalHistoryItems(implant, language = 'uz') {
 export function ClinicalTimeline({ implant, language = 'uz', onAddMilestone }) {
   const historyItems = buildClinicalHistoryItems(implant, language);
 
+  const displayStatus = normalizeLifecycleStatus(implant?.lifecycle_status || implant?.status);
+  const isCompleted = displayStatus === 'Tugallangan';
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 w-full">
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#1499AD] flex items-center justify-center">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 w-full h-full flex flex-col">
+      <div className="flex items-center justify-between mb-5 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#14b8a6] flex items-center justify-center shrink-0">
             <Clock className="w-4 h-4" />
           </div>
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-            {language === 'ru' ? 'История клинических этапов' : 'Klinik bosqichlar tarixi'}
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 truncate">
+            {language === 'ru' ? 'История клинических этапов' : 'Klinik Bosqichlar Tarixi'}
           </h3>
         </div>
 
-        {onAddMilestone && (
-          <button
-            type="button"
-            onClick={onAddMilestone}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 text-teal-800 hover:bg-teal-100/80 transition-colors cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5 text-[#1499AD]" />
-            <span>{language === 'ru' ? 'Добавить этап' : "Bosqich qo'shish"}</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {isCompleted && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-teal-50 text-[#0f766e] border border-teal-200">
+              <Check className="w-3 h-3" />
+              {language === 'ru' ? 'Завершено' : 'Yakunlandi'}
+            </span>
+          )}
+          {onAddMilestone && (
+            <button
+              type="button"
+              onClick={onAddMilestone}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-teal-50 text-teal-800 hover:bg-teal-100/80 transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 text-[#14b8a6]" />
+              <span className="hidden sm:inline">{language === 'ru' ? 'Этап' : "Qo'shish"}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {historyItems.length === 0 ? (
@@ -426,10 +414,10 @@ export function ClinicalTimeline({ implant, language = 'uz', onAddMilestone }) {
           {language === 'ru' ? 'История этапов пока пуста' : "Klinik bosqichlar tarixi hozircha bo'sh"}
         </div>
       ) : (
-        <div className="relative pl-6 space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-[#1499AD]">
+        <div className="relative pl-6 space-y-5 flex-1 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-[#14b8a6]">
           {historyItems.map((item) => (
             <div key={item.id} className="relative flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6">
-              <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-[#1499AD] ring-4 ring-white shrink-0" />
+              <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-[#14b8a6] ring-4 ring-white shrink-0" />
               <div className="text-xs font-mono font-bold text-slate-700 w-28 shrink-0">
                 {item.date}
               </div>
@@ -452,15 +440,24 @@ export function ClinicalTimeline({ implant, language = 'uz', onAddMilestone }) {
           ))}
         </div>
       )}
+
+      {isCompleted && (
+        <div className="mt-5 pt-3 border-t border-slate-100 flex justify-end">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black bg-[#14b8a6] text-white shadow-sm">
+            <Check className="w-3.5 h-3.5" />
+            {language === 'ru' ? 'Завершено' : 'Yakunlandi'}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
 
 const MEDIA_LABELS = [
-  { key: 'preop', uz: 'Operatsiyadan oldin', ru: 'До операции' },
-  { key: 'postop', uz: 'Operatsiyadan keyin', ru: 'После операции' },
-  { key: 'healing', uz: 'Bitish jarayoni', ru: 'Заживление' },
-  { key: 'final', uz: 'Yakuniy natija', ru: 'Финал' },
+  { key: 'preop', uz: 'Pre-op', ru: 'Pre-op' },
+  { key: 'postop', uz: 'Post-op', ru: 'Post-op' },
+  { key: 'healing', uz: 'Healing', ru: 'Healing' },
+  { key: 'final', uz: 'Final', ru: 'Final' },
 ];
 
 /** Stage-tagged media rail */
@@ -473,57 +470,60 @@ export function StageMediaRail({ implant, language = 'uz', onZoom, onOpenPasspor
   });
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 h-full flex flex-col">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 h-full flex flex-col">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#14b8a6] flex items-center justify-center">
           <Camera className="w-4 h-4" />
         </div>
-        <h3 className="text-xs font-black uppercase tracking-wider text-slate-700">
-          {language === 'ru' ? 'Этапные снимки' : 'Bosqich rasm va yozuvlar'}
+        <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+          {language === 'ru' ? 'Снимки этапов' : 'Bosqich Rasm va Yozuvlar'}
         </h3>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 flex-1">
+      <div className="grid grid-cols-2 gap-2.5 flex-1">
         {slots.map((slot) => (
           <button
             key={slot.key}
             type="button"
-            disabled={!slot.url}
             onClick={() => slot.url && onZoom?.(slot.url)}
             className={cn(
-              'relative aspect-[4/3] rounded-xl border overflow-hidden text-left',
+              'relative aspect-[4/3] rounded-xl border overflow-hidden text-left group',
               slot.url
-                ? 'border-slate-200 cursor-pointer group'
-                : 'border-dashed border-slate-200 bg-slate-50 cursor-default'
+                ? 'border-slate-200 cursor-pointer'
+                : 'border-dashed border-slate-200 bg-slate-50 cursor-pointer hover:border-teal-300'
             )}
           >
             {slot.url ? (
               <img src={slot.url} alt={slot.uz} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-1">
-                <Camera className="w-5 h-5" />
-                <span className="text-[9px] font-bold text-slate-400">Rasm yuklanmagan</span>
+              <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-1.5 bg-gradient-to-b from-slate-50 to-slate-100/80">
+                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 text-[#14b8a6] flex items-center justify-center shadow-sm group-hover:border-teal-300">
+                  <Camera className="w-4 h-4" />
+                </div>
               </div>
             )}
-            <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase bg-black/60 text-white">
+            <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wide bg-white/90 text-slate-700 border border-slate-200/80">
               {language === 'ru' ? slot.ru : slot.uz}
+            </span>
+            <span className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-[#14b8a6] text-white flex items-center justify-center shadow-sm opacity-90 group-hover:opacity-100">
+              <Camera className="w-3.5 h-3.5" />
             </span>
           </button>
         ))}
       </div>
 
-      <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
-          <FileText className="w-3.5 h-3.5" />
-          <span>{language === 'ru' ? 'Паспорт стикер (PDF)' : 'Pasport stikeri (PDF)'}</span>
+      <div className="mt-4 rounded-xl border border-dashed border-teal-300/80 bg-teal-50/30 px-3 py-2.5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 min-w-0">
+          <FileText className="w-3.5 h-3.5 text-[#14b8a6] shrink-0" />
+          <span className="truncate">{language === 'ru' ? 'Паспорт стикер (PDF)' : 'Pasport stikeri (PDF)'}</span>
         </div>
         <button
           type="button"
           onClick={onOpenPassport}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black bg-slate-900 text-white hover:bg-slate-800 cursor-pointer"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-black bg-[#14b8a6] text-white hover:bg-teal-600 cursor-pointer shrink-0 shadow-sm"
         >
           <Download className="w-3 h-3" />
-          {language === 'ru' ? 'Скачать' : "Ko'rish / Yuklab olish"}
+          {language === 'ru' ? 'Смотреть / Скачать' : "Ko'rish / Yuklab olish"}
         </button>
       </div>
     </div>
@@ -540,21 +540,21 @@ export function LinkedServicesCard({
   onEditPrimary,
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 h-full flex flex-col">
       <div className="flex items-center justify-between gap-2 mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#1499AD] flex items-center justify-center">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#14b8a6] flex items-center justify-center shrink-0">
             <Hash className="w-4 h-4" />
           </div>
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-            {language === 'ru' ? 'Услуги (связанные)' : "Xizmatlar (bog'langan)"}
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 truncate">
+            {language === 'ru' ? 'Услуги (связанные)' : "Xizmatlar (Bog'langan)"}
           </h3>
         </div>
         {onAdd && (
           <button
             type="button"
             onClick={onAdd}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-[#1499AD] text-white hover:bg-[#118294] transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-black text-[#14b8a6] hover:bg-teal-50 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             {language === 'ru' ? 'Добавить' : "Qo'shish"}
@@ -562,42 +562,45 @@ export function LinkedServicesCard({
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-100">
+      <div className="overflow-x-auto flex-1">
         <table className="w-full text-left text-xs">
-          <thead className="bg-slate-50 text-slate-500">
-            <tr>
-              <th className="px-3 py-2 font-black uppercase tracking-wider">#</th>
-              <th className="px-3 py-2 font-black uppercase tracking-wider">{language === 'ru' ? 'Услуга' : 'Xizmat'}</th>
-              <th className="px-3 py-2 font-black uppercase tracking-wider">{language === 'ru' ? 'Зуб' : 'Tish'}</th>
-              <th className="px-3 py-2 font-black uppercase tracking-wider">{language === 'ru' ? 'Дата' : 'Sana'}</th>
-              <th className="px-3 py-2 font-black uppercase tracking-wider text-right">{language === 'ru' ? 'Цена' : 'Narx'}</th>
-              <th className="px-3 py-2 w-10" />
+          <thead>
+            <tr className="border-b border-slate-100 text-slate-400">
+              <th className="pb-2 pr-2 font-bold">{language === 'ru' ? 'Услуга' : 'Xizmat'}</th>
+              <th className="pb-2 px-2 font-bold whitespace-nowrap">{language === 'ru' ? 'Дата' : 'Sana'}</th>
+              <th className="pb-2 pl-2 font-bold text-right whitespace-nowrap">{language === 'ru' ? 'Цена' : 'Narx'}</th>
             </tr>
           </thead>
           <tbody>
-            {services.map((svc, idx) => (
-              <tr key={svc.id || idx} className="border-t border-slate-100 hover:bg-slate-50/60">
-                <td className="px-3 py-2.5 font-mono font-bold text-slate-400">{idx + 1}</td>
-                <td className="px-3 py-2.5">
-                  <div className="font-black text-slate-900">{svc.service_name || EM}</div>
-                  {svc.notes ? <div className="text-[10px] font-medium text-slate-400 mt-0.5 truncate max-w-[240px]">{svc.notes}</div> : null}
+            {services.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="py-6 text-center text-slate-400 font-medium">
+                  {language === 'ru' ? 'Нет связанных услуг' : "Bog'langan xizmatlar yo'q"}
+                </td>
+              </tr>
+            ) : services.map((svc, idx) => (
+              <tr key={svc.id || idx} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
+                <td className="py-3 pr-2 align-top">
+                  <div className="font-bold text-slate-900 leading-snug">{svc.service_name || EM}</div>
+                  {svc.tooth_number ? (
+                    <div className="text-[10px] font-mono font-bold text-slate-400 mt-0.5">#{svc.tooth_number}</div>
+                  ) : null}
                   {svc.is_primary && onEditPrimary ? (
-                    <button type="button" onClick={onEditPrimary} className="text-[10px] font-bold text-[#1499AD] hover:underline mt-0.5 cursor-pointer">
-                      {language === 'ru' ? 'Редактировать основную' : 'Asosiyni tahrirlash'}
+                    <button type="button" onClick={onEditPrimary} className="text-[10px] font-bold text-[#14b8a6] hover:underline mt-0.5 cursor-pointer">
+                      {language === 'ru' ? 'Редактировать' : 'Tahrirlash'}
                     </button>
                   ) : null}
                 </td>
-                <td className="px-3 py-2.5 font-mono font-bold text-slate-700">#{svc.tooth_number || EM}</td>
-                <td className="px-3 py-2.5 font-mono text-slate-600">{svc.date || EM}</td>
-                <td className="px-3 py-2.5 text-right font-mono font-black text-emerald-700">
-                  {(Number(svc.price) || 0).toLocaleString()}
-                </td>
-                <td className="px-3 py-2.5 text-right">
+                <td className="py-3 px-2 align-top font-mono text-slate-500 whitespace-nowrap">{svc.date || EM}</td>
+                <td className="py-3 pl-2 align-top text-right whitespace-nowrap">
+                  <div className="font-mono font-black text-slate-800">
+                    {(Number(svc.price) || 0).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">so&apos;m</span>
+                  </div>
                   {!svc.is_primary && onDelete ? (
                     <button
                       type="button"
                       onClick={() => onDelete(svc.id)}
-                      className="text-slate-300 hover:text-rose-600 cursor-pointer"
+                      className="text-slate-300 hover:text-rose-600 cursor-pointer text-sm leading-none mt-1"
                       title={language === 'ru' ? 'Удалить' : "O'chirish"}
                     >
                       ×
@@ -610,12 +613,12 @@ export function LinkedServicesCard({
         </table>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-slate-900 text-white px-4 py-3">
-        <span className="text-[11px] font-black uppercase tracking-wider text-slate-300">
-          {language === 'ru' ? 'Итого' : 'Jami'}
+      <div className="mt-4 pt-4 border-t border-slate-100 flex items-end justify-between gap-3">
+        <span className="text-[11px] font-bold text-slate-500">
+          {language === 'ru' ? 'Итого (все услуги)' : 'Jami (barcha xizmatlar)'}
         </span>
-        <span className="text-base font-black font-mono">
-          {(Number(total) || 0).toLocaleString()} {language === 'ru' ? 'UZS' : "so'm"}
+        <span className="text-xl sm:text-2xl font-black font-mono text-[#14b8a6] leading-none">
+          {(Number(total) || 0).toLocaleString()} <span className="text-sm font-bold">so&apos;m</span>
         </span>
       </div>
     </div>

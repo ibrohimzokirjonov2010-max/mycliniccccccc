@@ -112,10 +112,10 @@ const TEETH_DATA = buildTeethData();
  * Anatomically authentic occlusal tooth crown representations
  */
 function ToothCrown({ type, isSelected, isHovered }) {
-  const primaryTeal = '#1499AD';
+  const primaryTeal = '#14b8a6';
   const strokeTeal = '#0e7490';
   const naturalFill = isHovered ? '#f0fdfa' : '#ffffff';
-  const naturalStroke = isHovered ? '#1499AD' : '#94a3b8';
+  const naturalStroke = isHovered ? '#14b8a6' : '#94a3b8';
 
   const fill = isSelected ? primaryTeal : naturalFill;
   const stroke = isSelected ? strokeTeal : naturalStroke;
@@ -333,7 +333,7 @@ export function DentalArchFdi({
                 y1={badgePos.ty}
                 x2={badgePos.bx}
                 y2={badgePos.by + 11}
-                stroke="#1499AD"
+                stroke="#14b8a6"
                 strokeWidth="1.2"
                 strokeDasharray="2 2"
               />
@@ -378,7 +378,7 @@ export function DentalArchFdi({
       {/* Legend below the arch matching reference screenshot */}
       <div className="flex items-center justify-center gap-5 pt-3 text-[11px] font-bold text-slate-500 border-t border-slate-100 w-full mt-1">
         <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#1499AD] ring-2 ring-teal-100" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#14b8a6] ring-2 ring-teal-100" />
           <span className="text-slate-700 font-semibold">Implant joylashgan (#{primaryFdi})</span>
         </div>
         <div className="flex items-center gap-1.5">
