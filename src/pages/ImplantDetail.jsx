@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { toast } from 'sonner';
+import { uploadImage } from '@/utils/imageUpload';
 import { cn } from '@/lib/utils';
 import ImplantForm from '../components/implants/ImplantForm';
 import ClinicalStepper, {
@@ -100,6 +101,7 @@ export default function ImplantDetail() {
   });
 
   // Milestone Dialog State
+  const [uploadingSlot, setUploadingSlot] = useState(null);
   const [addMilestoneOpen, setAddMilestoneOpen] = useState(false);
   const [milestoneForm, setMilestoneForm] = useState({
     status: 'Integratsiya bosqichi',
@@ -257,6 +259,13 @@ export default function ImplantDetail() {
       timeline: (Array.isArray(toothData.timeline) && toothData.timeline.length > 0)
         ? toothData.timeline
         : (raw.timeline || []),
+      xray_urls: (Array.isArray(toothData.xray_urls) && toothData.xray_urls.length > 0)
+        ? toothData.xray_urls
+        : (raw.xray_urls || implant?.xray_urls || []),
+      stage_media: (toothData.stage_media && typeof toothData.stage_media === 'object')
+        ? toothData.stage_media
+        : (raw.stage_media || implant?.stage_media || null),
+      passport_url: toothData.passport_url || raw.passport_url || implant?.passport_url || null,
       tooth_number: toothFdi || raw.tooth_number,
       tooth_numbers: toothKey ? [toothKey] : rawTeeth,
       syntheticToothKey: raw.syntheticToothKey || toothKey || null,
@@ -360,6 +369,62 @@ export default function ImplantDetail() {
     return [...new Set(all.filter(Boolean))];
   })();
 
+  const handleStagePhotoUpload = async ({ slotKey, slotIndex, file }) => {
+    if (!realImplantId || !file) return;
+    setUploadingSlot(slotKey);
+    try {
+      const result = await uploadImage(file, {
+        maxSizeMB: 8,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        quality: 0.75,
+      });
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Upload failed');
+      }
+
+      const existing = Array.isArray(implant?.xray_urls) ? [...implant.xray_urls] : [];
+      // Normalize to fixed 4-slot string array aligned with MEDIA_LABELS indices
+      const nextUrls = [0, 1, 2, 3].map((i) => {
+        const cur = existing[i];
+        if (i === slotIndex) return result.data;
+        if (typeof cur === 'string') return cur || null;
+        if (cur && typeof cur === 'object' && cur.url) return cur.url;
+        return null;
+      });
+      // Preserve any extra legacy xray entries beyond the 4 stage slots
+      for (let i = 4; i < existing.length; i++) nextUrls.push(existing[i]);
+
+      const nextStageMedia = {
+        ...(implant?.stage_media && typeof implant.stage_media === 'object' ? implant.stage_media : {}),
+        [slotKey]: result.data,
+      };
+
+      // Optimistic UI
+      setImplant((prev) => prev && String(prev.id) === String(realImplantId)
+        ? { ...prev, xray_urls: nextUrls, stage_media: nextStageMedia }
+        : prev);
+      setRelatedTeeth((prev) => prev.map((t) => String(t.id) === String(realImplantId)
+        ? { ...t, xray_urls: nextUrls, stage_media: nextStageMedia }
+        : t));
+
+      await base44.entities.Implant.update(realImplantId, {
+        xray_urls: nextUrls,
+        stage_media: nextStageMedia,
+      });
+
+      toast.success(language === 'ru'
+        ? ('Фото ' + slotKey + ' сохранено')
+        : (slotKey + ' rasmi saqlandi'));
+      load();
+    } catch (err) {
+      console.error(err);
+      toast.error(language === 'ru' ? 'Ошибка загрузки фото' : 'Rasm yuklashda xatolik');
+      throw err;
+    } finally {
+      setUploadingSlot(null);
+    }
+  };
   const handleSaveMilestone = async () => {
     if (!milestoneForm.status.trim()) {
       toast.warning(language === 'ru' ? 'Введите название этапа' : 'Bosqich nomini kiriting');
@@ -968,6 +1033,8 @@ export default function ImplantDetail() {
           language={language}
           onZoom={setZoomImg}
           onOpenPassport={exportPDF}
+          onUpload={handleStagePhotoUpload}
+          uploadingSlot={uploadingSlot}
         />
       </div>
 
