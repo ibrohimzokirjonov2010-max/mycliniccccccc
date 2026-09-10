@@ -70,8 +70,12 @@ export function ImplantSwitcher({
     <div className="space-y-3">
       <div className="space-y-3">
         {implants.map((imp, idx) => {
-          const rawFdis = getToothFdiList(imp);
-          const fdi = rawFdis[0] || toothIdToFdi(imp.tooth_number) || '—';
+          // Prefer explicit per-chip tooth key so multi-tooth cases never all show the same FDI
+          const preferredKey = imp.syntheticToothKey || imp.tooth_id || (Array.isArray(imp.tooth_numbers) && imp.tooth_numbers.length === 1 ? imp.tooth_numbers[0] : null);
+          const rawFdis = preferredKey
+            ? [toothIdToFdi(preferredKey)]
+            : getToothFdiList(imp);
+          const fdi = rawFdis[0] || toothIdToFdi(imp.tooth_number) || toothIdToFdi(imp.tooth_id) || '—';
           const display = normalizeLifecycleStatus(imp.lifecycle_status || imp.status);
           const short = SHORT_STATUS_LABEL[display] || display || (language === 'ru' ? 'Установлен' : 'Joylandi');
           const selected = imp.id === selectedId;
@@ -189,7 +193,7 @@ export function PassportSpecsCard({ implant, language = 'uz' }) {
         </div>
 
         {/* Large Size Display */}
-        <div className="text-2xl sm:text-3xl font-black tracking-tight text-[#0d7685] mb-2 font-mono leading-none">
+        <div className="text-3xl sm:text-4xl font-black tracking-tight text-[#0d7685] mb-2 font-mono leading-none">
           {sizeText}
         </div>
 
@@ -317,93 +321,84 @@ export function PassportSpecsCard({ implant, language = 'uz' }) {
   );
 }
 
-/** Vertical Clinical Stages Timeline matching the reference design */
+/** Parse assorted date strings into a Date (or null) */
+function parseTimelineDate(raw) {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+  // DD.MM.YYYY
+  const dmy = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (dmy) {
+    const d = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatTimelineDate(raw) {
+  const d = parseTimelineDate(raw);
+  if (!d) return raw ? String(raw) : '—';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${day}.${month}.${d.getFullYear()}`;
+}
+
+/**
+ * Build clinical stage history from REAL implant.timeline (and optional per-tooth timeline).
+ * Does NOT invent hardcoded future stages — those made the bottom history look frozen.
+ */
+export function buildClinicalHistoryItems(implant, language = 'uz') {
+  const rawTimeline = Array.isArray(implant?.timeline) ? implant.timeline : [];
+
+  const entries = rawTimeline
+    .filter((it) => it && (it.status || it.title || it.note || it.detail))
+    .map((it, idx) => {
+      const parsed = parseTimelineDate(it.date);
+      return {
+        id: it.id || `tl-${idx}-${it.status || it.title || 'x'}`,
+        date: formatTimelineDate(it.date),
+        sortKey: parsed ? parsed.getTime() : idx,
+        title: it.status || it.title || (language === 'ru' ? 'Клиническая запись' : 'Klinik qayd'),
+        detail: it.note || it.detail || '',
+        toothFdi: it.tooth_fdi || it.tooth_number || null,
+      };
+    });
+
+  // Seed a single placement entry only when history is empty (never invent future stages)
+  if (entries.length === 0 && implant?.placement_date) {
+    const parts = [];
+    if (implant.torque) parts.push(`Torque: ${implant.torque}${String(implant.torque).includes('Ncm') ? '' : ' Ncm'}`);
+    if (implant.isq) parts.push(`ISQ: ${implant.isq}`);
+    if (implant.doctor) parts.push(language === 'ru' ? `Хирург: ${implant.doctor}` : `Jarroh: ${implant.doctor}`);
+    const parsed = parseTimelineDate(implant.placement_date);
+    entries.push({
+      id: 'seed-placement',
+      date: formatTimelineDate(implant.placement_date),
+      sortKey: parsed ? parsed.getTime() : 0,
+      title: language === 'ru' ? 'Имплант установлен' : "Implant joylandi",
+      detail: parts.length > 0
+        ? parts.join(' | ')
+        : (language === 'ru' ? 'Имплант успешно установлен' : 'Implant muvaffaqiyatli joylandi'),
+      toothFdi: null,
+    });
+  }
+
+  // Chronological: oldest → newest (stable medical timeline)
+  entries.sort((a, b) => {
+    if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
+    return String(a.id).localeCompare(String(b.id));
+  });
+
+  return entries;
+}
+
+/** Vertical Clinical Stages Timeline — driven by real timeline field */
 export function ClinicalTimeline({ implant, language = 'uz', onAddMilestone }) {
-  const synthesizedItems = (() => {
-    const pDate = implant?.placement_date;
-    const torque = implant?.torque;
-    const isq = implant?.isq;
-    const doctor = implant?.doctor;
-    const bone = implant?.bone_type;
-    const protocol = implant?.loading_protocol || implant?.protocol;
-
-    // Calculate sequential dates based on placement date
-    let baseDate = new Date();
-    try {
-      if (pDate) {
-        const parts = String(pDate).split('.');
-        if (parts.length === 3) {
-          baseDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-        } else {
-          baseDate = new Date(pDate);
-        }
-      }
-      if (isNaN(baseDate.getTime())) baseDate = new Date();
-    } catch {
-      baseDate = new Date();
-    }
-
-    const formatDate = (d) => {
-      const day = String(d.getDate()).padStart(2, '0');
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const year = d.getFullYear();
-      return `${day}.${month}.${year}`;
-    };
-
-    const d1 = pDate ? (String(pDate).includes('-') ? formatDate(baseDate) : pDate) : formatDate(baseDate);
-    const d2 = formatDate(new Date(baseDate.getTime() + 29 * 24 * 60 * 60 * 1000));
-    const d3 = formatDate(new Date(baseDate.getTime() + 64 * 24 * 60 * 60 * 1000));
-    const d4 = formatDate(new Date(baseDate.getTime() + 69 * 24 * 60 * 60 * 1000));
-
-    const d1Parts = [];
-    if (torque) d1Parts.push(`Torque: ${torque}${String(torque).includes('Ncm') ? '' : ' Ncm'}`);
-    if (isq) d1Parts.push(`ISQ: ${isq}`);
-    if (doctor) d1Parts.push(`Jarroh: ${doctor}`);
-    const d1Detail = d1Parts.length > 0 ? d1Parts.join(' | ') : 'Implant muvaffaqiyatli joylandi';
-
-    const d2Parts = [];
-    if (isq) d2Parts.push(`ISQ: ${isq}`);
-    if (bone) d2Parts.push(`Suyak turi: ${bone}`);
-    if (protocol) d2Parts.push(`Protokol: ${formatProtocol(protocol, language)}`);
-    const d2Detail = d2Parts.length > 0 ? d2Parts.join(' | ') : 'Integratsiya jarayoni nazorati';
-
-    const defaultStages = [
-      {
-        date: d1,
-        title: 'Implant joylandi',
-        detail: d1Detail,
-      },
-      {
-        date: d2,
-        title: 'Integratsiya bosqichi',
-        detail: d2Detail,
-      },
-      {
-        date: d3,
-        title: 'Abutment bosqichiga tayyor',
-        detail: 'Integratsiya muvaffaqiyatli yakunlandi',
-      },
-      {
-        date: d4,
-        title: 'Protez yakunlandi',
-        detail: 'Pasport stikeri yaratildi',
-      },
-    ];
-
-    const customItems = (Array.isArray(implant?.timeline) ? implant.timeline : [])
-      .filter(it => it.note && it.note !== 'Rejalashtirilgan')
-      .map(it => ({
-        date: it.date ? (String(it.date).includes('T') ? new Date(it.date).toLocaleDateString('ru-RU') : it.date) : d1,
-        title: it.status || 'Klinik qayd',
-        detail: it.note,
-      }));
-
-    return [...defaultStages, ...customItems];
-  })();
+  const historyItems = buildClinicalHistoryItems(implant, language);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 w-full">
-      {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#1499AD] flex items-center justify-center">
@@ -426,32 +421,37 @@ export function ClinicalTimeline({ implant, language = 'uz', onAddMilestone }) {
         )}
       </div>
 
-      {/* Timeline with vertical continuous teal line */}
-      <div className="relative pl-6 space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-[#1499AD]">
-        {synthesizedItems.map((item, idx) => (
-          <div key={idx} className="relative flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6">
-            {/* Solid Teal Dot on the line */}
-            <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-[#1499AD] ring-4 ring-white shrink-0" />
-
-            {/* Date */}
-            <div className="text-xs font-mono font-bold text-slate-700 w-28 shrink-0">
-              {item.date}
-            </div>
-
-            {/* Stage Title and Detail */}
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-black text-slate-900 leading-snug">
-                {item.title}
+      {historyItems.length === 0 ? (
+        <div className="text-xs font-medium text-slate-400 py-4 text-center">
+          {language === 'ru' ? 'История этапов пока пуста' : "Klinik bosqichlar tarixi hozircha bo'sh"}
+        </div>
+      ) : (
+        <div className="relative pl-6 space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-[#1499AD]">
+          {historyItems.map((item) => (
+            <div key={item.id} className="relative flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6">
+              <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-[#1499AD] ring-4 ring-white shrink-0" />
+              <div className="text-xs font-mono font-bold text-slate-700 w-28 shrink-0">
+                {item.date}
               </div>
-              {item.detail && (
-                <div className="text-xs font-medium text-slate-500 mt-0.5 leading-snug">
-                  {item.detail}
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-black text-slate-900 leading-snug">
+                  {item.title}
+                  {item.toothFdi ? (
+                    <span className="ml-2 text-[10px] font-mono font-bold text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded-md">
+                      #{item.toothFdi}
+                    </span>
+                  ) : null}
                 </div>
-              )}
+                {item.detail && (
+                  <div className="text-xs font-medium text-slate-500 mt-0.5 leading-snug">
+                    {item.detail}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -530,7 +530,7 @@ export function StageMediaRail({ implant, language = 'uz', onZoom, onOpenPasspor
   );
 }
 
-/** Secondary services list */
+/** Secondary services list — clean clinical table */
 export function LinkedServicesCard({
   services = [],
   total = 0,
@@ -540,56 +540,85 @@ export function LinkedServicesCard({
   onEditPrimary,
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5 h-full">
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <h3 className="text-xs font-black uppercase tracking-wider text-slate-600">
-          {language === 'ru' ? 'Услуги (связанные)' : "Xizmatlar (bog'langan)"}
-        </h3>
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#1499AD] flex items-center justify-center">
+            <Hash className="w-4 h-4" />
+          </div>
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+            {language === 'ru' ? 'Услуги (связанные)' : "Xizmatlar (bog'langan)"}
+          </h3>
+        </div>
         {onAdd && (
           <button
             type="button"
             onClick={onAdd}
-            className="text-xs font-black text-[#1499AD] hover:underline cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-[#1499AD] text-white hover:bg-[#118294] transition-colors cursor-pointer"
           >
-            + Qo&apos;shish
+            <Plus className="w-3.5 h-3.5" />
+            {language === 'ru' ? 'Добавить' : "Qo'shish"}
           </button>
         )}
       </div>
 
-      <div className="space-y-1.5 max-h-56 overflow-y-auto">
-        {services.map((svc, idx) => (
-          <div
-            key={svc.id || idx}
-            className="flex items-center justify-between gap-2 py-2 px-2.5 rounded-xl hover:bg-slate-50 text-xs border border-transparent hover:border-slate-200/60"
-          >
-            <div className="min-w-0">
-              <div className="font-bold text-slate-800 truncate">{svc.service_name}</div>
-              <div className="text-[10px] text-slate-400 font-mono">#{svc.tooth_number} · {svc.date || EM}</div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="font-mono font-bold text-slate-600 text-xs">
-                {(Number(svc.price) || 0).toLocaleString()}
-              </span>
-              {svc.is_primary ? (
-                onEditPrimary && (
-                  <button type="button" onClick={onEditPrimary} className="text-xs text-slate-400 hover:text-teal-600 cursor-pointer">✎</button>
-                )
-              ) : (
-                onDelete && (
-                  <button type="button" onClick={() => onDelete(svc.id)} className="text-xs text-slate-400 hover:text-rose-600 cursor-pointer">✕</button>
-                )
-              )}
-            </div>
-          </div>
-        ))}
+      <div className="overflow-x-auto rounded-xl border border-slate-100">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-slate-50 text-slate-500">
+            <tr>
+              <th className="px-3 py-2 font-black uppercase tracking-wider">#</th>
+              <th className="px-3 py-2 font-black uppercase tracking-wider">{language === 'ru' ? 'Услуга' : 'Xizmat'}</th>
+              <th className="px-3 py-2 font-black uppercase tracking-wider">{language === 'ru' ? 'Зуб' : 'Tish'}</th>
+              <th className="px-3 py-2 font-black uppercase tracking-wider">{language === 'ru' ? 'Дата' : 'Sana'}</th>
+              <th className="px-3 py-2 font-black uppercase tracking-wider text-right">{language === 'ru' ? 'Цена' : 'Narx'}</th>
+              <th className="px-3 py-2 w-10" />
+            </tr>
+          </thead>
+          <tbody>
+            {services.map((svc, idx) => (
+              <tr key={svc.id || idx} className="border-t border-slate-100 hover:bg-slate-50/60">
+                <td className="px-3 py-2.5 font-mono font-bold text-slate-400">{idx + 1}</td>
+                <td className="px-3 py-2.5">
+                  <div className="font-black text-slate-900">{svc.service_name || EM}</div>
+                  {svc.notes ? <div className="text-[10px] font-medium text-slate-400 mt-0.5 truncate max-w-[240px]">{svc.notes}</div> : null}
+                  {svc.is_primary && onEditPrimary ? (
+                    <button type="button" onClick={onEditPrimary} className="text-[10px] font-bold text-[#1499AD] hover:underline mt-0.5 cursor-pointer">
+                      {language === 'ru' ? 'Редактировать основную' : 'Asosiyni tahrirlash'}
+                    </button>
+                  ) : null}
+                </td>
+                <td className="px-3 py-2.5 font-mono font-bold text-slate-700">#{svc.tooth_number || EM}</td>
+                <td className="px-3 py-2.5 font-mono text-slate-600">{svc.date || EM}</td>
+                <td className="px-3 py-2.5 text-right font-mono font-black text-emerald-700">
+                  {(Number(svc.price) || 0).toLocaleString()}
+                </td>
+                <td className="px-3 py-2.5 text-right">
+                  {!svc.is_primary && onDelete ? (
+                    <button
+                      type="button"
+                      onClick={() => onDelete(svc.id)}
+                      className="text-slate-300 hover:text-rose-600 cursor-pointer"
+                      title={language === 'ru' ? 'Удалить' : "O'chirish"}
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
-      <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase text-slate-400">Jami</span>
-        <span className="text-sm font-black font-mono text-[#1499AD]">
-          {Number(total || 0).toLocaleString()} {language === 'ru' ? 'UZS' : "so'm"}
+      <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl bg-slate-900 text-white px-4 py-3">
+        <span className="text-[11px] font-black uppercase tracking-wider text-slate-300">
+          {language === 'ru' ? 'Итого' : 'Jami'}
+        </span>
+        <span className="text-base font-black font-mono">
+          {(Number(total) || 0).toLocaleString()} {language === 'ru' ? 'UZS' : "so'm"}
         </span>
       </div>
     </div>
   );
 }
+
