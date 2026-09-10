@@ -118,10 +118,11 @@ const ToothColumn = memo(function ToothColumn({
   isPsrAlert = false,
   showOcclusal = true,
   compact = true,
+  hideTooltip = false,
 }) {
   const { t } = useTranslation();
   const [hovered, setHovered] = useState(false);
-  const statusKey = toothStatus?.status;
+  const statusKey = toothStatus?.status || 'healthy';
   const st = STATUS[statusKey] || STATUS.healthy;
   const hasImplant = statusKey === 'implant' || Boolean(toothStatus?.hasImplant);
   const hasExtractedHistory = Boolean(toothStatus?.isExtracted || statusKey === 'extracted' || statusKey === 'missing');
@@ -541,7 +542,7 @@ const ToothColumn = memo(function ToothColumn({
 
       {/* Hover tooltip */}
       <AnimatePresence>
-        {hovered && (statusKey !== 'healthy' || hasExtractedHistory) && (
+        {!hideTooltip && hovered && ((statusKey && statusKey !== 'healthy') || hasExtractedHistory) && (
           <motion.div
             initial={{ opacity: 0, scale: 0.85, y: isUpper ? 4 : -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -550,7 +551,7 @@ const ToothColumn = memo(function ToothColumn({
             style={{ [isUpper ? 'bottom' : 'top']: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 4, marginBottom: 4 }}
           >
             <div className="px-2 py-1 rounded-lg text-[9px] font-[800] text-white shadow-xl" style={{ backgroundColor: st.color }}>
-              #{fdi} — {hasExtractedHistory && hasImplant ? "Tish olingan + Implantat" : (t('odontogram.statuses.' + statusKey) || st.label)}
+              #{fdi} — {hasExtractedHistory && hasImplant ? "Tish olingan + Implantat" : (t('odontogram.statuses.' + statusKey) || st.label || '')}
             </div>
           </motion.div>
         )}
@@ -700,7 +701,8 @@ function ProfessionalOdontogram({
   hideLegend      = false,
   hideStats       = false,
   compact         = false,
-  patientAge      = null
+  patientAge      = null,
+  hideTooltip     = false,
 }) {
   const { t } = useTranslation();
 
@@ -782,6 +784,7 @@ function ProfessionalOdontogram({
           isPsrAlert={isPsrAlert}
           showOcclusal={showOcclusal}
           compact={compact}
+          hideTooltip={hideTooltip}
         />
       );
     });

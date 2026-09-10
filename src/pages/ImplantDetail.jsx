@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit2, Trash2, Download, Plus, AlertTriangle,
@@ -35,6 +35,7 @@ import {
   StageMediaRail,
   ClinicalTimeline,
   LinkedServicesCard,
+  DentalArchFdi,
 } from '../components/implants/ClinicalPassportCards';
 import jsPDF from 'jspdf';
 
@@ -99,6 +100,15 @@ export default function ImplantDetail() {
     notes: ''
   });
 
+  // Milestone Dialog State
+  const [addMilestoneOpen, setAddMilestoneOpen] = useState(false);
+  const [milestoneForm, setMilestoneForm] = useState({
+    status: 'Integratsiya bosqichi',
+    date: new Date().toISOString().split('T')[0],
+    note: '',
+    doctor: ''
+  });
+
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -141,6 +151,94 @@ export default function ImplantDetail() {
 
   useEffect(() => { setSelectedRelatedTooth(id || null); }, [id]);
 
+  // Build case teeth items for left rail switcher (placed before early returns for React Rules of Hooks)
+  const switcherItems = useMemo(() => {
+    if (relatedTeeth.length > 1) {
+      return relatedTeeth;
+    }
+    const cur = implant;
+    if (!cur) return [];
+    const teeth = cur.tooth_numbers || (cur.tooth_number ? [cur.tooth_number] : []);
+    const uniqueTeeth = [...new Set(teeth.map(String))].filter(Boolean);
+    if (uniqueTeeth.length <= 1) {
+      return [cur];
+    }
+    return uniqueTeeth.map(tId => {
+      const match = tId.match(/^(ur|ul|lr|ll)(\d+)$/);
+      const fdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : tId;
+      const tData = cur.tooth_data_map?.[tId] || cur.tooth_data_map?.[fdi] || {};
+      return {
+        ...cur,
+        id: `${cur.id}__${tId}`,
+        syntheticToothKey: tId,
+        tooth_number: fdi,
+        tooth_numbers: [tId],
+        firma: tData.firma || cur.firma,
+        firma_custom: tData.firma_custom || cur.firma_custom,
+        brend: tData.brend || cur.brend,
+        diameter: tData.diameter != null && tData.diameter !== '' ? tData.diameter : cur.diameter,
+        length: tData.length != null && tData.length !== '' ? tData.length : cur.length,
+        lot_number: tData.lot_number != null && tData.lot_number !== '' ? tData.lot_number : cur.lot_number,
+        torque: tData.torque != null && tData.torque !== '' ? tData.torque : cur.torque,
+        isq: tData.isq != null && tData.isq !== '' ? tData.isq : cur.isq,
+        bone_type: tData.bone_type || cur.bone_type,
+        price: (tData.price != null && tData.price !== '') ? tData.price : cur.price,
+        narxi: (tData.price != null && tData.price !== '') ? tData.price : (cur.narxi || cur.price),
+        service_name: tData.service_name || cur.service_name,
+        lifecycle_status: cur.lifecycle_status,
+      };
+    });
+  }, [relatedTeeth, implant]);
+
+  // Active tooth selection with resolution of tooth_data_map properties
+  const activeTooth = useMemo(() => {
+    let raw = null;
+    if (selectedRelatedTooth) {
+      raw = switcherItems.find(r => r.id === selectedRelatedTooth) || relatedTeeth.find(r => r.id === selectedRelatedTooth);
+    }
+    if (!raw) raw = switcherItems[0] || implant;
+    if (!raw) return null;
+
+    // Check if raw has tooth_data_map for its active tooth
+    const rawTeeth = raw.tooth_numbers || (raw.tooth_number ? [raw.tooth_number] : []);
+    const toothKey = raw.syntheticToothKey || rawTeeth[0];
+    const match = toothKey ? String(toothKey).match(/^(ur|ul|lr|ll)(\d+)$/) : null;
+    const toothFdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : toothKey;
+    const toothData = (raw.tooth_data_map?.[toothKey] || raw.tooth_data_map?.[toothFdi]) || {};
+
+    const pick = (mapVal, rawVal) => {
+      if (mapVal != null && String(mapVal).trim() !== '') return String(mapVal).trim();
+      if (rawVal != null && String(rawVal).trim() !== '') return String(rawVal).trim();
+      return '';
+    };
+
+    return {
+      ...raw,
+      // ALWAYS prefer selected tooth's tooth_data_map entry over shared top-level fields
+      diameter: pick(toothData.diameter, raw.diameter),
+      length: pick(toothData.length, raw.length),
+      lot_number: pick(toothData.lot_number, raw.lot_number),
+      torque: pick(toothData.torque, raw.torque),
+      isq: pick(toothData.isq, raw.isq),
+      bone_type: pick(toothData.bone_type, raw.bone_type) || '',
+      firma: pick(toothData.firma, raw.firma) || '',
+      firma_custom: pick(toothData.firma_custom, raw.firma_custom) || '',
+      brend: pick(toothData.brend, raw.brend) || '',
+      price: (toothData.price != null && toothData.price !== '')
+        ? toothData.price
+        : (raw.price || raw.narxi || ''),
+      service_name: pick(toothData.service_name, raw.service_name) || raw.hizmat_turi || '',
+    };
+  }, [selectedRelatedTooth, switcherItems, relatedTeeth, implant]);
+
+  // Always use the real DB ID for Supabase updates.
+  // Synthetic teeth have id="realDbId__toothKey" — never use these as update targets.
+  const realImplantId = useMemo(() => {
+    if (!activeTooth) return implant?.id || null;
+    if (activeTooth.syntheticToothKey) return implant?.id || String(activeTooth.id).split('__')[0];
+    return activeTooth.id;
+  }, [activeTooth, implant]);
+
   if (loading) return (
     <div className="space-y-4 max-w-6xl mx-auto pb-10">
       <div className="h-14 bg-slate-100 rounded-2xl animate-pulse" />
@@ -150,7 +248,7 @@ export default function ImplantDetail() {
     </div>
   );
 
-  if (!implant) return (
+  if (!implant || !activeTooth) return (
     <div className="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-slate-200 max-w-2xl mx-auto my-12 text-center p-8">
       <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mb-4">
         <AlertTriangle className="w-8 h-8" />
@@ -165,20 +263,17 @@ export default function ImplantDetail() {
     </div>
   );
 
-  // Active tooth selection (plain JS to keep React hooks order stable)
-  const activeTooth = (selectedRelatedTooth ? relatedTeeth.find(r => r.id === selectedRelatedTooth) : null) || implant;
-
-  const rawTeeth = (activeTooth.tooth_numbers || (activeTooth.tooth_number ? [activeTooth.tooth_number] : []));
+  const rawTeeth = (activeTooth?.tooth_numbers || (activeTooth?.tooth_number ? [activeTooth.tooth_number] : []));
   const teethList = [...new Set(rawTeeth.map(String))];
   const activeToothNumberFdi = teethList.length > 0 ? toothIdToFdi(teethList[0]) : '21';
 
-  const firmaNom = (activeTooth.firma === 'Boshqa' ? (activeTooth.firma_custom || 'Boshqa') : activeTooth.firma) || 'Dentium';
-  const priceNum = Number(activeTooth.price) || Number(activeTooth.narxi) || 1500000;
-  const primaryServiceName = activeTooth.service_name || activeTooth.hizmat_turi || 'Implant o\'rnatish';
+  const firmaNom = (activeTooth?.firma === 'Boshqa' ? (activeTooth?.firma_custom || 'Boshqa') : activeTooth?.firma) || 'Dentium';
+  const priceNum = Number(activeTooth?.price) || Number(activeTooth?.narxi) || 1500000;
+  const primaryServiceName = activeTooth?.service_name || activeTooth?.hizmat_turi || 'Implant o\'rnatish';
 
   // Normalize current status for UI
   const getCurrentStatus = () => {
-    const s = activeTooth.lifecycle_status || activeTooth.status;
+    const s = activeTooth?.lifecycle_status || activeTooth?.status;
     return normalizeLifecycleStatus(s);
   };
 
@@ -189,21 +284,21 @@ export default function ImplantDetail() {
     id: 'primary-implant',
     is_primary: true,
     service_name: primaryServiceName,
-    date: activeTooth.placement_date || new Date().toISOString().split('T')[0],
+    date: activeTooth?.placement_date || new Date().toISOString().split('T')[0],
     tooth_number: activeToothNumberFdi,
     firma: firmaNom,
     price: priceNum,
-    notes: activeTooth.brend ? `${activeTooth.brend} (Asosiy amaliyot)` : 'Asosiy implantatsiya'
+    notes: activeTooth?.brend ? `${activeTooth.brend} (Asosiy amaliyot)` : 'Asosiy implantatsiya'
   };
 
-  const customServicesList = Array.isArray(activeTooth.services_list) ? activeTooth.services_list : [];
+  const customServicesList = Array.isArray(activeTooth?.services_list) ? activeTooth.services_list : [];
   
   // Legacy crown fallback if present and not in list
   const hasCrownInList = customServicesList.some(s => (s.service_name || '').toLowerCase().includes('karonka') || (s.service_name || '').toLowerCase().includes('crown') || (s.service_name || '').toLowerCase().includes('keramika') || (s.service_name || '').toLowerCase().includes('zirkon'));
-  const legacyCrownRows = (!hasCrownInList && activeTooth.crown_type) ? [{
+  const legacyCrownRows = (!hasCrownInList && activeTooth?.crown_type) ? [{
     id: 'legacy-crown',
     service_name: `${activeTooth.crown_type} Karonka`,
-    date: activeTooth.placement_date || new Date().toISOString().split('T')[0],
+    date: activeTooth?.placement_date || new Date().toISOString().split('T')[0],
     tooth_number: activeToothNumberFdi,
     firma: firmaNom,
     price: Number(activeTooth.crown_price) || (activeTooth.crown_type === 'Metallokeramika' ? 800000 : 1500000),
@@ -212,6 +307,93 @@ export default function ImplantDetail() {
 
   const allServices = [baseServiceRow, ...customServicesList, ...legacyCrownRows];
   const totalAllServicesPrice = allServices.reduce((acc, curr) => acc + (Number(curr.price) || 0), 0);
+
+  const counts = (() => {
+    const list = switcherItems.length > 0 ? switcherItems : (implant ? [implant] : []);
+    const c = { total: list.length, healing: 0, crown: 0 };
+    list.forEach((imp) => {
+      const s = normalizeLifecycleStatus(imp.lifecycle_status || imp.status);
+      if (s === 'Healing jarayoni' || s === 'Integratsiya') c.healing += 1;
+      if (s === 'Crown tayyor' || s === 'Tugallangan' || s === 'Protez') c.crown += 1;
+    });
+    return c;
+  })();
+
+  const caseFdis = (() => {
+    const list = switcherItems.length > 0 ? switcherItems : (activeTooth ? [activeTooth] : []);
+    const all = list.flatMap((it) => {
+      const raw = it.tooth_numbers || (it.tooth_number ? [it.tooth_number] : []);
+      return raw.map(toothIdToFdi);
+    });
+    return [...new Set(all.filter(Boolean))];
+  })();
+
+  const handleSaveMilestone = async () => {
+    if (!milestoneForm.status.trim()) {
+      toast.warning(language === 'ru' ? 'Введите название этапа' : 'Bosqich nomini kiriting');
+      return;
+    }
+    const newEntry = {
+      date: milestoneForm.date,
+      status: milestoneForm.status.trim(),
+      note: milestoneForm.note.trim() || '',
+      user: milestoneForm.doctor.trim() || activeTooth.doctor || 'Dr.'
+    };
+    const updatedTimeline = [...(activeTooth.timeline || []), newEntry];
+    try {
+      await base44.entities.Implant.update(realImplantId, {
+        timeline: updatedTimeline
+      });
+      setAddMilestoneOpen(false);
+      toast.success(language === 'ru' ? 'Клинический этап добавлен!' : "Klinik bosqich qo'shildi!");
+      load();
+    } catch (err) {
+      console.error(err);
+      toast.error(language === 'ru' ? 'Ошибка сохранения' : 'Saqlashda xatolik');
+    }
+  };
+
+  // Handle 1-click stage advancement from the top horizontal stepper
+  const handleStepChange = async (step) => {
+    if (!step || !activeTooth?.id) return;
+    const newStatus = step.lifecycleValue;
+    if (!newStatus) return;
+
+    // Optimistic local state update
+    setImplant((prev) =>
+      prev && prev.id === realImplantId
+        ? { ...prev, lifecycle_status: newStatus, status: newStatus }
+        : prev
+    );
+    setRelatedTeeth((prev) =>
+      prev.map((t) => (t.id === realImplantId ? { ...t, lifecycle_status: newStatus, status: newStatus } : t))
+    );
+
+    try {
+      const newEntry = {
+        date: new Date().toISOString(),
+        status: step.label,
+        note: `Bosqich "${step.label}" holatiga o'tkazildi`,
+        user: activeTooth.doctor || 'Shifokor'
+      };
+      const updatedTimeline = [...(activeTooth.timeline || []), newEntry];
+
+      await base44.entities.Implant.update(realImplantId, {
+        lifecycle_status: newStatus,
+        status: newStatus,
+        timeline: updatedTimeline,
+      });
+
+      toast.success(`Implant #${toothIdToFdi(activeTooth.tooth_number || activeTooth.tooth_numbers?.[0]) || activeTooth.id}: "${step.label}" bosqichiga o'tkazildi!`, {
+        icon: '🦷',
+      });
+      load();
+    } catch (err) {
+      console.error(err);
+      toast.error(language === 'ru' ? 'Ошибка обновления статуса' : "Bosqichni yangilashda xatolik");
+      load();
+    }
+  };
 
   // Handle Adding a New Service
   const handleOpenAddService = () => {
@@ -260,8 +442,7 @@ export default function ImplantDetail() {
     }];
 
     try {
-      await base44.entities.Implant.update(activeTooth.id, {
-        ...activeTooth,
+      await base44.entities.Implant.update(realImplantId, {
         services_list: updatedServices,
         timeline
       });
@@ -285,8 +466,7 @@ export default function ImplantDetail() {
 
     const updatedServices = (activeTooth.services_list || []).filter(s => s.id !== serviceId);
     try {
-      await base44.entities.Implant.update(activeTooth.id, {
-        ...activeTooth,
+      await base44.entities.Implant.update(realImplantId, {
         services_list: updatedServices
       });
       toast.success(language === 'ru' ? "Услуга удалена!" : "Xizmat o'chirildi!", {
@@ -439,7 +619,7 @@ export default function ImplantDetail() {
       num: 6,
       key: language === 'ru' ? "Размеры (Диаметр × Длина)" : "O'lchamlari (Diametr × Uzunlik)",
       val: (activeTooth.diameter || activeTooth.length) 
-        ? `Ø ${activeTooth.diameter || '—'} mm × ${activeTooth.length || '—'} mm` 
+        ? `${activeTooth.diameter || '—'} mm × ${activeTooth.length || '—'} mm` 
         : (language === 'ru' ? "Не указано" : "Kiritilmagan"),
       sub: (activeTooth.diameter || activeTooth.length) 
         ? (language === 'ru' ? "Параметры тела импланта" : "Implant tanasi parametrlari") 
@@ -516,310 +696,208 @@ export default function ImplantDetail() {
   ];
 
   return (
-    <div className="space-y-3 pb-12 max-w-7xl mx-auto">
+    <div className="space-y-4 pb-12 max-w-7xl mx-auto">
 
-      {/* ─── Header: patient + actions ─────────────────────────────── */}
-      <div className="bg-white border border-slate-200/90 rounded-3xl p-3 sm:p-4 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-start sm:items-center gap-3 min-w-0">
-            <Link to="/implants">
+      {/* ─── Header: Patient Badge & Actions matching reference design ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Link to="/implants">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10 px-3 rounded-2xl border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-black text-xs gap-1.5 shrink-0 shadow-xs"
+              title={language === 'ru' ? 'Назад к списку имплантов' : "Implantlar ro'yxatiga qaytish"}
+            >
+              <ArrowLeft className="w-4 h-4 text-[#1499AD]" />
+              <span className="hidden sm:inline">{language === 'ru' ? 'Назад' : 'Orqaga'}</span>
+            </Button>
+          </Link>
+
+          <div className="w-11 h-11 rounded-full bg-[#1499AD] text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+            <UserRound className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-base sm:text-lg font-black text-slate-900 leading-tight">
+              {safeRender(activeTooth.patient_name, 'Malika Murodova')}
+            </div>
+            <div className="text-xs font-semibold text-slate-400">
+              {language === 'ru' ? 'Пациент' : 'Bemor'}
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportPDF}
+            className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 gap-1.5 shadow-xs bg-white hover:bg-slate-50"
+          >
+            <Download className="w-4 h-4 text-indigo-600" />
+            <span>{language === 'ru' ? 'PDF Паспорт' : 'PDF Pasport'}</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setEditOpen(true)}
+            className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-black text-slate-800 gap-1.5 shadow-xs bg-white hover:bg-slate-50"
+          >
+            <Edit2 className="w-3.5 h-3.5 text-[#1499AD]" />
+            <span>{language === 'ru' ? 'Редактировать' : 'Tahrirlash'}</span>
+          </Button>
+          {activeTooth.patient_id && (
+            <Link to={`/patients/${activeTooth.patient_id}`}>
               <Button
                 variant="outline"
                 size="sm"
-                className="h-11 px-3 rounded-2xl border-slate-200 bg-slate-50/80 hover:bg-slate-100 text-slate-700 font-black text-xs gap-1.5 shrink-0"
-                title={language === 'ru' ? 'Назад к списку имплантов' : "Implantlar ro'yxatiga qaytish"}
+                className="h-9 px-3.5 rounded-xl border-teal-200 text-xs font-black text-teal-800 bg-teal-50/60 gap-1.5 shadow-xs hover:bg-teal-100/60"
               >
-                <ArrowLeft className="w-4 h-4 text-teal-600" />
-                <span className="hidden sm:inline">{language === 'ru' ? 'Назад' : 'Orqaga'}</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>{language === 'ru' ? 'Профиль пациента' : 'Bemor profili'}</span>
               </Button>
             </Link>
-
-            <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex flex-col items-center justify-center font-mono font-black shrink-0">
-              <span className="text-[8px] text-slate-400 uppercase">FDI</span>
-              <span className="text-sm">#{activeToothNumberFdi}</span>
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate">
-                  {safeRender(activeTooth.patient_name)}
-                </h1>
-                <span className={cn(
-                  "px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider border",
-                  LIFECYCLE_COLORS[displayStatus] || "bg-slate-100 text-slate-700"
-                )}>
-                  {SHORT_STATUS_LABEL[displayStatus] || displayStatus}
-                </span>
-                {relatedTeeth.length > 1 && (
-                  <span className="text-[11px] font-bold text-slate-400">
-                    — Implant case ({relatedTeeth.length} ta implant)
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-3 mt-1 text-xs font-semibold text-slate-500 flex-wrap">
-                <span className="font-bold text-slate-700">
-                  {(activeTooth.brend || firmaNom)}
-                  {(activeTooth.diameter || activeTooth.length) ? ` · Ø${activeTooth.diameter || '—'}×${activeTooth.length || '—'}` : ''}
-                </span>
-                {activeTooth.patient_phone && (
-                  <a href={`tel:${activeTooth.patient_phone}`} className="flex items-center gap-1 text-emerald-600 font-mono font-bold hover:underline">
-                    <Phone className="w-3.5 h-3.5" />{activeTooth.patient_phone}
-                  </a>
-                )}
-                {activeTooth.doctor && (
-                  <span className="flex items-center gap-1 font-bold text-slate-700">
-                    <UserRound className="w-3.5 h-3.5 text-teal-600" />{activeTooth.doctor}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap self-end lg:self-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={exportPDF}
-              className="h-9 px-3 rounded-xl border-slate-200 text-xs font-bold text-slate-700 gap-1.5"
-            >
-              <Download className="w-4 h-4 text-indigo-600" />
-              <span>{language === 'ru' ? 'PDF Паспорт' : 'PDF Pasport'}</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditOpen(true)}
-              className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-black text-slate-800 gap-1.5"
-            >
-              <Edit2 className="w-3.5 h-3.5 text-teal-600" />
-              <span>{language === 'ru' ? 'Редактировать' : 'Tahrirlash'}</span>
-            </Button>
-            {activeTooth.patient_id && (
-              <Link to={`/patients/${activeTooth.patient_id}`}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 px-3 rounded-xl border-teal-200 text-xs font-black text-teal-800 bg-teal-50/50 gap-1.5"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>{language === 'ru' ? 'Профиль пациента' : 'Bemor profili'}</span>
-                </Button>
-              </Link>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setDeleteConfirm(true)}
-              className="h-9 w-9 p-0 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-              title={language === 'ru' ? 'Удалить' : "O'chirish"}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDeleteConfirm(true)}
+            className="h-9 w-9 p-0 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+            title={language === 'ru' ? 'Удалить' : "O'chirish"}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </div>
-</div>
-
-      {/* ─── Clinical Stepper ─────────────────────────────────────── */}
-      <div className="bg-white border border-slate-200/90 rounded-3xl px-3 sm:px-5 py-3 shadow-sm">
-        <ClinicalStepper status={activeTooth.lifecycle_status || activeTooth.status || displayStatus} language={language} />
       </div>
 
-      {/* ─── Body: optional left switcher + passport grid ─────────── */}
-      <div className={cn(
-        "grid gap-4",
-        relatedTeeth.length > 1 ? "lg:grid-cols-[260px_1fr]" : "grid-cols-1"
-      )}>
-        {relatedTeeth.length > 1 && (
-          <div className="bg-white border border-slate-200/90 rounded-3xl p-3 sm:p-4 shadow-sm h-fit lg:sticky lg:top-4">
-            <ImplantSwitcher
-              implants={relatedTeeth}
-              selectedId={activeTooth.id}
-              onSelect={(rid) => {
-                setSelectedRelatedTooth(rid);
-                if (rid && rid !== id) {
-                  // Stay on page but switch active tooth; also sync URL softly
-                  navigate(`/implants/${rid}`, { replace: true });
-                }
-              }}
-              language={language}
-            />
-          </div>
-        )}
+      {/* Main Page Title matching screenshot */}
+      <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+        {safeRender(activeTooth?.patient_name, 'Bemor')} — {language === 'ru' ? 'Случай имплантации' : 'Implant keysi'} ({switcherItems.length > 1 ? `${switcherItems.length} ta implant` : '1 ta implant'})
+      </h1>
 
+      {/* ─── Top KPI Counters & Stepper Bar ────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+        {/* Left: 4 Metric Columns */}
+        <div className="flex items-center divide-x divide-slate-200 shrink-0 overflow-x-auto pb-1 xl:pb-0 scrollbar-none">
+          <div className="pr-5 sm:pr-6 text-center sm:text-left shrink-0">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono leading-none">
+              {switcherItems.length || 1}
+            </div>
+            <div className="text-xs font-bold text-slate-500 mt-1">implant</div>
+          </div>
+          <div className="px-5 sm:px-6 text-center sm:text-left shrink-0">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono leading-none">
+              {counts.healing}
+            </div>
+            <div className="text-xs font-bold text-slate-500 mt-1">integratsiya</div>
+          </div>
+          <div className="px-5 sm:px-6 text-center sm:text-left shrink-0">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono leading-none">
+              {counts.crown}
+            </div>
+            <div className="text-xs font-bold text-slate-500 mt-1">protez</div>
+          </div>
+          <div className="pl-5 sm:pr-2 sm:pl-6 text-center sm:text-left shrink-0">
+            <div className="text-base sm:text-xl font-black text-slate-900 font-mono leading-none truncate max-w-[150px]">
+              {totalAllServicesPrice.toLocaleString()}
+            </div>
+            <div className="text-xs font-bold text-slate-500 mt-1">
+              {language === 'ru' ? 'общая сумма' : 'jami summa'}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Horizontal Stepper */}
+        <div className="flex-1 xl:max-w-2xl min-w-0">
+          <ClinicalStepper
+            status={activeTooth?.lifecycle_status || activeTooth?.status || 'Rejalashtirilgan'}
+            language={language}
+            onSelectStep={handleStepChange}
+          />
+        </div>
+      </div>
+
+      {/* ─── Body: Left Switcher + Right Cards Grid ────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr] gap-4 items-start">
+        {/* Left Column: Implants list in this case */}
+        <div className="space-y-3">
+          <ImplantSwitcher
+            implants={switcherItems}
+            selectedId={activeTooth?.id}
+            onSelect={(rid) => {
+              setSelectedRelatedTooth(rid);
+              if (rid && !rid.includes('__') && rid !== id) {
+                navigate(`/implants/${rid}`, { replace: true });
+              }
+            }}
+            language={language}
+          />
+        </div>
+
+        {/* Right Column: 2 Top cards (Pasport + Tish joyi) & 1 Full-width Bottom card (Tarix) */}
         <div className="space-y-4 min-w-0">
-          {/* Top row: Passport | Tooth chart | Media */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {/* Top Row: Klinik Pasport + Tish Joyi (FDI) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 1. Klinik Pasport */}
             <PassportSpecsCard implant={activeTooth} language={language} />
 
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-2">
-                <ImplantIcon className="w-4 h-4 text-teal-600" />
-                {language === 'ru' ? 'Место зуба (FDI)' : 'Tish joyi (FDI)'}
-              </h3>
-              <MiniFdiChart activeFdis={teethList.map(toothIdToFdi)} />
-              <p className="text-center text-xs font-black text-teal-700 mt-3">
-                #{activeToothNumberFdi} · {firmaNom}
-              </p>
-            </div>
+            {/* 2. Tish Joyi (FDI) with Horseshoe Anatomical Dental Arch */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 relative flex flex-col justify-between">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#1499AD] flex items-center justify-center">
+                  <Tooth className="w-4 h-4" />
+                </div>
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                  {language === 'ru' ? 'Место зуба (FDI)' : 'Tish joyi (FDI)'}
+                </h3>
+              </div>
 
-            <div className="md:col-span-2 xl:col-span-1">
-              <StageMediaRail
-                implant={activeTooth}
-                language={language}
-                onZoom={setZoomImg}
-                onOpenPassport={exportPDF}
+              <DentalArchFdi
+                activeFdis={[activeToothNumberFdi]}
+                caseFdis={caseFdis}
+                onSelectTooth={(fdi) => {
+                  const found = switcherItems.find((it) => {
+                    const raw = it.tooth_numbers || (it.tooth_number ? [it.tooth_number] : []);
+                    return raw.map(toothIdToFdi).includes(String(fdi));
+                  });
+                  if (found) {
+                    setSelectedRelatedTooth(found.id);
+                    if (!found.id.includes('__') && found.id !== id) {
+                      navigate(`/implants/${found.id}`, { replace: true });
+                    }
+                  } else {
+                    toast.info(`Tish #${fdi} tanlandi`);
+                  }
+                }}
               />
             </div>
           </div>
 
-          {/* Bottom row: Timeline | Services (demoted) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <ClinicalTimeline implant={activeTooth} language={language} />
-            <LinkedServicesCard
-              services={allServices}
-              total={totalAllServicesPrice}
-              language={language}
-              onAdd={handleOpenAddService}
-              onDelete={handleDeleteService}
-              onEditPrimary={() => setEditOpen(true)}
-            />
-          </div>
-
-          {/* Secondary: detailed tabs (kept, collapsed priority) */}
-          <div className="bg-slate-50/80 border border-slate-200/80 rounded-3xl p-3 sm:p-4 space-y-3">
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-              {[
-                { id: 'excel', label: language === 'ru' ? 'Параметры' : 'Parametrlar', count: excelSpecRows.length },
-                { id: 'clinical', label: 'Torque / ISQ', count: null },
-                { id: 'docs', label: language === 'ru' ? 'Документы' : 'Hujjatlar', count: (activeTooth.xray_urls?.length || 0) + (activeTooth.passport_url ? 1 : 0) },
-                { id: 'timeline', label: language === 'ru' ? 'Аудит' : 'Audit', count: (activeTooth.timeline || []).length },
-              ].map(tab => {
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-black whitespace-nowrap transition-all cursor-pointer",
-                      isActive ? "bg-white text-slate-900 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-800"
-                    )}
-                  >
-                    <span>{tab.label}</span>
-                    {tab.count !== null && (
-                      <span className={cn("px-1.5 rounded-full text-[10px] font-mono", isActive ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-600")}>
-                        {tab.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {activeTab === 'excel' && (
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-left text-xs">
-                    <thead>
-                      <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 text-[11px] font-black uppercase">
-                        <th className="w-10 px-3 py-2.5 text-center">№</th>
-                        <th className="px-3 py-2.5">Parametr</th>
-                        <th className="px-3 py-2.5">Qiymat</th>
-                        <th className="px-3 py-2.5 hidden md:table-cell">Izoh</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {excelSpecRows.map((row) => (
-                        <tr key={row.key} className={row.highlight ? 'bg-slate-50/80' : ''}>
-                          <td className="text-center font-mono text-slate-400 py-2 px-3">{row.num}</td>
-                          <td className="py-2 px-3 font-bold text-slate-700">{row.key}</td>
-                          <td className="py-2 px-3">
-                            <span className={cn("inline-flex px-2 py-0.5 rounded-lg text-xs font-black border", row.badge)}>{row.val}</span>
-                          </td>
-                          <td className="py-2 px-3 text-slate-500 hidden md:table-cell">{row.sub}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {activeTooth.notes && (
-                  <div className="p-3 bg-amber-50/50 border-t border-amber-100 text-xs">
-                    <span className="font-black text-amber-900">Qayd: </span>
-                    <span className="text-amber-800 font-semibold">{activeTooth.notes}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'clinical' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  { label: 'Torque', value: activeTooth.torque, unit: 'Ncm' },
-                  { label: 'ISQ', value: activeTooth.isq, unit: '' },
-                  { label: 'Ø', value: activeTooth.diameter, unit: 'mm' },
-                  { label: 'L', value: activeTooth.length, unit: 'mm' },
-                ].map(card => (
-                  <div key={card.label} className="bg-white rounded-2xl p-4 border border-slate-200">
-                    <div className="text-[10px] font-black uppercase text-slate-400">{card.label}</div>
-                    <div className="mt-1 flex items-baseline gap-1">
-                      {card.value ? (
-                        <>
-                          <span className="text-2xl font-black font-mono text-slate-900">{card.value}</span>
-                          {card.unit && <span className="text-xs font-bold text-slate-400">{card.unit}</span>}
-                        </>
-                      ) : (
-                        <span className="text-sm font-bold text-slate-400 italic">—</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {activeTab === 'docs' && (
-              <div className="bg-white rounded-2xl p-4 border border-slate-200 space-y-3">
-                {activeTooth.passport_url && (
-                  <div
-                    className="w-40 aspect-[4/3] rounded-xl overflow-hidden border cursor-pointer"
-                    onClick={() => setZoomImg(activeTooth.passport_url)}
-                  >
-                    <img src={activeTooth.passport_url} alt="Passport" className="w-full h-full object-cover" />
-                  </div>
-                )}
-                {activeTooth.xray_urls?.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {activeTooth.xray_urls.map((url, idx) => (
-                      <div key={idx} className="aspect-square rounded-xl overflow-hidden border cursor-pointer" onClick={() => setZoomImg(url)}>
-                        <img src={url} alt={`Xray-${idx}`} className="w-full h-full object-cover" />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs font-bold text-slate-400 text-center py-6">Rentgen biriktirilmagan</p>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'timeline' && (
-              <div className="bg-white rounded-2xl p-4 border border-slate-200">
-                {(!activeTooth.timeline || activeTooth.timeline.length === 0) ? (
-                  <p className="text-xs font-bold text-slate-400 text-center py-6">Audit bo&apos;sh</p>
-                ) : (
-                  <div className="space-y-2">
-                    {[...activeTooth.timeline].reverse().map((item, idx) => (
-                      <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs">
-                        <div className="flex justify-between gap-2 mb-0.5">
-                          <span className="font-black uppercase">{item.status}</span>
-                          <span className="font-mono text-slate-400">{new Date(item.date).toLocaleString('uz-UZ')}</span>
-                        </div>
-                        {item.note && <p className="text-slate-600 font-semibold">{item.note}</p>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          {/* Bottom Row: Full-width Klinik Bosqichlar Tarixi */}
+          <ClinicalTimeline
+            implant={activeTooth}
+            language={language}
+            onAddMilestone={() => setAddMilestoneOpen(true)}
+          />
         </div>
+      </div>
+
+      {/* ─── Preserved Secondary Operations: Media & Services ──────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
+        <StageMediaRail
+          implant={activeTooth}
+          language={language}
+          onZoom={setZoomImg}
+          onOpenPassport={exportPDF}
+        />
+        <LinkedServicesCard
+          services={allServices}
+          total={totalAllServicesPrice}
+          language={language}
+          onAdd={handleOpenAddService}
+          onDelete={handleDeleteService}
+          onEditPrimary={() => setEditOpen(true)}
+        />
       </div>
 
 
@@ -1026,10 +1104,92 @@ export default function ImplantDetail() {
         onClose={() => setEditOpen(false)}
         patients={patients}
         services={[]}
-        implant={activeTooth}
-        relatedImplants={relatedTeeth.length > 0 ? relatedTeeth : [activeTooth]}
+        implant={implant}
+        relatedImplants={switcherItems.length > 0 ? switcherItems : [implant]}
         onSaved={() => load()}
       />
+
+      {/* ─── Add Clinical Milestone Dialog ─────────────────────────── */}
+      <Dialog open={addMilestoneOpen} onOpenChange={setAddMilestoneOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-black text-slate-900 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-[#1499AD]" />
+              {language === 'ru' ? 'Добавить клинический этап' : "Yangi klinik bosqichni qayd etish"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label className="text-xs font-bold text-slate-700 mb-1 block">
+                {language === 'ru' ? 'Название этапа' : 'Bosqich nomi'}
+              </Label>
+              <Input
+                value={milestoneForm.status}
+                onChange={(e) => setMilestoneForm(prev => ({ ...prev, status: e.target.value }))}
+                placeholder="Masalan: Integratsiya bosqichi, Abutment o'rnatildi, Protez yakunlandi"
+                className="h-10 rounded-xl border-slate-200 text-xs font-bold"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs font-bold text-slate-700 mb-1 block">
+                  {language === 'ru' ? 'Дата' : 'Sana'}
+                </Label>
+                <Input
+                  type="date"
+                  value={milestoneForm.date}
+                  onChange={(e) => setMilestoneForm(prev => ({ ...prev, date: e.target.value }))}
+                  className="h-10 rounded-xl border-slate-200 font-mono text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-bold text-slate-700 mb-1 block">
+                  {language === 'ru' ? 'Врач' : 'Shifokor'}
+                </Label>
+                <Input
+                  value={milestoneForm.doctor}
+                  onChange={(e) => setMilestoneForm(prev => ({ ...prev, doctor: e.target.value }))}
+                  placeholder={activeTooth.doctor || 'Dr. Saidov'}
+                  className="h-10 rounded-xl border-slate-200 text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold text-slate-700 mb-1 block">
+                {language === 'ru' ? 'Параметры и примечания' : 'Klinik parametrlar va izoh'}
+              </Label>
+              <Textarea
+                value={milestoneForm.note}
+                onChange={(e) => setMilestoneForm(prev => ({ ...prev, note: e.target.value }))}
+                placeholder="Masalan: ISQ: 72 | Suyak turi: D2 | Protokol: Delayed"
+                rows={2}
+                className="rounded-xl border-slate-200 text-xs font-medium"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAddMilestoneOpen(false)}
+                className="rounded-xl text-xs font-bold"
+              >
+                {language === 'ru' ? 'Отмена' : 'Bekor qilish'}
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveMilestone}
+                className="bg-[#1499AD] hover:bg-[#118294] text-white rounded-xl text-xs font-black px-4 cursor-pointer"
+              >
+                {language === 'ru' ? 'Сохранить этап' : "Bosqichni saqlash"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

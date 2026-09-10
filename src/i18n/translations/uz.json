@@ -1434,9 +1434,10 @@
     "status": {
       "planned": "Rejalashtirilgan",
       "placed": "O'rnatildi",
-      "healing": "Healing jarayoni",
+      "healing": "Integratsiya jarayoni",
+      "formik": "Formik qo'yildi",
       "abutment": "Abutment qo'yildi",
-      "crown": "Crown tayyor",
+      "crown": "Protez tayyor",
       "completed": "Tugallangan",
       "failure": "Failure"
     },

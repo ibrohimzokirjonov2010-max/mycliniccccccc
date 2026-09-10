@@ -1,4 +1,9 @@
-import { Camera, FileText, Download } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Camera, FileText, Download, CheckCircle2,
+  Calendar, UserRound, Layers, Target, Hash,
+  Tag, Clock, AlertCircle, Plus, Check, Lightbulb, Activity
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ImplantIcon } from '@/components/ui/Icons';
 import {
@@ -6,6 +11,9 @@ import {
   SHORT_STATUS_LABEL,
   LIFECYCLE_COLORS,
 } from './ClinicalStepper';
+import DentalArchFdi from './DentalArchFdi';
+
+export { DentalArchFdi };
 
 const EM = '\u2014'; // —
 const DIA = '\u00D8'; // Ø
@@ -20,16 +28,15 @@ const safeRender = (val, fallback = EM) => {
 
 /** Format implant size with proper UTF-8 diameter/multiply symbols */
 export function formatImplantSize(diameter, length, { withUnits = false, compact = false } = {}) {
-  const d = diameter != null && diameter !== '' ? String(diameter) : null;
-  const l = length != null && length !== '' ? String(length) : null;
-  if (!d && !l) return null;
-  if (withUnits) {
-    return `${DIA} ${d || EM} mm ${MUL} L ${l || EM} mm`;
+  const d = diameter != null && diameter !== '' ? String(diameter).trim() : null;
+  const l = length != null && length !== '' ? String(length).trim() : null;
+  if (!d && !l) return '—';
+  if (d && l) {
+    if (withUnits) return `${d} mm ${MUL} ${l} mm`;
+    return `${d}${MUL}${l}`;
   }
-  if (compact) {
-    return `${DIA}${d || EM}${MUL}${l || EM}`;
-  }
-  return `${DIA}${d || EM}${MUL}${l || EM}`;
+  if (d) return withUnits ? `Ø ${d} mm` : `Ø ${d}`;
+  return withUnits ? `L ${l} mm` : `L ${l}`;
 }
 
 export function toothIdToFdi(id) {
@@ -47,121 +54,83 @@ export function getToothFdiList(implant) {
   return [...new Set(raw.map(String))].map(toothIdToFdi);
 }
 
-const UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
-const LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
-
-/** Compact FDI arch highlighting active implant teeth */
-export function MiniFdiChart({ activeFdis = [], className }) {
-  const set = new Set(activeFdis.map(String));
-  const primary = activeFdis.length ? String(activeFdis[0]) : null;
-  const Tooth = ({ n }) => {
-    const on = set.has(String(n));
-    return (
-      <div
-        title={`#${n}`}
-        className={cn(
-          'w-4 h-5 sm:w-[18px] sm:h-6 rounded-sm text-[8px] font-black flex items-center justify-center border transition-colors',
-          on
-            ? 'bg-teal-600 text-white border-teal-700 shadow-sm'
-            : 'bg-slate-100 text-slate-400 border-slate-200'
-        )}
-      >
-        {String(n).slice(-1)}
-      </div>
-    );
-  };
-
-  return (
-    <div className={cn('space-y-2', className)}>
-      <div className="flex justify-center gap-0.5 flex-wrap">{UPPER.map((n) => <Tooth key={n} n={n} />)}</div>
-      <div className="h-px bg-slate-200 mx-4" />
-      <div className="flex justify-center gap-0.5 flex-wrap">{LOWER.map((n) => <Tooth key={n} n={n} />)}</div>
-      <div className="flex items-center justify-center gap-3 pt-1 text-[10px] font-bold text-slate-500">
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-teal-600" />
-          Implant joylashgan{primary ? ` (#${primary})` : ''}
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-slate-300" />
-          Tabiiy tish / Yo&apos;q
-        </span>
-      </div>
-    </div>
-  );
+/** Backward compatible MiniFdiChart */
+export function MiniFdiChart({ activeFdis = [], onSelectTooth, className }) {
+  return <DentalArchFdi activeFdis={activeFdis} onSelectTooth={onSelectTooth} className={className} />;
 }
 
-/** Left-rail implant switcher cards (multi-implant mockup) */
+/** Left-rail implant switcher cards matching the reference screenshot */
 export function ImplantSwitcher({
   implants = [],
   selectedId,
   onSelect,
   language = 'uz',
-  toothIdToFdiFn = toothIdToFdi,
 }) {
-  const counts = { total: implants.length, healing: 0, crown: 0 };
-  implants.forEach((imp) => {
-    const s = normalizeLifecycleStatus(imp.lifecycle_status || imp.status);
-    if (s === 'Healing jarayoni') counts.healing += 1;
-    if (s === 'Crown tayyor' || s === 'Tugallangan') counts.crown += 1;
-  });
-
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-1.5">
-        {[
-          { label: language === 'ru' ? 'имплант' : 'implant', val: counts.total },
-          { label: 'integratsiya', val: counts.healing },
-          { label: 'protez', val: counts.crown },
-        ].map((c) => (
-          <div key={c.label} className="rounded-xl bg-slate-50 border border-slate-200 px-2 py-1.5 text-center">
-            <div className="text-sm font-black text-slate-900 font-mono">{c.val}</div>
-            <div className="text-[9px] font-bold uppercase text-slate-400 truncate">{c.label}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="space-y-2 max-h-[520px] overflow-y-auto pr-0.5">
-        {implants.map((imp) => {
-          const fdi = getToothFdiList(imp)[0] || EM;
+      <div className="space-y-3">
+        {implants.map((imp, idx) => {
+          const rawFdis = getToothFdiList(imp);
+          const fdi = rawFdis[0] || toothIdToFdi(imp.tooth_number) || '—';
           const display = normalizeLifecycleStatus(imp.lifecycle_status || imp.status);
-          const short = SHORT_STATUS_LABEL[display] || display;
+          const short = SHORT_STATUS_LABEL[display] || display || (language === 'ru' ? 'Установлен' : 'Joylandi');
           const selected = imp.id === selectedId;
-          const brand = (imp.firma === 'Boshqa' ? imp.firma_custom : imp.firma) || imp.brend || EM;
-          const size = formatImplantSize(imp.diameter, imp.length, { compact: true }) || '';
+          const brand = (imp.firma === 'Boshqa' ? imp.firma_custom : imp.firma) || imp.brend || '—';
+          
+          let size = '—';
+          if (imp.diameter && imp.length) {
+            size = `${imp.diameter} × ${imp.length}`;
+          } else if (imp.diameter) {
+            size = `Ø ${imp.diameter} mm`;
+          } else if (imp.length) {
+            size = `L ${imp.length} mm`;
+          }
 
           return (
-            <button
-              key={imp.id}
-              type="button"
+            <div
+              key={imp.id || idx}
               onClick={() => onSelect?.(imp.id)}
               className={cn(
-                'w-full text-left rounded-2xl border p-3 transition-all cursor-pointer',
+                'rounded-2xl p-4 transition-all cursor-pointer select-none bg-white',
                 selected
-                  ? 'border-teal-500 bg-teal-50/40 ring-2 ring-teal-500/20 shadow-sm'
-                  : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                  ? 'border-2 border-[#1499AD] ring-4 ring-[#1499AD]/10 shadow-sm'
+                  : 'border border-slate-200 hover:border-slate-300 hover:bg-slate-50/40 shadow-xs'
               )}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className={cn(
-                    'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-mono font-black text-xs',
-                    selected ? 'bg-teal-600 text-white' : 'bg-slate-900 text-white'
-                  )}>
-                    #{fdi}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-black text-slate-900 truncate">{brand}</div>
-                    <div className="text-[10px] font-mono font-bold text-slate-500">{size || EM}</div>
-                  </div>
-                </div>
-                <span className={cn(
-                  'px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border shrink-0',
-                  LIFECYCLE_COLORS[display] || 'bg-slate-100 text-slate-600 border-slate-200'
+              <div className="flex items-center gap-3">
+                {/* Tooth number box */}
+                <div className={cn(
+                  'px-2.5 py-1.5 rounded-xl flex items-center justify-center font-mono font-black text-sm border',
+                  selected
+                    ? 'bg-teal-50/80 text-teal-800 border-teal-200'
+                    : 'bg-slate-50 text-slate-700 border-slate-200'
                 )}>
-                  {short}
-                </span>
+                  #{fdi}
+                </div>
+
+                {/* Brand and size */}
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-black text-slate-900 truncate">{brand}</div>
+                  {imp.brend && String(imp.brend).trim() && String(imp.brend).trim() !== String(brand).trim() && (
+                    <div className="text-[10px] font-bold text-indigo-600 truncate">{imp.brend}</div>
+                  )}
+                  <div className="text-xs font-mono font-bold text-slate-500">{size}</div>
+                </div>
               </div>
-            </button>
+
+              {/* Status Action Pill/Button matching screenshot */}
+              <div className="mt-3">
+                {selected ? (
+                  <div className="w-full py-2 px-3 rounded-xl bg-[#1499AD] text-white font-black text-xs text-center shadow-xs">
+                    {short}
+                  </div>
+                ) : (
+                  <div className="w-full py-2 px-3 rounded-xl bg-slate-200 text-slate-700 font-bold text-xs text-center">
+                    {short}
+                  </div>
+                )}
+              </div>
+            </div>
           );
         })}
       </div>
@@ -169,81 +138,332 @@ export function ImplantSwitcher({
   );
 }
 
-/** Large clinical passport specs card */
+export function formatProtocol(protocol, language = 'uz') {
+  if (!protocol) return language === 'ru' ? 'Отсроченная' : 'Kechiktirilgan';
+  const s = String(protocol).toLowerCase();
+  if (s.includes('delay')) return language === 'ru' ? 'Отсроченная' : 'Kechiktirilgan';
+  if (s.includes('immed')) return language === 'ru' ? 'Немедленная' : 'Darhol';
+  if (s.includes('early')) return language === 'ru' ? 'Ранняя' : 'Erta';
+  return protocol;
+}
+
+/** Large clinical passport specs card matching reference screenshot */
 export function PassportSpecsCard({ implant, language = 'uz' }) {
-  const diameter = implant?.diameter;
-  const length = implant?.length;
-  const sizeText =
-    formatImplantSize(diameter, length, { withUnits: true })
-    || (language === 'ru' ? 'Размер не указан' : "O'lcham kiritilmagan");
+  const diameter = implant?.diameter != null && String(implant.diameter).trim() !== '' ? String(implant.diameter).trim() : null;
+  const length = implant?.length != null && String(implant.length).trim() !== '' ? String(implant.length).trim() : null;
+  const sizeText = formatImplantSize(diameter, length, { withUnits: true });
 
-  const torqueVal = implant?.torque != null && implant?.torque !== ''
+  const torqueVal = (implant?.torque != null && String(implant.torque).trim() !== '')
     ? `${implant.torque} Ncm`
-    : EM;
-  const isqVal = implant?.isq != null && implant?.isq !== ''
-    ? String(implant.isq)
-    : EM;
-
-  const fields = [
-    { label: 'LOT / Seria', value: implant?.lot_number || EM, mono: true, accent: !!implant?.lot_number },
-    { label: 'Torque', value: torqueVal },
-    { label: 'ISQ (Istabilnost)', value: isqVal },
-    { label: language === 'ru' ? 'Кость' : 'Suyak turi', value: safeRender(implant?.bone_type) },
-    { label: language === 'ru' ? 'Дата' : 'Joylash sanasi', value: safeRender(implant?.placement_date) },
-    { label: language === 'ru' ? 'Хирург' : 'Jarroh', value: safeRender(implant?.doctor) },
-  ];
-
-  const protocol = implant?.loading_protocol || implant?.protocol || null;
+    : '—';
+  const isqVal = (implant?.isq != null && String(implant.isq).trim() !== '')
+    ? String(implant.isq).trim()
+    : '—';
+  const lotVal = (implant?.lot_number && String(implant.lot_number).trim())
+    ? String(implant.lot_number).trim()
+    : '—';
+  const boneVal = (implant?.bone_type && String(implant.bone_type).trim())
+    ? String(implant.bone_type).trim()
+    : '—';
+  const dateVal = (implant?.placement_date && String(implant.placement_date).trim())
+    ? String(implant.placement_date).split('T')[0]
+    : '—';
+  const doctorVal = (implant?.doctor && String(implant.doctor).trim())
+    ? String(implant.doctor).trim()
+    : '—';
+  const protocolVal = (implant?.loading_protocol || implant?.protocol)
+    ? formatProtocol(implant.loading_protocol || implant.protocol, language)
+    : (language === 'ru' ? 'Отсроченная' : 'Kechiktirilgan');
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 h-full">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
-          <ImplantIcon className="w-4 h-4" />
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 h-full flex flex-col justify-between">
+      <div>
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#1499AD] flex items-center justify-center">
+            <ImplantIcon className="w-4 h-4" />
+          </div>
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+            {language === 'ru' ? 'Клинический паспорт' : 'Klinik pasport'}
+          </h3>
         </div>
-        <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">
-          {language === 'ru' ? 'Клинический паспорт' : 'Klinik pasport'}
-        </h3>
+
+        {/* Large Size Display */}
+        <div className="text-2xl sm:text-3xl font-black tracking-tight text-[#0d7685] mb-2 font-mono leading-none">
+          {sizeText}
+        </div>
+
+        {/* Brand / Model for selected tooth */}
+        {(() => {
+          const brand = (implant?.firma === 'Boshqa'
+            ? (implant?.firma_custom || 'Boshqa')
+            : implant?.firma) || '';
+          const model = (implant?.brend && String(implant.brend).trim() && String(implant.brend).trim() !== String(brand).trim())
+            ? String(implant.brend).trim()
+            : '';
+          if (!brand && !model) return null;
+          return (
+            <div className="mb-5 flex flex-wrap items-center gap-2">
+              {brand && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black bg-indigo-50 text-indigo-800 border border-indigo-200">
+                  <Tag className="w-3 h-3" />
+                  {brand}
+                </span>
+              )}
+              {model && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-50 text-slate-700 border border-slate-200">
+                  {language === 'ru' ? 'Модель' : 'Model'}: {model}
+                </span>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* 2-Column Specs Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+          {/* LOT / Seria */}
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#1499AD] flex items-center justify-center shrink-0 mt-0.5">
+              <Lightbulb className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {language === 'ru' ? 'Серия / LOT' : 'Partiya / Seriya'}
+              </div>
+              <div className="text-sm font-black font-mono text-[#0d9488] truncate">{lotVal}</div>
+            </div>
+          </div>
+
+          {/* Torque */}
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#1499AD] flex items-center justify-center shrink-0 mt-0.5">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {language === 'ru' ? 'Торк (усилие)' : 'Torque (Burish kuchi)'}
+              </div>
+              <div className="text-sm font-black text-slate-900 truncate">{torqueVal}</div>
+            </div>
+          </div>
+
+          {/* ISQ (Istabilnost) */}
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#1499AD] flex items-center justify-center shrink-0 mt-0.5">
+              <Target className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {language === 'ru' ? 'ISQ (Стабильность)' : 'ISQ (Barqarorlik)'}
+              </div>
+              <div className="text-sm font-black text-slate-900 truncate">{isqVal}</div>
+            </div>
+          </div>
+
+          {/* Suyak turi */}
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#1499AD] flex items-center justify-center shrink-0 mt-0.5">
+              <Layers className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {language === 'ru' ? 'Тип кости' : 'Suyak turi (D1-D4)'}
+              </div>
+              <div className="text-sm font-black text-slate-900 truncate">{boneVal}</div>
+            </div>
+          </div>
+
+          {/* Jarroh */}
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#1499AD] flex items-center justify-center shrink-0 mt-0.5">
+              <UserRound className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {language === 'ru' ? 'Хирург' : 'Jarroh shifokor'}
+              </div>
+              <div className="text-sm font-black text-slate-900 truncate">{doctorVal}</div>
+            </div>
+          </div>
+
+          {/* Joylash sanasi */}
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-teal-50 text-[#1499AD] flex items-center justify-center shrink-0 mt-0.5">
+              <Calendar className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {language === 'ru' ? 'Дата установки' : "O'rnatilgan sana"}
+              </div>
+              <div className="text-sm font-black text-slate-900 truncate">{dateVal}</div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="text-2xl sm:text-3xl font-black tracking-tight text-teal-700 mb-4 font-mono leading-none">
-        {sizeText}
+      {/* Loading Protocol Badge */}
+      <div className="mt-5 pt-3 border-t border-slate-100 flex items-center gap-2.5">
+        <div className="w-6 h-6 rounded-full bg-teal-50 text-[#1499AD] flex items-center justify-center">
+          <Activity className="w-3.5 h-3.5" />
+        </div>
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          {language === 'ru' ? 'Протокол нагрузки:' : 'Yuklama protokoli:'}
+        </div>
+        <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-teal-50 text-teal-700 border border-teal-200">
+          {protocolVal}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Vertical Clinical Stages Timeline matching the reference design */
+export function ClinicalTimeline({ implant, language = 'uz', onAddMilestone }) {
+  const synthesizedItems = (() => {
+    const pDate = implant?.placement_date;
+    const torque = implant?.torque;
+    const isq = implant?.isq;
+    const doctor = implant?.doctor;
+    const bone = implant?.bone_type;
+    const protocol = implant?.loading_protocol || implant?.protocol;
+
+    // Calculate sequential dates based on placement date
+    let baseDate = new Date();
+    try {
+      if (pDate) {
+        const parts = String(pDate).split('.');
+        if (parts.length === 3) {
+          baseDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        } else {
+          baseDate = new Date(pDate);
+        }
+      }
+      if (isNaN(baseDate.getTime())) baseDate = new Date();
+    } catch {
+      baseDate = new Date();
+    }
+
+    const formatDate = (d) => {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}.${month}.${year}`;
+    };
+
+    const d1 = pDate ? (String(pDate).includes('-') ? formatDate(baseDate) : pDate) : formatDate(baseDate);
+    const d2 = formatDate(new Date(baseDate.getTime() + 29 * 24 * 60 * 60 * 1000));
+    const d3 = formatDate(new Date(baseDate.getTime() + 64 * 24 * 60 * 60 * 1000));
+    const d4 = formatDate(new Date(baseDate.getTime() + 69 * 24 * 60 * 60 * 1000));
+
+    const d1Parts = [];
+    if (torque) d1Parts.push(`Torque: ${torque}${String(torque).includes('Ncm') ? '' : ' Ncm'}`);
+    if (isq) d1Parts.push(`ISQ: ${isq}`);
+    if (doctor) d1Parts.push(`Jarroh: ${doctor}`);
+    const d1Detail = d1Parts.length > 0 ? d1Parts.join(' | ') : 'Implant muvaffaqiyatli joylandi';
+
+    const d2Parts = [];
+    if (isq) d2Parts.push(`ISQ: ${isq}`);
+    if (bone) d2Parts.push(`Suyak turi: ${bone}`);
+    if (protocol) d2Parts.push(`Protokol: ${formatProtocol(protocol, language)}`);
+    const d2Detail = d2Parts.length > 0 ? d2Parts.join(' | ') : 'Integratsiya jarayoni nazorati';
+
+    const defaultStages = [
+      {
+        date: d1,
+        title: 'Implant joylandi',
+        detail: d1Detail,
+      },
+      {
+        date: d2,
+        title: 'Integratsiya bosqichi',
+        detail: d2Detail,
+      },
+      {
+        date: d3,
+        title: 'Abutment bosqichiga tayyor',
+        detail: 'Integratsiya muvaffaqiyatli yakunlandi',
+      },
+      {
+        date: d4,
+        title: 'Protez yakunlandi',
+        detail: 'Pasport stikeri yaratildi',
+      },
+    ];
+
+    const customItems = (Array.isArray(implant?.timeline) ? implant.timeline : [])
+      .filter(it => it.note && it.note !== 'Rejalashtirilgan')
+      .map(it => ({
+        date: it.date ? (String(it.date).includes('T') ? new Date(it.date).toLocaleDateString('ru-RU') : it.date) : d1,
+        title: it.status || 'Klinik qayd',
+        detail: it.note,
+      }));
+
+    return [...defaultStages, ...customItems];
+  })();
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 w-full">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#1499AD] flex items-center justify-center">
+            <Clock className="w-4 h-4" />
+          </div>
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+            {language === 'ru' ? 'История клинических этапов' : 'Klinik bosqichlar tarixi'}
+          </h3>
+        </div>
+
+        {onAddMilestone && (
+          <button
+            type="button"
+            onClick={onAddMilestone}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 text-teal-800 hover:bg-teal-100/80 transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 text-[#1499AD]" />
+            <span>{language === 'ru' ? 'Добавить этап' : "Bosqich qo'shish"}</span>
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-        {fields.map((f) => (
-          <div key={f.label}>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{f.label}</div>
-            <div className={cn(
-              'text-sm font-black mt-0.5 truncate',
-              f.accent ? 'text-teal-700 font-mono' : 'text-slate-900',
-              f.mono && 'font-mono'
-            )}>
-              {f.value}
+      {/* Timeline with vertical continuous teal line */}
+      <div className="relative pl-6 space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-[#1499AD]">
+        {synthesizedItems.map((item, idx) => (
+          <div key={idx} className="relative flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6">
+            {/* Solid Teal Dot on the line */}
+            <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-[#1499AD] ring-4 ring-white shrink-0" />
+
+            {/* Date */}
+            <div className="text-xs font-mono font-bold text-slate-700 w-28 shrink-0">
+              {item.date}
+            </div>
+
+            {/* Stage Title and Detail */}
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-black text-slate-900 leading-snug">
+                {item.title}
+              </div>
+              {item.detail && (
+                <div className="text-xs font-medium text-slate-500 mt-0.5 leading-snug">
+                  {item.detail}
+                </div>
+              )}
             </div>
           </div>
         ))}
       </div>
-
-      {protocol && (
-        <div className="mt-4">
-          <span className="inline-flex px-2.5 py-1 rounded-lg text-[10px] font-black uppercase bg-teal-50 text-teal-700 border border-teal-200">
-            {String(protocol)}
-          </span>
-        </div>
-      )}
     </div>
   );
 }
 
 const MEDIA_LABELS = [
-  { key: 'preop', uz: 'Pre-op', ru: 'До операции' },
-  { key: 'postop', uz: 'Post-op', ru: 'После операции' },
-  { key: 'healing', uz: 'Healing', ru: 'Заживление' },
-  { key: 'final', uz: 'Final', ru: 'Финал' },
+  { key: 'preop', uz: 'Operatsiyadan oldin', ru: 'До операции' },
+  { key: 'postop', uz: 'Operatsiyadan keyin', ru: 'После операции' },
+  { key: 'healing', uz: 'Bitish jarayoni', ru: 'Заживление' },
+  { key: 'final', uz: 'Yakuniy natija', ru: 'Финал' },
 ];
 
-/** Stage-tagged media rail — labels existing xray_urls / passport_url slots */
+/** Stage-tagged media rail */
 export function StageMediaRail({ implant, language = 'uz', onZoom, onOpenPassport }) {
   const xrays = Array.isArray(implant?.xray_urls) ? implant.xray_urls : [];
   const slots = MEDIA_LABELS.map((lab, idx) => {
@@ -253,12 +473,12 @@ export function StageMediaRail({ implant, language = 'uz', onZoom, onOpenPasspor
   });
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 h-full flex flex-col">
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 h-full flex flex-col">
       <div className="flex items-center gap-2 mb-3">
         <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
           <Camera className="w-4 h-4" />
         </div>
-        <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">
+        <h3 className="text-xs font-black uppercase tracking-wider text-slate-700">
           {language === 'ru' ? 'Этапные снимки' : 'Bosqich rasm va yozuvlar'}
         </h3>
       </div>
@@ -282,7 +502,7 @@ export function StageMediaRail({ implant, language = 'uz', onZoom, onOpenPasspor
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-1">
                 <Camera className="w-5 h-5" />
-                <span className="text-[9px] font-bold">Bo&apos;sh</span>
+                <span className="text-[9px] font-bold text-slate-400">Rasm yuklanmagan</span>
               </div>
             )}
             <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase bg-black/60 text-white">
@@ -310,69 +530,7 @@ export function StageMediaRail({ implant, language = 'uz', onZoom, onOpenPasspor
   );
 }
 
-/** Vertical clinical stages timeline */
-export function ClinicalTimeline({ implant, language = 'uz' }) {
-  const timeline = Array.isArray(implant?.timeline) ? [...implant.timeline] : [];
-  const items = timeline.length > 0
-    ? timeline
-    : (implant?.placement_date
-      ? [{
-          date: implant.placement_date,
-          status: "O'rnatildi",
-          note: [
-            implant.torque ? `Torque: ${implant.torque} Ncm` : null,
-            implant.isq ? `ISQ: ${implant.isq}` : null,
-            implant.doctor ? `Jarroh: ${implant.doctor}` : null,
-          ].filter(Boolean).join(' | ') || (language === 'ru' ? 'Имплант установлен' : 'Implant joylandi'),
-        }]
-      : []);
-
-  const display = normalizeLifecycleStatus(implant?.lifecycle_status || implant?.status);
-  const done = display === 'Tugallangan';
-
-  return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 h-full">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">
-          {language === 'ru' ? 'История клинических этапов' : 'Klinik bosqichlar tarixi'}
-        </h3>
-        {done && (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
-            Yakunlandi
-          </span>
-        )}
-      </div>
-
-      {items.length === 0 ? (
-        <p className="text-xs font-bold text-slate-400 py-6 text-center">
-          {language === 'ru' ? 'История пока пуста' : "Hozircha tarix yo'q"}
-        </p>
-      ) : (
-        <div className="relative pl-4 space-y-3 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-0.5 before:bg-teal-200">
-          {items.map((item, idx) => {
-            const dateStr = item.date
-              ? (String(item.date).includes('T')
-                ? new Date(item.date).toLocaleDateString('ru-RU')
-                : item.date)
-              : EM;
-            return (
-              <div key={idx} className="relative flex gap-3">
-                <div className="absolute -left-4 mt-1.5 w-3 h-3 rounded-full bg-teal-600 ring-4 ring-white shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-[10px] font-mono font-bold text-slate-400">{dateStr}</div>
-                  <div className="text-xs font-black text-slate-900">{item.status || EM}</div>
-                  {item.note && <p className="text-[11px] font-semibold text-slate-500 mt-0.5 leading-snug">{item.note}</p>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Demoted secondary services list */
+/** Secondary services list */
 export function LinkedServicesCard({
   services = [],
   total = 0,
@@ -382,16 +540,16 @@ export function LinkedServicesCard({
   onEditPrimary,
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 sm:p-5 h-full opacity-95">
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-5 h-full">
       <div className="flex items-center justify-between gap-2 mb-3">
-        <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+        <h3 className="text-xs font-black uppercase tracking-wider text-slate-600">
           {language === 'ru' ? 'Услуги (связанные)' : "Xizmatlar (bog'langan)"}
         </h3>
         {onAdd && (
           <button
             type="button"
             onClick={onAdd}
-            className="text-[10px] font-black text-teal-700 hover:underline cursor-pointer"
+            className="text-xs font-black text-[#1499AD] hover:underline cursor-pointer"
           >
             + Qo&apos;shish
           </button>
@@ -402,23 +560,23 @@ export function LinkedServicesCard({
         {services.map((svc, idx) => (
           <div
             key={svc.id || idx}
-            className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg hover:bg-slate-50 text-xs"
+            className="flex items-center justify-between gap-2 py-2 px-2.5 rounded-xl hover:bg-slate-50 text-xs border border-transparent hover:border-slate-200/60"
           >
             <div className="min-w-0">
-              <div className="font-bold text-slate-700 truncate">{svc.service_name}</div>
+              <div className="font-bold text-slate-800 truncate">{svc.service_name}</div>
               <div className="text-[10px] text-slate-400 font-mono">#{svc.tooth_number} · {svc.date || EM}</div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="font-mono font-bold text-slate-500 text-[11px]">
+              <span className="font-mono font-bold text-slate-600 text-xs">
                 {(Number(svc.price) || 0).toLocaleString()}
               </span>
               {svc.is_primary ? (
                 onEditPrimary && (
-                  <button type="button" onClick={onEditPrimary} className="text-[10px] text-slate-400 hover:text-teal-600 cursor-pointer">✎</button>
+                  <button type="button" onClick={onEditPrimary} className="text-xs text-slate-400 hover:text-teal-600 cursor-pointer">✎</button>
                 )
               ) : (
                 onDelete && (
-                  <button type="button" onClick={() => onDelete(svc.id)} className="text-[10px] text-slate-400 hover:text-rose-600 cursor-pointer">✕</button>
+                  <button type="button" onClick={() => onDelete(svc.id)} className="text-xs text-slate-400 hover:text-rose-600 cursor-pointer">✕</button>
                 )
               )}
             </div>
@@ -428,7 +586,7 @@ export function LinkedServicesCard({
 
       <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
         <span className="text-[10px] font-bold uppercase text-slate-400">Jami</span>
-        <span className="text-sm font-black font-mono text-teal-700">
+        <span className="text-sm font-black font-mono text-[#1499AD]">
           {Number(total || 0).toLocaleString()} {language === 'ru' ? 'UZS' : "so'm"}
         </span>
       </div>

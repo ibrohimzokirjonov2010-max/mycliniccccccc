@@ -118,6 +118,35 @@ export const getServiceConfig = (serviceName) => {
 
 // Resolve price in UZS
 export const resolvePrice = (implant) => {
+  // Prefer sum of unique per-tooth prices from tooth_data_map when available
+  const map = implant?.tooth_data_map;
+  if (map && typeof map === 'object') {
+    const rawTeeth = (Array.isArray(implant.tooth_numbers) && implant.tooth_numbers.length > 0)
+      ? implant.tooth_numbers
+      : (implant.tooth_number ? [implant.tooth_number] : []);
+    const seen = new Set();
+    let sum = 0;
+    let count = 0;
+    const keys = rawTeeth.length > 0 ? rawTeeth : Object.keys(map);
+    keys.forEach((toothId) => {
+      const tid = String(toothId);
+      const match = tid.match(/^(ur|ul|lr|ll)(\d+)$/);
+      const fdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : tid;
+      const priceKey = fdi || tid;
+      if (seen.has(priceKey)) return;
+      seen.add(priceKey);
+      const entry = map[tid] || map[fdi];
+      if (entry && entry.price != null && entry.price !== '') {
+        const n = Number(entry.price);
+        if (!isNaN(n)) {
+          sum += n;
+          count += 1;
+        }
+      }
+    });
+    if (count > 0) return sum;
+  }
+
   if (implant.price !== undefined && implant.price !== null && implant.price !== '') {
     const num = Number(implant.price);
     if (!isNaN(num)) return num;
@@ -133,6 +162,20 @@ export const resolvePrice = (implant) => {
   if (svc.includes('sinus')) return 2000000;
   if (svc.includes('graft') || svc.includes('suyak')) return 1000000;
   return 1500000; // Default standard implant
+};
+
+/** Per-tooth size label from tooth_data_map (or top-level fallback) */
+export const getToothSizeLabel = (implant, toothId) => {
+  const tid = String(toothId);
+  const match = tid.match(/^(ur|ul|lr|ll)(\d+)$/);
+  const fdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : tid;
+  const entry = implant?.tooth_data_map?.[tid] || implant?.tooth_data_map?.[fdi] || {};
+  const d = entry.diameter != null && entry.diameter !== '' ? entry.diameter : implant?.diameter;
+  const l = entry.length != null && entry.length !== '' ? entry.length : implant?.length;
+  if (d && l) return `Ø${d}×${l}`;
+  if (d) return `Ø${d}`;
+  if (l) return `L${l}`;
+  return '';
 };
 
 const LIFECYCLE_MAPPING = {
@@ -223,7 +266,7 @@ export default function Implants() {
     try {
       setLoading(true);
       const [imps, pats, svcs, brnds, extraCatalog] = await Promise.all([
-        base44.entities.Implant.list('-placement_date', 400),
+        base44.entities.Implant.list('-created_at', 400),
         base44.entities.Patient.list('full_name', 100),
         base44.entities.Service.filter({ is_active: true }, 'name', 100),
         getOrSeedImplantBrands(),
@@ -415,9 +458,14 @@ export default function Implants() {
           return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
         case 'date':
         default:
-          valA = new Date(a.placement_date || '1970-01-01').getTime();
-          valB = new Date(b.placement_date || '1970-01-01').getTime();
-          return sortOrder === 'asc' ? valA - valB : valB - valA;
+          // Eng oxirgi qo'shilgan birinchi ko'rinsin: created_at → id → placement_date fallback
+          valA = new Date(a.created_at || a.placement_date || '1970-01-01').getTime();
+          valB = new Date(b.created_at || b.placement_date || '1970-01-01').getTime();
+          if (valA !== valB) return sortOrder === 'asc' ? valA - valB : valB - valA;
+          // Same timestamp — use numeric ID as tiebreaker (higher = newer)
+          const idA = parseInt(String(a.id).replace(/[^0-9]/g,''), 10) || 0;
+          const idB = parseInt(String(b.id).replace(/[^0-9]/g,''), 10) || 0;
+          return sortOrder === 'asc' ? idA - idB : idB - idA;
       }
     });
     return list;
@@ -942,8 +990,10 @@ export default function Implants() {
                 {sortedImplants.length > 0 ? (
                   sortedImplants.map((i, idx) => {
                     const isCompact = density === 'compact';
-                    const rawTeeth = (i.tooth_numbers || (i.tooth_number ? [i.tooth_number] : []));
-                    const teethList = [...new Set(rawTeeth.map(String))];
+                    const rawTeeth = (Array.isArray(i.tooth_numbers) && i.tooth_numbers.length > 0)
+                      ? i.tooth_numbers
+                      : (i.tooth_number ? [i.tooth_number] : []);
+                    const teethList = [...new Set(rawTeeth.map(toothIdToFdi).filter(Boolean))];
                     const serviceName = resolveService(i);
                     const serviceCfg = SERVICE_CONFIG[serviceName] || { label: serviceName, emoji: '⚡', badge: 'bg-slate-100 text-slate-700 border-slate-200' };
                     const priceVal = resolvePrice(i);
@@ -995,11 +1045,19 @@ export default function Implants() {
                         <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
                           {teethList.length > 0 ? (
                             <div className="flex items-center justify-center gap-1 flex-wrap">
-                              {teethList.map(tNum => (
-                                <span key={tNum} className="px-2 py-0.5 rounded-md text-xs font-mono font-black bg-slate-900 text-white shadow-xs">
-                                  #{toothIdToFdi(tNum)}
-                                </span>
-                              ))}
+                              {(Array.isArray(i.tooth_numbers) && i.tooth_numbers.length > 0
+                                  ? [...new Set(i.tooth_numbers.map(String))]
+                                  : teethList
+                                ).map(tId => {
+                                const fdi = toothIdToFdi(tId);
+                                const size = getToothSizeLabel(i, tId);
+                                return (
+                                  <span key={tId} className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-slate-900 text-white shadow-xs inline-flex flex-col items-center leading-tight">
+                                    <span>#{fdi}</span>
+                                    {size ? <span className="text-[8px] font-bold text-teal-200">{size}</span> : null}
+                                  </span>
+                                );
+                              })}
                             </div>
                           ) : (
                             <span className="text-slate-300 font-mono">—</span>
@@ -1019,11 +1077,23 @@ export default function Implants() {
                                 <span className="font-black text-slate-900 group-hover:text-[#1499AD] transition-colors truncate block text-xs">
                                   {firmaName}
                                 </span>
-                                {i.brend && i.brend !== firmaName && (
-                                  <span className="text-[10px] font-semibold text-slate-500 block truncate mt-0.5">
-                                    {i.brend} {i.diameter && i.length && `(Ø${i.diameter}×${i.length}mm)`}
-                                  </span>
-                                )}
+                                {(() => {
+                                  const map = i.tooth_data_map || {};
+                                  const firstKey = (Array.isArray(i.tooth_numbers) && i.tooth_numbers[0]) || i.tooth_number;
+                                  const entry = firstKey ? (map[String(firstKey)] || map[toothIdToFdi(firstKey)] || {}) : {};
+                                  const model = entry.brend || i.brend;
+                                  const d = entry.diameter || i.diameter;
+                                  const l = entry.length || i.length;
+                                  const toothCount = teethList.length;
+                                  if (!model && !d && toothCount <= 1) return null;
+                                  return (
+                                    <span className="text-[10px] font-semibold text-slate-500 block truncate mt-0.5">
+                                      {model && model !== firmaName ? model : ''}
+                                      {d && l ? `${model && model !== firmaName ? ' ' : ''}(Ø${d}×${l}mm)` : ''}
+                                      {toothCount > 1 ? ` · ${toothCount} tish` : ''}
+                                    </span>
+                                  );
+                                })()}
                               </>
                             )}
                           </div>

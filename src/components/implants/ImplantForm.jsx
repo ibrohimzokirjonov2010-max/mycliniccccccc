@@ -23,6 +23,7 @@ const LIFECYCLE_STATUSES = [
   "planned",
   "placed",
   "healing",
+  "formik",
   "abutment",
   "crown",
   "completed",
@@ -231,13 +232,58 @@ export default function ImplantForm({ open, onClose, patients, services, implant
         extra_services: uniqueServices
       });
       // Existing ma'lumotlarni toothDataMap ga yozib qo'yamiz (Tahrirlash vaqti uchun)
-      if (relatedImplants && relatedImplants.length > 0) {
-        const mapping = {};
-        relatedImplants.forEach(imp => {
-          mapping[imp.tooth_id] = imp;
-        });
-        setToothDataMap(mapping);
+      let initialToothMap = {};
+      if (implant.tooth_data_map && typeof implant.tooth_data_map === 'object') {
+        initialToothMap = { ...implant.tooth_data_map };
       }
+      if (relatedImplants && relatedImplants.length > 0) {
+        relatedImplants.forEach(imp => {
+          const tId = imp.tooth_id || imp.tooth_number;
+          if (tId) {
+            initialToothMap[tId] = {
+              ...(initialToothMap[tId] || {}),
+              service_name: imp.service_name || imp.hizmat_turi || 'Implant',
+              price: imp.price || imp.narxi || 1500000,
+              firma: (imp.firma === 'Boshqa' ? imp.firma_custom : imp.firma) || imp.firma || 'Osstem',
+              firma_custom: imp.firma_custom || '',
+              brend: imp.brend || '',
+              diameter: imp.diameter || '',
+              length: imp.length || '',
+              lot_number: imp.lot_number || '',
+              torque: imp.torque !== undefined ? imp.torque : '',
+              isq: imp.isq !== undefined ? imp.isq : '',
+              bone_type: imp.bone_type || 'D2',
+              implant_type: imp.implant_type || 'Bone level',
+              notes: imp.notes || ''
+            };
+          }
+        });
+      }
+
+      // Har bir tanlangan tish uchun implantning o'zidagi ma'lumotlar bilan to'ldirish
+      uniqueTeeth.forEach(tId => {
+        const match = tId.match(/^(ur|ul|lr|ll)(\d+)$/);
+        const fdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : tId;
+        const existing = initialToothMap[tId] || initialToothMap[fdi];
+        if (!existing) {
+          initialToothMap[tId] = {
+            service_name: implant.service_name || 'Implant',
+            price: implant.price || 1500000,
+            firma: (implant.firma === 'Boshqa' ? implant.firma_custom : implant.firma) || implant.firma || 'Osstem',
+            firma_custom: implant.firma_custom || '',
+            brend: implant.brend || '',
+            diameter: implant.diameter || '',
+            length: implant.length || '',
+            lot_number: implant.lot_number || '',
+            torque: implant.torque !== undefined ? implant.torque : '',
+            isq: implant.isq !== undefined ? implant.isq : '',
+            bone_type: implant.bone_type || 'D2',
+            implant_type: implant.implant_type || 'Bone level',
+            notes: implant.notes || ''
+          };
+        }
+      });
+      setToothDataMap(initialToothMap);
     } else {
       resetForm();
       setToothDataMap({});
@@ -356,16 +402,36 @@ export default function ImplantForm({ open, onClose, patients, services, implant
   /**
    * Handle tooth selection toggle
    */
+  const pruneToothDataMap = useCallback((nextTeeth) => {
+    const keep = new Set((nextTeeth || []).map(String));
+    const keepFdi = new Set([...keep].map(sel => {
+      const m = String(sel).match(/^(ur|ul|lr|ll)(\d+)$/);
+      return m ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[m[1]] + m[2]) : String(sel);
+    }));
+    setToothDataMap(prev => {
+      const next = {};
+      Object.keys(prev || {}).forEach(key => {
+        const k = String(key);
+        const m = k.match(/^(ur|ul|lr|ll)(\d+)$/);
+        const fdi = m ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[m[1]] + m[2]) : k;
+        if (keep.has(k) || keepFdi.has(k) || keepFdi.has(fdi)) {
+          next[key] = prev[key];
+        }
+      });
+      return next;
+    });
+  }, []);
+
   const toggleTooth = useCallback((num) => {
     setForm(prev => {
       const exists = prev.tooth_numbers.includes(num);
-      if (exists) {
-        return { ...prev, tooth_numbers: prev.tooth_numbers.filter(n => n !== num) };
-      } else {
-        return { ...prev, tooth_numbers: [...prev.tooth_numbers, num] };
-      }
+      const nextTeeth = exists
+        ? prev.tooth_numbers.filter(n => n !== num)
+        : [...prev.tooth_numbers, num];
+      if (exists) pruneToothDataMap(nextTeeth);
+      return { ...prev, tooth_numbers: nextTeeth };
     });
-  }, []);
+  }, [pruneToothDataMap]);
 
   /**
     * Tooth SVG component for visual representation
@@ -559,109 +625,116 @@ export default function ImplantForm({ open, onClose, patients, services, implant
         }
       ];
 
-      // Har bir tish uchun alohida implant yozuvi yaratish
-      const savePromises = form.tooth_numbers.map(async (toothId) => {
-        const toothData = toothDataMap[toothId] || {};
-        
-        // FDI raqamini olish
-        let fdiNumber = '';
+      // Convert all toothIds to FDI numbers
+      const fdiNumbers = form.tooth_numbers.map(toothId => {
         const match = toothId.match(/^(ur|ul|lr|ll)(\d+)$/);
         if (match) {
           const [, quadrant, num] = match;
           const quadrantMap = { ur: '1', ul: '2', ll: '3', lr: '4' };
-          fdiNumber = quadrantMap[quadrant] + num;
+          return quadrantMap[quadrant] + num;
         }
+        return toothId;
+      });
 
-        // Tish uchun barcha texnik ma'lumotlarni to'g'ri birlashtirish
-        // toothData mavjud bo'lsa undan, aks holda formdan olinadi
-        const mergedFirma = toothData.firma || form.firma || '';
-        const mergedFirmaCustom = toothData.firma_custom || form.firma_custom || '';
-        const mergedBrend = toothData.brend || form.brend || '';
-        const mergedDiameter = toothData.diameter != null && toothData.diameter !== '' ? toothData.diameter : (form.diameter || '');
-        const mergedLength = toothData.length != null && toothData.length !== '' ? toothData.length : (form.length || '');
-        const mergedLotNumber = toothData.lot_number != null && toothData.lot_number !== '' ? toothData.lot_number : (form.lot_number || '');
-        const mergedTorque = toothData.torque != null && toothData.torque !== '' ? toothData.torque : (form.torque || '');
-        const mergedIsq = toothData.isq != null && toothData.isq !== '' ? toothData.isq : (form.isq || '');
-        const mergedBoneType = toothData.bone_type || form.bone_type || 'D2';
-        const mergedImplantType = toothData.implant_type || form.implant_type || 'Bone level';
-        const mergedNotes = toothData.notes || form.notes || '';
+      // Calculate safe integer reminder_months for PostgreSQL
+      let safeReminderMonths = 1;
+      if (typeof form.reminder_months === 'number') {
+        safeReminderMonths = form.reminder_months;
+      } else if (typeof form.reminder_months === 'string' && !isNaN(parseInt(form.reminder_months, 10)) && form.reminder_months !== 'custom') {
+        safeReminderMonths = parseInt(form.reminder_months, 10);
+      } else if (form.reminder_date && form.placement_date) {
+        const pDate = new Date(form.placement_date);
+        const rDate = new Date(form.reminder_date);
+        const diffMonths = (rDate.getFullYear() - pDate.getFullYear()) * 12 + (rDate.getMonth() - pDate.getMonth());
+        safeReminderMonths = Math.max(1, diffMonths || 1);
+      }
 
-        const mergedService = toothData.service_name || form.service_name || 'Implant';
-        const mergedPrice = toothData.price != null && toothData.price !== '' ? Number(toothData.price) : (Number(form.price) || 0);
+      const mergedService = form.service_name || 'Implant';
+      const mergedPrice = Number(form.price) || 0;
 
-        // tooth_data - JSONB sifatida barcha tish-spesifik ma'lumotlarni saqlash
-        // Bu Supabase ustun muammolarini hal qiladi va hech qachon yo'qolmaydi
-        const toothDataJson = {
-          service_name: mergedService,
-          price: mergedPrice,
-          firma: mergedFirma,
-          firma_custom: mergedFirmaCustom,
-          brend: mergedBrend,
-          diameter: mergedDiameter,
-          length: mergedLength,
-          lot_number: mergedLotNumber,
-          torque: mergedTorque,
-          isq: mergedIsq,
-          bone_type: mergedBoneType,
-          implant_type: mergedImplantType,
-          notes: mergedNotes,
-        };
-
-        // Calculate safe integer reminder_months for PostgreSQL
-        let safeReminderMonths = 1;
-        if (typeof form.reminder_months === 'number') {
-          safeReminderMonths = form.reminder_months;
-        } else if (typeof form.reminder_months === 'string' && !isNaN(parseInt(form.reminder_months, 10)) && form.reminder_months !== 'custom') {
-          safeReminderMonths = parseInt(form.reminder_months, 10);
-        } else if (form.reminder_date && form.placement_date) {
-          const pDate = new Date(form.placement_date);
-          const rDate = new Date(form.reminder_date);
-          const diffMonths = (rDate.getFullYear() - pDate.getFullYear()) * 12 + (rDate.getMonth() - pDate.getMonth());
-          safeReminderMonths = Math.max(1, diffMonths || 1);
-        }
-
-        const data = {
-          ...form,
-          service_name: mergedService,
-          hizmat_turi: mergedService,
-          price: mergedPrice,
-          narxi: mergedPrice,
-          reminder_months: safeReminderMonths,
-          // Asosiy maydonlar
-          tooth_number: fdiNumber,
-          tooth_id: toothId,
-          // Alohida ustunlarga ham yozish (agar baza qo'llab-quvvatlasa)
-          firma: mergedFirma,
-          firma_custom: mergedFirmaCustom,
-          brend: mergedBrend,
-          diameter: mergedDiameter,
-          length: mergedLength,
-          lot_number: mergedLotNumber,
-          torque: mergedTorque,
-          isq: mergedIsq,
-          bone_type: mergedBoneType,
-          implant_type: mergedImplantType,
-          notes: mergedNotes,
-          incomplete_data: false,
-          needs_fill: false,
-          // JSONB backup - har doim ishlaydi
-          tooth_data: toothDataJson,
-          audit_log: auditLog,
-          timeline
-        };
-
-        const existingImp = relatedImplants.find(r => r.tooth_id === toothId);
-
-        if (existingImp) {
-          await base44.entities.Implant.update(existingImp.id, data);
-        } else if (implant && form.tooth_numbers.length === 1) {
-          await base44.entities.Implant.update(implant.id, data);
-        } else {
-          await base44.entities.Implant.create(data);
+      // Cleaned per-tooth map for selected teeth only (no stale deselected keys)
+      const cleanedToothMap = {};
+      (form.tooth_numbers || []).forEach(toothId => {
+        const tid = String(toothId);
+        const match = tid.match(/^(ur|ul|lr|ll)(\d+)$/);
+        const fdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : tid;
+        const entry = toothDataMap[tid] || toothDataMap[fdi];
+        if (entry) {
+          cleanedToothMap[tid] = entry;
+          cleanedToothMap[fdi] = entry;
         }
       });
 
-      await Promise.all(savePromises);
+      // Legacy top-level columns = first-tooth summary (UI prefers tooth_data_map per selection)
+      const firstToothId = form.tooth_numbers[0];
+      const matchFirst = firstToothId ? String(firstToothId).match(/^(ur|ul|lr|ll)(\d+)$/) : null;
+      const firstToothFdi = matchFirst ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[matchFirst[1]] + matchFirst[2]) : (fdiNumbers[0] || '');
+      const firstToothData = cleanedToothMap[firstToothId] || cleanedToothMap[firstToothFdi] || {};
+
+      const finalDiameter = (firstToothData.diameter !== undefined && firstToothData.diameter !== '') ? firstToothData.diameter : (form.diameter || '');
+      const finalLength = (firstToothData.length !== undefined && firstToothData.length !== '') ? firstToothData.length : (form.length || '');
+      const finalLot = (firstToothData.lot_number !== undefined && firstToothData.lot_number !== '') ? firstToothData.lot_number : (form.lot_number || '');
+      const finalTorque = (firstToothData.torque !== undefined && firstToothData.torque !== '') ? firstToothData.torque : (form.torque !== undefined ? form.torque : '');
+      const finalIsq = (firstToothData.isq !== undefined && firstToothData.isq !== '') ? firstToothData.isq : (form.isq !== undefined ? form.isq : '');
+      const finalBone = firstToothData.bone_type || form.bone_type || 'D2';
+      const finalFirma = firstToothData.firma || form.firma || 'Osstem';
+      const finalFirmaCustom = firstToothData.firma_custom || form.firma_custom || '';
+      const finalBrend = firstToothData.brend || form.brend || finalFirma;
+      const finalImplantType = firstToothData.implant_type || form.implant_type || 'Bone level';
+
+      // Price = sum of unique per-tooth prices when map has entries; else form price
+      const seenPriceKeys = new Set();
+      let mapPriceSum = 0;
+      let mapPriceCount = 0;
+      (form.tooth_numbers || []).forEach(toothId => {
+        const tid = String(toothId);
+        const match = tid.match(/^(ur|ul|lr|ll)(\d+)$/);
+        const fdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : tid;
+        const priceKey = fdi || tid;
+        if (seenPriceKeys.has(priceKey)) return;
+        seenPriceKeys.add(priceKey);
+        const entry = cleanedToothMap[tid] || cleanedToothMap[fdi];
+        if (entry && entry.price != null && entry.price !== '') {
+          mapPriceSum += Number(entry.price) || 0;
+          mapPriceCount += 1;
+        }
+      });
+      const finalPrice = mapPriceCount > 0 ? mapPriceSum : mergedPrice;
+
+      // 1 ta reja ichida barcha belgilangan tishlarni saqlash (alohida qilmasdan)
+      const data = {
+        ...form,
+        firma: finalFirma,
+        firma_custom: finalFirmaCustom,
+        brend: finalBrend,
+        diameter: finalDiameter,
+        length: finalLength,
+        lot_number: finalLot,
+        torque: finalTorque,
+        isq: finalIsq,
+        bone_type: finalBone,
+        implant_type: finalImplantType,
+        service_name: mergedService,
+        hizmat_turi: mergedService,
+        price: finalPrice,
+        narxi: finalPrice,
+        reminder_months: safeReminderMonths,
+        // Asosiy maydonlar - barcha tishlar bitta rejada birgalikda
+        tooth_number: fdiNumbers[0] || '',
+        tooth_id: form.tooth_numbers[0] || '',
+        tooth_numbers: form.tooth_numbers,
+        incomplete_data: false,
+        needs_fill: false,
+        audit_log: auditLog,
+        timeline,
+        tooth_data_map: cleanedToothMap,
+      };
+
+      if (implant && implant.id) {
+        await base44.entities.Implant.update(implant.id, data);
+      } else {
+        await base44.entities.Implant.create(data);
+      }
 
       onSaved();
       onClose();
@@ -704,10 +777,15 @@ export default function ImplantForm({ open, onClose, patients, services, implant
    * Handle tooth data save
    */
   const handleToothDataSave = (toothId, data) => {
+    const match = String(toothId).match(/^(ur|ul|lr|ll)(\d+)$/);
+    const fdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : toothId;
     setToothDataMap(prev => ({
       ...prev,
-      [toothId]: data
+      [toothId]: data,
+      [fdi]: data
     }));
+    // Do NOT copy last modal into shared top-level form — that hid teeth 2–3 behind tooth-1 values.
+    // Top-level summary (incl. summed price) is computed on final save from tooth_data_map.
   };
 
   /**
@@ -919,7 +997,7 @@ export default function ImplantForm({ open, onClose, patients, services, implant
               variant="ghost" 
               size="sm" 
               className="h-6 sm:h-7 text-[9px] sm:text-[10px] text-destructive hover:bg-destructive/10"
-              onClick={() => setField('tooth_numbers', [])}
+              onClick={() => { setField('tooth_numbers', []); setToothDataMap({}); }}
             >
               <X className="w-2.5 h-2.5 sm:w-3 h-3 mr-1" /> {t('common.clear')}
             </Button>
@@ -930,7 +1008,11 @@ export default function ImplantForm({ open, onClose, patients, services, implant
         <div className="w-full rounded-2xl border border-slate-100 shadow-2xs overflow-hidden bg-white">
           <ProfessionalOdontogram
             selectedTeeth={form.tooth_numbers}
-            onChange={(teeth) => setForm(prev => ({ ...prev, tooth_numbers: teeth }))}
+            onChange={(teeth) => {
+              const next = (teeth || []).map(String);
+              setForm(prev => ({ ...prev, tooth_numbers: next }));
+              pruneToothDataMap(next);
+            }}
             multi={true}
             onToothClick={handleToothClick}
             hideChildren={true}
@@ -938,6 +1020,7 @@ export default function ImplantForm({ open, onClose, patients, services, implant
             hideLegend={true}
             hideStats={true}
             hideHeader={true}
+            hideTooltip={true}
           />
         </div>
       </div>
@@ -1060,136 +1143,62 @@ export default function ImplantForm({ open, onClose, patients, services, implant
         </Select>
       </div>
 
-      {/* Tanlangan tishlar uchun implant ma'lumotlari kartalari (Step 1 ga qaytarildi) */}
+      {/* ── Tanlangan tishlar kartalari ── */}
       {form.tooth_numbers.length > 0 && (
-        <div className="mt-4 sm:mt-6 space-y-3 border-t pt-4 sm:pt-6 border-dashed border-border/60">
-          <Label className="text-xs sm:text-sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-2 mb-2 sm:mb-4">
-            <Info className="w-4 h-4 text-primary" /> Tanlangan tishlar ma'lumotlari
-          </Label>
-          <div className="grid grid-cols-1 gap-3">
-            <AnimatePresence mode="popLayout">
-              {[...new Set((form.tooth_numbers || []).map(String))].map((toothId, idx) => {
-                const data = toothDataMap[toothId];
-                
-                // FDI raqamini aniqlash
-                let fdiNumber = '';
-                let srcImage = '';
-                let isLeft = false;
-                
-                if (toothId.startsWith('ur')) {
-                  const num = toothId.replace('ur', '');
-                  fdiNumber = `1${num}`;
-                  srcImage = `kamron/tepa_ong_${num}`;
-                  isLeft = false;
-                } else if (toothId.startsWith('ul')) {
-                  const num = toothId.replace('ul', '');
-                  fdiNumber = `2${num}`;
-                  srcImage = `kamron/tepa_chap_${num}`;
-                  isLeft = false;
-                } else if (toothId.startsWith('lr')) {
-                  const num = toothId.replace('lr', '');
-                  fdiNumber = `4${num}`;
-                  srcImage = `kamron/pas_ong_${num}`;
-                  isLeft = false;
-                } else if (toothId.startsWith('ll')) {
-                  const num = toothId.replace('ll', '');
-                  fdiNumber = `3${num}`;
-                  srcImage = `kamron/pas_chap_${num}`;
-                  isLeft = false;
-                }
-
-                return (
-                  <motion.div 
-                    key={toothId}
-                    initial={{ opacity: 0, scale: 0.95, y: 8 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 8 }}
-                    transition={{ duration: 0.2 }}
-                    onClick={() => handleToothClick(toothId)}
-                    className={`group relative p-3 sm:p-3.5 rounded-2xl border-2 transition-all cursor-pointer active:scale-[0.98] flex items-center justify-between ${
-                      data 
-                        ? 'bg-emerald-50/50 border-emerald-300 hover:border-emerald-500 shadow-xs' 
-                        : 'border-dashed border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl border border-slate-200/80 bg-white flex items-center justify-center shadow-xs shrink-0">
-                        <img 
-                          src={`/teeth/${srcImage}.png`}
-                          alt={`Tish ${fdiNumber}`}
-                          className="w-7 h-7 sm:w-8 sm:h-8 object-contain"
-                          style={{
-                            filter: data
-                              ? 'contrast(1.1) brightness(1.0) drop-shadow(0 2px 4px rgba(16,185,129,0.3))'
-                              : 'contrast(0.9) brightness(0.9) grayscale(0.2) opacity(0.7)'
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-0.5 min-w-0">
-                        <h4 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-1.5">
-                          <span>🦷 Tish #{fdiNumber}</span>
-                          {data && <Check className="w-4 h-4 text-emerald-500 stroke-[3]" />}
-                        </h4>
-                        {data ? (
-                          <p className="text-teal-700 font-bold uppercase tracking-wider text-[10px] sm:text-[11px] truncate">
-                            {(data.firma === 'Boshqa' ? (data.firma_custom || 'Boshqa') : data.firma)} | {data.diameter && data.length ? `${data.diameter}x${data.length}` : '?'} | {data.torque ? `${data.torque}NCM` : '?NCM'}
-                          </p>
-                        ) : (
-                          <p className="text-amber-600/80 font-bold text-[10px] sm:text-[11px]">
-                            Ma'lumotlar kiritilmagan — bosing
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {data ? (
-                      <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-md shadow-emerald-200 shrink-0">
-                        <Check className="w-4 h-4 stroke-[3]" />
-                      </div>
-                    ) : (
-                      <div className="w-8 h-8 border-2 border-amber-300 rounded-full flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-white group-hover:border-amber-500 transition-all shrink-0">
-                        <Plus className="w-4 h-4" />
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+        <div className="space-y-2 mt-3">
+          <div className="flex items-center gap-1.5 text-slate-500 font-black text-[10px] uppercase tracking-widest px-1">
+            <Info className="w-3 h-3" /> Tanlangan tishlar — ma'lumot kiritish uchun bosing
           </div>
+          <AnimatePresence mode="popLayout">
+            {[...new Set((form.tooth_numbers||[]).map(String))].map(toothId => {
+              let fdiNumber = toothId, srcImage = '';
+              if (toothId.startsWith('ur')) { const n=toothId.replace('ur',''); fdiNumber=`1${n}`; srcImage=`kamron/tepa_ong_${n}`; }
+              else if (toothId.startsWith('ul')) { const n=toothId.replace('ul',''); fdiNumber=`2${n}`; srcImage=`kamron/tepa_chap_${n}`; }
+              else if (toothId.startsWith('lr')) { const n=toothId.replace('lr',''); fdiNumber=`4${n}`; srcImage=`kamron/pas_ong_${n}`; }
+              else if (toothId.startsWith('ll')) { const n=toothId.replace('ll',''); fdiNumber=`3${n}`; srcImage=`kamron/pas_chap_${n}`; }
+              const data = toothDataMap[toothId] || toothDataMap[fdiNumber];
+              return (
+                <motion.div key={toothId} initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0,y:6}} transition={{duration:0.18}}
+                  onClick={() => handleToothClick(toothId)}
+                  className={`flex items-center gap-3 p-2.5 rounded-xl border-2 cursor-pointer transition-all active:scale-[0.98] ${data ? 'bg-emerald-50 border-emerald-300 hover:border-emerald-500' : 'border-dashed border-amber-300 hover:border-amber-400 hover:bg-amber-50/30'}`}>
+                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-xs shrink-0">
+                    <img src={`/teeth/${srcImage}.png`} alt={`Tish ${fdiNumber}`} className="w-7 h-7 object-contain" style={{filter: data ? 'drop-shadow(0 1px 3px rgba(16,185,129,0.4))' : 'grayscale(0.3) opacity(0.7)'}} onError={e=>{e.target.style.display='none'}} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-black text-slate-900">Tish #{fdiNumber}</span>
+                      {data && <Check className="w-3.5 h-3.5 text-emerald-500 stroke-[3] shrink-0" />}
+                    </div>
+                    {data ? (
+                      <p className="text-[10px] font-bold text-emerald-700 truncate">
+                        {data.firma==='Boshqa'?(data.firma_custom||'Boshqa'):data.firma}{data.diameter&&data.length?` | Ø${data.diameter}×${data.length}mm`:''}{data.torque?` | ${data.torque}Ncm`:''}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] font-bold text-amber-600">Bosib ma'lumot kiriting ↗</p>
+                    )}
+                  </div>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${data ? 'bg-emerald-500 text-white shadow-sm' : 'border-2 border-amber-300 text-amber-500'}`}>
+                    {data ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : <Plus className="w-3.5 h-3.5" />}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       )}
 
-      <div className="flex justify-between pt-2 sm:pt-4 gap-3">
-        <Button 
-          variant="outline" 
-          onClick={onClose} 
-          className="h-10 sm:h-12 px-6 rounded-xl sm:rounded-2xl border-2 text-xs sm:text-sm font-black text-slate-600"
-        >
-          Bekor qilish
-        </Button>
+      <div className="flex justify-between gap-3 pt-1">
+        <Button variant="outline" onClick={onClose} className="h-11 px-6 rounded-2xl border-2 text-xs font-black text-slate-600">Bekor qilish</Button>
         <Button
           onClick={() => {
-            if (!form.patient_name) {
-              alert("Iltimos, avval bemorni tanlang!");
-              return;
-            }
-            if (!form.doctor || !form.doctor.trim()) {
-              alert("Iltimos, mas'ul shifokorni tanlang! Shifokor maydoni to'ldirilmagan.");
-              return;
-            }
-            if (!form.tooth_numbers || form.tooth_numbers.length === 0) {
-              alert("Iltimos, implant o'rnatiladigan tish(lar)ni diagrammada belgilang!");
-              return;
-            }
+            if (!form.patient_name) { alert("Iltimos, avval bemorni tanlang!"); return; }
+            if (!form.doctor?.trim()) { alert("Iltimos, mas'ul shifokorni tanlang!"); return; }
+            if (!form.tooth_numbers?.length) { alert("Iltimos, implant o'rnatiladigan tishni tanlang!"); return; }
             setStep(2);
           }}
-          className={`h-10 sm:h-12 px-6 sm:px-8 rounded-xl sm:rounded-2xl transition-all active:scale-95 text-xs sm:text-sm font-black ${
-            isStep1Valid 
-              ? 'bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 cursor-pointer' 
-              : 'bg-amber-500 hover:bg-amber-600 text-white shadow-md cursor-pointer'
-          }`}
+          className={`h-11 px-8 rounded-2xl transition-all active:scale-95 text-xs font-black ${isStep1Valid ? 'bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20' : 'bg-amber-500 hover:bg-amber-600 text-white shadow-md'}`}
         >
-          Keyingisi <Calendar className="w-3.5 h-3.5 sm:w-4 h-4 ml-2" />
+          Keyingisi <Calendar className="w-3.5 h-3.5 ml-2" />
         </Button>
       </div>
     </div>
@@ -1199,74 +1208,45 @@ export default function ImplantForm({ open, onClose, patients, services, implant
    * Render Step 2: Xizmatlar
    */
   const renderStep2 = () => {
-    const totalExtraSum = (form.extra_services || []).reduce((acc, sid) => {
-      const preset = (extraServicesList || []).find(s => s.id === sid);
+    const totalExtraSum = (form.extra_services||[]).reduce((acc,sid) => {
+      const preset = (extraServicesList||[]).find(s=>s.id===sid);
       const customPrice = extraServicePrices[sid];
-      return acc + (customPrice !== undefined ? Number(customPrice) : (preset?.defaultPrice || 0));
+      return acc + (customPrice!==undefined ? Number(customPrice) : (preset?.defaultPrice||0));
     }, 0);
 
     return (
-      <div className="space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-        <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-4">
+      <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3.5 space-y-3">
           <div className="flex items-center justify-between">
-            <Label className="text-xs sm:text-sm font-black text-slate-800 flex items-center gap-2">
-              <div className="w-8 h-8 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 border border-indigo-100">
-                <Layers className="w-4 h-4" />
+            <div className="flex items-center gap-2 text-slate-700 font-black text-[11px] uppercase tracking-widest">
+              <div className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <Layers className="w-3.5 h-3.5" />
               </div>
-              <span>Implant uchun qo'shimcha xizmatlar va narxlar</span>
-            </Label>
+              Qo'shimcha xizmatlar
+            </div>
             {form.extra_services?.length > 0 && (
-              <span className="text-[11px] font-black font-mono text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
-                Jami: {totalExtraSum.toLocaleString()} so'm ({form.extra_services.length} ta)
+              <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
+                {totalExtraSum.toLocaleString()} so'm
               </span>
             )}
           </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
-            {(extraServicesList || []).map(service => {
-              const isSelected = (form.extra_services || []).includes(service.id);
-              const currentPrice = extraServicePrices[service.id] !== undefined ? extraServicePrices[service.id] : service.defaultPrice;
-
+          <div className="grid grid-cols-2 gap-2 max-h-[360px] overflow-y-auto">
+            {(extraServicesList||[]).map(service => {
+              const isSelected = (form.extra_services||[]).includes(service.id);
+              const currentPrice = extraServicePrices[service.id]!==undefined ? extraServicePrices[service.id] : service.defaultPrice;
               return (
-                <div
-                  key={service.id}
-                  className={`p-3 rounded-xl border-2 transition-all ${
-                    isSelected
-                      ? 'bg-indigo-50/60 border-indigo-500 text-indigo-950 shadow-xs'
-                      : 'bg-white border-slate-200/80 text-slate-700 hover:border-slate-300'
-                  }`}
-                >
-                  <div 
-                    onClick={() => toggleExtraService(service.id)}
-                    className="flex items-center justify-between cursor-pointer select-none mb-1"
-                  >
-                    <span className="text-[11px] sm:text-xs font-black leading-tight">
-                      {t('implants.services.' + service.id) || service.label}
-                    </span>
-                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all ${
-                      isSelected ? 'bg-indigo-600 text-white shadow-xs' : 'border-2 border-slate-300'
-                    }`}>
+                <div key={service.id} className={`p-2.5 rounded-xl border-2 transition-all ${isSelected ? 'bg-indigo-50 border-indigo-400 shadow-xs' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}>
+                  <div onClick={() => toggleExtraService(service.id)} className="flex items-center justify-between cursor-pointer select-none">
+                    <span className="text-[10.5px] font-black leading-tight pr-1 text-slate-800">{t('implants.services.'+service.id)||service.label}</span>
+                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-indigo-600 text-white' : 'border-2 border-slate-300'}`}>
                       {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                     </div>
                   </div>
-
                   {isSelected && (
-                    <div className="mt-2 pt-2 border-t border-indigo-200/60 flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-bold text-slate-500">Narxi (so'm):</span>
-                      <div className="relative w-36">
-                        <Input
-                          type="number"
-                          step="10000"
-                          value={currentPrice}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setExtraServicePrices(prev => ({ ...prev, [service.id]: Number(val) || 0 }));
-                          }}
-                          className="h-8 text-xs font-mono font-black text-right pr-10 bg-white border-indigo-300 focus:border-indigo-500 rounded-lg shadow-2xs"
-                        />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400">
-                          SO'M
-                        </span>
+                    <div className="mt-2 pt-2 border-t border-indigo-200/60">
+                      <div className="relative">
+                        <Input type="number" step="10000" value={currentPrice} onChange={e => setExtraServicePrices(prev=>({...prev,[service.id]:Number(e.target.value)||0}))} className="h-7 text-[10px] font-mono font-black text-right pr-10 bg-white border-indigo-300 rounded-lg" />
+                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-400">SO'M</span>
                       </div>
                     </div>
                   )}
@@ -1275,16 +1255,10 @@ export default function ImplantForm({ open, onClose, patients, services, implant
             })}
           </div>
         </div>
-
-        <div className="flex justify-between pt-2 sm:pt-4 gap-3">
-          <Button variant="outline" onClick={() => setStep(1)} className="h-10 sm:h-12 px-6 rounded-xl sm:rounded-2xl border-2 text-xs sm:text-sm font-black text-slate-600">
-            ← Orqaga
-          </Button>
-          <Button
-            onClick={() => setStep(3)}
-            className="h-10 sm:h-12 px-8 rounded-xl sm:rounded-2xl bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all active:scale-95 text-xs sm:text-sm font-black text-white cursor-pointer"
-          >
-            Keyingisi <Shield className="w-3.5 h-3.5 sm:w-4 h-4 ml-2" />
+        <div className="flex justify-between gap-3 pt-1">
+          <Button variant="outline" onClick={() => setStep(1)} className="h-11 px-6 rounded-2xl border-2 text-xs font-black text-slate-600">← Orqaga</Button>
+          <Button onClick={() => setStep(3)} className="h-11 px-8 rounded-2xl bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all active:scale-95 text-xs font-black text-white">
+            Keyingisi <Shield className="w-3.5 h-3.5 ml-2" />
           </Button>
         </div>
       </div>
@@ -1292,189 +1266,121 @@ export default function ImplantForm({ open, onClose, patients, services, implant
   };
 
   /**
-   * Render Step 3: Implant Texnik ma'lumotlari & Yakunlash
+   * Render Step 3: Sana, Eslatma & Yakunlash
    */
   const renderStep3 = () => (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-      <div className="bg-muted/30 p-4 sm:p-5 rounded-2xl border border-border/50 shadow-sm space-y-4">
-        <Label className="text-[10px] sm:text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
-          <Calendar className="w-3.5 h-3.5 text-emerald-600" /> Nazorat / Eslatma Davri
-        </Label>
-        
-        <div className="grid grid-cols-4 gap-2 sm:gap-3">
+    <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-300">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3.5 space-y-2.5">
+        <div className="flex items-center gap-2 text-slate-700 font-black text-[11px] uppercase tracking-widest mb-1">
+          <div className="w-6 h-6 rounded-lg bg-cyan-50 text-cyan-600 flex items-center justify-center"><Activity className="w-3.5 h-3.5" /></div>
+          Sana va holat
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">O'rnatilgan sana *</label>
+            <Input type="date" className="bg-slate-50 border-slate-200 h-9 rounded-xl font-bold text-xs" value={form.placement_date} onChange={e => handleDateChange(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-1">Bosqich holati</label>
+            <Select value={form.lifecycle_status} onValueChange={v => setField('lifecycle_status', v)}>
+              <SelectTrigger className="bg-slate-50 border-slate-200 h-9 rounded-xl font-bold text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LIFECYCLE_STATUSES.map(s => <SelectItem key={s} value={s}>{t(`implants.status.${s}`)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3.5 space-y-2.5">
+        <div className="flex items-center gap-2 text-slate-700 font-black text-[11px] uppercase tracking-widest">
+          <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><Calendar className="w-3.5 h-3.5" /></div>
+          Nazorat eslatmasi
+        </div>
+        <div className="grid grid-cols-4 gap-2">
           {REMINDER_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => handleReminderMonths(opt.value)}
-              className={`flex flex-col items-center justify-center p-2.5 sm:p-4 rounded-xl border-2 transition-all active:scale-95 cursor-pointer ${
-                form.reminder_months === opt.value
-                  ? 'bg-emerald-50/60 border-emerald-500 text-emerald-800 shadow-sm shadow-emerald-500/10'
-                  : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300'
-              }`}
-            >
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-1.5 transition-colors ${
-                form.reminder_months === opt.value ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'
-              }`}>
-                <Calendar className="w-4 h-4" />
-              </div>
-              <span className="text-[11px] sm:text-xs font-black">{opt.label}</span>
-              <span className="text-[8.5px] sm:text-[9.5px] font-bold text-slate-400 mt-0.5">{opt.sub}</span>
+            <button key={opt.value} type="button" onClick={() => handleReminderMonths(opt.value)}
+              className={`flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all active:scale-95 cursor-pointer ${form.reminder_months===opt.value ? 'bg-emerald-50 border-emerald-500 text-emerald-800 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center mb-1 ${form.reminder_months===opt.value ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'}`}><Calendar className="w-3.5 h-3.5" /></div>
+              <span className="text-[11px] font-black">{opt.label}</span>
+              <span className="text-[8.5px] text-slate-400">{opt.sub}</span>
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => handleReminderMonths('custom')}
-            className={`flex flex-col items-center justify-center p-2.5 sm:p-4 rounded-xl border-2 transition-all active:scale-95 cursor-pointer ${
-              form.reminder_months === 'custom'
-                ? 'bg-emerald-50/60 border-emerald-500 text-emerald-800 shadow-sm shadow-emerald-500/10'
-                : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300'
-            }`}
-          >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-1.5 transition-colors ${
-              form.reminder_months === 'custom' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'
-            }`}>
-              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <span className="text-[11px] sm:text-xs font-black leading-tight">Boshqa</span>
-            <span className="text-[8.5px] sm:text-[9.5px] font-bold text-slate-400 mt-0.5">Sana tanlash</span>
+          <button type="button" onClick={() => handleReminderMonths('custom')}
+            className={`flex flex-col items-center justify-center p-2.5 rounded-xl border-2 transition-all active:scale-95 cursor-pointer ${form.reminder_months==='custom' ? 'bg-emerald-50 border-emerald-500 text-emerald-800 shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center mb-1 ${form.reminder_months==='custom' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'}`}><Plus className="w-3.5 h-3.5" /></div>
+            <span className="text-[11px] font-black">Boshqa</span>
+            <span className="text-[8.5px] text-slate-400">Tanlash</span>
           </button>
         </div>
-
-        {form.reminder_months === 'custom' && (
-          <div className="bg-emerald-50/50 p-3.5 rounded-xl border border-emerald-100 space-y-2 mt-3 animate-in fade-in slide-in-from-top-2">
-            <Label className="text-[10px] sm:text-[11px] font-black text-emerald-700 uppercase">
-              Nazorat/Eslatma sanasini tanlang
-            </Label>
-            <Input 
-              type="date" 
-              className="bg-white border-emerald-200 text-emerald-800 shadow-sm focus-visible:ring-emerald-500 font-bold"
-              value={form.reminder_date}
-              onChange={e => setField('reminder_date', e.target.value)}
-            />
-          </div>
+        {form.reminder_months==='custom' && (
+          <Input type="date" className="bg-slate-50 border-emerald-200 text-emerald-800 font-bold h-9 rounded-xl text-xs" value={form.reminder_date} onChange={e => setField('reminder_date', e.target.value)} />
         )}
-
-        {form.reminder_date && form.reminder_months !== 'custom' && (
-          <div className="bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200/80 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-lg flex items-center justify-center shrink-0">
-                <Check className="w-4 h-4 stroke-[3]" />
-              </div>
-              <div>
-                <div className="text-[9.5px] font-black text-emerald-700 uppercase tracking-wider">
-                  Rejalashtirilgan nazorat sanasi
-                </div>
-                <div className="text-xs font-black text-slate-900">{form.reminder_date}</div>
-              </div>
+        {form.reminder_date && form.reminder_months!=='custom' && (
+          <div className="flex items-center justify-between bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-100">
+            <div className="flex items-center gap-2">
+              <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" />
+              <span className="text-[10px] font-black text-emerald-700">Rejalashtirilgan:</span>
+              <span className="text-[10px] font-black text-slate-900">{form.reminder_date}</span>
             </div>
-            <div className="text-[11px] font-black text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-lg">
-              {form.reminder_months} oy
-            </div>
+            <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-lg">{form.reminder_months} oy</span>
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        <div className="bg-muted/30 p-4 rounded-2xl border border-border/50 space-y-2">
-          <Label className="text-[10px] sm:text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
-            <Calendar className="w-3.5 h-3.5 text-primary" /> {t('implants.form.placementDate')} *
-          </Label>
-          <Input
-            type="date"
-            className="bg-white border-slate-200 h-11 sm:h-12 rounded-xl text-sm font-bold shadow-sm"
-            value={form.placement_date}
-            onChange={e => handleDateChange(e.target.value)}
-          />
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3.5 space-y-2.5">
+        <div className="flex items-center gap-2 text-slate-700 font-black text-[11px] uppercase tracking-widest">
+          <div className="w-6 h-6 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center"><Upload className="w-3.5 h-3.5" /></div>
+          Hujjatlar (ixtiyoriy)
         </div>
-        <div className="bg-muted/30 p-4 rounded-2xl border border-border/50 space-y-2">
-          <Label className="text-[10px] sm:text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
-            <Activity className="w-3.5 h-3.5 text-primary" /> {t('implants.table.status')}
-          </Label>
-          <Select value={form.lifecycle_status} onValueChange={v => setField('lifecycle_status', v)}>
-            <SelectTrigger className="bg-white border-slate-200 h-11 shadow-sm text-sm font-bold">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {LIFECYCLE_STATUSES.map(s => (
-                <SelectItem key={s} value={s}>{t(`implants.status.${s}`)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="bg-muted/30 p-4 rounded-2xl border border-border/50 space-y-4">
-        <Label className="text-[10px] sm:text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
-          <Upload className="w-3.5 h-3.5 text-primary" /> {t('implants.form.docsReminders')}
-        </Label>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <label className="flex flex-col items-center gap-1 p-3 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-primary hover:bg-primary/5 transition-all group font-bold text-[10px]">
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="flex flex-col items-center gap-1 p-3 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-teal-400 hover:bg-teal-50/20 transition-all group">
               <input type="file" className="hidden" onChange={handlePassportUpload} />
-              <FileText className="w-4 h-4 text-slate-400 group-hover:text-primary mb-1" />
-              {t('implants.form.uploadPassport')}
+              <FileText className="w-4 h-4 text-slate-400 group-hover:text-teal-600" />
+              <span className="text-[10px] font-black text-slate-500 group-hover:text-teal-700">Pasport</span>
             </label>
-            
             {form.passport_url && (
-              <div className="relative group w-full aspect-[4/3] rounded-xl overflow-hidden border border-border shadow-sm">
+              <div className="relative group w-full aspect-[4/3] rounded-xl overflow-hidden border border-slate-200 mt-1">
                 <img src={form.passport_url} alt="Passport" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => setField('passport_url', '')}
-                  className="absolute top-1 right-1 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                <button type="button" onClick={() => setField('passport_url','')} className="absolute top-1 right-1 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
               </div>
             )}
           </div>
-          
-          <div className="space-y-2">
-            <label className="flex flex-col items-center gap-1 p-3 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-primary hover:bg-primary/5 transition-all group font-bold text-[10px]">
+          <div>
+            <label className="flex flex-col items-center gap-1 p-3 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/20 transition-all group">
               <input type="file" className="hidden" multiple onChange={handleXrayUpload} />
-              <ImageIcon className="w-4 h-4 text-slate-400 group-hover:text-primary mb-1" />
-              {t('implants.form.uploadXrays')}
+              <ImageIcon className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+              <span className="text-[10px] font-black text-slate-500 group-hover:text-indigo-700">Rentgen</span>
             </label>
-
-            {form.xray_urls && form.xray_urls.length > 0 && (
-              <div className="grid grid-cols-3 gap-1.5 mt-2">
-                {form.xray_urls.map((url, idx) => (
-                  <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border border-border">
+            {form.xray_urls?.length > 0 && (
+              <div className="grid grid-cols-3 gap-1 mt-1">
+                {form.xray_urls.map((url,idx) => (
+                  <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border border-slate-200">
                     <img src={url} alt={`Xray ${idx}`} className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeXray(idx)}
-                      className="absolute top-0.5 right-0.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+                    <button type="button" onClick={() => removeXray(idx)} className="absolute top-0.5 right-0.5 w-4 h-4 bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-2.5 h-2.5" /></button>
                   </div>
                 ))}
               </div>
             )}
           </div>
         </div>
-
         <textarea
-          className="w-full bg-white border-slate-200 rounded-xl p-4 text-sm font-bold text-slate-600 min-h-[80px] resize-none focus:ring-2 focus:ring-primary/20 shadow-sm outline-none transition-all"
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-600 min-h-[60px] resize-none outline-none focus:border-teal-400 transition-colors"
           value={form.notes}
           onChange={e => setField('notes', e.target.value)}
           placeholder={t('implants.form.notesPlaceholder')}
         />
       </div>
 
-      <div className="flex justify-between pt-4 gap-3">
-        <Button variant="outline" onClick={() => setStep(2)} className="h-12 px-6 rounded-2xl border-2 font-black text-sm text-slate-600">
-          ← {t('common.back')}
-        </Button>
+      <div className="flex justify-between gap-3 pt-1">
+        <Button variant="outline" onClick={() => setStep(2)} className="h-11 px-6 rounded-2xl border-2 font-black text-xs text-slate-600">← Orqaga</Button>
         <Button
           onClick={handleSave}
           disabled={saving || !isStep3Valid}
-          className="h-12 px-10 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 border-0 shadow-lg shadow-emerald-500/20 font-black text-white active:scale-95 transition-all"
+          className="h-11 px-10 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 border-0 shadow-lg shadow-emerald-500/25 font-black text-white active:scale-95 transition-all"
         >
-          {saving ? t('common.saving') : t('common.saveAndFinish')} 
+          {saving ? t('common.saving') : t('common.saveAndFinish')}
           <Check className="w-4 h-4 ml-2 stroke-[3]" />
         </Button>
       </div>
@@ -1484,40 +1390,35 @@ export default function ImplantForm({ open, onClose, patients, services, implant
   return (
     <>
       <Dialog open={open && !newPatientOpen} onOpenChange={onClose}>
-        <DialogContent className="w-[95vw] max-w-xl max-h-[90vh] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl flex flex-col" aria-describedby={undefined}>
-          {/* Green Gradient Header */}
+        <DialogContent className="w-[95vw] max-w-lg max-h-[92vh] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl flex flex-col" aria-describedby={undefined}>
           <DialogHeader className="shrink-0">
-            <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-4 flex items-center justify-between text-white rounded-t-[2rem]">
+            <div className="bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-700 px-5 py-4 flex items-center justify-between text-white rounded-t-[2rem]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm text-xl">
-                  🦷
-                </div>
+                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm text-xl">🦷</div>
                 <div>
                   <DialogTitle className="text-[15px] font-black text-white uppercase leading-none tracking-tight">
                     {implant ? t('common.edit') : t('implants.form.newImplant')}
                   </DialogTitle>
-                  <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Dental System</p>
+                  <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">
+                    {form.patient_name ? form.patient_name : 'Implantologiya moduli'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className={`px-2 py-1 rounded-full bg-white/15 border border-white/20 text-[8px] font-black text-white/90 uppercase tracking-tighter flex items-center gap-1`}>
-                  <Shield className="w-2.5 h-2.5" />
-                  {isSchemaOptimized ? 'Optimized' : 'Smart'}
-                </div>
-                <button 
-                  onClick={onClose} 
-                  className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center active:scale-90 transition-all border-none cursor-pointer"
-                >
+                {form.tooth_numbers.length > 0 && (
+                  <div className="px-2 py-1 rounded-full bg-white/20 border border-white/30 text-[9px] font-black text-white/90 flex items-center gap-1">
+                    🦷 {form.tooth_numbers.length} ta tish
+                  </div>
+                )}
+                <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center active:scale-90 transition-all border-none cursor-pointer">
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
           </DialogHeader>
 
-          {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto px-4 pb-6 pt-2 no-scrollbar">
+          <div className="flex-1 overflow-y-auto px-4 pb-5 pt-2 no-scrollbar">
             {renderStepIndicator()}
-
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
@@ -1532,14 +1433,12 @@ export default function ImplantForm({ open, onClose, patients, services, implant
         onSaved={handleNewPatientSaved}
       />
 
-      {/* Har bir tish uchun implant ma'lumotlari modali */}
       <ToothImplantModal
         open={toothModalOpen}
         onClose={() => setToothModalOpen(false)}
         toothId={selectedToothForModal}
         fdiNumber={(() => {
           if (!selectedToothForModal) return '';
-          // Convert tooth ID to FDI number
           const match = selectedToothForModal.match(/^(ur|ul|lr|ll)(\d+)$/);
           if (match) {
             const [, quadrant, num] = match;
@@ -1549,7 +1448,12 @@ export default function ImplantForm({ open, onClose, patients, services, implant
           return selectedToothForModal;
         })()}
         onSave={handleToothDataSave}
-        existingData={selectedToothForModal ? toothDataMap[selectedToothForModal] : null}
+        existingData={(() => {
+          if (!selectedToothForModal) return null;
+          const match = String(selectedToothForModal).match(/^(ur|ul|lr|ll)(\d+)$/);
+          const fdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : selectedToothForModal;
+          return toothDataMap[selectedToothForModal] || toothDataMap[fdi] || null;
+        })()}
       />
     </>
   );
