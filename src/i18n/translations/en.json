@@ -1337,7 +1337,8 @@
     "status": {
       "planned": "Planned",
       "placed": "Placed",
-      "healing": "Healing process",
+      "healing": "Integration process",
+      "formik": "Healing abutment placed",
       "abutment": "Abutment placed",
       "crown": "Crown ready",
       "completed": "Completed",

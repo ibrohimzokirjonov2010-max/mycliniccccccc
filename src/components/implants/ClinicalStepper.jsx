@@ -2,54 +2,71 @@
  * Clinical stepper + status helpers for Implant Clinical Passport.
  * Maps UI stage labels to EXISTING lifecycle enums — does not invent new status values.
  */
+import React from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const LIFECYCLE_MAPPING = {
   planned: "Rejalashtirilgan",
   placed: "O'rnatildi",
-  healing: "Healing jarayoni",
+  healing: "Integratsiya jarayoni",
+  formik: "Formik qo'yildi",
+  fomik: "Formik qo'yildi",
+  "Formik qo'yildi": "Formik qo'yildi",
+  Formik: "Formik qo'yildi",
   abutment: "Abutment qo'yildi",
-  crown: "Crown tayyor",
+  crown: "Protez tayyor",
   completed: "Tugallangan",
-  failure: "Failure",
-  failed: "Failure",
+  failure: "Muvaffaqiyatsiz",
+  failed: "Muvaffaqiyatsiz",
 };
 
 export const LIFECYCLE_COLORS = {
   Rejalashtirilgan: 'bg-blue-50 text-blue-700 border-blue-200',
   "O'rnatildi": 'bg-teal-50 text-teal-700 border-teal-200',
+  'Integratsiya jarayoni': 'bg-yellow-50 text-yellow-800 border-yellow-200',
   'Healing jarayoni': 'bg-yellow-50 text-yellow-800 border-yellow-200',
+  "Formik qo'yildi": 'bg-cyan-50 text-cyan-800 border-cyan-200',
+  Formik: 'bg-cyan-50 text-cyan-800 border-cyan-200',
   "Abutment qo'yildi": 'bg-purple-50 text-purple-700 border-purple-200',
+  'Protez tayyor': 'bg-indigo-50 text-indigo-700 border-indigo-200',
   'Crown tayyor': 'bg-indigo-50 text-indigo-700 border-indigo-200',
   Tugallangan: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  Muvaffaqiyatsiz: 'bg-rose-50 text-rose-700 border-rose-200',
   Failure: 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
 export const SHORT_STATUS_LABEL = {
   Rejalashtirilgan: 'Reja',
   "O'rnatildi": 'Joylandi',
+  'Integratsiya jarayoni': 'Integratsiya',
   'Healing jarayoni': 'Integratsiya',
+  "Formik qo'yildi": 'Fomik',
+  Formik: 'Fomik',
   "Abutment qo'yildi": 'Abutment',
+  'Protez tayyor': 'Protez',
   'Crown tayyor': 'Protez',
   Tugallangan: 'Yakun',
-  Failure: 'Failure',
+  Muvaffaqiyatsiz: 'Muvaffaqiyatsiz',
+  Failure: 'Muvaffaqiyatsiz',
 };
 
 export const STATUS_SELECT_OPTIONS = [
   'Rejalashtirilgan',
   "O'rnatildi",
-  'Healing jarayoni',
+  'Integratsiya jarayoni',
+  "Formik qo'yildi",
   "Abutment qo'yildi",
-  'Crown tayyor',
+  'Protez tayyor',
   'Tugallangan',
-  'Failure',
+  'Muvaffaqiyatsiz',
 ];
 
 export const DISPLAY_TO_ENUM = {
   Rejalashtirilgan: 'planned',
   "O'rnatildi": 'placed',
   'Healing jarayoni': 'healing',
+  "Formik qo'yildi": 'formik',
   "Abutment qo'yildi": 'abutment',
   'Crown tayyor': 'crown',
   Tugallangan: 'completed',
@@ -57,13 +74,13 @@ export const DISPLAY_TO_ENUM = {
 };
 
 export const CLINICAL_STEPS = [
-  { id: 'reja', label: 'Reja', labelRu: 'План', enumKeys: ['planned', 'Rejalashtirilgan'], rank: 0 },
-  { id: 'joylandi', label: 'Joylandi', labelRu: 'Установлен', enumKeys: ['placed', "O'rnatildi"], rank: 1 },
-  { id: 'integratsiya', label: 'Integratsiya', labelRu: 'Интеграция', enumKeys: ['healing', 'Healing jarayoni'], rank: 2 },
-  { id: 'formik', label: 'Formik', labelRu: 'Формик', enumKeys: [], rank: 3, soft: true },
-  { id: 'abutment', label: 'Abutment', labelRu: 'Абатмент', enumKeys: ['abutment', "Abutment qo'yildi"], rank: 4 },
-  { id: 'protez', label: 'Protez', labelRu: 'Протез', enumKeys: ['crown', 'Crown tayyor'], rank: 5 },
-  { id: 'yakun', label: 'Yakun', labelRu: 'Финиш', enumKeys: ['completed', 'Tugallangan'], rank: 6 },
+  { id: 'reja', label: 'Reja', labelRu: 'План', lifecycleValue: 'Rejalashtirilgan', enumKeys: ['planned', 'Rejalashtirilgan'], rank: 0 },
+  { id: 'joylandi', label: 'Joylandi', labelRu: 'Установлен', lifecycleValue: "O'rnatildi", enumKeys: ['placed', "O'rnatildi"], rank: 1 },
+  { id: 'integratsiya', label: 'Integratsiya', labelRu: 'Интеграция', lifecycleValue: 'Integratsiya jarayoni', enumKeys: ['healing', 'Healing jarayoni', 'Integratsiya jarayoni'], rank: 2 },
+  { id: 'fomik', label: 'Fomik', labelRu: 'Формик', lifecycleValue: "Formik qo'yildi", enumKeys: ['formik', 'fomik', "Formik qo'yildi", 'Formik'], rank: 3 },
+  { id: 'abutment', label: 'Abutment', labelRu: 'Абатмент', lifecycleValue: "Abutment qo'yildi", enumKeys: ['abutment', "Abutment qo'yildi"], rank: 4 },
+  { id: 'protez', label: 'Protez', labelRu: 'Протез', lifecycleValue: 'Protez tayyor', enumKeys: ['crown', 'Crown tayyor', 'Protez tayyor'], rank: 5 },
+  { id: 'yakun', label: 'Yakun', labelRu: 'Финиш', lifecycleValue: 'Tugallangan', enumKeys: ['completed', 'Tugallangan'], rank: 6, isFinish: true },
 ];
 
 const RANK_BY_STATUS = (() => {
@@ -87,64 +104,81 @@ export function getStatusRank(rawStatus) {
   return 0;
 }
 
-/** Non-soft: reached when rank >= step.rank. Soft Formik: reached when rank >= 4 (abutment+). */
 export function isStepReached(step, rank) {
   if (rank < 0) return false;
-  if (step.soft) return rank >= 4;
   return rank >= step.rank;
 }
 
-export function ClinicalStepper({ status, language = 'uz', className }) {
+export function ClinicalStepper({ status, language = 'uz', onSelectStep, className }) {
   const display = normalizeLifecycleStatus(status);
   const rank = getStatusRank(status || display);
   const isFailure = rank < 0;
 
   return (
-    <div className={cn('w-full overflow-x-auto', className)}>
-      <div className="flex items-center min-w-[640px] px-1 py-2">
+    <div className={cn('w-full', className)}>
+      <div className="flex items-center justify-between gap-1 overflow-x-auto py-1 scrollbar-none">
         {CLINICAL_STEPS.map((step, idx) => {
           const reached = isStepReached(step, rank);
+          const isCurrent = (step.rank === rank) || (step.soft && rank === 3);
           const label = language === 'ru' ? step.labelRu : step.label;
           const effectiveRank = step.soft ? 3 : step.rank;
           const lineTeal = !isFailure && rank > effectiveRank;
 
           return (
-            <div key={step.id} className="flex items-center flex-1 last:flex-none">
-              <div className="flex flex-col items-center gap-1.5 min-w-[72px]">
+            <React.Fragment key={step.id}>
+              {/* Interactive Step Node */}
+              <button
+                type="button"
+                onClick={() => onSelectStep?.(step)}
+                title={onSelectStep ? `${label} bosqichiga o'tkazish uchun bosing` : label}
+                className={cn(
+                  'flex flex-col items-center gap-1.5 shrink-0 min-w-[54px] bg-transparent border-0 p-0 text-left transition-all',
+                  onSelectStep ? 'cursor-pointer hover:scale-105 active:scale-95 group' : 'cursor-default'
+                )}
+              >
                 <div
                   className={cn(
-                    'w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all shadow-sm',
+                    'w-7 h-7 rounded-full flex items-center justify-center transition-all',
                     reached
-                      ? 'bg-teal-600 border-teal-600 text-white'
+                      ? 'bg-[#1499AD] text-white shadow-xs group-hover:bg-[#0e7490]'
                       : isFailure
-                        ? 'bg-rose-50 border-rose-300 text-rose-400'
-                        : 'bg-white border-slate-200 text-slate-400'
+                        ? 'bg-rose-50 border-2 border-rose-300 text-rose-400'
+                        : step.isFinish
+                          ? 'bg-white border-2 border-slate-300 text-slate-400 ring-2 ring-slate-100 ring-offset-1 group-hover:border-[#1499AD]'
+                          : 'bg-white border-2 border-slate-300 text-slate-300 group-hover:border-[#1499AD] group-hover:text-[#1499AD]'
                   )}
                 >
                   {reached ? (
                     <Check className="w-4 h-4" strokeWidth={3} />
-                  ) : (
-                    <span className="text-[11px] font-black">{idx + 1}</span>
-                  )}
+                  ) : step.isFinish ? (
+                    <div className="w-2.5 h-2.5 rounded-full border border-slate-300 group-hover:border-[#1499AD]" />
+                  ) : null}
                 </div>
                 <span
                   className={cn(
-                    'text-[10px] font-black uppercase tracking-wide text-center leading-tight whitespace-nowrap',
-                    reached ? 'text-teal-700' : 'text-slate-400'
+                    'text-[11px] text-center leading-tight whitespace-nowrap transition-colors',
+                    reached || isCurrent ? 'text-[#1499AD] font-bold' : 'text-slate-500 font-medium group-hover:text-[#1499AD]'
                   )}
                 >
                   {label}
                 </span>
-              </div>
+              </button>
+
+              {/* Connecting Line between steps */}
               {idx < CLINICAL_STEPS.length - 1 && (
-                <div className={cn('h-0.5 flex-1 mx-1 rounded-full min-w-[12px]', lineTeal ? 'bg-teal-500' : 'bg-slate-200')} />
+                <div
+                  className={cn(
+                    'h-0.5 flex-1 min-w-[14px] -mt-5 rounded-full transition-colors',
+                    lineTeal ? 'bg-[#1499AD]' : 'bg-slate-200'
+                  )}
+                />
               )}
-            </div>
+            </React.Fragment>
           );
         })}
       </div>
       {isFailure && (
-        <p className="text-[11px] font-bold text-rose-600 mt-1 px-2">
+        <p className="text-[11px] font-bold text-rose-600 mt-1 text-center">
           Failure — klinik bosqichlar to&apos;xtatilgan
         </p>
       )}

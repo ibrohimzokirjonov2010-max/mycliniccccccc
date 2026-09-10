@@ -52,7 +52,22 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
 
   useEffect(() => {
     if (existingData) {
-      setForm(existingData);
+      setForm({
+        service_name: existingData.service_name || 'Implant',
+        service_custom: existingData.service_custom || '',
+        price: existingData.price || 1500000,
+        firma: existingData.firma || (brands.length > 0 ? brands[0].name : 'Osstem'),
+        firma_custom: existingData.firma_custom || '',
+        brend: existingData.brend || existingData.firma || '',
+        diameter: existingData.diameter !== undefined ? existingData.diameter : '',
+        length: existingData.length !== undefined ? existingData.length : '',
+        lot_number: existingData.lot_number !== undefined ? existingData.lot_number : '',
+        torque: existingData.torque !== undefined ? existingData.torque : '',
+        isq: existingData.isq !== undefined ? existingData.isq : '',
+        bone_type: existingData.bone_type || 'D2',
+        implant_type: existingData.implant_type || 'Bone level',
+        notes: existingData.notes || ''
+      });
     } else {
       resetForm();
     }
@@ -75,19 +90,15 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
   const handleSave = async () => {
-    if (form.firma === 'Boshqa' && !form.firma_custom?.trim()) {
+    let finalFirma = form.firma || (brands.length > 0 ? brands[0].name : 'Osstem');
+    let finalCustom = form.firma === 'Boshqa' ? (form.firma_custom || '').trim() : '';
+    let finalBrend = form.brend?.trim() || (form.firma === 'Boshqa' ? finalCustom : (finalFirma || 'Standart'));
+    let finalService = form.service_name === 'Boshqa' ? (form.service_custom?.trim() || 'Xizmat') : (form.service_name || 'Implant');
+
+    if (form.firma === 'Boshqa' && !finalCustom) {
       alert('Iltimos, firma / brend nomini kiriting!');
       return;
     }
-    if (!form.firma) {
-      alert('Iltimos, implant firmasini tanlang!');
-      return;
-    }
-
-    let finalFirma = form.firma;
-    let finalCustom = form.firma === 'Boshqa' ? form.firma_custom.trim() : '';
-    let finalBrend = form.brend?.trim() || (form.firma === 'Boshqa' ? finalCustom : (form.firma || 'Standart'));
-    let finalService = form.service_name === 'Boshqa' ? (form.service_custom?.trim() || 'Xizmat') : (form.service_name || 'Implant');
 
     // If user added a new brand via "Boshqa" or quick add, create it in ImplantBrand entity
     if (form.firma === 'Boshqa' && finalCustom) {
@@ -121,10 +132,8 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
   };
 
   const isFirmaValid = form.firma === 'Boshqa' ? !!form.firma_custom?.trim() : !!form.firma;
-  const isDiameterValid = form.diameter !== undefined && form.diameter !== null && form.diameter !== '';
-  const isLengthValid = form.length !== undefined && form.length !== null && form.length !== '';
-  const isLotValid = !!form.lot_number?.trim();
-  const isValid = isFirmaValid && isDiameterValid && isLengthValid && isLotValid;
+  // Only firma is required; diameter, length, lot_number are optional (can be filled later)
+  const isValid = isFirmaValid;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -198,6 +207,11 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
                 <SelectValue placeholder="Implant firmasini tanlang" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-64">
+                {form.firma && form.firma !== 'Boshqa' && !brandsWithStats.some(b => b.name?.toLowerCase() === form.firma?.toLowerCase()) && (
+                  <SelectItem value={form.firma} className="font-bold cursor-pointer py-2.5">
+                    {form.firma}
+                  </SelectItem>
+                )}
                 {brandsWithStats.map(b => (
                   <SelectItem key={b.id || b.name} value={b.name} className="font-bold cursor-pointer py-2.5">
                     <div className="flex items-center justify-between w-full gap-3">
