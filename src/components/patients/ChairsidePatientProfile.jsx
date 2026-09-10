@@ -160,7 +160,7 @@ export default function ChairsidePatientProfile({
         </div>
       )}
 
-      <div className="bg-white border-b border-slate-200/90 sticky top-0 z-30 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
+      <div className="bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
         <div className="max-w-[1680px] mx-auto px-3 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -200,28 +200,14 @@ export default function ChairsidePatientProfile({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-            <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200/70 mr-0.5">
-              <button
+            <button
                 type="button"
-                onClick={() => setProfileViewMode('chairside')}
-                className={cn(
-                  'px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide cursor-pointer transition-all',
-                  profileViewMode === 'chairside' ? 'bg-white text-[#0d9488] shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                )}
-              >
-                Chairside
-              </button>
-              <button
-                type="button"
-                onClick={() => setProfileViewMode('reyestr')}
-                className={cn(
-                  'px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide cursor-pointer transition-all',
-                  profileViewMode === 'reyestr' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                )}
+                onClick={() => setProfileViewMode(profileViewMode === 'chairside' ? 'reyestr' : 'chairside')}
+                className="hidden sm:inline-flex px-2 py-1.5 text-[10px] font-bold text-slate-400 hover:text-slate-600 cursor-pointer transition-colors mr-0.5"
+                title="Reyestr / Chairside"
               >
                 Reyestr
               </button>
-            </div>
 
             <button
               type="button"
@@ -255,8 +241,8 @@ export default function ChairsidePatientProfile({
 
       <div className="max-w-[1680px] mx-auto p-3 sm:p-4 lg:p-5 space-y-3.5">
         <div className="flex flex-col xl:flex-row gap-3.5 items-start">
-          <div className="w-full xl:w-[240px] shrink-0">
-            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 flex flex-col gap-3.5 sticky top-[76px]">
+          <div className="w-full xl:w-[252px] shrink-0">
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 flex flex-col gap-3.5 sticky top-[76px]">
               <div className="flex flex-col items-center text-center">
                 <div
                   className="relative group cursor-pointer"
@@ -344,8 +330,10 @@ export default function ChairsidePatientProfile({
             </div>
           </div>
 
+          <div className="flex-1 min-w-0 w-full flex flex-col gap-3.5">
+            <div className="flex flex-col xl:flex-row gap-3.5 items-start">
           <div className="flex-1 min-w-0 w-full">
-            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-visible">
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] overflow-visible">
               <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <h3 className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-900 truncate">
@@ -425,7 +413,7 @@ export default function ChairsidePatientProfile({
               onSaveNote={onSaveToothNote}
             />
           ) : (
-            <div className="hidden xl:flex w-[300px] shrink-0 bg-white rounded-2xl border border-dashed border-slate-200 shadow-sm items-center justify-center px-6 py-16 sticky top-[76px]">
+            <div className="hidden xl:flex w-[300px] shrink-0 bg-white rounded-2xl border border-dashed border-slate-200 shadow-[0_1px_3px_rgba(15,23,42,0.06)] items-center justify-center px-6 py-16 sticky top-[76px] min-h-[320px]">
               <div className="text-center">
                 <div
                   className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center mx-auto mb-3 font-black text-sm"
@@ -438,13 +426,15 @@ export default function ChairsidePatientProfile({
               </div>
             </div>
           )}
-        </div>
+            </div>
 
         <TodayPlanBar
           steps={todaySteps}
           totalDebt={totalDebt}
           onPay={onPay}
         />
+          </div>
+        </div>
       </div>
     </div>
   );

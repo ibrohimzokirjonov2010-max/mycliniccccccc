@@ -3,6 +3,7 @@ import { X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TEAL = '#14b8a6';
+const TEAL_DARK = '#0d9488';
 const QUICK_STATUSES = [
   { key: 'caries', label: 'Karies', color: '#ef4444', bg: 'bg-rose-50', border: 'border-rose-200' },
   { key: 'filling', label: 'Plomba', color: '#3b82f6', bg: 'bg-blue-50', border: 'border-blue-200' },
@@ -26,7 +27,7 @@ const STATUS_LABEL = {
 };
 
 /**
- * Chairside tooth detail side panel — history timeline, quick-add statuses, notes.
+ * Chairside tooth detail side panel — teal header, history timeline, quick-add grid, notes.
  */
 export default function ToothSidePanel({
   tooth,
@@ -139,24 +140,27 @@ export default function ToothSidePanel({
   if (!tooth) return null;
 
   return (
-    <aside className="w-full lg:w-[300px] xl:w-[320px] shrink-0 bg-white rounded-2xl border border-slate-200/90 shadow-sm flex flex-col max-h-[calc(100vh-180px)] sticky top-[76px]">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+    <aside className="w-full xl:w-[300px] shrink-0 bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] flex flex-col max-h-[calc(100vh-160px)] sticky top-[76px] overflow-hidden">
+      <div
+        className="flex items-center justify-between px-4 py-3.5 text-white shrink-0"
+        style={{ background: `linear-gradient(135deg, ${TEAL} 0%, ${TEAL_DARK} 100%)` }}
+      >
         <div className="min-w-0">
-          <h3 className="text-sm font-black text-slate-900 truncate">
-            Tish #{fdi} <span className="text-slate-500 font-bold">({statusLabel})</span>
+          <h3 className="text-sm font-black truncate tracking-tight">
+            Tish #{fdi} <span className="font-bold opacity-90">({statusLabel})</span>
           </h3>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer"
+          className="w-8 h-8 rounded-lg hover:bg-white/15 text-white flex items-center justify-center cursor-pointer shrink-0"
           aria-label="Yopish"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-4">
         <section>
           <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2.5">
             Tish tarixi
@@ -224,7 +228,7 @@ export default function ToothSidePanel({
 
         <section>
           <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">
-            Eslatma
+            Eslatma <span className="normal-case tracking-normal font-semibold text-slate-300">(ixtiyoriy)</span>
           </h4>
           <textarea
             value={note}
@@ -242,7 +246,7 @@ export default function ToothSidePanel({
         ) : null}
       </div>
 
-      <div className="p-3 border-t border-slate-100">
+      <div className="p-3 border-t border-slate-100 shrink-0">
         <button
           type="button"
           onClick={handleSave}
