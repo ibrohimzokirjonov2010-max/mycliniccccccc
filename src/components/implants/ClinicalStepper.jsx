@@ -140,24 +140,24 @@ export function ClinicalStepper({ status, language = 'uz', onSelectStep, classNa
                   className={cn(
                     'w-7 h-7 rounded-full flex items-center justify-center transition-all',
                     reached
-                      ? 'bg-[#1499AD] text-white shadow-xs group-hover:bg-[#0e7490]'
+                      ? 'bg-[#14b8a6] text-white shadow-xs group-hover:bg-[#0f766e]'
                       : isFailure
                         ? 'bg-rose-50 border-2 border-rose-300 text-rose-400'
                         : step.isFinish
-                          ? 'bg-white border-2 border-slate-300 text-slate-400 ring-2 ring-slate-100 ring-offset-1 group-hover:border-[#1499AD]'
-                          : 'bg-white border-2 border-slate-300 text-slate-300 group-hover:border-[#1499AD] group-hover:text-[#1499AD]'
+                          ? 'bg-white border-2 border-slate-300 text-slate-400 ring-2 ring-slate-100 ring-offset-1 group-hover:border-[#14b8a6]'
+                          : 'bg-white border-2 border-slate-300 text-slate-300 group-hover:border-[#14b8a6] group-hover:text-[#14b8a6]'
                   )}
                 >
                   {reached ? (
                     <Check className="w-4 h-4" strokeWidth={3} />
                   ) : step.isFinish ? (
-                    <div className="w-2.5 h-2.5 rounded-full border border-slate-300 group-hover:border-[#1499AD]" />
+                    <div className="w-2.5 h-2.5 rounded-full border border-slate-300 group-hover:border-[#14b8a6]" />
                   ) : null}
                 </div>
                 <span
                   className={cn(
                     'text-[11px] text-center leading-tight whitespace-nowrap transition-colors',
-                    reached || isCurrent ? 'text-[#1499AD] font-bold' : 'text-slate-500 font-medium group-hover:text-[#1499AD]'
+                    reached || isCurrent ? 'text-[#14b8a6] font-bold' : 'text-slate-500 font-medium group-hover:text-[#14b8a6]'
                   )}
                 >
                   {label}
@@ -169,7 +169,7 @@ export function ClinicalStepper({ status, language = 'uz', onSelectStep, classNa
                 <div
                   className={cn(
                     'h-0.5 flex-1 min-w-[14px] -mt-5 rounded-full transition-colors',
-                    lineTeal ? 'bg-[#1499AD]' : 'bg-slate-200'
+                    lineTeal ? 'bg-[#14b8a6]' : 'bg-slate-200'
                   )}
                 />
               )}
