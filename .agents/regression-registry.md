@@ -13,6 +13,17 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 📱 Mobil bemor profili — Chairside desktopni buzmaslik
+- **Sana:** 2026-09-08
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/MobilePatientProfile.jsx`](src/pages/MobilePatientProfile.jsx)
+  - [`src/components/patients/MobileCompactOdontogram.jsx`](src/components/patients/MobileCompactOdontogram.jsx)
+  - [`src/components/layout/NativeMobileLayout.jsx`](src/components/layout/NativeMobileLayout.jsx)
+- **Muammo Tavsifi:** Mobil profilni premium mockupga moslashda desktop Chairside odontogrammasi (`ProfessionalOdontogram`) yoki `ChairsidePatientProfile` o'zgarsa, kreslo ko'rinishi buziladi.
+- **Sababi:** Desktop va mobil `/patients/:id` marshrutlari turli komponentlardan foydalanadi, lekin umumiy odontogramma komponenti o'zgarsa ikkalasi ham ta'sirlanadi.
+- **Qanday tuzatildi:** Mobil uchun alohida `MobileCompactOdontogram` (kapsula FDI panjarasi, aql tishlari 18/28/38/48 bilan) yaratildi. `ChairsidePatientProfile.jsx` va `ProfessionalOdontogram.jsx` o'zgartirilmadi. Hook tartibi saqlanib, to'lov/uchrashuv/reja/bemor modallari avvalgi kabi ulandi.
+- **Qaytalamaslik choralari:** Mobil profilni qayta dizayn qilganda `ChairsidePatientProfile` yoki `ProfessionalOdontogram` ni o'zgartirmang; hooklarni early return dan keyin qo'shmang; modal props (`AppointmentModal`, `PatientModal`, `TreatmentPlanModal`, pay sheet) ni buzmang.
+
 ### 🧾 Hisob-Faktura: "Jami xarajat" o'rniga Chegirmasiz narx, Chegirmali narx va Jami to'langan kiritildi
 - **Sana:** 2026-09-03
 - **Tuzatilgan Fayllar:**
@@ -1252,3 +1263,9 @@ Yangi xato tuzatilganda quyidagi andozadan foydalanib eng tepaga qo'shing:
 - **Qanday tuzatildi:** [Muammo qanday hal etildi, qaysi kod o'zgartirildi?]
 - **Qaytalamaslik choralari:** [Kelajakda bu xato yana kelib chiqmasligi uchun nimalarga e'tibor berish kerak?]
 ```
+
+## redesign/mobile-patient-profile-pro (2026-09-10)
+- Mobile patient profile UI: sticky teal header, identity strip, debt card, 3 action cards, always-visible FDI odontogram + tooth card, tabs Tarix/Reja/To'lovlar/Implant
+- Colors aligned to Chairside (#14b8a6 / #0d9488 / #0f172a)
+- NativeMobileLayout hides global header on /patients/:id
+- No CRM business-logic changes
