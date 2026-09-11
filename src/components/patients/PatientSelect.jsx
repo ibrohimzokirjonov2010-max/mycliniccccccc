@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Loader2, Search, User, CheckCircle2, X } from 'lucide-react';
+import { Plus, Loader2, Search, User, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,8 @@ export default function PatientSelect({
   const [search, setSearch] = useState(initialName || '');
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
+  const selectingRef = useRef(false);
+  const blurTimerRef = useRef(null);
 
   const availablePatients = useMemo(() => {
     if (isDoctor && user?.id) {
@@ -34,18 +36,34 @@ export default function PatientSelect({
     return patients || [];
   }, [patients, isDoctor, user]);
 
-  // Sync search text when value changes from outside
-  useEffect(() => {
-    if (value) {
-      const p = availablePatients.find(p => p.id === value) || patients.find(p => p.id === value);
-      if (p) setSearch(p.full_name);
-      else if (initialName && search === '') setSearch(initialName);
-    } else {
-      setSearch('');
-    }
-  }, [value, availablePatients, patients, initialName]);
+  const findPatient = useCallback((id) => {
+    if (id == null || id === '') return null;
+    const sid = String(id);
+    return (
+      availablePatients.find(p => String(p.id) === sid) ||
+      (patients || []).find(p => String(p.id) === sid) ||
+      null
+    );
+  }, [availablePatients, patients]);
 
-  // Show all patients when search is blank, filter otherwise
+  // Sync search text when value changes from outside (avoid fighting mid-selection)
+  useEffect(() => {
+    if (selectingRef.current) return;
+    if (value) {
+      const p = findPatient(value);
+      if (p) setSearch(p.full_name || '');
+      else if (initialName) setSearch(initialName);
+    } else if (!open) {
+      setSearch(initialName || '');
+    }
+  }, [value, findPatient, initialName, open]);
+
+  useEffect(() => {
+    return () => {
+      if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
+    };
+  }, []);
+
   const filtered = search.trim()
     ? availablePatients.filter(p =>
         p.full_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -53,9 +71,24 @@ export default function PatientSelect({
       )
     : availablePatients;
 
-  // Limit to 50 results for performance
   const displayList = filtered.slice(0, 50);
   const isLoading = loading || (open && availablePatients.length === 0 && patients.length === 0);
+
+  const selectPatient = useCallback((patient) => {
+    if (!patient) return;
+    selectingRef.current = true;
+    if (blurTimerRef.current) {
+      clearTimeout(blurTimerRef.current);
+      blurTimerRef.current = null;
+    }
+    setSearch(patient.full_name || '');
+    setOpen(false);
+    onChange?.(patient.id, patient);
+    // Allow parent state to settle before re-enabling controlled sync
+    requestAnimationFrame(() => {
+      selectingRef.current = false;
+    });
+  }, [onChange]);
 
   return (
     <div className="flex gap-2 relative z-[100] w-full" ref={wrapperRef}>
@@ -66,12 +99,24 @@ export default function PatientSelect({
             placeholder={t('patientSelect.placeholder') || "Ism yoki telefon orqali qidiring..."} 
             value={search}
             onChange={(e) => {
-              setSearch(e.target.value);
+              const next = e.target.value;
+              setSearch(next);
               setOpen(true);
-              if (value) onChange('', null); // clear selected ID if user types
+              if (value) onChange?.('', null); // clear selected ID if user types
             }}
-            onFocus={() => setOpen(true)}
-            onBlur={() => setTimeout(() => setOpen(false), 200)}
+            onFocus={() => {
+              if (blurTimerRef.current) {
+                clearTimeout(blurTimerRef.current);
+                blurTimerRef.current = null;
+              }
+              setOpen(true);
+            }}
+            onBlur={() => {
+              // Delay close so suggestion pointer/mouse handlers can run first
+              blurTimerRef.current = setTimeout(() => {
+                if (!selectingRef.current) setOpen(false);
+              }, 250);
+            }}
             className={cn(
               "w-full transition-all duration-200 pl-9 pr-8 text-sm",
               value 
@@ -89,11 +134,15 @@ export default function PatientSelect({
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
               <button
                 type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   setSearch('');
-                  onChange('', null);
+                  onChange?.('', null);
                   setOpen(true);
                 }}
                 title="Bemor tanlovini bekor qilish"
@@ -105,10 +154,11 @@ export default function PatientSelect({
           ) : search ? (
             <button
               type="button"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => {
                 e.preventDefault();
                 setSearch('');
-                onChange('', null);
+                onChange?.('', null);
               }}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 text-xs transition-colors cursor-pointer border-none bg-transparent"
             >
@@ -121,6 +171,10 @@ export default function PatientSelect({
            <div 
              style={{ backgroundColor: '#ffffff', zIndex: 9999 }}
              className="absolute top-full left-0 right-0 mt-1.5 border border-slate-200 bg-white rounded-xl shadow-2xl max-h-[260px] overflow-y-auto no-scrollbar py-2"
+             onMouseDown={(e) => {
+               // Keep input from blurring before item handlers run
+               e.preventDefault();
+             }}
            >
              {isLoading ? (
                <div className="px-4 py-6 text-sm font-medium text-slate-400 text-center flex flex-col gap-2 items-center">
@@ -130,17 +184,17 @@ export default function PatientSelect({
              ) : displayList.length > 0 ? displayList.map(p => (
                 <div 
                   key={p.id}
+                  role="option"
+                  aria-selected={String(value) === String(p.id)}
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    onChange(p.id, p);
-                    setSearch(p.full_name);
-                    setOpen(false);
+                    e.stopPropagation();
+                    selectPatient(p);
                   }}
-                  onTouchStart={(e) => {
+                  onClick={(e) => {
                     e.preventDefault();
-                    onChange(p.id, p);
-                    setSearch(p.full_name);
-                    setOpen(false);
+                    e.stopPropagation();
+                    selectPatient(p);
                   }}
                   className="px-4 py-2 hover:bg-emerald-50 cursor-pointer border-b border-slate-50 last:border-b-0 transition-colors flex items-center gap-3 group"
                 >
@@ -161,8 +215,9 @@ export default function PatientSelect({
                   <span>Bemor topilmadi</span>
                   {onAddPatient && (
                     <button
+                      type="button"
                       onMouseDown={(e) => { e.preventDefault(); onAddPatient(); setOpen(false); }}
-                      onTouchStart={(e) => { e.preventDefault(); onAddPatient(); setOpen(false); }}
+                      onClick={(e) => { e.preventDefault(); onAddPatient(); setOpen(false); }}
                       className="text-xs font-bold text-[#1499AD] hover:underline"
                     >
                       + Yangi bemor qo'shish
@@ -182,6 +237,7 @@ export default function PatientSelect({
       {onAddPatient && (
         <Button 
           variant="default" 
+          type="button"
           onClick={(e) => { e.preventDefault(); onAddPatient(); }}
           title="Yangi bemor qo'shish"
           className={buttonClassName}

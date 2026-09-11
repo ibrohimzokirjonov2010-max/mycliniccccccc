@@ -1,4 +1,5 @@
-import { useState, useEffect, lazy, Suspense, memo } from 'react';
+import { useState, useEffect, Suspense, memo } from 'react';
+import { lazyWithRetry as lazy } from '@/utils/lazyWithRetry';
 import { Toaster } from 'sonner';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
@@ -19,6 +20,7 @@ import NativePushManager from './components/notifications/NativePushManager';
 import TelegramReminderWorker from './components/notifications/TelegramReminderWorker';
 import Paywall   from './components/layout/Paywall';
 import PageNotFound from './lib/PageNotFound';
+import ErrorBoundary from './components/layout/ErrorBoundary';
 import { useFeature } from './hooks/useFeature';
 import { useIsMobile } from './hooks/useIsMobile';
 import { ShifoCrmLogoEmblem } from './components/ui/ShifoCrmLogo';
@@ -165,7 +167,8 @@ const AuthenticatedApp = memo(() => {
       <NativePushManager />
       {/* 🤖 Telegram Reminder Worker — 2 soat oldin va 07:00 da eslatmalar yuboradi */}
       <TelegramReminderWorker />
-      {/* Suspense boundary — all lazy routes fall back to PageLoader */}
+      {/* ErrorBoundary + Suspense — catch ChunkLoadError and remount/retry */}
+      <ErrorBoundary>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/login"   element={<Login />} />
@@ -232,6 +235,7 @@ const AuthenticatedApp = memo(() => {
           )}
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     </>
   );
 });

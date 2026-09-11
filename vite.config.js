@@ -111,6 +111,10 @@ export default defineConfig({
       workbox: {
         // Asosiy sahifalarni cache qilish strategiyasi
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
+        navigateFallback: 'index.html',
         runtimeCaching: [
           {
             // API so'rovlar uchun NetworkFirst — yangi ma'lumot bo'lmasa cache ishlaydi
@@ -120,6 +124,17 @@ export default defineConfig({
               cacheName: 'api-cache',
               networkTimeoutSeconds: 10,
               expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 },
+              cacheableResponse: { statuses: [0, 200] }
+            }
+          },
+          {
+            // JS/CSS chunks — NetworkFirst so post-deploy hashes are not stuck stale
+            urlPattern: /\/assets\/.*\.(?:js|css)$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'assets-cache',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 7 },
               cacheableResponse: { statuses: [0, 200] }
             }
           },
