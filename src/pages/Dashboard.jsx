@@ -15,7 +15,8 @@ import {
   AreaChart, Area
 } from 'recharts';
 import { motion } from 'framer-motion';
-import { fetchDashboardStats } from '../utils/dashboardUtils';
+import { fetchDashboardStats, toDateOnly } from '../utils/dashboardUtils';
+import { getTashkentDate, getTashkentNow } from '@/lib/telegramReminderService';
 import { formatCurrency } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
@@ -62,8 +63,7 @@ export default function Dashboard() {
   const inventory = data?.inventory || [];
   const stats = data?.stats || { todayAppts: 0, todayRevenue: 0, weekRevenue: 0, newPatients: 0, totalPatients: 0, pendingRecalls: 0, lowStock: 0 };
 
-  const d = new Date();
-  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const today = getTashkentDate();
 
   // Chart Data
   const weeklyRevenueData = useMemo(() => {
@@ -83,13 +83,14 @@ export default function Dashboard() {
     };
 
     return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
+      const d = getTashkentNow();
       d.setDate(d.getDate() - (6 - i));
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const dayRevenue = payments
         .filter(p => {
-          const pDate = p.date?.includes('T') ? p.date.split('T')[0] : p.date;
-          return pDate === dateStr && (p.type || 'Income').toLowerCase() === 'income';
+          const pDate = toDateOnly(p.date || p.created_date || p.created_at);
+          const pType = String(p.type || 'Income').toLowerCase();
+          return pDate === dateStr && pType === 'income';
         })
         .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
       return {

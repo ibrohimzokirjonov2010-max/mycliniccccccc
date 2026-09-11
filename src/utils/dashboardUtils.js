@@ -1,148 +1,133 @@
 import { base44 } from '@/api/base44Client';
+import { getTashkentDate, getTashkentNow } from '@/lib/telegramReminderService';
+
+/** Local calendar YYYY-MM-DD from payment/appointment date fields (Asia/Tashkent-safe string slice). */
+export function toDateOnly(value) {
+  if (!value) return '';
+  const raw = String(value);
+  if (raw.includes('T')) return raw.split('T')[0];
+  if (raw.includes(' ')) return raw.split(' ')[0];
+  return raw.slice(0, 10);
+}
+
+function isIncomePayment(p) {
+  return String(p?.type || 'Income').toLowerCase() === 'income';
+}
+
+function paymentDate(p) {
+  return toDateOnly(p?.date || p?.created_date || p?.created_at);
+}
+
+function appointmentDate(a) {
+  return toDateOnly(a?.date);
+}
+
+function patientCreatedDate(p) {
+  return toDateOnly(p?.created_date || p?.created_at);
+}
+
+function shiftTashkentDate(days) {
+  const t = getTashkentNow();
+  t.setDate(t.getDate() + days);
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+}
 
 /**
  * Professional Dashboard Data Fetcher
- * Centralizes logic for both Desktop and Mobile dashboards
+ * Centralizes logic for both Desktop and Mobile dashboards.
+ * Aligns KPI filters with Appointments/Payments list pages + Asia/Tashkent calendar days.
  */
 export async function fetchDashboardStats(user, isDoctor, isAdmin) {
-  const d = new Date();
-  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  
+  const today = getTashkentDate();
   const doctorFilter = isDoctor ? { doctor_id: user?.id } : {};
-  
-  // Dashboard uchun minimal so'rovlar — faqat kerakli ma'lumotlar, kichik limitlar
-  // Inventory dashboard'da ko'rinmaydi — yuklanmaydi (eng og'ir so'rov edi!)
+
+  // Match list-page volumes so today/week KPIs are not truncated by tiny limits.
   const [appts, pats, pays, totalPatientsCount] = await Promise.all([
-    base44.entities.Appointment.filter(doctorFilter, '-date', 50),
-    base44.entities.Patient.list('-created_date', 20),
-    base44.entities.Payment.filter(isDoctor ? { ...doctorFilter, type: 'Income' } : {}, '-date', 50),
+    base44.entities.Appointment.filter(doctorFilter, '-date', 500),
+    base44.entities.Patient.list('-created_date', 200),
+    base44.entities.Payment.filter(isDoctor ? { ...doctorFilter, type: 'Income' } : {}, '-date', 500),
     base44.entities.Patient.count(),
   ]);
 
-  // Recall, Expense, Inventory — background da yuklanadi (dashboard bloklanmaydi)
-  const recs = [];
-  const exps = [];
-  const inv = [];
-  const newPatientsCount = 0;
+  const recalls = [];
+  const expenses = [];
+  const inventory = [];
 
   const appointments = appts || [];
   const patients = pats || [];
-  const payments = pays || [];
-  const recalls = recs || [];
-  const expenses = exps || [];
-  const inventory = inv || [];
+  const payments = (pays || []).filter(isIncomePayment);
 
-  // Statistics Calculation
-  const todayAppts = appointments.filter(a => {
-    if (!a || !a.date) return false;
-    const cleanDate = a.date.includes('T') ? a.date.split('T')[0] : a.date.split(' ')[0];
-    return cleanDate === today;
-  });
+  const todayAppts = appointments.filter(a => appointmentDate(a) === today);
+
   const todayRevenue = payments
-    .filter(p => {
-      if (!p) return false;
-      const pDate = p.date?.includes('T') ? p.date.split('T')[0] : p.date;
-      const pType = (p.type || 'Income').toLowerCase();
-      return pDate === today && pType === 'income';
-    })
+    .filter(p => paymentDate(p) === today)
     .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  
-  const weekStart = new Date();
-  weekStart.setDate(weekStart.getDate() - 7);
+
+  // Rolling last 7 calendar days in Asia/Tashkent (including today)
+  const weekStartStr = shiftTashkentDate(-6);
   const weekRevenue = payments
     .filter(p => {
-      if (!p) return false;
-      const pType = (p.type || 'Income').toLowerCase();
-      return pType === 'income' && p.date && (new Date(p.date) >= weekStart);
+      const d = paymentDate(p);
+      return d && d >= weekStartStr && d <= today;
     })
     .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-  // Dynamic Trends Calculation
   const calculateTrend = (current, previous) => {
     if (current === 0 && previous === 0) return '0%';
-    if (!previous || previous === 0) {
-      return '—';
-    }
-    if (current === 0) {
-      return '—';
-    }
+    if (!previous || previous === 0) return '—';
+    if (current === 0) return '—';
     const diff = ((current - previous) / previous) * 100;
     const sign = diff >= 0 ? '+' : '';
     return `${sign}${diff.toFixed(0)}%`;
   };
 
-  // Get yesterday's date string
-  const yesterdayDate = new Date();
-  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-  const yesterday = `${yesterdayDate.getFullYear()}-${String(yesterdayDate.getMonth() + 1).padStart(2, '0')}-${String(yesterdayDate.getDate()).padStart(2, '0')}`;
+  const yesterday = shiftTashkentDate(-1);
+  const lastWeekStartStr = shiftTashkentDate(-13);
+  const lastWeekEndStr = shiftTashkentDate(-7);
 
-  // Last week boundaries (days 8 to 14 ago)
-  const lastWeekStart = new Date();
-  lastWeekStart.setDate(lastWeekStart.getDate() - 14);
-  const lastWeekEnd = new Date();
-  lastWeekEnd.setDate(lastWeekEnd.getDate() - 7);
-
-  // Yesterday's appointments
-  const yesterdayAppts = appointments.filter(a => {
-    if (!a || !a.date) return false;
-    const cleanDate = a.date.includes('T') ? a.date.split('T')[0] : a.date.split(' ')[0];
-    return cleanDate === yesterday;
-  });
+  const yesterdayAppts = appointments.filter(a => appointmentDate(a) === yesterday);
   const todayApptsTrend = calculateTrend(todayAppts.length, yesterdayAppts.length);
 
-  // Yesterday's revenue
   const yesterdayRevenue = payments
-    .filter(p => {
-      if (!p) return false;
-      const pDate = p.date?.includes('T') ? p.date.split('T')[0] : p.date;
-      const pType = (p.type || 'Income').toLowerCase();
-      return pDate === yesterday && pType === 'income';
-    })
+    .filter(p => paymentDate(p) === yesterday)
     .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const todayRevenueTrend = calculateTrend(todayRevenue, yesterdayRevenue);
 
-  // Last week's revenue
   const lastWeekRevenue = payments
     .filter(p => {
-      if (!p || !p.date) return false;
-      const pType = (p.type || 'Income').toLowerCase();
-      const pDate = new Date(p.date);
-      return pType === 'income' && pDate >= lastWeekStart && pDate < lastWeekEnd;
+      const d = paymentDate(p);
+      return d && d >= lastWeekStartStr && d <= lastWeekEndStr;
     })
     .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const weekRevenueTrend = calculateTrend(weekRevenue, lastWeekRevenue);
 
-  // New patients this week vs last week
+  // New patients this week (same created_date/created_at fields as Patients list)
   const newPatientsThisWeek = patients.filter(p => {
-    if (!p) return false;
-    const pDate = new Date(p.created_date || p.created_at);
-    return pDate >= weekStart;
+    const d = patientCreatedDate(p);
+    return d && d >= weekStartStr && d <= today;
   }).length;
 
   const newPatientsLastWeek = patients.filter(p => {
-    if (!p) return false;
-    const pDate = new Date(p.created_date || p.created_at);
-    return pDate >= lastWeekStart && pDate < lastWeekEnd;
+    const d = patientCreatedDate(p);
+    return d && d >= lastWeekStartStr && d <= lastWeekEndStr;
   }).length;
 
   const newPatientsTrend = calculateTrend(newPatientsThisWeek, newPatientsLastWeek);
 
-  // Today-scoped appointment status breakdown
   const todayCompleted = todayAppts.filter(a => (a.status || '').toLowerCase() === 'completed').length;
-  const todayWaiting   = todayAppts.filter(a => {
+  const todayWaiting = todayAppts.filter(a => {
     const s = (a.status || '').toLowerCase();
     return s === 'waiting' || s === 'scheduled' || s === 'planned';
   }).length;
-  const todayNoShow    = todayAppts.filter(a => {
+  const todayNoShow = todayAppts.filter(a => {
     const s = (a.status || '').toLowerCase();
     return s === 'no-show' || s === 'noshow' || s === 'no_show';
   }).length;
 
-  // Real efficiency: completed / (completed + no-show), only when there is data
   const efficiencyBase = todayCompleted + todayNoShow;
   const realEfficiency = efficiencyBase > 0
     ? Math.round((todayCompleted / efficiencyBase) * 100)
-    : null; // null = no data yet today
+    : null;
 
   return {
     appointments,
@@ -152,12 +137,12 @@ export async function fetchDashboardStats(user, isDoctor, isAdmin) {
     expenses,
     inventory,
     totalPatients: totalPatientsCount,
-    newPatients: newPatientsCount,
+    newPatients: newPatientsThisWeek,
     stats: {
       todayAppts: todayAppts.length,
       todayRevenue,
       weekRevenue,
-      newPatients: newPatientsCount || 0,
+      newPatients: newPatientsThisWeek,
       totalPatients: totalPatientsCount || 0,
       pendingRecalls: recalls.filter(r => r && r.status?.toLowerCase() === 'pending').length,
       lowStock: inventory.filter(i => i && (Number(i.quantity) || 0) <= (Number(i.min_quantity) || 10)).length,
@@ -165,12 +150,11 @@ export async function fetchDashboardStats(user, isDoctor, isAdmin) {
       todayRevenueTrend,
       weekRevenueTrend,
       newPatientsTrend,
-      // Today breakdown
       todayCompleted,
       todayWaiting,
       todayNoShow,
       realEfficiency,
     },
-    todayApptsList: todayAppts
+    todayApptsList: todayAppts,
   };
 }

@@ -265,8 +265,12 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
     }
   }, [open]);
 
+  // Reset form only when the modal opens (or plan/initialPatientId changes),
+  // NOT when `patients` array identity refreshes — that was wiping patientId mid-selection.
   useEffect(() => {
-    if (plan && open) {
+    if (!open) return;
+
+    if (plan) {
       setPatientId(plan.patient_id || '');
       setPatientName(plan.patient_name || '');
       setDoctorId(plan.doctor_id || '');
@@ -314,34 +318,37 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
         setIsInstallment(false);
       }
       setStep(1);
-    } else if (open) { // Modal ochilganda doim reset qilish
-      if (initialPatientId) {
-        setPatientId(initialPatientId);
-        const p = patients?.find(pat => pat.id === initialPatientId);
-        if (p) {
-          setPatientName(p.full_name);
-          setDoctorId(p.main_treatment_provider || '');
-        }
-        setStep(1);
-      } else {
-        setStep(1); 
-        setPatientId(''); 
-        setPatientName('');
-        setDoctorId('');
-      }
-      setSelectedTeeth([]); 
-      setSelectedCategory(availableCategories[0] || "");
-      setToothData({}); 
-      setActiveTooth(null); 
-      setDiscount(0);
-      setSavedPlanData(null);
-      setIsInstallment(false);
-      setInstallmentMonths(6);
-      setInstallmentAdvance(''); // Boshlang'ich qiymat bo'sh bo'lishi uchun
-      setInstallmentStartDate(new Date().toISOString().split('T')[0]);
-      setInstallmentServiceKeys([]);
+      return;
     }
-  }, [plan, open, initialPatientId, patients]); 
+
+    if (initialPatientId) {
+      setPatientId(initialPatientId);
+      const p = patients?.find(pat => String(pat.id) === String(initialPatientId));
+      if (p) {
+        setPatientName(p.full_name);
+        setDoctorId(p.main_treatment_provider || '');
+      }
+      setStep(1);
+    } else {
+      setStep(1); 
+      setPatientId(''); 
+      setPatientName('');
+      setDoctorId('');
+    }
+    setSelectedTeeth([]); 
+    setSelectedCategory(availableCategories[0] || "");
+    setToothData({}); 
+    setActiveTooth(null); 
+    setDiscount(0);
+    setSavedPlanData(null);
+    setIsInstallment(false);
+    setInstallmentMonths(6);
+    setInstallmentAdvance('');
+    setInstallmentStartDate(new Date().toISOString().split('T')[0]);
+    setInstallmentServiceKeys([]);
+    // intentionally omit `patients` — refetch must not wipe in-progress selection
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan, open, initialPatientId]); 
 
   useEffect(() => {
     let cancelled = false;
@@ -921,10 +928,20 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                 <PatientSelect 
                                     patients={patients} value={patientId}
                                     onChange={(id, pat) => { 
-                                      setPatientId(id); 
-                                      setPatientName(pat?.full_name || ''); 
+                                      const nextId = id || '';
+                                      setPatientId(nextId); 
+                                      setPatientName(pat?.full_name || '');
+                                      let nextDoctor = doctorId;
                                       if (pat?.main_treatment_provider) {
-                                        setDoctorId(pat.main_treatment_provider);
+                                        nextDoctor = pat.main_treatment_provider;
+                                        setDoctorId(nextDoctor);
+                                      } else if (!doctorId && doctors.length === 1) {
+                                        nextDoctor = doctors[0].id;
+                                        setDoctorId(nextDoctor);
+                                      }
+                                      // Advance when patient is chosen and a doctor is available
+                                      if (nextId && nextDoctor) {
+                                        setStep(2);
                                       }
                                     }}
                                     inputClassName="h-11 rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-4 font-semibold text-slate-800 text-sm focus:bg-white transition-colors"
