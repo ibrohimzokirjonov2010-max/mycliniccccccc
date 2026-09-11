@@ -52,10 +52,12 @@ const ToothPill = memo(function ToothPill({ fdi, selected, statusKey, onSelect }
       onClick={() => onSelect(fdi)}
       aria-pressed={selected}
       aria-label={`FDI ${fdi}`}
+      style={{ minWidth: 0, width: '100%', maxWidth: 28, pointerEvents: 'auto' }}
       className={cn(
-        'relative flex items-center justify-center w-full max-w-[26px] mx-auto h-[38px] rounded-full text-[10px] font-black tabular-nums leading-none transition-transform active:scale-90',
+        'odontogram-tooth relative z-10 flex items-center justify-center w-full min-w-0 max-w-[28px] mx-auto h-[40px] min-h-[40px] rounded-full text-[10px] font-black tabular-nums leading-none transition-transform active:scale-90 touch-manipulation',
+        '![min-width:0] ![width:100%]',
         selected
-          ? 'bg-[#14b8a6] text-white shadow-[0_4px_10px_rgba(20,184,166,0.35)]'
+          ? 'bg-[#14b8a6] text-white shadow-[0_4px_10px_rgba(20,184,166,0.35)] z-20'
           : 'bg-white text-slate-500 border border-slate-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
       )}
     >
@@ -88,8 +90,8 @@ export default function MobileCompactOdontogram({
 
   const renderRow = (row) => (
     <div
-      className="grid gap-x-[3px] items-end"
-      style={{ gridTemplateColumns: 'repeat(8, minmax(0, 1fr)) 8px repeat(8, minmax(0, 1fr))' }}
+      className="grid gap-x-1 items-end isolate"
+      style={{ gridTemplateColumns: 'repeat(8, minmax(0, 1fr)) 10px repeat(8, minmax(0, 1fr))' }}
     >
       {row.slice(0, 8).map((fdi) => {
         const id = fdiToInternalId(fdi);
@@ -124,7 +126,7 @@ export default function MobileCompactOdontogram({
   );
 
   return (
-    <div className="w-full min-w-0 select-none">
+    <div className="w-full min-w-0 select-none touch-manipulation">
       {renderRow(FDI_UPPER)}
       <div className="h-px my-1.5 mx-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
       {renderRow(FDI_LOWER)}

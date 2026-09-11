@@ -237,21 +237,27 @@
   }
 }
 
-/* Touch-friendly buttons on mobile */
+/* Touch-friendly controls on mobile.
+   Keep min-height for usability, but do NOT force min-width on every button —
+   dense widgets (odontogram teeth, icon chips) would overlap and steal taps. */
 @media (max-width: 768px) {
-  button, 
-  [role="button"],
+  button:not(.odontogram-tooth):not(.compact-hit),
+  [role="button"]:not(.odontogram-tooth):not(.compact-hit),
   input,
   select,
   textarea {
     min-height: 44px;
-    min-width: 44px;
   }
-  
-  /* Larger touch targets */
+
   .touch-target {
     min-height: 48px;
     min-width: 48px;
+  }
+
+  .odontogram-tooth,
+  .compact-hit {
+    min-width: 0 !important;
+    min-height: 0;
   }
   
   /* Prevent text selection on UI elements */
