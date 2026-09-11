@@ -259,11 +259,11 @@ export default function MobileServicesV2() {
           </button>
         </div>
 
-        <div className="flex gap-2.5 overflow-x-auto pb-3 -mx-4 px-4 no-scrollbar items-center">
+        <div className="flex gap-2.5 overflow-x-auto overscroll-x-contain pb-3 -mx-4 px-4 no-scrollbar items-center snap-x snap-mandatory" style={{ WebkitOverflowScrolling: 'touch' }}>
           <button
             onClick={() => setSelectedCategory('all')}
             className={cn(
-              "shrink-0 flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2 rounded-xl font-black text-[11px] uppercase tracking-wider transition-all border",
+              "shrink-0 snap-start flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2.5 min-h-[44px] rounded-xl font-black text-[11px] uppercase tracking-wider transition-all border",
               selectedCategory === 'all' 
                 ? "bg-gradient-to-r from-emerald-500 to-teal-650 text-white border-none shadow-md shadow-emerald-500/15" 
                 : "bg-white text-slate-500 border-slate-100 hover:border-slate-200 shadow-sm",
@@ -290,7 +290,7 @@ export default function MobileServicesV2() {
                     <button
                       onClick={() => !isReordering && setSelectedCategory(cat)}
                       className={cn(
-                        "shrink-0 flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2 rounded-xl font-black text-[11px] uppercase tracking-wider transition-all border",
+                        "shrink-0 snap-start flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2.5 min-h-[44px] rounded-xl font-black text-[11px] uppercase tracking-wider transition-all border",
                         isSelected 
                           ? "bg-gradient-to-r from-emerald-500 to-teal-650 text-white border-none shadow-md shadow-emerald-500/15" 
                           : "bg-white text-slate-500 border-slate-100 hover:border-slate-200 shadow-sm",
@@ -545,7 +545,7 @@ export default function MobileServicesV2() {
                               const num = Number(n);
                               setForm({ ...form, tooth_numbers: cur.includes(num) ? cur.filter(x => x !== num) : [...cur, num] });
                             }}
-                            className={`w-7 h-8 rounded-lg text-[10px] font-black border transition-all ${
+                            className={`compact-hit w-9 h-11 min-h-[44px] rounded-lg text-[10px] font-black border transition-all flex items-center justify-center ${
                               sel ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-600'
                             }`}
                           >
@@ -565,7 +565,7 @@ export default function MobileServicesV2() {
                               const num = Number(n);
                               setForm({ ...form, tooth_numbers: cur.includes(num) ? cur.filter(x => x !== num) : [...cur, num] });
                             }}
-                            className={`w-7 h-8 rounded-lg text-[10px] font-black border transition-all ${
+                            className={`compact-hit w-9 h-11 min-h-[44px] rounded-lg text-[10px] font-black border transition-all flex items-center justify-center ${
                               sel ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-600'
                             }`}
                           >
@@ -587,7 +587,7 @@ export default function MobileServicesV2() {
                               const num = Number(n);
                               setForm({ ...form, tooth_numbers: cur.includes(num) ? cur.filter(x => x !== num) : [...cur, num] });
                             }}
-                            className={`w-7 h-8 rounded-lg text-[10px] font-black border transition-all ${
+                            className={`compact-hit w-9 h-11 min-h-[44px] rounded-lg text-[10px] font-black border transition-all flex items-center justify-center ${
                               sel ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-600'
                             }`}
                           >
@@ -607,7 +607,7 @@ export default function MobileServicesV2() {
                               const num = Number(n);
                               setForm({ ...form, tooth_numbers: cur.includes(num) ? cur.filter(x => x !== num) : [...cur, num] });
                             }}
-                            className={`w-7 h-8 rounded-lg text-[10px] font-black border transition-all ${
+                            className={`compact-hit w-9 h-11 min-h-[44px] rounded-lg text-[10px] font-black border transition-all flex items-center justify-center ${
                               sel ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs' : 'bg-slate-50 border-slate-200 text-slate-600'
                             }`}
                           >

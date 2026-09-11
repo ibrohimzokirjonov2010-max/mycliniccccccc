@@ -479,7 +479,7 @@ export default function MobilePatientProfile() {
   /* ── RENDER ── */
   return (
     <div
-      className="bg-[#F3F6F8] flex flex-col max-w-[430px] mx-auto w-full"
+      className="bg-[#F3F6F8] flex flex-col w-full min-w-0 max-w-none"
       style={{ minHeight: 'calc(100dvh - 54px - env(safe-area-inset-bottom, 0px))' }}
     >
 

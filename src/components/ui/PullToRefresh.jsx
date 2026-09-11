@@ -58,7 +58,7 @@ export default function PullToRefresh({ onRefresh, children }) {
   }, [pullProgress, isRefreshing, onRefresh, y]);
 
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative w-full min-w-0 max-w-none overflow-x-hidden overflow-y-visible">
       {/* Pull indicator */}
       <motion.div
         style={{ y, opacity }}
@@ -82,10 +82,10 @@ export default function PullToRefresh({ onRefresh, children }) {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="overflow-y-auto"
-        style={{ touchAction: 'pan-y' }}
+        className="w-full min-w-0 overflow-y-auto overflow-x-hidden"
+        style={{ touchAction: 'pan-x pan-y' }}
       >
-        <motion.div style={{ y }}>
+        <motion.div className="w-full min-w-0" style={{ y }}>
           {children}
         </motion.div>
       </div>

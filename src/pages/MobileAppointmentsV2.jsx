@@ -563,15 +563,16 @@ export default function MobileAppointmentsV2() {
             </AnimatePresence>
 
             {/* Doctors Selection Strip */}
-            <div className="mt-4 pb-2">
-              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 px-1">
+            <div className="mt-4 pb-2 -mx-5 px-5">
+              <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar overscroll-x-contain pb-2 px-1 snap-x snap-mandatory" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {doctors.map((doc) => (
                   <button
                     key={doc.id}
+                    type="button"
                     onClick={() => setSelectedDoctorId(doc.id)}
-                    className={`flex items-center gap-2 px-5 py-3 rounded-2xl whitespace-nowrap transition-all border shrink-0 ${
+                    className={`flex items-center gap-2 px-5 min-h-[44px] py-2.5 rounded-2xl whitespace-nowrap transition-all border shrink-0 snap-start ${
                       selectedDoctorId === doc.id
-                        ? 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-200 scale-105 z-10'
+                        ? 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-200 z-10'
                         : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50 shadow-sm'
                     }`}
                   >

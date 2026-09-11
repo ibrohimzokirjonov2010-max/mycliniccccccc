@@ -233,7 +233,7 @@ export default function NativeMobileLayout({ children }) {
 
   return (
     <div 
-      className="fixed inset-0 w-full h-full bg-[#F8FAFC] overflow-hidden"
+      className="fixed inset-0 w-full max-w-none h-full bg-[#F8FAFC] overflow-hidden"
       style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, width: '100%', height: '100dvh' }}
     >
       {/* iOS-style Premium Header — hidden on patient profile (owns a full-bleed teal header) */}
@@ -312,7 +312,7 @@ export default function NativeMobileLayout({ children }) {
       {/* Main Content with Page Transitions */}
       <main 
         ref={contentRef} 
-        className="absolute inset-0 overflow-y-auto no-scrollbar"
+        className="absolute inset-0 w-full min-w-0 overflow-y-auto overflow-x-hidden no-scrollbar"
         style={{ 
           WebkitOverflowScrolling: 'touch',
           overscrollBehavior: 'contain',
@@ -330,11 +330,12 @@ export default function NativeMobileLayout({ children }) {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
+            className="w-full min-w-0 max-w-none"
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -6 }}
             transition={{ duration: 0.16, ease: [0.25, 0.46, 0.45, 0.94] }}
-            style={{ willChange: 'transform, opacity', transform: 'translateZ(0)' }}
+            style={{ willChange: 'transform, opacity', transform: 'translateZ(0)', width: '100%' }}
           >
             <ErrorBoundary>
               <Suspense fallback={<InlineLoader />}>
