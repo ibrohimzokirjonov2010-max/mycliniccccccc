@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import {
-  ArrowLeft, Phone, Calendar, Plus, Info, Camera, Copy, Mail, Wallet
+  ArrowLeft, Phone, Calendar, Plus, Info, Camera, Copy, Mail, Wallet, AlertTriangle
 } from 'lucide-react';
 import { cn, formatPhone } from '@/lib/utils';
 import ProfessionalOdontogram from './ProfessionalOdontogram';
 import ToothSidePanel from './ToothSidePanel';
 import TodayPlanBar from './TodayPlanBar';
+import ChairsideClinicalTools from './ChairsideClinicalTools';
 
 const TEAL = '#14b8a6';
 const TEAL_DARK = '#0d9488';
@@ -77,6 +78,7 @@ export default function ChairsidePatientProfile({
   setProfileViewMode,
   locationState,
   language = 'uz',
+  onPatientUpdated,
 }) {
   const todaySteps = useMemo(() => {
     const steps = [];
@@ -150,10 +152,11 @@ export default function ChairsidePatientProfile({
   return (
     <div className="min-h-0 font-sans">
       {medicalAlerts?.length > 0 && (
-        <div className="bg-rose-50 border-b border-rose-100 px-4 py-2 flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-black uppercase tracking-wider text-rose-600">Ogohlantirish:</span>
+        <div className="bg-rose-600 text-white px-4 py-2.5 flex flex-wrap items-center gap-2 sticky top-0 z-40 shadow-md">
+          <AlertTriangle className="w-4 h-4 shrink-0 animate-pulse" />
+          <span className="text-[10px] font-black uppercase tracking-wider">Allergiya / Tibbiy ogohlantirish:</span>
           {medicalAlerts.map((alert, idx) => (
-            <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-lg bg-rose-600 text-white text-[9px] font-black uppercase tracking-wide">
+            <span key={idx} className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-white/15 border border-white/25 text-white text-[9px] font-black uppercase tracking-wide">
               {alertLabel(alert, language)}
             </span>
           ))}
@@ -432,6 +435,13 @@ export default function ChairsidePatientProfile({
           steps={todaySteps}
           totalDebt={totalDebt}
           onPay={onPay}
+        />
+
+        <ChairsideClinicalTools
+          patient={patient}
+          selectedTooth={selectedTooth}
+          onPatientUpdated={onPatientUpdated}
+          language={language}
         />
           </div>
         </div>

@@ -5,6 +5,7 @@ import { Plus, Loader2, Search, User, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
 import { cn } from '@/lib/utils';
+import { base44 } from '@/api/base44Client';
 
 export default function PatientSelect({ 
   patients = [], 
@@ -21,9 +22,12 @@ export default function PatientSelect({
   const { user, isDoctor } = useAuth();
   const [search, setSearch] = useState(initialName || '');
   const [open, setOpen] = useState(false);
+  const [remoteResults, setRemoteResults] = useState([]);
+  const [isSearchingRemote, setIsSearchingRemote] = useState(false);
   const wrapperRef = useRef(null);
   const selectingRef = useRef(false);
   const blurTimerRef = useRef(null);
+  const searchTimerRef = useRef(null);
 
   const availablePatients = useMemo(() => {
     if (isDoctor && user?.id) {
@@ -36,15 +40,66 @@ export default function PatientSelect({
     return patients || [];
   }, [patients, isDoctor, user]);
 
+  // Merge preloaded patients with remote search results
+  const allCandidates = useMemo(() => {
+    if (!remoteResults || remoteResults.length === 0) return availablePatients;
+    const map = new Map(availablePatients.map(p => [String(p.id), p]));
+    remoteResults.forEach(p => {
+      const pid = String(p.id);
+      if (!map.has(pid)) {
+        if (isDoctor && user?.id) {
+          const isDocMatch = 
+            String(p.main_treatment_provider) === String(user.id) ||
+            String(p.main_treatment_provider) === String(user.name) ||
+            String(p.created_by_id) === String(user.id);
+          if (isDocMatch) map.set(pid, p);
+        } else {
+          map.set(pid, p);
+        }
+      }
+    });
+    return Array.from(map.values());
+  }, [availablePatients, remoteResults, isDoctor, user]);
+
   const findPatient = useCallback((id) => {
     if (id == null || id === '') return null;
     const sid = String(id);
     return (
-      availablePatients.find(p => String(p.id) === sid) ||
+      allCandidates.find(p => String(p.id) === sid) ||
       (patients || []).find(p => String(p.id) === sid) ||
       null
     );
-  }, [availablePatients, patients]);
+  }, [allCandidates, patients]);
+
+  // Fast debounced remote search if query typed
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 2) {
+      setRemoteResults([]);
+      setIsSearchingRemote(false);
+      return;
+    }
+
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        setIsSearchingRemote(true);
+        const results = await base44.entities.Patient.search(q, 20);
+        if (results && Array.isArray(results)) {
+          setRemoteResults(results);
+        }
+      } catch (err) {
+        console.debug('Patient remote search skipped:', err);
+      } finally {
+        setIsSearchingRemote(false);
+      }
+    }, 250);
+
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [search]);
 
   // Sync search text when value changes from outside (avoid fighting mid-selection)
   useEffect(() => {
@@ -61,18 +116,22 @@ export default function PatientSelect({
   useEffect(() => {
     return () => {
       if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
   }, []);
 
-  const filtered = search.trim()
-    ? availablePatients.filter(p =>
-        p.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-        p.phone?.includes(search)
-      )
-    : availablePatients;
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return allCandidates;
+    return allCandidates.filter(p =>
+      p.full_name?.toLowerCase().includes(q) ||
+      p.phone?.includes(q)
+    );
+  }, [search, allCandidates]);
 
   const displayList = filtered.slice(0, 50);
-  const isLoading = loading || (open && availablePatients.length === 0 && patients.length === 0);
+  // Never get stuck in an infinite loader if patients list is finished loading or empty
+  const isLoading = loading || isSearchingRemote;
 
   const selectPatient = useCallback((patient) => {
     if (!patient) return;

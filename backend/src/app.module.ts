@@ -9,6 +9,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 // Feature Modules
 import { NotificationsModule } from './notifications/notifications.module';
 import { PublicModule } from './public/public.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 const importsArray = [] as any[];
 
@@ -51,6 +52,7 @@ importsArray.push(PassportModule.register({ defaultStrategy: 'jwt' }));
 // Feature Modules
 importsArray.push(NotificationsModule);
 importsArray.push(PublicModule);
+importsArray.push(WebhooksModule);
 
 @Module({
   imports: importsArray,

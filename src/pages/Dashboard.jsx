@@ -50,11 +50,16 @@ export default function Dashboard() {
   const { t } = useTranslation();
   const { user, isDoctor, isAdmin } = useAuth();
   
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isPending, isFetching, isLoading, refetch } = useQuery({
     queryKey: ['dashboard-stats', user?.id],
     queryFn: () => fetchDashboardStats(user, isDoctor, isAdmin),
+    enabled: !!user?.id,
     staleTime: 30000,
   });
+
+  // Avoid flashing 0 KPIs before the first successful fetch for this user.
+  const statsReady = !!data?.stats;
+  const showStatsSkeleton = !user?.id || isPending || (isFetching && !statsReady) || isLoading;
 
   const appointments = data?.appointments || [];
   const patients = data?.patients || [];
@@ -125,7 +130,7 @@ export default function Dashboard() {
     return activity.slice(0, 8);
   }, [appointments, payments]);
 
-  if (isLoading) {
+  if (showStatsSkeleton) {
     return (
       <div className="space-y-3 animate-pulse pb-4">
         <div className="flex justify-between items-center h-14 bg-white/50 rounded-2xl" />

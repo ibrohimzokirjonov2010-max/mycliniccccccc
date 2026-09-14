@@ -1,4 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
+import { lazyWithRetry } from '@/utils/lazyWithRetry';
+import { prefetchPatientProfileChunk } from '@/utils/routeChunkPrefetch';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Plus, Search, Edit2, Trash2, Users, UserPlus,
@@ -8,8 +10,8 @@ import {
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import EmptyState from '../components/ui/EmptyState';
-import PatientModal from '../components/patients/PatientModal';
-import NewPatientFlow from '../components/patients/NewPatientFlow';
+const PatientModal = lazyWithRetry(() => import('../components/patients/PatientModal'), 'chunk_patient_modal');
+const NewPatientFlow = lazyWithRetry(() => import('../components/patients/NewPatientFlow'), 'chunk_new_patient_flow');
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -679,7 +681,7 @@ export default function Patients() {
                     return (
                       <tr
                         key={p.id}
-                        onClick={() => navigate(`/patients/${p.id}`)}
+                        onClick={() => { prefetchPatientProfileChunk(); navigate(`/patients/${p.id}`); }}
                         className={`group hover:bg-[#1499AD]/10 hover:shadow-xs transition-colors cursor-pointer ${
                           idx % 2 === 1 ? 'bg-slate-50/30' : 'bg-white'
                         }`}
@@ -784,7 +786,7 @@ export default function Patients() {
                         <td className={`text-center whitespace-nowrap ${isCompact ? 'py-1 px-2' : 'py-2 px-2'}`}>
                           <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
                             <button 
-                              onClick={() => navigate(`/patients/${p.id}`)}
+                              onClick={() => { prefetchPatientProfileChunk(); navigate(`/patients/${p.id}`); }}
                               className="p-1 rounded-lg text-slate-400 hover:text-[#1499AD] hover:bg-[#1499AD]/10 transition-all"
                               title={t('patients.viewProfile') || "Profilni ochish"}
                             >
@@ -832,6 +834,7 @@ export default function Patients() {
       </div>
 
       {/* ─── Modals & Dialogs ──────────────────────────────────────── */}
+      <Suspense fallback={null}>
       <PatientModal 
         open={modalOpen} 
         onClose={() => setModalOpen(false)} 
@@ -880,6 +883,8 @@ export default function Patients() {
           </div>
         </AlertDialogContent>
       </AlertDialog>
+
+      </Suspense>
     </div>
   );
 }

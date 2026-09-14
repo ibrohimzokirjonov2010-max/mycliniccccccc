@@ -17,6 +17,7 @@ import { formatPhone, capitalizeName } from '@/lib/utils';
 import AppointmentModal from '../components/appointments/AppointmentModal';
 import PatientModal from '../components/patients/PatientModal';
 import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
+import ImplantForm from '../components/implants/ImplantForm';
 import MobileCompactOdontogram, {
   fdiToInternalId,
 } from '../components/patients/MobileCompactOdontogram';
@@ -35,11 +36,55 @@ const getLocalDT = () => {
   return new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 };
 
-const formatShortDate = (raw, locale = 'uz-UZ') => {
-  if (!raw) return '—';
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
+const UZ_SHORT_MONTHS = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun', 'Iyul', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
+const RU_SHORT_MONTHS = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+const EN_SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const parseSafeDate = (raw) => {
+  if (!raw) return null;
+  if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}/.test(raw)) {
+    const [y, m, d] = raw.slice(0, 10).split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    if (!isNaN(dt.getTime())) return dt;
+  }
+  const dt = new Date(raw);
+  return isNaN(dt.getTime()) ? null : dt;
+};
+
+const formatStandardDate = (raw) => {
+  const dt = parseSafeDate(raw);
+  if (!dt) return '—';
+  const day = String(dt.getDate()).padStart(2, '0');
+  const month = String(dt.getMonth() + 1).padStart(2, '0');
+  const year = dt.getFullYear();
+  return `${day}.${month}.${year}`;
+};
+
+const formatShortDate = (raw) => {
+  return formatStandardDate(raw);
+};
+
+const formatAppointmentTime = (appt) => {
+  if (!appt) return '';
+  if (appt.time) {
+    const clean = String(appt.time).trim();
+    if (clean.includes(':')) return clean.slice(0, 5);
+  }
+  if (appt.start_time) {
+    const clean = String(appt.start_time).trim();
+    if (clean.includes(':')) return clean.slice(0, 5);
+    const dt = new Date(appt.start_time);
+    if (!isNaN(dt.getTime())) {
+      return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+    }
+  }
+  if (appt.date && typeof appt.date === 'string' && appt.date.includes('T')) {
+    const dt = new Date(appt.date);
+    if (!isNaN(dt.getTime()) && (dt.getHours() !== 0 || dt.getMinutes() !== 0)) {
+      return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+    }
+  }
+  return '';
 };
 
 const STATUS_LABEL_KEY = {
@@ -84,16 +129,19 @@ const ApptBadge = ({ status }) => {
   );
 };
 
-function MiniCalendarMark({ date, locale }) {
-  const d = date ? new Date(date) : new Date();
-  const valid = !isNaN(d.getTime());
-  const day = valid ? d.getDate() : '—';
-  const month = valid
-    ? d.toLocaleDateString(locale, { month: 'short' }).replace('.', '')
-    : '';
+function MiniCalendarMark({ date, language = 'uz' }) {
+  const dt = parseSafeDate(date);
+  const day = dt ? dt.getDate() : '—';
+  let month = '';
+  if (dt) {
+    const idx = dt.getMonth();
+    if (language === 'ru') month = RU_SHORT_MONTHS[idx];
+    else if (language === 'en') month = EN_SHORT_MONTHS[idx];
+    else month = UZ_SHORT_MONTHS[idx];
+  }
   return (
     <div className="w-11 h-11 rounded-2xl bg-[#FFF8E7] border border-amber-100 flex flex-col items-center justify-center overflow-hidden shadow-sm">
-      <span className="text-[8px] font-black uppercase tracking-wider text-amber-600 leading-none">{month}</span>
+      <span className="text-[8px] font-black uppercase tracking-wider text-amber-600 leading-none">{month || '—'}</span>
       <span className="text-[17px] font-black text-slate-800 leading-none mt-0.5 tabular-nums">{day}</span>
     </div>
   );
@@ -112,12 +160,16 @@ export default function MobilePatientProfile() {
   const [payments, setPayments]                 = useState([]);
   const [appointments, setAppointments]         = useState([]);
   const [doctors, setDoctors]                   = useState([]);
+  const [services, setServices]                 = useState([]);
   const [loading, setLoading]                   = useState(true);
   const [activeTab, setActiveTab]               = useState('tarix');
   const [apptModalOpen, setApptModalOpen]       = useState(false);
+  const [selectedAppt, setSelectedAppt]         = useState(null);
   const [patientModalOpen, setPatientModalOpen] = useState(false);
   const [treatModalOpen, setTreatModalOpen]     = useState(false);
   const [payModalOpen, setPayModalOpen]         = useState(false);
+  const [implantModalOpen, setImplantModalOpen] = useState(false);
+  const [selectedImplant, setSelectedImplant]   = useState(null);
   const [photoUploading, setPhotoUploading]     = useState(false);
   const [noteText, setNoteText]                 = useState('');
   const [notesSaving, setNotesSaving]           = useState(false);
@@ -142,7 +194,7 @@ export default function MobilePatientProfile() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [patRes, plansRes, paysRes, apptRes, usersRes, toothRes, implantRes] = await Promise.all([
+      const [patRes, plansRes, paysRes, apptRes, usersRes, toothRes, implantRes, servicesRes, allPatRes] = await Promise.all([
         base44.entities.Patient.filter({ id }),
         base44.entities.TreatmentPlan.filter({ patient_id: id }, '-created_date', 50),
         base44.entities.Payment.filter({ patient_id: id }, '-date', 200),
@@ -150,6 +202,8 @@ export default function MobilePatientProfile() {
         base44.entities.User.list('name', 100).catch(() => []),
         base44.entities.ToothRecord.filter({ patient_id: id }, '-created_date', 100).catch(() => []),
         base44.entities.Implant.filter({ patient_id: id }, '-placement_date', 50).catch(() => []),
+        base44.entities.Service.list('name', 200).catch(() => []),
+        base44.entities.Patient.list('full_name', 200).catch(() => []),
       ]);
       const raw = patRes[0] || null;
       if (raw && raw.full_name) raw.full_name = capitalizeName(raw.full_name);
@@ -166,6 +220,10 @@ export default function MobilePatientProfile() {
       setDoctors(docs.length > 0 ? docs : (usersRes || []));
       setToothRecords(toothRes || []);
       setImplants(implantRes || []);
+      setServices(servicesRes || []);
+      if (Array.isArray(allPatRes) && allPatRes.length > 0) {
+        setAllPatients(allPatRes);
+      }
     } catch (err) {
       console.error('MobilePatientProfile load:', err);
       toast.error('Bemorni yuklashda xatolik');
@@ -175,11 +233,6 @@ export default function MobilePatientProfile() {
   }, [id]);
 
   useEffect(() => { load(); }, [load, refreshTick]);
-
-  useEffect(() => {
-    if (!apptModalOpen || allPatients.length > 0) return;
-    base44.entities.Patient.list('full_name', 200).then(p => setAllPatients(p || [])).catch(() => {});
-  }, [apptModalOpen]);
 
   /* ── financials ── */
   const financials = useMemo(() => {
@@ -349,8 +402,8 @@ export default function MobilePatientProfile() {
   const tabs = useMemo(() => ([
     { id: 'tarix',    label: t('patientProfile.mobile.history', 'Tarix') },
     { id: 'plan',     label: t('patientProfile.tabs.planShort', 'Reja') },
-    { id: 'payments', label: t('patientProfile.tabs.payments', "To'lovlar") },
-    { id: 'implant',  label: t('patientProfile.tabs.implants', 'Implant') },
+    { id: 'payments', label: t('patientProfile.tabs.payments', "To'lovlar & Qarz") },
+    { id: 'implant',  label: t('patientProfile.tabs.implants', 'Implantlar') },
   ]), [t]);
 
   const selectedStatus = useMemo(() => {
@@ -383,9 +436,17 @@ export default function MobilePatientProfile() {
   };
 
   /* ── open pay modal ── */
-  const openPayModal = useCallback((prefillCategory = 'Treatment', prefillNotes = '') => {
+  const openPayModal = useCallback((prefillCategory = 'Treatment', prefillNotes = '', prefillAmount = '') => {
     const docId = resolveDoctorId(patient, plans, doctors, user, isDoctor);
-    setPayForm({ type: 'Income', amount: '', method: 'Cash', category: prefillCategory, date: getLocalDT(), notes: prefillNotes, doctor_id: docId || doctors[0]?.id || '' });
+    setPayForm({
+      type: 'Income',
+      amount: prefillAmount ? String(prefillAmount) : '',
+      method: 'Cash',
+      category: prefillCategory,
+      date: getLocalDT(),
+      notes: prefillNotes,
+      doctor_id: docId || doctors[0]?.id || ''
+    });
     setPayModalOpen(true);
   }, [patient, plans, doctors, user, isDoctor]);
 
@@ -554,17 +615,17 @@ export default function MobilePatientProfile() {
         </div>
 
         {financials.debt > 0 && (
-          <div className="mx-3 mb-5 flex items-center justify-between gap-3 rounded-2xl px-3.5 py-2.5 bg-black/22 border border-white/10 backdrop-blur-[6px]">
-            <div className="flex items-center gap-2 min-w-0">
-              <AlertTriangle className="w-3.5 h-3.5 text-white shrink-0" />
-              <span className="text-[12px] font-bold text-white/90">{t('patientProfile.mobile.debt', 'Qarzdorlik')}</span>
+          <div className="mx-3 mb-2 flex items-center justify-between gap-2.5 rounded-xl px-3 py-1.5 bg-black/20 border border-white/10 backdrop-blur-[6px]">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+              <span className="text-[11px] font-bold text-white/90">{t('patientProfile.mobile.debt', 'Qarzdorlik')}</span>
             </div>
-            <span className="text-[13px] font-black tabular-nums whitespace-nowrap">
+            <span className="text-[12px] font-black tabular-nums whitespace-nowrap text-amber-200">
               {fmt(financials.debt)} {t('dashboard.currency', "so'm")}
             </span>
           </div>
         )}
-        {financials.debt <= 0 && <div className="h-4" />}
+        {financials.debt <= 0 && <div className="h-2" />}
       </div>
 
       {/* IDENTITY STRIP */}
@@ -600,22 +661,34 @@ export default function MobilePatientProfile() {
 
       {financials.debt > 0 && (
         <div className="px-3 pt-2">
-          <button
-            type="button"
-            onClick={() => openPayModal()}
-            className="w-full rounded-[18px] bg-rose-50 border border-rose-200 px-4 py-3.5 flex items-center justify-between gap-3 active:scale-[0.99] transition-transform shadow-sm"
-          >
-            <div className="min-w-0 text-left">
-              <p className="text-[10px] font-black uppercase tracking-wide text-rose-500">{t('patientProfile.mobile.debt', 'Qarzdorlik')}</p>
-              <p className="text-[18px] font-black tabular-nums text-rose-600 mt-0.5">{fmt(financials.debt)} <span className="text-[12px] font-bold">{t('dashboard.currency', "so'm")}</span></p>
+          <div className="w-full rounded-[16px] bg-rose-50/95 border border-rose-200/80 px-3.5 py-2.5 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-rose-100/90 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-4 h-4 text-rose-600" />
+              </div>
+              <div className="min-w-0 text-left">
+                <p className="text-[9px] font-black uppercase tracking-wider text-rose-500 leading-tight">
+                  {t('patientProfile.mobile.debt', 'Qarzdorlik')}
+                </p>
+                <p className="text-[15px] font-black tabular-nums text-rose-700 leading-tight mt-0.5">
+                  {fmt(financials.debt)} <span className="text-[11px] font-bold text-rose-600">{t('dashboard.currency', "so'm")}</span>
+                </p>
+              </div>
             </div>
-            <span className="shrink-0 px-3 py-2 rounded-xl bg-rose-600 text-white text-[11px] font-black">{t('patientProfile.mobile.payAction', "To'lov")}</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => openPayModal('Treatment', '', financials.debt)}
+              className="shrink-0 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-[11px] font-black transition-all shadow-xs flex items-center gap-1.5"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              <span>{t('patientProfile.mobile.payAction', "To'lov")}</span>
+            </button>
+          </div>
         </div>
       )}
 
       {/* ACTION CARDS */}
-      <div className="px-3 -mt-6 grid grid-cols-3 gap-2 relative z-10">
+      <div className="px-3 mt-2.5 grid grid-cols-3 gap-2 relative z-10">
         <button
           type="button"
           onClick={() => openPayModal()}
@@ -628,10 +701,10 @@ export default function MobilePatientProfile() {
         </button>
         <button
           type="button"
-          onClick={() => setApptModalOpen(true)}
+          onClick={() => { setSelectedAppt(null); setApptModalOpen(true); }}
           className="bg-white rounded-[18px] shadow-[0_8px_24px_rgba(15,23,42,0.06)] border border-white py-3 px-2 flex flex-col items-center gap-1.5 active:scale-[0.97] transition-transform"
         >
-          <MiniCalendarMark date={nextAppointment?.date || nextAppointment?.appointment_date} locale={dateLocale} />
+          <MiniCalendarMark date={nextAppointment?.date || nextAppointment?.appointment_date} language={language} />
           <span className="text-[11px] font-black text-slate-800">{t('patientProfile.mobile.apptAction', 'Uchrashuv')}</span>
         </button>
         <button
@@ -753,7 +826,7 @@ export default function MobilePatientProfile() {
       </div>
 
       {/* CONTENT */}
-      <div className="flex-1 px-3 pt-3 pb-2">
+      <div className="flex-1 px-3 pt-3 pb-24">
         <AnimatePresence mode="wait">
           <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.16 }}>
 
@@ -761,7 +834,7 @@ export default function MobilePatientProfile() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-black text-slate-800">{t('patientProfile.mobile.apptsTitle', 'Uchrashuvlar')} ({appointments.length})</h2>
-                  <button onClick={() => setApptModalOpen(true)} className="flex items-center gap-1 px-3 py-2 text-white rounded-xl text-xs font-bold active:scale-95 transition-transform" style={{ background: TEAL }}>
+                  <button onClick={() => { setSelectedAppt(null); setApptModalOpen(true); }} className="flex items-center gap-1.5 px-3 py-2 text-white rounded-xl text-xs font-bold active:scale-95 transition-transform" style={{ background: TEAL }}>
                     <Plus className="w-3.5 h-3.5" />{t('patientProfile.mobile.apptAction', 'Uchrashuv')}
                   </button>
                 </div>
@@ -770,12 +843,16 @@ export default function MobilePatientProfile() {
                   <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center shadow-xs">
                     <Calendar className="w-10 h-10 text-slate-200 mx-auto mb-2" />
                     <p className="text-slate-500 font-bold text-sm">{t('patientProfile.mobile.emptyAppts', "Uchrashuvlar yo'q")}</p>
-                    <button onClick={() => setApptModalOpen(true)} className="mt-3 px-5 py-2.5 text-white rounded-xl text-xs font-bold active:scale-95 transition-transform" style={{ background: TEAL }}>
+                    <button onClick={() => { setSelectedAppt(null); setApptModalOpen(true); }} className="mt-3 px-5 py-2.5 text-white rounded-xl text-xs font-bold active:scale-95 transition-transform" style={{ background: TEAL }}>
                       + {t('patientProfile.mobile.addAppt', "Uchrashuv qo'shish")}
                     </button>
                   </div>
                 ) : appointments.map(appt => (
-                  <div key={appt.id} className="bg-white rounded-2xl border border-slate-100 shadow-xs p-4 flex items-start gap-3">
+                  <div
+                    key={appt.id}
+                    onClick={() => { setSelectedAppt(appt); setApptModalOpen(true); }}
+                    className="bg-white rounded-2xl border border-slate-100 shadow-xs p-4 flex items-start gap-3 active:scale-[0.99] transition-transform cursor-pointer"
+                  >
                     <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
                       appt.status === 'Completed' ? 'bg-emerald-50 border border-emerald-200' :
                       appt.status === 'No-Show' ? 'bg-rose-50 border border-rose-200' :
@@ -787,7 +864,16 @@ export default function MobilePatientProfile() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-black text-slate-900">{formatShortDate(appt.date || appt.appointment_date, dateLocale)}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-black text-slate-900 font-mono">
+                            {formatStandardDate(appt.date || appt.appointment_date)}
+                          </p>
+                          {formatAppointmentTime(appt) && (
+                            <span className="text-[10px] font-black text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded-md font-mono">
+                              {formatAppointmentTime(appt)}
+                            </span>
+                          )}
+                        </div>
                         <ApptBadge status={appt.status} />
                       </div>
                       <p className="text-[11px] font-bold text-slate-500 mt-1 truncate">{appt.service_name || appt.notes || appt.type || 'Uchrashuv'}</p>
@@ -976,7 +1062,7 @@ export default function MobilePatientProfile() {
                         <p className="text-sm font-black text-slate-900">{label}</p>
                         {pay.category && <p className="text-[10px] text-slate-400 font-bold">{pay.category === 'Treatment' ? t('patientProfile.treatmentPlanSingular', 'Davolash') : pay.category}</p>}
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          {pay.date && <span className="text-[10px] font-bold text-slate-400">{new Date(pay.date).toLocaleDateString(dateLocale, { day: '2-digit', month: 'short', year: 'numeric' })}</span>}
+                          {pay.date && <span className="text-[10px] font-bold text-slate-400 font-mono">{formatStandardDate(pay.date)}</span>}
                           {pay.method && <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">{pay.method === 'Cash' ? 'Naqd' : pay.method === 'Card' ? 'Karta' : "O'tkazma"}</span>}
                         </div>
                       </div>
@@ -991,16 +1077,27 @@ export default function MobilePatientProfile() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-black text-slate-800">{t('patientProfile.tabs.implants', 'Implantlar')} ({implants.length})</h2>
-                  <button type="button" onClick={() => navigate('/implants')} className="flex items-center gap-1 px-3 py-2 text-white rounded-xl text-xs font-bold active:scale-95 transition-transform" style={{ background: TEAL }}>
-                    <Plus className="w-3.5 h-3.5" />Implant
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedImplant(null); setImplantModalOpen(true); }}
+                    className="flex items-center gap-1.5 px-3 py-2 text-white rounded-xl text-xs font-bold active:scale-95 transition-transform"
+                    style={{ background: TEAL }}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{t('patientProfile.mobile.addImplant', "Implant qo'shish")}</span>
                   </button>
                 </div>
                 {implants.length === 0 ? (
                   <div className="bg-white rounded-2xl border border-slate-100 p-10 text-center shadow-xs">
                     <Activity className="w-12 h-12 text-slate-200 mx-auto mb-3" />
                     <p className="text-slate-500 font-bold text-sm">{t('patientProfile.mobile.emptyImplants', "Implantlar yo'q")}</p>
-                    <button type="button" onClick={() => navigate('/implants')} className="mt-4 px-5 py-2.5 text-white rounded-xl text-xs font-bold active:scale-95 transition-transform" style={{ background: TEAL }}>
-                      {t('patientProfile.mobile.openImplants', "Implantlarga o'tish")}
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedImplant(null); setImplantModalOpen(true); }}
+                      className="mt-4 px-5 py-2.5 text-white rounded-xl text-xs font-bold active:scale-95 transition-transform"
+                      style={{ background: TEAL }}
+                    >
+                      + {t('patientProfile.mobile.addImplant', "Implant qo'shish")}
                     </button>
                   </div>
                 ) : implants.map((imp) => {
@@ -1009,8 +1106,8 @@ export default function MobilePatientProfile() {
                     <button
                       key={imp.id}
                       type="button"
-                      onClick={() => navigate('/implants/' + imp.id)}
-                      className="w-full bg-white rounded-2xl border border-slate-100 shadow-xs p-4 flex items-start gap-3 text-left active:scale-[0.99] transition-transform"
+                      onClick={() => { setSelectedImplant(imp); setImplantModalOpen(true); }}
+                      className="w-full bg-white rounded-2xl border border-slate-100 shadow-xs p-4 flex items-start gap-3 text-left active:scale-[0.99] transition-transform cursor-pointer"
                     >
                       <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0">
                         <Activity className="w-5 h-5 text-[#14b8a6]" />
@@ -1018,8 +1115,8 @@ export default function MobilePatientProfile() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-black text-slate-900 truncate">{imp.firma || imp.brend || imp.service_name || 'Implant'}</p>
                         <p className="text-[11px] font-bold text-slate-500 mt-0.5">
-                          {teeth.length ? teeth.map((tn) => '#' + tn).join(' ? ') : '?'}
-                          {imp.placement_date ? ' ? ' + formatShortDate(imp.placement_date, dateLocale) : ''}
+                          {teeth.length ? teeth.map((tn) => '#' + tn).join(' · ') : ''}
+                          {imp.placement_date ? (teeth.length ? ' · ' : '') + formatStandardDate(imp.placement_date) : ''}
                         </p>
                         {imp.lifecycle_status ? (
                           <span className="inline-flex mt-1.5 text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{imp.lifecycle_status}</span>
@@ -1110,10 +1207,28 @@ export default function MobilePatientProfile() {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">{t('patientProfile.installments.paymentAmount', 'Summa')} ({t('dashboard.currency', "so'm")})</label>
-                  <input type="number" inputMode="numeric" value={payForm.amount} onChange={e => setPayForm(p => ({ ...p, amount: e.target.value }))}
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">
+                      {t('patientProfile.installments.paymentAmount', 'Summa')} ({t('dashboard.currency', "so'm")})
+                    </label>
+                    {financials.debt > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setPayForm(p => ({ ...p, amount: String(financials.debt) }))}
+                        className="text-[10px] font-bold text-rose-600 hover:underline"
+                      >
+                        Qarzni to'ldirish ({fmt(financials.debt)})
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={payForm.amount}
+                    onChange={e => setPayForm(p => ({ ...p, amount: e.target.value }))}
                     placeholder="0"
-                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xl font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#14b8a6]/30 focus:border-[#14b8a6] transition-all" />
+                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xl font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#14b8a6]/30 focus:border-[#14b8a6] transition-all"
+                  />
                 </div>
 
                 <div className="flex gap-2">
@@ -1129,6 +1244,24 @@ export default function MobilePatientProfile() {
                     </button>
                   ))}
                 </div>
+
+                {doctors.length > 0 && (
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                      {t('appointments.doctor', 'Shifokor')}
+                    </label>
+                    <select
+                      value={payForm.doctor_id}
+                      onChange={e => setPayForm(p => ({ ...p, doctor_id: e.target.value }))}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#14b8a6]/30 focus:border-[#14b8a6] transition-all"
+                    >
+                      <option value="">{t('common.select', 'Tanlang...')}</option>
+                      {doctors.map(d => (
+                        <option key={d.id} value={d.id}>{d.name || d.full_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">{t('patientProfile.installments.notes', 'Izoh')} ({t('common.optional', 'ixtiyoriy')})</label>
@@ -1148,21 +1281,61 @@ export default function MobilePatientProfile() {
         )}
       </AnimatePresence>
 
-      {/* OTHER MODALS — existing wiring unchanged */}
+      {/* MODALS */}
       {apptModalOpen && (
-        <AppointmentModal isOpen={apptModalOpen} onClose={() => setApptModalOpen(false)}
-          onSave={() => { setApptModalOpen(false); setRefreshTick(tick => tick + 1); }}
-          prefillPatient={patient} patients={allPatients} doctors={doctors} />
+        <AppointmentModal
+          open={apptModalOpen}
+          onClose={() => { setApptModalOpen(false); setSelectedAppt(null); }}
+          appointment={selectedAppt}
+          patients={patient ? [patient] : allPatients}
+          services={services}
+          prefillPatientId={patient?.id}
+          prefillPatientName={patient?.full_name}
+          onSaved={() => {
+            setApptModalOpen(false);
+            setSelectedAppt(null);
+            setRefreshTick(tick => tick + 1);
+          }}
+        />
       )}
       {patientModalOpen && patient && (
-        <PatientModal isOpen={patientModalOpen} onClose={() => setPatientModalOpen(false)}
-          onSave={() => { setPatientModalOpen(false); setRefreshTick(tick => tick + 1); }}
-          patient={patient} />
+        <PatientModal
+          open={patientModalOpen}
+          onClose={() => setPatientModalOpen(false)}
+          patient={patient}
+          onSaved={() => {
+            setPatientModalOpen(false);
+            setRefreshTick(tick => tick + 1);
+          }}
+        />
       )}
       {treatModalOpen && (
-        <TreatmentPlanModal isOpen={treatModalOpen} onClose={() => setTreatModalOpen(false)}
-          onSave={() => { setTreatModalOpen(false); setRefreshTick(tick => tick + 1); }}
-          patientId={id} patientName={patient?.full_name} doctors={doctors} />
+        <TreatmentPlanModal
+          open={treatModalOpen}
+          onClose={() => setTreatModalOpen(false)}
+          plan={null}
+          patients={patient ? [patient] : allPatients}
+          services={services}
+          initialPatientId={id}
+          onSaved={() => {
+            setTreatModalOpen(false);
+            setRefreshTick(tick => tick + 1);
+          }}
+        />
+      )}
+      {implantModalOpen && (
+        <ImplantForm
+          open={implantModalOpen}
+          onClose={() => { setImplantModalOpen(false); setSelectedImplant(null); }}
+          implant={selectedImplant}
+          patients={patient ? [patient] : allPatients}
+          services={services}
+          onSaved={() => {
+            setImplantModalOpen(false);
+            setSelectedImplant(null);
+            setRefreshTick(tick => tick + 1);
+          }}
+        />
       )}
     </div>
   );

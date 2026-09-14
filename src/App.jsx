@@ -27,13 +27,13 @@ import { ShifoCrmLogoEmblem } from './components/ui/ShifoCrmLogo';
 
 // ─── Lazy page imports (loaded only when user navigates there) ──────────────
 // Core pages (lazy for faster initial load)
-const Dashboard           = lazy(() => import('./pages/Dashboard'));
-const Patients            = lazy(() => import('./pages/Patients'));
-const Appointments        = lazy(() => import('./pages/Appointments'));
-const Leads               = lazy(() => import('./pages/Leads'));
+const Dashboard           = lazy(() => import('./pages/Dashboard'), 'chunk_dashboard');
+const Patients            = lazy(() => import('./pages/Patients'), 'chunk_patients');
+const Appointments        = lazy(() => import('./pages/Appointments'), 'chunk_appointments');
+const Leads               = lazy(() => import('./pages/Leads'), 'chunk_leads');
 
 // Admin pages
-const MobileDashboardV2   = lazy(() => import('./pages/MobileDashboardV2'));
+const MobileDashboardV2   = lazy(() => import('./pages/MobileDashboardV2'), 'chunk_mobile_dashboard');
 const Expenses            = lazy(() => import('./pages/Expenses'));
 const MobileExpenses      = lazy(() => import('./pages/MobileExpenses'));
 const Payroll             = lazy(() => import('./pages/Payroll'));
@@ -45,9 +45,9 @@ const SuperAdmin          = lazy(() => import('./pages/SuperAdmin'));
 const Register            = lazy(() => import('./pages/Register'));
 
 // Clinical pages
-const MobilePatientsV2    = lazy(() => import('./pages/MobilePatientsV2'));
-const PatientProfile         = lazy(() => import('./pages/PatientProfile'));
-const MobilePatientProfile   = lazy(() => import('./pages/MobilePatientProfile'));
+const MobilePatientsV2    = lazy(() => import('./pages/MobilePatientsV2'), 'chunk_mobile_patients');
+const PatientProfile         = lazy(() => import('./pages/PatientProfile'), 'chunk_patient_profile');
+const MobilePatientProfile   = lazy(() => import('./pages/MobilePatientProfile'), 'chunk_mobile_patient_profile');
 const MobileAppointmentsV2 = lazy(() => import('./pages/MobileAppointmentsV2'));
 const MobileLeadsV6       = lazy(() => import('./pages/MobileLeadsV6'));
 const Payments            = lazy(() => import('./pages/Payments'));
@@ -64,8 +64,8 @@ const NoShow              = lazy(() => import('./pages/NoShow'));
 const TreatmentTracking   = lazy(() => import('./pages/TreatmentTracking'));
 const Debts               = lazy(() => import('./pages/Debts'));
 const MobileDebts         = lazy(() => import('./pages/MobileDebts'));
-const Settings            = lazy(() => import('./pages/Settings'));
-const MobileSettings      = lazy(() => import('./pages/MobileSettings'));
+const Settings            = lazy(() => import('./pages/Settings'), 'chunk_settings');
+const MobileSettings      = lazy(() => import('./pages/MobileSettings'), 'chunk_mobile_settings');
 const Marketing           = lazy(() => import('./pages/Marketing'));
 const MobileMarketing      = lazy(() => import('./pages/MobileMarketing'));
 const Implants            = lazy(() => import('./pages/Implants'));

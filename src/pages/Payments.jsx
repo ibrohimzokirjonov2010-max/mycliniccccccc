@@ -8,8 +8,8 @@ import {
   Camera, Eye, Loader2, FileSpreadsheet, Table as TableIcon, LayoutGrid,
   ArrowUp, ArrowDown, ArrowUpDown, Copy, Check
 } from 'lucide-react';
-import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -153,7 +153,16 @@ export default function Payments() {
 
   // ── States ───────────────────────────────────────────────────────────
   const [payments, setPayments] = useState([]);
-  const [patients, setPatients] = useState([]);
+  const [patients, setPatients] = useState(() => {
+    try {
+      const cached = queryClient.getQueryData(['patients', isDoctor, user?.id]) ||
+                     queryClient.getQueryData(QUERY_KEYS.patients) ||
+                     queryClient.getQueryData(['patients-list-all']);
+      return Array.isArray(cached) ? cached : [];
+    } catch {
+      return [];
+    }
+  });
   const [doctors, setDoctors] = useState([]);
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
@@ -240,9 +249,20 @@ export default function Payments() {
   const [showHistory, setShowHistory] = useState(false);
 
   // ── React Query: Patients + Doctors + Treatment Plans (initial load) ─────
-  const { data: initialPatients = [] } = useQuery({
-    queryKey: QUERY_KEYS.patients,
-    queryFn: () => base44.entities.Patient.list('full_name', 200),
+  const { data: initialPatients = [], isLoading: patientsLoading } = useQuery({
+    queryKey: ['patients', isDoctor, user?.id],
+    queryFn: async () => {
+      if (isDoctor && user?.id) {
+        const allPats = await base44.entities.Patient.list('-created_date', 500).catch(() => []);
+        const docPats = (allPats || []).filter(p =>
+          String(p.main_treatment_provider) === String(user.id) ||
+          String(p.main_treatment_provider) === String(user.name) ||
+          String(p.created_by_id) === String(user.id)
+        );
+        return docPats.length > 0 ? docPats : allPats;
+      }
+      return await base44.entities.Patient.list('full_name', 300);
+    },
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
@@ -267,10 +287,25 @@ export default function Payments() {
     staleTime: 3 * 60 * 1000,
   });
 
-  // Seed patients/doctors from query cache on first load
+  // Seed / merge patients from query cache as soon as available
   useEffect(() => {
-    if (initialPatients.length > 0 && patients.length === 0) setPatients(initialPatients);
-  }, [initialPatients, patients.length]);
+    if (initialPatients && initialPatients.length > 0) {
+      setPatients(prev => {
+        if (!prev || prev.length === 0) return initialPatients;
+        const map = new Map(initialPatients.map(p => [String(p.id), p]));
+        prev.forEach(p => {
+          const sid = String(p.id);
+          if (!map.has(sid)) {
+            map.set(sid, p);
+          } else {
+            map.set(sid, { ...map.get(sid), ...p });
+          }
+        });
+        return Array.from(map.values());
+      });
+    }
+  }, [initialPatients]);
+
   useEffect(() => {
     if (initialDoctors.length > 0 && doctors.length === 0) setDoctors(initialDoctors);
   }, [initialDoctors, doctors.length]);
@@ -360,7 +395,7 @@ export default function Payments() {
 
   const loading = paymentsFetching && payments.length === 0;
 
-  // Merge paginated data + fetch missing patients
+  // Merge paginated data without blocking UI or flooding network
   useEffect(() => {
     if (!paymentsPageData) return;
     const rawPays = paymentsPageData;
@@ -370,34 +405,43 @@ export default function Payments() {
       return tb.localeCompare(ta);
     });
 
-    const applyPage = async () => {
-      // Fetch missing patients
-      let currentPatients = patients;
-      const existingIds = new Set(currentPatients.map(p => p.id));
-      const missingIds = [...new Set(validPays.map(p => p.patient_id).filter(id => id && !existingIds.has(id)))];
-      if (missingIds.length > 0) {
-        try {
-          const fetched = await Promise.all(missingIds.map(id => base44.entities.Patient.read(id).catch(() => null)));
-          currentPatients = [...currentPatients, ...fetched.filter(Boolean)];
-        } catch {}
-      }
+    // 1. Immediately display payments without waiting for patient lookups
+    if (page === 0) {
+      const seen = new Set();
+      setPayments(validPays.filter(p => { if (!p.id || seen.has(p.id)) return false; seen.add(p.id); return true; }));
+    } else {
+      setPayments(prev => {
+        const seen = new Set(prev.map(p => p.id));
+        return [...prev, ...validPays.filter(p => p.id && !seen.has(p.id))];
+      });
+    }
+    setHasMore(rawPays.length === PAGE_SIZE);
+    setLoadingMore(false);
 
-      if (page === 0) {
-        const seen = new Set();
-        setPayments(validPays.filter(p => { if (!p.id || seen.has(p.id)) return false; seen.add(p.id); return true; }));
-        setPatients(currentPatients);
-      } else {
-        setPayments(prev => {
-          const seen = new Set(prev.map(p => p.id));
-          return [...prev, ...validPays.filter(p => p.id && !seen.has(p.id))];
-        });
-        setPatients(currentPatients);
-      }
-      setHasMore(rawPays.length === PAGE_SIZE);
-      setLoadingMore(false);
-    };
-    applyPage();
-   
+    // 2. In background: fetch any truly missing patient info in ONE single query (no connection flooding)
+    const existingIds = new Set(patients.map(p => String(p.id)));
+    const missingIds = [...new Set(validPays.map(p => String(p.patient_id)).filter(id => id && id !== 'undefined' && !existingIds.has(id)))];
+    
+    if (missingIds.length > 0) {
+      (async () => {
+        try {
+          const { data: batchPatients } = await supabase
+            .from('patients')
+            .select('*')
+            .in('id', missingIds.slice(0, 50));
+          if (batchPatients && batchPatients.length > 0) {
+            const enriched = base44.entities.Patient._enrich(batchPatients);
+            setPatients(prev => {
+              const map = new Map(prev.map(p => [String(p.id), p]));
+              enriched.forEach(p => map.set(String(p.id), p));
+              return Array.from(map.values());
+            });
+          }
+        } catch (err) {
+          console.debug('Background patient fetch error:', err);
+        }
+      })();
+    }
   }, [paymentsPageData, page]);
 
   // ── React Query: Stats (10 daqiqa kesh — sahifa ochilganda 1 marta yuklanadi) ─
@@ -2482,6 +2526,7 @@ export default function Payments() {
                      </div>
                      <PatientSelect 
                        patients={patients}
+                       loading={patientsLoading && patients.length === 0}
                        value={form.patient_id} 
                        initialName={form.patient_name}
                        onChange={(id, pat) => {

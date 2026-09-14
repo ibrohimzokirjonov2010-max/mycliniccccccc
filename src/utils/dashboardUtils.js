@@ -43,9 +43,9 @@ export async function fetchDashboardStats(user, isDoctor, isAdmin) {
 
   // Match list-page volumes so today/week KPIs are not truncated by tiny limits.
   const [appts, pats, pays, totalPatientsCount] = await Promise.all([
-    base44.entities.Appointment.filter(doctorFilter, '-date', 500),
+    base44.entities.Appointment.filter(doctorFilter, '-date', 800),
     base44.entities.Patient.list('-created_date', 200),
-    base44.entities.Payment.filter(isDoctor ? { ...doctorFilter, type: 'Income' } : {}, '-date', 500),
+    base44.entities.Payment.filter(isDoctor ? { ...doctorFilter, type: 'Income' } : {}, '-date', 1000),
     base44.entities.Patient.count(),
   ]);
 

@@ -507,7 +507,7 @@ export default function AppointmentTreatmentModal({ open, onClose, appointment, 
                       : 'text-slate-400 hover:text-slate-700'
                   }`}
                 >
-                  1. Muolaja & Narx
+                  1. Muolaja
                 </button>
                 <button
                   type="button"
@@ -531,7 +531,12 @@ export default function AppointmentTreatmentModal({ open, onClose, appointment, 
 
           <p className="text-xs text-slate-500 mt-1 font-medium">
             {step === 1 
-              ? "Bajarilgan ishlarni belgilang va kerak bo'lsa doktor narxini kiriting:" 
+              ? (
+                <>
+                  <span className="hidden sm:inline">Bajarilgan ishlarni belgilang va kerak bo'lsa doktor narxini kiriting:</span>
+                  <span className="sm:hidden">Bajarilgan ishlarni belgilang:</span>
+                </>
+              )
               : "Ishlatilgan materiallarni tanlang (Endodontiya, Restavratsiya va h.k.):"}
           </p>
         </div>
@@ -603,9 +608,9 @@ export default function AppointmentTreatmentModal({ open, onClose, appointment, 
                           return (
                             <div 
                               key={service.service_id}
-                              className={`p-3.5 transition-all space-y-2 ${
+                              className={`p-3.5 transition-all ${
                                 isSelected ? 'bg-emerald-50/70' : 'hover:bg-slate-100/50'
-                              }`}
+                              } sm:space-y-2`}
                             >
                               <div 
                                 className="flex items-center gap-3 cursor-pointer"
@@ -628,9 +633,9 @@ export default function AppointmentTreatmentModal({ open, onClose, appointment, 
                                 )}
                               </div>
 
-                              {/* Editable Price for each selected or available service */}
+                              {/* Editable Price for each selected or available service (faqat kompyuterda ko'rinadi, telefonda ixcham yashiriladi) */}
                               {isSelected && (
-                                <div className="flex items-center justify-between pl-8 pt-1">
+                                <div className="hidden sm:flex items-center justify-between pl-8 pt-1">
                                   <span className="text-[11px] font-bold text-emerald-800">
                                     Xizmat narxi (so'm):
                                   </span>
@@ -864,32 +869,61 @@ export default function AppointmentTreatmentModal({ open, onClose, appointment, 
           {/* Stepper forward or Action buttons */}
           {step === 1 ? (
             <div className="space-y-2.5">
-              {/* Rentgen va 2-bosqichga o'tish */}
-              <div className="grid grid-cols-2 gap-2.5">
+              {/* PRIMARY ACTION: 2-bosqichga (Ombor / Ishlatilgan mahsulotlar) o'tish */}
+              <Button
+                onClick={() => setStep(2)}
+                className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-sm shadow-md shadow-emerald-200 flex items-center justify-center gap-2"
+              >
+                <span>2-bosqich: Ishlatilgan mahsulotlar (Ombor)</span>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
                   disabled={uploadingXray}
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-11 rounded-xl border-cyan-200 bg-cyan-50 text-cyan-700 font-bold hover:bg-cyan-100 text-xs"
+                  className="h-10 rounded-xl border-cyan-200 bg-cyan-50 text-cyan-700 font-bold hover:bg-cyan-100 text-xs flex items-center justify-center gap-1"
                 >
-                  {uploadingXray ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Camera className="w-4 h-4 mr-1.5" />}
-                  {uploadingXray ? 'Yuklanmoqda...' : 'Rentgen yuklash'}
+                  {uploadingXray ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Camera className="w-3.5 h-3.5 mr-1" />}
+                  <span>{uploadingXray ? 'Yuklanmoqda...' : 'Rentgen yuklash'}</span>
                 </Button>
 
+                {/* To'g'ridan-to'g'ri to'lov (agar ombor mahsulotlari ishlatilmagan bo'lsa) */}
                 <Button
-                  onClick={() => setStep(2)}
-                  className="h-11 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-1.5"
+                  variant="outline"
+                  onClick={handleFinishAndPay}
+                  disabled={saving}
+                  className="h-10 rounded-xl border-slate-200 hover:bg-slate-50 font-bold text-slate-700 text-xs truncate"
                 >
-                  <span>2-bosqich: Ombor</span>
-                  <ChevronRight className="w-4 h-4" />
+                  {saving ? 'Kuting...' : 'Omborsiz to\'lov'}
                 </Button>
               </div>
 
-              {/* Muolaja va To'lovni yakunlash */}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={onClose}
+                  className="flex-1 h-10 rounded-xl border-slate-200 font-bold text-slate-600 text-xs"
+                >
+                  Bekor
+                </Button>
+                <Button
+                  onClick={handleFinishAndClose}
+                  disabled={saving}
+                  className="flex-1 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs"
+                >
+                  Shunchaki yakunlash
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {/* Finish & Pay */}
               <Button
                 onClick={handleFinishAndPay}
                 disabled={saving}
-                className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold shadow-md shadow-emerald-200"
+                className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-sm shadow-md shadow-emerald-200 flex items-center justify-center gap-2"
               >
                 {saving ? (
                   <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Kuting...</span>
@@ -898,63 +932,22 @@ export default function AppointmentTreatmentModal({ open, onClose, appointment, 
                 )}
               </Button>
 
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={onClose}
-                  className="flex-1 h-11 rounded-xl border-slate-200 font-bold text-slate-600 text-xs"
-                >
-                  Bekor
-                </Button>
-                <Button
-                  onClick={handleFinishAndClose}
-                  disabled={saving}
-                  className="flex-1 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs"
-                >
-                  Shunchaki yakunlash
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {/* Back to Step 1 & Finish & Pay */}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setStep(1)}
-                  className="h-12 rounded-xl border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1"
+                  className="h-10 rounded-xl border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1"
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span>1-bosqich</span>
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>1-bosqich: Muolaja</span>
                 </Button>
 
-                <Button
-                  onClick={handleFinishAndPay}
-                  disabled={saving}
-                  className="col-span-2 h-12 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-md shadow-emerald-200"
-                >
-                  {saving ? (
-                    <span className="flex items-center gap-1.5"><Loader2 className="w-4 h-4 animate-spin" /> Kuting...</span>
-                  ) : (
-                    `To'lovga o'tish (${(Number(customTotalAmount) || 0).toLocaleString()} so'm)`
-                  )}
-                </Button>
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={onClose}
-                  className="flex-1 h-11 rounded-xl border-slate-200 font-bold text-slate-600 text-xs"
-                >
-                  Bekor
-                </Button>
                 <Button
                   onClick={handleFinishAndClose}
                   disabled={saving}
-                  className="flex-1 h-11 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs"
+                  className="h-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs"
                 >
-                  {saving ? 'Saqlanmoqda...' : 'Qabulni yakunlash'}
+                  {saving ? 'Saqlanmoqda...' : 'Faqat qabulni yakunlash'}
                 </Button>
               </div>
             </div>

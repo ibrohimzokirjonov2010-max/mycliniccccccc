@@ -1,21 +1,30 @@
 import { Component } from 'react';
-import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
 import { isChunkLoadError } from '@/utils/lazyWithRetry';
 
 /**
- * ErrorBoundary - Catches errors in page components
- * When a page errors, shows a friendly message with retry option
- * instead of crashing the whole app.
- * ChunkLoadError: soft-reloads once automatically (stale deploy chunks).
+ * ErrorBoundary - Catches errors in page components.
+ * ChunkLoadError: soft-reloads once automatically (no manual Retry flash when possible).
  */
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null, remountKey: 0 };
+    this.state = { hasError: false, error: null, remountKey: 0, softReloading: false };
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, error };
+    const soft = typeof window !== 'undefined' && isChunkLoadError(error);
+    let already = false;
+    if (soft) {
+      try {
+        already = sessionStorage.getItem('chunk_eb_soft_reload') === '1';
+      } catch (_) { /* ignore */ }
+    }
+    return {
+      hasError: true,
+      error,
+      softReloading: soft && !already,
+    };
   }
 
   componentDidCatch(error, info) {
@@ -41,16 +50,29 @@ export default class ErrorBoundary extends Component {
       window.location.reload();
       return;
     }
-    // Remount children so lazy() retries the import without a full page reload.
     this.setState((s) => ({
       hasError: false,
       error: null,
+      softReloading: false,
       remountKey: s.remountKey + 1,
     }));
   };
 
   render() {
     if (this.state.hasError) {
+      if (this.state.softReloading) {
+        return (
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-center max-w-sm px-8">
+              <Loader2 className="w-8 h-8 text-[#1499AD] animate-spin mx-auto mb-4" />
+              <p className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                Sahifa yangilanmoqda…
+              </p>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center max-w-sm px-8">

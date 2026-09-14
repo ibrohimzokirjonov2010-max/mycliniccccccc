@@ -26,7 +26,7 @@ export default function MobileDashboardV2() {
   });
   const [todayAppointments, setTodayAppointments] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // true until first real stats - no zero flash
   const loadingTimerRef = useRef(null);
   const hasLoadedInitial = useRef(false);
   const { user, isDoctor } = useAuth();
@@ -35,17 +35,13 @@ export default function MobileDashboardV2() {
   const loadData = useCallback(async () => {
     if (!user) return;
     try {
-      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
-      if (!hasLoadedInitial.current) {
-        loadingTimerRef.current = setTimeout(() => {
-          setLoading(true);
-        }, 150);
-      }
+      if (!hasLoadedInitial.current) setLoading(true);
       const data = await fetchDashboardStats(user, isDoctor, false);
       
       setStats({
         patients: data.totalPatients,
-        appointments: data.appointments.filter(a => a.status === 'Scheduled' || a.status === 'Waiting').length,
+        appointments: data.stats?.todayAppts ?? (data.todayApptsList || []).length,
+        weekRevenue: data.stats?.weekRevenue || 0,
         todayRevenue: data.stats.todayRevenue,
         growth: 12
       });

@@ -21,6 +21,7 @@ export const prefetchModuleData = (path) => {
     case '/payments':
       // Pre-warm RequestCache so Payments.jsx load() resolves instantly
       base44.entities.Payment.list('-date', 50, 0);
+      base44.entities.Patient.list('full_name', 300);
       break;
     case '/leads':
       queryClientInstance.prefetchQuery({

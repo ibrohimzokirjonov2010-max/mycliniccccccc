@@ -228,6 +228,46 @@ export default function PatientProfile() {
       });
     }
 
+    // 4. Penitsillin / antibiotik
+    if (search('penitsillin') || search('penicillin') || search('antibiotik') || search('amoksitsillin')) {
+      alerts.push({
+        type: 'penicillinAllergy',
+        labelUz: 'Penitsillin / antibiotik allergiyasi',
+        labelRu: 'Аллергия на пенициллин',
+        labelEn: 'Penicillin allergy'
+      });
+    }
+
+    // 5. Astma
+    if (search('astma') || search('asthma') || search('bronxit')) {
+      alerts.push({
+        type: 'asthma',
+        labelUz: "Astma / nafas yo'li",
+        labelRu: 'Астма',
+        labelEn: 'Asthma'
+      });
+    }
+
+    // 6. Gepatit
+    if (search('gepatit') || search('hepatitis') || search('hbs')) {
+      alerts.push({
+        type: 'hepatitis',
+        labelUz: 'Gepatit',
+        labelRu: 'Гепатит',
+        labelEn: 'Hepatitis'
+      });
+    }
+
+    const important = String(patient.important_info || '').trim();
+    if (important && alerts.length === 0) {
+      alerts.push({
+        type: 'importantInfo',
+        labelUz: important.slice(0, 80),
+        labelRu: important.slice(0, 80),
+        labelEn: important.slice(0, 80),
+      });
+    }
+
     return alerts;
   }, [patient]);
   const [appointments, setAppointments] = useState([]);
@@ -2717,6 +2757,9 @@ export default function PatientProfile() {
           setProfileViewMode={setProfileViewMode}
           locationState={location.state}
           language={language}
+          onPatientUpdated={(updated) => {
+            if (updated) setPatient((prev) => ({ ...(prev || {}), ...updated }));
+          }}
         />
       )}
 
