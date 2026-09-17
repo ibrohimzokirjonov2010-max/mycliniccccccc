@@ -211,7 +211,8 @@
     "paidAmount": "To'langan Summa",
     "debtSum": "Qarzdorlik",
     "duration": "Davomiyligi",
-    "deleteConfirm": "Haqiqatan ham o'chirmoqchimisiz?"
+    "deleteConfirm": "Haqiqatan ham o'chirmoqchimisiz?",
+    "refresh": "Yangilash"
   },
   "clinic": {
     "description": "Zamonaviy dental markaz va yuqori sifatli stomatologiya xizmatlari.",
@@ -241,7 +242,8 @@
     "superAdmin": "Super Admin",
     "marketing": "Marketing",
     "cases": "Mening Keyslarim",
-    "staff": "Xodimlar"
+    "staff": "Xodimlar",
+    "chairsideToday": "Bugungi navbat"
   },
   "marketing": {
     "title": "Marketing Markazi",
@@ -2419,5 +2421,18 @@
       "errorSelectPatient": "Iltimos bemorni tanlang",
       "errorUploadAfterImage": "Kamida 'Keyin' rasmini yuklang"
     }
+  },
+  "chairside": {
+    "unknownPatient": "Noma'lum bemor",
+    "countLabel": "ta uchrashuv",
+    "doctorFilter": "Shifokor filtri",
+    "allDoctors": "Barcha shifokorlar",
+    "emptyTitle": "Bugun uchrashuv yo'q",
+    "emptyDoctor": "Sizning bugungi navbatingiz bo'sh. Yangi uchrashuvni Uchrashuvlar bo'limidan qo'shing.",
+    "emptyAdmin": "Bugungi sana uchun uchrashuvlar topilmadi.",
+    "goAppointments": "Uchrashuvlarga o'tish",
+    "debt": "Qarz",
+    "doctor": "Shifokor",
+    "openProfile": "Profil"
   }
 }

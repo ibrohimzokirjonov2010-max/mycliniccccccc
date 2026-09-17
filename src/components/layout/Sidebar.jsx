@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, CalendarDays, UserPlus, CreditCard,
+  LayoutDashboard, Users, CalendarDays, CalendarClock, UserPlus, CreditCard,
   Stethoscope, Package, BarChart3, ClipboardList, Bell, AlertTriangle,
   Activity, Wallet, Settings, ChevronLeft, ChevronRight, Zap, TrendingDown,
   LogOut, Heart, Target, Camera
@@ -21,22 +21,25 @@ import ShifoCrmLogo from '@/components/ui/ShifoCrmLogo';
  * Each item defines a route with its label and icon
  */
 const getMenuItems = (t) => [
-  { path: '/', label: t('navigation.dashboard'), icon: LayoutDashboard },
+  // Clinical primary (dentist-first)
+  { path: '/chairside', label: t('navigation.chairsideToday') || "Bugungi navbat", icon: CalendarClock },
   { path: '/patients', label: t('navigation.patients'), icon: Users },
   { path: '/appointments', label: t('navigation.appointments'), icon: CalendarDays },
-  { path: '/leads', label: t('navigation.leads'), icon: UserPlus },
+  { path: '/treatment-plans', label: t('navigation.treatmentPlans'), icon: ClipboardList },
+  { path: '/implants', label: t('navigation.implants'), icon: ImplantIcon },
   { path: '/payments', label: t('navigation.payments'), icon: CreditCard },
+  { path: '/debts', label: t('navigation.debts'), icon: Wallet },
+  // Secondary / ops
+  { path: '/', label: t('navigation.dashboard'), icon: LayoutDashboard },
+  { path: '/leads', label: t('navigation.leads'), icon: UserPlus },
   { path: '/expenses', label: t('navigation.expenses'), icon: TrendingDown },
   { path: '/payroll', label: t('navigation.payroll'), icon: Wallet },
   { path: '/services', label: t('navigation.services'), icon: Stethoscope },
   { path: '/inventory', label: t('navigation.inventory'), icon: Package },
   { path: '/reports', label: t('navigation.reports'), icon: BarChart3 },
-  { path: '/treatment-plans', label: t('navigation.treatmentPlans'), icon: ClipboardList },
   { path: '/recall', label: t('navigation.recalls'), icon: Bell },
   { path: '/no-show', label: t('navigation.noShow'), icon: AlertTriangle },
   { path: '/treatment-tracking', label: t('navigation.treatmentTracking'), icon: Activity },
-  { path: '/debts', label: t('navigation.debts'), icon: Wallet },
-  { path: '/implants', label: t('navigation.implants'), icon: ImplantIcon },
   { path: '/marketing', label: t('navigation.marketing'), icon: Target },
   { path: '/cases', label: t('navigation.cases') || 'Mening Keyslarim', icon: Camera },
   { path: '/settings', label: t('navigation.settings'), icon: Settings },
@@ -95,24 +98,25 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
     let items = getMenuItems(t);
     
     if (!user || user.role === undefined) {
-      return items.filter(item => ['/', '/patients', '/appointments'].includes(item.path));
+      return items.filter(item => ['/chairside', '/', '/patients', '/appointments'].includes(item.path));
     }
 
     if (isDoctor) {
       // Doktor uchun barcha 12 bo'lim ochiq — faqat o'z ma'lumotlari ko'rinadi (sahifalar ichida filtrlangan)
       const doctorAllowedPaths = [
-        '/',                    // 1. Boshqaruv paneli
+        '/chairside',           // 1. Bugungi navbat (chairside)
         '/patients',            // 2. Bemorlar
         '/appointments',        // 3. Uchrashuvlar
-        '/leads',               // 4. Lidlar
-        '/payments',            // 5. To'lovlar
-        '/treatment-plans',     // 6. Davolash rejalari
-        '/recall',              // 7. Eslashmalar
-        '/no-show',             // 8. Kelgan emas
-        '/treatment-tracking',  // 9. Davolash kuzatuvi
-        '/debts',               // 10. Qarzlar
-        '/implants',            // 11. Implantlar
-        '/cases',               // 12. Mening keyslarim
+        '/treatment-plans',     // 4. Davolash rejalari
+        '/implants',            // 5. Implantlar
+        '/payments',            // 6. To'lovlar
+        '/debts',               // 7. Qarzlar
+        '/',                    // 8. Boshqaruv paneli
+        '/leads',               // 9. Lidlar (secondary)
+        '/recall',
+        '/no-show',
+        '/treatment-tracking',
+        '/cases',
         '/settings',
       ];
       return items.filter(item => doctorAllowedPaths.includes(item.path));

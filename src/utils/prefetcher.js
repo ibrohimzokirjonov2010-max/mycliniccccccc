@@ -30,6 +30,11 @@ export const prefetchModuleData = (path) => {
         staleTime: 60000
       });
       break;
+    case '/chairside':
+    case '/today':
+      base44.entities.Appointment.list('-date', 50);
+      base44.entities.Patient.list('full_name', 50);
+      break;
     case '/appointments':
       base44.entities.Appointment.list('-date', 50);
       base44.entities.Patient.list('full_name', 50);
