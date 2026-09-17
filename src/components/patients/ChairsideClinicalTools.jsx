@@ -27,8 +27,18 @@ export default function ChairsideClinicalTools({
   onPatientUpdated,
   language = 'uz',
   compact = false,
+  /** When true (default), sticky Tashxis/RVG/Rozilik tabs keep clinical tools above-fold during visit. */
+  tabbed = true,
+  activeTab: controlledTab = null,
+  onTabChange,
 }) {
   const patientId = patient?.id;
+  const [internalTab, setInternalTab] = useState('tashxis');
+  const activeTab = controlledTab || internalTab;
+  const setActiveTab = (tab) => {
+    if (onTabChange) onTabChange(tab);
+    else setInternalTab(tab);
+  };
   const [clinical, setClinical] = useState(() => parseClinicalChart(patient?.notes));
   const [consent, setConsent] = useState(() => parseConsent(patient?.notes));
   const [form, setForm] = useState({
@@ -195,10 +205,56 @@ export default function ChairsideClinicalTools({
     given: language === 'ru' ? 'Пациент дал согласие' : 'Bemor rozilik berdi',
   };
 
+  const tabs = [
+    { id: 'tashxis', label: language === 'ru' ? 'Диагноз' : 'Tashxis', icon: Activity },
+    { id: 'rvg', label: 'RVG', icon: ImageIcon },
+    { id: 'rozilik', label: language === 'ru' ? 'Согласие' : 'Rozilik', icon: FileText },
+  ];
+
+  const showAll = !tabbed;
+  const showTashxis = showAll || activeTab === 'tashxis';
+  const showRvg = showAll || activeTab === 'rvg';
+  const showRozilik = showAll || activeTab === 'rozilik';
+
   return (
-    <div className={cn('grid gap-3.5', compact ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-3')}>
+    <div id="chairside-clinical-tools" className="space-y-2.5 scroll-mt-24">
+      {tabbed && (
+        <div className="sticky top-[64px] z-[35] bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-2xl shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-1.5 flex flex-wrap gap-1">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+                className={cn(
+                  'flex-1 min-w-[96px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wide transition-all cursor-pointer',
+                  isActive
+                    ? 'bg-teal-600 text-white shadow-sm'
+                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-transparent'
+                )}
+              >
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+    <div className={cn('grid gap-3.5', compact || tabbed ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-3')}>
       {/* A) Structured clinical note */}
-      <section className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 space-y-3">
+      <section
+        id="chairside-clinical-tashxis"
+        className={cn(
+          'bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 space-y-3 scroll-mt-36',
+          !showTashxis && 'hidden'
+        )}
+      >
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center">
             <Activity className="w-4 h-4" style={{ color: TEAL }} />
@@ -307,7 +363,13 @@ export default function ChairsideClinicalTools({
       </section>
 
       {/* B) X-ray / RVG gallery */}
-      <section className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 space-y-3">
+      <section
+        id="chairside-clinical-rvg"
+        className={cn(
+          'bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 space-y-3 scroll-mt-36',
+          !showRvg && 'hidden'
+        )}
+      >
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0">
@@ -360,7 +422,13 @@ export default function ChairsideClinicalTools({
       </section>
 
       {/* C) Consent */}
-      <section className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 space-y-3">
+      <section
+        id="chairside-clinical-rozilik"
+        className={cn(
+          'bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 space-y-3 scroll-mt-36',
+          !showRozilik && 'hidden'
+        )}
+      >
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center">
             <FileText className="w-4 h-4" style={{ color: TEAL }} />
@@ -449,6 +517,7 @@ export default function ChairsideClinicalTools({
           )}
         </div>
       )}
+    </div>
     </div>
   );
 }

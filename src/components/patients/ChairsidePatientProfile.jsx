@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ArrowLeft, Phone, Calendar, Plus, Info, Camera, Copy, Mail, Wallet, AlertTriangle
 } from 'lucide-react';
@@ -138,6 +138,22 @@ export default function ChairsidePatientProfile({
 
     return steps.slice(0, 3);
   }, [appointments, plans]);
+
+  const [clinicalTab, setClinicalTab] = useState('tashxis');
+
+  const planRemainingTotal = useMemo(() => {
+    return (plans || []).reduce((sum, p) => {
+      const st = (p.status || '').toLowerCase();
+      if (st === 'cancelled' || st === 'canceled') return sum;
+      const rem = Math.max(0, (Number(p.total_price) || 0) - (Number(p.paid_amount) || 0));
+      return sum + rem;
+    }, 0);
+  }, [plans]);
+
+  const activeStep = useMemo(
+    () => (todaySteps || []).find((s) => s.state === 'active') || (todaySteps || []).find((s) => s.state === 'pending') || null,
+    [todaySteps]
+  );
 
   const genderLabel = patient?.gender === 'Female' || patient?.gender === 'female' || patient?.gender === 'Ayol'
     ? 'Ayol'
@@ -334,6 +350,32 @@ export default function ChairsidePatientProfile({
           </div>
 
           <div className="flex-1 min-w-0 w-full flex flex-col gap-3.5">
+            <ChairsideClinicalTools
+              patient={patient}
+              selectedTooth={selectedTooth?.fdi || selectedTooth?.id || selectedTooth}
+              onPatientUpdated={onPatientUpdated}
+              language={language}
+              tabbed
+              activeTab={clinicalTab}
+              onTabChange={setClinicalTab}
+            />
+
+            <TodayPlanBar
+              steps={todaySteps}
+              totalDebt={totalDebt}
+              planRemaining={planRemainingTotal}
+              activeStep={activeStep}
+              onPay={onPay}
+              onNextClinical={() => {
+                setClinicalTab('tashxis');
+                document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (activeStep?.tooth && typeof onSelectTooth === 'function') {
+                  onSelectTooth({ fdi: String(activeStep.tooth), id: String(activeStep.tooth) });
+                }
+              }}
+              onOpenPlan={onNewPlan}
+            />
+
             <div className="flex flex-col xl:flex-row gap-3.5 items-start">
           <div className="flex-1 min-w-0 w-full">
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] overflow-visible">
@@ -431,18 +473,6 @@ export default function ChairsidePatientProfile({
           )}
             </div>
 
-        <TodayPlanBar
-          steps={todaySteps}
-          totalDebt={totalDebt}
-          onPay={onPay}
-        />
-
-        <ChairsideClinicalTools
-          patient={patient}
-          selectedTooth={selectedTooth}
-          onPatientUpdated={onPatientUpdated}
-          language={language}
-        />
           </div>
         </div>
       </div>
