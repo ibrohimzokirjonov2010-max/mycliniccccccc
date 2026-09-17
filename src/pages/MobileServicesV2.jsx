@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -115,6 +116,12 @@ const getCategoryStyle = (cat) => {
 
 export default function MobileServicesV2() {
   const { t } = useTranslation();
+  const { isAdmin, isDoctor } = useAuth();
+  // Doctors get a clinical price book by default. Admins can toggle catalog management.
+  const [manageMode, setManageMode] = useState(false);
+  const showAdminChrome = Boolean(isAdmin && manageMode);
+  const isDoctorCatalog = Boolean(isDoctor && !isAdmin);
+
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -123,6 +130,11 @@ export default function MobileServicesV2() {
   const [editService, setEditService] = useState(null);
   const [saving, setSaving] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
+
+  useEffect(() => {
+    if (!showAdminChrome && isReordering) setIsReordering(false);
+  }, [showAdminChrome, isReordering]);
+
   const [categoryOrder, setCategoryOrder] = useState([]);
   
   const [catEditOpen, setCatEditOpen] = useState(false);
@@ -227,36 +239,63 @@ export default function MobileServicesV2() {
   };
 
   return (
-    <div className="pb-24 pt-4 px-4 bg-[#F8FAFC] min-h-screen">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-1">{t('services.title')}</h1>
-          <p className="text-emerald-600 font-bold text-[9px] uppercase tracking-wider">{t('services.subtitle')}</p>
+    <div className="pb-24 pt-4 px-4 bg-[#F8FAFC] min-h-screen" data-catalog={isDoctorCatalog ? "doctor" : (showAdminChrome ? "admin" : "catalog")}>
+      {/* Header — clinical price catalog */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-1">Xizmatlar</h1>
+          <p className="text-emerald-600 font-bold text-[9px] uppercase tracking-wider">
+            {showAdminChrome ? 'Katalog boshqaruvi' : 'NARXLAR KATALOGI'}
+          </p>
         </div>
-        <button 
-          onClick={() => { setEditService(null); setModalOpen(true); }}
-          className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl flex items-center justify-center shadow-md shadow-emerald-500/20 active:scale-90 transition-all cursor-pointer"
-        >
-          <Plus className="w-5 h-5 stroke-[2.5]" />
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setManageMode(v => !v)}
+              className={cn(
+                "h-9 px-3 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all active:scale-95",
+                manageMode
+                  ? "bg-slate-800 border-slate-800 text-white shadow-md"
+                  : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+              )}
+              title="Katalogni boshqarish"
+            >
+              {manageMode ? 'Tayyor' : 'Boshqarish'}
+            </button>
+          )}
+          {showAdminChrome && (
+            <button
+              type="button"
+              onClick={() => { setEditService(null); setModalOpen(true); }}
+              className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl flex items-center justify-center shadow-md shadow-emerald-500/20 active:scale-90 transition-all cursor-pointer"
+            >
+              <Plus className="w-5 h-5 stroke-[2.5]" />
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* Sticky search + category chips */}
+      <div className="sticky top-0 z-20 -mx-4 px-4 pt-1 pb-3 mb-3 bg-[#F8FAFC]/95 backdrop-blur-md border-b border-slate-100/80">
       {/* Categories Bar */}
-      <div className="mb-4">
+      <div className="mb-3">
         <div className="flex items-center justify-between mb-2.5 px-1">
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('services.sidebar.categories')}</span>
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Kategoriyalar</span>
+          {showAdminChrome && (
           <button 
+            type="button"
             onClick={() => setIsReordering(!isReordering)}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider transition-all border",
               isReordering 
                 ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-100" 
-                : "bg-emerald-50/70 border-emerald-100/50 text-emerald-650 hover:bg-emerald-100/40"
+                : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200/70"
             )}
           >
             {isReordering ? <><Check className="w-3 h-3 stroke-[2.5]" /> SAQLASH</> : <><Settings2 className="w-3 h-3" /> JOYINI O'ZGARTIRISH</>}
           </button>
+          )}
         </div>
 
         <div className="flex gap-2.5 overflow-x-auto overscroll-x-contain pb-3 -mx-4 px-4 no-scrollbar items-center snap-x snap-mandatory" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -327,7 +366,7 @@ export default function MobileServicesV2() {
       </div>
 
       {/* Search Input */}
-      <div className="relative mb-4">
+      <div className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <Input 
           placeholder={t('services.sidebar.search')}
@@ -337,6 +376,7 @@ export default function MobileServicesV2() {
         />
         {search && (
           <button 
+            type="button"
             onClick={() => setSearch('')}
             className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-650 transition-colors border-none"
           >
@@ -344,6 +384,7 @@ export default function MobileServicesV2() {
           </button>
         )}
       </div>
+      </div>{/* end sticky search+chips */}
 
       {/* Services List Grouped */}
       <div className="space-y-4">
@@ -371,40 +412,45 @@ export default function MobileServicesV2() {
                       className="p-3 px-3.5 flex items-center justify-between hover:bg-slate-50/40 active:bg-slate-50/70 transition-colors group"
                     >
                       <div className="flex-1 min-w-0 pr-2">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-slate-800 text-[13px] leading-snug truncate">{s.name}</h4>
+                        <div className="flex items-start gap-2">
+                          <h4 className="font-bold text-slate-900 text-[13.5px] leading-snug tracking-tight">{s.name}</h4>
                           {!s.is_active && (
-                            <span className="text-[8px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-widest">Faol emas</span>
+                            <span className="shrink-0 text-[8px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-widest">Faol emas</span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="font-extrabold text-emerald-600 text-xs">{Number(s.price).toLocaleString()} so'm</span>
-                          <span className="w-0.5 h-0.5 rounded-full bg-slate-350" />
-                          <span className="flex items-center gap-1 text-[9px] font-medium text-slate-400">
-                            <Clock className="w-3 h-3 text-slate-400" /> {s.duration} min
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5">
+                          <span className="font-black text-emerald-700 text-[17px] leading-none font-mono tabular-nums tracking-tight">
+                            {Number(s.price).toLocaleString('uz-UZ')}
+                            <span className="ml-1 text-[10px] font-bold text-emerald-600/80 tracking-wider">so'm</span>
+                          </span>
+                          <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-400">
+                            <Clock className="w-3 h-3 text-slate-400" /> {s.duration || 30} min
                           </span>
                           {s.requires_tooth && (
-                            <>
-                              <span className="w-0.5 h-0.5 rounded-full bg-slate-350" />
-                              <span className="text-[8px] bg-emerald-50 text-emerald-600 border border-emerald-100/50 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Tish raqami</span>
-                            </>
+                            <span className="text-[8px] bg-slate-800 text-white px-1.5 py-0.5 rounded-md font-black uppercase tracking-wider shadow-sm">
+                              TISH RAQAMI
+                            </span>
                           )}
                         </div>
                       </div>
+                      {showAdminChrome && (
                       <div className="flex items-center gap-0.5 shrink-0">
                         <button 
+                          type="button"
                           onClick={() => { setEditService(s); setModalOpen(true); }} 
                           className="p-1.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg active:scale-90 transition-all duration-200 cursor-pointer"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button 
+                          type="button"
                           onClick={() => handleDelete(s.id)} 
                           className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg active:scale-90 transition-all duration-200 cursor-pointer"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
+                      )}
                     </motion.div>
                   ))}
                 </AnimatePresence>
