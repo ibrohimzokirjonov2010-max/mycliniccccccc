@@ -288,29 +288,126 @@ export default function TreatmentTracking() {
     }
   }, [sortedPlans]);
 
-  return (
-    <div className="space-y-3.5 pb-4">
-      {/* ─── Excel Header Bar ────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('treatmentTracking.title') || "Davolash Kuzatuvi"}</h1>
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
-              {language === 'ru' ? `• МОНИТОРИНГ ИСПОЛНЕНИЯ: ${plans.length} ПЛАНОВ` : language === 'en' ? `• EXECUTION MONITORING: ${plans.length} PLANS` : `• Ijro Monitoringi & Jarayonlar ${plans.length} Rejalar`}
-            </span>
-          </div>
-          <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
-            {t('treatmentTracking.subtitle') || (language === 'ru' ? 'Мониторинг исполнения процедур, выполнение услуг и анализ клинической эффективности' : 'Muolajalar ijrosi monitoringi, xizmatlar bajarilishi va klinik samaradorlik tahlili')}
-          </p>
-        </div>
+  const statusMeta = (st) => {
+    if (st === 'completed') {
+      return {
+        label: language === 'ru' ? 'Завершено' : language === 'en' ? 'Completed' : 'Yakunlangan',
+        pill: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        bar: 'bg-emerald-500',
+        accent: 'bg-emerald-500',
+      };
+    }
+    if (st === 'in_progress') {
+      return {
+        label: language === 'ru' ? 'В процессе' : language === 'en' ? 'In Progress' : 'Jarayonda',
+        pill: 'bg-amber-50 text-amber-700 border-amber-200',
+        bar: 'bg-amber-500',
+        accent: 'bg-amber-500',
+      };
+    }
+    return {
+      label: language === 'ru' ? 'Запланировано' : language === 'en' ? 'Planned' : 'Rejalashtirilgan',
+      pill: 'bg-blue-50 text-blue-700 border-blue-200',
+      bar: 'bg-blue-600',
+      accent: 'bg-[#1499AD]',
+    };
+  };
 
-        <div className="flex items-center gap-2">
-          
+  const planDisplayName = (name) => {
+    if (language === 'ru') return (name || '').replace(/Davolash rejasi/gi, 'План лечения');
+    if (language === 'en') return (name || '').replace(/Davolash rejasi/gi, 'Treatment plan');
+    return name;
+  };
+
+  const getInitials = (name) => {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    return parts.slice(0, 2).map(p => p[0]?.toUpperCase() || '').join('');
+  };
+
+  return (
+    <div className="space-y-3 pb-6 md:space-y-3.5 md:pb-4">
+      {/* ─── Compact Header ────────────────────────────────────────── */}
+      <div className="bg-white p-3 md:p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tight">
+                {t('treatmentTracking.title') || "Davolash Kuzatuvi"}
+              </h1>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black tabular-nums bg-slate-100 text-slate-600 border border-slate-200/80">
+                {language === 'ru' ? `Всего ${plans.length}` : language === 'en' ? `Total ${plans.length}` : `Jami ${plans.length}`}
+              </span>
+            </div>
+            <p className="text-[11px] font-semibold text-slate-400 mt-0.5 line-clamp-1 md:line-clamp-none">
+              {t('treatmentTracking.subtitle') || (language === 'ru'
+                ? 'Мониторинг исполнения процедур и клинической эффективности'
+                : 'Muolajalar ijrosi va klinik samaradorlik monitoringi')}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* ─── Top Executive KPI Grid ─────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      {/* ─── KPI: mobile 2×2 (no Jami) · desktop 5-col ─────────────── */}
+      <div className="grid grid-cols-2 gap-2 md:hidden">
+        {[
+          {
+            label: language === 'ru' ? "В ПРОЦЕССЕ" : language === 'en' ? "IN PROGRESS" : "JARAYONDA",
+            value: inProgress,
+            icon: Clock,
+            color: "text-amber-600",
+            bg: "bg-amber-50 border-amber-100",
+            isPercent: false,
+          },
+          {
+            label: language === 'ru' ? "ЗАПЛАНИРОВАНО" : language === 'en' ? "PLANNED" : "REJALASHTIRILGAN",
+            value: planned,
+            icon: Layers,
+            color: "text-blue-600",
+            bg: "bg-blue-50 border-blue-100",
+            isPercent: false,
+          },
+          {
+            label: language === 'ru' ? "ЗАВЕРШЕНО" : language === 'en' ? "COMPLETED" : "YAKUNLANGAN",
+            value: completed,
+            icon: CheckCircle2,
+            color: "text-emerald-600",
+            bg: "bg-emerald-50 border-emerald-100",
+            isPercent: false,
+          },
+          {
+            label: language === 'ru' ? "ЭФФЕКТИВНОСТЬ" : language === 'en' ? "EFFICIENCY" : "SAMARADORLIK",
+            value: overallEfficiency,
+            icon: TrendingUp,
+            color: "text-indigo-600",
+            bg: "bg-indigo-50 border-indigo-100",
+            isPercent: true,
+          },
+        ].map((s) => (
+          <div
+            key={s.label}
+            className="bg-white border border-slate-100 rounded-2xl p-3 shadow-sm flex items-center justify-between gap-2 min-h-[68px]"
+          >
+            <div className="min-w-0">
+              <span className="text-[8px] font-black uppercase tracking-wider text-slate-400 block mb-1 leading-none">
+                {s.label}
+              </span>
+              <div className="text-base font-black font-mono tracking-tight text-slate-900 tabular-nums leading-none">
+                {s.isPercent ? (
+                <span>{s.value}%</span>
+              ) : (
+                <span>{s.value}{language !== 'ru' && <span className="text-[10px] font-bold text-slate-400 ml-0.5">ta</span>}</span>
+              )}
+              </div>
+            </div>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center border shadow-xs shrink-0 ${s.bg}`}>
+              <s.icon className={`w-4 h-4 ${s.color}`} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden md:grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
           { 
             label: language === 'ru' ? "ВСЕГО ПЛАНОВ" : language === 'en' ? "TOTAL PLANS" : "JAMI REJALAR", 
@@ -319,7 +416,7 @@ export default function TreatmentTracking() {
             color: "text-slate-700", 
             bg: "bg-slate-50 border-slate-200", 
             countText: language === 'ru' ? "Все отслеживаемые планы" : language === 'en' ? "All tracked plans" : "Barcha kuzatilayotgan rejalar", 
-            isNumber: true 
+            isPercent: false
           },
           { 
             label: language === 'ru' ? "В ПРОЦЕССЕ" : language === 'en' ? "IN PROGRESS" : "JARAYONDA", 
@@ -328,7 +425,7 @@ export default function TreatmentTracking() {
             color: "text-amber-600", 
             bg: "bg-amber-50 border-amber-100", 
             countText: language === 'ru' ? "Выполняются сейчас" : language === 'en' ? "Currently in progress" : "Ayni paytda qilinayotgan", 
-            isNumber: true 
+            isPercent: false
           },
           { 
             label: language === 'ru' ? "ЗАПЛАНИРОВАНО" : language === 'en' ? "PLANNED" : "REJALASHTIRILGAN", 
@@ -337,7 +434,7 @@ export default function TreatmentTracking() {
             color: "text-blue-600", 
             bg: "bg-blue-50 border-blue-100", 
             countText: language === 'ru' ? "Очередные этапы" : language === 'en' ? "Upcoming stages" : "Kutilayotgan navbatlar", 
-            isNumber: true 
+            isPercent: false
           },
           { 
             label: language === 'ru' ? "ЗАВЕРШЕНО" : language === 'en' ? "COMPLETED" : "YAKUNLANGAN", 
@@ -346,7 +443,7 @@ export default function TreatmentTracking() {
             color: "text-emerald-600", 
             bg: "bg-emerald-50 border-emerald-100", 
             countText: language === 'ru' ? "Полностью выполненные планы" : language === 'en' ? "Fully completed plans" : "To'liq bajarilgan rejalar", 
-            isNumber: true 
+            isPercent: false
           },
           { 
             label: language === 'ru' ? "ЭФФЕКТИВНОСТЬ" : language === 'en' ? "EFFICIENCY" : "SAMARADORLIK", 
@@ -355,7 +452,6 @@ export default function TreatmentTracking() {
             color: "text-indigo-600", 
             bg: "bg-indigo-50 border-indigo-100", 
             countText: language === 'ru' ? "Показатель успешности клиники" : language === 'en' ? "Clinic success rate" : "Klinik muvaffaqiyat ko'rsatkichi", 
-            isNumber: false, 
             isPercent: true 
           },
         ].map((s, i) => (
@@ -387,71 +483,175 @@ export default function TreatmentTracking() {
         ))}
       </div>
 
-      {/* ─── Excel Spreadsheet Controls Bar ────────────────────────── */}
-      <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
-          
-          {/* Search Box */}
-          <div className="relative flex-1 group">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
-            <input 
-              type="text" 
-              placeholder={t('treatmentTracking.searchPlaceholder') || (language === 'ru' ? "Поиск по имени пациента, названию плана или врачу..." : "Bemor ismi, reja nomi yoki shifokor bo'yicha qidiruv...")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-9 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
-            />
-            {search && (
-              <button 
-                onClick={() => setSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Filter Tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
-            {[
-              { id: 'all', label: language === 'ru' ? "Все" : language === 'en' ? "All" : "Barchasi", count: total },
-              { id: 'in_progress', label: language === 'ru' ? "В процессе" : language === 'en' ? "In Progress" : "Jarayonda", count: inProgress },
-              { id: 'planned', label: language === 'ru' ? "Запланировано" : language === 'en' ? "Planned" : "Rejalashtirilgan", count: planned },
-              { id: 'completed', label: language === 'ru' ? "Завершено" : language === 'en' ? "Completed" : "Yakunlangan", count: completed },
-            ].map(tab => {
-              const isActive = activeStatusFilter === tab.id;
-              return (
+      {/* ─── Search + Filter chips (sticky on mobile) ──────────────── */}
+      <div className="sticky top-0 z-20 -mx-0.5 px-0.5 py-0.5 md:static md:p-0 bg-[#F4F6F9]/95 md:bg-transparent backdrop-blur-sm md:backdrop-blur-none">
+        <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs space-y-2.5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+            <div className="relative flex-1 group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
+              <input
+                type="text"
+                placeholder={t('treatmentTracking.searchPlaceholder') || (language === 'ru' ? "Поиск по имени пациента, названию плана или врачу..." : "Bemor ismi, reja nomi yoki shifokor bo'yicha qidiruv...")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full h-10 md:h-9 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
+              />
+              {search && (
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveStatusFilter(tab.id)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
-                    isActive 
-                      ? "bg-slate-900 text-white shadow-xs font-black" 
-                      : "bg-slate-100/70 text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
-                  )}
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
                 >
-                  <span>{tab.label}</span>
-                  <span className={cn(
-                    "px-1.5 py-0.2 rounded-full text-[9px] font-black",
-                    isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
-                  )}>
-                    {tab.count}
-                  </span>
+                  <X className="w-3.5 h-3.5" />
                 </button>
-              );
-            })}
-          </div>
+              )}
+            </div>
 
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 lg:pb-0 scrollbar-none no-scrollbar">
+              {[
+                { id: 'all', label: language === 'ru' ? "Все" : language === 'en' ? "All" : "Barchasi", count: total },
+                { id: 'in_progress', label: language === 'ru' ? "В процессе" : language === 'en' ? "In Progress" : "Jarayonda", count: inProgress },
+                { id: 'planned', label: language === 'ru' ? "Запланировано" : language === 'en' ? "Planned" : "Rejalashtirilgan", count: planned },
+                { id: 'completed', label: language === 'ru' ? "Завершено" : language === 'en' ? "Completed" : "Yakunlangan", count: completed },
+              ].map(tab => {
+                const isActive = activeStatusFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveStatusFilter(tab.id)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-xl md:rounded-lg text-[10px] md:text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+                      isActive
+                        ? "bg-slate-900 text-white shadow-xs font-black"
+                        : "bg-slate-100/70 text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                    )}
+                  >
+                    <span>{tab.label}</span>
+                    <span className={cn(
+                      "px-1.5 py-0.5 rounded-full text-[9px] font-black",
+                      isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
+                    )}>
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ─── Main Excel Spreadsheet Data Grid Table ──────────────────── */}
-      {/* Columns: № | BEMOR (F.I.SH) | REJA NOMI | TISHLAR | IJRO HOLATI / PROGRESS | QIYMATI | STATUS | AMALLAR */}
+      {/* ─── Mobile clinical cards ─────────────────────────────────── */}
+      <div className="md:hidden space-y-2.5 relative">
+        {loading && (
+          <div className="absolute inset-x-0 top-0 h-0.5 bg-slate-100 overflow-hidden z-20 rounded-full">
+            <motion.div
+              className="h-full bg-gradient-to-r from-[#1499AD] to-[#0E7A8A]"
+              animate={{ x: ['-100%', '100%'] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+            />
+          </div>
+        )}
+
+        {loading ? (
+          [1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-[108px] bg-white rounded-2xl animate-pulse border border-slate-100" />
+          ))
+        ) : sortedPlans.length > 0 ? (
+          sortedPlans.map((p, idx) => {
+            const st = normalizeStatus(p.status);
+            const meta = statusMeta(st);
+            const srv = p.services || [];
+            const doneSrv = srv.filter(s => s.completed).length;
+            const totalSrv = srv.length;
+            const pct = totalSrv > 0 ? Math.round((doneSrv / totalSrv) * 100) : 0;
+            const initials = getInitials(p.patient_name);
+
+            return (
+              <motion.button
+                type="button"
+                key={p.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(idx * 0.02, 0.2) }}
+                onClick={() => setSelectedDetailPlanId(p.id)}
+                className="w-full text-left bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm relative overflow-hidden active:scale-[0.99] transition-all"
+              >
+                <div className={`absolute top-0 left-0 w-1.5 h-full ${meta.accent}`} />
+
+                <div className="flex gap-3 pl-1">
+                  <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+                    <span className="text-[11px] font-black text-slate-500 tracking-tight">{initials}</span>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3 className="text-sm font-black text-slate-900 leading-tight truncate">
+                        {p.patient_name || "Noma'lum bemor"}
+                      </h3>
+                      <span className={cn(
+                        "shrink-0 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border",
+                        meta.pill
+                      )}>
+                        {meta.label}
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] font-bold text-slate-600 truncate mb-0.5">
+                      {planDisplayName(p.name) || 'Davolash rejasi'}
+                    </p>
+
+                    {p.doctor_name && (
+                      <p className="text-[10px] font-semibold text-slate-400 truncate mb-2">
+                        {language === 'ru' ? 'Врач: ' : 'Shifokor: '}{p.doctor_name}
+                      </p>
+                    )}
+
+                    {totalSrv > 0 && (
+                      <div className="space-y-1 pt-1 border-t border-slate-50">
+                        <div className="flex items-center justify-between text-[10px] font-bold">
+                          <span className="text-slate-500">{doneSrv}/{totalSrv} {language === 'ru' ? 'услуг' : 'xizmat'}</span>
+                          <span className="font-mono text-slate-700 tabular-nums">{pct}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full rounded-full transition-all duration-500",
+                              pct === 100 ? "bg-emerald-500" : pct > 0 ? meta.bar : "bg-slate-300"
+                            )}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.button>
+            );
+          })
+        ) : (
+          <div className="text-center py-14 bg-white rounded-2xl border border-slate-100 px-6">
+            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 mx-auto mb-3">
+              <Target className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-bold text-slate-500">
+              {search ? `"${search}" bo'yicha davolash rejasi topilmadi` : "Kuzatuv ostida davolash rejalari mavjud emas"}
+            </p>
+            {(search || activeStatusFilter !== 'all') && (
+              <button
+                onClick={() => { setSearch(''); setActiveStatusFilter('all'); }}
+                className="mt-3 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all"
+              >
+                Filtrlarni tozalash
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden relative"
+        className="hidden md:block bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden relative"
       >
         {loading && (
           <div className="absolute inset-x-0 top-0 h-0.5 bg-slate-100 overflow-hidden z-20">
