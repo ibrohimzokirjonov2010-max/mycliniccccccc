@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { useAuth } from '@/lib/AuthContext';
 import PatientSelect from '@/components/patients/PatientSelect';
 import ProfessionalOdontogram from '@/components/patients/ProfessionalOdontogram';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -35,6 +36,7 @@ const statusConfig = {
 
 export default function Technicians() {
   const { t } = useTranslation();
+  const { isDoctor, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState("jobs");
   const [jobs, setJobs] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -42,6 +44,8 @@ export default function Technicians() {
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState(() => (isDoctor && !isAdmin ? 'active' : 'all'));
+  const [expandedJobId, setExpandedJobId] = useState(null);
   const [smsModal, setSmsModal] = useState({ open: false, job: null });
   const [smsSending, setSmsSending] = useState(false);
   
@@ -173,289 +177,356 @@ export default function Technicians() {
     }
   };
 
-  const filteredJobs = jobs.filter(j => 
-    j.patient_name?.toLowerCase().includes(search.toLowerCase()) ||
-    j.work_type?.toLowerCase().includes(search.toLowerCase())
-  );
+  const ACTIVE_STATUSES = ['Sent', 'In Progress', 'Received'];
 
-  const stats = {
-    active: jobs.filter(j => j.status !== 'Completed').length,
-    today: jobs.filter(j => j.deadline === new Date().toISOString().split('T')[0]).length,
-    cost: jobs.reduce((s, j) => s + (j.cost || 0), 0)
+  const statusCounts = {
+    all: jobs.length,
+    active: jobs.filter(j => ACTIVE_STATUSES.includes(j.status)).length,
+    Sent: jobs.filter(j => j.status === 'Sent').length,
+    'In Progress': jobs.filter(j => j.status === 'In Progress').length,
+    Received: jobs.filter(j => j.status === 'Received').length,
+    Completed: jobs.filter(j => j.status === 'Completed').length,
   };
 
+  const filteredJobs = jobs.filter(j => {
+    const q = search.toLowerCase().trim();
+    const matchesSearch = !q ||
+      j.patient_name?.toLowerCase().includes(q) ||
+      j.work_type?.toLowerCase().includes(q) ||
+      j.construction_type?.toLowerCase().includes(q) ||
+      j.technician_name?.toLowerCase().includes(q) ||
+      String(j.tooth_number || '').includes(q);
+    if (!matchesSearch) return false;
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'active') return ACTIVE_STATUSES.includes(j.status);
+    return j.status === statusFilter;
+  });
+
+  const statusChips = [
+    { key: 'all', label: 'Barchasi', count: statusCounts.all },
+    { key: 'Sent', label: statusConfig.Sent.label, count: statusCounts.Sent },
+    { key: 'In Progress', label: statusConfig['In Progress'].label, count: statusCounts['In Progress'] },
+    { key: 'Received', label: statusConfig.Received.label, count: statusCounts.Received },
+    { key: 'Completed', label: statusConfig.Completed.label, count: statusCounts.Completed },
+  ];
+
   return (
-    <div className="space-y-3 sm:space-y-6 pb-24 sm:pb-20 max-w-7xl mx-auto px-3 sm:px-0">
-      {/* Header - Mobile Compact */}
-      <div className="flex items-center justify-between bg-white px-4 py-3 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-slate-100 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 sm:w-14 sm:h-14 bg-indigo-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
-            <Wrench className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">{t('technicians.title')}</h1>
-            <p className="text-slate-400 text-[10px] sm:text-sm font-bold uppercase tracking-widest hidden sm:block">{t('technicians.subtitle')}</p>
-          </div>
+    <div className="min-h-screen bg-[#F4F6F9] md:bg-transparent space-y-3 md:space-y-5 pb-24 md:pb-20 max-w-7xl mx-auto px-3 md:px-0">
+      {/* Compact clinical header */}
+      <div className="flex items-center justify-between gap-3 pt-1 md:pt-0">
+        <div className="min-w-0">
+          <h1 className="text-[22px] md:text-2xl font-black text-slate-900 tracking-tight leading-none">
+            Laboratoriya
+          </h1>
+          <p className="text-[12px] md:text-sm font-semibold text-slate-500 mt-1">
+            Lab buyurtmalari
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          {activeTab === "jobs" ? (
-            <button onClick={() => setJobModalOpen(true)} className="h-10 sm:h-12 px-4 sm:px-6 rounded-xl sm:rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm flex items-center gap-2 active:scale-95 transition-all shadow-lg shadow-indigo-100">
-              <Plus className="w-4 h-4" /> <span className="hidden sm:inline">{t('technicians.newOrder').split(' ')[0]} </span>{t('technicians.newOrder').split(' ')[1] || t('technicians.newOrder')}
+        <div className="flex items-center gap-2 shrink-0">
+          {activeTab === 'jobs' ? (
+            <button
+              type="button"
+              onClick={() => setJobModalOpen(true)}
+              className="h-10 md:h-11 px-3.5 md:px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center gap-1.5 active:scale-95 transition-all shadow-md shadow-emerald-600/20"
+            >
+              <Plus className="w-4 h-4" />
+              Buyurtma
             </button>
           ) : (
-            <button onClick={() => setTechModalOpen(true)} className="h-10 sm:h-12 px-4 sm:px-6 rounded-xl sm:rounded-2xl bg-slate-900 hover:bg-black text-white font-black text-xs sm:text-sm flex items-center gap-2 active:scale-95 transition-all">
-              <UserPlus className="w-4 h-4" /> <span className="hidden sm:inline">{t('technicians.addTech')} </span>
+            <button
+              type="button"
+              onClick={() => setTechModalOpen(true)}
+              className="h-10 md:h-11 px-3.5 md:px-5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm flex items-center gap-1.5 active:scale-95 transition-all"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span className="hidden sm:inline">Texnik</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Mobile Tab Bar */}
-      <div className="flex bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      {/* Soft tabs */}
+      <div className="flex items-center gap-1 p-1 bg-white rounded-xl border border-slate-200/80 shadow-sm">
         <button
+          type="button"
           onClick={() => setActiveTab('jobs')}
           className={cn(
-            'flex-1 py-3 font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2',
-            activeTab === 'jobs' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-50'
+            'flex-1 h-9 rounded-lg text-[13px] font-bold transition-all flex items-center justify-center gap-1.5',
+            activeTab === 'jobs'
+              ? 'bg-slate-900 text-white shadow-sm'
+              : 'text-slate-500 hover:bg-slate-50'
           )}
         >
-          <Briefcase className="w-4 h-4" /> {t('technicians.jobs')}
+          <Briefcase className="w-3.5 h-3.5" />
+          Ishlar
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('techs')}
           className={cn(
-            'flex-1 py-3 font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2',
-            activeTab === 'techs' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-50'
+            'h-9 rounded-lg text-[13px] font-semibold transition-all flex items-center justify-center gap-1.5',
+            isDoctor && !isAdmin ? 'px-3 flex-none opacity-80' : 'flex-1',
+            activeTab === 'techs'
+              ? 'bg-slate-800 text-white shadow-sm'
+              : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'
           )}
         >
-          <User className="w-4 h-4" /> {t('technicians.techs')}
+          <User className="w-3.5 h-3.5" />
+          Texniklar
         </button>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsContent value="jobs" className="space-y-3 sm:space-y-6">
-           {/* Stats & Search */}
-           <div className="flex gap-2">
-              <div className="relative group flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input 
-                  placeholder="Qidirish..." 
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="pl-10 h-11 sm:h-14 rounded-2xl sm:rounded-3xl border-slate-100 bg-white shadow-sm font-bold text-sm"
-                />
-              </div>
-              <div className="flex gap-2">
-                 <div className="h-11 sm:h-14 px-3 sm:px-6 flex items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-100">
-                    <p className="text-lg font-black text-indigo-600">{stats.active}</p>
-                    <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest ml-1.5 hidden sm:block">Aktiv</p>
-                 </div>
-                 <div className="h-11 sm:h-14 px-3 sm:px-6 flex items-center justify-center rounded-2xl bg-rose-50 border border-rose-100">
-                    <p className="text-lg font-black text-rose-600">{stats.today}</p>
-                    <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest ml-1.5 hidden sm:block">Bugun</p>
-                 </div>
-              </div>
-           </div>
+        <TabsContent value="jobs" className="space-y-3 mt-0">
+          {/* Status chips */}
+          <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-0.5 px-0.5 scrollbar-none">
+            {isDoctor && !isAdmin && (
+              <button
+                type="button"
+                onClick={() => setStatusFilter('active')}
+                className={cn(
+                  'shrink-0 h-8 px-3 rounded-full text-[12px] font-bold border transition-all flex items-center gap-1.5',
+                  statusFilter === 'active'
+                    ? 'bg-slate-900 text-white border-slate-900'
+                    : 'bg-white text-slate-500 border-slate-200'
+                )}
+              >
+                Faol
+                <span className={cn(
+                  'min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black flex items-center justify-center',
+                  statusFilter === 'active' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                )}>{statusCounts.active}</span>
+              </button>
+            )}
+            {statusChips.map(chip => (
+              <button
+                type="button"
+                key={chip.key}
+                onClick={() => setStatusFilter(chip.key)}
+                className={cn(
+                  'shrink-0 h-8 px-3 rounded-full text-[12px] font-bold border transition-all flex items-center gap-1.5',
+                  statusFilter === chip.key
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-600/20'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                )}
+              >
+                {chip.label}
+                <span className={cn(
+                  'min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black flex items-center justify-center',
+                  statusFilter === chip.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                )}>
+                  {chip.count}
+                </span>
+              </button>
+            ))}
+          </div>
 
-           {/* Jobs Grid */}
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6">
-              {loading ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-40 sm:h-48 bg-slate-100 rounded-3xl sm:rounded-[2.5rem] animate-pulse shadow-sm" />
-                ))
-              ) : filteredJobs.length === 0 ? (
-                <div className="col-span-2 flex flex-col items-center justify-center py-16 text-slate-300">
-                  <Briefcase className="w-16 h-16 mb-3" />
-                  <p className="font-black text-lg uppercase tracking-widest">Ishlar topilmadi</p>
-                  <p className="text-sm mt-1">Yangi buyurtma qo'shing</p>
+          {/* Sticky search */}
+          <div className="sticky top-0 z-20 -mx-0.5 px-0.5 py-0.5 md:static md:p-0 bg-[#F4F6F9]/95 md:bg-transparent backdrop-blur-sm md:backdrop-blur-none">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Bemor, tish, material..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-10 h-11 rounded-xl border-slate-200 bg-white shadow-sm font-medium text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 md:gap-4">
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-28 bg-white rounded-2xl border border-slate-100 animate-pulse" />
+              ))
+            ) : filteredJobs.length === 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-14 px-6 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
+                  <Wrench className="w-7 h-7" />
                 </div>
-              ) : filteredJobs.map(job => {
-                const cfg = statusConfig[job.status] || statusConfig.Draft;
-                return (
-                  <motion.div 
-                    layout
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    key={job.id} 
-                    className="bg-white rounded-3xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 shadow-sm active:shadow-md transition-all relative overflow-hidden"
+                <p className="text-slate-800 font-bold text-base text-center">Hali lab buyurtmasi yo‘q</p>
+                <p className="text-slate-500 text-sm text-center mt-1 max-w-xs">
+                  Chairside’dan yangi lab ishi oching — bemor, tish va material bilan.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setJobModalOpen(true)}
+                  className="mt-5 h-12 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center gap-2 active:scale-95 transition-all shadow-lg shadow-emerald-600/25"
+                >
+                  <Plus className="w-4 h-4" />
+                  Yangi buyurtma
+                </button>
+              </div>
+            ) : filteredJobs.map(job => {
+              const cfg = statusConfig[job.status] || statusConfig.Draft;
+              const StatusIcon = cfg.icon;
+              const expanded = expandedJobId === job.id;
+              return (
+                <motion.div
+                  layout
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  key={job.id}
+                  onClick={() => setExpandedJobId(expanded ? null : job.id)}
+                  className="bg-white rounded-2xl border border-slate-200/80 p-3.5 md:p-5 shadow-sm active:shadow-md transition-all cursor-pointer md:cursor-default"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2.5">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-slate-900 text-[15px] md:text-base leading-tight truncate">
+                        {job.patient_name || 'Bemor'}
+                      </h3>
+                      <p className="text-[12px] md:text-[13px] text-slate-600 font-medium mt-0.5 truncate">
+                        {[job.construction_type, job.work_type].filter(Boolean).join(' · ') || 'Ish turi belgilanmagan'}
+                        {job.shade ? ` · ${job.shade}` : ''}
+                      </p>
+                    </div>
+                    <div className={cn(
+                      'shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 border',
+                      cfg.color
+                    )}>
+                      <StatusIcon className="w-3 h-3" />
+                      {cfg.label}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] md:text-xs text-slate-500 font-medium mb-3">
+                    <span className="inline-flex items-center gap-1 text-slate-700 font-semibold">
+                      <Tooth className="w-3.5 h-3.5 text-emerald-600" />
+                      #{job.tooth_number || '—'}
+                    </span>
+                    <span className="inline-flex items-center gap-1 truncate max-w-[140px]">
+                      <Wrench className="w-3 h-3 text-slate-400" />
+                      {job.technician_name || 'Texnik yo‘q'}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-rose-400" />
+                      {job.deadline || 'Muddat yo‘q'}
+                    </span>
+                    {job.cost != null && job.cost !== '' && (
+                      <span className="text-emerald-700 font-bold ml-auto">
+                        {Number(job.cost).toLocaleString()} so‘m
+                      </span>
+                    )}
+                  </div>
+
+                  {job.notes && (
+                    <p className="text-[11px] text-slate-500 italic mb-3 line-clamp-2 bg-slate-50 rounded-lg px-2.5 py-1.5">
+                      {job.notes}
+                    </p>
+                  )}
+
+                  {Array.isArray(job.photo_urls) && job.photo_urls.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-3" onClick={e => e.stopPropagation()}>
+                      {job.photo_urls.map((url, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            const w = window.open();
+                            if (w) w.document.write(`<img src="${url}" style="max-width:100%;margin:auto;display:block;" />`);
+                          }}
+                          className="w-10 h-10 rounded-lg border border-slate-200 overflow-hidden bg-slate-50"
+                        >
+                          <img src={url} alt="" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div
+                    className={cn('space-y-2 relative z-10', !expanded && 'hidden md:block')}
+                    onClick={e => e.stopPropagation()}
                   >
-                    {/* Card Top */}
-                    <div className="flex items-start justify-between mb-3 sm:mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex flex-col items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-slate-50 rounded-xl sm:rounded-2xl border border-slate-100 shrink-0">
-                          <span className="font-black text-slate-900 text-sm sm:text-base">
-                            {job.tooth_number ? job.tooth_number.split(',').length : 0}
-                          </span>
-                          <span className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 min-w-max text-center">ta tish</span>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Bemor:</p>
-                          <h3 className="font-black text-slate-900 text-base sm:text-lg uppercase tracking-tight leading-tight truncate max-w-[160px] sm:max-w-none">{job.patient_name}</h3>
-                          <p className="text-[10px] font-bold text-slate-500 mt-1 truncate">
-                             Tishlar: <span className="text-slate-800">{job.tooth_number || '—'}</span>
-                          </p>
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            <span className="text-indigo-600 text-[9px] sm:text-[10px] font-black uppercase px-1.5 py-0.5 bg-indigo-50 rounded border border-indigo-100">{job.construction_type || job.work_type || 'Ish'}</span>
-                            {job.shade && <span className="text-amber-600 text-[9px] sm:text-[10px] font-black uppercase px-1.5 py-0.5 bg-amber-50 rounded border border-amber-100">{job.shade}</span>}
-                          </div>
-                        </div>
-                      </div>
-                      <div className={cn("px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 border shadow-sm shrink-0", cfg.color)}>
-                        <cfg.icon className="w-3 h-3" />
-                        <span className="hidden xs:inline">{cfg.label}</span>
-                      </div>
-                    </div>
-
-                    {/* Details Grid - compact on mobile */}
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:gap-x-6 sm:gap-y-5 py-3 sm:py-5 border-y border-slate-50 mb-3 sm:mb-5">
-                      <div className="space-y-0.5">
-                         <p className="text-[8px] sm:text-[9px] font-black text-slate-300 uppercase tracking-widest">Texnik</p>
-                         <p className="text-xs sm:text-sm font-bold text-slate-700 flex items-center gap-1.5 truncate">
-                           <Wrench className="w-3 h-3 sm:w-4 sm:h-4 text-slate-400 shrink-0" />
-                           {job.technician_name || '—'}
-                         </p>
-                      </div>
-                      <div className="space-y-0.5">
-                         <p className="text-[8px] sm:text-[9px] font-black text-slate-300 uppercase tracking-widest">Shifokor</p>
-                         <p className="text-xs sm:text-sm font-bold text-slate-700 flex items-center gap-1.5 truncate">
-                           <User className="w-3 h-3 sm:w-4 sm:h-4 text-indigo-400 shrink-0" />
-                           {job.doctor_name || '—'}
-                         </p>
-                      </div>
-                      <div className="space-y-0.5">
-                         <p className="text-[8px] sm:text-[9px] font-black text-slate-300 uppercase tracking-widest">Muddat</p>
-                         <p className="text-xs sm:text-sm font-bold text-slate-700 flex items-center gap-1.5">
-                           <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-rose-400 shrink-0" />
-                           {job.deadline || '—'}
-                         </p>
-                      </div>
-                      <div className="space-y-0.5">
-                         <p className="text-[8px] sm:text-[9px] font-black text-slate-300 uppercase tracking-widest">Narx</p>
-                         <p className="text-xs sm:text-sm font-bold text-emerald-600">
-                           {job.cost?.toLocaleString() || '0'} so'm
-                         </p>
-                      </div>
-                    </div>
-
-                    {job.notes && (
-                      <div className="mb-5 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                        <p className="text-[10px] font-medium text-slate-500 italic">"{job.notes}"</p>
+                    {job.status === 'Sent' && (
+                      <button
+                        type="button"
+                        onClick={() => updateStatus(job.id, 'In Progress')}
+                        className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-bold text-sm transition-all"
+                      >
+                        <Truck className="w-4 h-4" />
+                        {t('technicians.actions.sentToTech')}
+                      </button>
+                    )}
+                    {job.status === 'In Progress' && (
+                      <button
+                        type="button"
+                        onClick={() => updateStatus(job.id, 'Received')}
+                        className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-sm transition-all"
+                      >
+                        <PackageCheck className="w-4 h-4" />
+                        {t('technicians.actions.arrivedAtClinic')}
+                      </button>
+                    )}
+                    {job.status === 'Received' && (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSmsModal({ open: true, job })}
+                          className="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white font-bold text-sm transition-all"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          {t('technicians.actions.sendSms')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateStatus(job.id, 'Completed')}
+                          className="flex items-center justify-center gap-2 h-11 px-4 rounded-xl bg-slate-900 hover:bg-black active:scale-[0.98] text-white font-bold text-xs transition-all"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          {t('technicians.actions.installed')}
+                        </button>
                       </div>
                     )}
-
-                    {Array.isArray(job.photo_urls) && job.photo_urls.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mb-5">
-                        {job.photo_urls.map((url, idx) => (
-                          <div 
-                            key={idx} 
-                            onClick={() => {
-                              const w = window.open();
-                              if (w) {
-                                w.document.write(`<img src="${url}" style="max-width:100%; max-height:100%; margin:auto; display:block; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.15);" />`);
-                              }
-                            }}
-                            className="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden shadow-sm cursor-pointer hover:opacity-90 active:scale-95 transition-all shrink-0 bg-slate-50"
-                          >
-                            <img src={url} alt="Tooth detail" className="w-full h-full object-cover" />
-                          </div>
-                        ))}
+                    {job.status === 'Completed' && (
+                      <div className="flex items-center justify-center gap-2 h-10 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 font-bold text-sm">
+                        <CheckCircle2 className="w-4 h-4" /> {t('technicians.actions.completed')}
                       </div>
                     )}
-
-                    {/* Workflow Action Buttons */}
-                    <div className="space-y-3 relative z-10">
-                      {/* Step 1: Sent → Texnik olib ketdi */}
-                      {job.status === 'Sent' && (
-                        <button
-                          onClick={() => updateStatus(job.id, 'In Progress')}
-                          className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-amber-100"
-                        >
-                          <Truck className="w-4 h-4" />
-                          {t('technicians.actions.sentToTech')}
-                        </button>
-                      )}
-
-                      {/* Step 2: In Progress → Yetib keldi */}
-                      {job.status === 'In Progress' && (
-                        <button
-                          onClick={() => updateStatus(job.id, 'Received')}
-                          className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-indigo-100"
-                        >
-                          <PackageCheck className="w-4 h-4" />
-                          {t('technicians.actions.arrivedAtClinic')}
-                        </button>
-                      )}
-
-                      {/* Step 3: Received → SMS yuborish + O'rnatildi */}
-                      {job.status === 'Received' && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setSmsModal({ open: true, job })}
-                            className="flex-1 flex items-center justify-center gap-2 h-12 rounded-2xl bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-emerald-100"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                            {t('technicians.actions.sendSms')}
-                          </button>
-                          <button
-                            onClick={() => updateStatus(job.id, 'Completed')}
-                            className="flex items-center justify-center gap-2 h-12 px-4 rounded-2xl bg-slate-900 hover:bg-black active:scale-95 text-white font-black text-xs uppercase tracking-widest transition-all"
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                            {t('technicians.actions.installed')}
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Completed */}
-                      {job.status === 'Completed' && (
-                        <div className="flex items-center justify-center gap-2 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 font-black text-sm">
-                          <CheckCircle2 className="w-5 h-5" /> {t('technicians.actions.completed')}
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-end">
-                        <p className="text-emerald-600 font-black text-lg">{job.cost?.toLocaleString()} <span className="text-[10px] uppercase font-bold text-slate-300">Sum</span></p>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-           </div>
+                  </div>
+                  {!expanded && job.status !== 'Completed' && (
+                    <p className="md:hidden text-center text-[10px] text-slate-400 font-semibold mt-1">
+                      Amallar uchun bosing
+                    </p>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
         </TabsContent>
 
-        <TabsContent value="techs">
+        <TabsContent value="techs" className="mt-0">
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {technicians.map(tech => (
-                <div key={tech.id} className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-slate-100 flex flex-col gap-3 sm:gap-4 active:border-indigo-200 transition-all">
+                <div key={tech.id} className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 flex flex-col gap-3 active:border-emerald-200 transition-all">
                   <div className="flex items-center justify-between">
-                     <div className="w-11 h-11 sm:w-12 sm:h-12 bg-slate-50 rounded-xl flex items-center justify-center">
-                       <User className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400" />
+                     <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center">
+                       <User className="w-5 h-5 text-slate-400" />
                      </div>
                      <span className={cn("px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest", tech.is_active ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400")}>
                         {tech.is_active ? 'Faol' : 'Nofaol'}
                      </span>
                   </div>
                   <div>
-                    <h3 className="font-black text-slate-900 text-base sm:text-lg uppercase tracking-tight">{tech.name}</h3>
-                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 flex items-center gap-1.5">
+                    <h3 className="font-bold text-slate-900 text-base tracking-tight">{tech.name}</h3>
+                    <p className="text-slate-400 text-xs font-semibold mt-1 flex items-center gap-1.5">
                        <Briefcase className="w-3 h-3" />
                        {tech.specialization || 'Umumiy texnik'}
                     </p>
                   </div>
                   <div className="pt-3 border-t border-slate-50 flex items-center justify-between">
-                     <p className="text-slate-500 font-bold text-sm flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-indigo-400" />
+                     <p className="text-slate-500 font-semibold text-sm flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-emerald-500" />
                         {tech.phone}
                      </p>
                   </div>
                 </div>
               ))}
-              <div 
+              <div
                 onClick={() => setTechModalOpen(true)}
-                className="p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center gap-2 text-slate-300 hover:border-indigo-200 hover:text-indigo-300 transition-all cursor-pointer min-h-[120px]"
+                className="p-4 sm:p-5 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-2 text-slate-300 hover:border-emerald-300 hover:text-emerald-400 transition-all cursor-pointer min-h-[110px]"
               >
-                  <UserPlus className="w-8 h-8 sm:w-10 sm:h-10" />
-                  <span className="font-black text-xs uppercase tracking-widest">Texnik qo'shish</span>
+                  <UserPlus className="w-8 h-8" />
+                  <span className="font-bold text-xs uppercase tracking-widest">Texnik qo‘shish</span>
               </div>
            </div>
         </TabsContent>
