@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/api/supabaseClient';
 import LeadQuickView from '@/components/marketing/LeadQuickView';
+import LeadSourceIcon from '@/components/ui/LeadSourceIcon';
 
 // Relative time formatting helper (Uzbek language)
 const formatRelativeTime = (dateStr) => {
@@ -65,63 +66,34 @@ const getStatusBadgeStyle = (dotColor) => {
   }
 };
 
-// Lead Source metadata mapper
+// Lead Source metadata mapper — labels/colors; brand glyph via LeadSourceIcon
 const getSourceBadgeInfo = (source) => {
   const src = (source || '').toLowerCase();
-  if (src.includes('instagram') || src.includes('insta')) {
-    return {
-      label: 'Instagram',
-      icon: '📸',
-      bg: 'bg-rose-50 text-rose-600 border border-rose-100/30',
-      avatarGrad: 'from-pink-500 via-rose-500 to-amber-500'
-    };
+  if (src.includes('instagram') || src.includes('insta') || src === 'ig') {
+    return { label: 'Instagram', bg: 'bg-rose-50 text-rose-700 border border-rose-100/40', avatarGrad: 'from-pink-500 via-rose-500 to-amber-500' };
   }
-  if (src.includes('facebook') || src.includes('fb')) {
-    return {
-      label: 'Facebook',
-      icon: '📘',
-      bg: 'bg-blue-50 text-blue-600 border border-blue-100/30',
-      avatarGrad: 'from-blue-600 to-indigo-700'
-    };
+  if (src.includes('facebook') || src.includes('fb') || src.includes('meta')) {
+    return { label: 'Facebook', bg: 'bg-blue-50 text-blue-700 border border-blue-100/40', avatarGrad: 'from-blue-600 to-indigo-700' };
   }
-  if (src.includes('telegram') || src.includes('tg')) {
-    return {
-      label: 'Telegram',
-      icon: '✈️',
-      bg: 'bg-sky-50 text-sky-600 border border-sky-100/30',
-      avatarGrad: 'from-sky-400 to-blue-500'
-    };
+  if (src.includes('telegram') || src.includes('tg') || src.includes('bot')) {
+    return { label: 'Telegram', bg: 'bg-sky-50 text-sky-700 border border-sky-100/40', avatarGrad: 'from-sky-400 to-blue-500' };
   }
-  if (src.includes('website') || src.includes('sayt') || src.includes('web') || src.includes('google')) {
-    return {
-      label: 'Sayt',
-      icon: '🌐',
-      bg: 'bg-emerald-50 text-emerald-600 border border-emerald-100/30',
-      avatarGrad: 'from-emerald-400 to-teal-500'
-    };
+  if (src.includes('whatsapp') || src === 'wa' || src.includes('whats')) {
+    return { label: 'WhatsApp', bg: 'bg-emerald-50 text-emerald-700 border border-emerald-100/40', avatarGrad: 'from-emerald-500 to-green-600' };
   }
-  if (src.includes('call') || src.includes('qo\'ng\'iroq') || src.includes('telefon') || src.includes('tel')) {
-    return {
-      label: 'Qo\'ng\'iroq',
-      icon: '📞',
-      bg: 'bg-violet-50 text-violet-600 border border-violet-100/30',
-      avatarGrad: 'from-violet-500 to-purple-600'
-    };
+  if (src.includes('tiktok') || src.includes('tik tok') || src === 'tt') {
+    return { label: 'TikTok', bg: 'bg-slate-900 text-white border border-slate-800', avatarGrad: 'from-slate-900 to-slate-700' };
+  }
+  if (src.includes('website') || src.includes('sayt') || src.includes('web') || src.includes('google') || src.includes('seo')) {
+    return { label: 'Sayt', bg: 'bg-indigo-50 text-indigo-700 border border-indigo-100/40', avatarGrad: 'from-indigo-500 to-cyan-500' };
+  }
+  if (src.includes('call') || src.includes("qo'ng'iroq") || src.includes('qongiroq') || src.includes('telefon') || src.includes('tel') || src.includes('direct')) {
+    return { label: "Qo'ng'iroq", bg: 'bg-violet-50 text-violet-700 border border-violet-100/40', avatarGrad: 'from-violet-500 to-purple-600' };
   }
   if (src.includes('import')) {
-    return {
-      label: 'Import',
-      icon: '📥',
-      bg: 'bg-amber-50 text-amber-600 border border-amber-100/30',
-      avatarGrad: 'from-amber-500 to-orange-600'
-    };
+    return { label: 'Import', bg: 'bg-amber-50 text-amber-700 border border-amber-100/40', avatarGrad: 'from-amber-500 to-orange-600' };
   }
-  return {
-    label: source || 'Tavsiya',
-    icon: '👤',
-    bg: 'bg-slate-50 border border-slate-100 text-slate-600',
-    avatarGrad: 'from-slate-500 to-slate-700'
-  };
+  return { label: source || 'Tavsiya', bg: 'bg-slate-50 border border-slate-100 text-slate-600', avatarGrad: 'from-slate-500 to-slate-700' };
 };
 
 export default function MobileLeadsV6() {
@@ -312,7 +284,6 @@ export default function MobileLeadsV6() {
     const badgeStyle = getStatusBadgeStyle(status.dot);
     const timeAgo = formatRelativeTime(lead.created_date || lead.created_at);
     const sourceInfo = getSourceBadgeInfo(lead.source);
-    const firstLetter = (lead.name || lead.full_name || 'I').charAt(0).toUpperCase();
     
     return (
       <motion.div
@@ -325,18 +296,18 @@ export default function MobileLeadsV6() {
         {/* Top Row: Avatar + Name + Source Badge + Dropdown Action */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            {/* Source themed Avatar */}
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${sourceInfo.avatarGrad} text-white flex items-center justify-center font-extrabold text-sm shadow-sm shrink-0`}>
-              {firstLetter}
-            </div>
+            {/* Brand source avatar */}
+            <LeadSourceIcon source={lead.source} className="w-10 h-10 rounded-xl shadow-sm" size={40} />
             <div className="min-w-0">
               <h3 className="font-extrabold text-slate-800 text-sm leading-snug truncate max-w-[130px]">
                 {lead.name || lead.full_name || 'Ismsiz'}
               </h3>
               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                 {/* Source badge */}
-                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold ${sourceInfo.bg}`}>
-                  <span>{sourceInfo.icon}</span>
+                <span className={`inline-flex items-center gap-1 pl-0.5 pr-1.5 py-0.5 rounded-md text-[9px] font-bold ${sourceInfo.bg}`}>
+                  <LeadSourceIcon source={lead.source} className="w-3.5 h-3.5 rounded-[5px] shadow-none ring-0" size={14} />
+                  <span>{sourceInfo.label}</span>
+                </span>
                   <span>{sourceInfo.label}</span>
                 </span>
                 {timeAgo && (
@@ -595,15 +566,15 @@ export default function MobileLeadsV6() {
                    <Label className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Manba (Platforma)</Label>
                    <select 
                       value={formData.source} 
-                      onChange={e => setFormData({...formData, source: e.target.value})} 
-                      className="w-full h-11 rounded-xl bg-slate-50 border border-slate-100 px-3 font-bold text-xs text-slate-700 focus:bg-white focus:border-slate-300 outline-none"
-                   >
-                      <option value="Call">📞 Telefon qo'ng'irog'i</option>
-                      <option value="Instagram">📸 Instagram Ads / Direct</option>
-                      <option value="Telegram">✈️ Telegram Bot / Guruh</option>
-                      <option value="Facebook">📘 Facebook Ads / Page</option>
-                      <option value="Website">🌐 Vebsayt arizasi</option>
-                      <option value="Tavsiya">👤 Tavsiya</option>
+                      onChange={e =>
+                      <option value="Call">Qo'ng'iroq</option>
+                      <option value="Instagram">Instagram</option>
+                      <option value="Telegram">Telegram</option>
+                      <option value="Facebook">Facebook</option>
+                      <option value="WhatsApp">WhatsApp</option>
+                      <option value="TikTok">TikTok</option>
+                      <option value="Website">Veb-sayt</option>
+                      <option value="Tavsiya">Tavsiya</option>
                    </select>
                 </div>
 
