@@ -320,15 +320,21 @@ export default function NativeMobileLayout({ children }) {
           <SubscriptionBanner />
         </div>
         )}
+        {/*
+          Page shell must stay opacity:1. Animating opacity:0→1 races with Suspense
+          remounts on heavy lazy routes (/implants, /treatment-plans) and can leave
+          populated DOM invisible. Also never set style.transform here — it fights
+          Framer Motion's x transform.
+        */}
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
             className="w-full min-w-0 max-w-none"
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -6 }}
-            transition={{ duration: 0.16, ease: [0.25, 0.46, 0.45, 0.94] }}
-            style={{ willChange: 'transform, opacity', transform: 'translateZ(0)', width: '100%' }}
+            initial={{ x: 12 }}
+            animate={{ x: 0 }}
+            exit={{ x: -8 }}
+            transition={{ duration: 0.14, ease: [0.25, 0.46, 0.45, 0.94] }}
+            style={{ width: '100%' }}
           >
             <ErrorBoundary>
               <Suspense fallback={<InlineLoader />}>
