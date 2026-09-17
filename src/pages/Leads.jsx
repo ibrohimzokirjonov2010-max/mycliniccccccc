@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import LeadSourceIcon from '@/components/ui/LeadSourceIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -305,13 +306,12 @@ export default function Leads() {
 
   const renderSourceBadge = (source) => {
     const meta = getSourceMeta(source);
-    const Icon = meta.icon;
     return (
-      <div 
-        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${meta.iconBg} shadow-2xs transition-transform hover:scale-110 cursor-help`}
+      <div
+        className="transition-transform hover:scale-110 cursor-help shrink-0"
         title={`Manba: ${source || meta.label}`}
       >
-        <Icon className="w-3.5 h-3.5 text-white" />
+        <LeadSourceIcon source={source} className="w-7 h-7 rounded-lg shadow-2xs" size={28} />
       </div>
     );
   };
