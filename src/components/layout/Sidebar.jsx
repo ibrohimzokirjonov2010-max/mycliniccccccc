@@ -21,28 +21,29 @@ import ShifoCrmLogo from '@/components/ui/ShifoCrmLogo';
  * Each item defines a route with its label and icon
  */
 const getMenuItems = (t) => [
-  // Clinical primary (dentist-first)
-  { path: '/chairside', label: t('navigation.chairsideToday') || "Bugungi navbat", icon: CalendarClock },
-  { path: '/patients', label: t('navigation.patients'), icon: Users },
-  { path: '/appointments', label: t('navigation.appointments'), icon: CalendarDays },
-  { path: '/treatment-plans', label: t('navigation.treatmentPlans'), icon: ClipboardList },
-  { path: '/implants', label: t('navigation.implants'), icon: ImplantIcon },
-  { path: '/payments', label: t('navigation.payments'), icon: CreditCard },
-  { path: '/debts', label: t('navigation.debts'), icon: Wallet },
-  // Secondary / ops
-  { path: '/', label: t('navigation.dashboard'), icon: LayoutDashboard },
-  { path: '/leads', label: t('navigation.leads'), icon: UserPlus },
-  { path: '/expenses', label: t('navigation.expenses'), icon: TrendingDown },
-  { path: '/payroll', label: t('navigation.payroll'), icon: Wallet },
-  { path: '/services', label: t('navigation.services'), icon: Stethoscope },
-  { path: '/inventory', label: t('navigation.inventory'), icon: Package },
-  { path: '/reports', label: t('navigation.reports'), icon: BarChart3 },
-  { path: '/recall', label: t('navigation.recalls'), icon: Bell },
-  { path: '/no-show', label: t('navigation.noShow'), icon: AlertTriangle },
-  { path: '/treatment-tracking', label: t('navigation.treatmentTracking'), icon: Activity },
-  { path: '/marketing', label: t('navigation.marketing'), icon: Target },
-  { path: '/cases', label: t('navigation.cases') || 'Mening Keyslarim', icon: Camera },
-  { path: '/settings', label: t('navigation.settings'), icon: Settings },
+  // 1–6 Clinical primary (stomatologist-first)
+  { path: '/chairside', label: t('navigation.chairsideToday') || "Bugungi navbat", icon: CalendarClock, section: 'clinical' },
+  { path: '/patients', label: t('navigation.patients'), icon: Users, section: 'clinical' },
+  { path: '/appointments', label: t('navigation.appointments'), icon: CalendarDays, section: 'clinical' },
+  { path: '/treatment-plans', label: t('navigation.treatmentPlans'), icon: ClipboardList, section: 'clinical' },
+  { path: '/implants', label: t('navigation.implants'), icon: ImplantIcon, section: 'clinical' },
+  { path: '/payments', label: t('navigation.payments') || "To'lovlar", icon: CreditCard, section: 'clinical' },
+  { path: '/debts', label: t('navigation.debts') || "Qarzlar", icon: Wallet, section: 'clinical' },
+  // Admin / secondary (below divider)
+  { path: '/', label: t('navigation.dashboard'), icon: LayoutDashboard, section: 'admin' },
+  { path: '/leads', label: t('navigation.leads'), icon: UserPlus, section: 'admin' },
+  { path: '/staff', label: t('navigation.staff') || 'Xodimlar', icon: Users, section: 'admin' },
+  { path: '/expenses', label: t('navigation.expenses'), icon: TrendingDown, section: 'admin' },
+  { path: '/payroll', label: t('navigation.payroll'), icon: Wallet, section: 'admin' },
+  { path: '/services', label: t('navigation.services'), icon: Stethoscope, section: 'admin' },
+  { path: '/inventory', label: t('navigation.inventory'), icon: Package, section: 'admin' },
+  { path: '/reports', label: t('navigation.reports'), icon: BarChart3, section: 'admin' },
+  { path: '/recall', label: t('navigation.recalls'), icon: Bell, section: 'admin' },
+  { path: '/no-show', label: t('navigation.noShow'), icon: AlertTriangle, section: 'admin' },
+  { path: '/treatment-tracking', label: t('navigation.treatmentTracking'), icon: Activity, section: 'admin' },
+  { path: '/marketing', label: t('navigation.marketing'), icon: Target, section: 'admin' },
+  { path: '/cases', label: t('navigation.cases') || 'Mening Keyslarim', icon: Camera, section: 'admin' },
+  { path: '/settings', label: t('navigation.settings'), icon: Settings, section: 'admin' },
 ];
 
 /**
@@ -136,7 +137,8 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
       { allowed: hasTreatmentTrackingAccess, path: '/treatment-tracking' },
       { allowed: hasDebtsAccess, path: '/debts' },
       { allowed: hasMarketingAccess, path: '/marketing' },
-      { allowed: hasCasesAccess, path: '/cases' }
+      { allowed: hasCasesAccess, path: '/cases' },
+      { allowed: hasStaffAccess, path: '/staff' },
     ];
 
     for (const res of restrictions) {
@@ -179,64 +181,82 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
       <nav className="flex-1 overflow-y-auto px-2.5 py-2 no-scrollbar">
         {!collapsed ? (
           <div className="border border-slate-200 lg:border-slate-700/80 rounded-xl overflow-hidden bg-slate-50 lg:bg-[#091122]/90 shadow-sm divide-y divide-slate-200 lg:divide-slate-700/70">
-            {filteredMenuItems.map((item) => {
+            {filteredMenuItems.map((item, index) => {
               const Icon = item.icon;
               const active = isActive(item.path);
+              const prev = filteredMenuItems[index - 1];
+              const showAdminDivider =
+                item.section === 'admin' && (!prev || prev.section !== 'admin');
 
               return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => { onMobileClose(); prefetchModuleData(item.path); }}
-                  onMouseEnter={() => prefetchModuleData(item.path)}
-                  className={cn(
-                    'flex items-center justify-between px-3.5 py-2.5 text-[11.5px] font-bold transition-all duration-150 relative group uppercase tracking-wider select-none',
-                    active
-                      ? 'bg-gradient-to-r from-[#1499AD] to-[#0ea5e9] text-white shadow-md z-10 font-black'
-                      : 'text-slate-800 lg:text-slate-100 hover:bg-sky-100/70 lg:hover:bg-cyan-950/40 hover:text-slate-950 lg:hover:text-white'
+                <div key={item.path}>
+                  {showAdminDivider && (
+                    <div className="px-3.5 py-2 bg-slate-100/80 lg:bg-slate-900/60">
+                      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 lg:text-slate-500">
+                        Boshqaruv / Admin
+                      </p>
+                    </div>
                   )}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Icon className={cn(
-                      'w-4 h-4 flex-shrink-0 transition-transform duration-200',
-                      active ? 'text-white scale-110' : 'text-slate-600 lg:text-slate-200 group-hover:text-[#1499AD] lg:group-hover:text-cyan-300 group-hover:scale-110'
-                    )} />
-                    <span className="truncate">{item.label}</span>
-                  </div>
+                  <Link
+                    to={item.path}
+                    onClick={() => { onMobileClose(); prefetchModuleData(item.path); }}
+                    onMouseEnter={() => prefetchModuleData(item.path)}
+                    className={cn(
+                      'flex items-center justify-between px-3.5 py-2.5 text-[11.5px] font-bold transition-all duration-150 relative group uppercase tracking-wider select-none',
+                      active
+                        ? 'bg-gradient-to-r from-[#1499AD] to-[#0ea5e9] text-white shadow-md z-10 font-black'
+                        : 'text-slate-800 lg:text-slate-100 hover:bg-sky-100/70 lg:hover:bg-cyan-950/40 hover:text-slate-950 lg:hover:text-white'
+                    )}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Icon className={cn(
+                        'w-4 h-4 flex-shrink-0 transition-transform duration-200',
+                        active ? 'text-white scale-110' : 'text-slate-600 lg:text-slate-200 group-hover:text-[#1499AD] lg:group-hover:text-cyan-300 group-hover:scale-110'
+                      )} />
+                      <span className="truncate">{item.label}</span>
+                    </div>
 
-                  {active && (
-                    <div className="w-2 h-2 rounded-full bg-white shrink-0 shadow-xs ml-1 ring-2 ring-cyan-200" />
-                  )}
-                </Link>
+                    {active && (
+                      <div className="w-2 h-2 rounded-full bg-white shrink-0 shadow-xs ml-1 ring-2 ring-cyan-200" />
+                    )}
+                  </Link>
+                </div>
               );
             })}
           </div>
         ) : (
           /* Collapsed Mode - Grid Cells */
           <div className="space-y-1.5">
-            {filteredMenuItems.map((item) => {
+            {filteredMenuItems.map((item, index) => {
               const Icon = item.icon;
               const active = isActive(item.path);
+              const prev = filteredMenuItems[index - 1];
+              const showAdminDivider =
+                item.section === 'admin' && (!prev || prev.section !== 'admin');
 
               return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  title={item.label}
-                  onClick={() => { onMobileClose(); prefetchModuleData(item.path); }}
-                  onMouseEnter={() => prefetchModuleData(item.path)}
-                  className={cn(
-                    'flex items-center justify-center p-2.5 rounded-lg border transition-all duration-150 relative group',
-                    active
-                      ? 'bg-gradient-to-r from-[#1499AD] to-[#0ea5e9] text-white border-cyan-300 shadow-md ring-1 ring-cyan-400/40'
-                      : 'bg-slate-100 lg:bg-slate-800/90 border-slate-300 lg:border-slate-700 text-slate-700 lg:text-slate-200 hover:border-[#1499AD] hover:bg-[#1499AD]/20 hover:text-white'
+                <div key={item.path} className="space-y-1.5">
+                  {showAdminDivider && (
+                    <div className="mx-auto my-1 h-px w-6 bg-slate-300 lg:bg-slate-600" aria-hidden />
                   )}
-                >
-                  <Icon className={cn(
-                    'w-4 h-4 transition-transform',
-                    active ? 'text-white scale-110' : 'group-hover:scale-110'
-                  )} />
-                </Link>
+                  <Link
+                    to={item.path}
+                    title={item.label}
+                    onClick={() => { onMobileClose(); prefetchModuleData(item.path); }}
+                    onMouseEnter={() => prefetchModuleData(item.path)}
+                    className={cn(
+                      'flex items-center justify-center p-2.5 rounded-lg border transition-all duration-150 relative group',
+                      active
+                        ? 'bg-gradient-to-r from-[#1499AD] to-[#0ea5e9] text-white border-cyan-300 shadow-md ring-1 ring-cyan-400/40'
+                        : 'bg-slate-100 lg:bg-slate-800/90 border-slate-300 lg:border-slate-700 text-slate-700 lg:text-slate-200 hover:border-[#1499AD] hover:bg-[#1499AD]/20 hover:text-white'
+                    )}
+                  >
+                    <Icon className={cn(
+                      'w-4 h-4 transition-transform',
+                      active ? 'text-white scale-110' : 'group-hover:scale-110'
+                    )} />
+                  </Link>
+                </div>
               );
             })}
           </div>

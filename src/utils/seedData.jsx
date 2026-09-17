@@ -5,7 +5,15 @@ import { toast } from 'sonner';
  * Barcha kategoriyalar uchun to'liq test ma'lumotlari
  */
 export const runSeeder = async () => {
-  toast.loading("Test ma'lumotlari kiritilmoqda... Bu biroz vaqt olishi mumkin.");
+  // DEMO / seed only — never auto-run in production clinic day KPIs
+  const ok = typeof window !== 'undefined'
+    ? window.confirm("DEMO rejim: test ma'lumotlari klinika bazasiga yoziladi. Davom etasizmi?")
+    : false;
+  if (!ok) {
+    toast.message("DEMO seed bekor qilindi");
+    return;
+  }
+  toast.loading("DEMO: test ma'lumotlari kiritilmoqda...");
   const today = new Date().toISOString().split('T')[0];
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
   const lastWeek = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];

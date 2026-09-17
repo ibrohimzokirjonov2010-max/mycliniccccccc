@@ -901,7 +901,7 @@ export default function MobilePaymentsV2() {
               <span className="text-[13px] font-bold text-slate-900 truncate max-w-[150px]">
                 {payment.patient_name || '—'}
               </span>
-              <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wide ${style.bg} ${style.text}`}>
+              <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-black tracking-wide ${style.bg} ${style.text}`}>
                 {style.label}
               </span>
               {(payment.receipt_url || payment.receipt_image || payment.check_image) && (
@@ -911,7 +911,7 @@ export default function MobilePaymentsV2() {
                     e.stopPropagation();
                     setPreviewReceiptUrl(payment.receipt_url || payment.receipt_image || payment.check_image);
                   }}
-                  className="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wide bg-blue-100 text-blue-700 hover:bg-blue-200 flex items-center gap-0.5 shadow-xs active:scale-90 transition-transform"
+                  className="shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-black tracking-wide bg-blue-100 text-blue-700 hover:bg-blue-200 flex items-center gap-0.5 shadow-xs active:scale-90 transition-transform"
                 >
                   <Receipt className="w-2.5 h-2.5" /> Chek
                 </button>
@@ -947,7 +947,7 @@ export default function MobilePaymentsV2() {
                     {Number(payment.amount || 0).toLocaleString()} UZS
                   </p>
                   {pat != null && (
-                    <p className={cn("text-[8px] font-black mt-1 uppercase tracking-tight", 
+                    <p className={cn("text-[10px] font-black mt-1 uppercase tracking-tight",
                       qarz > 0 ? 'text-rose-500' : 'text-emerald-500'
                     )}>
                       {qarz > 0 ? `Qarz: ${qarz.toLocaleString()} UZS` : '✓ To\'liq'}

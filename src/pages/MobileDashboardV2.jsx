@@ -22,7 +22,8 @@ export default function MobileDashboardV2() {
     patients: 0,
     appointments: 0,
     todayRevenue: 0,
-    growth: 12
+    growthLabel: '—',
+    clinicDay: null,
   });
   const [todayAppointments, setTodayAppointments] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
@@ -43,7 +44,9 @@ export default function MobileDashboardV2() {
         appointments: data.stats?.todayAppts ?? (data.todayApptsList || []).length,
         weekRevenue: data.stats?.weekRevenue || 0,
         todayRevenue: data.stats.todayRevenue,
-        growth: 12
+        // Real day-over-day revenue trend (never demo +12%)
+        growthLabel: data.stats?.todayRevenueTrend || '—',
+        clinicDay: data.clinicDayLabel || null,
       });
       
       setTodayAppointments(data.todayApptsList);
@@ -205,7 +208,11 @@ export default function MobileDashboardV2() {
                 </div>
                 <div>
                   <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('common.welcomeBack')} 👋</h1>
-                  <p className="text-[10px] font-bold text-[#1499AD] uppercase tracking-[0.2em] mt-0.5">{t('dashboard.overview')}</p>
+                  <p className="text-[10px] font-bold text-[#1499AD] uppercase tracking-[0.2em] mt-0.5">
+                    {stats.clinicDay
+                      ? `Bugungi klinika kuni · ${stats.clinicDay}`
+                      : (t('dashboard.overview') || 'Bugungi klinika kuni')}
+                  </p>
                 </div>
               </div>
             </div>
@@ -224,12 +231,12 @@ export default function MobileDashboardV2() {
               onClick={() => navigate('/patients')}
             />
             <StatCard
-              title={t('appointments.calendar')}
+              title={t('dashboard.todayAppointments') || "Bugungi uchrashuvlar"}
               value={stats.appointments}
-              subtitle={t('appointments.waiting')}
+              subtitle={t('navigation.chairsideToday') || "Bugungi navbat"}
               icon={Calendar}
               color="bg-[#1499AD] text-white shadow-lg shadow-[#1499AD]/20"
-              onClick={() => navigate('/appointments')}
+              onClick={() => navigate('/chairside')}
             />
             <StatCard
               title={t('common.today')}
@@ -240,12 +247,12 @@ export default function MobileDashboardV2() {
               onClick={() => navigate('/payments')}
             />
             <StatCard
-              title={t('dashboard.revenueChart')}
-              value={`+${stats.growth}%`}
-              subtitle={t('dashboard.thisMonth')}
+              title={t('dashboard.todayRevenue') || "Bugungi tushum"}
+              value={stats.growthLabel}
+              subtitle={stats.clinicDay ? `Klinika kuni · ${stats.clinicDay}` : (t('common.today') || 'Bugun')}
               icon={TrendingUp}
               color="bg-[#1499AD] text-white shadow-lg shadow-[#1499AD]/20"
-              onClick={() => navigate('/reports')}
+              onClick={() => navigate('/payments')}
             />
           </div>
         </div>
@@ -255,7 +262,7 @@ export default function MobileDashboardV2() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-[900] text-slate-900 tracking-tight">{t('dashboard.todayAppointments')}</h2>
             <button 
-              onClick={() => navigate('/appointments')}
+              onClick={() => navigate('/chairside')}
               className="text-[10px] font-black text-[#1499AD] uppercase tracking-widest flex items-center gap-1 bg-[#1499AD]/5 px-2.5 py-1.5 rounded-full"
             >
               {t('common.all')}

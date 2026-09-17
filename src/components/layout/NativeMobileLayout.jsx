@@ -75,30 +75,30 @@ const InlineLoader = memo(() => (
 ));
 
 const MENU_ITEMS_GEN = (t) => [
-  // Clinical primary (dentist-first)
-  { path: '/chairside', label: t('navigation.chairsideToday') || "Bugungi navbat", icon: CalendarClock, color: 'text-teal-600', bg: 'bg-teal-50' },
-  { path: '/patients', label: t('navigation.patients'), icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-  { path: '/appointments', label: t('navigation.appointments'), icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50' },
-  { path: '/treatment-plans', label: t('navigation.treatmentPlans'), icon: ClipboardList, color: 'text-sky-600', bg: 'bg-sky-50' },
-  { path: '/implants', label: t('navigation.implants'), icon: ImplantIcon, color: 'text-teal-600', bg: 'bg-teal-50' },
-  { path: '/payments', label: t('navigation.payments'), icon: Wallet, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  { path: '/debts', label: t('navigation.debts'), icon: Wallet, color: 'text-rose-700', bg: 'bg-rose-50' },
-  // Secondary
-  { path: '/', label: t('navigation.dashboard'), icon: Home, color: 'text-slate-600', bg: 'bg-slate-50' },
-  { path: '/leads', label: t('navigation.leads'), icon: UserPlus, color: 'text-rose-600', bg: 'bg-rose-50' },
-  { path: '/cases', label: t('navigation.cases') || "Mening Keyslarim", icon: Camera, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { path: '/treatment-tracking', label: t('navigation.treatmentTracking'), icon: Activity, color: 'text-green-600', bg: 'bg-green-50' },
-  { path: '/expenses', label: t('navigation.expenses'), icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50' },
-  { path: '/payroll', label: t('navigation.payroll'), icon: Wallet, color: 'text-purple-600', bg: 'bg-purple-50' },
-  { path: '/staff', label: t('navigation.staff'), icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { path: '/services', label: t('navigation.services'), icon: Stethoscope, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { path: '/inventory', label: t('navigation.inventory'), icon: Package, color: 'text-orange-600', bg: 'bg-orange-50' },
-  { path: '/technicians', label: t('navigation.technicians'), icon: Wrench, color: 'text-indigo-700', bg: 'bg-indigo-50' },
-  { path: '/recall', label: t('navigation.recalls'), icon: Bell, color: 'text-pink-600', bg: 'bg-pink-50' },
-  { path: '/marketing', label: t('navigation.marketing'), icon: Target, color: 'text-rose-600', bg: 'bg-rose-50' },
-  { path: '/reports', label: t('navigation.reports'), icon: BarChart3, color: 'text-cyan-600', bg: 'bg-cyan-50' },
-  { path: '/no-show', label: t('navigation.noShow'), icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
-  { path: '/settings', label: t('settings.title'), icon: Settings, color: 'text-slate-600', bg: 'bg-slate-50' },
+  // Clinical primary (stomatologist-first)
+  { path: '/chairside', label: t('navigation.chairsideToday') || "Bugungi navbat", icon: CalendarClock, color: 'text-teal-600', bg: 'bg-teal-50', section: 'clinical' },
+  { path: '/patients', label: t('navigation.patients'), icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', section: 'clinical' },
+  { path: '/appointments', label: t('navigation.appointments'), icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50', section: 'clinical' },
+  { path: '/treatment-plans', label: t('navigation.treatmentPlans'), icon: ClipboardList, color: 'text-sky-600', bg: 'bg-sky-50', section: 'clinical' },
+  { path: '/implants', label: t('navigation.implants'), icon: ImplantIcon, color: 'text-teal-600', bg: 'bg-teal-50', section: 'clinical' },
+  { path: '/payments', label: t('navigation.payments') || "To'lovlar", icon: Wallet, color: 'text-emerald-600', bg: 'bg-emerald-50', section: 'clinical' },
+  { path: '/debts', label: t('navigation.debts') || "Qarzlar", icon: Wallet, color: 'text-rose-700', bg: 'bg-rose-50', section: 'clinical' },
+  // Admin / secondary
+  { path: '/', label: t('navigation.dashboard'), icon: Home, color: 'text-slate-600', bg: 'bg-slate-50', section: 'admin' },
+  { path: '/leads', label: t('navigation.leads'), icon: UserPlus, color: 'text-rose-600', bg: 'bg-rose-50', section: 'admin' },
+  { path: '/cases', label: t('navigation.cases') || "Mening Keyslarim", icon: Camera, color: 'text-emerald-500', bg: 'bg-emerald-50', section: 'admin' },
+  { path: '/treatment-tracking', label: t('navigation.treatmentTracking'), icon: Activity, color: 'text-green-600', bg: 'bg-green-50', section: 'admin' },
+  { path: '/expenses', label: t('navigation.expenses'), icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50', section: 'admin' },
+  { path: '/payroll', label: t('navigation.payroll'), icon: Wallet, color: 'text-purple-600', bg: 'bg-purple-50', section: 'admin' },
+  { path: '/staff', label: t('navigation.staff') || 'Xodimlar', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', section: 'admin' },
+  { path: '/services', label: t('navigation.services'), icon: Stethoscope, color: 'text-indigo-600', bg: 'bg-indigo-50', section: 'admin' },
+  { path: '/inventory', label: t('navigation.inventory'), icon: Package, color: 'text-orange-600', bg: 'bg-orange-50', section: 'admin' },
+  { path: '/technicians', label: t('navigation.technicians'), icon: Wrench, color: 'text-indigo-700', bg: 'bg-indigo-50', section: 'admin' },
+  { path: '/recall', label: t('navigation.recalls'), icon: Bell, color: 'text-pink-600', bg: 'bg-pink-50', section: 'admin' },
+  { path: '/marketing', label: t('navigation.marketing'), icon: Target, color: 'text-rose-600', bg: 'bg-rose-50', section: 'admin' },
+  { path: '/reports', label: t('navigation.reports'), icon: BarChart3, color: 'text-cyan-600', bg: 'bg-cyan-50', section: 'admin' },
+  { path: '/no-show', label: t('navigation.noShow'), icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50', section: 'admin' },
+  { path: '/settings', label: t('settings.title'), icon: Settings, color: 'text-slate-600', bg: 'bg-slate-50', section: 'admin' },
 ];
 
 
@@ -535,13 +535,23 @@ export default function NativeMobileLayout({ children }) {
               </div>
               
               <nav className="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar bg-white">
-                {filteredMenuItems.map((item) => {
+                {filteredMenuItems.map((item, index) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.path;
+                  const prev = filteredMenuItems[index - 1];
+                  const showAdminDivider =
+                    item.section === 'admin' && (!prev || prev.section !== 'admin');
                   
                   return (
+                    <div key={item.path}>
+                    {showAdminDivider && (
+                      <div className="px-2 pt-3 pb-1">
+                        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">
+                          Boshqaruv / Admin
+                        </p>
+                      </div>
+                    )}
                     <button
-                      key={item.path}
                       onClick={() => {
                         navigate(item.path);
                         setShowMenu(false);
@@ -570,6 +580,7 @@ export default function NativeMobileLayout({ children }) {
                         </div>
                       )}
                     </button>
+                    </div>
                   );
                 })}
               </nav>
