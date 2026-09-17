@@ -352,7 +352,7 @@ export default function NativeMobileLayout({ children }) {
 
       {/* iOS-style Native Bottom Navigation Bar */}
       <nav 
-        className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-2xl border-t border-slate-200/60 z-50 overflow-hidden no-print shadow-[0_-2px_16px_rgba(0,0,0,0.03)]"
+        className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-2xl border-t border-slate-200/60 z-40 overflow-hidden no-print shadow-[0_-2px_16px_rgba(0,0,0,0.03)]"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         <div className="flex items-center justify-around h-[50px] px-2 relative">

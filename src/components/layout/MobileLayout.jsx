@@ -209,7 +209,7 @@ export default function MobileLayout({ children }) {
       <AdBanner />
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-background border-t md:hidden z-50 safe-area-pb">
+      <nav className="fixed bottom-0 left-0 right-0 bg-background border-t md:hidden z-40 safe-area-pb">
         <div className="flex items-center justify-around h-16">
           {MOBILE_NAV_ITEMS.map((item) => (
             <button

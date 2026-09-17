@@ -978,10 +978,10 @@ export default function MobilePaymentsV2() {
 
   return (
     <PullToRefresh onRefresh={loadData}>
-      <div className="min-h-screen bg-slate-50">
-        {/* Premium Header */}
-        <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
-          <div className="px-5 pt-5 pb-4">
+      <div className="min-h-screen bg-slate-50 pt-2">
+        {/* Premium Header — not sticky under fixed app chrome (avoids summary sliding under logo row) */}
+        <div className="bg-white border-b border-slate-100 relative z-10">
+          <div className="px-5 pt-3 pb-4">
             {/* Title Row */}
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -1105,7 +1105,7 @@ export default function MobilePaymentsV2() {
 
         {/* Add Payment Modal */}
         <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <DialogContent className="w-[95%] sm:max-w-xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl max-h-[90vh] flex flex-col">
+          <DialogContent className="w-[95%] sm:max-w-xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl max-h-[min(90vh,calc(100dvh-4.5rem))] flex flex-col pb-[env(safe-area-inset-bottom,0px)]">
             {(() => {
               const currentType = formData.type || 'Income';
               const headerBg = currentType === 'Income' ? 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600' :
@@ -1140,7 +1140,7 @@ export default function MobilePaymentsV2() {
                     </button>
                   </div>
 
-                  <div className="p-6 space-y-5 bg-white flex-1 overflow-y-auto no-scrollbar pb-8">
+                  <div className="p-6 space-y-5 bg-white flex-1 overflow-y-auto no-scrollbar pb-12" style={{ paddingBottom: 'calc(3rem + env(safe-area-inset-bottom, 0px))' }}>
                     
                     {(formData.type === 'Income' || formData.type === 'Debt') && (
                       <div className="space-y-4 relative z-50">
