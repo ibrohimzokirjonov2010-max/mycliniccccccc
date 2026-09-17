@@ -877,32 +877,33 @@ export default function ImplantDetail() {
           <span>{language === 'ru' ? 'Вернуться к паспорту импланта' : 'Implant pasportiga qaytish'}</span>
         </Link>
 
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
+        {/* Phone: 2+1 large taps; sm+: inline row (desktop unchanged feel) */}
+        <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:items-center sm:flex-wrap shrink-0">
           <Button
             variant="outline"
             size="sm"
             onClick={exportPDF}
-            className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 gap-1.5 bg-white hover:bg-slate-50"
+            className="min-h-[44px] h-11 sm:h-9 px-3.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 gap-1.5 bg-white hover:bg-slate-50"
           >
-            <Download className="w-4 h-4 text-[#14b8a6]" />
+            <Download className="w-4 h-4 text-[#14b8a6] shrink-0" />
             <span>{language === 'ru' ? 'PDF Паспорт' : 'PDF Pasport'}</span>
           </Button>
           <Button
             size="sm"
             onClick={() => setEditOpen(true)}
-            className="h-9 px-3.5 rounded-xl text-xs font-black text-white gap-1.5 bg-[#14b8a6] hover:bg-teal-600 shadow-sm"
+            className="min-h-[44px] h-11 sm:h-9 px-3.5 rounded-xl text-xs font-black text-white gap-1.5 bg-[#14b8a6] hover:bg-teal-600 shadow-sm"
           >
-            <Edit2 className="w-3.5 h-3.5" />
+            <Edit2 className="w-3.5 h-3.5 shrink-0" />
             <span>{language === 'ru' ? 'Редактировать' : 'Tahrirlash'}</span>
           </Button>
           {activeTooth.patient_id && (
-            <Link to={`/patients/${activeTooth.patient_id}`}>
+            <Link to={`/patients/${activeTooth.patient_id}`} className="col-span-2 sm:col-span-1">
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 gap-1.5 bg-white hover:bg-slate-50"
+                className="w-full min-h-[44px] h-11 sm:h-9 px-3.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 gap-1.5 bg-white hover:bg-slate-50"
               >
-                <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                <ExternalLink className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                 <span>{language === 'ru' ? 'Профиль пациента' : 'Bemor profili'}</span>
               </Button>
             </Link>

@@ -114,9 +114,83 @@ export function ClinicalStepper({ status, language = 'uz', onSelectStep, classNa
   const rank = getStatusRank(status || display);
   const isFailure = rank < 0;
 
+  const circleClass = (step, reached, isCurrent) => cn(
+    'rounded-full flex items-center justify-center transition-all shrink-0',
+    reached
+      ? 'bg-[#14b8a6] text-white shadow-xs group-hover:bg-[#0f766e]'
+      : isFailure
+        ? 'bg-rose-50 border-2 border-rose-300 text-rose-400'
+        : isCurrent
+          ? 'bg-white border-2 border-[#14b8a6] text-[#14b8a6] ring-2 ring-teal-100'
+          : step.isFinish
+            ? 'bg-white border-2 border-slate-300 text-slate-400 ring-2 ring-slate-100 ring-offset-1 group-hover:border-[#14b8a6]'
+            : 'bg-white border-2 border-slate-300 text-slate-300 group-hover:border-[#14b8a6] group-hover:text-[#14b8a6]'
+  );
+
+  const mark = (step, reached, isCurrent) => (
+    reached ? (
+      <Check className="w-4 h-4" strokeWidth={3} />
+    ) : isCurrent ? (
+      <div className="w-2.5 h-2.5 rounded-full bg-[#14b8a6]" />
+    ) : step.isFinish ? (
+      <div className="w-2.5 h-2.5 rounded-full border border-slate-300 group-hover:border-[#14b8a6]" />
+    ) : null
+  );
+
   return (
     <div className={cn('w-full', className)}>
-      <div className="flex items-center justify-between gap-1 overflow-x-auto py-1 scrollbar-none">
+      {/* Phone / chairside: vertical timeline (no horizontal scroll) */}
+      <ol className="md:hidden m-0 p-0 list-none">
+        {CLINICAL_STEPS.map((step, idx) => {
+          const reached = isStepReached(step, rank);
+          const isCurrent = (step.rank === rank) || (step.soft && rank === 3);
+          const label = language === 'ru' ? step.labelRu : step.label;
+          const effectiveRank = step.soft ? 3 : step.rank;
+          const lineTeal = !isFailure && rank > effectiveRank;
+          return (
+            <li key={step.id} className="flex gap-3">
+              <div className="flex flex-col items-center w-10 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => onSelectStep?.(step)}
+                  title={onSelectStep ? `${label} bosqichiga o'tkazish uchun bosing` : label}
+                  className={cn(
+                    'min-h-[44px] min-w-[44px] flex items-center justify-center bg-transparent border-0 p-0',
+                    onSelectStep ? 'cursor-pointer active:scale-95 group' : 'cursor-default'
+                  )}
+                >
+                  <div className={cn('w-9 h-9', circleClass(step, reached, isCurrent))}>
+                    {mark(step, reached, isCurrent)}
+                  </div>
+                </button>
+                {idx < CLINICAL_STEPS.length - 1 && (
+                  <div className={cn('w-0.5 flex-1 min-h-[12px] rounded-full', lineTeal ? 'bg-[#14b8a6]' : 'bg-slate-200')} />
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => onSelectStep?.(step)}
+                className={cn(
+                  'flex-1 min-h-[44px] flex items-center justify-between gap-2 py-2 pr-1 bg-transparent border-0 text-left',
+                  onSelectStep ? 'cursor-pointer active:opacity-80' : 'cursor-default'
+                )}
+              >
+                <span className={cn('text-sm leading-tight', reached || isCurrent ? 'text-[#14b8a6] font-bold' : 'text-slate-700 font-semibold')}>
+                  {label}
+                </span>
+                {isCurrent && (
+                  <span className="text-[10px] font-black uppercase tracking-wider text-teal-700 bg-teal-50 border border-teal-200 rounded-full px-2 py-0.5 shrink-0">
+                    {language === 'ru' ? 'текущий' : 'joriy'}
+                  </span>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+
+      {/* Desktop / tablet: compact horizontal stepper (unchanged pattern) */}
+      <div className="hidden md:flex items-center justify-between gap-1 overflow-x-auto py-1 scrollbar-none">
         {CLINICAL_STEPS.map((step, idx) => {
           const reached = isStepReached(step, rank);
           const isCurrent = (step.rank === rank) || (step.soft && rank === 3);
@@ -126,7 +200,6 @@ export function ClinicalStepper({ status, language = 'uz', onSelectStep, classNa
 
           return (
             <React.Fragment key={step.id}>
-              {/* Interactive Step Node */}
               <button
                 type="button"
                 onClick={() => onSelectStep?.(step)}
@@ -136,23 +209,8 @@ export function ClinicalStepper({ status, language = 'uz', onSelectStep, classNa
                   onSelectStep ? 'cursor-pointer hover:scale-105 active:scale-95 group' : 'cursor-default'
                 )}
               >
-                <div
-                  className={cn(
-                    'w-7 h-7 rounded-full flex items-center justify-center transition-all',
-                    reached
-                      ? 'bg-[#14b8a6] text-white shadow-xs group-hover:bg-[#0f766e]'
-                      : isFailure
-                        ? 'bg-rose-50 border-2 border-rose-300 text-rose-400'
-                        : step.isFinish
-                          ? 'bg-white border-2 border-slate-300 text-slate-400 ring-2 ring-slate-100 ring-offset-1 group-hover:border-[#14b8a6]'
-                          : 'bg-white border-2 border-slate-300 text-slate-300 group-hover:border-[#14b8a6] group-hover:text-[#14b8a6]'
-                  )}
-                >
-                  {reached ? (
-                    <Check className="w-4 h-4" strokeWidth={3} />
-                  ) : step.isFinish ? (
-                    <div className="w-2.5 h-2.5 rounded-full border border-slate-300 group-hover:border-[#14b8a6]" />
-                  ) : null}
+                <div className={cn('w-7 h-7', circleClass(step, reached, isCurrent))}>
+                  {mark(step, reached, isCurrent)}
                 </div>
                 <span
                   className={cn(
@@ -163,8 +221,6 @@ export function ClinicalStepper({ status, language = 'uz', onSelectStep, classNa
                   {label}
                 </span>
               </button>
-
-              {/* Connecting Line between steps */}
               {idx < CLINICAL_STEPS.length - 1 && (
                 <div
                   className={cn(
@@ -177,8 +233,9 @@ export function ClinicalStepper({ status, language = 'uz', onSelectStep, classNa
           );
         })}
       </div>
+
       {isFailure && (
-        <p className="text-[11px] font-bold text-rose-600 mt-1 text-center">
+        <p className="text-[11px] font-bold text-rose-600 mt-2 text-center">
           Failure — klinik bosqichlar to&apos;xtatilgan
         </p>
       )}

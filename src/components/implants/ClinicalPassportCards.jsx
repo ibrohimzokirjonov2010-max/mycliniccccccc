@@ -202,7 +202,7 @@ export function PassportSpecsCard({ implant, language = 'uz' }) {
   const protocolVal = formatProtocol(implant?.loading_protocol || implant?.protocol, language);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 h-full flex flex-col justify-between">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 h-full flex flex-col justify-between">
       <div>
         {/* Header */}
         <div className="flex items-center gap-2 mb-4">
@@ -215,12 +215,32 @@ export function PassportSpecsCard({ implant, language = 'uz' }) {
         </div>
 
         {/* Large Size Display — mockup HUGE Ø × L */}
-        <div className="text-[1.85rem] sm:text-[2.15rem] font-black tracking-tight text-[#14b8a6] mb-5 font-mono leading-none">
+        <div className="text-[1.65rem] sm:text-[2.15rem] font-black tracking-tight text-[#14b8a6] mb-3 sm:mb-5 font-mono leading-none">
           {sizeText}
         </div>
 
-        {/* 2-Column Specs Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+        {/* Dense label/value rows on phone; 2-col cards from sm+ */}
+        <div className="sm:hidden divide-y divide-slate-100 rounded-xl border border-slate-100 overflow-hidden">
+          {[
+            { key: 'lot', label: language === 'ru' ? 'LOT / Серия' : 'LOT / Seria', value: lotVal, mono: true, accent: true },
+            { key: 'torque', label: 'Torque', value: torqueVal },
+            { key: 'isq', label: 'ISQ', value: isqVal },
+            { key: 'bone', label: language === 'ru' ? 'Тип кости' : 'Suyak turi', value: boneVal },
+            { key: 'doctor', label: language === 'ru' ? 'Хирург' : 'Jarroh', value: doctorVal },
+            { key: 'date', label: language === 'ru' ? 'Дата установки' : 'Joylash sanasi', value: dateVal },
+          ].map((row) => (
+            <div key={row.key} className="flex items-center justify-between gap-3 min-h-[44px] px-3 py-2.5 bg-white">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0">{row.label}</span>
+              <span className={cn(
+                'text-sm font-black text-right truncate max-w-[58%]',
+                row.mono && 'font-mono',
+                row.accent ? 'text-[#14b8a6]' : 'text-slate-900'
+              )}>{row.value}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden sm:grid grid-cols-2 gap-x-6 gap-y-4">
           {/* LOT / Seria */}
           <div className="flex items-start gap-2.5">
             <div className="w-7 h-7 rounded-full bg-teal-50 text-[#14b8a6] flex items-center justify-center shrink-0 mt-0.5">
@@ -240,22 +260,18 @@ export function PassportSpecsCard({ implant, language = 'uz' }) {
               <CheckCircle2 className="w-3.5 h-3.5" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                {language === 'ru' ? 'Torque' : 'Torque'}
-              </div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Torque</div>
               <div className="text-sm font-black text-slate-900 truncate">{torqueVal}</div>
             </div>
           </div>
 
-          {/* ISQ (Istabilnost) */}
+          {/* ISQ */}
           <div className="flex items-start gap-2.5">
             <div className="w-7 h-7 rounded-full bg-teal-50 text-[#14b8a6] flex items-center justify-center shrink-0 mt-0.5">
               <Target className="w-3.5 h-3.5" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                {language === 'ru' ? 'ISQ' : 'ISQ'}
-              </div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">ISQ</div>
               <div className="text-sm font-black text-slate-900 truncate">{isqVal}</div>
             </div>
           </div>
