@@ -209,7 +209,8 @@
     "paidAmount": "Paid Amount",
     "debtSum": "Debt",
     "duration": "Duration",
-    "deleteConfirm": "Are you sure you want to delete?"
+    "deleteConfirm": "Are you sure you want to delete?",
+    "refresh": "Refresh"
   },
   "clinic": {
     "description": "Modern dental clinic offering high-quality stomatology services.",
@@ -239,7 +240,8 @@
     "superAdmin": "Super Admin",
     "marketing": "Marketing",
     "cases": "My Cases",
-    "staff": "Staff"
+    "staff": "Staff",
+    "chairsideToday": "Today's queue"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -2412,5 +2414,18 @@
       "errorSelectPatient": "Please select a patient",
       "errorUploadAfterImage": "Please upload at least the \"After\" photo"
     }
+  },
+  "chairside": {
+    "unknownPatient": "Unknown patient",
+    "countLabel": "appointments",
+    "doctorFilter": "Doctor filter",
+    "allDoctors": "All doctors",
+    "emptyTitle": "No appointments today",
+    "emptyDoctor": "Your queue for today is empty. Add an appointment from Appointments.",
+    "emptyAdmin": "No appointments found for today.",
+    "goAppointments": "Go to appointments",
+    "debt": "Debt",
+    "doctor": "Doctor",
+    "openProfile": "Profile"
   }
 }

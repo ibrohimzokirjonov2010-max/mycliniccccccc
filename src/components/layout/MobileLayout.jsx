@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
-  LayoutDashboard, Users, Calendar, DollarSign, 
+  LayoutDashboard, Users, Calendar, CalendarClock, DollarSign,
   Package, Phone, ClipboardList, Bell, Settings,
   Menu, Plus, Stethoscope,
   Wallet, CreditCard, AlertTriangle, Activity, 
@@ -19,7 +19,7 @@ import AdBanner from './AdBanner';
  * Main bottom navigation (4 items)
  */
 const getMobileNavItems = (t) => [
-  { path: '/', icon: LayoutDashboard, label: t('navigation.dashboard') },
+  { path: '/chairside', icon: CalendarClock, label: t('navigation.chairsideToday') || 'Navbat' },
   { path: '/patients', icon: Users, label: t('navigation.patients') },
   { path: '/appointments', icon: Calendar, label: t('navigation.appointments') },
   { path: '/payments', icon: DollarSign, label: t('navigation.payments') },
@@ -30,22 +30,22 @@ const getMobileNavItems = (t) => [
  * All other clinic modules
  */
 const getMoreNavItems = (t) => [
-  // Asosiy modullar
-  { path: '/services', icon: Stethoscope, label: t('navigation.services'), category: 'main' },
-  { path: '/inventory', icon: Package, label: t('navigation.inventory'), category: 'main' },
-  { path: '/leads', icon: Phone, label: t('navigation.leads'), category: 'main' },
-  { path: '/treatment-plans', icon: ClipboardList, label: t('navigation.treatmentPlans'), category: 'main' },
-  { path: '/recalls', icon: Bell, label: t('navigation.recalls'), category: 'main' },
-  { path: '/technicians', icon: Wrench, label: t('navigation.technicians'), category: 'main' },
-  // Moliya
-  { path: '/expenses', icon: Wallet, label: t('navigation.expenses'), category: 'finance' },
-  { path: '/payroll', icon: Briefcase, label: t('navigation.payroll'), category: 'finance' },
-  { path: '/debts', icon: CreditCard, label: t('navigation.debts'), category: 'finance' },
-  { path: '/reports', icon: BarChart3, label: t('navigation.reports'), category: 'finance' },
-  // Kuzatuv
-  { path: '/no-shows', icon: AlertTriangle, label: t('navigation.noShow'), category: 'tracking' },
-  { path: '/treatment-tracking', icon: Activity, label: t('navigation.treatmentTracking'), category: 'tracking' },
-  { path: '/implants', icon: ImplantIcon, label: t('navigation.implants'), category: 'tracking' },
+  // Clinical
+  { path: '/treatment-plans', icon: ClipboardList, label: t('navigation.treatmentPlans'), category: 'clinical' },
+  { path: '/implants', icon: ImplantIcon, label: t('navigation.implants'), category: 'clinical' },
+  { path: '/debts', icon: CreditCard, label: t('navigation.debts') || "Qarzlar", category: 'clinical' },
+  // Admin / secondary
+  { path: '/', icon: LayoutDashboard, label: t('navigation.dashboard'), category: 'admin' },
+  { path: '/services', icon: Stethoscope, label: t('navigation.services'), category: 'admin' },
+  { path: '/inventory', icon: Package, label: t('navigation.inventory'), category: 'admin' },
+  { path: '/leads', icon: Phone, label: t('navigation.leads'), category: 'admin' },
+  { path: '/recalls', icon: Bell, label: t('navigation.recalls'), category: 'admin' },
+  { path: '/technicians', icon: Wrench, label: t('navigation.technicians'), category: 'admin' },
+  { path: '/expenses', icon: Wallet, label: t('navigation.expenses'), category: 'admin' },
+  { path: '/payroll', icon: Briefcase, label: t('navigation.payroll'), category: 'admin' },
+  { path: '/reports', icon: BarChart3, label: t('navigation.reports'), category: 'admin' },
+  { path: '/no-shows', icon: AlertTriangle, label: t('navigation.noShow'), category: 'admin' },
+  { path: '/treatment-tracking', icon: Activity, label: t('navigation.treatmentTracking'), category: 'admin' },
 ];
 
 /**
@@ -209,7 +209,7 @@ export default function MobileLayout({ children }) {
       <AdBanner />
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-background border-t md:hidden z-50 safe-area-pb">
+      <nav className="fixed bottom-0 left-0 right-0 bg-background border-t md:hidden z-40 safe-area-pb">
         <div className="flex items-center justify-around h-16">
           {MOBILE_NAV_ITEMS.map((item) => (
             <button
@@ -238,11 +238,11 @@ export default function MobileLayout({ children }) {
               <div className="p-4 space-y-6">
                 <h3 className="font-semibold text-lg">{t('common.all')}</h3>
                 
-                {/* Asosiy modullar */}
+                {/* Klinik */}
                 <div>
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t('common.main')}</h4>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Klinik</h4>
                   <div className="grid grid-cols-4 gap-2">
-                    {MORE_NAV_ITEMS.filter(i => i.category === 'main').map((item) => (
+                    {MORE_NAV_ITEMS.filter(i => i.category === 'clinical').map((item) => (
                       <button
                         key={item.path}
                         onClick={() => navigate(item.path)}
@@ -259,32 +259,11 @@ export default function MobileLayout({ children }) {
                   </div>
                 </div>
 
-                {/* Moliya */}
+                {/* Boshqaruv / Admin */}
                 <div>
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t('common.finance')}</h4>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Boshqaruv / Admin</h4>
                   <div className="grid grid-cols-4 gap-2">
-                    {MORE_NAV_ITEMS.filter(i => i.category === 'finance').map((item) => (
-                      <button
-                        key={item.path}
-                        onClick={() => navigate(item.path)}
-                        className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-colors ${
-                          isActive(item.path) 
-                            ? 'bg-primary/10 text-primary' 
-                            : 'bg-muted hover:bg-muted/80'
-                        }`}
-                      >
-                        <item.icon className="h-5 w-5" />
-                        <span className="text-[10px] font-medium text-center">{item.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Kuzatuv */}
-                <div>
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">{t('common.tracking')}</h4>
-                  <div className="grid grid-cols-4 gap-2">
-                    {MORE_NAV_ITEMS.filter(i => i.category === 'tracking').map((item) => (
+                    {MORE_NAV_ITEMS.filter(i => i.category === 'admin').map((item) => (
                       <button
                         key={item.path}
                         onClick={() => navigate(item.path)}

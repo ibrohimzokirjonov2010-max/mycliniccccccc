@@ -1,23 +1,37 @@
-import { Check, CalendarDays } from 'lucide-react';
+import { Check, CalendarDays, Stethoscope, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TEAL = '#14b8a6';
 
 /**
  * Bottom bar: Bugungi reja horizontal stepper + Tez to'lov card.
- * Mockup: check → active teal → pending grey circles with connectors (not tall cards).
+ * Clear CTAs: next clinical step + payment with visible remaining.
  */
 export default function TodayPlanBar({
   steps = [],
   totalDebt = 0,
+  planRemaining = 0,
+  activeStep = null,
   onPay,
+  onNextClinical,
+  onOpenPlan,
 }) {
   const completed = steps.filter((s) => s.state === 'done').length;
   const total = steps.length || 0;
   const badge = total > 0 ? `${completed}/${total}` : "Reja yo'q";
+  const payTarget = Number(planRemaining) > 0
+    ? Number(planRemaining)
+    : Number(totalDebt) > 0
+      ? Number(totalDebt)
+      : 0;
+  const remainingLabel = Number(planRemaining) > 0
+    ? 'Reja qoldig\'i'
+    : Number(totalDebt) > 0
+      ? 'Qarz'
+      : "Qarz yo'q";
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_260px] gap-3">
+    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-3">
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] px-4 sm:px-5 py-3.5">
         <div className="flex items-center justify-between gap-3 mb-3.5">
           <div className="flex items-center gap-2 min-w-0">
@@ -37,63 +51,116 @@ export default function TodayPlanBar({
         </div>
 
         {steps.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-4 text-center">
-            <p className="text-xs font-semibold text-slate-400">Bugun uchun reja topilmadi</p>
-            <p className="text-[10px] text-slate-400 mt-1">Faol davolash rejalari yoki bugungi uchrashuvlar shu yerda ko&apos;rinadi</p>
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-4 text-center space-y-3">
+            <div>
+              <p className="text-xs font-semibold text-slate-400">Bugun uchun reja topilmadi</p>
+              <p className="text-[10px] text-slate-400 mt-1">Faol davolash rejalari yoki bugungi uchrashuvlar shu yerda ko&apos;rinadi</p>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {typeof onOpenPlan === 'function' && (
+                <button
+                  type="button"
+                  onClick={onOpenPlan}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-wide cursor-pointer hover:bg-slate-800"
+                >
+                  <ClipboardList className="w-3.5 h-3.5" />
+                  Yangi reja
+                </button>
+              )}
+              {typeof onNextClinical === 'function' && (
+                <button
+                  type="button"
+                  onClick={onNextClinical}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 border-teal-500/70 text-teal-800 bg-teal-50 text-[10px] font-black uppercase tracking-wide cursor-pointer hover:bg-teal-100"
+                >
+                  <Stethoscope className="w-3.5 h-3.5" />
+                  Tashxis / RVG
+                </button>
+              )}
+            </div>
           </div>
         ) : (
-          <div className="flex items-start w-full overflow-x-auto no-scrollbar pb-0.5">
-            {steps.map((step, idx) => {
-              const isDone = step.state === 'done';
-              const isActive = step.state === 'active';
-              const isLast = idx === steps.length - 1;
-              return (
-                <div key={step.id || idx} className={cn('flex items-start min-w-0', !isLast ? 'flex-1' : 'shrink-0')}>
-                  <div className="flex flex-col items-center text-center px-1 sm:px-2 min-w-[96px] max-w-[160px]">
-                    <div
-                      className={cn(
-                        'w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all',
-                        isDone && 'bg-emerald-500 text-white shadow-sm',
-                        isActive && 'text-white shadow-md ring-4 ring-teal-100',
-                        !isDone && !isActive && 'bg-white border-2 border-slate-300 text-slate-400'
-                      )}
-                      style={isActive ? { backgroundColor: TEAL } : undefined}
-                    >
-                      {isDone ? (
-                        <Check className="w-4 h-4" strokeWidth={3} />
-                      ) : (
-                        <span className="text-[12px] font-black leading-none">{idx + 1}</span>
-                      )}
-                    </div>
-                    <p className="mt-2 text-[11px] sm:text-xs font-black text-slate-900 leading-snug line-clamp-2">
-                      {step.title}
-                      {step.tooth ? ` (#${step.tooth})` : ''}
-                    </p>
-                    <p
-                      className={cn(
-                        'text-[10px] font-bold mt-0.5',
-                        isDone && 'text-emerald-600',
-                        !isDone && !isActive && 'text-slate-400'
-                      )}
-                      style={isActive ? { color: TEAL } : undefined}
-                    >
-                      {isDone ? 'Bajarildi' : isActive ? 'Jarayonda' : 'Kutilmoqda'}
-                    </p>
-                  </div>
-                  {!isLast && (
-                    <div className="flex-1 min-w-[20px] max-w-[64px] pt-4 px-0.5">
+          <>
+            <div className="flex items-start w-full overflow-x-auto no-scrollbar pb-0.5">
+              {steps.map((step, idx) => {
+                const isDone = step.state === 'done';
+                const isActive = step.state === 'active';
+                const isLast = idx === steps.length - 1;
+                return (
+                  <div key={step.id || idx} className={cn('flex items-start min-w-0', !isLast ? 'flex-1' : 'shrink-0')}>
+                    <div className="flex flex-col items-center text-center px-1 sm:px-2 min-w-[96px] max-w-[160px]">
                       <div
                         className={cn(
-                          'h-0.5 w-full rounded-full',
-                          isDone ? 'bg-emerald-400' : 'bg-slate-200'
+                          'w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all',
+                          isDone && 'bg-emerald-500 text-white shadow-sm',
+                          isActive && 'text-white shadow-md ring-4 ring-teal-100',
+                          !isDone && !isActive && 'bg-white border-2 border-slate-300 text-slate-400'
                         )}
-                      />
+                        style={isActive ? { backgroundColor: TEAL } : undefined}
+                      >
+                        {isDone ? (
+                          <Check className="w-4 h-4" strokeWidth={3} />
+                        ) : (
+                          <span className="text-[12px] font-black leading-none">{idx + 1}</span>
+                        )}
+                      </div>
+                      <p className="mt-2 text-[11px] sm:text-xs font-black text-slate-900 leading-snug line-clamp-2">
+                        {step.title}
+                        {step.tooth ? ` (#${step.tooth})` : ''}
+                      </p>
+                      <p
+                        className={cn(
+                          'text-[10px] font-bold mt-0.5',
+                          isDone && 'text-emerald-600',
+                          !isDone && !isActive && 'text-slate-400'
+                        )}
+                        style={isActive ? { color: TEAL } : undefined}
+                      >
+                        {isDone ? 'Bajarildi' : isActive ? 'Jarayonda' : 'Kutilmoqda'}
+                      </p>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    {!isLast && (
+                      <div className="flex-1 min-w-[20px] max-w-[64px] pt-4 px-0.5">
+                        <div
+                          className={cn(
+                            'h-0.5 w-full rounded-full',
+                            isDone ? 'bg-emerald-400' : 'bg-slate-200'
+                          )}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+              {typeof onNextClinical === 'function' && (
+                <button
+                  type="button"
+                  onClick={onNextClinical}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-[11px] font-black shadow-sm cursor-pointer hover:opacity-95"
+                  style={{ backgroundColor: TEAL }}
+                >
+                  <Stethoscope className="w-3.5 h-3.5" />
+                  {activeStep
+                    ? `Keyingi: ${activeStep.title}${activeStep.tooth ? ` (#${activeStep.tooth})` : ''}`
+                    : 'Tashxis / muolaja'}
+                </button>
+              )}
+              {typeof onPay === 'function' && (
+                <button
+                  type="button"
+                  onClick={onPay}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black shadow-sm cursor-pointer"
+                >
+                  To&apos;lov
+                  {payTarget > 0 ? ` · ${payTarget.toLocaleString('uz-UZ')} UZS` : ''}
+                  {' →'}
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
 
@@ -102,15 +169,19 @@ export default function TodayPlanBar({
           <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Tez to&apos;lov</p>
           <p className={cn(
             'text-xl font-black font-mono leading-tight tracking-tight',
-            totalDebt > 0 ? 'text-slate-900' : 'text-slate-500'
+            payTarget > 0 ? 'text-slate-900' : 'text-slate-500'
           )}>
-            {Number(totalDebt || 0).toLocaleString('uz-UZ')} <span className="text-xs font-black">UZS</span>
+            {Number(payTarget || 0).toLocaleString('uz-UZ')} <span className="text-xs font-black">UZS</span>
           </p>
-          {totalDebt > 0 ? (
-            <p className="text-[11px] font-bold text-rose-600 mt-0.5">Qarzni to&apos;lash</p>
-          ) : (
-            <p className="text-[11px] font-bold text-emerald-600 mt-0.5">Qarz yo&apos;q</p>
-          )}
+          <p className={cn(
+            'text-[11px] font-bold mt-0.5',
+            payTarget > 0 ? 'text-rose-600' : 'text-emerald-600'
+          )}>
+            {remainingLabel}
+            {Number(planRemaining) > 0 && Number(totalDebt) > 0 && Number(planRemaining) !== Number(totalDebt)
+              ? ` · Qarz: ${Number(totalDebt).toLocaleString('uz-UZ')}`
+              : ''}
+          </p>
         </div>
         <button
           type="button"

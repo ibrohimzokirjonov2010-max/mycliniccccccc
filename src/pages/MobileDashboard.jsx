@@ -46,7 +46,7 @@ export default function MobileDashboard() {
 
       setStats({
         patients: patients.length,
-        appointments: appointments.length,
+        appointments: todayApps.length,
         revenue: todayRevenue,
         todayAppointments: todayApps.slice(0, 5)
       });
@@ -168,8 +168,8 @@ export default function MobileDashboard() {
               />
               <StatCard
                 icon={TrendingUp}
-                label="O'sish"
-                value="+12%"
+                label="Bugungi navbat"
+                value={stats.appointments}
                 color="#8b5cf6"
                 delay={0.3}
               />

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
 import { useClinic } from '@/lib/ClinicContext';
@@ -721,7 +722,7 @@ export default function MobilePatientProfile() {
 
       {/* CLINICAL STRIP */}
       <div className="px-3 pt-3 space-y-3">
-                <div className="bg-white rounded-[20px] shadow-[0_8px_24px_rgba(15,23,42,0.05)] border border-slate-100/80 px-3 pt-3 pb-3.5">
+                <div className="bg-white rounded-[20px] shadow-[0_8px_24px_rgba(15,23,42,0.05)] border border-slate-100/80 px-2 pt-3 pb-3.5">
                   <div className="flex items-center justify-between mb-2.5 px-0.5">
                     <h2 className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
                       {t('patientProfile.mobile.odontogram', 'Odontogramma')}
@@ -1133,16 +1134,17 @@ export default function MobilePatientProfile() {
         </AnimatePresence>
       </div>
 
-      {/* TOOTH HISTORY SHEET */}
+      {/* TOOTH HISTORY SHEET — portaled so Framer page transform cannot trap fixed under bottom nav */}
+      {typeof document !== 'undefined' && createPortal(
       <AnimatePresence>
         {toothHistoryOpen && selectedTooth && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm" onClick={() => setToothHistoryOpen(false)} />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-[100] backdrop-blur-sm" onClick={() => setToothHistoryOpen(false)} />
             <motion.div
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 26, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl px-5 pt-4 max-h-[70vh] overflow-y-auto"
-              style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}
+              className="fixed bottom-0 left-0 right-0 z-[100] bg-white rounded-t-3xl shadow-2xl px-5 pt-4 max-h-[70vh] overflow-y-auto"
+              style={{ paddingBottom: 'calc(54px + env(safe-area-inset-bottom, 0px) + 1rem)' }}
             >
               <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
               <div className="flex items-center justify-between mb-4">
@@ -1169,18 +1171,20 @@ export default function MobilePatientProfile() {
             </motion.div>
           </>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body)}
 
-      {/* PAYMENT MODAL */}
+      {/* PAYMENT MODAL — portaled above sticky bottom nav */}
+      {typeof document !== 'undefined' && createPortal(
       <AnimatePresence>
         {payModalOpen && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm" onClick={() => setPayModalOpen(false)} />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-[100] backdrop-blur-sm" onClick={() => setPayModalOpen(false)} />
             <motion.div
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 26, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl px-5 pt-4"
-              style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}
+              className="fixed bottom-0 left-0 right-0 z-[100] bg-white rounded-t-3xl shadow-2xl px-5 pt-4 max-h-[85dvh] overflow-y-auto"
+              style={{ paddingBottom: 'calc(54px + env(safe-area-inset-bottom, 0px) + 1rem)' }}
             >
               <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
               <div className="flex items-center justify-between mb-4">
@@ -1279,7 +1283,8 @@ export default function MobilePatientProfile() {
             </motion.div>
           </>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body)}
 
       {/* MODALS */}
       {apptModalOpen && (

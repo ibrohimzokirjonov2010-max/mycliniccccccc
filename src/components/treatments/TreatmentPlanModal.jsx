@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   ClipboardList, Check, ArrowLeft, ArrowRight, 
   X, UserCircle2, CheckCircle2, Printer, 
-  Search, Download, MessageCircle
+  Search, Download, MessageCircle, Wallet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProfessionalOdontogram from '../patients/ProfessionalOdontogram';
@@ -187,7 +187,7 @@ const formatDepartmentPlanName = (services = [], selectedTeeth = []) => {
   return `${compactName}${toothLabel}`;
 };
 
-export default function TreatmentPlanModal({ open, onClose, plan, patients, services, onSaved, initialPatientId }) {
+export default function TreatmentPlanModal({ open, onClose, plan, patients, services, onSaved, initialPatientId, onPay }) {
   const { t, language } = useTranslation();
   const { clinicName } = useClinic();
   const [step, setStep] = useState(1);
@@ -772,9 +772,11 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       toast.success('Ma\'lumotlar saqlandi');
       if (onSaved) onSaved();
       if (step < 3) setStep(3);
+      return currentPlan;
     } catch (e) {
       console.error(e);
       toast.error('Xatolik yuz berdi');
+      return null;
     } finally { 
       setSaving(false); 
     }
@@ -1768,7 +1770,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                             </div>
                         </div>
                         {/* Bottom Actions Section - after invoice */}
-                        <div className="grid grid-cols-2 gap-3 mt-5 max-w-xl mx-auto no-print">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 max-w-2xl mx-auto no-print">
                              <Button 
                                 onClick={async () => {
                                     await handleSave();
@@ -1781,6 +1783,21 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                              <Button onClick={() => window.print()} className="h-10 bg-blue-500 hover:bg-blue-600 text-white font-bold uppercase text-[10px] tracking-wider rounded-xl shadow-md border-none gap-1.5">
                                 <Printer className="w-4 h-4" /> {t('odontogram.actions.print') || 'PRINT'}
                              </Button>
+                             {typeof onPay === 'function' && (
+                               <Button
+                                 onClick={async () => {
+                                   const saved = await handleSave();
+                                   const planId = saved?.id || savedPlanData?.id || plan?.id;
+                                   const total = Number(saved?.total_price ?? savedPlanData?.total_price ?? Math.floor(rawTotal * (1 - discount/100))) || 0;
+                                   const paid = Number(saved?.paid_amount ?? savedPlanData?.paid_amount ?? installmentAdvance ?? 0) || 0;
+                                   const remaining = Math.max(0, total - paid);
+                                   onPay({ planId, amount: remaining > 0 ? remaining : total });
+                                 }}
+                                 className="h-10 bg-slate-900 hover:bg-slate-800 text-white font-bold uppercase text-[10px] tracking-wider rounded-xl shadow-md border-none gap-1.5"
+                               >
+                                 <Wallet className="w-4 h-4" /> To&apos;lovga o&apos;tish →
+                               </Button>
+                             )}
                         </div>
                     </motion.div>
                 )}
@@ -1833,7 +1850,24 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                          )}
                      </Button>
                 ) : (
-                     <Button onClick={onClose} className="h-11 w-full sm:px-12 rounded-xl bg-slate-900 text-white font-bold uppercase text-[11.5px] tracking-wider shadow-md shadow-slate-900/10 hover:bg-slate-800">{t('odontogram.actions.close') || 'Yopish'}</Button>
+                     <div className="flex items-center gap-2 w-full sm:w-auto">
+                       {typeof onPay === 'function' && (
+                         <Button
+                           onClick={async () => {
+                             const saved = await handleSave();
+                             const planId = saved?.id || savedPlanData?.id || plan?.id;
+                             const total = Number(saved?.total_price ?? savedPlanData?.total_price ?? 0) || 0;
+                             const paid = Number(saved?.paid_amount ?? savedPlanData?.paid_amount ?? 0) || 0;
+                             const remaining = Math.max(0, total - paid);
+                             onPay({ planId, amount: remaining > 0 ? remaining : undefined });
+                           }}
+                           className="h-11 flex-1 sm:px-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase text-[11px] tracking-wider shadow-md border-none gap-1.5"
+                         >
+                           <Wallet className="w-4 h-4" /> To&apos;lov
+                         </Button>
+                       )}
+                       <Button onClick={onClose} className="h-11 flex-1 sm:px-12 rounded-xl bg-slate-900 text-white font-bold uppercase text-[11.5px] tracking-wider shadow-md shadow-slate-900/10 hover:bg-slate-800">{t('odontogram.actions.close') || 'Yopish'}</Button>
+                     </div>
                 )}
              </div>
         </div>

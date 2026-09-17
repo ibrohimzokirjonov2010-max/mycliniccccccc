@@ -84,6 +84,7 @@ export default function Patients() {
   // ─── Queries (TanStack Query) ──────────────────────────────────────────
   const { data: patientsData, isLoading, isFetching } = useQuery({
     queryKey: ['patients', debouncedSearch, page, isDoctor, user?.id],
+    enabled: !!user,
     queryFn: async () => {
       const offset = page * PAGE_SIZE;
       if (isDoctor && user?.id) {
@@ -111,6 +112,7 @@ export default function Patients() {
 
   const { data: stats } = useQuery({
     queryKey: ['patients-stats', isDoctor, user?.id],
+    enabled: !!user,
     queryFn: async () => {
       try {
         if (isDoctor && user?.id) {
@@ -834,7 +836,7 @@ export default function Patients() {
       </div>
 
       {/* ─── Modals & Dialogs ──────────────────────────────────────── */}
-      <Suspense fallback={null}>
+      <Suspense fallback={<div className="sr-only">Yuklanmoqda…</div>}>
       <PatientModal 
         open={modalOpen} 
         onClose={() => setModalOpen(false)} 

@@ -49,6 +49,7 @@ const MobilePatientsV2    = lazy(() => import('./pages/MobilePatientsV2'), 'chun
 const PatientProfile         = lazy(() => import('./pages/PatientProfile'), 'chunk_patient_profile');
 const MobilePatientProfile   = lazy(() => import('./pages/MobilePatientProfile'), 'chunk_mobile_patient_profile');
 const MobileAppointmentsV2 = lazy(() => import('./pages/MobileAppointmentsV2'));
+const ChairsideToday       = lazy(() => import('./pages/ChairsideToday'), 'chunk_chairside_today');
 const MobileLeadsV6       = lazy(() => import('./pages/MobileLeadsV6'));
 const Payments            = lazy(() => import('./pages/Payments'));
 const MobilePaymentsV2    = lazy(() => import('./pages/MobilePaymentsV2'));
@@ -200,6 +201,8 @@ const AuthenticatedApp = memo(() => {
               {/* ── Shared clinical ── */}
               <Route path="/technicians"
                 element={<PlanRoute feature="technicians"><Technicians /></PlanRoute>} />
+              <Route path="/chairside"         element={<ChairsideToday />} />
+              <Route path="/today"             element={<Navigate to="/chairside" replace />} />
               <Route path="/patients"          element={M(<Patients />, <MobilePatientsV2 />)} />
               <Route path="/patients/:id"      element={M(<PatientProfile />, <MobilePatientProfile />)} />
               <Route path="/appointments"      element={M(<Appointments />, <MobileAppointmentsV2 />)} />

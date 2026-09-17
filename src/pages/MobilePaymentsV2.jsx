@@ -901,7 +901,7 @@ export default function MobilePaymentsV2() {
               <span className="text-[13px] font-bold text-slate-900 truncate max-w-[150px]">
                 {payment.patient_name || '—'}
               </span>
-              <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wide ${style.bg} ${style.text}`}>
+              <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-black tracking-wide ${style.bg} ${style.text}`}>
                 {style.label}
               </span>
               {(payment.receipt_url || payment.receipt_image || payment.check_image) && (
@@ -911,7 +911,7 @@ export default function MobilePaymentsV2() {
                     e.stopPropagation();
                     setPreviewReceiptUrl(payment.receipt_url || payment.receipt_image || payment.check_image);
                   }}
-                  className="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black tracking-wide bg-blue-100 text-blue-700 hover:bg-blue-200 flex items-center gap-0.5 shadow-xs active:scale-90 transition-transform"
+                  className="shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-black tracking-wide bg-blue-100 text-blue-700 hover:bg-blue-200 flex items-center gap-0.5 shadow-xs active:scale-90 transition-transform"
                 >
                   <Receipt className="w-2.5 h-2.5" /> Chek
                 </button>
@@ -947,7 +947,7 @@ export default function MobilePaymentsV2() {
                     {Number(payment.amount || 0).toLocaleString()} UZS
                   </p>
                   {pat != null && (
-                    <p className={cn("text-[8px] font-black mt-1 uppercase tracking-tight", 
+                    <p className={cn("text-[10px] font-black mt-1 uppercase tracking-tight",
                       qarz > 0 ? 'text-rose-500' : 'text-emerald-500'
                     )}>
                       {qarz > 0 ? `Qarz: ${qarz.toLocaleString()} UZS` : '✓ To\'liq'}
@@ -978,10 +978,10 @@ export default function MobilePaymentsV2() {
 
   return (
     <PullToRefresh onRefresh={loadData}>
-      <div className="min-h-screen bg-slate-50">
-        {/* Premium Header */}
-        <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
-          <div className="px-5 pt-5 pb-4">
+      <div className="min-h-screen bg-slate-50 pt-2">
+        {/* Premium Header — not sticky under fixed app chrome (avoids summary sliding under logo row) */}
+        <div className="bg-white border-b border-slate-100 relative z-10">
+          <div className="px-5 pt-3 pb-4">
             {/* Title Row */}
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -1105,7 +1105,7 @@ export default function MobilePaymentsV2() {
 
         {/* Add Payment Modal */}
         <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <DialogContent className="w-[95%] sm:max-w-xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl max-h-[90vh] flex flex-col">
+          <DialogContent className="w-[95%] sm:max-w-xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl max-h-[min(90vh,calc(100dvh-4.5rem))] flex flex-col pb-[env(safe-area-inset-bottom,0px)]">
             {(() => {
               const currentType = formData.type || 'Income';
               const headerBg = currentType === 'Income' ? 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600' :
@@ -1140,7 +1140,7 @@ export default function MobilePaymentsV2() {
                     </button>
                   </div>
 
-                  <div className="p-6 space-y-5 bg-white flex-1 overflow-y-auto no-scrollbar pb-8">
+                  <div className="p-6 space-y-5 bg-white flex-1 overflow-y-auto no-scrollbar pb-12" style={{ paddingBottom: 'calc(3rem + env(safe-area-inset-bottom, 0px))' }}>
                     
                     {(formData.type === 'Income' || formData.type === 'Debt') && (
                       <div className="space-y-4 relative z-50">

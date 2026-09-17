@@ -24,7 +24,7 @@ export default function MobilePatientsV2() {
   const { t } = useTranslation();
   const { user, isDoctor } = useAuth();
   const [patients, setPatients] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const loadingTimerRef = useRef(null);
   const hasLoadedInitial = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,12 +40,15 @@ export default function MobilePatientsV2() {
   }, [location.state]);
 
   const loadPatients = useCallback(async () => {
+    // Auth race: do not paint empty list before user is ready
+    if (!user) {
+      setLoading(true);
+      return;
+    }
     try {
       if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
       if (!hasLoadedInitial.current) {
-        loadingTimerRef.current = setTimeout(() => {
-          setLoading(true);
-        }, 150);
+        setLoading(true);
       }
       let data = [];
       if (isDoctor && user?.id) {
@@ -235,10 +238,10 @@ export default function MobilePatientsV2() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: searchQuery ? 0 : Math.min(index, 6) * 0.02 }}
                     onClick={() => navigate(`/patients/${patient.id}`)}
-                    className="bg-white rounded-xl p-2.5 mb-2 shadow-sm border border-slate-50 flex items-center gap-3 relative active:scale-[0.98] transition-transform content-visibility-auto"
+                    className="bg-white rounded-2xl p-3.5 mb-2.5 shadow-sm border border-slate-100 flex items-center gap-3 relative active:scale-[0.98] transition-transform content-visibility-auto"
                   >
                     {/* Avatar */}
-                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden shrink-0 border border-slate-200/50">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden shrink-0 border border-slate-200/50">
                       {(patient.photo_url || patient.photo) ? (
                         <img src={patient.photo_url || patient.photo} alt={capitalizeName(patient.full_name)} className="w-full h-full object-cover" />
                       ) : (
@@ -249,11 +252,11 @@ export default function MobilePatientsV2() {
                     {/* Info Area */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-[14px] text-slate-800 truncate leading-tight group-active:text-[#1499AD]">
+                        <h3 className="font-bold text-[15px] text-slate-800 truncate leading-snug group-active:text-[#1499AD]">
                           {capitalizeName(patient.full_name)}
                         </h3>
                         {hasDebt && (
-                          <div className="px-1 py-0.5 rounded bg-rose-50 text-[8px] font-bold text-rose-500 border border-rose-100/50">
+                          <div className="px-1.5 py-0.5 rounded-md bg-rose-50 text-[10px] font-bold text-rose-500 border border-rose-100/50">
                             Qarz
                           </div>
                         )}
@@ -261,7 +264,7 @@ export default function MobilePatientsV2() {
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className={`w-1 h-1 rounded-full ${status.dot}`} />
                         <p className="text-[10px] font-medium text-slate-500 truncate">{patient.phone || "Noma'lum"}</p>
-                        <span className={`text-[9px] font-bold uppercase tracking-tight ${status.text} opacity-80`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-tight ${status.text} opacity-80`}>
                           {status.label}
                         </span>
                       </div>

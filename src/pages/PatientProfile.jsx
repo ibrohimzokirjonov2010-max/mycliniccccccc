@@ -1874,17 +1874,39 @@ export default function PatientProfile() {
 
   const { totalPaid, totalDebt, totalPrepayment, totalDiscount, discountPercent } = financialData;
 
-  const openPayModal = () => {
+  const openPayModal = (opts = {}) => {
     const assignedDocId = resolveDoctorId(patient, plans, doctors, user, isDoctor);
+    const plansWithRemaining = (plans || [])
+      .map((p) => ({
+        plan: p,
+        remaining: Math.max(0, (Number(p.total_price) || 0) - (Number(p.paid_amount) || 0)),
+      }))
+      .filter((x) => x.remaining > 0 && !['cancelled', 'canceled'].includes(String(x.plan.status || '').toLowerCase()));
+
+    const preferred =
+      (opts?.planId && plansWithRemaining.find((x) => String(x.plan.id) === String(opts.planId))) ||
+      plansWithRemaining.sort((a, b) => b.remaining - a.remaining)[0] ||
+      null;
+
+    const debtPrefill = Number(totalDebt) > 0 ? Number(totalDebt) : 0;
+    const prefillAmount =
+      opts?.amount != null && opts.amount !== ''
+        ? Number(opts.amount)
+        : preferred
+          ? preferred.remaining
+          : debtPrefill > 0
+            ? debtPrefill
+            : '';
+
     setPayForm({ 
       type: 'Income', 
-      amount: '', 
+      amount: prefillAmount === '' ? '' : Number(prefillAmount) || 0,
       method: 'Cash', 
-      category: 'Treatment', 
+      category: preferred ? (preferred.plan.name || 'Treatment') : 'Treatment',
       date: getLocalDateTimeValue(), 
-      notes: '', 
+      notes: preferred ? `Reja to'lov: ${preferred.plan.name || preferred.plan.id}` : '',
       doctor_id: assignedDocId || doctors[0]?.id || '', 
-      planId: '', 
+      planId: preferred?.plan?.id || opts?.planId || '',
       selectedServiceIds: [] 
     });
     setPayModalOpen(true);
@@ -4063,13 +4085,26 @@ export default function PatientProfile() {
                   
                   {/* Fintech Summa Input */}
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <Label className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 ml-1">To'lov summasi</Label>
-                      {totalDebt > 0 && (
-                        <span className="text-[10px] font-extrabold text-rose-500">
-                          Qarz: {totalDebt.toLocaleString()} so'm
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {(() => {
+                          const selectedPlan = (plans || []).find((p) => String(p.id) === String(payForm.planId));
+                          const planRem = selectedPlan
+                            ? Math.max(0, (Number(selectedPlan.total_price) || 0) - (Number(selectedPlan.paid_amount) || 0))
+                            : 0;
+                          return planRem > 0 ? (
+                            <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">
+                              Reja qoldig&apos;i: {planRem.toLocaleString()} so&apos;m
+                            </span>
+                          ) : null;
+                        })()}
+                        {totalDebt > 0 && (
+                          <span className="text-[10px] font-extrabold text-rose-500">
+                            Qarz: {totalDebt.toLocaleString()} so&apos;m
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="relative flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200/80 px-4 py-2 shadow-inner focus-within:border-emerald-500 focus-within:bg-white transition-colors">
                       <input
@@ -4187,22 +4222,60 @@ export default function PatientProfile() {
                           const paid = Number(plan.paid_amount) || 0;
                           const total = Number(plan.total_price) || 0;
                           const remaining = Math.max(0, total - paid);
+                          const isSelected = String(payForm.planId) === String(plan.id);
                           
                           return (
-                            <div key={plan.id} className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-slate-50/60 p-2 shadow-2xs">
-                              <div className="min-w-0 flex-1 mr-2">
-                                <p className="text-xs font-black text-slate-800 truncate leading-tight">{plan.name || 'Davolash rejasi'}</p>
-                                <p className="text-[9.5px] text-slate-500 font-bold mt-0.5">
-                                  Qarz: <span className={remaining > 0 ? 'text-rose-600 font-black' : 'text-emerald-600 font-black'}>{remaining.toLocaleString()} so'm</span>
-                                </p>
-                              </div>
+                            <div
+                              key={plan.id}
+                              className={`flex items-center justify-between rounded-xl border p-2 shadow-2xs transition-all ${
+                                isSelected
+                                  ? 'border-emerald-400 bg-emerald-50/80 ring-1 ring-emerald-200'
+                                  : 'border-slate-200/80 bg-slate-50/60'
+                              }`}
+                            >
                               <button
                                 type="button"
-                                onClick={() => setInvoiceModalPlan(plan)}
-                                className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 text-[8.5px] font-black uppercase hover:bg-blue-100 active:scale-95 transition-all cursor-pointer"
+                                className="min-w-0 flex-1 mr-2 text-left cursor-pointer"
+                                onClick={() => setPayForm((prev) => ({
+                                  ...prev,
+                                  planId: plan.id,
+                                  amount: remaining > 0 ? remaining : (Number(prev.amount) || 0),
+                                  category: plan.name || prev.category || 'Treatment',
+                                  notes: remaining > 0
+                                    ? `Reja to'lov: ${plan.name || plan.id}`
+                                    : (prev.notes || ''),
+                                }))}
                               >
-                                Faktura
+                                <p className="text-xs font-black text-slate-800 truncate leading-tight">{plan.name || 'Davolash rejasi'}</p>
+                                <p className="text-[9.5px] text-slate-500 font-bold mt-0.5">
+                                  Qoldiq: <span className={remaining > 0 ? 'text-rose-600 font-black' : 'text-emerald-600 font-black'}>{remaining.toLocaleString()} so&apos;m</span>
+                                  <span className="text-slate-400 font-semibold"> · Jami {total.toLocaleString()} · To&apos;langan {paid.toLocaleString()}</span>
+                                </p>
                               </button>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {remaining > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setPayForm((prev) => ({
+                                      ...prev,
+                                      planId: plan.id,
+                                      amount: remaining,
+                                      category: plan.name || 'Treatment',
+                                      notes: `Reja to'lov: ${plan.name || plan.id}`,
+                                    }))}
+                                    className="px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-[8.5px] font-black uppercase hover:bg-emerald-100 active:scale-95 transition-all cursor-pointer"
+                                  >
+                                    Qoldiq
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setInvoiceModalPlan(plan)}
+                                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 text-[8.5px] font-black uppercase hover:bg-blue-100 active:scale-95 transition-all cursor-pointer"
+                                >
+                                  Faktura
+                                </button>
+                              </div>
                             </div>
                           );
                         })}
@@ -4317,6 +4390,10 @@ export default function PatientProfile() {
         services={services} 
         onSaved={load}
         initialPatientId={id}
+        onPay={(payload) => {
+          setTreatmentModalOpen(false);
+          openPayModal(payload || {});
+        }}
       />
 
       <ImplantForm 

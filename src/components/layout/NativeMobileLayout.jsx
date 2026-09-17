@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Home, Users, Calendar, Wallet, Menu,
+  Home, Users, Calendar, CalendarClock, Wallet, Menu,
   ChevronLeft, ChevronRight, Bell, Plus, X, LogOut,
   Stethoscope, Package, BarChart3, ClipboardList,
   AlertTriangle, Activity, Settings, Zap, UserPlus,
@@ -75,38 +75,30 @@ const InlineLoader = memo(() => (
 ));
 
 const MENU_ITEMS_GEN = (t) => [
-  // Core Modules
-  { path: '/', label: t('navigation.dashboard'), icon: Home, color: 'text-teal-600', bg: 'bg-teal-50' },
-  { path: '/patients', label: t('navigation.patients'), icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-  { path: '/appointments', label: t('navigation.appointments'), icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50' },
-  { path: '/leads', label: t('navigation.leads'), icon: UserPlus, color: 'text-rose-600', bg: 'bg-rose-50' },
-  
-  // Clinical Modules
-  { path: '/treatment-plans', label: t('navigation.treatmentPlans'), icon: ClipboardList, color: 'text-sky-600', bg: 'bg-sky-50' },
-  { path: '/cases', label: t('navigation.cases') || "Mening Keyslarim", icon: Camera, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { path: '/implants', label: t('navigation.implants'), icon: ImplantIcon, color: 'text-teal-600', bg: 'bg-teal-50' },
-  { path: '/treatment-tracking', label: t('navigation.treatmentTracking'), icon: Activity, color: 'text-green-600', bg: 'bg-green-50' },
-  
-  // Financial Modules
-  { path: '/payments', label: t('navigation.payments'), icon: Wallet, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  { path: '/debts', label: t('navigation.debts'), icon: Wallet, color: 'text-rose-700', bg: 'bg-rose-50' },
-  { path: '/expenses', label: t('navigation.expenses'), icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50' },
-  { path: '/payroll', label: t('navigation.payroll'), icon: Wallet, color: 'text-purple-600', bg: 'bg-purple-50' },
-  
-  // Logistics & Staff
-  { path: '/staff', label: t('navigation.staff'), icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { path: '/services', label: t('navigation.services'), icon: Stethoscope, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { path: '/inventory', label: t('navigation.inventory'), icon: Package, color: 'text-orange-600', bg: 'bg-orange-50' },
-  { path: '/technicians', label: t('navigation.technicians'), icon: Wrench, color: 'text-indigo-700', bg: 'bg-indigo-50' },
-  
-  // CRM & Reports
-  { path: '/recall', label: t('navigation.recalls'), icon: Bell, color: 'text-pink-600', bg: 'bg-pink-50' },
-  { path: '/marketing', label: t('navigation.marketing'), icon: Target, color: 'text-rose-600', bg: 'bg-rose-50' },
-  { path: '/reports', label: t('navigation.reports'), icon: BarChart3, color: 'text-cyan-600', bg: 'bg-cyan-50' },
-  { path: '/no-show', label: t('navigation.noShow'), icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
-  
-  // System
-  { path: '/settings', label: t('settings.title'), icon: Settings, color: 'text-slate-600', bg: 'bg-slate-50' },
+  // Clinical primary (stomatologist-first)
+  { path: '/chairside', label: t('navigation.chairsideToday') || "Bugungi navbat", icon: CalendarClock, color: 'text-teal-600', bg: 'bg-teal-50', section: 'clinical' },
+  { path: '/patients', label: t('navigation.patients'), icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', section: 'clinical' },
+  { path: '/appointments', label: t('navigation.appointments'), icon: Calendar, color: 'text-amber-600', bg: 'bg-amber-50', section: 'clinical' },
+  { path: '/treatment-plans', label: t('navigation.treatmentPlans'), icon: ClipboardList, color: 'text-sky-600', bg: 'bg-sky-50', section: 'clinical' },
+  { path: '/implants', label: t('navigation.implants'), icon: ImplantIcon, color: 'text-teal-600', bg: 'bg-teal-50', section: 'clinical' },
+  { path: '/payments', label: t('navigation.payments') || "To'lovlar", icon: Wallet, color: 'text-emerald-600', bg: 'bg-emerald-50', section: 'clinical' },
+  { path: '/debts', label: t('navigation.debts') || "Qarzlar", icon: Wallet, color: 'text-rose-700', bg: 'bg-rose-50', section: 'clinical' },
+  // Admin / secondary
+  { path: '/', label: t('navigation.dashboard'), icon: Home, color: 'text-slate-600', bg: 'bg-slate-50', section: 'admin' },
+  { path: '/leads', label: t('navigation.leads'), icon: UserPlus, color: 'text-rose-600', bg: 'bg-rose-50', section: 'admin' },
+  { path: '/cases', label: t('navigation.cases') || "Mening Keyslarim", icon: Camera, color: 'text-emerald-500', bg: 'bg-emerald-50', section: 'admin' },
+  { path: '/treatment-tracking', label: t('navigation.treatmentTracking'), icon: Activity, color: 'text-green-600', bg: 'bg-green-50', section: 'admin' },
+  { path: '/expenses', label: t('navigation.expenses'), icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50', section: 'admin' },
+  { path: '/payroll', label: t('navigation.payroll'), icon: Wallet, color: 'text-purple-600', bg: 'bg-purple-50', section: 'admin' },
+  { path: '/staff', label: t('navigation.staff') || 'Xodimlar', icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50', section: 'admin' },
+  { path: '/services', label: t('navigation.services'), icon: Stethoscope, color: 'text-indigo-600', bg: 'bg-indigo-50', section: 'admin' },
+  { path: '/inventory', label: t('navigation.inventory'), icon: Package, color: 'text-orange-600', bg: 'bg-orange-50', section: 'admin' },
+  { path: '/technicians', label: t('navigation.technicians'), icon: Wrench, color: 'text-indigo-700', bg: 'bg-indigo-50', section: 'admin' },
+  { path: '/recall', label: t('navigation.recalls'), icon: Bell, color: 'text-pink-600', bg: 'bg-pink-50', section: 'admin' },
+  { path: '/marketing', label: t('navigation.marketing'), icon: Target, color: 'text-rose-600', bg: 'bg-rose-50', section: 'admin' },
+  { path: '/reports', label: t('navigation.reports'), icon: BarChart3, color: 'text-cyan-600', bg: 'bg-cyan-50', section: 'admin' },
+  { path: '/no-show', label: t('navigation.noShow'), icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50', section: 'admin' },
+  { path: '/settings', label: t('settings.title'), icon: Settings, color: 'text-slate-600', bg: 'bg-slate-50', section: 'admin' },
 ];
 
 
@@ -194,10 +186,11 @@ export default function NativeMobileLayout({ children }) {
     // Role based filtering
     if (isDoctor) {
       const doctorAllowedPaths = [
-        '/', '/patients', '/appointments', '/leads',
-        '/payments', '/treatment-plans', '/recall', '/recalls',
-        '/no-show', '/treatment-tracking', '/debts',
-        '/implants', '/cases', '/settings'
+        '/chairside', '/patients', '/appointments', '/treatment-plans',
+        '/implants', '/payments', '/debts', '/',
+        '/leads', '/recall', '/recalls',
+        '/no-show', '/treatment-tracking',
+        '/cases', '/settings'
       ];
       items = items.filter(item => doctorAllowedPaths.includes(item.path));
     }
@@ -211,7 +204,7 @@ export default function NativeMobileLayout({ children }) {
   }, [isDoctor, user, t]);
 
   const tabs = useMemo(() => [
-    { path: '/', icon: Home, label: t('navigation.dashboard'), color: '#1499AD' },
+    { path: '/chairside', icon: CalendarClock, label: t('navigation.chairsideToday') || 'Navbat', color: '#1499AD' },
     { path: '/patients', icon: Users, label: t('navigation.patients'), color: '#1499AD' },
     { path: '/appointments', icon: Calendar, label: t('appointments.calendar'), color: '#1499AD' },
     { path: '/payments', icon: Wallet, label: t('navigation.payments'), color: '#1499AD' },
@@ -248,7 +241,7 @@ export default function NativeMobileLayout({ children }) {
       >
         <div className="flex items-center justify-between h-14 px-5">
           <div className="flex items-center gap-4">
-            {!['/', '/admin/dashboard', '/doctor/dashboard', '/patients', '/appointments', '/payments'].includes(location.pathname) ? (
+            {!['/', '/chairside', '/admin/dashboard', '/doctor/dashboard', '/patients', '/appointments', '/payments'].includes(location.pathname) ? (
               <motion.button 
                 whileTap={{ scale: 0.9 }}
                 onClick={() => navigate(-1)}
@@ -327,15 +320,21 @@ export default function NativeMobileLayout({ children }) {
           <SubscriptionBanner />
         </div>
         )}
+        {/*
+          Page shell must stay opacity:1. Animating opacity:0→1 races with Suspense
+          remounts on heavy lazy routes (/implants, /treatment-plans) and can leave
+          populated DOM invisible. Also never set style.transform here — it fights
+          Framer Motion's x transform.
+        */}
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
             className="w-full min-w-0 max-w-none"
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -6 }}
-            transition={{ duration: 0.16, ease: [0.25, 0.46, 0.45, 0.94] }}
-            style={{ willChange: 'transform, opacity', transform: 'translateZ(0)', width: '100%' }}
+            initial={{ x: 12 }}
+            animate={{ x: 0 }}
+            exit={{ x: -8 }}
+            transition={{ duration: 0.14, ease: [0.25, 0.46, 0.45, 0.94] }}
+            style={{ width: '100%' }}
           >
             <ErrorBoundary>
               <Suspense fallback={<InlineLoader />}>
@@ -353,7 +352,7 @@ export default function NativeMobileLayout({ children }) {
 
       {/* iOS-style Native Bottom Navigation Bar */}
       <nav 
-        className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-2xl border-t border-slate-200/60 z-50 overflow-hidden no-print shadow-[0_-2px_16px_rgba(0,0,0,0.03)]"
+        className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-2xl border-t border-slate-200/60 z-40 overflow-hidden no-print shadow-[0_-2px_16px_rgba(0,0,0,0.03)]"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         <div className="flex items-center justify-around h-[50px] px-2 relative">
@@ -536,13 +535,23 @@ export default function NativeMobileLayout({ children }) {
               </div>
               
               <nav className="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar bg-white">
-                {filteredMenuItems.map((item) => {
+                {filteredMenuItems.map((item, index) => {
                   const Icon = item.icon;
                   const isActive = location.pathname === item.path;
+                  const prev = filteredMenuItems[index - 1];
+                  const showAdminDivider =
+                    item.section === 'admin' && (!prev || prev.section !== 'admin');
                   
                   return (
+                    <div key={item.path}>
+                    {showAdminDivider && (
+                      <div className="px-2 pt-3 pb-1">
+                        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">
+                          Boshqaruv / Admin
+                        </p>
+                      </div>
+                    )}
                     <button
-                      key={item.path}
                       onClick={() => {
                         navigate(item.path);
                         setShowMenu(false);
@@ -571,6 +580,7 @@ export default function NativeMobileLayout({ children }) {
                         </div>
                       )}
                     </button>
+                    </div>
                   );
                 })}
               </nav>

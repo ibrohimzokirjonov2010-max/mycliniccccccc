@@ -40,6 +40,37 @@ const APPOINTMENT_TIME_SLOTS = [
   '00:00'
 ];
 
+/** Local YYYY-MM-DD (avoid UTC shift from toISOString). */
+const getLocalDateStr = (d = new Date()) => {
+  const dt = d instanceof Date ? d : new Date(d);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+};
+
+const isSlotPastForDate = (slotTime, dateStr, now = new Date()) => {
+  const selected = normalizeToDateOnly(dateStr);
+  if (!selected) return false;
+  const todayStr = getLocalDateStr(now);
+  if (selected < todayStr) return true;
+  if (selected > todayStr) return false;
+  const nowMins = getEffectiveMinutes(
+    `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  );
+  return getEffectiveMinutes(slotTime) <= nowMins;
+};
+
+/** Next usable grid slot for a date (today: first slot still in the future). */
+const getNextReasonableSlot = (dateStr, now = new Date()) => {
+  const selected = normalizeToDateOnly(dateStr) || getLocalDateStr(now);
+  const todayStr = getLocalDateStr(now);
+  if (selected < todayStr) return null;
+  if (selected > todayStr) return APPOINTMENT_TIME_SLOTS[0];
+  const nowMins = getEffectiveMinutes(
+    `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  );
+  const next = APPOINTMENT_TIME_SLOTS.find((s) => getEffectiveMinutes(s) > nowMins);
+  return next || null;
+};
+
 const autoCategorize = (name) => {
   const n = name?.toLowerCase() || '';
   if (n.includes('olish') || n.includes('sug\'urish') || n.includes('implant') || n.includes('xirurg') || n.includes('anesteziya')) return 'XIRURGIYA';
@@ -163,20 +194,22 @@ export default function AppointmentModal({
       const foundDoc = doctors.find(d => String(d.id) === String(targetDocId));
       const targetDocName = isDoctor && user?.name ? user.name : (foundDoc?.name || '');
       
-      // Auto-fill current date and exact time for new appointments
+      // Auto-fill today + next reasonable future slot (never a past/unusable time)
       const now = new Date();
-      const autoDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
-      const autoHours = String(now.getHours()).padStart(2, '0');
-      const autoMinutes = String(now.getMinutes()).padStart(2, '0');
-      const autoTime = `${autoHours}:${autoMinutes}`;
+      const autoDate = getLocalDateStr(now);
+      const chosenDate = prefillDate || autoDate;
+      let chosenTime = prefillTime || '';
+      if (!chosenTime || (normalizeToDateOnly(chosenDate) === getLocalDateStr(now) && isSlotPastForDate(chosenTime, chosenDate, now))) {
+        chosenTime = getNextReasonableSlot(chosenDate, now) || '';
+      }
 
       setForm({
         patient_id: prefillPatientId || '', 
         patient_name: prefillPatientName || '', 
         doctor_id: targetDocId,
         doctor_name: targetDocName,
-        date: prefillDate || autoDate, 
-        time: prefillTime || autoTime,
+        date: chosenDate,
+        time: chosenTime,
         duration: 30,
         service_id: prefillServiceId || '',
         service_name: prefillServiceName || '',
@@ -529,7 +562,7 @@ export default function AppointmentModal({
   return (
     <>
       <Dialog open={open && !showNewPatient} onOpenChange={onClose}>
-        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] p-0 rounded-[2.5rem] border-0 shadow-2xl bg-white/95 backdrop-blur-xl flex flex-col overflow-visible">
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[min(90vh,calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-4.5rem))] p-0 rounded-[2.5rem] border-0 shadow-2xl bg-white/95 backdrop-blur-xl flex flex-col overflow-visible">
           
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between shrink-0 rounded-t-[2.5rem]">
@@ -631,7 +664,14 @@ export default function AppointmentModal({
                   type="date" 
                   value={form.date} 
                   onChange={e => {
-                    setForm(prev => ({ ...prev, date: e.target.value }));
+                    const nextDate = e.target.value;
+                    setForm(prev => {
+                      let nextTime = prev.time;
+                      if (nextDate && (!nextTime || isSlotPastForDate(nextTime, nextDate))) {
+                        nextTime = getNextReasonableSlot(nextDate) || '';
+                      }
+                      return { ...prev, date: nextDate, time: nextTime };
+                    });
                     setBusyInfo(null);
                   }}
                   className="h-10 rounded-xl border-slate-100 bg-slate-50 font-bold text-xs"
@@ -645,7 +685,16 @@ export default function AppointmentModal({
                   type="time" 
                   value={form.time} 
                   onChange={e => {
-                    setForm(prev => ({ ...prev, time: e.target.value }));
+                    const nextTime = e.target.value;
+                    if (form.date && nextTime && isSlotPastForDate(nextTime, form.date)) {
+                      const msg = language === 'ru' ? 'Время уже прошло' : language === 'en' ? 'Time has passed' : "Ushbu vaqt o'tib ketgan";
+                      toast.warning(msg);
+                      const bumped = getNextReasonableSlot(form.date) || '';
+                      setForm(prev => ({ ...prev, time: bumped }));
+                      setBusyInfo({ time: nextTime, isPast: true, message: msg });
+                      return;
+                    }
+                    setForm(prev => ({ ...prev, time: nextTime }));
                     setBusyInfo(null);
                   }}
                   className="h-10 rounded-xl border-slate-100 bg-slate-50 font-bold text-xs"
@@ -663,7 +712,7 @@ export default function AppointmentModal({
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-[#1499AD]" /><span className="text-[7.5px] font-bold text-slate-400 uppercase">{t('appointments.legendSelected') || 'Tanlangan'}</span></div>
                     <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-rose-300" /><span className="text-[7.5px] font-bold text-slate-400 uppercase">{t('appointments.legendBusy') || 'Band'}</span></div>
-                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-slate-300" /><span className="text-[7.5px] font-bold text-slate-400 uppercase">{t('appointments.legendPast') || 'O\'tgan'}</span></div>
+                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-slate-300" /><span className="text-[7.5px] font-bold text-slate-400 uppercase">{t('appointments.legendAvailable') || "Bo'sh"}</span></div>
                   </div>
                 </div>
 
@@ -674,20 +723,13 @@ export default function AppointmentModal({
                 )}
 
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
-                  {APPOINTMENT_TIME_SLOTS.map(slotTime => {
+                  {APPOINTMENT_TIME_SLOTS.filter((slotTime) => {
+                    // New bookings: hide past slots for today. Editing: keep current time visible.
+                    if (appointment?.id && form.time === slotTime) return true;
+                    return !isSlotPastForDate(slotTime, form.date);
+                  }).map(slotTime => {
                     const slotStart = getEffectiveMinutes(slotTime);
                     const isSelected = form.time === slotTime;
-
-                    // Check if this slot is in the past (today before current time, or any past date)
-                    const now = new Date();
-                    const todayStr = now.toISOString().split('T')[0];
-                    const selectedDateStr = normalizeToDateOnly(form.date);
-                    const isToday = selectedDateStr === todayStr;
-                    const isBeforeToday = Boolean(selectedDateStr) && selectedDateStr < todayStr;
-                    const nowH = now.getHours();
-                    const nowM = now.getMinutes();
-                    const currentMinutes = getEffectiveMinutes(`${String(nowH).padStart(2, '0')}:${String(nowM).padStart(2, '0')}`);
-                    const isPast = isBeforeToday || (isToday && slotStart < currentMinutes);
 
                     const busyAppt = appointmentsToUse?.find(a => {
                       if (a.id === appointment?.id) return false;
@@ -705,34 +747,15 @@ export default function AppointmentModal({
                         ? (busyAppt.patient_name || patients.find(p => String(p.id) === String(busyAppt.patient_id))?.full_name || 'Bemor') 
                         : '';
 
-                      const pastTooltip = language === 'ru' ? 'Время уже прошло' : language === 'en' ? 'Time has passed' : "Ushbu vaqt o'tib ketgan";
-
                       return (
                         <button
                           key={slotTime}
                           type="button"
-                          title={isPast ? `${slotTime} — ${pastTooltip}` : busyAppt ? `${t('appointments.legendBusy') || 'Band'}: ${busyPatName} (${busyAppt.service_name || t('appointments.defaultService') || 'Maslahat'})` : undefined}
+                          title={busyAppt ? `${t('appointments.legendBusy') || 'Band'}: ${busyPatName} (${busyAppt.service_name || t('appointments.defaultService') || 'Maslahat'})` : undefined}
                           onClick={() => {
-                            if (isPast) {
-                              const pastMsg = language === 'ru' ? 'Время уже прошло!' : language === 'en' ? 'This time has passed!' : "Ushbu vaqt o'tib ketgan!";
-                              const pastDesc = language === 'ru' ? 'Нельзя записать на прошедшее время' : language === 'en' ? 'Cannot schedule appointment for past time' : "O'tib ketgan vaqtga yangi uchrashuv belgilab bo'lmaydi.";
-                              
-                              toast.warning(`${slotTime} — ${pastMsg}`, {
-                                description: pastDesc,
-                                duration: 3500,
-                              });
-
-                              setBusyInfo({
-                                time: slotTime,
-                                isPast: true,
-                                message: `${slotTime} — ${pastMsg}`
-                              });
-                              return;
-                            }
                             if (busyAppt) {
                               const busyPatName = busyAppt.patient_name || patients.find(p => String(p.id) === String(busyAppt.patient_id))?.full_name || 'Bemor';
                               
-                              // Trigger a beautiful, clear toast message
                               toast.warning(`${slotTime} - ${t('appointments.busy') || 'qabul band!'}`, {
                                 description: `${t('appointments.patient') || 'Bemor'}: ${busyPatName} (${busyAppt.service_name || t('appointments.defaultService') || 'Maslahat'})`,
                                 duration: 5000,
@@ -749,9 +772,7 @@ export default function AppointmentModal({
                             }
                           }}
                           className={`py-1.5 rounded-xl text-[10px] font-black transition-all border ${
-                            isPast
-                              ? 'bg-slate-100/80 border-slate-200/80 text-slate-400 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 active:scale-95 cursor-pointer opacity-75'
-                              : busyAppt
+                            busyAppt
                                 ? 'bg-rose-50 border-rose-100 text-rose-500 hover:bg-rose-100/50 hover:border-rose-300 active:scale-95 cursor-pointer shadow-sm shadow-rose-100'
                                 : isSelected
                                   ? 'bg-[#1499AD] border-[#1499AD] text-white shadow-md'
@@ -763,6 +784,11 @@ export default function AppointmentModal({
                       );
                     })}
                 </div>
+                {APPOINTMENT_TIME_SLOTS.filter((slotTime) => (appointment?.id && form.time === slotTime) || !isSlotPastForDate(slotTime, form.date)).length === 0 && (
+                  <p className="mt-2 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-2">
+                    {language === 'ru' ? 'На сегодня свободных слотов не осталось — выберите другую дату' : language === 'en' ? 'No future slots left today — pick another date' : "Bugun uchun bo'sh slot qolmadi — boshqa sanani tanlang"}
+                  </p>
+                )}
               </div>
             )}
 
@@ -919,7 +945,7 @@ export default function AppointmentModal({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0 rounded-b-[2.5rem]">
+          <div className="px-6 pt-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0 rounded-b-[2.5rem]">
             <div>
               {appointment && (
                 <Button 

@@ -14,6 +14,8 @@ const ROUTE_CHUNK_LOADERS = {
     import('../pages/Patients'),
     import('../pages/MobilePatientsV2'),
   ]),
+  '/chairside': () => import('../pages/ChairsideToday'),
+  '/today': () => import('../pages/ChairsideToday'),
   '/appointments': () => Promise.all([
     import('../pages/Appointments'),
     import('../pages/MobileAppointmentsV2'),

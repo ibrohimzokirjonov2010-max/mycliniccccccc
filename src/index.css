@@ -254,10 +254,20 @@
     min-width: 48px;
   }
 
-  .odontogram-tooth,
+  .odontogram-tooth {
+    /* Allow explicit larger FDI hit targets (~34×48); do not force 44×44 global min */
+    min-width: 34px !important;
+    min-height: 48px !important;
+  }
+
   .compact-hit {
     min-width: 0 !important;
     min-height: 0;
+  }
+
+  /* Sheets/modals that must paint above the sticky bottom nav (z-40) */
+  .mobile-modal-layer {
+    z-index: 100;
   }
   
   /* Prevent text selection on UI elements */

@@ -163,7 +163,7 @@ export default function Dashboard() {
                 {t('dashboard.title')}
               </h1>
               <p className="text-xs font-black text-[#1499AD] uppercase tracking-[0.3em] mt-2 opacity-70">
-                {t('navigation.dashboard')} • {today}
+                {t('navigation.dashboard')} • Bugungi klinika kuni • {today}
               </p>
             </div>
           </motion.div>
