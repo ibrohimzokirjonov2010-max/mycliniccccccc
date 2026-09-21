@@ -1,15 +1,12 @@
-/* PAYMENT_ADD_TEAL_V3 — viewport-pinned dialog + footer always on screen
-   Marker: payment-add-teal-v3-footer-pin
-   Radix DialogContent uses transform + overflow:hidden, which breaks sticky.
-   Mobile: inset-pin the sheet (no transform) so the dialog IS the viewport.
-   Body scrolls; footer is absolute inside that box. */
+/* PAYMENT_ADD_TEAL_V4 — desktop stays Radix-centered; mobile footer stays pinned
+   Marker: payment-add-teal-v4-desktop-stable
+   Desktop (≥768): keep Radix left/top 50% + translate-x/y -50%. Do not zero
+   those utilities or add an independent CSS `translate` offset (double-shift).
+   Mobile (≤767): inset-pin the sheet, drop the centering matrix, absolute footer. */
 
 [data-radix-dialog-content].payment-add-dialog,
 .payment-add-dialog {
   --payment-add-footer-h: 72px;
-  position: fixed !important;
-  left: 50% !important;
-  top: 50% !important;
   display: flex !important;
   flex-direction: column !important;
   grid-template-rows: auto minmax(0, 1fr) auto !important;
@@ -22,11 +19,9 @@
   border: 1px solid #e5e7eb;
   width: min(42rem, calc(100vw - 16px));
   max-width: 42rem;
-  height: min(92dvh, 820px) !important;
-  max-height: min(92dvh, 820px) !important;
+  height: auto;
+  max-height: min(92vh, 820px) !important;
   min-height: 0 !important;
-  transform: translate(-50%, -50%) !important;
-  translate: -50% -50% !important;
   border-radius: 20px;
   container-type: inline-size;
   container-name: payment-add;
@@ -137,7 +132,7 @@
   overflow-x: hidden !important;
   overflow-y: auto !important;
   -webkit-overflow-scrolling: touch;
-  padding: 14px 16px calc(var(--payment-add-footer-h) + 12px);
+  padding: 14px 16px 16px;
   background: #ffffff;
 }
 
@@ -230,11 +225,8 @@
   background: #ffffff;
   border-top: 1px solid #e5e7eb;
   box-shadow: 0 -10px 24px -16px rgba(15, 23, 42, 0.28);
-  /* absolute inside transformed/fixed dialog — sticky is broken by overflow+transform */
-  position: absolute !important;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  /* Desktop: in-flow so Radix transform centering stays stable */
+  position: relative;
   z-index: 30;
 }
 
@@ -303,7 +295,7 @@
 @media (min-width: 768px) {
   .payment-add-dialog {
     width: min(42rem, 95vw);
-    height: min(92vh, 820px) !important;
+    height: auto !important;
     max-height: min(92vh, 820px) !important;
     border-radius: 24px;
   }
@@ -313,10 +305,14 @@
   }
 
   .payment-add-body {
-    padding: 18px 20px calc(var(--payment-add-footer-h) + 16px);
+    padding: 18px 20px 20px;
   }
 
   .payment-add-footer {
+    position: relative !important;
+    left: auto;
+    right: auto;
+    bottom: auto;
     padding: 12px 20px;
   }
 }
@@ -367,7 +363,16 @@
     min-width: 0 !important;
   }
 
+  .payment-add-body {
+    padding: 14px 16px calc(var(--payment-add-footer-h) + 12px);
+  }
+
   .payment-add-footer {
+    /* absolute inside the inset-pinned sheet — sticky fails with overflow */
+    position: absolute !important;
+    left: 0;
+    right: 0;
+    bottom: 0;
     flex-wrap: nowrap;
   }
 

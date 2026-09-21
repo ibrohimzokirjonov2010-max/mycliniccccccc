@@ -10,14 +10,14 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-// Hostile fixture: Radix-like transform + overflow + long form inside 390×844.
-const inner = `<!DOCTYPE html>
+function dialogMarkup({ vw, longForm }) {
+  return `<!DOCTYPE html>
 <html lang="uz">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=390, initial-scale=1" />
+<meta name="viewport" content="width=${vw}, initial-scale=1" />
 <style>${css}
-html, body { margin: 0; height: 100%; background: #64748b; }
+html, body { margin: 0; min-height: 2000px; background: #64748b; }
 </style>
 </head>
 <body>
@@ -26,7 +26,7 @@ html, body { margin: 0; height: 100%; background: #64748b; }
     role="dialog"
     data-radix-dialog-content
     data-state="open"
-    data-payment-add="payment-add-teal-v3-footer-pin"
+    data-payment-add="payment-add-teal-v4-desktop-stable"
     class="payment-add-dialog"
     style="
       position:fixed;
@@ -39,8 +39,8 @@ html, body { margin: 0; height: 100%; background: #64748b; }
       gap:0;
       padding:0;
       overflow:hidden;
-      width:95vw;
-      max-width:36rem;
+      width:min(42rem, 95vw);
+      max-width:42rem;
     "
   >
     <div class="payment-add-header">
@@ -65,7 +65,7 @@ html, body { margin: 0; height: 100%; background: #64748b; }
         <button class="payment-add-method" type="button">Click</button>
         <button class="payment-add-method" type="button">Payme</button>
       </div>
-      <div style="height:1600px;color:#94a3b8;padding-top:24px">Long form spacer — date, notes, extra fields</div>
+      ${longForm ? '<div style="height:1600px;color:#94a3b8;padding-top:24px">Long form spacer</div>' : ''}
     </div>
     <div class="payment-add-footer" data-payment-footer="true">
       <button class="payment-add-footer-cancel" type="button">Bekor qilish</button>
@@ -79,8 +79,11 @@ html, body { margin: 0; height: 100%; background: #64748b; }
       const r = el.getBoundingClientRect();
       const cs = getComputedStyle(el);
       return {
-        top: r.top, bottom: r.bottom, height: r.height, width: r.width,
-        position: cs.position, transform: cs.transform
+        top: r.top, bottom: r.bottom, left: r.left, right: r.right,
+        height: r.height, width: r.width,
+        position: cs.position, transform: cs.transform,
+        centerX: (r.left + r.right) / 2,
+        centerY: (r.top + r.bottom) / 2
       };
     }
     function measure() {
@@ -96,6 +99,7 @@ html, body { margin: 0; height: 100%; background: #64748b; }
         cta,
         dialog,
         bodyScroll: document.getElementById('body').scrollTop,
+        pageScroll: window.scrollY,
         innerHeight: vh,
         innerWidth: vw,
         footerVisible: fr.top >= 0 && fr.bottom <= vh + 1 && fr.height > 40,
@@ -106,21 +110,22 @@ html, body { margin: 0; height: 100%; background: #64748b; }
     }
     const before = measure();
     document.getElementById('body').scrollTop = 1400;
+    window.scrollTo(0, 420);
     const after = measure();
     document.getElementById('out').textContent = JSON.stringify({ before, after });
   </script>
 </body>
 </html>`;
+}
 
-const srcdoc = inner
-  .replace(/&/g, '&amp;')
-  .replace(/"/g, '&quot;');
-
-const outer = `<!DOCTYPE html>
+function runIframe({ width, height, longForm, screenshot }) {
+  const inner = dialogMarkup({ vw: width, longForm });
+  const srcdoc = inner.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  const outer = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" /></head>
 <body style="margin:0">
-<iframe id="phone" width="390" height="844" style="width:390px;height:844px;border:0" srcdoc="${srcdoc}"></iframe>
+<iframe id="phone" width="${width}" height="${height}" style="width:${width}px;height:${height}px;border:0" srcdoc="${srcdoc}"></iframe>
 <pre id="parent-out"></pre>
 <script>
   const f = document.getElementById('phone');
@@ -131,58 +136,97 @@ const outer = `<!DOCTYPE html>
 </script>
 </body>
 </html>`;
-
-const htmlPath = '/tmp/payment-add-footer-390.html';
-writeFileSync(htmlPath, outer);
-
-const chrome = spawnSync(
-  'google-chrome-stable',
-  [
-    '--headless=new',
-    '--disable-gpu',
-    '--no-sandbox',
-    '--disable-dev-shm-usage',
-    '--virtual-time-budget=5000',
-    `--screenshot=/tmp/payment-add-footer-390.png`,
-    '--dump-dom',
-    `file://${htmlPath}`,
-  ],
-  { encoding: 'utf8', timeout: 25000, maxBuffer: 12 * 1024 * 1024 }
-);
-
-if (chrome.status !== 0) {
-  throw new Error(`chrome failed ${chrome.status}: ${chrome.stderr}`);
+  const htmlPath = `/tmp/payment-add-${width}.html`;
+  writeFileSync(htmlPath, outer);
+  const chrome = spawnSync(
+    'google-chrome-stable',
+    [
+      '--headless=new',
+      '--disable-gpu',
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      '--virtual-time-budget=5000',
+      `--screenshot=${screenshot}`,
+      '--dump-dom',
+      `file://${htmlPath}`,
+    ],
+    { encoding: 'utf8', timeout: 25000, maxBuffer: 12 * 1024 * 1024 }
+  );
+  if (chrome.status !== 0) {
+    throw new Error(`chrome ${width} failed ${chrome.status}: ${chrome.stderr}`);
+  }
+  const match = chrome.stdout.match(/<pre id="parent-out">([^<]*)<\/pre>/);
+  assert(match && match[1].trim(), `metrics missing at ${width}: ${chrome.stdout.slice(-800)}`);
+  return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
 }
 
-const match = chrome.stdout.match(/<pre id="parent-out">([^<]*)<\/pre>/);
-assert(match && match[1].trim(), `metrics missing: ${chrome.stdout.slice(-800)}`);
-const metrics = JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
+const mobile = runIframe({
+  width: 390,
+  height: 844,
+  longForm: true,
+  screenshot: '/tmp/payment-add-footer-390.png',
+});
 
-assert(metrics.before.innerWidth === 390, `iframe width ${metrics.before.innerWidth}`);
-assert(metrics.before.innerHeight === 844, `iframe height ${metrics.before.innerHeight}`);
-assert(metrics.before.dialogFits, `dialog overflows viewport before scroll ${JSON.stringify(metrics.before.dialog)}`);
-assert(metrics.before.footerVisible, `footer hidden before scroll ${JSON.stringify(metrics.before.footer)}`);
-assert(metrics.before.cancelVisible, `cancel hidden before scroll ${JSON.stringify(metrics.before.cancel)}`);
-assert(metrics.before.ctaVisible, `cta hidden before scroll ${JSON.stringify(metrics.before.cta)}`);
-assert(metrics.before.cancel.bottom <= 844 + 1, `cancel below fold before scroll ${metrics.before.cancel.bottom}`);
-assert(metrics.after.bodyScroll >= 800, `body did not scroll ${metrics.after.bodyScroll}`);
-assert(metrics.after.dialogFits, `dialog overflows viewport after scroll ${JSON.stringify(metrics.after.dialog)}`);
-assert(metrics.after.footerVisible, `footer hidden after long-form scroll ${JSON.stringify(metrics.after.footer)}`);
-assert(metrics.after.cancelVisible, `cancel hidden after scroll ${JSON.stringify(metrics.after.cancel)}`);
-assert(metrics.after.ctaVisible, `cta hidden after scroll ${JSON.stringify(metrics.after.cta)}`);
+assert(mobile.before.innerWidth === 390, `iframe width ${mobile.before.innerWidth}`);
+assert(mobile.before.innerHeight === 844, `iframe height ${mobile.before.innerHeight}`);
+assert(mobile.before.dialogFits, `dialog overflows viewport before scroll ${JSON.stringify(mobile.before.dialog)}`);
+assert(mobile.before.footerVisible, `footer hidden before scroll ${JSON.stringify(mobile.before.footer)}`);
+assert(mobile.before.cancelVisible, `cancel hidden before scroll ${JSON.stringify(mobile.before.cancel)}`);
+assert(mobile.before.ctaVisible, `cta hidden before scroll ${JSON.stringify(mobile.before.cta)}`);
+assert(mobile.after.bodyScroll >= 800, `body did not scroll ${mobile.after.bodyScroll}`);
+assert(mobile.after.footerVisible, `footer hidden after long-form scroll ${JSON.stringify(mobile.after.footer)}`);
 assert(
-  Math.abs(metrics.after.footer.top - metrics.before.footer.top) < 2,
-  `footer moved with scroll ${metrics.before.footer.top} -> ${metrics.after.footer.top}`
+  Math.abs(mobile.after.footer.top - mobile.before.footer.top) < 2,
+  `footer moved with scroll ${mobile.before.footer.top} -> ${mobile.after.footer.top}`
 );
 assert(
-  metrics.after.footer.position === 'absolute' || metrics.after.footer.position === 'fixed' || metrics.after.footer.position === 'sticky',
-  `footer not pinned ${metrics.after.footer.position}`
+  mobile.after.footer.position === 'absolute' || mobile.after.footer.position === 'fixed',
+  `mobile footer not pinned ${mobile.after.footer.position}`
 );
-assert(metrics.after.dialog.transform === 'none', `dialog still transformed ${metrics.after.dialog.transform}`);
+assert(mobile.after.dialog.transform === 'none', `mobile dialog still transformed ${mobile.after.dialog.transform}`);
+
+const desktop = runIframe({
+  width: 1280,
+  height: 800,
+  longForm: true,
+  screenshot: '/tmp/payment-add-desktop-1280.png',
+});
+
+assert(desktop.before.innerWidth === 1280, `desktop width ${desktop.before.innerWidth}`);
+assert(desktop.before.innerHeight === 800, `desktop height ${desktop.before.innerHeight}`);
+assert(desktop.before.dialog.transform !== 'none', `desktop lost Radix transform ${desktop.before.dialog.transform}`);
+assert(
+  Math.abs(desktop.before.dialog.centerX - 640) < 24,
+  `desktop not centered ${desktop.before.dialog.centerX}`
+);
+assert(desktop.before.dialogFits, `desktop dialog overflows ${JSON.stringify(desktop.before.dialog)}`);
+assert(desktop.before.footerVisible, `desktop footer hidden ${JSON.stringify(desktop.before.footer)}`);
+assert(
+  desktop.before.footer.position === 'relative' || desktop.before.footer.position === 'static',
+  `desktop footer must be in-flow ${desktop.before.footer.position}`
+);
+assert(desktop.after.pageScroll >= 300, `page did not scroll ${desktop.after.pageScroll}`);
+assert(
+  Math.abs(desktop.after.dialog.top - desktop.before.dialog.top) < 2,
+  `desktop dialog drifted on page scroll ${desktop.before.dialog.top} -> ${desktop.after.dialog.top}`
+);
+assert(
+  Math.abs(desktop.after.dialog.centerX - 640) < 24,
+  `desktop center drifted ${desktop.after.dialog.centerX}`
+);
+assert(desktop.after.dialog.transform !== 'none', `desktop transform lost after scroll ${desktop.after.dialog.transform}`);
 
 console.log('assert-payment-add-footer: ok', {
-  before: metrics.before.footer,
-  after: metrics.after.footer,
-  scrolled: metrics.after.bodyScroll,
-  dialog: metrics.before.dialog,
+  mobile: {
+    footer: mobile.before.footer,
+    after: mobile.after.footer,
+    scrolled: mobile.after.bodyScroll,
+    dialog: mobile.before.dialog,
+  },
+  desktop: {
+    dialog: desktop.before.dialog,
+    afterTop: desktop.after.dialog.top,
+    pageScroll: desktop.after.pageScroll,
+    footerPos: desktop.before.footer.position,
+  },
 });

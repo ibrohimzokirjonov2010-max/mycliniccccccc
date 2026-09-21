@@ -22,7 +22,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import '@/components/payments/paymentAddModal.css';
 
-const PAYMENT_ADD_MARKER = 'payment-add-teal-v3-footer-pin';
+const PAYMENT_ADD_MARKER = 'payment-add-teal-v4-desktop-stable';
 const PAYMENT_QUICK_AMOUNTS = [50000, 100000, 500000, 1000000];
 const paymentAddDialogStyle = {
   display: 'flex',

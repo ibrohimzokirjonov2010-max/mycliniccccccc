@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 💳 Yangi to'lov modal — desktop centering drift
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/payments/paymentAddModal.css`](src/components/payments/paymentAddModal.css)
+  - [`src/components/ui/dialog.jsx`](src/components/ui/dialog.jsx)
+  - [`src/pages/MobilePaymentsV2.jsx`](src/pages/MobilePaymentsV2.jsx)
+  - [`src/pages/Payments.jsx`](src/pages/Payments.jsx)
+- **Muammo Tavsifi:** `54653dd` dan keyin desktopda YANGI TO'LOV oynasi joyida turmasdi (siljiydi / unstable).
+- **Sababi:** `transform: none` + `translate: -50% -50%` + DialogContent `translate-x-0` hammasi ham desktopga tushgan. Independent `translate` va `transform: translate(-50%,-50%)` ikkalasi birga offset qiladi; Radix centering o'chadi.
+- **Qanday tuzatildi:** Inset-pin / `transform:none` / absolute footer faqat `@media (max-width: 767px)`. Desktop (≥768) Radix `left/top 50%` + `translate-x/y -50%`, in-flow footer, `height: auto` + `max-height`. Marker `payment-add-teal-v4-desktop-stable`.
+- **Qaytalamaslik choralari:** Desktopda `transform: none`, `translate: -50%` yoki `translate-x-0` qaytarmang. Absolute footer faqat mobile. `node scripts/assert-payment-add-footer.mjs` 390 pin + 1280 center/scroll-stable ni tekshiradi.
+
 ### 💳 Yangi to'lov modal — footer 390×844 da skrolldan tashqari
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**
