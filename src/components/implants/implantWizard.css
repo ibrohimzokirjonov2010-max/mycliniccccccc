@@ -771,9 +771,7 @@
   }
 
   .implant-wizard-patient-chip {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    height: 36px;
+    display: none;
   }
 
   .implant-wizard-factura-slot:empty {
