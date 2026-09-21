@@ -23,7 +23,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
   - [`vite.config.js`](vite.config.js)
 - **Muammo Tavsifi:** 390px wizard ishlagan, lekin klinik ilova darajasida emas: FDI 11px, header `BEMOR TANLANMAGAN` baqirgan, Step 3 Jami kichik kulrang qator, chip/tab silliqlik yetishmagan.
 - **Qanday tuzatildi:** Mobil tish tanlash 12px tabular FDI + snap-scroll + midline; toza chip; Step 3 tibbiy footer (katta teal Jami, 44px teng Faktura/Saqlash, teal border); inline xato `alert()` o'rniga; header title-case; ixcham Step 1 bemor qatori.
-- **Qaytalamaslik choralari:** Desktop Step 2 `.implant-wizard-teeth { width: 240px }` va marker `implant-step2-teal-v2-240px-0d9488` qolsin. CTA `#0d9488`. Mobil arkda `transform` qaytarmang. Step 3 footer `Saqlash` + `Faktura olish` teng kenglikda, faktura kartasini footer bilan urushirmang. `alert()` qaytarmang. `data-implant-factura-slot` va `data-implant-factura-card` qolsin.
+- **Qaytalamaslik choralari:** Desktop Step 2 `.implant-wizard-teeth { width: 240px }` va marker `implant-step2-teal-v2-240px-0d9488` qolsin. CTA `#0d9488`. Mobil arkda `transform` qaytarmang. Step 3 **content** da `data-implant-factura-slot` (IMPLANT CENTER karta); footer faqat Jami + `Faktura olish` + `Saqlash` — kartani footerga ko‘chirmang. `alert()` qaytarmang. `data-implant-factura-card` qolsin.
 
 ### 🦷 Yangi implant Step 3 — IMPLANT CENTER faktura
 - **Sana:** 2026-09-21
@@ -54,7 +54,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
   - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
   - [`src/components/implants/ImplantWizardFactura.jsx`](src/components/implants/ImplantWizardFactura.jsx)
 - **Muammo Tavsifi:** 390px da tish tanlash 8+8 grid edi; mockup gorizontal scroll + hint, Step 2 chip, Step 3 full-width Saqlash / Faktura olish ni ko'rsatadi.
-- **Qaytalamaslik choralari:** Mobil odontogrammada egri `transform` qoldirmang — har ark `overflow-x: auto`. Desktop 240px chap kolonka va `#0d9488` CTA saqlansin. Step 3 footer da `Saqlash` + `Faktura olish` teng kenglikda; `data-implant-factura-slot` ni o'chirmang. `alert()` qaytarmang.
+- **Qaytalamaslik choralari:** Mobil odontogrammada egri `transform` qoldirmang — har ark `overflow-x: auto`. Desktop 240px chap kolonka va `#0d9488` CTA saqlansin. Step 3 footer da `Saqlash` + `Faktura olish` teng kenglikda. `data-implant-factura-slot` Step 3 **body** content (karta), footer emas. `alert()` qaytarmang.
 
 ### 🦷 Yangi implant wizard — mobile 390px unusable
 - **Sana:** 2026-09-21

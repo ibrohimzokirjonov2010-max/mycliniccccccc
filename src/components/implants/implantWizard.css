@@ -313,6 +313,21 @@
   display: none;
 }
 
+/* Step 3 content mount for IMPLANT CENTER factura — not the wizard footer */
+.implant-wizard-step3 {
+  min-width: 0;
+}
+
+.implant-wizard-factura-slot {
+  min-width: 0;
+  width: 100%;
+  flex: 0 0 auto;
+}
+
+.implant-wizard-factura-slot:empty {
+  display: none;
+}
+
 /* ---- Mobile ~390px ---- */
 @media (max-width: 767px) {
   .implant-wizard-dialog {
@@ -774,8 +789,9 @@
     display: none;
   }
 
-  .implant-wizard-factura-slot:empty {
-    display: none;
+  .implant-wizard-step3 {
+    gap: 12px;
+    padding-bottom: 4px;
   }
 }
 

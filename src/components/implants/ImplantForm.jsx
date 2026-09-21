@@ -1079,12 +1079,14 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
 
   const renderStep3 = () => (
     <div className="implant-wizard-step3 flex flex-col gap-4">
-      <ImplantWizardFactura
-        snapshot={facturaDoc}
-        clinicName={clinicName}
-        onEdit={handleFacturaEdit}
-        tw={tf}
-      />
+      <div className="implant-wizard-factura-slot" data-implant-factura-slot>
+        <ImplantWizardFactura
+          snapshot={facturaDoc}
+          clinicName={clinicName}
+          onEdit={handleFacturaEdit}
+          tw={tf}
+        />
+      </div>
 
       <section className={cardClass}>
         <h3 className="text-[15px] font-bold text-[#111827] mb-3">{tw('dateStatus', 'Sana va holat')}</h3>
@@ -1319,11 +1321,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
             {step === 3 && renderStep3()}
           </div>
 
-          <div
-            className="implant-wizard-footer"
-            data-step={step}
-            data-implant-factura-slot={step === 3 ? '' : undefined}
-          >
+          <div className="implant-wizard-footer" data-step={step}>
             {formError ? (
               <p className="implant-wizard-error" role="alert">{formError}</p>
             ) : null}
