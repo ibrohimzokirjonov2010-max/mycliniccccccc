@@ -207,8 +207,74 @@
   overflow: hidden;
 }
 
+/* Linear two-row strip — no arch curve, lift, or rotation. */
+.implant-wizard-arch-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  width: 100%;
+}
+
+.implant-wizard-arch-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: max-content;
+  min-width: 100%;
+  padding: 2px 2px 4px;
+}
+
+.implant-wizard-arch-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 2px;
+  width: max-content;
+  min-width: 100%;
+}
+
+.implant-wizard-arch-row.is-lower {
+  align-items: flex-start;
+}
+
+.implant-wizard-arch-curve {
+  display: none !important;
+}
+
+.implant-wizard-tooth-slot {
+  position: relative;
+  flex: 0 0 36px;
+  width: 36px;
+  margin: 0;
+  transform: none;
+}
+
 .implant-wizard-arch-midline {
-  display: none;
+  display: block;
+  flex: 0 0 10px;
+  width: 10px;
+  align-self: stretch;
+  margin: 0 2px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, transparent, #99f6e4 20%, #99f6e4 80%, transparent);
+}
+
+.implant-wizard-tooth-btn {
+  width: 100%;
+  gap: 3px;
+}
+
+.implant-wizard-tooth-fdi {
+  display: block;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.implant-wizard-tooth-img {
+  transform: none;
 }
 
 .implant-wizard-header-patient-desktop.is-empty {
@@ -731,20 +797,14 @@
     font-weight: 700;
   }
 
-  /* Horizontal scroll per arch — larger tap targets, 18/28/38/48 reachable */
+  /* One horizontal scroller for both straight rows — larger tap targets */
   .implant-wizard-arch {
     position: relative;
   }
 
-  .implant-wizard-arch-band {
-    height: auto !important;
-    margin: 0 !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    display: block !important;
-    -webkit-overflow-scrolling: touch;
+  .implant-wizard-arch-scroll {
     scrollbar-width: none;
-    padding: 6px 0 10px;
+    padding: 4px 0 8px;
     scroll-snap-type: x proximity;
     scroll-padding-inline: 6px 28px;
     overscroll-behavior-x: contain;
@@ -752,47 +812,31 @@
     -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
   }
 
-  .implant-wizard-arch-band::-webkit-scrollbar {
+  .implant-wizard-arch-scroll::-webkit-scrollbar {
     display: none;
   }
 
+  .implant-wizard-arch-rows {
+    gap: 8px;
+  }
+
   .implant-wizard-arch-row {
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    justify-content: flex-start;
-    align-items: flex-end;
-    width: max-content;
-    min-width: 100%;
-    gap: 6px;
-    padding: 0 4px 2px;
-  }
-
-  .implant-wizard-arch-row.is-lower {
-    align-items: flex-start;
-    margin-top: 4px;
-  }
-
-  .implant-wizard-arch-curve {
-    display: none !important;
+    gap: 4px;
   }
 
   .implant-wizard-tooth-slot {
     transform: none !important;
     margin: 0 !important;
-    flex: 0 0 50px;
-    width: 50px;
+    flex: 0 0 46px;
+    width: 46px;
     scroll-snap-align: start;
   }
 
   .implant-wizard-arch-midline {
-    display: block;
-    width: 2px;
-    align-self: stretch;
-    margin: 4px 6px;
-    flex: 0 0 2px;
-    border-radius: 2px;
-    background: linear-gradient(to bottom, transparent, #0d9488 18%, #0d9488 82%, transparent);
-    opacity: 0.45;
+    flex: 0 0 8px;
+    width: 8px;
+    margin: 2px 2px;
+    opacity: 0.7;
   }
 
   .implant-wizard-tooth-btn {

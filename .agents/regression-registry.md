@@ -13,6 +13,15 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant wizard — to'g'ri ikki qator tish chizig'i
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/ImplantWizardArch.jsx`](src/components/implants/ImplantWizardArch.jsx)
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+- **Muammo Tavsifi:** Wizard tish tanlash egri/oval arkada edi. Foydalanuvchi to'g'ri ikki qator (18→28 yuqori, 48→38 past) so'radi.
+- **Qanday tuzatildi:** `data-layout="linear"`. Slotlarda `translateY`/`rotate` yo'q. Dizyner PNG o'z orientatsiyasida (yuqori ildiz yuqorida, pastki ildiz pastda) — `scaleX`/`scaleY` qo'yilmagan. FDI yorliq har tish ostida.
+- **Qaytalamaslik choralari:** Wizard chartga egri `transform` yoki `rounded-t-full` ark qaytarmang. Chairside `ProfessionalOdontogram` ni bu o'zgarish bilan burmang. FDI tartibi 18→11, 21→28 va 48→41, 31→38. `#0d9488` va step 3 faktura qolsin.
+
 ### 🦷 Yangi implant wizard — bemor implantlari, tish paneli, o'lchovlarsiz
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**
