@@ -23,7 +23,7 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 // Avtomatik X tugmasi olib tashlangan - har bir modal o'z yopish tugmasini boshqaradi
-const DialogContent = React.forwardRef(({ className, children, ...props }, ref) => (
+const DialogContent = React.forwardRef(({ className, children, style, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -36,6 +36,7 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
         // Clear notch + home indicator + sticky bottom nav (~54px) on phones
         maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        ...style,
       }}
       {...props}>
       {children}

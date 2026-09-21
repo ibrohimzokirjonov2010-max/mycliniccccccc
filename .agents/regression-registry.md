@@ -13,6 +13,19 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant Step 2 — live bundle eski UI ni ko'rsatgan
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/ImplantWizardStep2.jsx`](src/components/implants/ImplantWizardStep2.jsx)
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+  - [`src/components/implants/implantWizardLabels.js`](src/components/implants/implantWizardLabels.js)
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/components/ui/dialog.jsx`](src/components/ui/dialog.jsx)
+- **Muammo Tavsifi:** Production `index-DEXdFwpD.js` i18n JSON ni olib kelgan, lekin Step 2 layout classlari (`240px`, `920px`) JS bundle da yo'q edi. Live UI eski compact radio-chip + binafsha Keyingisi + `implants.services.*` kalitlari bilan qolgan.
+- **Sababi:** DialogContent default `grid` + `max-w-lg` Tailwind classlari wizard `flex`/`max-w-[920px]` ni yengishi mumkin; shadcn Button `bg-primary` CTA ni yopishi mumkin; catalog `id`/`name` ba'zan to'liq i18n kaliti; production deploy ushbu GitHub main dagi ImplantForm JSX ni to'liq build qilmagan.
+- **Qanday tuzatildi:** Step 2 alohida komponent + Tailwind-ga bog'liq bo'lmagan CSS (`width: 240px`, `#0d9488 !important`); native teal CTA (shadcn Button emas); Dialog style merge; xizmat ID normalizatsiyasi va leak-proof label helper; PWA asset cache nomi yangilandi.
+- **Qaytalamaslik choralari:** YANGI IMPLANT Step 2 da `md:w-[240px]` ga ishonmang — `.implant-wizard-teeth { width: 240px }` va inline style majburiy. CTA da `Button`/`bg-indigo-600` ishlatmang. `t('implants.services.'+id)` natijasini tekshirmasdan chiqarmang. Production bundle da `implant-step2-teal-v2-240px-0d9488` marker bo'lishi shart.
+
 ### 🦷 Yangi implant wizard — teal dizayn va xizmat nomlari
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**
