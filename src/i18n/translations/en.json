@@ -1502,7 +1502,35 @@
       "needTeeth": "Please select the tooth or teeth for the implant.",
       "brand": "Brand",
       "brandName": "Enter brand name...",
-      "other": "Other"
+      "other": "Other",
+      "factura": {
+        "title": "Invoice / treatment plan",
+        "date": "Date",
+        "patient": "Patient full name",
+        "noPatient": "No patient selected",
+        "print": "Print",
+        "formula": "Dental formula",
+        "selectedTeeth": "Selected teeth",
+        "overall": "Total",
+        "stage1Now": "Stage 1 / now",
+        "stage1": "1. Stage",
+        "stage1Hint": "Surgery / now",
+        "stage2": "2. Stage",
+        "stage2Hint": "After 2–3 months",
+        "stage2Note": "Stage 2 price is confirmed later when prosthetic work starts.",
+        "subtotal": "Subtotal",
+        "price": "price",
+        "qty": "qty",
+        "qtyShort": "pcs",
+        "operationFee": "Surgical extras",
+        "titanFrame": "Titanium frame",
+        "zirconStd": "Zirconia crown (standard)",
+        "zirconEst": "Zirconia crown (esthetic)",
+        "zirconPre": "Zirconia crown (premium)",
+        "notice": "Note!",
+        "notice1": "Stage 1 quoted amounts are valid for 3 months.",
+        "notice2": "Stage 2 price is finalized with you 2–3 months after implant placement, when that work begins."
+      }
     }
   },
   "treatmentTracking": {

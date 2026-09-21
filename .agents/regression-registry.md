@@ -13,6 +13,17 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant Step 3 — IMPLANT CENTER faktura
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/components/implants/ImplantWizardFactura.jsx`](src/components/implants/ImplantWizardFactura.jsx)
+  - [`src/components/implants/implantFactura.js`](src/components/implants/implantFactura.js)
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+- **Muammo Tavsifi:** 3-qadamda faqat Ø/L/Ncm/Lot bor edi; qog'ozdagi Implant Center faktura / davolash rejasi (1-bosqich hozir, 2-bosqich 2–3 oy) chiqmasdi.
+- **Qanday tuzatildi:** Step 3 ga teal faktura kartasi qo'shildi: bemor, sana, FDI formula, brend × soni, step 2 extralar, sirkoniy/metallokeramika placeholderlar, 3 oylik eslatma. Snapshot `factura` + `notes` ichidagi `[FAKTURA_JSON]` da saqlanadi.
+- **Qaytalamaslik choralari:** Faktura UI ni alohida sahifaga chiqarmang — `ImplantForm` step 3. Indigo/purple ishlatmang (`#0d9488`). Xizmat ID/i18n kalitini chiqarmang. `body * { visibility: hidden }` ni global print CSS qilib qo'ymang (faqat `html.printing-implant-factura`). `node scripts/assert-implant-factura.mjs` o'tsin. 390px da `.implant-factura-cols` 1 ustun. Desktop Step 2 `240px` va mobil sticky footer/390px qoidalarini buzmang.
+
 ### 🦷 Odontogramma — protez-syomniy / protez-implant / protez-babochka
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**

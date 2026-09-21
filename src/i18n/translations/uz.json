@@ -1599,7 +1599,35 @@
       "needTeeth": "Iltimos, implant o'rnatiladigan tish(lar)ni belgilang!",
       "brand": "Brend",
       "brandName": "Firma nomini yozing...",
-      "other": "Boshqa"
+      "other": "Boshqa",
+      "factura": {
+        "title": "Faktura / davolash rejasi",
+        "date": "Sana",
+        "patient": "Bemor F.I.Sh",
+        "noPatient": "Bemor tanlanmagan",
+        "print": "Chop etish",
+        "formula": "Tish qatori formulasi",
+        "selectedTeeth": "Tanlangan tishlar",
+        "overall": "Umumiy",
+        "stage1Now": "1-bosqich / hozir",
+        "stage1": "1. Bosqich",
+        "stage1Hint": "Jarrohlik / hozir",
+        "stage2": "2. Bosqich",
+        "stage2Hint": "2–3 oydan so'ng",
+        "stage2Note": "2-bosqich narxi keyinroq, ish boshlanayotganda aniqlashtiriladi.",
+        "subtotal": "Umumiy",
+        "price": "narx",
+        "qty": "soni",
+        "qtyShort": "ta",
+        "operationFee": "Operatsion xarajatlar",
+        "titanFrame": "Titan karkas",
+        "zirconStd": "Sirkoniy karonka (standart)",
+        "zirconEst": "Sirkoniy karonka (estetik)",
+        "zirconPre": "Sirkoniy karonka (premium)",
+        "notice": "Eslatma!",
+        "notice1": "1-bosqichda hisoblab berilgan harajatlar miqdori 3 oy amal qiladi.",
+        "notice2": "2-bosqich narxi implantatsiyadan so'ng 2–3 oy o'tib ish boshlanayotganda siz bilan maslahatlashgan holda aniq hisoblab beriladi."
+      }
     }
   },
   "treatmentTracking": {

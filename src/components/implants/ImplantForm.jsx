@@ -13,10 +13,21 @@ import PatientSelect from '../patients/PatientSelect';
 import ToothImplantModal from './ToothImplantModal';
 import ImplantWizardArch from './ImplantWizardArch';
 import ImplantWizardStep2 from './ImplantWizardStep2';
+import ImplantWizardFactura from './ImplantWizardFactura';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
+import { useClinic } from '@/lib/ClinicContext';
 import { getOrSeedExtraServices, DEFAULT_EXTRA_SERVICES } from './ExtraServicesManagerModal';
 import { getServiceLabel, mergeExtraServicesCatalog, IMPLANT_WIZARD_STEP2_MARKER, normalizeServiceId } from './implantWizardLabels';
+import {
+  buildFacturaDocument,
+  extraIdsFromFactura,
+  snapshotToEdits,
+  encodeFacturaNotes,
+  stripFacturaFromNotes,
+  parseFacturaSnapshot,
+  IMPLANT_WIZARD_FACTURA_MARKER,
+} from './implantFactura';
 import { cn } from '@/lib/utils';
 import './implantWizard.css';
 
@@ -167,8 +178,10 @@ const wizardDialogStyle = {
 export default function ImplantForm({ open, onClose, patients, services: _services, implant, relatedImplants = [], onSaved }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { clinicName } = useClinic();
   const today = getToday();
   const tw = (key, fallback) => t(`implants.wizard.${key}`, fallback);
+  const tf = (key, fallback) => t(`implants.wizard.factura.${key}`, fallback);
 
   const [form, setForm] = useState({
     patient_id: '',
@@ -218,6 +231,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   const [extraTab, setExtraTab] = useState('all');
   const [editingPriceId, setEditingPriceId] = useState(null);
   const [formError, setFormError] = useState('');
+  const [facturaEdits, setFacturaEdits] = useState({});
   const wizardBodyRef = useRef(null);
 
   useEffect(() => {
@@ -293,6 +307,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
       complications: [],
       audit_log: [],
     });
+    setFacturaEdits({});
   }, [today]);
 
   useEffect(() => {
@@ -311,14 +326,17 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
       const uniqueTeeth = [...new Set(rawTeeth.map(String))].filter(Boolean);
       const uniqueServices = [...new Set((implant.extra_services || []).map(normalizeServiceId))].filter(Boolean);
 
+      const savedFactura = parseFacturaSnapshot(implant);
       setForm({
         ...implant,
         tooth_numbers: uniqueTeeth,
         extra_services: uniqueServices,
+        notes: stripFacturaFromNotes(implant.notes || ''),
       });
       if (implant.extra_service_prices && typeof implant.extra_service_prices === 'object') {
         setExtraServicePrices(implant.extra_service_prices);
       }
+      setFacturaEdits(savedFactura ? snapshotToEdits(savedFactura) : {});
 
       let initialToothMap = {};
       if (implant.tooth_data_map && typeof implant.tooth_data_map === 'object') {
@@ -374,6 +392,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
       resetForm();
       setToothDataMap({});
       setExtraServicePrices({});
+      setFacturaEdits({});
       setExtraSearch('');
       setExtraTab('all');
     }
@@ -638,8 +657,31 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
       });
       const finalPrice = mapPriceCount > 0 ? mapPriceSum : mergedPrice;
 
+      const facturaSnapshot = buildFacturaDocument({
+        date: form.placement_date || today,
+        patientName: form.patient_name,
+        clinicName,
+        selectedFdis: fdiNumbers,
+        brandLabel: finalFirma === 'Boshqa' ? (finalFirmaCustom || finalBrend || 'Implant') : (finalFirma || finalBrend || 'Implant'),
+        implantUnitPrice: Number(form.price) || 0,
+        extraServicesList,
+        selectedServiceIds: form.extra_services || [],
+        extraServicePrices,
+        edits: facturaEdits,
+        t,
+      });
+      const fromFactura = extraIdsFromFactura(facturaSnapshot);
+      const mergedExtraIds = [...new Set([
+        ...(form.extra_services || []).map(normalizeServiceId).filter(Boolean),
+        ...(fromFactura.extraIds || []),
+      ])];
+      const mergedExtraPrices = { ...extraServicePrices, ...fromFactura.extraPrices };
+      const userNotes = stripFacturaFromNotes(form.notes);
+
       const data = {
         ...form,
+        notes: encodeFacturaNotes(userNotes, facturaSnapshot),
+        factura: facturaSnapshot,
         firma: finalFirma,
         firma_custom: finalFirmaCustom,
         brend: finalBrend,
@@ -654,7 +696,8 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
         hizmat_turi: mergedService,
         price: finalPrice,
         narxi: finalPrice,
-        extra_service_prices: extraServicePrices,
+        extra_services: mergedExtraIds,
+        extra_service_prices: mergedExtraPrices,
         reminder_months: safeReminderMonths,
         tooth_number: fdiNumbers[0] || '',
         tooth_id: form.tooth_numbers[0] || '',
@@ -667,9 +710,27 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
       };
 
       if (implant && implant.id) {
-        await base44.entities.Implant.update(implant.id, data);
+        try {
+          await base44.entities.Implant.update(implant.id, data);
+        } catch (err) {
+          if (data.factura) {
+            const { factura: _factura, ...withoutFactura } = data;
+            await base44.entities.Implant.update(implant.id, withoutFactura);
+          } else {
+            throw err;
+          }
+        }
       } else {
-        await base44.entities.Implant.create(data);
+        try {
+          await base44.entities.Implant.create(data);
+        } catch (err) {
+          if (data.factura) {
+            const { factura: _factura, ...withoutFactura } = data;
+            await base44.entities.Implant.create(withoutFactura);
+          } else {
+            throw err;
+          }
+        }
       }
 
       onSaved();
@@ -731,8 +792,36 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
     const customPrice = extraServicePrices[sid];
     return acc + (customPrice !== undefined ? Number(customPrice) : (preset?.defaultPrice || 0));
   }, 0), [form.extra_services, extraServicesList, extraServicePrices]);
-  const implantTotal = (Number(form.price) || 0) * (selectedFdis.length || 0);
-  const grandTotal = implantTotal + extraTotal;
+
+  const facturaDoc = useMemo(() => buildFacturaDocument({
+    date: form.placement_date || today,
+    patientName: form.patient_name,
+    clinicName,
+    selectedFdis,
+    brandLabel,
+    implantUnitPrice: form.price,
+    extraServicesList,
+    selectedServiceIds: form.extra_services || [],
+    extraServicePrices,
+    edits: facturaEdits,
+    t,
+  }), [
+    form.placement_date, today, form.patient_name, clinicName, selectedFdis,
+    brandLabel, form.price, extraServicesList, form.extra_services,
+    extraServicePrices, facturaEdits, t,
+  ]);
+
+  const handleFacturaEdit = useCallback((id, field, value) => {
+    setFacturaEdits((prev) => ({
+      ...prev,
+      [id]: { ...(prev[id] || {}), [field]: value },
+    }));
+    if (id === 'implant' && field === 'unitPrice') {
+      setForm((prev) => ({ ...prev, price: Number(value) || 0 }));
+    } else if (field === 'unitPrice' && !['implant', 'operation_fee', 'titan_frame', 'zircon_std', 'zircon_est', 'zircon_pre'].includes(id)) {
+      setExtraServicePrices((prev) => ({ ...prev, [id]: Number(value) || 0 }));
+    }
+  }, []);
 
   const filteredExtras = useMemo(() => {
     const q = extraSearch.trim().toLowerCase();
@@ -968,6 +1057,13 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
 
   const renderStep3 = () => (
     <div className="flex flex-col gap-4">
+      <ImplantWizardFactura
+        snapshot={facturaDoc}
+        clinicName={clinicName}
+        onEdit={handleFacturaEdit}
+        tw={tf}
+      />
+
       <section className={cardClass}>
         <h3 className="text-[15px] font-bold text-[#111827] mb-3">{tw('dateStatus', 'Sana va holat')}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1137,8 +1233,8 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
     }
     return (
       <p className="implant-wizard-footer-line">
-        {tw('total', 'Jami:')}{' '}
-        <strong>{formatSom(grandTotal)} so&apos;m</strong>
+        {tf('stage1', '1. Bosqich')}:{' '}
+        <strong>{formatSom(facturaDoc.stage1Total)} so&apos;m</strong>
       </p>
     );
   };
@@ -1154,6 +1250,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
           className="implant-wizard-dialog !flex !flex-col !p-0 !gap-0 w-[95vw] !max-w-[920px] max-h-[92vh] overflow-hidden !rounded-2xl sm:!rounded-2xl border border-[#e5e7eb] bg-[#f3f4f6] shadow-2xl"
           style={wizardDialogStyle}
           data-implant-wizard={IMPLANT_WIZARD_STEP2_MARKER}
+          data-implant-factura={IMPLANT_WIZARD_FACTURA_MARKER}
           aria-describedby={undefined}
         >
           <DialogHeader className="shrink-0 space-y-0">
