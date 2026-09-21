@@ -1111,6 +1111,29 @@ export default function ImplantForm({
         >
           <Plus className="w-4 h-4" /> {tw('newPatient', 'Yangi bemor')}
         </button>
+        <div className="implant-wizard-selected-live" data-testid="implant-wizard-selected-teeth">
+          <p className="implant-wizard-selected-live-title">
+            {tw('selectedTeeth', 'Tanlangan tishlar')}
+            {selectedFdis.length > 0 ? ` (${selectedFdis.length})` : ''}
+          </p>
+          {selectedFdis.length === 0 ? (
+            <p className="implant-wizard-selected-live-empty">{tw('selectedTeethEmpty', 'Hali tish tanlanmagan')}</p>
+          ) : (
+            <div className="implant-wizard-selected-live-list">
+              {selectedFdis.map((fdi) => (
+                <button
+                  key={fdi}
+                  type="button"
+                  onClick={() => focusTooth(fdi)}
+                  className={cn('implant-wizard-selected-pill', activeFdi === fdi && 'is-active')}
+                  data-selected-fdi={fdi}
+                >
+                  #{fdi}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         {(form.patient_id || form.patient_name) && (
           <div className="implant-wizard-patient-implants" data-testid="implant-wizard-patient-implants">
             <p className="implant-wizard-patient-implants-title">

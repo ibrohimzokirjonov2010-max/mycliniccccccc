@@ -1760,6 +1760,7 @@
       "brand": "Бренд",
       "brandName": "Введите название фирмы...",
       "other": "Другое",
+      "selectedTeethEmpty": "Зубы ещё не выбраны",
       "existingImplants": "Имеющиеся импланты",
       "noImplants": "У пациента нет имплантов",
       "implantsLoading": "Загрузка...",

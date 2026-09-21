@@ -13,6 +13,15 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant wizard — tanlangan tishlar jonli chip
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+- **Muammo Tavsifi:** Bemor panelida faqat «Tanlangan: N» soni bor edi. Bosilgan tishlar #18 #17 #16 ketma-ket chiqishi kerak.
+- **Qanday tuzatildi:** «+ Yangi bemor» ostida `data-testid="implant-wizard-selected-teeth"` chip ro'yxati. Har bosish qo‘shadi, tartib saqlanadi.
+- **Qaytalamaslik choralari:** Tanlovni faqat songa qisqartirmang. Chip lar bemor panelida qolsin. Linear chart, bemor implantlari va step 3 o‘lchovsiz faktura o‘zgarmasin. Faktura overlay (`implant-step3-factura-overlay-v2-0d9488`) va `scrollIntoView` siz `openFactura` qolsin.
+
 ### 🦷 Yangi implant Step 3 — faktura pastda chiqishi (overlay)
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**

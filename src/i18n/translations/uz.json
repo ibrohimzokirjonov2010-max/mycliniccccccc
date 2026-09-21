@@ -1611,6 +1611,7 @@
       "brand": "Brend",
       "brandName": "Firma nomini yozing...",
       "other": "Boshqa",
+      "selectedTeethEmpty": "Hali tish tanlanmagan",
       "existingImplants": "Mavjud implantlar",
       "noImplants": "Bu bemorda implant yo'q",
       "implantsLoading": "Yuklanmoqda...",
