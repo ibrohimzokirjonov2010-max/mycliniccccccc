@@ -1,5 +1,6 @@
 /* IMPLANT_WIZARD_STEP2_TEAL_V2 — layout must survive Tailwind/Dialog defaults */
 /* IMPLANT_WIZARD_MOBILE_390_V2 — h-scroll arches, chips, sticky footer, factura slot */
+/* IMPLANT_WIZARD_MOBILE_POLISH_V1 — clinic-grade 390: 12px FDI, medical Jami footer, no alert() */
 
 .implant-wizard-dialog {
   display: flex !important;
@@ -106,6 +107,8 @@
   background: #ffffff;
   border-top: 1px solid #e5e7eb;
   flex-shrink: 0;
+  position: relative;
+  z-index: 8;
 }
 
 .implant-wizard-footer-summary {
@@ -126,6 +129,62 @@
 .implant-wizard-footer-line strong {
   color: #0d9488;
   font-weight: 700;
+}
+
+.implant-wizard-footer-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.implant-wizard-footer-total-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.implant-wizard-footer-total-amount {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0d9488;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+
+.implant-wizard-footer-currency {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f766e;
+  margin-left: 4px;
+}
+
+.implant-wizard-factura-btn {
+  border-color: #0d9488;
+  color: #0d9488;
+  background: #ffffff;
+}
+
+.implant-wizard-factura-btn:hover {
+  background: #f0fdfa;
+  border-color: #0f766e;
+  color: #0f766e;
+}
+
+.implant-wizard-arch-midline {
+  display: none;
+}
+
+.implant-wizard-header-patient-desktop.is-empty {
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
 }
 
 .implant-wizard-footer-actions {
@@ -297,7 +356,7 @@
 
   .implant-wizard-step-label-short {
     display: inline;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
@@ -337,12 +396,13 @@
     flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
-    gap: 8px;
+    gap: 6px;
     flex: none !important;
     min-height: 0;
     padding-bottom: 4px;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
   }
 
   .implant-wizard-teeth-list > * {
@@ -354,15 +414,32 @@
     display: inline-flex !important;
     align-items: center;
     gap: 6px;
-    padding: 6px 10px !important;
-    border: 1px solid #0d9488;
+    height: 32px;
+    padding: 0 12px !important;
+    border: 1px solid #99f6e4;
     border-radius: 999px;
     background: #f0fdfa;
     white-space: nowrap;
+    scroll-snap-align: start;
+    box-shadow: 0 1px 0 rgba(13, 148, 136, 0.08);
   }
 
-  .implant-wizard-tooth-chip .chip-brand {
+  .implant-wizard-tooth-chip .chip-brand,
+  .implant-wizard-tooth-chip .chip-tooth {
     display: none;
+  }
+
+  .implant-wizard-tooth-chip .chip-index {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+  }
+
+  .implant-wizard-tooth-chip .chip-fdi {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f766e;
+    font-variant-numeric: tabular-nums;
   }
 
   .implant-wizard-teeth-foot,
@@ -385,7 +462,8 @@
     justify-content: flex-end;
     gap: 8px;
     min-height: 0;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -10px 24px -16px rgba(15, 23, 42, 0.28);
   }
 
   .implant-wizard-footer-summary {
@@ -401,6 +479,10 @@
   .implant-wizard-footer-actions .implant-wizard-cta {
     flex: 1 1 0;
     min-width: 0;
+    height: 44px;
+    min-height: 44px;
+    border-radius: 12px;
+    font-weight: 700;
   }
 
   /* Horizontal scroll per arch — larger tap targets, 18/28/38/48 reachable */
@@ -417,6 +499,9 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     padding: 6px 0 10px;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 6px 28px;
+    overscroll-behavior-x: contain;
     mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
     -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
   }
@@ -448,25 +533,41 @@
   .implant-wizard-tooth-slot {
     transform: none !important;
     margin: 0 !important;
-    flex: 0 0 48px;
-    width: 48px;
+    flex: 0 0 50px;
+    width: 50px;
+    scroll-snap-align: start;
+  }
+
+  .implant-wizard-arch-midline {
+    display: block;
+    width: 2px;
+    align-self: stretch;
+    margin: 4px 6px;
+    flex: 0 0 2px;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, transparent, #0d9488 18%, #0d9488 82%, transparent);
+    opacity: 0.45;
   }
 
   .implant-wizard-tooth-btn {
     width: 100%;
-    gap: 3px;
+    gap: 4px;
     touch-action: manipulation;
   }
 
+  .implant-wizard-tooth-fdi,
   .implant-wizard-tooth-btn span:first-child,
   .implant-wizard-tooth-btn span:last-child {
-    font-size: 11px !important;
+    font-size: 12px !important;
+    font-weight: 700;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
   }
 
   .implant-wizard-tooth-face {
-    width: 44px !important;
-    max-width: 44px;
-    height: 52px !important;
+    width: 46px !important;
+    max-width: 46px;
+    height: 54px !important;
     border-radius: 12px !important;
   }
 
@@ -502,11 +603,13 @@
     flex: 0 0 auto;
     height: 28px;
     padding: 0 10px;
-    border-radius: 8px;
+    border-radius: 999px;
     background: #0d9488;
     color: #fff;
     font-size: 12px;
     font-weight: 700;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
     display: inline-flex;
     align-items: center;
   }
@@ -564,14 +667,19 @@
   .implant-wizard-header-patient {
     display: block;
     margin: 2px 0 0;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.85);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: rgba(255, 255, 255, 0.88);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .implant-wizard-header-patient.is-empty {
+    color: rgba(255, 255, 255, 0.62);
+    font-weight: 400;
   }
 
   .implant-wizard-header-patient-desktop {
@@ -590,9 +698,19 @@
     min-width: 0;
   }
 
+  .implant-wizard-footer[data-step="3"] {
+    gap: 10px;
+    padding-top: 12px;
+  }
+
+  .implant-wizard-footer[data-step="3"] .implant-wizard-footer-total-amount {
+    font-size: 20px;
+  }
+
   .implant-wizard-footer[data-step="3"] .implant-wizard-footer-actions {
     flex-direction: row;
     flex-wrap: nowrap;
+    gap: 8px;
   }
 
   .implant-wizard-footer[data-step="3"] .implant-wizard-back {
@@ -604,15 +722,62 @@
     flex: 1 1 0;
     width: auto;
     min-width: 0;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .implant-wizard-tabs {
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 20px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 20px), transparent 100%);
+    padding-right: 4px;
+  }
+
+  .implant-wizard-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .implant-wizard-card {
+    padding: 10px 12px;
+  }
+
+  .implant-wizard-step1-patient {
+    display: grid !important;
+    grid-template-columns: 1fr auto;
+    align-items: stretch;
+    padding: 8px 10px !important;
+    gap: 8px !important;
+  }
+
+  .implant-wizard-step1-heading {
+    display: none;
+  }
+
+  .implant-wizard-step1-search {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .implant-wizard-new-patient {
+    grid-column: 2;
+    grid-row: 1;
+    height: 40px;
+    padding: 0 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .implant-wizard-patient-chip {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    height: 36px;
   }
 
   .implant-wizard-factura-slot:empty {
     display: none;
-  }
-
-  .implant-wizard-step1-patient {
-    padding: 10px 12px;
-    gap: 8px;
   }
 }
 

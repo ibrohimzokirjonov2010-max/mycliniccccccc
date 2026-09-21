@@ -161,7 +161,7 @@ function MoneyField({ value, onChange, className }) {
 
 const fieldInput =
   'h-10 rounded-[10px] border border-[#e5e7eb] bg-white text-sm text-[#111827] font-medium shadow-none focus-visible:ring-[#0d9488]/20 focus-visible:border-[#0d9488]';
-const cardClass = 'bg-white rounded-xl border border-[#e5e7eb] p-4';
+const cardClass = 'implant-wizard-card bg-white rounded-xl border border-[#e5e7eb] p-4';
 const wizardDialogStyle = {
   maxWidth: 920,
   width: 'min(920px, 95vw)',
@@ -954,20 +954,22 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   const renderStep1 = () => (
     <div className="flex flex-col md:flex-row gap-4 min-h-0">
       <aside className="implant-wizard-step1-patient w-full md:w-[240px] shrink-0 bg-white rounded-xl border border-[#e5e7eb] p-4 flex flex-col gap-3 relative z-20">
-        <div>
+        <div className="implant-wizard-step1-heading">
           <h3 className="text-[15px] font-bold text-[#111827]">{tw('stepPatient', 'Bemor')}</h3>
           <div className="mt-1 h-[3px] w-10 rounded-full bg-[#0d9488]" />
         </div>
-        <PatientSelect
-          patients={localPatients}
-          value={form.patient_id}
-          initialName={form.patient_name}
-          onChange={handlePatientSelect}
-          placeholder={tw('searchPatient', 'Bemor qidirish...')}
-          inputClassName="bg-white border-[#e5e7eb] h-10 rounded-[10px] text-sm"
-        />
+        <div className="implant-wizard-step1-search">
+          <PatientSelect
+            patients={localPatients}
+            value={form.patient_id}
+            initialName={form.patient_name}
+            onChange={handlePatientSelect}
+            placeholder={tw('searchPatient', 'Bemor qidirish...')}
+            inputClassName="bg-white border-[#e5e7eb] h-10 rounded-[10px] text-sm"
+          />
+        </div>
         {form.patient_name && (
-          <div className="flex items-center justify-between gap-2 px-3 h-11 rounded-[10px] border border-[#0d9488] bg-white">
+          <div className="implant-wizard-patient-chip flex items-center justify-between gap-2 px-3 h-11 rounded-[10px] border border-[#0d9488] bg-white">
             <span className="text-sm font-semibold text-[#111827] truncate">{form.patient_name}</span>
             <span className="w-5 h-5 rounded-full bg-[#0d9488] text-white flex items-center justify-center shrink-0">
               <Check className="w-3 h-3" strokeWidth={3} />
@@ -977,7 +979,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
         <button
           type="button"
           onClick={() => setNewPatientOpen(true)}
-          className="h-11 rounded-[10px] border border-[#e5e7eb] bg-white text-[#0d9488] text-sm font-semibold hover:bg-[#f0fdfa] flex items-center justify-center gap-1.5 cursor-pointer"
+          className="implant-wizard-new-patient h-11 rounded-[10px] border border-[#e5e7eb] bg-white text-[#0d9488] text-sm font-semibold hover:bg-[#f0fdfa] flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <Plus className="w-4 h-4" /> {tw('newPatient', 'Yangi bemor')}
         </button>
@@ -1252,10 +1254,13 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
       );
     }
     return (
-      <p className="implant-wizard-footer-line">
-        {tf('stage1', '1. Bosqich')}:{' '}
-        <strong>{formatSom(facturaDoc.stage1Total)} so&apos;m</strong>
-      </p>
+      <div className="implant-wizard-footer-total">
+        <span className="implant-wizard-footer-total-label">{tw('total', 'Jami:')}</span>
+        <strong className="implant-wizard-footer-total-amount">
+          {formatSom(facturaDoc.stage1Total)}
+          <span className="implant-wizard-footer-currency"> so&apos;m</span>
+        </strong>
+      </div>
     );
   };
 
@@ -1276,15 +1281,18 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
           <DialogHeader className="shrink-0 space-y-0">
             <div className="implant-wizard-header h-14 px-5 flex items-center justify-between text-white" style={{ background: '#0d9488' }}>
               <div className="implant-wizard-header-titles min-w-0">
-                <DialogTitle className="text-[15px] font-bold tracking-wide text-white uppercase">
+                <DialogTitle className="text-[15px] font-bold tracking-wide text-white">
                   {implant ? t('common.edit') : tw('title', 'Yangi implant')}
                 </DialogTitle>
-                <p className="implant-wizard-header-patient">
+                <p className={cn('implant-wizard-header-patient', !form.patient_name && 'is-empty')}>
                   {form.patient_name || tw('noPatient', 'Bemor tanlanmagan')}
                 </p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
-                <span className="implant-wizard-header-patient-desktop text-sm font-semibold uppercase tracking-wide hidden sm:inline">
+                <span className={cn(
+                  'implant-wizard-header-patient-desktop text-sm font-medium tracking-normal hidden sm:inline',
+                  !form.patient_name && 'is-empty'
+                )}>
                   {form.patient_name || tw('noPatient', 'Bemor tanlanmagan')}
                 </span>
                 <span className="implant-wizard-header-badge h-8 px-3 rounded-full bg-white/15 border border-white/25 text-xs font-semibold flex items-center gap-1.5">
@@ -1311,12 +1319,15 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
             {step === 3 && renderStep3()}
           </div>
 
-          <div className="implant-wizard-footer" data-step={step}>
+          <div
+            className="implant-wizard-footer"
+            data-step={step}
+            data-implant-factura-slot={step === 3 ? '' : undefined}
+          >
             {formError ? (
               <p className="implant-wizard-error" role="alert">{formError}</p>
-            ) : (
-              <div className="implant-wizard-footer-summary">{footerSummary()}</div>
-            )}
+            ) : null}
+            <div className="implant-wizard-footer-summary">{footerSummary()}</div>
             <div className="implant-wizard-footer-actions">
               <button
                 type="button"

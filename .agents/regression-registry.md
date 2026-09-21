@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant wizard — clinic-grade mobile polish
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+  - [`src/components/implants/ImplantWizardArch.jsx`](src/components/implants/ImplantWizardArch.jsx)
+  - [`src/components/implants/ImplantWizardStep2.jsx`](src/components/implants/ImplantWizardStep2.jsx)
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`vite.config.js`](vite.config.js)
+- **Muammo Tavsifi:** 390px wizard ishlagan, lekin klinik ilova darajasida emas: FDI 11px, header `BEMOR TANLANMAGAN` baqirgan, Step 3 Jami kichik kulrang qator, chip/tab silliqlik yetishmagan.
+- **Qanday tuzatildi:** Mobil tish tanlash 12px tabular FDI + snap-scroll + midline; toza chip; Step 3 tibbiy footer (katta teal Jami, 44px teng Faktura/Saqlash, teal border); inline xato `alert()` o'rniga; header title-case; ixcham Step 1 bemor qatori.
+- **Qaytalamaslik choralari:** Desktop Step 2 `.implant-wizard-teeth { width: 240px }` va marker `implant-step2-teal-v2-240px-0d9488` qolsin. CTA `#0d9488`. Mobil arkda `transform` qaytarmang. Step 3 footer `Saqlash` + `Faktura olish` teng kenglikda, faktura kartasini footer bilan urushirmang. `alert()` qaytarmang. `data-implant-factura-slot` va `data-implant-factura-card` qolsin.
+
 ### 🦷 Yangi implant Step 3 — IMPLANT CENTER faktura
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**

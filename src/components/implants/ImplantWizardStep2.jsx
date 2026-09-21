@@ -68,8 +68,8 @@ export default function ImplantWizardStep2({
               >
                 {idx + 1}
               </span>
-              <Tooth className="w-4 h-4 text-[#9ca3af] shrink-0" />
-              <span className="text-sm font-semibold text-[#111827]">#{fdi}</span>
+              <Tooth className="chip-tooth w-4 h-4 text-[#9ca3af] shrink-0" />
+              <span className="chip-fdi text-sm font-semibold text-[#111827] tabular-nums">#{fdi}</span>
               <span className="ml-auto text-xs text-[#9ca3af] chip-brand">{brandLabel}</span>
             </div>
           ))}
@@ -108,7 +108,7 @@ export default function ImplantWizardStep2({
             style={{ outlineColor: '#0d9488' }}
           />
         </div>
-        <div className="flex items-center gap-0 border-b border-[#e5e7eb] mb-3 overflow-x-auto">
+        <div className="implant-wizard-tabs flex items-center gap-0 border-b border-[#e5e7eb] mb-3 overflow-x-auto">
           {SERVICE_TABS.map((tab) => (
             <button
               key={tab.id}

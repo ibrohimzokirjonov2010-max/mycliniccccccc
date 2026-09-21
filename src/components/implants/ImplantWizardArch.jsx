@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getToothIllustrationSrc } from '@/utils/toothIllustration';
@@ -21,7 +22,7 @@ function WizardTooth({ fdi, selected, onClick, numberPosition }) {
     >
       {numberPosition === 'top' && (
         <span className={cn(
-          'text-[10px] font-semibold tabular-nums leading-none',
+          'implant-wizard-tooth-fdi text-[10px] font-semibold tabular-nums leading-none',
           selected ? 'text-[#0d9488]' : 'text-[#9ca3af]'
         )}>
           {fdi}
@@ -47,7 +48,7 @@ function WizardTooth({ fdi, selected, onClick, numberPosition }) {
       </span>
       {numberPosition === 'bottom' && (
         <span className={cn(
-          'text-[10px] font-semibold tabular-nums leading-none',
+          'implant-wizard-tooth-fdi text-[10px] font-semibold tabular-nums leading-none',
           selected ? 'text-[#0d9488]' : 'text-[#9ca3af]'
         )}>
           {fdi}
@@ -72,20 +73,22 @@ function ArchRow({ teeth, selectedSet, onToggle, variant }) {
         const lift = (1 - t * t) * 22;
         const rotate = (isUpper ? t : -t) * 18;
         return (
-          <div
-            key={fdi}
-            className="implant-wizard-tooth-slot relative z-[1] mx-[1px] sm:mx-[2px]"
-            style={{
-              transform: `translateY(${isUpper ? -lift : lift}px) rotate(${rotate}deg)`,
-            }}
-          >
-            <WizardTooth
-              fdi={fdi}
-              selected={selectedSet.has(String(fdi))}
-              onClick={onToggle}
-              numberPosition={isUpper ? 'top' : 'bottom'}
-            />
-          </div>
+          <Fragment key={fdi}>
+            {i === 8 && <span className="implant-wizard-arch-midline" aria-hidden />}
+            <div
+              className="implant-wizard-tooth-slot relative z-[1] mx-[1px] sm:mx-[2px]"
+              style={{
+                transform: `translateY(${isUpper ? -lift : lift}px) rotate(${rotate}deg)`,
+              }}
+            >
+              <WizardTooth
+                fdi={fdi}
+                selected={selectedSet.has(String(fdi))}
+                onClick={onToggle}
+                numberPosition={isUpper ? 'top' : 'bottom'}
+              />
+            </div>
+          </Fragment>
         );
       })}
     </div>

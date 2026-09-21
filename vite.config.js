@@ -133,7 +133,7 @@ export default defineConfig({
             urlPattern: /\/assets\/.*\.(?:js|css)$/,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'assets-cache-v4-implant-factura',
+              cacheName: 'assets-cache-v5-implant-wizard-polish',
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 7 },
               cacheableResponse: { statuses: [0, 200] }
