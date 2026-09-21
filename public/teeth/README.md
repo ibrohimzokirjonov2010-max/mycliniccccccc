@@ -17,6 +17,6 @@ Each folder has 32 adult teeth:
 
 ## Default / healthy
 
-- `healthy/` — kamron laterals used when no treatment is mapped
+- `healthy/` — Dizyner untreated laterals (default)
 
 Mapping lives in `src/utils/toothIllustration.js`.
