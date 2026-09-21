@@ -237,6 +237,16 @@
   }
 }
 
+/* Chairside FDI chips: never shrink/overlap so 13/23/33/43 stay unique. */
+.odontogram-tooth {
+  flex-shrink: 0;
+}
+.odontogram-fdi-label {
+  overflow: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 /* Touch-friendly controls on mobile.
    Keep min-height for usability, but do NOT force min-width on every button —
    dense widgets (odontogram teeth, icon chips) would overlap and steal taps. */

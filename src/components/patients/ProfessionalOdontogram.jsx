@@ -7,6 +7,13 @@ import {
   getToothIllustrationSrcFromStatus,
   resolveToothIllustrationKind,
 } from '@/utils/toothIllustration';
+import {
+  ADULT_FDI_ARCS,
+  CHILD_FDI_ARCS,
+  assertUniqueFdis,
+  flattenArcs,
+  internalIdToFdiNumber,
+} from '@/lib/fdiNotation';
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════╗
@@ -35,78 +42,120 @@ const STATUS = {
   missing:             { label: "Yo'q (Missing)",               color: '#e2e8f0', bg: 'rgba(226,232,240,0.05)',border: '#94a3b8' },
 };
 
-// ── Tooth data — FDI standard ─────────────────────────────────────────────────
-// ── Tooth data — FDI standard ─────────────────────────────────────────────────
+// ── Tooth data — FDI is ALWAYS derived from internal id (never a parallel array) ─
+// Laterals used to be w:36; opaque label chips then overflowed and covered 13/23
+// (live audit: 17,16,15,14,12,12,11 and 21,22,22,24). Keep a 2-digit label min-width.
+function T(id, baseName, side, w) {
+  return { id, fdi: internalIdToFdiNumber(id), baseName, side, w };
+}
+
 const UPPER_RIGHT = [
-  { id: 'ur8', fdi: 18, baseName: 't28', side: 'right', w: 52 },
-  { id: 'ur7', fdi: 17, baseName: 't27', side: 'right', w: 52 },
-  { id: 'ur6', fdi: 16, baseName: 't26', side: 'right', w: 58 },
-  { id: 'ur5', fdi: 15, baseName: 't25', side: 'right', w: 46 },
-  { id: 'ur4', fdi: 14, baseName: 't24', side: 'right', w: 46 },
-  { id: 'ur3', fdi: 13, baseName: 't23', side: 'right', w: 42 },
-  { id: 'ur2', fdi: 12, baseName: 't22', side: 'right', w: 36 },
-  { id: 'ur1', fdi: 11, baseName: 't21', side: 'right', w: 42 },
+  T('ur8', 't28', 'right', 52),
+  T('ur7', 't27', 'right', 52),
+  T('ur6', 't26', 'right', 58),
+  T('ur5', 't25', 'right', 46),
+  T('ur4', 't24', 'right', 46),
+  T('ur3', 't23', 'right', 42),
+  T('ur2', 't22', 'right', 42),
+  T('ur1', 't21', 'right', 42),
 ];
 const UPPER_LEFT = [
-  { id: 'ul1', fdi: 21, baseName: 't11', side: 'left',  w: 42 },
-  { id: 'ul2', fdi: 22, baseName: 't12', side: 'left',  w: 36 },
-  { id: 'ul3', fdi: 23, baseName: 't13', side: 'left',  w: 42 },
-  { id: 'ul4', fdi: 24, baseName: 't14', side: 'left',  w: 46 },
-  { id: 'ul5', fdi: 25, baseName: 't15', side: 'left',  w: 46 },
-  { id: 'ul6', fdi: 26, baseName: 't16', side: 'left',  w: 58 },
-  { id: 'ul7', fdi: 27, baseName: 't17', side: 'left',  w: 52 },
-  { id: 'ul8', fdi: 28, baseName: 't18', side: 'left',  w: 52 },
+  T('ul1', 't11', 'left',  42),
+  T('ul2', 't12', 'left',  42),
+  T('ul3', 't13', 'left',  42),
+  T('ul4', 't14', 'left',  46),
+  T('ul5', 't15', 'left',  46),
+  T('ul6', 't16', 'left',  58),
+  T('ul7', 't17', 'left',  52),
+  T('ul8', 't18', 'left',  52),
 ];
 const LOWER_RIGHT = [
-  { id: 'lr8', fdi: 48, baseName: 't38', side: 'right', w: 52 },
-  { id: 'lr7', fdi: 47, baseName: 't37', side: 'right', w: 52 },
-  { id: 'lr6', fdi: 46, baseName: 't36', side: 'right', w: 58 },
-  { id: 'lr5', fdi: 45, baseName: 't35', side: 'right', w: 46 },
-  { id: 'lr4', fdi: 44, baseName: 't34', side: 'right', w: 46 },
-  { id: 'lr3', fdi: 43, baseName: 't33', side: 'right', w: 42 },
-  { id: 'lr2', fdi: 42, baseName: 't32', side: 'right', w: 36 },
-  { id: 'lr1', fdi: 41, baseName: 't31', side: 'right', w: 42 },
+  T('lr8', 't38', 'right', 52),
+  T('lr7', 't37', 'right', 52),
+  T('lr6', 't36', 'right', 58),
+  T('lr5', 't35', 'right', 46),
+  T('lr4', 't34', 'right', 46),
+  T('lr3', 't33', 'right', 42),
+  T('lr2', 't32', 'right', 42),
+  T('lr1', 't31', 'right', 42),
 ];
 const LOWER_LEFT = [
-  { id: 'll1', fdi: 31, baseName: 't41', side: 'left',  w: 42 },
-  { id: 'll2', fdi: 32, baseName: 't42', side: 'left',  w: 36 },
-  { id: 'll3', fdi: 33, baseName: 't43', side: 'left',  w: 42 },
-  { id: 'll4', fdi: 34, baseName: 't44', side: 'left',  w: 46 },
-  { id: 'll5', fdi: 35, baseName: 't45', side: 'left',  w: 46 },
-  { id: 'll6', fdi: 36, baseName: 't46', side: 'left',  w: 58 },
-  { id: 'll7', fdi: 37, baseName: 't47', side: 'left',  w: 52 },
-  { id: 'll8', fdi: 38, baseName: 't48', side: 'left',  w: 52 },
+  T('ll1', 't41', 'left',  42),
+  T('ll2', 't42', 'left',  42),
+  T('ll3', 't43', 'left',  42),
+  T('ll4', 't44', 'left',  46),
+  T('ll5', 't45', 'left',  46),
+  T('ll6', 't46', 'left',  58),
+  T('ll7', 't47', 'left',  52),
+  T('ll8', 't48', 'left',  52),
 ];
 
-// Child teeth
+// Child / primary FDI (55–51 | 61–65 / 85–81 | 71–75)
 const CHILD_UPPER_RIGHT = [
-  { id: 'ur5c', fdi: 55, baseName: 't15_25', side: 'right', w: 46 },
-  { id: 'ur4c', fdi: 54, baseName: 't14_24', side: 'right', w: 46 },
-  { id: 'ur3c', fdi: 53, baseName: 't13_23', side: 'right', w: 42 },
-  { id: 'ur2c', fdi: 52, baseName: 't12_22', side: 'right', w: 36 },
-  { id: 'ur1c', fdi: 51, baseName: 't11_21', side: 'right', w: 42 },
+  T('ur5c', 't15_25', 'right', 46),
+  T('ur4c', 't14_24', 'right', 46),
+  T('ur3c', 't13_23', 'right', 42),
+  T('ur2c', 't12_22', 'right', 42),
+  T('ur1c', 't11_21', 'right', 42),
 ];
 const CHILD_UPPER_LEFT = [
-  { id: 'ul1c', fdi: 61, baseName: 't11_21', side: 'left',  w: 42 },
-  { id: 'ul2c', fdi: 62, baseName: 't12_22', side: 'left',  w: 36 },
-  { id: 'ul3c', fdi: 63, baseName: 't13_23', side: 'left',  w: 42 },
-  { id: 'ul4c', fdi: 64, baseName: 't14_24', side: 'left',  w: 46 },
-  { id: 'ul5c', fdi: 65, baseName: 't15_25', side: 'left',  w: 46 },
+  T('ul1c', 't11_21', 'left',  42),
+  T('ul2c', 't12_22', 'left',  42),
+  T('ul3c', 't13_23', 'left',  42),
+  T('ul4c', 't14_24', 'left',  46),
+  T('ul5c', 't15_25', 'left',  46),
 ];
 const CHILD_LOWER_RIGHT = [
-  { id: 'lr5c', fdi: 85, baseName: 't45_35', side: 'right', w: 46 },
-  { id: 'lr4c', fdi: 84, baseName: 't44_34', side: 'right', w: 46 },
-  { id: 'lr3c', fdi: 83, baseName: 't43_33', side: 'right', w: 42 },
-  { id: 'lr2c', fdi: 82, baseName: 't42_32', side: 'right', w: 36 },
-  { id: 'lr1c', fdi: 81, baseName: 't41_31', side: 'right', w: 42 },
+  T('lr5c', 't45_35', 'right', 46),
+  T('lr4c', 't44_34', 'right', 46),
+  T('lr3c', 't43_33', 'right', 42),
+  T('lr2c', 't42_32', 'right', 42),
+  T('lr1c', 't41_31', 'right', 42),
 ];
 const CHILD_LOWER_LEFT = [
-  { id: 'll1c', fdi: 71, baseName: 't41_31', side: 'left',  w: 42 },
-  { id: 'll2c', fdi: 72, baseName: 't42_32', side: 'left',  w: 36 },
-  { id: 'll3c', fdi: 73, baseName: 't43_33', side: 'left',  w: 42 },
-  { id: 'll4c', fdi: 74, baseName: 't44_34', side: 'left',  w: 46 },
-  { id: 'll5c', fdi: 75, baseName: 't45_35', side: 'left',  w: 46 },
+  T('ll1c', 't41_31', 'left',  42),
+  T('ll2c', 't42_32', 'left',  42),
+  T('ll3c', 't43_33', 'left',  42),
+  T('ll4c', 't44_34', 'left',  46),
+  T('ll5c', 't45_35', 'left',  46),
 ];
+
+function fdisOf(list) {
+  return list.map((t) => t.fdi);
+}
+
+export function getOdontogramFdiSequence(patientType = 'adult') {
+  if (patientType === 'child') {
+    return {
+      upperRight: fdisOf(CHILD_UPPER_RIGHT),
+      upperLeft: fdisOf(CHILD_UPPER_LEFT),
+      lowerLeft: fdisOf(CHILD_LOWER_LEFT),
+      lowerRight: fdisOf(CHILD_LOWER_RIGHT),
+    };
+  }
+  return {
+    upperRight: fdisOf(UPPER_RIGHT),
+    upperLeft: fdisOf(UPPER_LEFT),
+    lowerLeft: fdisOf(LOWER_LEFT),
+    lowerRight: fdisOf(LOWER_RIGHT),
+  };
+}
+
+assertUniqueFdis(flattenArcs(getOdontogramFdiSequence('adult')), 32);
+assertUniqueFdis(flattenArcs(getOdontogramFdiSequence('child')), 20);
+assertUniqueFdis(flattenArcs(ADULT_FDI_ARCS), 32);
+assertUniqueFdis(flattenArcs(CHILD_FDI_ARCS), 20);
+
+function arcsMatch(got, expected, name) {
+  const keys = ['upperRight', 'upperLeft', 'lowerLeft', 'lowerRight'];
+  for (const k of keys) {
+    if (JSON.stringify(got[k]) !== JSON.stringify(expected[k])) {
+      throw new Error(`Odontogram ${name}.${k} drifted: ${got[k]} vs ${expected[k]}`);
+    }
+  }
+}
+arcsMatch(getOdontogramFdiSequence('adult'), ADULT_FDI_ARCS, 'adult');
+arcsMatch(getOdontogramFdiSequence('child'), CHILD_FDI_ARCS, 'child');
 
 const getOverlayStyle = (statusKey) => {
   if (!statusKey || statusKey === 'healthy') return null;
@@ -126,6 +175,7 @@ const ToothColumn = memo(function ToothColumn({
 }) {
   const { t } = useTranslation();
   const [hovered, setHovered] = useState(false);
+  const fdiLabel = internalIdToFdiNumber(id) ?? fdi;
   const statusKey = toothStatus?.status || 'healthy';
   const st = STATUS[statusKey] || STATUS.healthy;
   const hasImplant = statusKey === 'implant' || Boolean(toothStatus?.hasImplant);
@@ -133,7 +183,7 @@ const ToothColumn = memo(function ToothColumn({
   const isExtracted = (statusKey === 'extracted' || statusKey === 'missing') && !hasImplant;
 
   const illustrationKind = resolveToothIllustrationKind(toothStatus);
-  const illustrationSrc = getToothIllustrationSrcFromStatus(fdi, toothStatus);
+  const illustrationSrc = getToothIllustrationSrcFromStatus(fdiLabel, toothStatus);
   const useIllustration = Boolean(illustrationSrc);
   const skipTreatmentOverlays = useIllustration && illustrationKind && illustrationKind !== 'healthy';
   const useMissingArt = illustrationKind === 'missing';
@@ -175,6 +225,7 @@ const ToothColumn = memo(function ToothColumn({
   const LATERAL_H  = useIllustration ? (compact ? 58 : 86) : (compact ? 50 : 76);
   const OCCLUSAL_H = compact ? 16 : 24;
   const scaleFactor = compact ? 0.65 : 1.0;
+  const colW = Math.max(Math.round(w * scaleFactor), compact ? 28 : 32);
 
   const ToothImg = ({ src, alt, isCrown, transform }) => {
     const isRootAlert = !isCrown && isPsrAlert;
@@ -530,20 +581,33 @@ const ToothColumn = memo(function ToothColumn({
   };
 
   const labelCls = cn(
-    'relative z-10 font-mono font-black leading-none px-1.5 py-0.5 rounded-md transition-all duration-200 text-center tabular-nums w-full text-[11px] border shadow-2xs',
-    selected 
-      ? 'text-white border-transparent shadow-xs' 
-      : hovered 
-        ? 'text-slate-900 bg-white border-slate-300' 
+    'odontogram-fdi-label relative z-10 font-mono font-black leading-none rounded-md transition-colors duration-200 text-center tabular-nums w-full overflow-hidden whitespace-nowrap box-border border shadow-2xs',
+    compact ? 'text-[9px] px-0.5 py-px' : 'text-[10px] px-0.5 py-0.5',
+    selected
+      ? 'text-white border-transparent shadow-xs'
+      : hovered
+        ? 'text-slate-900 bg-white border-slate-300'
         : 'text-slate-700 bg-white/95 border-slate-200/80',
   );
 
   return (
     <motion.div
-      className="relative flex flex-col items-center select-none"
-      style={{ width: w * scaleFactor, opacity: containerOpacity, cursor: isDisabled && !selected ? 'not-allowed' : 'pointer', filter: filterStyle, transition: 'filter 0.2s ease, opacity 0.2s ease' }}
-      whileHover={!isDisabled ? { scale: 1.06 } : {}}
-      whileTap={!isDisabled ? { scale: 0.94 } : {}}
+      className="odontogram-tooth compact-hit relative flex flex-col items-center select-none shrink-0"
+      data-fdi={fdiLabel}
+      data-tooth-id={id}
+      aria-label={`FDI ${fdiLabel}`}
+      style={{
+        width: colW,
+        minWidth: colW,
+        flexShrink: 0,
+        opacity: containerOpacity,
+        cursor: isDisabled && !selected ? 'not-allowed' : 'pointer',
+        filter: filterStyle,
+        zIndex: hovered || selected || isFocused ? 8 : 1,
+        transition: 'filter 0.2s ease, opacity 0.2s ease',
+      }}
+      whileHover={!isDisabled ? { y: isUpper ? -2 : 2 } : {}}
+      whileTap={!isDisabled ? { scale: 0.97 } : {}}
       onHoverStart={() => !isDisabled && setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       onClick={() => !isDisabled && onClick(id)}
@@ -551,16 +615,16 @@ const ToothColumn = memo(function ToothColumn({
       {isUpper ? (
         /* UPPER JAW: lateral(roots up) → occlusal(oval) → number */
         <>
-          <ToothImg src={lateralSrc}  alt={`#${fdi} yon`}     isCrown={false} transform={lateralTransform}  />
-          {showOcclusalView && <ToothImg src={occlusalSrc} alt={`#${fdi} oklüzal`} isCrown={true}  transform={occlusalTransform} />}
-          <div className={labelCls} style={selected ? { backgroundColor: st.color, marginTop: 2 } : { marginTop: 2 }}>{fdi}</div>
+          <ToothImg src={lateralSrc}  alt={`#${fdiLabel} yon`}     isCrown={false} transform={lateralTransform}  />
+          {showOcclusalView && <ToothImg src={occlusalSrc} alt={`#${fdiLabel} oklüzal`} isCrown={true}  transform={occlusalTransform} />}
+          <div className={labelCls} style={selected ? { backgroundColor: st.color, marginTop: 2 } : { marginTop: 2 }}>{fdiLabel}</div>
         </>
       ) : (
         /* LOWER JAW: number → occlusal(oval) → lateral(roots down) */
         <>
-          <div className={labelCls} style={selected ? { backgroundColor: st.color, marginBottom: 2 } : { marginBottom: 2 }}>{fdi}</div>
-          {showOcclusalView && <ToothImg src={occlusalSrc} alt={`#${fdi} oklüzal`} isCrown={true}  transform={occlusalTransform} />}
-          <ToothImg src={lateralSrc}  alt={`#${fdi} yon`}     isCrown={false} transform={lateralTransform}  />
+          <div className={labelCls} style={selected ? { backgroundColor: st.color, marginBottom: 2 } : { marginBottom: 2 }}>{fdiLabel}</div>
+          {showOcclusalView && <ToothImg src={occlusalSrc} alt={`#${fdiLabel} oklüzal`} isCrown={true}  transform={occlusalTransform} />}
+          <ToothImg src={lateralSrc}  alt={`#${fdiLabel} yon`}     isCrown={false} transform={lateralTransform}  />
         </>
       )}
 
@@ -575,7 +639,7 @@ const ToothColumn = memo(function ToothColumn({
             style={{ [isUpper ? 'bottom' : 'top']: '100%', left: '50%', transform: 'translateX(-50%)', marginTop: 4, marginBottom: 4 }}
           >
             <div className="px-2 py-1 rounded-lg text-[9px] font-[800] text-white shadow-xl" style={{ backgroundColor: st.color }}>
-              #{fdi} — {hasExtractedHistory && hasImplant ? "Tish olingan + Implantat" : (t('odontogram.statuses.' + statusKey) || st.label || '')}
+              #{fdiLabel} — {hasExtractedHistory && hasImplant ? "Tish olingan + Implantat" : (t('odontogram.statuses.' + statusKey) || st.label || '')}
             </div>
           </motion.div>
         )}
@@ -742,7 +806,7 @@ function ProfessionalOdontogram({
     const handleResize = () => {
       const width = box.clientWidth || 0;
       if (!width) return;
-      const natural = (grid && (grid.scrollWidth || grid.offsetWidth)) || (compact ? 490 : 860);
+      const natural = (grid && (grid.scrollWidth || grid.offsetWidth)) || (compact ? 530 : 900);
       const pad = compact ? 8 : 16;
       const next = Math.min(1, (width - pad) / natural);
       setScale(Number.isFinite(next) && next > 0 ? Math.max(next, compact ? 0.4 : 0.55) : 1);
@@ -790,19 +854,23 @@ function ProfessionalOdontogram({
     return null;
   };
 
+  const fdiSeq = getOdontogramFdiSequence(patientType);
+
   const renderRow = (teeth, isUpper) =>
     teeth.map(tooth => {
-      const sextant = getSextant(tooth.fdi);
+      const fdi = internalIdToFdiNumber(tooth.id) ?? tooth.fdi;
+      const sextant = getSextant(fdi);
       const score = psrScores?.[sextant] || 0;
       const isPsrAlert = score >= 3;
       return (
         <ToothColumn
           key={tooth.id}
           {...tooth}
+          fdi={fdi}
           isUpper={isUpper}
           selected={selectedTeeth.includes(tooth.id)}
           isFocused={focusedTooth === tooth.id}
-          toothStatus={toothStatuses[tooth.id] || toothStatuses[String(tooth.fdi)]}
+          toothStatus={toothStatuses[tooth.id] || toothStatuses[String(fdi)]}
           isDisabled={disabledSet.has(String(tooth.id))}
           onClick={handleToothClick}
           isPsrAlert={isPsrAlert}
@@ -970,11 +1038,15 @@ function ProfessionalOdontogram({
           <div
             ref={gridRef}
             data-odonto-grid
+            data-fdi-upper-right={fdiSeq.upperRight.join(',')}
+            data-fdi-upper-left={fdiSeq.upperLeft.join(',')}
+            data-fdi-lower-left={fdiSeq.lowerLeft.join(',')}
+            data-fdi-lower-right={fdiSeq.lowerRight.join(',')}
             className="grid grid-cols-2 gap-1 p-1 bg-slate-100/70 rounded-2xl border border-slate-200/80 relative select-none origin-top-center transition-transform duration-150"
             style={{ 
               width: 'max-content', 
               margin: '0 auto', 
-              minWidth: compact ? 460 : 860,
+              minWidth: compact ? 500 : 900,
               transform: scale < 1 ? `scale(${scale})` : undefined,
               transformOrigin: 'top center',
               marginBottom: scale < 1 ? `${-220 * (1 - scale)}px` : undefined

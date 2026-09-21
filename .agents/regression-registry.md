@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Odontogramma — kattalar FDI yorliqlari takrorlanishi (12/22)
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/lib/fdiNotation.js`](src/lib/fdiNotation.js)
+  - [`src/components/patients/ProfessionalOdontogram.jsx`](src/components/patients/ProfessionalOdontogram.jsx)
+  - [`src/index.css`](src/index.css)
+  - [`scripts/assert-odontogram-fdi.mjs`](scripts/assert-odontogram-fdi.mjs)
+- **Muammo Tavsifi:** Chairside odontogrammada kattalar yorliqlari takrorlangan: yuqori o'ng 17,16,15,14,12,12,11 (13 yo'q); yuqori chap 21,22,22,24 (23 yo'q). Har bir FDI bir marta chiqishi kerak: 18→11 | 21→28 / 48→41 | 31→38.
+- **Sababi:** Lateral ustun `w: 36` + `flex-shrink` + oq fonli `px-1.5` yorliq qo'shni tishni yopib qo'ygan; hover `scale(1.06)` ham ustunlarni ustma-ust tushirgan. `fdi` maydoni parallel array edi (id dan mustaqil).
+- **Qanday tuzatildi:** FDI yorliq `internalIdToFdiNumber(id)` dan olinadi. Lateral min-width 42px, `flex-shrink: 0`, yorliq `overflow: hidden`. Hover scale o'rniga yengil translate. Unique 32/20 FDI `assertUniqueFdis` bilan tekshiriladi.
+- **Qaytalamaslik choralari:** Odontogramma yorlig'ida `fdi` ni qo'lda yozmang — faqat internal id (`ur3` → 13). Lateral/incisor ustunini 36px dan tor qilmang. `whileHover={{ scale }}` ni qo'shnilar ustiga chiqadigan qilib qo'ymang. `node scripts/assert-odontogram-fdi.mjs` unique arc larni saqlasin. Dizyner PNG larni `scaleX(-1)` qilmang. Tish tanlash API (`ur1`, `tooth_number`) ni o'zgartirmang.
+
 ### 🦷 Odontogramma — missing / Yo‘q Dizyner PNG
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**
