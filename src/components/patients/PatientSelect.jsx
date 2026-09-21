@@ -15,6 +15,7 @@ export default function PatientSelect({
   onAddPatient, 
   error,
   loading = false,
+  placeholder,
   inputClassName = "",
   buttonClassName = "bg-emerald-500 hover:bg-emerald-600 px-3 w-10 shadow-sm"
 }) {
@@ -155,7 +156,7 @@ export default function PatientSelect({
         <div className="relative">
           <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none transition-colors", value ? "text-emerald-600" : "text-slate-400")} />
           <Input 
-            placeholder={t('patientSelect.placeholder') || "Ism yoki telefon orqali qidiring..."} 
+            placeholder={placeholder || t('patientSelect.placeholder') || "Ism yoki telefon orqali qidiring..."} 
             value={search}
             onChange={(e) => {
               const next = e.target.value;

@@ -13,6 +13,19 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant wizard — teal dizayn va xizmat nomlari
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/components/implants/ImplantWizardArch.jsx`](src/components/implants/ImplantWizardArch.jsx)
+  - [`src/i18n/translations/uz.json`](src/i18n/translations/uz.json)
+  - [`src/i18n/translations/ru.json`](src/i18n/translations/ru.json)
+  - [`src/i18n/translations/en.json`](src/i18n/translations/en.json)
+- **Muammo Tavsifi:** YANGI IMPLANT 3-qadamli oynada asosiy CTA tugmalari binafsha/indigo edi; 2-qadamda `implants.services.zirkon_crown` kabi i18n kalitlari ochiq chiqib qolardi.
+- **Sababi:** Wizard indigo primary ishlatgan; tarjima fayllarida karonka/abutment ID-lari yo'q edi va `t()` kalitni qaytargan.
+- **Qanday tuzatildi:** Wizard teal tizimga (`#0d9488`) o'tkazildi, 3 qadam mockup layoutiga moslandi, xizmat nomlari uchun uz/ru/en tarjimalar qo'shildi, fallback label qoldirildi.
+- **Qaytalamaslik choralari:** Implant wizard CTA-larida indigo/purple ishlatmang. Xizmat ID-sini hech qachon to'g'ridan-to'g'ri UI ga chiqarmang — `t('implants.services.'+id)` + insoniy fallback.
+
 ### 🔐 Xodim parollari — plaintext UI va saqlash
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**

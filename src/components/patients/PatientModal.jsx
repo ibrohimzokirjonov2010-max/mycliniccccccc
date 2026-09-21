@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { applyPhoneMask, capitalizeName, validateAddress, capitalizeAsYouType } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, X } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
 
 /**
  * Patient status options
@@ -34,6 +35,7 @@ const PATIENT_SOURCES = [
  */
 export default function PatientModal({ open, onClose, patient, onSaved }) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [doctors, setDoctors] = useState([]);
   const [form, setForm] = useState({
     full_name: '',
@@ -54,14 +56,27 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
    */
   useEffect(() => {
     if (open) {
+      const fallbackDoctor = user ? [user] : [];
+      const applyDoctors = (list) => {
+        const next = list.length > 0 ? list : fallbackDoctor;
+        setDoctors(next);
+        if (next.length > 0) {
+          setForm((prev) => prev.main_treatment_provider
+            ? prev
+            : { ...prev, main_treatment_provider: next[0].id || next[0].full_name || next[0].name || '' });
+        }
+      };
       base44.entities.User.list('name', 50)
         .then(users => {
           const docList = (users || []).filter(u => u.role?.toLowerCase() === 'doctor' || u.role?.toLowerCase() === 'admin');
-          setDoctors(docList);
+          applyDoctors(docList);
         })
-        .catch(err => console.error('Failed to load doctors in PatientModal:', err));
+        .catch(err => {
+          console.error('Failed to load doctors in PatientModal:', err);
+          applyDoctors([]);
+        });
     }
-  }, [open]);
+  }, [open, user]);
 
   /**
    * Reset form when dialog opens or patient changes
@@ -90,7 +105,7 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
           status: 'new',
           source: '',
           important_info: '',
-          main_treatment_provider: ''
+          main_treatment_provider: user?.id || user?.full_name || user?.name || ''
         });
       }
       setError(null);
@@ -345,7 +360,9 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
               </SelectTrigger>
               <SelectContent>
                 {doctors.map(d => (
-                  <SelectItem key={d.id} value={d.id || d.name}>{d.name}</SelectItem>
+                  <SelectItem key={d.id || d.full_name || d.name} value={d.id || d.full_name || d.name}>
+                    {d.full_name || d.name || d.username}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
