@@ -1,0 +1,121 @@
+/* IMPLANT_WIZARD_STEP2_TEAL_V2 — layout must survive Tailwind/Dialog defaults */
+
+.implant-wizard-dialog {
+  display: flex !important;
+  flex-direction: column !important;
+  max-width: 920px !important;
+  width: min(920px, 95vw) !important;
+  height: auto !important;
+  max-height: min(92vh, 820px) !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  border-radius: 16px !important;
+  background: #f3f4f6 !important;
+  overflow: hidden !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.implant-wizard-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 10px;
+  background: #0d9488 !important;
+  background-color: #0d9488 !important;
+  color: #ffffff !important;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: none;
+}
+.implant-wizard-cta:hover:not(:disabled) {
+  background: #0f766e !important;
+  background-color: #0f766e !important;
+}
+.implant-wizard-cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.implant-wizard-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.implant-wizard-ghost:hover {
+  background: #f9fafb;
+}
+
+.implant-wizard-step2 {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 16px;
+  min-height: 460px;
+}
+
+.implant-wizard-teeth {
+  width: 240px;
+  min-width: 240px;
+  max-width: 240px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.implant-wizard-services {
+  flex: 1;
+  min-width: 0;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.implant-wizard-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 68px;
+  padding: 0 20px;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+@media (max-width: 767px) {
+  .implant-wizard-dialog {
+    width: 95vw !important;
+    max-width: 95vw !important;
+  }
+  .implant-wizard-step2 {
+    flex-direction: column;
+    min-height: 0;
+  }
+  .implant-wizard-teeth {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+}

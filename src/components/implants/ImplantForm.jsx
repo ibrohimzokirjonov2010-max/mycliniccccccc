@@ -1,22 +1,24 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Plus, FileText, X, Check, ArrowLeft, ArrowRight, Pencil,
-  Search, Droplets, Image as ImageIcon,
+  Plus, FileText, X, Check, ArrowLeft, ArrowRight,
+  Search, Image as ImageIcon,
 } from 'lucide-react';
-import { Tooth, CrownIcon, FormerIcon, AbutmentIcon, BoneGraftIcon, SinusLiftIcon } from '@/components/ui/Icons';
+import { Tooth } from '@/components/ui/Icons';
 import PatientModal from '../patients/PatientModal';
 import PatientSelect from '../patients/PatientSelect';
 import ToothImplantModal from './ToothImplantModal';
 import ImplantWizardArch from './ImplantWizardArch';
+import ImplantWizardStep2 from './ImplantWizardStep2';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
-import { getOrSeedExtraServices } from './ExtraServicesManagerModal';
+import { getOrSeedExtraServices, DEFAULT_EXTRA_SERVICES } from './ExtraServicesManagerModal';
+import { getServiceLabel, mergeExtraServicesCatalog, IMPLANT_WIZARD_STEP2_MARKER, normalizeServiceId } from './implantWizardLabels';
 import { cn } from '@/lib/utils';
+import './implantWizard.css';
 
 const BRANDS = ['Dentium', 'Osstem', 'Straumann', 'Serkon', 'Megagen', 'Neodent', 'Nobel', 'Bredent', 'Nucleoss', 'Boshqa'];
 
@@ -64,24 +66,6 @@ export const EXTRA_SERVICES = [
   { id: 'explantation', label: 'Implantni olib tashlash', defaultPrice: 500000, category: 'Xirurgiya' },
 ];
 
-const SERVICE_FALLBACKS = EXTRA_SERVICES.reduce((acc, s) => {
-  acc[s.id] = s.label;
-  return acc;
-}, {
-  veneer: 'Vinir',
-  formik: 'Formik',
-  piezo: 'Piezosurgery',
-  sst: 'SST ko\'chirish',
-});
-
-const SERVICE_TABS = [
-  { id: 'all', labelKey: 'catAll' },
-  { id: 'crowns', labelKey: 'catCrowns' },
-  { id: 'abutment', labelKey: 'catAbutment' },
-  { id: 'sinus', labelKey: 'catSinus' },
-  { id: 'bone', labelKey: 'catBone' },
-];
-
 function addMonths(date, months) {
   const d = new Date(date);
   d.setMonth(d.getMonth() + months);
@@ -118,13 +102,6 @@ export function toDMY(iso) {
   return `${d}.${m}.${y}`;
 }
 
-function getServiceLabel(service, t) {
-  const id = service?.id;
-  const translated = id ? t(`implants.services.${id}`, '') : '';
-  if (translated && !String(translated).startsWith('implants.services.')) return translated;
-  return service?.label || service?.name || SERVICE_FALLBACKS[id] || id || '';
-}
-
 function matchesServiceTab(service, tab) {
   if (tab === 'all') return true;
   const id = String(service.id || '').toLowerCase();
@@ -136,19 +113,6 @@ function matchesServiceTab(service, tab) {
   if (tab === 'sinus') return /sinus/.test(blob);
   if (tab === 'bone') return /graft|regen|prf|suyak|bone|membrane|nkr|sst/.test(blob);
   return true;
-}
-
-function ServiceGlyph({ service }) {
-  const id = String(service.id || '').toLowerCase();
-  const cat = String(service.category || '').toLowerCase();
-  const cls = 'w-3.5 h-3.5 text-[#0d9488] shrink-0';
-  if (/prf/.test(id)) return <Droplets className={cls} />;
-  if (/healing|formik/.test(id)) return <FormerIcon className={cls} />;
-  if (/crown|karonka|veneer/.test(id) || /orto/.test(cat)) return <CrownIcon className={cls} />;
-  if (/abutment|abatment|cover/.test(id)) return <AbutmentIcon className={cls} />;
-  if (/sinus/.test(id)) return <SinusLiftIcon className={cls} />;
-  if (/bone|graft|nkr|membrane/.test(id)) return <BoneGraftIcon className={cls} />;
-  return <Tooth className={cls} />;
 }
 
 function DateField({ value, onChange, className }) {
@@ -187,10 +151,18 @@ function MoneyField({ value, onChange, className }) {
 const fieldInput =
   'h-10 rounded-[10px] border border-[#e5e7eb] bg-white text-sm text-[#111827] font-medium shadow-none focus-visible:ring-[#0d9488]/20 focus-visible:border-[#0d9488]';
 const cardClass = 'bg-white rounded-xl border border-[#e5e7eb] p-4';
-const tealBtn =
-  'h-10 px-5 rounded-[10px] bg-[#0d9488] hover:bg-[#0f766e] text-white text-sm font-semibold shadow-none';
-const ghostBtn =
-  'h-10 px-4 rounded-[10px] border border-[#e5e7eb] bg-white text-[#6b7280] hover:bg-gray-50 text-sm font-medium';
+const wizardDialogStyle = {
+  maxWidth: 920,
+  width: 'min(920px, 95vw)',
+  maxHeight: 'min(92vh, 820px)',
+  padding: 0,
+  gap: 0,
+  borderRadius: 16,
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden',
+  background: '#f3f4f6',
+};
 
 export default function ImplantForm({ open, onClose, patients, services: _services, implant, relatedImplants = [], onSaved }) {
   const { t } = useTranslation();
@@ -253,15 +225,10 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   useEffect(() => {
     if (!open) return;
     getOrSeedExtraServices().then((res) => {
-      if (Array.isArray(res) && res.length > 0) {
-        setExtraServicesList(res.map((s) => ({
-          id: s.id,
-          label: s.name,
-          defaultPrice: Number(s.price) || 0,
-          category: s.category || 'Boshqa',
-        })));
-      }
-    }).catch(console.error);
+      setExtraServicesList(mergeExtraServicesCatalog(res, [...EXTRA_SERVICES, ...DEFAULT_EXTRA_SERVICES]));
+    }).catch(() => {
+      setExtraServicesList(mergeExtraServicesCatalog([], [...EXTRA_SERVICES, ...DEFAULT_EXTRA_SERVICES]));
+    });
   }, [open]);
 
   useEffect(() => {
@@ -340,7 +307,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
     if (implant) {
       const rawTeeth = [...(implant.tooth_numbers || []), ...(implant.tooth_number ? [implant.tooth_number] : [])];
       const uniqueTeeth = [...new Set(rawTeeth.map(String))].filter(Boolean);
-      const uniqueServices = [...new Set((implant.extra_services || []).map(String))].filter(Boolean);
+      const uniqueServices = [...new Set((implant.extra_services || []).map(normalizeServiceId))].filter(Boolean);
 
       setForm({
         ...implant,
@@ -948,7 +915,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
               onClick={() => { setField('tooth_numbers', []); setToothDataMap({}); }}
               className="h-8 px-3 rounded-[10px] border border-[#e5e7eb] bg-white text-sm text-[#6b7280] hover:bg-gray-50 cursor-pointer"
             >
-              {tw('clear', 'Clear')}
+              {tw('clear', 'Tozalash')}
             </button>
             <p className="text-sm font-semibold text-[#111827]">
               {tw('selectedCountPrefix', 'Tanlangan:')}{' '}
@@ -961,140 +928,24 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   );
 
   const renderStep2 = () => (
-    <div className="flex flex-col md:flex-row gap-4 min-h-0">
-      <aside className="w-full md:w-[240px] shrink-0 bg-white rounded-xl border border-[#e5e7eb] p-4 flex flex-col">
-        <div className="mb-3">
-          <h3 className="text-[15px] font-bold text-[#111827]">{tw('selectedTeeth', 'Tanlangan tishlar')}</h3>
-          <div className="mt-1 h-[3px] w-10 rounded-full bg-[#0d9488]" />
-        </div>
-        <div className="flex-1 space-y-2 overflow-y-auto min-h-0 pr-0.5">
-          {selectedFdis.map((fdi, idx) => (
-            <div key={fdi} className="flex items-center gap-2.5 px-2 py-1.5">
-              <span className="w-6 h-6 rounded-full border border-[#0d9488] text-[#0d9488] text-xs font-bold flex items-center justify-center shrink-0">
-                {idx + 1}
-              </span>
-              <Tooth className="w-4 h-4 text-[#9ca3af] shrink-0" />
-              <span className="text-sm font-semibold text-[#111827]">#{fdi}</span>
-              <span className="ml-auto text-xs text-[#9ca3af]">{brandLabel}</span>
-            </div>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={() => setStep(1)}
-          className="mt-3 text-left text-xs text-[#9ca3af] hover:text-[#0d9488] bg-transparent border-0 p-0 cursor-pointer flex items-center gap-1"
-        >
-          <span className="w-4 h-4 rounded-full border border-[#e5e7eb] text-[9px] flex items-center justify-center">i</span>
-          {tw('fromStep1', '1-qadamdan')}
-        </button>
-        <div className="mt-3 pt-3 border-t border-[#e5e7eb] flex items-end justify-between">
-          <div>
-            <p className="text-xs text-[#6b7280]">{tw('totalImplants', 'Jami implantlar')}</p>
-            <p className="text-lg font-bold text-[#0d9488]">{selectedFdis.length} {tw('implantUnit', 'implant')}</p>
-          </div>
-          <Tooth className="w-8 h-8 text-[#d1d5db]" />
-        </div>
-      </aside>
-
-      <section className={cn(cardClass, 'flex-1 min-w-0 flex flex-col')}>
-        <h3 className="text-[15px] font-bold text-[#111827] mb-3">{tw('extraServices', "Qo'shimcha xizmatlar")}</h3>
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9ca3af]" />
-          <input
-            value={extraSearch}
-            onChange={(e) => setExtraSearch(e.target.value)}
-            placeholder={tw('searchService', 'Xizmat nomini qidirish...')}
-            className="w-full h-10 pl-9 pr-3 rounded-[10px] border border-[#e5e7eb] bg-white text-sm outline-none focus:border-[#0d9488]"
-          />
-        </div>
-        <div className="flex items-center gap-1 border-b border-[#e5e7eb] mb-3 overflow-x-auto">
-          {SERVICE_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setExtraTab(tab.id)}
-              className={cn(
-                'px-3 pb-2 text-sm font-medium whitespace-nowrap bg-transparent border-0 border-b-2 cursor-pointer',
-                extraTab === tab.id
-                  ? 'text-[#0d9488] border-[#0d9488]'
-                  : 'text-[#6b7280] border-transparent hover:text-[#111827]'
-              )}
-            >
-              {tw(tab.labelKey, tab.id)}
-            </button>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto max-h-[340px] pr-0.5">
-          {filteredExtras.map((service) => {
-            const isSelected = (form.extra_services || []).includes(service.id);
-            const currentPrice = extraServicePrices[service.id] !== undefined
-              ? extraServicePrices[service.id]
-              : service.defaultPrice;
-            const isEditing = editingPriceId === service.id;
-            return (
-              <div
-                key={service.id}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-[10px] border transition-all min-h-[44px]',
-                  isSelected ? 'border-[#0d9488] bg-white' : 'border-[#e5e7eb] bg-white hover:border-[#cbd5e1]'
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleExtraService(service.id)}
-                  className="flex items-center gap-2 flex-1 min-w-0 bg-transparent border-0 p-0 cursor-pointer text-left"
-                >
-                  <ServiceGlyph service={service} />
-                  <span className={cn('text-sm font-medium truncate', isSelected ? 'text-[#111827]' : 'text-[#111827]')}>
-                    {getServiceLabel(service, t)}
-                  </span>
-                  {isSelected && (
-                    <span className="w-4 h-4 rounded-full bg-[#0d9488] text-white flex items-center justify-center shrink-0">
-                      <Check className="w-2.5 h-2.5" strokeWidth={3} />
-                    </span>
-                  )}
-                </button>
-                <div className="flex items-center gap-1 shrink-0">
-                  {isEditing ? (
-                    <input
-                      autoFocus
-                      type="text"
-                      inputMode="numeric"
-                      value={formatSom(currentPrice)}
-                      onChange={(e) => {
-                        const digits = e.target.value.replace(/\D/g, '');
-                        setExtraServicePrices((prev) => ({ ...prev, [service.id]: digits === '' ? 0 : Number(digits) }));
-                      }}
-                      onBlur={() => setEditingPriceId(null)}
-                      className="w-[92px] h-7 text-right text-xs font-semibold rounded-md border border-[#0d9488] px-1.5 outline-none"
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!isSelected) toggleExtraService(service.id);
-                        setEditingPriceId(service.id);
-                      }}
-                      className="flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
-                    >
-                      <span className={cn('text-xs font-semibold whitespace-nowrap', isSelected ? 'text-[#111827]' : 'text-[#6b7280]')}>
-                        {formatSom(currentPrice)} so&apos;m
-                      </span>
-                      <Pencil className="w-3 h-3 text-[#9ca3af]" />
-                    </button>
-                  )}
-                  {isSelected && (
-                    <span className="w-4 h-4 rounded-full bg-[#0d9488] text-white flex items-center justify-center">
-                      <Check className="w-2.5 h-2.5" strokeWidth={3} />
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-    </div>
+    <ImplantWizardStep2
+      selectedFdis={selectedFdis}
+      brandLabel={brandLabel}
+      extraServicesList={filteredExtras}
+      extraSearch={extraSearch}
+      setExtraSearch={setExtraSearch}
+      extraTab={extraTab}
+      setExtraTab={setExtraTab}
+      selectedServiceIds={form.extra_services || []}
+      extraServicePrices={extraServicePrices}
+      editingPriceId={editingPriceId}
+      setEditingPriceId={setEditingPriceId}
+      onToggleService={toggleExtraService}
+      onSetPrice={(id, price) => setExtraServicePrices((prev) => ({ ...prev, [id]: price }))}
+      onBackToStep1={() => setStep(1)}
+      tw={tw}
+      t={t}
+    />
   );
 
   const renderStep3 = () => (
@@ -1280,11 +1131,13 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
     <>
       <Dialog open={open && !newPatientOpen} onOpenChange={onClose}>
         <DialogContent
-          className="w-[95vw] max-w-[920px] max-h-[92vh] p-0 gap-0 overflow-hidden rounded-2xl sm:rounded-2xl border border-[#e5e7eb] bg-[#f3f4f6] shadow-2xl flex flex-col"
+          className="implant-wizard-dialog !flex !flex-col !p-0 !gap-0 w-[95vw] !max-w-[920px] max-h-[92vh] overflow-hidden !rounded-2xl sm:!rounded-2xl border border-[#e5e7eb] bg-[#f3f4f6] shadow-2xl"
+          style={wizardDialogStyle}
+          data-implant-wizard={IMPLANT_WIZARD_STEP2_MARKER}
           aria-describedby={undefined}
         >
           <DialogHeader className="shrink-0 space-y-0">
-            <div className="bg-[#0d9488] h-14 px-5 flex items-center justify-between text-white">
+            <div className="h-14 px-5 flex items-center justify-between text-white" style={{ background: '#0d9488' }}>
               <DialogTitle className="text-[15px] font-bold tracking-wide text-white uppercase">
                 {implant ? t('common.edit') : tw('title', 'Yangi implant')}
               </DialogTitle>
@@ -1316,35 +1169,51 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
             {step === 3 && renderStep3()}
           </div>
 
-          <div className="h-[68px] shrink-0 bg-white border-t border-[#e5e7eb] px-4 sm:px-5 flex items-center justify-between gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => (step === 1 ? onClose() : setStep(step - 1))}
-              className={cn(ghostBtn, 'gap-1.5')}
-            >
-              <ArrowLeft className="w-4 h-4" /> {tw('back', 'Orqaga')}
-            </Button>
-            <div className="flex-1 flex justify-center min-w-0">{footerSummary()}</div>
-            {step < 3 ? (
-              <Button
-                type="button"
-                onClick={step === 1 ? goNextFrom1 : goNextFrom2}
-                className={cn(tealBtn, 'gap-1.5')}
-              >
-                {tw('next', 'Keyingisi')} <ArrowRight className="w-4 h-4" />
-              </Button>
+          <div className="implant-wizard-footer">
+            {step === 2 ? (
+              <div className="flex items-center gap-6 text-sm min-w-0 flex-1">
+                <span className="text-[#6b7280]">
+                  {tw('selectedServicesPrefix', 'Tanlangan:')}{' '}
+                  <span className="font-semibold text-[#111827]">{form.extra_services?.length || 0} {tw('serviceUnit', 'xizmat')}</span>
+                </span>
+                <span className="text-[#6b7280]">
+                  {tw('total', 'Jami:')}{' '}
+                  <span className="font-bold text-base" style={{ color: '#0d9488' }}>{formatSom(extraTotal)} so&apos;m</span>
+                </span>
+              </div>
             ) : (
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={saving || !isStep3Valid}
-                className={cn(tealBtn, 'gap-1.5')}
-              >
-                {saving ? t('common.saving') : tw('saveFinish', 'Saqlash va yakunlash')}
-                <Check className="w-4 h-4" strokeWidth={3} />
-              </Button>
+              <div className="flex-1 min-w-0">{footerSummary()}</div>
             )}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => (step === 1 ? onClose() : setStep(step - 1))}
+                className="implant-wizard-ghost"
+              >
+                <ArrowLeft className="w-4 h-4" /> {tw('back', 'Orqaga')}
+              </button>
+              {step < 3 ? (
+                <button
+                  type="button"
+                  onClick={step === 1 ? goNextFrom1 : goNextFrom2}
+                  className="implant-wizard-cta"
+                  style={{ backgroundColor: '#0d9488', color: '#fff' }}
+                >
+                  {tw('next', 'Keyingisi')} <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving || !isStep3Valid}
+                  className="implant-wizard-cta"
+                  style={{ backgroundColor: '#0d9488', color: '#fff' }}
+                >
+                  {saving ? t('common.saving') : tw('saveFinish', 'Saqlash va yakunlash')}
+                  <Check className="w-4 h-4" strokeWidth={3} />
+                </button>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
