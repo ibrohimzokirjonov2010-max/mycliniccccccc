@@ -414,6 +414,7 @@
       "registrationDate": "Registration Date",
       "saveError": "Error saving patient",
       "errorDoctorRequired": "Selecting a doctor is required! Treatment plan cannot be created without a doctor.",
+      "doctorRequiredInline": "Selecting a doctor is required",
       "doctorSignature": "Doctor Signature",
       "stage": "Stage",
       "date": "Date",

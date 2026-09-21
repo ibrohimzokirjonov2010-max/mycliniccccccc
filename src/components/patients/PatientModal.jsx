@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { applyPhoneMask, capitalizeName, validateAddress, capitalizeAsYouType } from '@/lib/utils';
+import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
@@ -50,6 +51,7 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [doctorError, setDoctorError] = useState('');
 
   /**
    * Fetch doctors list
@@ -57,23 +59,14 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
   useEffect(() => {
     if (open) {
       const fallbackDoctor = user ? [user] : [];
-      const applyDoctors = (list) => {
-        const next = list.length > 0 ? list : fallbackDoctor;
-        setDoctors(next);
-        if (next.length > 0) {
-          setForm((prev) => prev.main_treatment_provider
-            ? prev
-            : { ...prev, main_treatment_provider: next[0].id || next[0].full_name || next[0].name || '' });
-        }
-      };
       base44.entities.User.list('name', 50)
         .then(users => {
           const docList = (users || []).filter(u => u.role?.toLowerCase() === 'doctor' || u.role?.toLowerCase() === 'admin');
-          applyDoctors(docList);
+          setDoctors(docList.length > 0 ? docList : fallbackDoctor);
         })
         .catch(err => {
           console.error('Failed to load doctors in PatientModal:', err);
-          applyDoctors([]);
+          setDoctors(fallbackDoctor);
         });
     }
   }, [open, user]);
@@ -105,10 +98,11 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
           status: 'new',
           source: '',
           important_info: '',
-          main_treatment_provider: user?.id || user?.full_name || user?.name || ''
+          main_treatment_provider: ''
         });
       }
       setError(null);
+      setDoctorError('');
     }
   }, [patient, open]);
 
@@ -128,6 +122,9 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
 
     setForm(prev => ({ ...prev, [field]: finalValue }));
     setError(null);
+    if (field === 'main_treatment_provider' && String(finalValue || '').trim()) {
+      setDoctorError('');
+    }
   }, []);
 
   /**
@@ -142,10 +139,13 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
       setError(t('patients.errorPhoneRequired'));
       return false;
     }
-    if (!form.main_treatment_provider) {
-      setError(t('patients.wizard.errorDoctorRequired') || "Shifokorni tanlash majburiy!");
+    const missingDoctor = getPatientDoctorRequiredError(form.main_treatment_provider, t);
+    if (missingDoctor) {
+      setDoctorError(missingDoctor);
+      setError(missingDoctor);
       return false;
     }
+    setDoctorError('');
     if (form.address && !validateAddress(form.address)) {
       setError(t('patients.addressError'));
       return false;
@@ -344,8 +344,8 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
             />
           </div>
 
-          {/* Doctor (Mandatory) */}
-          <div>
+          {/* Doctor — required when adding or editing a patient */}
+          <div data-patient-doctor-field>
             <Label className="flex items-center gap-1">
               <span>{t('common.doctor')}</span>
               <span className="text-red-500 font-bold">*</span>
@@ -355,7 +355,7 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
               onValueChange={v => handleChange('main_treatment_provider', v)}
               disabled={saving}
             >
-              <SelectTrigger>
+              <SelectTrigger aria-invalid={doctorError ? true : undefined} className={doctorError ? 'border-rose-400' : undefined}>
                 <SelectValue placeholder={t('common.select') || "Shifokorni tanlang"} />
               </SelectTrigger>
               <SelectContent>
@@ -366,6 +366,11 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
                 ))}
               </SelectContent>
             </Select>
+            {doctorError && (
+              <p role="alert" data-patient-doctor-error className="mt-1 text-xs font-bold text-rose-600">
+                {doctorError}
+              </p>
+            )}
           </div>
 
           {/* Source */}

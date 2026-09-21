@@ -13,6 +13,17 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 👤 Bemor qo'shish — shifokor majburiy
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/patients/NewPatientFlow.jsx`](src/components/patients/NewPatientFlow.jsx)
+  - [`src/components/patients/PatientModal.jsx`](src/components/patients/PatientModal.jsx)
+  - [`src/lib/patientDoctorValidation.js`](src/lib/patientDoctorValidation.js)
+- **Muammo Tavsifi:** Yangi bemor formasida shifokor tanlanmasa saqlash yo'li aniq to'silmasdi yoki birinchi shifokor avtomatik yozilardi. Saqlash shifokorsiz o'tib ketmasligi kerak; bo'sh bo'lsa maydon ostida o'zbekcha xato chiqishi kerak.
+- **Sababi:** `NewPatientFlow` saqlash tugmasini shifokorsiz o'chirib qo'yardi, shuning uchun inline xato ko'rinmasdi. `PatientModal` bo'sh `main_treatment_provider` ni birinchi shifokor yoki joriy foydalanuvchi bilan to'ldirardi.
+- **Qanday tuzatildi:** Shifokor maydoni qoldirildi va majburiy (`*`). Saqlash `getPatientDoctorRequiredError` bo'sh qaytarmaguncha `Patient.create` chaqirilmaydi. Xato: «Shifokorni tanlash majburiy». Tahrirlashda shifokor biriktirish maydoni saqlanadi.
+- **Qaytalamaslik choralari:** Yangi bemor formasidan shifokor maydonini olib tashlamang va ixtiyoriy qilmang. Bo'sh `main_treatment_provider` ni avtomatik to'ldirmang. `node scripts/assert-patient-doctor-required.mjs` o'tsin.
+
 ### 💳 Yangi to'lov modal — footer 390×844 da skrolldan tashqari
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**

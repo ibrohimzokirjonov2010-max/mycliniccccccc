@@ -504,6 +504,7 @@
       "registrationDate": "Дата регистрации",
       "saveError": "Ошибка при сохранении пациента",
       "errorDoctorRequired": "Выбор врача обязателен! Без выбора врача составление плана невозможно.",
+      "doctorRequiredInline": "Выбор врача обязателен",
       "doctorSignature": "Подпись врача",
       "stage": "Этап",
       "date": "Дата",
