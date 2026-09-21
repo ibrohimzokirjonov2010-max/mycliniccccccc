@@ -298,6 +298,9 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
       patient_name: '',
       patient_phone: '',
       tooth_numbers: [],
+      service_name: 'Implant',
+      service_custom: '',
+      price: 1500000,
       implant_type: 'Bone level',
       firma: 'Osstem',
       firma_custom: '',
@@ -410,14 +413,13 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
 
   useEffect(() => {
     if (!open || form.doctor) return;
-    if (!doctors.length) return;
     const currentUserName = user?.full_name || user?.name;
     const match = doctors.find((d) => (d.full_name || d.name) === currentUserName) || doctors[0];
-    if (match) {
-      setForm((prev) => prev.doctor ? prev : {
-        ...prev,
-        doctor: match.full_name || match.name || match.username || '',
-      });
+    const name = match
+      ? (match.full_name || match.name || match.username || '')
+      : (currentUserName || '');
+    if (name) {
+      setForm((prev) => prev.doctor ? prev : { ...prev, doctor: name });
     }
   }, [open, doctors, form.doctor, user]);
 
