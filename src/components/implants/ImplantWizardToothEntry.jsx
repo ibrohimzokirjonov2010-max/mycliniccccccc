@@ -70,7 +70,7 @@ export default function ImplantWizardToothEntry({
             <SelectTrigger className={fieldInput}>
               <SelectValue placeholder={tw('brand', 'Brend')} />
             </SelectTrigger>
-            <SelectContent className="rounded-xl">
+            <SelectContent className="z-[220] rounded-xl">
               {brandOptions.map((brand) => (
                 <SelectItem key={brand} value={brand}>{brand}</SelectItem>
               ))}

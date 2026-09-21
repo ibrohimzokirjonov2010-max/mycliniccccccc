@@ -1256,7 +1256,7 @@ export default function ImplantForm({
               <SelectTrigger className={cn(fieldInput, 'pl-9')}>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="rounded-xl">
+              <SelectContent className="z-[220] rounded-xl">
                 {LIFECYCLE_STATUSES.map((s) => (
                   <SelectItem key={s} value={s}>{t(`implants.status.${s}`)}</SelectItem>
                 ))}
