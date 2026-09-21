@@ -34,10 +34,20 @@ export const SERVICE_FALLBACKS = {
   explantation: "Implantni olib tashlash",
 };
 
+export const SERVICE_ALIASES = {
+  abutment: 'standard_abutment',
+  sinus_open: 'open_sinus',
+  sinus_closed: 'closed_sinus',
+  sst_transplant: 'sst',
+  piezosurgery: 'piezo',
+  formik: 'healing_abutment',
+};
+
 export function normalizeServiceId(raw) {
-  return String(raw || '')
+  const id = String(raw || '')
     .replace(/^implants\.services\./i, '')
     .trim();
+  return SERVICE_ALIASES[id] || id;
 }
 
 export function looksLikeI18nKey(value) {
