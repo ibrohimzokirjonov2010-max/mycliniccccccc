@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -218,6 +218,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   const [extraTab, setExtraTab] = useState('all');
   const [editingPriceId, setEditingPriceId] = useState(null);
   const [formError, setFormError] = useState('');
+  const wizardBodyRef = useRef(null);
 
   useEffect(() => {
     setLocalPatients(patients);
@@ -379,6 +380,10 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
     setStep(1);
     setFormError('');
   }, [open, implant?.id, resetForm]);
+
+  useEffect(() => {
+    if (wizardBodyRef.current) wizardBodyRef.current.scrollTop = 0;
+  }, [step]);
 
   useEffect(() => {
     if (!open || form.doctor) return;
@@ -1178,7 +1183,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
 
           {renderStepper()}
 
-          <div className="implant-wizard-body no-scrollbar">
+          <div ref={wizardBodyRef} className="implant-wizard-body no-scrollbar">
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
