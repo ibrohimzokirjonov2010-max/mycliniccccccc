@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Plus, FileText, X, Check, ArrowLeft, ArrowRight,
@@ -11,8 +10,8 @@ import {
 import { Tooth } from '@/components/ui/Icons';
 import PatientModal from '../patients/PatientModal';
 import PatientSelect from '../patients/PatientSelect';
-import ToothImplantModal from './ToothImplantModal';
 import ImplantWizardArch from './ImplantWizardArch';
+import ImplantWizardToothEntry from './ImplantWizardToothEntry';
 import ImplantWizardStep2 from './ImplantWizardStep2';
 import ImplantWizardFactura from './ImplantWizardFactura';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -145,21 +144,22 @@ function DateField({ value, onChange, className }) {
   );
 }
 
-function MoneyField({ value, onChange, className }) {
-  return (
-    <div className={cn('relative', className)}>
-      <input
-        inputMode="numeric"
-        value={formatSom(value)}
-        onChange={(e) => {
-          const digits = e.target.value.replace(/\D/g, '');
-          onChange(digits === '' ? 0 : Number(digits));
-        }}
-        className="h-10 w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 pr-12 text-sm text-[#111827] font-medium outline-none focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488]/20"
-      />
-      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#6b7280]">so&apos;m</span>
-    </div>
-  );
+const SIZE_FIELDS = ['diameter', 'length', 'torque', 'isq', 'lot_number'];
+
+function omitEmptySizeFields(data) {
+  const next = { ...data };
+  SIZE_FIELDS.forEach((key) => {
+    if (next[key] === '' || next[key] === undefined || next[key] === null) {
+      delete next[key];
+    }
+  });
+  return next;
+}
+
+function patientImplantBrand(row) {
+  if (!row) return '';
+  if (row.firma === 'Boshqa') return row.firma_custom || row.brend || 'Implant';
+  return row.firma || row.brend || 'Implant';
 }
 
 const fieldInput =
@@ -178,7 +178,16 @@ const wizardDialogStyle = {
   background: '#f3f4f6',
 };
 
-export default function ImplantForm({ open, onClose, patients, services: _services, implant, relatedImplants = [], onSaved }) {
+export default function ImplantForm({
+  open,
+  onClose,
+  patients,
+  services: _services,
+  implant,
+  relatedImplants = [],
+  onSaved,
+  knownPatientImplants,
+}) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { clinicName } = useClinic();
@@ -225,8 +234,9 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   const [doctors, setDoctors] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [toothDataMap, setToothDataMap] = useState({});
-  const [selectedToothForModal, setSelectedToothForModal] = useState(null);
-  const [toothModalOpen, setToothModalOpen] = useState(false);
+  const [activeFdi, setActiveFdi] = useState(null);
+  const [patientImplants, setPatientImplants] = useState([]);
+  const [patientImplantsStatus, setPatientImplantsStatus] = useState('idle');
   const [extraServicePrices, setExtraServicePrices] = useState({});
   const [extraServicesList, setExtraServicesList] = useState(EXTRA_SERVICES);
   const [, setIsSchemaOptimized] = useState(true);
@@ -237,6 +247,10 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   const [facturaEdits, setFacturaEdits] = useState({});
   const [facturaPreviewOpen, setFacturaPreviewOpen] = useState(false);
   const wizardBodyRef = useRef(null);
+  const formRef = useRef(form);
+  formRef.current = form;
+  const activeFdiRef = useRef(activeFdi);
+  activeFdiRef.current = activeFdi;
 
   useEffect(() => {
     setLocalPatients(patients);
@@ -392,9 +406,11 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
         }
       });
       setToothDataMap(initialToothMap);
+      setActiveFdi(uniqueTeeth[0] ? toFdi(uniqueTeeth[0]) : null);
     } else {
       resetForm();
       setToothDataMap({});
+      setActiveFdi(null);
       setExtraServicePrices({});
       setFacturaEdits({});
       setExtraSearch('');
@@ -408,6 +424,62 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   useEffect(() => {
     if (wizardBodyRef.current) wizardBodyRef.current.scrollTop = 0;
   }, [step]);
+
+  useEffect(() => {
+    if (!open || step !== 1 || !activeFdi) return undefined;
+    const el = wizardBodyRef.current?.querySelector('[data-testid="implant-wizard-tooth-entry"]');
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return undefined;
+  }, [activeFdi, open, step]);
+
+  useEffect(() => {
+    if (!open || (!form.patient_id && !form.patient_name)) {
+      setPatientImplants([]);
+      setPatientImplantsStatus('idle');
+      return undefined;
+    }
+
+    const name = String(form.patient_name || '').trim().toLowerCase();
+    const matchesPatient = (row) => {
+      if (!row) return false;
+      if (implant?.id && row.id === implant.id) return false;
+      if (form.patient_id && String(row.patient_id) === String(form.patient_id)) return true;
+      if (name && String(row.patient_name || '').trim().toLowerCase() === name) return true;
+      return false;
+    };
+    const sortRows = (rows) => [...rows].sort((a, b) => {
+      const da = String(a.placement_date || a.placed_date || a.created_date || '');
+      const db = String(b.placement_date || b.placed_date || b.created_date || '');
+      return db.localeCompare(da);
+    });
+
+    if (Array.isArray(knownPatientImplants)) {
+      setPatientImplants(sortRows(knownPatientImplants.filter(matchesPatient)));
+      setPatientImplantsStatus('ready');
+      return undefined;
+    }
+
+    let cancelled = false;
+    setPatientImplantsStatus('loading');
+    (async () => {
+      try {
+        const rows = form.patient_id
+          ? await base44.entities.Implant.filter({ patient_id: form.patient_id }, '-placement_date', 80)
+          : [];
+        if (cancelled) return;
+        setPatientImplants(sortRows((rows || []).filter(matchesPatient)));
+        setPatientImplantsStatus('ready');
+      } catch (err) {
+        console.error('Failed to load patient implants:', err);
+        if (cancelled) return;
+        setPatientImplants([]);
+        setPatientImplantsStatus('error');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, form.patient_id, form.patient_name, implant?.id, knownPatientImplants]);
 
   useEffect(() => {
     if (!open || form.doctor) return;
@@ -467,34 +539,95 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
     });
   };
 
-  const pruneToothDataMap = useCallback((nextTeeth) => {
-    const keep = new Set((nextTeeth || []).map(String));
-    const keepFdi = new Set([...keep].map(toFdi));
+  const focusTooth = useCallback((rawId) => {
+    const id = toFdi(String(rawId));
+    if (!id) return;
+    setFormError('');
+    setActiveFdi(id);
+    const snapshot = formRef.current || {};
+    setForm((prev) => {
+      const current = (prev.tooth_numbers || []).map(String);
+      if (current.some((n) => toFdi(n) === id)) return prev;
+      return { ...prev, tooth_numbers: [...current, id] };
+    });
     setToothDataMap((prev) => {
-      const next = {};
-      Object.keys(prev || {}).forEach((key) => {
-        const fdi = toFdi(key);
-        if (keep.has(String(key)) || keepFdi.has(String(key)) || keepFdi.has(fdi)) {
-          next[key] = prev[key];
+      if (prev[id]) return prev;
+      const firma = snapshot.firma || 'Osstem';
+      const price = Number(snapshot.price);
+      return {
+        ...prev,
+        [id]: {
+          service_name: snapshot.service_name || 'Implant',
+          price: Number.isFinite(price) ? price : 1500000,
+          firma,
+          firma_custom: snapshot.firma_custom || '',
+          brend: snapshot.brend || (firma === 'Boshqa' ? (snapshot.firma_custom || '') : firma),
+          diameter: '',
+          length: '',
+          lot_number: '',
+          torque: '',
+          isq: '',
+          bone_type: snapshot.bone_type || 'D2',
+          implant_type: snapshot.implant_type || 'Bone level',
+          notes: '',
+        },
+      };
+    });
+  }, []);
+
+  const updateActiveTooth = useCallback((patch) => {
+    const id = activeFdiRef.current;
+    if (!id) return;
+    setToothDataMap((prev) => {
+      const current = prev[id] || {};
+      const next = { ...current, ...patch };
+      if (patch.firma && patch.firma !== 'Boshqa') {
+        next.firma_custom = '';
+        next.brend = patch.firma;
+      }
+      if (Object.prototype.hasOwnProperty.call(patch, 'firma_custom')) {
+        next.brend = patch.firma_custom || '';
+      }
+      return { ...prev, [id]: next };
+    });
+    if (patch.price === undefined && patch.firma === undefined && patch.firma_custom === undefined) return;
+    setForm((prev) => {
+      const next = { ...prev };
+      if (patch.price !== undefined) next.price = patch.price;
+      if (patch.firma !== undefined) {
+        next.firma = patch.firma;
+        if (patch.firma !== 'Boshqa') {
+          next.firma_custom = '';
+          next.brend = patch.firma;
         }
-      });
+      }
+      if (patch.firma_custom !== undefined) {
+        next.firma_custom = patch.firma_custom;
+        next.brend = patch.firma_custom;
+      }
       return next;
     });
   }, []);
 
-  const toggleFdi = useCallback((fdi) => {
-    const id = String(fdi);
-    setFormError('');
-    setForm((prev) => {
-      const current = (prev.tooth_numbers || []).map(String);
-      const exists = current.some((n) => toFdi(n) === id);
-      const nextTeeth = exists
-        ? current.filter((n) => toFdi(n) !== id)
-        : [...current, id];
-      if (exists) pruneToothDataMap(nextTeeth);
-      return { ...prev, tooth_numbers: nextTeeth };
+  const removeTooth = useCallback((rawId) => {
+    const id = toFdi(String(rawId));
+    setForm((prev) => ({
+      ...prev,
+      tooth_numbers: (prev.tooth_numbers || []).map(String).filter((n) => toFdi(n) !== id),
+    }));
+    setToothDataMap((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((key) => {
+        if (toFdi(key) === id || String(key) === id) delete next[key];
+      });
+      return next;
     });
-  }, [pruneToothDataMap]);
+    setActiveFdi((prev) => {
+      if (toFdi(prev) !== id) return prev;
+      const rest = uniqueFdis(formRef.current?.tooth_numbers).filter((n) => n !== id);
+      return rest[0] || null;
+    });
+  }, []);
 
   const handlePatientSelect = useCallback((patientId) => {
     setFormError('');
@@ -668,7 +801,9 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
         clinicName,
         selectedFdis: fdiNumbers,
         brandLabel: finalFirma === 'Boshqa' ? (finalFirmaCustom || finalBrend || 'Implant') : (finalFirma || finalBrend || 'Implant'),
-        implantUnitPrice: Number(form.price) || 0,
+        implantUnitPrice: (firstToothData.price != null && firstToothData.price !== '')
+          ? (Number(firstToothData.price) || 0)
+          : (Number(form.price) || 0),
         extraServicesList,
         selectedServiceIds: form.extra_services || [],
         extraServicePrices,
@@ -713,13 +848,14 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
         timeline,
         tooth_data_map: cleanedToothMap,
       };
+      const payload = omitEmptySizeFields(data);
 
       if (implant && implant.id) {
         try {
-          await base44.entities.Implant.update(implant.id, data);
+          await base44.entities.Implant.update(implant.id, payload);
         } catch (err) {
-          if (data.factura) {
-            const { factura: _factura, ...withoutFactura } = data;
+          if (payload.factura) {
+            const { factura: _factura, ...withoutFactura } = payload;
             await base44.entities.Implant.update(implant.id, withoutFactura);
           } else {
             throw err;
@@ -727,10 +863,10 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
         }
       } else {
         try {
-          await base44.entities.Implant.create(data);
+          await base44.entities.Implant.create(payload);
         } catch (err) {
-          if (data.factura) {
-            const { factura: _factura, ...withoutFactura } = data;
+          if (payload.factura) {
+            const { factura: _factura, ...withoutFactura } = payload;
             await base44.entities.Implant.create(withoutFactura);
           } else {
             throw err;
@@ -767,31 +903,12 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
     }
   };
 
-  const handleToothDataSave = (toothId, data) => {
-    const fdi = toFdi(toothId);
-    setToothDataMap((prev) => ({
-      ...prev,
-      [toothId]: data,
-      [fdi]: data,
-    }));
-  };
-
-  const openToothModal = (rawId) => {
-    const toothId = String(rawId);
-    setForm((prev) => {
-      const currentTeeth = (prev.tooth_numbers || []).map(String);
-      const fdi = toFdi(toothId);
-      if (!currentTeeth.includes(toothId) && !currentTeeth.some((n) => toFdi(n) === fdi)) {
-        return { ...prev, tooth_numbers: [...currentTeeth, fdi] };
-      }
-      return prev;
-    });
-    setSelectedToothForModal(toothId);
-    setToothModalOpen(true);
-  };
-
   const selectedFdis = useMemo(() => uniqueFdis(form.tooth_numbers), [form.tooth_numbers]);
-  const brandLabel = form.firma === 'Boshqa' ? (form.firma_custom || tw('other', 'Boshqa')) : (form.firma || 'Osstem');
+  const primaryTooth = (selectedFdis[0] && toothDataMap[selectedFdis[0]]) || {};
+  const resolvedFirma = primaryTooth.firma || form.firma || 'Osstem';
+  const resolvedCustom = primaryTooth.firma_custom || form.firma_custom || '';
+  const brandLabel = resolvedFirma === 'Boshqa' ? (resolvedCustom || tw('other', 'Boshqa')) : resolvedFirma;
+  const implantUnitPrice = primaryTooth.price != null && primaryTooth.price !== '' ? primaryTooth.price : form.price;
   const extraTotal = useMemo(() => (form.extra_services || []).reduce((acc, sid) => {
     const preset = (extraServicesList || []).find((s) => s.id === sid);
     const customPrice = extraServicePrices[sid];
@@ -804,7 +921,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
     clinicName,
     selectedFdis,
     brandLabel,
-    implantUnitPrice: form.price,
+    implantUnitPrice,
     extraServicesList,
     selectedServiceIds: form.extra_services || [],
     extraServicePrices,
@@ -812,7 +929,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
     t,
   }), [
     form.placement_date, today, form.patient_name, clinicName, selectedFdis,
-    brandLabel, form.price, extraServicesList, form.extra_services,
+    brandLabel, implantUnitPrice, extraServicesList, form.extra_services,
     extraServicePrices, facturaEdits, t,
   ]);
 
@@ -890,19 +1007,6 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
       return next;
     });
   }, [selectedFdis, form]);
-
-  const setToothParam = (fdi, key, val) => {
-    setToothDataMap((prev) => ({
-      ...prev,
-      [fdi]: {
-        service_name: 'Implant',
-        price: form.price || 1500000,
-        firma: form.firma || 'Osstem',
-        ...(prev[fdi] || {}),
-        [key]: val,
-      },
-    }));
-  };
 
   const goNextFrom1 = () => {
     if (!form.patient_name) {
@@ -1006,44 +1110,51 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
         >
           <Plus className="w-4 h-4" /> {tw('newPatient', 'Yangi bemor')}
         </button>
+        {(form.patient_id || form.patient_name) && (
+          <div className="implant-wizard-patient-implants" data-testid="implant-wizard-patient-implants">
+            <p className="implant-wizard-patient-implants-title">
+              {tw('existingImplants', 'Mavjud implantlar')}
+              {patientImplantsStatus === 'ready' ? ` (${patientImplants.length})` : ''}
+            </p>
+            {patientImplantsStatus === 'loading' && (
+              <p className="implant-wizard-patient-implants-empty">{tw('implantsLoading', 'Yuklanmoqda...')}</p>
+            )}
+            {patientImplantsStatus === 'error' && (
+              <p className="implant-wizard-patient-implants-empty">{tw('implantsLoadError', "Implantlarni yuklab bo'lmadi")}</p>
+            )}
+            {patientImplantsStatus === 'ready' && patientImplants.length === 0 && (
+              <p className="implant-wizard-patient-implants-empty">{tw('noImplants', "Bu bemorda implant yo'q")}</p>
+            )}
+            {patientImplantsStatus === 'ready' && patientImplants.length > 0 && (
+              <ul className="implant-wizard-patient-implants-list">
+                {patientImplants.map((row) => {
+                  const teeth = uniqueFdis([...(row.tooth_numbers || []), row.tooth_number].filter(Boolean));
+                  const when = toDMY(row.placement_date || row.placed_date || row.created_date);
+                  const price = row.price ?? row.narxi;
+                  return (
+                    <li key={row.id || `${teeth.join('-')}-${when}`} className="implant-wizard-patient-implant">
+                      <span className="implant-wizard-patient-implant-teeth">
+                        {teeth.length ? teeth.map((n) => `#${n}`).join(' ') : tw('implantUnit', 'implant')}
+                      </span>
+                      <span className="implant-wizard-patient-implant-brand">{patientImplantBrand(row)}</span>
+                      <span className="implant-wizard-patient-implant-meta">
+                        {when}
+                        {price != null && price !== '' ? ` · ${formatSom(price)} so'm` : ''}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        )}
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col gap-4">
         <section className={cardClass}>
-          <h3 className="implant-wizard-params-heading text-[15px] font-bold text-[#111827] mb-3">{tw('implantParams', 'Implant parametrlari')}</h3>
-          <div className="implant-wizard-params-grid grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <h3 className="implant-wizard-date-label text-[15px] font-bold text-[#111827] mb-3">{tw('placementDate', "O'rnatilgan sana")}</h3>
+          <div className="max-w-[240px]">
             <DateField value={form.placement_date} onChange={handleDateChange} />
-            <div>
-              <Select
-                value={form.firma}
-                onValueChange={(v) => {
-                  setForm((prev) => ({
-                    ...prev,
-                    firma: v,
-                    firma_custom: v === 'Boshqa' ? prev.firma_custom : '',
-                    brend: v === 'Boshqa' ? (prev.firma_custom || prev.brend) : prev.brend,
-                  }));
-                }}
-              >
-                <SelectTrigger className={fieldInput}>
-                  <SelectValue placeholder={tw('brand', 'Brend')} />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  {BRANDS.map((f) => (
-                    <SelectItem key={f} value={f}>{f}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {form.firma === 'Boshqa' && (
-                <Input
-                  placeholder={tw('brandName', 'Firma nomini yozing...')}
-                  value={form.firma_custom}
-                  onChange={(e) => setField('firma_custom', e.target.value)}
-                  className={cn(fieldInput, 'mt-1.5')}
-                />
-              )}
-            </div>
-            <MoneyField value={form.price} onChange={(v) => setField('price', v)} />
           </div>
         </section>
 
@@ -1051,20 +1162,44 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
           <h3 className="text-[15px] font-bold text-[#111827] mb-1">{tw('selectTeeth', 'Tishlarni belgilang')}</h3>
           <ImplantWizardArch
             selectedFdis={selectedFdis}
-            onToggle={toggleFdi}
+            activeFdi={activeFdi}
+            onToggle={focusTooth}
             scrollHint={tw('scrollHint', '← Yon tomonga suring →')}
           />
           {selectedFdis.length > 0 && (
             <div className="implant-wizard-selected-pills">
               {selectedFdis.map((fdi) => (
-                <span key={fdi} className="implant-wizard-selected-pill">#{fdi}</span>
+                <button
+                  key={fdi}
+                  type="button"
+                  onClick={() => focusTooth(fdi)}
+                  className={cn('implant-wizard-selected-pill', activeFdi === fdi && 'is-active')}
+                >
+                  #{fdi}
+                </button>
               ))}
             </div>
+          )}
+          {activeFdi && selectedFdis.includes(activeFdi) ? (
+            <ImplantWizardToothEntry
+              fdi={activeFdi}
+              data={toothDataMap[activeFdi]}
+              brands={BRANDS}
+              onChange={updateActiveTooth}
+              onRemove={() => removeTooth(activeFdi)}
+              extraServices={extraServicesList}
+              selectedExtraIds={form.extra_services || []}
+              onToggleExtra={toggleExtraService}
+              tw={tw}
+              t={t}
+            />
+          ) : (
+            <p className="implant-wizard-tooth-hint">{tw('toothEntryHint', "Tishni bosing — brend, narx va izoh shu yerda ochiladi")}</p>
           )}
           <div className="implant-wizard-arch-meta flex items-center justify-between pt-1">
             <button
               type="button"
-              onClick={() => { setField('tooth_numbers', []); setToothDataMap({}); setFormError(''); }}
+              onClick={() => { setField('tooth_numbers', []); setToothDataMap({}); setActiveFdi(null); setFormError(''); }}
               className="h-8 px-3 rounded-[10px] border border-[#e5e7eb] bg-white text-sm text-[#6b7280] hover:bg-gray-50 cursor-pointer"
             >
               {tw('clear', 'Tozalash')}
@@ -1101,7 +1236,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   );
 
   const renderStep3 = () => (
-    <div className="implant-wizard-step3 flex flex-col gap-4">
+    <div className="implant-wizard-step3 flex flex-col gap-4" data-testid="implant-wizard-step3">
       <div className="implant-wizard-factura-slot" data-implant-factura-slot>
         <ImplantWizardFactura
           snapshot={facturaDoc}
@@ -1129,45 +1264,6 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
             </Select>
           </div>
         </div>
-      </section>
-
-      <section className={cardClass}>
-        <h3 className="text-[15px] font-bold text-[#111827] mb-3">{tw('perToothParams', 'Har bir tish uchun parametr')}</h3>
-        <div className="implant-wizard-tooth-cards">
-          {selectedFdis.map((fdi) => {
-            const data = toothDataMap[fdi] || toothDataMap[form.tooth_numbers.find((n) => toFdi(n) === fdi)] || {};
-            return (
-              <div key={fdi} className="implant-wizard-tooth-card rounded-xl border border-[#e5e7eb] p-2.5">
-                <button
-                  type="button"
-                  onClick={() => openToothModal(fdi)}
-                  className="text-sm font-bold text-[#0d9488] mb-2 bg-transparent border-0 p-0 cursor-pointer hover:underline"
-                >
-                  #{fdi}
-                </button>
-                <div className="grid grid-cols-4 gap-1">
-                  {[
-                    { key: 'diameter', ph: 'Ø' },
-                    { key: 'length', ph: 'L' },
-                    { key: 'torque', ph: 'Ncm' },
-                    { key: 'lot_number', ph: 'Lot' },
-                  ].map((fld) => (
-                    <input
-                      key={fld.key}
-                      value={data[fld.key] ?? ''}
-                      onChange={(e) => setToothParam(fdi, fld.key, e.target.value)}
-                      placeholder={fld.ph}
-                      className="h-8 rounded-md border border-[#e5e7eb] bg-white px-1 text-center text-[11px] font-medium outline-none focus:border-[#0d9488]"
-                    />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        {selectedFdis.length > 1 && (
-          <p className="implant-wizard-scroll-hint">{tw('scrollHint', '← Yon tomonga suring →')}</p>
-        )}
       </section>
 
       <section className={cardClass}>
@@ -1447,19 +1543,6 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
         onClose={() => setNewPatientOpen(false)}
         patient={null}
         onSaved={handleNewPatientSaved}
-      />
-
-      <ToothImplantModal
-        open={toothModalOpen}
-        onClose={() => setToothModalOpen(false)}
-        toothId={selectedToothForModal}
-        fdiNumber={selectedToothForModal ? toFdi(selectedToothForModal) : ''}
-        onSave={handleToothDataSave}
-        existingData={(() => {
-          if (!selectedToothForModal) return null;
-          const fdi = toFdi(selectedToothForModal);
-          return toothDataMap[selectedToothForModal] || toothDataMap[fdi] || null;
-        })()}
       />
     </>
   );

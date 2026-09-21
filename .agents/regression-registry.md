@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant wizard — bemor implantlari, tish paneli, o'lchovlarsiz
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/components/implants/ImplantWizardToothEntry.jsx`](src/components/implants/ImplantWizardToothEntry.jsx)
+  - [`src/components/implants/ImplantWizardArch.jsx`](src/components/implants/ImplantWizardArch.jsx)
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+- **Muammo Tavsifi:** 1-qadamda bemor tanlangach uning implantlari chiqmasdi. Tish bosilganda ma'lumot shu zahoti kiritilmasdi. 3-qadamda Ø / L / Ncm / Lot maydonlari keraksiz edi.
+- **Sababi:** Chart faqat tanlashni almashtirardi; o'lchovlar alohida qadamda edi; bemor implantlari so'ralmasdi.
+- **Qanday tuzatildi:** Bemor tanlangach ro'yxat yoki bo'sh holat «+ Yangi bemor» ostida. Tish bosilganda brend, narx, izoh va qo'shimcha xizmatlar inline ochiladi va keyingi tishlar qabul qilinadi. 3-qadam faktura, eslatma va hujjatlar. Bo'sh o'lchov maydonlari saqlash payloadidan tushiriladi, mavjud qiymatlar qoladi.
+- **Qaytalamaslik choralari:** Step 3 ga Ø/L/Ncm/Lot qaytarmang. Faktura `data-implant-factura-slot` step 3 bodyda, footer `[Orqaga] [Faktura olish] [Saqlash]`. Desktop Step 2 `.implant-wizard-teeth { width: 240px }` va marker `implant-step2-teal-v2-240px-0d9488` qolsin. CTA `#0d9488`. Mobil arkda `transform` qaytarmang. `alert()` qaytarmang. Tishni ikkinchi marta bosish tanlovni o'chirmasin — ma'lumot paneli ochiq qolsin.
+
 ### 👤 Bemor qo'shish — shifokor majburiy
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**

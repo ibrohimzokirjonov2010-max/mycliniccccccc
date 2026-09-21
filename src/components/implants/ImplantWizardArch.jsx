@@ -10,7 +10,7 @@ function archT(index, count) {
   return count <= 1 ? 0 : (index / (count - 1)) * 2 - 1;
 }
 
-function WizardTooth({ fdi, selected, onClick, numberPosition }) {
+function WizardTooth({ fdi, selected, active, onClick, numberPosition }) {
   return (
     <button
       type="button"
@@ -18,6 +18,7 @@ function WizardTooth({ fdi, selected, onClick, numberPosition }) {
       className="odontogram-tooth compact-hit implant-wizard-tooth-btn flex flex-col items-center gap-0.5 bg-transparent border-0 p-0 cursor-pointer group"
       title={`#${fdi}`}
       aria-pressed={selected}
+      aria-current={active ? 'true' : undefined}
       aria-label={`#${fdi}`}
     >
       {numberPosition === 'top' && (
@@ -31,6 +32,7 @@ function WizardTooth({ fdi, selected, onClick, numberPosition }) {
       <span
         className={cn(
           'implant-wizard-tooth-face relative flex items-center justify-center w-[30px] h-[36px] rounded-[11px] border transition-all duration-150',
+          active && 'is-active',
           selected
             ? 'bg-[#0d9488] border-[#0f766e] shadow-sm text-white'
             : 'bg-[#f4efe6] border-[#e4d9c8] text-[#c4b8a4] group-hover:border-[#0d9488]/50 group-hover:bg-[#f0fdfa]'
@@ -58,7 +60,7 @@ function WizardTooth({ fdi, selected, onClick, numberPosition }) {
   );
 }
 
-function ArchRow({ teeth, selectedSet, onToggle, variant }) {
+function ArchRow({ teeth, selectedSet, activeFdi, onToggle, variant }) {
   const isUpper = variant === 'upper';
   return (
     <div className={cn('implant-wizard-arch-row relative flex items-end justify-center w-full', !isUpper && 'is-lower')}>
@@ -84,6 +86,7 @@ function ArchRow({ teeth, selectedSet, onToggle, variant }) {
               <WizardTooth
                 fdi={fdi}
                 selected={selectedSet.has(String(fdi))}
+                active={String(activeFdi || '') === String(fdi)}
                 onClick={onToggle}
                 numberPosition={isUpper ? 'top' : 'bottom'}
               />
@@ -100,16 +103,16 @@ function ArchRow({ teeth, selectedSet, onToggle, variant }) {
  * Desktop: curved 16-tooth arches.
  * Mobile (≤767px): one horizontal-scroll row per arch + fade/hint so 18/28/38/48 stay reachable.
  */
-export default function ImplantWizardArch({ selectedFdis = [], onToggle, scrollHint }) {
+export default function ImplantWizardArch({ selectedFdis = [], activeFdi = '', onToggle, scrollHint }) {
   const selectedSet = new Set((selectedFdis || []).map(String));
 
   return (
-    <div className="implant-wizard-arch w-full select-none py-1">
+    <div className="implant-wizard-arch w-full select-none py-1" data-testid="implant-wizard-arch">
       <div className="implant-wizard-arch-band h-[118px] flex items-start justify-center overflow-visible">
-        <ArchRow teeth={UPPER_FDI} selectedSet={selectedSet} onToggle={onToggle} variant="upper" />
+        <ArchRow teeth={UPPER_FDI} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} variant="upper" />
       </div>
       <div className="implant-wizard-arch-band h-[118px] flex items-end justify-center overflow-visible -mt-1">
-        <ArchRow teeth={LOWER_FDI} selectedSet={selectedSet} onToggle={onToggle} variant="lower" />
+        <ArchRow teeth={LOWER_FDI} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} variant="lower" />
       </div>
       {scrollHint ? (
         <p className="implant-wizard-scroll-hint">{scrollHint}</p>
