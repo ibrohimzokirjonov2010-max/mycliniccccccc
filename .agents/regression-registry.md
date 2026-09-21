@@ -13,6 +13,22 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant wizard — mobile 390px unusable
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+  - [`src/components/implants/ImplantWizardArch.jsx`](src/components/implants/ImplantWizardArch.jsx)
+  - [`src/components/implants/ImplantWizardStep2.jsx`](src/components/implants/ImplantWizardStep2.jsx)
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/i18n/translations/uz.json`](src/i18n/translations/uz.json)
+  - [`src/i18n/translations/ru.json`](src/i18n/translations/ru.json)
+  - [`src/i18n/translations/en.json`](src/i18n/translations/en.json)
+  - [`vite.config.js`](vite.config.js)
+- **Muammo Tavsifi:** YANGI IMPLANT wizard ~390px da yaroqsiz: tish charti kartadan chiqib ketgan, FDI yorliqlar ustma-ust, qadamlar "3 Implant" kesilgan, Step 2 footer "Tanlangan/Jami" tugmalar ostida, Step 3 "Jami so'm" ko'p qatorga o'ralib modal tashqarisiga chiqqan; validatsiya `alert()`.
+- **Sababi:** Desktop egri 16-tish ark va 240px chap kolonka mobilga moslanmagan; footer bir qatorda summary+tugmalar; stepper `last:flex-none` + uzun yorliq overflow-hidden dialogda kesilgan.
+- **Qanday tuzatildi:** ≤767px da 8+8 to'r odontogramma (egri transform o'chiriladi), stepper qisqa yorliqlar, Step 2 tish chip-lari gorizontal, sticky footer (summary bir qator / Step 3 Saqlash full-width teal), Step 3 tish kartalari gorizontal scroll, inline xato `alert()` o'rniga.
+- **Qaytalamaslik choralari:** Desktop Step 2 da `.implant-wizard-teeth { width: 240px }` + inline style saqlansin; CTA `#0d9488`, shadcn `Button`/`indigo` yo'q. Mobil qoidalar `@media (max-width: 767px)` ichida bo'lsin — desktop ark/240px ni buzmang. Marker `implant-step2-teal-v2-240px-0d9488` qolsin. Validatsiyada `alert()` qaytarilmasin.
+
 ### 🦷 Odontogramma — kattalar FDI yorliqlari takrorlanishi (12/22)
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**

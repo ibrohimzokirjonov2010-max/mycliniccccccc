@@ -1,4 +1,5 @@
 /* IMPLANT_WIZARD_STEP2_TEAL_V2 — layout must survive Tailwind/Dialog defaults */
+/* IMPLANT_WIZARD_MOBILE_390_V1 — 8+8 grid, chips, sticky footer, inline errors */
 
 .implant-wizard-dialog {
   display: flex !important;
@@ -31,6 +32,7 @@
   font-weight: 600;
   cursor: pointer;
   box-shadow: none;
+  white-space: nowrap;
 }
 .implant-wizard-cta:hover:not(:disabled) {
   background: #0f766e !important;
@@ -55,6 +57,7 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  white-space: nowrap;
 }
 .implant-wizard-ghost:hover {
   background: #f9fafb;
@@ -96,26 +99,416 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   min-height: 68px;
-  padding: 0 20px;
+  padding: 10px 20px;
   background: #ffffff;
   border-top: 1px solid #e5e7eb;
   flex-shrink: 0;
 }
 
+.implant-wizard-footer-summary {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.implant-wizard-footer-line {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.implant-wizard-footer-line strong {
+  color: #0d9488;
+  font-weight: 700;
+}
+
+.implant-wizard-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.implant-wizard-error {
+  flex: 1 0 100%;
+  width: 100%;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.implant-wizard-body {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f3f4f6;
+}
+
+.implant-wizard-stepper {
+  background: #ffffff;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.implant-wizard-stepper-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.implant-wizard-step-item {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.implant-wizard-step-item:last-child {
+  flex: 0 1 auto;
+}
+
+.implant-wizard-step-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.implant-wizard-step-label-short {
+  display: none;
+}
+
+.implant-wizard-step-connector {
+  height: 1px;
+  flex: 1;
+  margin: 0 12px;
+  min-width: 8px;
+  background: #e5e7eb;
+}
+
+.implant-wizard-step-connector.is-done {
+  background: #0d9488;
+}
+
+.implant-wizard-scroll-hint {
+  display: none;
+}
+
+.implant-wizard-tooth-cards {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (min-width: 640px) {
+  .implant-wizard-tooth-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .implant-wizard-tooth-cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.implant-wizard-service-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  overflow-y: auto;
+  max-height: 340px;
+  padding-right: 2px;
+}
+
+@media (min-width: 640px) {
+  .implant-wizard-service-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ---- Mobile ~390px ---- */
 @media (max-width: 767px) {
   .implant-wizard-dialog {
-    width: 95vw !important;
-    max-width: 95vw !important;
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px) !important;
+    height: calc(100dvh - 12px) !important;
+    max-height: calc(100dvh - 12px) !important;
+    border-radius: 16px !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
   }
+
+  .implant-wizard-body {
+    padding: 10px 12px 12px;
+  }
+
+  .implant-wizard-stepper {
+    padding: 8px 12px;
+  }
+
+  .implant-wizard-step-item,
+  .implant-wizard-step-item:last-child {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .implant-wizard-step-btn {
+    gap: 4px;
+    width: 100%;
+  }
+
+  .implant-wizard-step-num {
+    display: none;
+  }
+
+  .implant-wizard-step-label-full {
+    display: none;
+  }
+
+  .implant-wizard-step-label-short {
+    display: inline;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .implant-wizard-step-connector {
+    margin: 0 4px;
+    min-width: 6px;
+  }
+
   .implant-wizard-step2 {
     flex-direction: column;
     min-height: 0;
+    gap: 10px;
   }
+
   .implant-wizard-teeth {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    padding: 10px 12px;
+    flex-shrink: 0;
+  }
+
+  .implant-wizard-teeth-head .implant-wizard-teeth-sub {
+    display: none;
+  }
+
+  .implant-wizard-teeth-list {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 8px;
+    flex: none !important;
+    min-height: 0;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .implant-wizard-teeth-list > * {
+    margin-top: 0 !important;
+  }
+
+  .implant-wizard-tooth-chip {
+    flex: 0 0 auto;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px !important;
+    border: 1px solid #0d9488;
+    border-radius: 999px;
+    background: #f0fdfa;
+    white-space: nowrap;
+  }
+
+  .implant-wizard-tooth-chip .chip-index {
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+  }
+
+  .implant-wizard-teeth-foot,
+  .implant-wizard-teeth-back {
+    display: none !important;
+  }
+
+  .implant-wizard-services {
+    padding: 12px;
+  }
+
+  .implant-wizard-service-list {
+    grid-template-columns: 1fr;
+    max-height: none;
+  }
+
+  .implant-wizard-footer {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-end;
+    gap: 8px;
+    min-height: 0;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .implant-wizard-footer-summary {
+    flex: none;
     width: 100%;
+  }
+
+  .implant-wizard-footer-actions {
+    width: 100%;
+  }
+
+  .implant-wizard-footer-actions .implant-wizard-ghost {
+    flex: 0 0 auto;
+  }
+
+  .implant-wizard-footer-actions .implant-wizard-cta {
+    flex: 1 1 auto;
     min-width: 0;
-    max-width: none;
+  }
+
+  .implant-wizard-footer[data-step="3"] .implant-wizard-footer-actions {
+    flex-direction: column;
+  }
+
+  .implant-wizard-footer[data-step="3"] .implant-wizard-ghost,
+  .implant-wizard-footer[data-step="3"] .implant-wizard-cta {
+    width: 100%;
+    flex: none;
+  }
+
+  /* Compact 8+8 odontogram — no curve, all 32 FDI visible */
+  .implant-wizard-arch-band {
+    height: auto !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  .implant-wizard-arch-row {
+    display: grid !important;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    justify-items: center;
+    align-items: start;
+    width: 100%;
+    gap: 4px 2px;
+  }
+
+  .implant-wizard-arch-row.is-lower {
+    align-items: end;
+    margin-top: 8px;
+  }
+
+  .implant-wizard-arch-curve {
+    display: none !important;
+  }
+
+  .implant-wizard-tooth-slot {
+    transform: none !important;
+    margin: 0 !important;
+    width: 100%;
+  }
+
+  .implant-wizard-tooth-btn {
+    width: 100%;
+    gap: 2px;
+  }
+
+  .implant-wizard-tooth-face {
+    width: 100% !important;
+    max-width: 36px;
+    height: 40px !important;
+    border-radius: 10px !important;
+  }
+
+  .implant-wizard-tooth-face img {
+    width: 20px !important;
+    height: 26px !important;
+  }
+
+  .implant-wizard-arch-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 8px;
+    position: sticky;
+    bottom: 0;
+    background: #ffffff;
+  }
+
+  .implant-wizard-tooth-cards {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 6px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .implant-wizard-tooth-card {
+    flex: 0 0 220px;
+    scroll-snap-align: start;
+  }
+
+  .implant-wizard-scroll-hint {
+    display: block;
+    margin: 4px 0 0;
+    font-size: 11px;
+    color: #9ca3af;
+    text-align: right;
+  }
+
+  .implant-wizard-header {
+    height: 52px !important;
+    padding: 0 12px !important;
+    gap: 8px;
+  }
+
+  .implant-wizard-header-badge {
+    max-width: 42vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .implant-wizard-arch-card {
+    overflow-x: hidden;
+    min-width: 0;
+  }
+
+  .implant-wizard-tooth-btn {
+    touch-action: manipulation;
   }
 }

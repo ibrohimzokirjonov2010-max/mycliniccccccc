@@ -217,6 +217,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   const [extraSearch, setExtraSearch] = useState('');
   const [extraTab, setExtraTab] = useState('all');
   const [editingPriceId, setEditingPriceId] = useState(null);
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
     setLocalPatients(patients);
@@ -376,6 +377,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
       setExtraTab('all');
     }
     setStep(1);
+    setFormError('');
   }, [open, implant?.id, resetForm]);
 
   useEffect(() => {
@@ -453,6 +455,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
 
   const toggleFdi = useCallback((fdi) => {
     const id = String(fdi);
+    setFormError('');
     setForm((prev) => {
       const current = (prev.tooth_numbers || []).map(String);
       const exists = current.some((n) => toFdi(n) === id);
@@ -465,6 +468,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   }, [pruneToothDataMap]);
 
   const handlePatientSelect = useCallback((patientId) => {
+    setFormError('');
     if (!patientId) {
       setForm((prev) => ({ ...prev, patient_id: '', patient_name: '', patient_phone: '' }));
       return;
@@ -542,19 +546,20 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
 
   const handleSave = async () => {
     if (!form.patient_name) {
-      alert(tw('needPatient', 'Iltimos, avval bemorni tanlang!'));
+      setFormError(tw('needPatient', 'Iltimos, avval bemorni tanlang!'));
       setStep(1);
       return;
     }
     if (!form.doctor || !form.doctor.trim()) {
-      alert(tw('needDoctor', "Iltimos, mas'ul shifokorni tanlang! Shifokor bo'limi to'ldirilmagan."));
+      setFormError(tw('needDoctor', "Iltimos, mas'ul shifokorni tanlang! Shifokor bo'limi to'ldirilmagan."));
       return;
     }
     if (!form.tooth_numbers || form.tooth_numbers.length === 0) {
-      alert(tw('needTeeth', "Iltimos, implant o'rnatiladigan tish(lar)ni belgilang!"));
+      setFormError(tw('needTeeth', "Iltimos, implant o'rnatiladigan tish(lar)ni belgilang!"));
       setStep(1);
       return;
     }
+    setFormError('');
 
     setSaving(true);
     try {
@@ -666,7 +671,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
       onClose();
     } catch (error) {
       console.error('Save failed:', error);
-      alert(t('common.saveError') + ': ' + error.message);
+      setFormError((t('common.saveError') || 'Saqlashda xatolik') + ': ' + (error.message || ''));
     } finally {
       setSaving(false);
     }
@@ -775,17 +780,19 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
 
   const goNextFrom1 = () => {
     if (!form.patient_name) {
-      alert(tw('needPatient', 'Iltimos, avval bemorni tanlang!'));
+      setFormError(tw('needPatient', 'Iltimos, avval bemorni tanlang!'));
       return;
     }
     if (!selectedFdis.length) {
-      alert(tw('needTeeth', "Iltimos, implant o'rnatiladigan tishni tanlang!"));
+      setFormError(tw('needTeeth', "Iltimos, implant o'rnatiladigan tishni tanlang!"));
       return;
     }
+    setFormError('');
     setStep(2);
   };
 
   const goNextFrom2 = () => {
+    setFormError('');
     seedToothParams();
     setStep(3);
   };
@@ -794,22 +801,22 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
 
   const renderStepper = () => {
     const steps = [
-      { n: 1, label: tw('stepPatient', 'Bemor') },
-      { n: 2, label: tw('stepServices', 'Xizmatlar') },
-      { n: 3, label: tw('stepImplants', 'Implantlar') },
+      { n: 1, label: tw('stepPatient', 'Bemor'), short: tw('stepPatientShort', 'Bemor') },
+      { n: 2, label: tw('stepServices', 'Xizmatlar'), short: tw('stepServicesShort', 'Xizmat') },
+      { n: 3, label: tw('stepImplants', 'Implantlar'), short: tw('stepImplantsShort', 'Implant') },
     ];
     return (
-      <div className="bg-white px-5 sm:px-6 py-3 border-b border-[#e5e7eb] shrink-0">
-        <div className="flex items-center">
+      <div className="implant-wizard-stepper">
+        <div className="implant-wizard-stepper-row">
           {steps.map((s, i) => {
             const done = step > s.n;
             const active = step === s.n;
             return (
-              <div key={s.n} className="flex items-center flex-1 last:flex-none">
+              <div key={s.n} className="implant-wizard-step-item">
                 <button
                   type="button"
                   onClick={() => (step >= s.n || done) && setStep(s.n)}
-                  className="flex items-center gap-2 bg-transparent border-0 p-0 cursor-pointer"
+                  className="implant-wizard-step-btn"
                 >
                   <span className={cn(
                     'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
@@ -818,14 +825,20 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
                     {done ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : s.n}
                   </span>
                   <span className={cn(
-                    'text-sm font-semibold whitespace-nowrap',
+                    'implant-wizard-step-label-full text-sm font-semibold whitespace-nowrap',
                     done || active ? 'text-[#0d9488]' : 'text-[#9ca3af]'
                   )}>
-                    {s.n} {s.label}
+                    <span className="implant-wizard-step-num">{s.n} </span>{s.label}
+                  </span>
+                  <span className={cn(
+                    'implant-wizard-step-label-short',
+                    done || active ? 'text-[#0d9488]' : 'text-[#9ca3af]'
+                  )}>
+                    {s.short}
                   </span>
                 </button>
                 {i < steps.length - 1 && (
-                  <div className={cn('h-px flex-1 mx-3', step > s.n ? 'bg-[#0d9488]' : 'bg-[#e5e7eb]')} />
+                  <div className={cn('implant-wizard-step-connector', step > s.n && 'is-done')} />
                 )}
               </div>
             );
@@ -906,18 +919,18 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
           </div>
         </section>
 
-        <section className={cn(cardClass, 'flex-1')}>
+        <section className={cn(cardClass, 'flex-1 implant-wizard-arch-card min-w-0')}>
           <h3 className="text-[15px] font-bold text-[#111827] mb-1">{tw('selectTeeth', 'Tishlarni belgilang')}</h3>
           <ImplantWizardArch selectedFdis={selectedFdis} onToggle={toggleFdi} />
-          <div className="flex items-center justify-between pt-1">
+          <div className="implant-wizard-arch-meta flex items-center justify-between pt-1">
             <button
               type="button"
-              onClick={() => { setField('tooth_numbers', []); setToothDataMap({}); }}
+              onClick={() => { setField('tooth_numbers', []); setToothDataMap({}); setFormError(''); }}
               className="h-8 px-3 rounded-[10px] border border-[#e5e7eb] bg-white text-sm text-[#6b7280] hover:bg-gray-50 cursor-pointer"
             >
               {tw('clear', 'Tozalash')}
             </button>
-            <p className="text-sm font-semibold text-[#111827]">
+            <p className="text-sm font-semibold text-[#111827] whitespace-nowrap">
               {tw('selectedCountPrefix', 'Tanlangan:')}{' '}
               <span className="text-[#0d9488]">{selectedFdis.length} {tw('teethUnit', 'ta tish')}</span>
             </p>
@@ -972,11 +985,11 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
 
       <section className={cardClass}>
         <h3 className="text-[15px] font-bold text-[#111827] mb-3">{tw('perToothParams', 'Har bir tish uchun parametr')}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <div className="implant-wizard-tooth-cards">
           {selectedFdis.map((fdi) => {
             const data = toothDataMap[fdi] || toothDataMap[form.tooth_numbers.find((n) => toFdi(n) === fdi)] || {};
             return (
-              <div key={fdi} className="rounded-xl border border-[#e5e7eb] p-2.5">
+              <div key={fdi} className="implant-wizard-tooth-card rounded-xl border border-[#e5e7eb] p-2.5">
                 <button
                   type="button"
                   onClick={() => openToothModal(fdi)}
@@ -1004,6 +1017,9 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
             );
           })}
         </div>
+        {selectedFdis.length > 1 && (
+          <p className="implant-wizard-scroll-hint">{tw('scrollHint', '← Yon tomonga suring →')}</p>
+        )}
       </section>
 
       <section className={cardClass}>
@@ -1096,29 +1112,28 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   const footerSummary = () => {
     if (step === 1) {
       return (
-        <p className="text-sm font-semibold text-[#0d9488]">
-          {selectedFdis.length} {tw('toothShort', 'tish')} · {brandLabel}
+        <p className="implant-wizard-footer-line">
+          <strong>{selectedFdis.length} {tw('toothShort', 'tish')}</strong>
+          {' · '}
+          {brandLabel}
         </p>
       );
     }
     if (step === 2) {
       return (
-        <div className="flex items-center gap-6 text-sm">
-          <span className="text-[#6b7280]">
-            {tw('selectedServicesPrefix', 'Tanlangan:')}{' '}
-            <span className="font-semibold text-[#111827]">{form.extra_services?.length || 0} {tw('serviceUnit', 'xizmat')}</span>
-          </span>
-          <span className="text-[#6b7280]">
-            {tw('total', 'Jami:')}{' '}
-            <span className="font-bold text-[#0d9488] text-base">{formatSom(extraTotal)} so&apos;m</span>
-          </span>
-        </div>
+        <p className="implant-wizard-footer-line">
+          {tw('selectedServicesPrefix', 'Tanlangan:')}{' '}
+          <span className="font-semibold text-[#111827]">{form.extra_services?.length || 0} {tw('serviceUnit', 'xizmat')}</span>
+          {' · '}
+          {tw('total', 'Jami:')}{' '}
+          <strong>{formatSom(extraTotal)} so&apos;m</strong>
+        </p>
       );
     }
     return (
-      <p className="text-sm text-[#6b7280]">
+      <p className="implant-wizard-footer-line">
         {tw('total', 'Jami:')}{' '}
-        <span className="font-bold text-[#0d9488] text-base">{formatSom(grandTotal)} so&apos;m</span>
+        <strong>{formatSom(grandTotal)} so&apos;m</strong>
       </p>
     );
   };
@@ -1137,7 +1152,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
           aria-describedby={undefined}
         >
           <DialogHeader className="shrink-0 space-y-0">
-            <div className="h-14 px-5 flex items-center justify-between text-white" style={{ background: '#0d9488' }}>
+            <div className="implant-wizard-header h-14 px-5 flex items-center justify-between text-white" style={{ background: '#0d9488' }}>
               <DialogTitle className="text-[15px] font-bold tracking-wide text-white uppercase">
                 {implant ? t('common.edit') : tw('title', 'Yangi implant')}
               </DialogTitle>
@@ -1145,8 +1160,8 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
                 <span className="text-sm font-semibold uppercase tracking-wide hidden sm:inline">
                   {form.patient_name || tw('noPatient', 'Bemor tanlanmagan')}
                 </span>
-                <span className="h-8 px-3 rounded-full bg-white/15 border border-white/25 text-xs font-semibold flex items-center gap-1.5">
-                  <Tooth className="w-3.5 h-3.5" />
+                <span className="implant-wizard-header-badge h-8 px-3 rounded-full bg-white/15 border border-white/25 text-xs font-semibold flex items-center gap-1.5">
+                  <Tooth className="w-3.5 h-3.5 shrink-0" />
                   {badgeText}
                 </span>
                 <button
@@ -1163,31 +1178,26 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
 
           {renderStepper()}
 
-          <div className="flex-1 overflow-y-auto px-4 py-4 no-scrollbar bg-[#f3f4f6]">
+          <div className="implant-wizard-body no-scrollbar">
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
           </div>
 
-          <div className="implant-wizard-footer">
-            {step === 2 ? (
-              <div className="flex items-center gap-6 text-sm min-w-0 flex-1">
-                <span className="text-[#6b7280]">
-                  {tw('selectedServicesPrefix', 'Tanlangan:')}{' '}
-                  <span className="font-semibold text-[#111827]">{form.extra_services?.length || 0} {tw('serviceUnit', 'xizmat')}</span>
-                </span>
-                <span className="text-[#6b7280]">
-                  {tw('total', 'Jami:')}{' '}
-                  <span className="font-bold text-base" style={{ color: '#0d9488' }}>{formatSom(extraTotal)} so&apos;m</span>
-                </span>
-              </div>
+          <div className="implant-wizard-footer" data-step={step}>
+            {formError ? (
+              <p className="implant-wizard-error" role="alert">{formError}</p>
             ) : (
-              <div className="flex-1 min-w-0">{footerSummary()}</div>
+              <div className="implant-wizard-footer-summary">{footerSummary()}</div>
             )}
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="implant-wizard-footer-actions">
               <button
                 type="button"
-                onClick={() => (step === 1 ? onClose() : setStep(step - 1))}
+                onClick={() => {
+                  setFormError('');
+                  if (step === 1) onClose();
+                  else setStep(step - 1);
+                }}
                 className="implant-wizard-ghost"
               >
                 <ArrowLeft className="w-4 h-4" /> {tw('back', 'Orqaga')}

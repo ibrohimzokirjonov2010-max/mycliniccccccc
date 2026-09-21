@@ -76,6 +76,9 @@ const Technicians         = lazy(() => import('./pages/Technicians'));
 const Staff               = lazy(() => import('./pages/Staff'));
 const MobilePublicPage    = lazy(() => import('./pages/MobilePublicPage'));
 const PublicClinicPage    = lazy(() => import('./pages/PublicClinicPage'));
+const ImplantWizardPreview = import.meta.env.DEV
+  ? lazy(() => import('./pages/ImplantWizardPreview'))
+  : null;
 
 // Yeni Cases Sahifalari
 const Cases               = lazy(() => import('./pages/Cases'));
@@ -177,6 +180,9 @@ const AuthenticatedApp = memo(() => {
           <Route path="/p/:slug"  element={<PublicClinicPage />} />
           <Route path="/super-admin"        element={<SuperAdmin />} />
           <Route path="/super-admin-portal" element={<SuperAdmin />} />
+          {import.meta.env.DEV && ImplantWizardPreview && (
+            <Route path="/dev/implant-wizard" element={<ImplantWizardPreview />} />
+          )}
 
           {isAuthenticated ? (
             <Route element={<AppLayout />}>

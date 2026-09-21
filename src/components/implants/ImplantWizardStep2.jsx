@@ -55,15 +55,15 @@ export default function ImplantWizardStep2({
       data-testid="implant-wizard-step2"
     >
       <aside className="implant-wizard-teeth" style={{ width: 240, minWidth: 240 }}>
-        <div className="mb-3">
+        <div className="implant-wizard-teeth-head mb-3">
           <h3 className="text-[15px] font-bold text-[#111827]">{tw('selectedTeeth', 'Tanlangan tishlar')}</h3>
-          <div className="mt-1 h-[3px] w-10 rounded-full" style={{ background: '#0d9488' }} />
+          <div className="implant-wizard-teeth-sub mt-1 h-[3px] w-10 rounded-full" style={{ background: '#0d9488' }} />
         </div>
-        <div className="flex-1 space-y-1 overflow-y-auto min-h-0 pr-0.5">
+        <div className="implant-wizard-teeth-list flex-1 space-y-1 overflow-y-auto min-h-0 pr-0.5">
           {selectedFdis.map((fdi, idx) => (
-            <div key={fdi} className="flex items-center gap-2.5 px-1 py-1.5">
+            <div key={fdi} className="implant-wizard-tooth-chip flex items-center gap-2.5 px-1 py-1.5">
               <span
-                className="w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0"
+                className="chip-index w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0"
                 style={{ border: '1px solid #0d9488', color: '#0d9488' }}
               >
                 {idx + 1}
@@ -74,15 +74,18 @@ export default function ImplantWizardStep2({
             </div>
           ))}
         </div>
+        {selectedFdis.length > 4 && (
+          <p className="implant-wizard-scroll-hint">{tw('scrollHint', '← Yon tomonga suring →')}</p>
+        )}
         <button
           type="button"
           onClick={onBackToStep1}
-          className="mt-3 text-left text-xs text-[#9ca3af] hover:text-[#0d9488] bg-transparent border-0 p-0 cursor-pointer flex items-center gap-1"
+          className="implant-wizard-teeth-back mt-3 text-left text-xs text-[#9ca3af] hover:text-[#0d9488] bg-transparent border-0 p-0 cursor-pointer flex items-center gap-1"
         >
           <span className="w-4 h-4 rounded-full border border-[#e5e7eb] text-[9px] flex items-center justify-center">i</span>
           {tw('fromStep1', '1-qadamdan')}
         </button>
-        <div className="mt-3 pt-3 border-t border-[#e5e7eb] flex items-end justify-between">
+        <div className="implant-wizard-teeth-foot mt-3 pt-3 border-t border-[#e5e7eb] flex items-end justify-between">
           <div>
             <p className="text-xs text-[#6b7280]">{tw('totalImplants', 'Jami implantlar')}</p>
             <p className="text-lg font-bold" style={{ color: '#0d9488' }}>
@@ -121,7 +124,7 @@ export default function ImplantWizardStep2({
             </button>
           ))}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto max-h-[340px] pr-0.5">
+        <div className="implant-wizard-service-list">
           {extraServicesList.map((service) => {
             const isSelected = (selectedServiceIds || []).includes(service.id);
             const currentPrice = extraServicePrices[service.id] !== undefined

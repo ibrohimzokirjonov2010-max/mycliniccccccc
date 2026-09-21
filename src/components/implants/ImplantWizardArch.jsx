@@ -14,8 +14,10 @@ function WizardTooth({ fdi, selected, onClick, numberPosition }) {
     <button
       type="button"
       onClick={() => onClick(String(fdi))}
-      className="odontogram-tooth compact-hit flex flex-col items-center gap-0.5 bg-transparent border-0 p-0 cursor-pointer group"
+      className="odontogram-tooth compact-hit implant-wizard-tooth-btn flex flex-col items-center gap-0.5 bg-transparent border-0 p-0 cursor-pointer group"
       title={`#${fdi}`}
+      aria-pressed={selected}
+      aria-label={`#${fdi}`}
     >
       {numberPosition === 'top' && (
         <span className={cn(
@@ -27,7 +29,7 @@ function WizardTooth({ fdi, selected, onClick, numberPosition }) {
       )}
       <span
         className={cn(
-          'relative flex items-center justify-center w-[30px] h-[36px] rounded-[11px] border transition-all duration-150',
+          'implant-wizard-tooth-face relative flex items-center justify-center w-[30px] h-[36px] rounded-[11px] border transition-all duration-150',
           selected
             ? 'bg-[#0d9488] border-[#0f766e] shadow-sm text-white'
             : 'bg-[#f4efe6] border-[#e4d9c8] text-[#c4b8a4] group-hover:border-[#0d9488]/50 group-hover:bg-[#f0fdfa]'
@@ -58,10 +60,10 @@ function WizardTooth({ fdi, selected, onClick, numberPosition }) {
 function ArchRow({ teeth, selectedSet, onToggle, variant }) {
   const isUpper = variant === 'upper';
   return (
-    <div className="relative flex items-end justify-center w-full">
+    <div className={cn('implant-wizard-arch-row relative flex items-end justify-center w-full', !isUpper && 'is-lower')}>
       <div
         className={cn(
-          'absolute left-[8%] right-[8%] border-[#e5e7eb]/80 pointer-events-none',
+          'implant-wizard-arch-curve absolute left-[8%] right-[8%] border-[#e5e7eb]/80 pointer-events-none',
           isUpper ? 'top-[22px] border-t rounded-t-full h-10' : 'bottom-[22px] border-b rounded-b-full h-10'
         )}
       />
@@ -72,7 +74,7 @@ function ArchRow({ teeth, selectedSet, onToggle, variant }) {
         return (
           <div
             key={fdi}
-            className="relative z-[1] mx-[1px] sm:mx-[2px]"
+            className="implant-wizard-tooth-slot relative z-[1] mx-[1px] sm:mx-[2px]"
             style={{
               transform: `translateY(${isUpper ? -lift : lift}px) rotate(${rotate}deg)`,
             }}
@@ -92,16 +94,17 @@ function ArchRow({ teeth, selectedSet, onToggle, variant }) {
 
 /**
  * Compact two-arch FDI odontogram for the New Implant wizard.
+ * Desktop: curved 16-tooth arches. Mobile (≤767px): compact 8+8 grid that fits ~390px.
  */
 export default function ImplantWizardArch({ selectedFdis = [], onToggle }) {
   const selectedSet = new Set((selectedFdis || []).map(String));
 
   return (
-    <div className="w-full select-none py-1">
-      <div className="h-[118px] flex items-start justify-center overflow-visible">
+    <div className="implant-wizard-arch w-full select-none py-1">
+      <div className="implant-wizard-arch-band h-[118px] flex items-start justify-center overflow-visible">
         <ArchRow teeth={UPPER_FDI} selectedSet={selectedSet} onToggle={onToggle} variant="upper" />
       </div>
-      <div className="h-[118px] flex items-end justify-center overflow-visible -mt-1">
+      <div className="implant-wizard-arch-band h-[118px] flex items-end justify-center overflow-visible -mt-1">
         <ArchRow teeth={LOWER_FDI} selectedSet={selectedSet} onToggle={onToggle} variant="lower" />
       </div>
     </div>
