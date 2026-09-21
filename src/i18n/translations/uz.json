@@ -507,6 +507,7 @@
       "registrationDate": "Ro'yxat sanasi",
       "saveError": "Bemor saqlashda xatolik",
       "errorDoctorRequired": "Shifokorni tanlash majburiy! Shifokor tanlanmasa reja tuzib bo'lmaydi.",
+      "doctorRequiredInline": "Shifokorni tanlash majburiy",
       "doctorSignature": "Shifokor imzosi",
       "stage": "Bosqich",
       "date": "Sana",

@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CheckCircle2, User, ClipboardList, ArrowLeft, Printer, Download, X, Check, MessageCircle, Copy, Share2, Calendar, QrCode, Phone, Mail, AlertTriangle, Search } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { applyPhoneMask, cn, capitalizeName, validateAddress, capitalizeAsYouType } from '@/lib/utils';
+import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
 
 /**
  * Wizard steps configuration
@@ -274,6 +275,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [savingError, setSavingError] = useState(null);
+  const [doctorError, setDoctorError] = useState('');
   const [services, setServices] = useState([]);
   const [createdPatient, setCreatedPatient] = useState(null);
   const [createdPlan, setCreatedPlan] = useState(null);
@@ -502,8 +504,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   const normalizedPatientPhone = (patientForm.phone || '').replace(/\D/g, '');
   const canProceedPatientStep = normalizedFirstName.length > 0 && 
     normalizedLastName.length > 0 && 
-    normalizedPatientPhone.length >= 9 && 
-    !!patientForm.main_treatment_provider;
+    normalizedPatientPhone.length >= 9;
 
   const createdPlanAdvanceTotal = useMemo(() => {
     if (createdPlan?.allPlansObjects?.length) {
@@ -519,6 +520,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     if (open) {
       setStep(1);
       setSavingError(null);
+      setDoctorError('');
       setCreatedPatient(null);
       setCreatedPlan(null);
       // Pre-fill from lead data if provided
@@ -782,8 +784,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       toast.error(t('patients.errorPhoneRequired') || "Telefon raqamini to'liq kiriting");
       return;
     }
-    if (!patientForm.main_treatment_provider) {
-      toast.error(t('patients.wizard.errorDoctorRequired') || "Shifokorni tanlash majburiy! Shifokor tanlanmasa reja tuzib bo'lmaydi.");
+    const missingDoctor = getPatientDoctorRequiredError(patientForm.main_treatment_provider, t);
+    if (missingDoctor) {
+      setDoctorError(missingDoctor);
       return;
     }
     if (patientForm.address && !validateAddress(patientForm.address)) {
@@ -858,7 +861,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     } finally {
       setSaving(false);
     }
-  }, [patientForm, canProceedPatientStep, normalizedFirstName, normalizedLastName, normalizedPatientName, normalizedPatientPhone, onSaved]);
+  }, [patientForm, canProceedPatientStep, normalizedFirstName, normalizedLastName, normalizedPatientName, normalizedPatientPhone, onSaved, t]);
 
   /**
    * Save treatment plan (Step 2)
@@ -1534,13 +1537,22 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     </Select>
                   </div>
 
-                  {/* Main treatment provider */}
-                  <div>
+                  {/* Main treatment provider — required to create a patient */}
+                  <div data-patient-doctor-field>
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">
                       {t('common.doctor')} <span className="text-red-500 font-bold">*</span>
                     </label>
-                    <Select value={patientForm.main_treatment_provider} onValueChange={v => setPatientForm({ ...patientForm, main_treatment_provider: v })}>
-                      <SelectTrigger className="h-9 rounded-lg border-slate-200 text-sm w-full font-medium">
+                    <Select
+                      value={patientForm.main_treatment_provider}
+                      onValueChange={v => {
+                        setPatientForm({ ...patientForm, main_treatment_provider: v });
+                        setDoctorError('');
+                      }}
+                    >
+                      <SelectTrigger
+                        aria-invalid={doctorError ? true : undefined}
+                        className={`h-9 rounded-lg text-sm w-full font-medium ${doctorError ? 'border-rose-400 focus:border-rose-500' : 'border-slate-200'}`}
+                      >
                         <SelectValue placeholder={t('common.select')} />
                       </SelectTrigger>
                       <SelectContent className="max-h-[200px]">
@@ -1549,6 +1561,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         ))}
                       </SelectContent>
                     </Select>
+                    {doctorError && (
+                      <p role="alert" data-patient-doctor-error className="mt-1 text-[11px] font-bold text-rose-600">
+                        {doctorError}
+                      </p>
+                    )}
                   </div>
 
                   {/* Card number */}
