@@ -308,8 +308,6 @@ export default function MobileLeadsV6() {
                   <LeadSourceIcon source={lead.source} className="w-3.5 h-3.5 rounded-[5px] shadow-none ring-0" size={14} />
                   <span>{sourceInfo.label}</span>
                 </span>
-                  <span>{sourceInfo.label}</span>
-                </span>
                 {timeAgo && (
                   <span className="text-[9px] font-medium text-slate-400">
                     • {timeAgo}
@@ -566,7 +564,9 @@ export default function MobileLeadsV6() {
                    <Label className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Manba (Platforma)</Label>
                    <select 
                       value={formData.source} 
-                      onChange={e =>
+                      onChange={e => setFormData({...formData, source: e.target.value})} 
+                      className="w-full h-11 rounded-xl bg-slate-50 border border-slate-100 px-3 font-bold text-xs text-slate-700 outline-none"
+                   >
                       <option value="Call">Qo'ng'iroq</option>
                       <option value="Instagram">Instagram</option>
                       <option value="Telegram">Telegram</option>
