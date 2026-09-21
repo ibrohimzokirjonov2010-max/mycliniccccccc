@@ -22,10 +22,15 @@ const uz = JSON.parse(read('src/i18n/translations/uz.json'));
 const ru = JSON.parse(read('src/i18n/translations/ru.json'));
 const en = JSON.parse(read('src/i18n/translations/en.json'));
 
-assert(css.includes('payment-add-teal-v1-0d9488'), 'css marker');
+assert(css.includes('payment-add-teal-v3-footer-pin'), 'css marker');
 assert(css.includes('#0d9488'), 'teal accent');
 assert(!css.includes('indigo') && !css.includes('purple'), 'no purple in payment css');
 assert(css.includes('.payment-add-footer'), 'sticky footer class');
+assert(css.includes('position: absolute !important'), 'footer pinned absolute inside dialog');
+assert(css.includes('transform: none !important'), 'mobile kills centering transform');
+assert(css.includes('height: auto !important'), 'mobile inset height from top/bottom');
+assert(css.includes('flex: 1 1 0%'), 'body flex basis 0');
+assert(css.includes('min-height: 0 !important'), 'dialog/body can shrink');
 assert(css.includes('.payment-add-chips'), 'chips class');
 assert(css.includes('min-height: 44px'), '44px footer actions');
 assert(css.includes('@media (max-width: 767px)'), '390px mobile rules');
@@ -36,7 +41,9 @@ assert(indexCss.includes('[data-sonner-toaster]'), 'toaster z-index park');
 assert(indexCss.includes('z-index: 40 !important'), 'toasts behind dialog overlay');
 assert(indexCss.includes('body:has([data-radix-dialog-content])'), 'park toasts when dialog open');
 
-assert(mobile.includes('data-payment-add={PAYMENT_ADD_MARKER}'), 'mobile marker');
+assert(mobile.includes("PAYMENT_ADD_MARKER = 'payment-add-teal-v3-footer-pin'"), 'mobile marker const');
+assert(mobile.includes('minHeight: 0'), 'mobile dialog minHeight 0');
+assert(desktop.includes("PAYMENT_ADD_MARKER = 'payment-add-teal-v3-footer-pin'"), 'desktop marker const');
 assert(mobile.includes('payment-add-footer'), 'mobile sticky footer');
 assert(mobile.includes('data-payment-quick-chips'), 'mobile chips');
 assert(!mobile.includes('alert(t(\'common.error\'))'), 'no alert() for amount');

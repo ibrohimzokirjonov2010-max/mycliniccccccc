@@ -23,26 +23,39 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 // Avtomatik X tugmasi olib tashlangan - har bir modal o'z yopish tugmasini boshqaradi
-const DialogContent = React.forwardRef(({ className, children, style, ...props }, ref) => (
+const DialogContent = React.forwardRef(({ className, children, style, ...props }, ref) => {
+  const columnLayout = typeof className === 'string' && className.includes('payment-add-dialog');
+  return (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-[100] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-slate-100 bg-white p-6 shadow-2xl shadow-slate-200/50 duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-[2.5rem] overflow-hidden",
+        "fixed z-[100] w-full border border-slate-100 bg-white p-6 shadow-2xl shadow-slate-200/50 duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-[2.5rem] overflow-hidden",
+        columnLayout
+          ? "flex flex-col gap-0 overflow-hidden p-0 translate-x-0 translate-y-0"
+          : "left-[50%] top-[50%] max-w-lg translate-x-[-50%] translate-y-[-50%] grid gap-4 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         className
       )}
       style={{
         // Clear notch + home indicator + sticky bottom nav (~54px) on phones
         maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        ...(columnLayout ? {
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          paddingBottom: 0,
+          minHeight: 0,
+        } : null),
         ...style,
       }}
       {...props}>
       {children}
     </DialogPrimitive.Content>
   </DialogPortal>
-))
+  );
+})
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
 const DialogHeader = ({

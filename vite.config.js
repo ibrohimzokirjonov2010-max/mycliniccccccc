@@ -133,7 +133,7 @@ export default defineConfig({
             urlPattern: /\/assets\/.*\.(?:js|css)$/,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'assets-cache-v6-payment-add-modal',
+              cacheName: 'assets-cache-v8-payment-footer-inset',
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 7 },
               cacheableResponse: { statuses: [0, 200] }

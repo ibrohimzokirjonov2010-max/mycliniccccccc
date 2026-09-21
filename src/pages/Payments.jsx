@@ -29,7 +29,7 @@ import { formatPhone } from '@/lib/utils';
 import { format } from 'date-fns';
 import '@/components/payments/paymentAddModal.css';
 
-const PAYMENT_ADD_MARKER = 'payment-add-teal-v1-0d9488';
+const PAYMENT_ADD_MARKER = 'payment-add-teal-v3-footer-pin';
 const PAYMENT_QUICK_AMOUNTS = [50000, 100000, 500000, 1000000];
 const paymentAddDialogStyle = {
   display: 'flex',
@@ -38,7 +38,7 @@ const paymentAddDialogStyle = {
   padding: 0,
   paddingBottom: 0,
   overflow: 'hidden',
-  maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 12px)',
+  minHeight: 0,
 };
 
 const formatPhoneSingleLine = (phone) => {
@@ -2532,7 +2532,7 @@ export default function Payments() {
         }
       }}>
         <DialogContent
-          className="payment-add-dialog !flex !flex-col !p-0 !gap-0 w-[95vw] !max-w-xl overflow-hidden border border-[#e5e7eb] shadow-2xl"
+          className="payment-add-dialog !flex !flex-col !p-0 !gap-0 overflow-hidden border border-[#e5e7eb] shadow-2xl"
           style={paymentAddDialogStyle}
           data-payment-add={PAYMENT_ADD_MARKER}
           aria-describedby={undefined}

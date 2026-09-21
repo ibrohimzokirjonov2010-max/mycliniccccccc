@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 💳 Yangi to'lov modal — footer 390×844 da skrolldan tashqari
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/payments/paymentAddModal.css`](src/components/payments/paymentAddModal.css)
+  - [`src/components/ui/dialog.jsx`](src/components/ui/dialog.jsx)
+  - [`src/pages/MobilePaymentsV2.jsx`](src/pages/MobilePaymentsV2.jsx)
+  - [`src/pages/Payments.jsx`](src/pages/Payments.jsx)
+- **Muammo Tavsifi:** Toast overlay tuzatildi, lekin Bekor qilish / To'lash 390×844 da pastga skrollsiz ko'rinmasdi (production `5b5fa8c`).
+- **Sababi:** Dialog faqat `max-height` (height yo'q) + Radix `grid` + `translate(-50%,-50%)` + `overflow:hidden`. Flex body `1 1 auto` qisqarmadi; `min-height:auto` sheetni viewportdan oshirdi; sticky transform da ishlamaydi. Foydalanuvchi sahifani skrollab footer topdi.
+- **Qanday tuzatildi:** Mobil sheet `inset` bilan viewportga mixlandi (`transform: none`). Body `flex: 1 1 0%` + `min-height: 0` + `overflow-y: auto`. Footer `position: absolute; bottom: 0` dialog ichida. DialogContent payment-add uchun flex (grid/zoom-translate emas).
+- **Qaytalamaslik choralari:** To'lov footerini scroll body ichiga qaytarmang. Faqat `max-height` yetarli emas. Mobil centering `transform` qaytarmang — sticky/absolute ni buzadi. Marker `payment-add-teal-v3-footer-pin`. `node scripts/assert-payment-add-footer.mjs` 390×844 da footer viewport ichida qolishini (uzun forma skrolldan keyin ham) tekshiradi.
+
 ### 💳 Yangi to'lov modal — toast overlay + sticky footer (390px)
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**
