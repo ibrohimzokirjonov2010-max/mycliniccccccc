@@ -29,6 +29,8 @@ assert(css.includes('.payment-add-footer'), 'sticky footer class');
 assert(css.includes('.payment-add-chips'), 'chips class');
 assert(css.includes('min-height: 44px'), '44px footer actions');
 assert(css.includes('@media (max-width: 767px)'), '390px mobile rules');
+assert(css.includes('container-type: inline-size'), 'container query for equal footer');
+assert(css.includes('@container payment-add'), 'named container footer');
 
 assert(indexCss.includes('[data-sonner-toaster]'), 'toaster z-index park');
 assert(indexCss.includes('z-index: 40 !important'), 'toasts behind dialog overlay');
