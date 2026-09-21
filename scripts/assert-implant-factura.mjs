@@ -7,6 +7,8 @@ import {
   snapshotToEdits,
   resolveClinicTitle,
   formatSom,
+  printImplantFactura,
+  isDesktopViewport,
 } from '../src/components/implants/implantFactura.js';
 
 function assert(cond, msg) {
@@ -99,5 +101,8 @@ const empty = buildFacturaDocument({
 assert(empty.clinic === 'DentaNova', 'custom clinic kept');
 assert(empty.stage1[0].qty === 0, 'zero teeth implant qty');
 assert(empty.stage2.some((l) => l.id === 'zircon_std' && l.qty === 0), 'empty zircon tiers');
+assert(typeof printImplantFactura === 'function', 'print helper');
+assert(typeof isDesktopViewport === 'function', 'desktop helper');
+assert(printImplantFactura() === false, 'print no-ops without window.print');
 
 console.log('assert-implant-factura: ok');

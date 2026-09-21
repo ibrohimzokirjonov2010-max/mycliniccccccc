@@ -6,6 +6,7 @@ import {
   formatSom,
   resolveClinicTitle,
   toDMY,
+  printImplantFactura,
 } from './implantFactura';
 import './implantWizard.css';
 
@@ -88,6 +89,7 @@ export default function ImplantWizardFactura({
   onEdit,
   onPrint,
   tw,
+  showPrintButton = true,
 }) {
   if (!snapshot) return null;
   const selectedSet = new Set((snapshot.teeth || []).map(String));
@@ -136,6 +138,7 @@ export default function ImplantWizardFactura({
             <p className="implant-factura-clinic">{title}</p>
             <p className="implant-factura-subtitle">{tw('title', 'Faktura / davolash rejasi')}</p>
           </div>
+          {showPrintButton ? (
           <button
             type="button"
             className="implant-factura-print"
@@ -144,20 +147,14 @@ export default function ImplantWizardFactura({
                 onPrint();
                 return;
               }
-              const root = document.documentElement;
-              const done = () => {
-                root.classList.remove('printing-implant-factura');
-                window.removeEventListener('afterprint', done);
-              };
-              root.classList.add('printing-implant-factura');
-              window.addEventListener('afterprint', done);
-              window.print();
+              printImplantFactura();
             }}
             aria-label={tw('print', 'Chop etish')}
           >
             <Printer className="w-3.5 h-3.5" />
             {tw('print', 'Chop etish')}
           </button>
+          ) : null}
         </div>
       </header>
 

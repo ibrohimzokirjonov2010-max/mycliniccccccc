@@ -167,18 +167,18 @@
 }
 
 .implant-wizard-factura-btn {
-  border-color: #0d9488;
-  color: #0d9488;
-  background: #ffffff;
+  border-color: #0d9488 !important;
+  color: #0d9488 !important;
+  background: #ffffff !important;
+  font-weight: 600;
 }
 
 .implant-wizard-factura-btn:hover {
-  background: #f0fdfa;
-  border-color: #0f766e;
-  color: #0f766e;
+  background: #f0fdfa !important;
+  border-color: #0f766e !important;
+  color: #0f766e !important;
 }
 
-/* Step 3: equal Faktura olish + short Saqlash; Orqaga stays auto-width */
 .implant-wizard-footer[data-step="3"] .implant-wizard-footer-actions {
   display: flex;
   flex-wrap: nowrap;
@@ -194,10 +194,15 @@
 }
 
 .implant-wizard-footer[data-step="3"] .implant-wizard-factura-btn,
-.implant-wizard-footer[data-step="3"] .implant-wizard-cta {
+.implant-wizard-footer[data-step="3"] .implant-wizard-cta,
+.implant-wizard-footer[data-step="3"] .implant-wizard-save-btn,
+.implant-wizard-footer[data-step="3"] .implant-wizard-twin {
+  box-sizing: border-box;
   flex: 1 1 0;
   width: 0;
   min-width: 0;
+  height: 40px;
+  min-height: 40px;
   padding: 0 12px;
   overflow: hidden;
 }
@@ -747,6 +752,8 @@
   }
 
   .implant-wizard-footer[data-step="3"] .implant-wizard-footer-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     flex: none;
     width: 100%;
     max-width: none;
@@ -757,13 +764,17 @@
   }
 
   .implant-wizard-footer[data-step="3"] .implant-wizard-back {
-    display: none;
+    display: inline-flex;
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .implant-wizard-footer[data-step="3"] .implant-wizard-factura-btn,
-  .implant-wizard-footer[data-step="3"] .implant-wizard-cta {
-    flex: 1 1 0;
-    width: 0;
+  .implant-wizard-footer[data-step="3"] .implant-wizard-cta,
+  .implant-wizard-footer[data-step="3"] .implant-wizard-save-btn,
+  .implant-wizard-footer[data-step="3"] .implant-wizard-twin {
+    flex: none;
+    width: 100%;
     min-width: 0;
     height: 44px;
     min-height: 44px;
@@ -826,22 +837,23 @@
 .implant-wizard-factura-overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: 220;
   background: rgba(15, 23, 42, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 12px;
 }
 
 .implant-wizard-factura-sheet {
-  width: min(520px, 100%);
-  max-height: min(88dvh, 720px);
+  width: min(860px, calc(100vw - 16px));
+  max-height: min(92dvh, 860px);
   overflow: auto;
   background: #fff;
   border-radius: 16px;
-  padding: 16px 18px 20px;
+  padding: 12px 12px 16px;
   color: #111827;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
 }
 
 .implant-wizard-factura-toolbar {
@@ -1256,11 +1268,11 @@
   html.printing-implant-factura body * {
     visibility: hidden;
   }
-  html.printing-implant-factura .implant-factura,
-  html.printing-implant-factura .implant-factura * {
+  html.printing-implant-factura:not(.printing-implant-factura-overlay) .implant-factura,
+  html.printing-implant-factura:not(.printing-implant-factura-overlay) .implant-factura * {
     visibility: visible;
   }
-  html.printing-implant-factura .implant-factura {
+  html.printing-implant-factura:not(.printing-implant-factura-overlay) .implant-factura {
     position: absolute;
     left: 0;
     top: 0;
@@ -1268,7 +1280,28 @@
     box-shadow: none;
     border: 0;
   }
-  html.printing-implant-factura .implant-factura-print {
+  html.printing-implant-factura-overlay .implant-wizard-factura-overlay,
+  html.printing-implant-factura-overlay .implant-wizard-factura-print-root,
+  html.printing-implant-factura-overlay .implant-wizard-factura-print-root * {
+    visibility: visible;
+  }
+  html.printing-implant-factura-overlay .implant-wizard-factura-overlay {
+    position: static;
+    inset: auto;
+    background: #fff;
+    padding: 0;
+    display: block;
+  }
+  html.printing-implant-factura-overlay .implant-wizard-factura-sheet {
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 0;
+  }
+  html.printing-implant-factura .implant-factura-print,
+  html.printing-implant-factura-overlay .implant-wizard-factura-toolbar {
     display: none !important;
   }
 }

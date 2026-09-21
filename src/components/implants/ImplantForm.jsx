@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Plus, FileText, X, Check, ArrowLeft, ArrowRight,
-  Search, Image as ImageIcon,
+  Search, Image as ImageIcon, Printer,
 } from 'lucide-react';
 import { Tooth } from '@/components/ui/Icons';
 import PatientModal from '../patients/PatientModal';
@@ -27,6 +28,8 @@ import {
   stripFacturaFromNotes,
   parseFacturaSnapshot,
   IMPLANT_WIZARD_FACTURA_MARKER,
+  printImplantFactura,
+  isDesktopViewport,
 } from './implantFactura';
 import { cn } from '@/lib/utils';
 import './implantWizard.css';
@@ -232,6 +235,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   const [editingPriceId, setEditingPriceId] = useState(null);
   const [formError, setFormError] = useState('');
   const [facturaEdits, setFacturaEdits] = useState({});
+  const [facturaPreviewOpen, setFacturaPreviewOpen] = useState(false);
   const wizardBodyRef = useRef(null);
 
   useEffect(() => {
@@ -398,6 +402,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
     }
     setStep(1);
     setFormError('');
+    setFacturaPreviewOpen(false);
   }, [open, implant?.id, resetForm]);
 
   useEffect(() => {
@@ -823,18 +828,32 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
     }
   }, []);
 
-  const openFactura = () => {
+  const openFactura = useCallback(() => {
     const slot = document.querySelector('[data-implant-factura-slot]');
-    const card = slot?.querySelector('[data-implant-factura-card], .implant-factura')
+    const card = wizardBodyRef.current?.querySelector('[data-implant-factura-card], .implant-factura')
+      || slot?.querySelector('[data-implant-factura-card], .implant-factura')
       || document.querySelector('[data-implant-factura-card], .implant-factura');
     card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    const desktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
-    if (!desktop) return;
-    const printBtn = slot?.querySelector('.implant-factura-print')
-      || card?.querySelector('.implant-factura-print')
-      || document.querySelector('.implant-factura-print');
-    if (printBtn) window.setTimeout(() => printBtn.click(), 200);
-  };
+    setFacturaPreviewOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!facturaPreviewOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setFacturaPreviewOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    let printTimer = 0;
+    if (isDesktopViewport()) {
+      printTimer = window.setTimeout(() => {
+        printImplantFactura();
+      }, 60);
+    }
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      if (printTimer) window.clearTimeout(printTimer);
+    };
+  }, [facturaPreviewOpen]);
 
   const filteredExtras = useMemo(() => {
     const q = extraSearch.trim().toLowerCase();
@@ -1355,17 +1374,19 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
                 <>
                   <button
                     type="button"
-                    className="implant-wizard-ghost implant-wizard-factura-btn"
+                    className="implant-wizard-ghost implant-wizard-factura-btn implant-wizard-twin"
                     data-implant-factura-open
+                    data-testid="implant-wizard-factura-open"
                     onClick={openFactura}
                   >
+                    <Printer className="w-4 h-4" />
                     {tw('getInvoice', 'Faktura olish')}
                   </button>
                   <button
                     type="button"
                     onClick={handleSave}
                     disabled={saving || !isStep3Valid}
-                    className="implant-wizard-cta implant-wizard-save-btn"
+                    className="implant-wizard-cta implant-wizard-save-btn implant-wizard-twin"
                     style={{ backgroundColor: '#0d9488', color: '#fff' }}
                   >
                     {saving ? t('common.saving') : tw('saveShort', 'Saqlash')}
@@ -1377,6 +1398,49 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
           </div>
         </DialogContent>
       </Dialog>
+
+      {facturaPreviewOpen && createPortal(
+        <div
+          className="implant-wizard-factura-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label={tf('title', 'Faktura / davolash rejasi')}
+          onClick={() => setFacturaPreviewOpen(false)}
+        >
+          <div
+            className="implant-wizard-factura-sheet implant-wizard-factura-print-root"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="implant-wizard-factura-toolbar">
+              <button
+                type="button"
+                className="implant-wizard-ghost"
+                onClick={() => setFacturaPreviewOpen(false)}
+              >
+                {t('common.close', 'Yopish')}
+              </button>
+              <button
+                type="button"
+                className="implant-wizard-cta"
+                style={{ backgroundColor: '#0d9488', color: '#fff' }}
+                onClick={() => printImplantFactura()}
+              >
+                <Printer className="w-4 h-4" />
+                {tw('printInvoice', 'Chop etish')}
+              </button>
+            </div>
+            <ImplantWizardFactura
+              snapshot={facturaDoc}
+              clinicName={clinicName}
+              onEdit={handleFacturaEdit}
+              onPrint={printImplantFactura}
+              tw={tf}
+              showPrintButton={false}
+            />
+          </div>
+        </div>,
+        document.body
+      )}
 
       <PatientModal
         open={newPatientOpen}
