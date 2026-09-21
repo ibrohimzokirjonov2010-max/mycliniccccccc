@@ -823,6 +823,15 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
     }
   }, []);
 
+  const openFactura = () => {
+    const card = document.querySelector('[data-implant-factura-card], .implant-factura');
+    card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const printBtn = document.querySelector('.implant-factura-print');
+    if (printBtn && typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+      window.setTimeout(() => printBtn.click(), 200);
+    }
+  };
+
   const filteredExtras = useMemo(() => {
     const q = extraSearch.trim().toLowerCase();
     return (extraServicesList || []).filter((s) => {
@@ -944,7 +953,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
 
   const renderStep1 = () => (
     <div className="flex flex-col md:flex-row gap-4 min-h-0">
-      <aside className="w-full md:w-[240px] shrink-0 bg-white rounded-xl border border-[#e5e7eb] p-4 flex flex-col gap-3 relative z-20">
+      <aside className="implant-wizard-step1-patient w-full md:w-[240px] shrink-0 bg-white rounded-xl border border-[#e5e7eb] p-4 flex flex-col gap-3 relative z-20">
         <div>
           <h3 className="text-[15px] font-bold text-[#111827]">{tw('stepPatient', 'Bemor')}</h3>
           <div className="mt-1 h-[3px] w-10 rounded-full bg-[#0d9488]" />
@@ -976,8 +985,8 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
 
       <div className="flex-1 min-w-0 flex flex-col gap-4">
         <section className={cardClass}>
-          <h3 className="text-[15px] font-bold text-[#111827] mb-3">{tw('implantParams', 'Implant parametrlari')}</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <h3 className="implant-wizard-params-heading text-[15px] font-bold text-[#111827] mb-3">{tw('implantParams', 'Implant parametrlari')}</h3>
+          <div className="implant-wizard-params-grid grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <DateField value={form.placement_date} onChange={handleDateChange} />
             <div>
               <Select
@@ -1015,7 +1024,18 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
 
         <section className={cn(cardClass, 'flex-1 implant-wizard-arch-card min-w-0')}>
           <h3 className="text-[15px] font-bold text-[#111827] mb-1">{tw('selectTeeth', 'Tishlarni belgilang')}</h3>
-          <ImplantWizardArch selectedFdis={selectedFdis} onToggle={toggleFdi} />
+          <ImplantWizardArch
+            selectedFdis={selectedFdis}
+            onToggle={toggleFdi}
+            scrollHint={tw('scrollHint', '← Yon tomonga suring →')}
+          />
+          {selectedFdis.length > 0 && (
+            <div className="implant-wizard-selected-pills">
+              {selectedFdis.map((fdi) => (
+                <span key={fdi} className="implant-wizard-selected-pill">#{fdi}</span>
+              ))}
+            </div>
+          )}
           <div className="implant-wizard-arch-meta flex items-center justify-between pt-1">
             <button
               type="button"
@@ -1056,7 +1076,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   );
 
   const renderStep3 = () => (
-    <div className="flex flex-col gap-4">
+    <div className="implant-wizard-step3 flex flex-col gap-4">
       <ImplantWizardFactura
         snapshot={facturaDoc}
         clinicName={clinicName}
@@ -1255,11 +1275,16 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
         >
           <DialogHeader className="shrink-0 space-y-0">
             <div className="implant-wizard-header h-14 px-5 flex items-center justify-between text-white" style={{ background: '#0d9488' }}>
-              <DialogTitle className="text-[15px] font-bold tracking-wide text-white uppercase">
-                {implant ? t('common.edit') : tw('title', 'Yangi implant')}
-              </DialogTitle>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold uppercase tracking-wide hidden sm:inline">
+              <div className="implant-wizard-header-titles min-w-0">
+                <DialogTitle className="text-[15px] font-bold tracking-wide text-white uppercase">
+                  {implant ? t('common.edit') : tw('title', 'Yangi implant')}
+                </DialogTitle>
+                <p className="implant-wizard-header-patient">
+                  {form.patient_name || tw('noPatient', 'Bemor tanlanmagan')}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="implant-wizard-header-patient-desktop text-sm font-semibold uppercase tracking-wide hidden sm:inline">
                   {form.patient_name || tw('noPatient', 'Bemor tanlanmagan')}
                 </span>
                 <span className="implant-wizard-header-badge h-8 px-3 rounded-full bg-white/15 border border-white/25 text-xs font-semibold flex items-center gap-1.5">
@@ -1300,7 +1325,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
                   if (step === 1) onClose();
                   else setStep(step - 1);
                 }}
-                className="implant-wizard-ghost"
+                className="implant-wizard-ghost implant-wizard-back"
               >
                 <ArrowLeft className="w-4 h-4" /> {tw('back', 'Orqaga')}
               </button>
@@ -1314,16 +1339,25 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
                   {tw('next', 'Keyingisi')} <ArrowRight className="w-4 h-4" />
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving || !isStep3Valid}
-                  className="implant-wizard-cta"
-                  style={{ backgroundColor: '#0d9488', color: '#fff' }}
-                >
-                  {saving ? t('common.saving') : tw('saveFinish', 'Saqlash va yakunlash')}
-                  <Check className="w-4 h-4" strokeWidth={3} />
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="implant-wizard-ghost implant-wizard-factura-btn"
+                    onClick={openFactura}
+                  >
+                    {tw('getInvoice', 'Faktura olish')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving || !isStep3Valid}
+                    className="implant-wizard-cta"
+                    style={{ backgroundColor: '#0d9488', color: '#fff' }}
+                  >
+                    {saving ? t('common.saving') : tw('saveShort', 'Saqlash')}
+                    <Check className="w-4 h-4" strokeWidth={3} />
+                  </button>
+                </>
               )}
             </div>
           </div>

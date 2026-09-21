@@ -34,6 +34,16 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 - **Muammo Tavsifi:** Olinadigan protez, implant ustidagi protez va babochka uchun alohida Dizyner rasmlari yo‘q edi.
 - **Qaytalamaslik choralari:** `implant o'rnatish` ni `protez-implant` ga o‘tkazmang — faqat implant + protez/karonka. ENDODONTIYA, healthy va missing mappingni buzmang. Generic `protez` (karonka/sirkon/metal yo‘q) → `protez-syomniy`.
 
+### 🦷 Yangi implant wizard — mobile 390px horizontal scroll + footer
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+  - [`src/components/implants/ImplantWizardArch.jsx`](src/components/implants/ImplantWizardArch.jsx)
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/components/implants/ImplantWizardFactura.jsx`](src/components/implants/ImplantWizardFactura.jsx)
+- **Muammo Tavsifi:** 390px da tish tanlash 8+8 grid edi; mockup gorizontal scroll + hint, Step 2 chip, Step 3 full-width Saqlash / Faktura olish ni ko'rsatadi.
+- **Qaytalamaslik choralari:** Mobil odontogrammada egri `transform` qoldirmang — har ark `overflow-x: auto`. Desktop 240px chap kolonka va `#0d9488` CTA saqlansin. Step 3 footer da `Saqlash` + `Faktura olish` teng kenglikda; `data-implant-factura-slot` ni o'chirmang. `alert()` qaytarmang.
+
 ### 🦷 Yangi implant wizard — mobile 390px unusable
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**

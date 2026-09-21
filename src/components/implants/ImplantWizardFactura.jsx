@@ -110,6 +110,7 @@ export default function ImplantWizardFactura({
       className="implant-factura"
       data-testid="implant-wizard-factura"
       data-implant-factura={IMPLANT_WIZARD_FACTURA_MARKER}
+      data-implant-factura-card
     >
       <header className="implant-factura-head">
         <div className="implant-factura-meta">

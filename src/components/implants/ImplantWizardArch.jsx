@@ -94,9 +94,10 @@ function ArchRow({ teeth, selectedSet, onToggle, variant }) {
 
 /**
  * Compact two-arch FDI odontogram for the New Implant wizard.
- * Desktop: curved 16-tooth arches. Mobile (≤767px): compact 8+8 grid that fits ~390px.
+ * Desktop: curved 16-tooth arches.
+ * Mobile (≤767px): one horizontal-scroll row per arch + fade/hint so 18/28/38/48 stay reachable.
  */
-export default function ImplantWizardArch({ selectedFdis = [], onToggle }) {
+export default function ImplantWizardArch({ selectedFdis = [], onToggle, scrollHint }) {
   const selectedSet = new Set((selectedFdis || []).map(String));
 
   return (
@@ -107,6 +108,9 @@ export default function ImplantWizardArch({ selectedFdis = [], onToggle }) {
       <div className="implant-wizard-arch-band h-[118px] flex items-end justify-center overflow-visible -mt-1">
         <ArchRow teeth={LOWER_FDI} selectedSet={selectedSet} onToggle={onToggle} variant="lower" />
       </div>
+      {scrollHint ? (
+        <p className="implant-wizard-scroll-hint">{scrollHint}</p>
+      ) : null}
     </div>
   );
 }

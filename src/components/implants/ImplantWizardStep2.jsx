@@ -70,7 +70,7 @@ export default function ImplantWizardStep2({
               </span>
               <Tooth className="w-4 h-4 text-[#9ca3af] shrink-0" />
               <span className="text-sm font-semibold text-[#111827]">#{fdi}</span>
-              <span className="ml-auto text-xs text-[#9ca3af]">{brandLabel}</span>
+              <span className="ml-auto text-xs text-[#9ca3af] chip-brand">{brandLabel}</span>
             </div>
           ))}
         </div>
