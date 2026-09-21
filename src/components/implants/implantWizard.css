@@ -476,8 +476,12 @@
   }
 
   .implant-wizard-params-grid {
-    grid-template-columns: 1fr 1fr 1fr !important;
+    grid-template-columns: 1fr 1fr !important;
     gap: 6px !important;
+  }
+
+  .implant-wizard-params-grid > :last-child {
+    grid-column: 1 / -1;
   }
 
   .implant-wizard-params-heading {
