@@ -824,12 +824,16 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
   }, []);
 
   const openFactura = () => {
-    const card = document.querySelector('[data-implant-factura-card], .implant-factura');
-    card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    const printBtn = document.querySelector('.implant-factura-print');
-    if (printBtn && typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
-      window.setTimeout(() => printBtn.click(), 200);
-    }
+    const slot = document.querySelector('[data-implant-factura-slot]');
+    const card = slot?.querySelector('[data-implant-factura-card], .implant-factura')
+      || document.querySelector('[data-implant-factura-card], .implant-factura');
+    card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const desktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
+    if (!desktop) return;
+    const printBtn = slot?.querySelector('.implant-factura-print')
+      || card?.querySelector('.implant-factura-print')
+      || document.querySelector('.implant-factura-print');
+    if (printBtn) window.setTimeout(() => printBtn.click(), 200);
   };
 
   const filteredExtras = useMemo(() => {
@@ -1352,6 +1356,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
                   <button
                     type="button"
                     className="implant-wizard-ghost implant-wizard-factura-btn"
+                    data-implant-factura-open
                     onClick={openFactura}
                   >
                     {tw('getInvoice', 'Faktura olish')}
@@ -1360,7 +1365,7 @@ export default function ImplantForm({ open, onClose, patients, services: _servic
                     type="button"
                     onClick={handleSave}
                     disabled={saving || !isStep3Valid}
-                    className="implant-wizard-cta"
+                    className="implant-wizard-cta implant-wizard-save-btn"
                     style={{ backgroundColor: '#0d9488', color: '#fff' }}
                   >
                     {saving ? t('common.saving') : tw('saveShort', 'Saqlash')}

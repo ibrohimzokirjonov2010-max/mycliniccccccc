@@ -178,6 +178,30 @@
   color: #0f766e;
 }
 
+/* Step 3: equal Faktura olish + short Saqlash; Orqaga stays auto-width */
+.implant-wizard-footer[data-step="3"] .implant-wizard-footer-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 280px;
+  min-width: min(100%, 280px);
+  max-width: 420px;
+}
+
+.implant-wizard-footer[data-step="3"] .implant-wizard-back {
+  flex: 0 0 auto;
+}
+
+.implant-wizard-footer[data-step="3"] .implant-wizard-factura-btn,
+.implant-wizard-footer[data-step="3"] .implant-wizard-cta {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  padding: 0 12px;
+  overflow: hidden;
+}
+
 .implant-wizard-arch-midline {
   display: none;
 }
@@ -723,6 +747,10 @@
   }
 
   .implant-wizard-footer[data-step="3"] .implant-wizard-footer-actions {
+    flex: none;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
     flex-direction: row;
     flex-wrap: nowrap;
     gap: 8px;
@@ -735,7 +763,7 @@
   .implant-wizard-footer[data-step="3"] .implant-wizard-factura-btn,
   .implant-wizard-footer[data-step="3"] .implant-wizard-cta {
     flex: 1 1 0;
-    width: auto;
+    width: 0;
     min-width: 0;
     height: 44px;
     min-height: 44px;
