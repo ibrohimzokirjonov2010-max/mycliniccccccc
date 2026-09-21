@@ -840,6 +840,7 @@
       "fullName": "To'liq ismi",
       "password": "Parol",
       "passwordLogin": "Parol * (login parol)",
+      "passwordUnchanged": "•••••••• (bo'sh = o'zgarmaydi)",
       "share": "Ulush (%)",
       "role": "Lavozimi",
       "loginUsername": "Login (foydalanuvchi nomi)",
@@ -1631,7 +1632,9 @@
     "understand": "Tushunarli, yopish",
     "status": "Holat",
     "active": "Faol",
-    "noStaff": "Xodimlar topilmadi"
+    "noStaff": "Xodimlar topilmadi",
+    "passwordUnchanged": "•••••••• (bo'sh = o'zgarmaydi)",
+    "passwordHint": "Bo'sh qoldirsangiz, parol o'zgarmaydi"
   },
   "payroll": {
     "title": "Maoshlar",

@@ -9,31 +9,37 @@ export class UsersService {
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
   async findAll(clinicId: string): Promise<UserDocument[]> {
-    return this.userModel.find({ clinic_id: clinicId }).exec();
+    return this.userModel.find({ clinic_id: clinicId }).select('-password').exec();
   }
 
   async findOne(id: string): Promise<UserDocument | null> {
-    return this.userModel.findById(id).exec();
+    return this.userModel.findById(id).select('-password').exec();
   }
 
   async findByUsername(username: string, clinicId: string): Promise<UserDocument | null> {
     return this.userModel.findOne({ username, clinic_id: clinicId }).exec();
   }
 
-  async create(createUserDto: any): Promise<UserDocument> {
+  async create(createUserDto: any): Promise<any> {
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const createdUser = new this.userModel({
       ...createUserDto,
       password: hashedPassword,
     });
-    return createdUser.save();
+    const saved = await createdUser.save();
+    const obj = saved.toObject();
+    return obj;
   }
 
-  async update(id: string, updateUserDto: any): Promise<UserDocument | null> {
-    if (updateUserDto.password) {
-      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+  async update(id: string, updateUserDto: any): Promise<any> {
+    const payload = { ...updateUserDto };
+    if (payload.password) {
+      payload.password = await bcrypt.hash(payload.password, 10);
+    } else {
+      delete payload.password;
     }
-    return this.userModel.findByIdAndUpdate(id, updateUserDto, { new: true }).exec();
+    const updated = await this.userModel.findByIdAndUpdate(id, payload, { new: true }).select('-password').exec();
+    return updated;
   }
 
   async delete(id: string): Promise<UserDocument | null> {
@@ -42,9 +48,9 @@ export class UsersService {
 
   async validateUser(username: string, password: string, clinicId: string): Promise<any> {
     const user = await this.findByUsername(username, clinicId);
-    if (user && (await bcrypt.compare(password, user.password))) {
-      const { password, ...result } = user.toObject();
-      return result;
+    const storedHash = user?.password;
+    if (user && storedHash && (await bcrypt.compare(password, storedHash))) {
+      return user.toObject();
     }
     return null;
   }

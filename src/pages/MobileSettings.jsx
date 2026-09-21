@@ -199,12 +199,16 @@ export default function MobileSettings() {
       toast.error('Ism kiriting!');
       return;
     }
+    if (!newStaff.password || newStaff.password.length < 4) {
+      toast.error('Parol kamida 4 ta belgidan iborat bo\'lishi kerak!');
+      return;
+    }
     try {
       const cleanUsername = newStaff.full_name.toLowerCase().replace(/\s+/g, '.');
       await base44.auth.addUser({
         name: newStaff.full_name.trim(),
         username: cleanUsername,
-        password: newStaff.password || 'doctor123',
+        password: newStaff.password,
         phone: newStaff.phone?.trim() || '',
         role: 'doctor',
         specialty: newStaff.role || 'Stomatolog',
@@ -266,6 +270,7 @@ export default function MobileSettings() {
       await base44.auth.updateUser(currentUser.id, updatedFields);
       
       const updatedUser = { ...currentUser, ...updatedFields };
+      delete updatedUser.password;
       setCurrentUser(updatedUser);
       if (setAuthData) {
         setAuthData(updatedUser);
@@ -820,8 +825,9 @@ export default function MobileSettings() {
                     <div className="space-y-1">
                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Parol</Label>
                       <Input 
-                        type="text"
-                        placeholder="doctor123" 
+                        type="password"
+                        placeholder="••••••••" 
+                        autoComplete="new-password"
                         value={newStaff.password}
                         onChange={e => setNewStaff({...newStaff, password: e.target.value})}
                         className="h-11 rounded-xl bg-white border-slate-200 font-mono text-xs"

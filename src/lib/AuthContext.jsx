@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { safeLocalStorage as localStorage } from '@/utils/safeStorage';
+import { sanitizeUser } from '@/utils/password';
 
 const AuthContext = createContext(null);
 
@@ -13,10 +14,11 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken]                 = useState(() => localStorage.getItem('auth_token'));
 
   const setAuthData = useCallback((userData, authToken) => {
-    setUser(userData);
+    const safeUser = sanitizeUser(userData);
+    setUser(safeUser);
     setIsAuthenticated(true);
-    setIsAdmin(userData.role === 'admin');
-    setIsDoctor(userData.role === 'doctor');
+    setIsAdmin(safeUser.role === 'admin');
+    setIsDoctor(safeUser.role === 'doctor');
     if (authToken) {
       setToken(authToken);
       localStorage.setItem('auth_token', authToken);
@@ -58,12 +60,16 @@ export const AuthProvider = ({ children }) => {
         try {
           const parsed = JSON.parse(cachedUser);
           if (parsed && parsed.id === userId) {
-            setUser(parsed);
+            const safeParsed = sanitizeUser(parsed);
+            setUser(safeParsed);
             setIsAuthenticated(true);
-            setIsAdmin(parsed.role === 'admin');
-            setIsDoctor(parsed.role === 'doctor');
+            setIsAdmin(safeParsed.role === 'admin');
+            setIsDoctor(safeParsed.role === 'doctor');
             setIsLoadingAuth(false);
             isInitSync = true;
+            if (parsed.password) {
+              localStorage.setItem('user_data', JSON.stringify(safeParsed));
+            }
           }
         } catch (e) {
           console.warn('Error parsing cached user data:', e);
@@ -75,11 +81,12 @@ export const AuthProvider = ({ children }) => {
           // getUserById → faqat 1 qatorli DB so'rov (getAllUsers o'rniga — juda tez!)
           const foundUser = await base44.auth.getUserById(userId);
           if (foundUser) {
-            setUser(foundUser);
-            localStorage.setItem('user_data', JSON.stringify(foundUser));
+            const safeUser = sanitizeUser(foundUser);
+            setUser(safeUser);
+            localStorage.setItem('user_data', JSON.stringify(safeUser));
             setIsAuthenticated(true);
-            setIsAdmin(foundUser.role === 'admin');
-            setIsDoctor(foundUser.role === 'doctor');
+            setIsAdmin(safeUser.role === 'admin');
+            setIsDoctor(safeUser.role === 'doctor');
           } else {
             logout();
           }

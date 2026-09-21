@@ -236,8 +236,10 @@ export default function Settings() {
   const saveWorkingHours = async (doctor, schedule) => {
     try {
       setSaving(true);
+      const safeDoctor = { ...doctor };
+      delete safeDoctor.password;
       await base44.entities.User.update(doctor.id, {
-        ...doctor,
+        ...safeDoctor,
         workingHours: schedule
       });
       toast.success(`${doctor.name} ish vaqtlari muvaffaqiyatli saqlandi!`);
@@ -282,6 +284,7 @@ export default function Settings() {
       await base44.auth.updateUser(currentUser.id, updatedFields);
       
       const updatedUser = { ...currentUser, ...updatedFields };
+      delete updatedUser.password;
       setCurrentUser(updatedUser);
       if (setAuthData) {
         setAuthData(updatedUser);
@@ -310,8 +313,10 @@ export default function Settings() {
     if (!currentUser?.id) return;
     setSavingMySchedule(true);
     try {
+      const safeUser = { ...currentUser };
+      delete safeUser.password;
       await base44.entities.User.update(currentUser.id, {
-        ...currentUser,
+        ...safeUser,
         workingHours: mySchedule
       });
       toast.success("✅ Ish vaqtlaringiz muvaffaqiyatli saqlandi!");
@@ -626,8 +631,9 @@ export default function Settings() {
                         {t('settings.staff.passwordLogin') || "Parol"} *
                       </label>
                       <Input 
-                        type="text"
-                        placeholder="Parol (kamida 4 belgi)" 
+                        type="password"
+                        placeholder="••••••••"
+                        autoComplete="new-password"
                         value={newStaff.password}
                         className="h-9 text-xs font-mono font-bold border-slate-300 rounded-lg bg-white"
                         onChange={e => setNewStaff({...newStaff, password: e.target.value})}
@@ -734,8 +740,8 @@ export default function Settings() {
                               <td className="py-2.5 px-3 border-r border-slate-200 font-mono text-slate-700">
                                 {doctor.username || doctor.name?.toLowerCase().replace(/\s+/g, '.')}
                               </td>
-                              <td className="py-2.5 px-3 border-r border-slate-200 font-mono text-amber-700 bg-amber-50/40">
-                                {doctor.password || '—'}
+                              <td className="py-2.5 px-3 border-r border-slate-200 font-mono text-slate-400 bg-slate-50/40 tracking-widest">
+                                ••••••••
                               </td>
                               <td className="py-2.5 px-3 border-r border-slate-200 text-center">
                                 <Button 

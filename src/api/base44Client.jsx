@@ -1,5 +1,12 @@
 import { supabase, db } from './supabaseClient';
 import { sendTelegramMessage, formatLeadMessage } from './telegramBot';
+import {
+  verifyPassword,
+  isPasswordHash,
+  sanitizeUser,
+  sanitizeUsers,
+  preparePasswordForWrite,
+} from '@/utils/password';
 
 // Plan configurations
 export const PLAN_FEATURES = {
@@ -362,7 +369,7 @@ class HybridEntityLoader {
       result.push(enriched);
     }
 
-    return result;
+    return this.entityName === 'User' ? sanitizeUsers(result) : result;
   }
 
   _getDeepLocal(id) {
@@ -374,7 +381,7 @@ class HybridEntityLoader {
   _saveDeepLocal(record) {
     if (this.entityName === 'Service' || this.entityName === 'Note') return;
     const cacheKey = `${this.entityName.toLowerCase()}_full_data_${record.id}`;
-    StaticStore.set(cacheKey, record);
+    StaticStore.set(cacheKey, this.entityName === 'User' ? sanitizeUser(record) : record);
   }
 
   _getDeepLocalRecords(specificClinicId = null) {
@@ -457,46 +464,49 @@ class HybridEntityLoader {
       ]);
 
       const rawOrder = orderBy.startsWith('-') ? orderBy.substring(1) : orderBy;
-      const actualOrder = this.entityName === 'User'
+      const preferCreatedAt = this.entityName === 'User' || this.entityName === 'Clinic';
+      const actualOrder = preferCreatedAt
         ? 'created_at'
         : (TECH_DATA_FIELDS.has(rawOrder) ? 'created_date' : rawOrder);
-      const ascending = this.entityName === 'User'
-        ? false
-        : !orderBy.startsWith('-');
-      
-      let query = supabase
-        .from(this._getTableName())
-        .select('*');
-      // BotConfig: ko‘p klinika uchun bitta bot ishlatilishi mumkin.
-      // Shuning uchun BotConfig’ni klinika_id bilan qattiq filter qilmaymiz.
-      // (Agar siz har klinikaga alohida bot xohlasangiz, bu joyni qaytarib qo‘yamiz.)
-      if (this.entityName !== 'BotConfig') {
-        query = query.eq('clinic_id', clinicId);
-      }
-
+      const ascending = preferCreatedAt ? false : !orderBy.startsWith('-');
+      const tableName = this._getTableName();
       const isMultiplexed = this.entityName === 'Note';
-      
-      let res;
-      if (isMultiplexed) {
-         res = await supabase.from('notes').select('*').eq('clinic_id', clinicId).order(actualOrder, { ascending }).range(offset, offset + limit - 1);
-      } else {
-         res = await query.order(actualOrder, { ascending }).range(offset, offset + limit - 1);
-      }
-      
-      let { data, error } = res;
-      
-      // Agar ustun topilmasa (400/500) — created_at bilan qayta urinib ko'r
-      if (error && (error.code === '42703' || error.message?.includes('column') || error.message?.includes('does not exist'))) {
-        console.warn(`[${this.entityName}] Column '${actualOrder}' not found, retrying with created_at`);
-        const fallbackRes = isMultiplexed
-          ? await supabase.from('notes').select('*').eq('clinic_id', clinicId).order('created_at', { ascending: false }).range(offset, offset + limit - 1)
-          : await query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
-        
+
+      const buildBaseQuery = () => {
+        if (isMultiplexed) {
+          return supabase.from('notes').select('*').eq('clinic_id', clinicId);
+        }
+        let q = supabase.from(tableName).select('*');
+        // BotConfig: ko‘p klinika uchun bitta bot ishlatilishi mumkin.
+        if (this.entityName !== 'BotConfig') {
+          q = q.eq('clinic_id', clinicId);
+        }
+        return q;
+      };
+
+      const isMissingColumnError = (err) =>
+        !!(err && (
+          err.code === '42703' ||
+          err.code === 'PGRST204' ||
+          err.message?.includes('column') ||
+          err.message?.includes('does not exist')
+        ));
+
+      let { data, error } = await buildBaseQuery()
+        .order(actualOrder, { ascending })
+        .range(offset, offset + limit - 1);
+
+      // Align to the real schema: implants (and similar tables) use created_date, not created_at.
+      if (isMissingColumnError(error)) {
+        const altOrder = actualOrder === 'created_at' ? 'created_date' : 'created_at';
+        console.warn(`[${this.entityName}] Column '${actualOrder}' not found, retrying with ${altOrder}`);
+        const fallbackRes = await buildBaseQuery()
+          .order(altOrder, { ascending: false })
+          .range(offset, offset + limit - 1);
+
         if (fallbackRes.error) {
-          console.warn(`[${this.entityName}] Column 'created_at' not found, retrying without ordering`);
-          const fallbackRes2 = isMultiplexed
-            ? await supabase.from('notes').select('*').eq('clinic_id', clinicId).range(offset, offset + limit - 1)
-            : await query.range(offset, offset + limit - 1);
+          console.warn(`[${this.entityName}] Timestamp columns missing, retrying without ordering`);
+          const fallbackRes2 = await buildBaseQuery().range(offset, offset + limit - 1);
           data = fallbackRes2.data;
           error = fallbackRes2.error;
         } else {
@@ -580,11 +590,11 @@ class HybridEntityLoader {
           
           [...sysUsers, ...mockUsers].forEach(lu => {
             if (String(lu.clinic_id) === String(clinicId) && !merged.find(mu => mu.id === lu.id)) {
-              merged.push(lu);
+              merged.push(sanitizeUser(lu));
             }
           });
         } catch (e) { /* ignore */ }
-        return merged;
+        return sanitizeUsers(merged);
       }
 
       return enriched;
@@ -676,7 +686,27 @@ class HybridEntityLoader {
         });
       }
       
-      const { data, error } = await query.range(offset, offset + limit - 1);
+      let { data, error } = await query.range(offset, offset + limit - 1);
+      if (error && (error.code === '42703' || error.code === 'PGRST204' || error.message?.includes('column') || error.message?.includes('does not exist'))) {
+        const rawOrder = orderBy ? (orderBy.startsWith('-') ? orderBy.substring(1) : orderBy) : '';
+        const altOrder = rawOrder === 'created_at' ? 'created_date' : (rawOrder === 'created_date' ? 'created_at' : 'created_date');
+        let retry = supabase.from(this._getTableName()).select('*');
+        if (this.entityName !== 'BotConfig' || conditions.clinic_id) {
+          retry = retry.eq('clinic_id', clinicId);
+        }
+        Object.entries(conditions).forEach(([key, value]) => {
+          if (key !== 'clinic_id') retry = retry.eq(key, value);
+        });
+        const fallback = await retry.order(altOrder, { ascending: false }).range(offset, offset + limit - 1);
+        if (fallback.error) {
+          const unordered = await retry.range(offset, offset + limit - 1);
+          data = unordered.data;
+          error = unordered.error;
+        } else {
+          data = fallback.data;
+          error = fallback.error;
+        }
+      }
       if (error) throw error;
       
       // Enrich with decoding and local cache
@@ -707,11 +737,11 @@ class HybridEntityLoader {
             if (String(lu.clinic_id) === String(clinicId) && !merged.find(mu => mu.id === lu.id)) {
               // Apply local filtering for role if present in conditions
               if (conditions.role && lu.role !== conditions.role) return;
-              merged.push(lu);
+              merged.push(sanitizeUser(lu));
             }
           });
         } catch (e) { /* ignore */ }
-        return merged;
+        return sanitizeUsers(merged);
       }
 
       return enriched;
@@ -743,15 +773,24 @@ class HybridEntityLoader {
   async create(payload) {
     this._checkAccess();
     RequestCache.invalidate(this.entityName);
-    if (!this.useSupabase) return this._localStorageCreate(payload);
+    let incoming = { ...payload };
+    if (this.entityName === 'User') {
+      const hashed = await preparePasswordForWrite(incoming.password);
+      if (hashed) incoming.password = hashed;
+      else delete incoming.password;
+    }
+    if (!this.useSupabase) {
+      const created = this._localStorageCreate(incoming);
+      return this.entityName === 'User' ? sanitizeUser(created) : created;
+    }
     
     // Use clinic_id from payload if provided (Super Admin mode), otherwise fallback to session clinic
-    const clinicId = payload.clinic_id || this._getClinicId();
+    const clinicId = incoming.clinic_id || this._getClinicId();
     const tableName = this._getTableName();
     
     // Clean payload: empty strings to null to avoid Postgres type errors
     let cleanPayload = Object.fromEntries(
-      Object.entries(payload).map(([k, v]) => [k, v === '' ? null : v])
+      Object.entries(incoming).map(([k, v]) => [k, v === '' ? null : v])
     );
 
     // Auto-calculate debt_amount for Payment
@@ -907,27 +946,39 @@ class HybridEntityLoader {
            throw error; // Throw to UI
         }
         
-        return this._localStorageCreate(payload);
+        return this._localStorageCreate(incoming);
       }
     }
     
     // All retries failed - fall back to localStorage
     console.error(`❌ [${this.entityName}] All retries failed. Using localStorage.`);
-    const fallbackRes = this._localStorageCreate(payload);
+    const fallbackRes = this._localStorageCreate(incoming);
     if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('crm-data-updated'));
-    return fallbackRes;
+    return this.entityName === 'User' ? sanitizeUser(fallbackRes) : fallbackRes;
   }
 
   async update(id, payload) {
     RequestCache.invalidate(this.entityName);
-    if (!this.useSupabase) return this._localStorageUpdate(id, payload);
+    let incoming = { ...payload };
+    if (this.entityName === 'User') {
+      const hashed = await preparePasswordForWrite(incoming.password);
+      if (hashed) incoming.password = hashed;
+      else delete incoming.password;
+    }
+    if (!this.useSupabase) {
+      const updated = this._localStorageUpdate(id, incoming);
+      return this.entityName === 'User' ? sanitizeUser(updated) : updated;
+    }
     
     try {
       const tableName = this._getTableName();
       // Clean payload: empty strings to null to avoid Postgres type errors
       let cleanPayload = Object.fromEntries(
-        Object.entries(payload).map(([k, v]) => [k, v === '' ? null : v])
+        Object.entries(incoming).map(([k, v]) => [k, v === '' ? null : v])
       );
+      if (this.entityName === 'User' && !cleanPayload.password) {
+        delete cleanPayload.password;
+      }
 
       // Normalize status/gender fields to match DB CHECK constraints
       if (cleanPayload.status && (tableName === 'patients' || tableName === 'treatment_plans' || tableName === 'leads')) {
@@ -1072,9 +1123,9 @@ class HybridEntityLoader {
       }
       throw new Error(`All retries failed for ${this.entityName} update`);
     } catch (error) {
-      const fallbackRes = this._localStorageUpdate(id, payload);
+      const fallbackRes = this._localStorageUpdate(id, incoming);
       if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('crm-data-updated'));
-      return fallbackRes;
+      return this.entityName === 'User' ? sanitizeUser(fallbackRes) : fallbackRes;
     }
   }
 
@@ -1215,7 +1266,7 @@ class HybridEntityLoader {
     } else {
       data.sort((a, b) => (a[orderBy] || '') > (b[orderBy] || '') ? 1 : -1);
     }
-    return data.slice(0, limit);
+    return this.entityName === 'User' ? sanitizeUsers(data.slice(0, limit)) : data.slice(0, limit);
   }
 
   _localStorageFilter(conditions, orderBy = null, limit = 100) {
@@ -1242,7 +1293,7 @@ class HybridEntityLoader {
       }
     }
     
-    return data.slice(0, limit);
+    return this.entityName === 'User' ? sanitizeUsers(data.slice(0, limit)) : data.slice(0, limit);
   }
 
   _localStorageCreate(payload) {
@@ -2115,14 +2166,14 @@ export const base44 = {
         
         // If still empty, return filtered DEFAULT_USERS
         if (enriched.length === 0) {
-          return userLoader._enrich(DEFAULT_USERS.filter(u => u.clinic_id?.toLowerCase().replace(/-/g, '') === normId));
+          return sanitizeUsers(userLoader._enrich(DEFAULT_USERS.filter(u => u.clinic_id?.toLowerCase().replace(/-/g, '') === normId)));
         }
 
-        return enriched;
+        return sanitizeUsers(enriched);
       } catch (error) {
         console.error('Error in getUsers prioritization:', error);
         const userLoader = new HybridEntityLoader('User');
-        return userLoader._enrich(DEFAULT_USERS.filter(u => u.clinic_id?.toLowerCase().replace(/-/g, '') === clinicId?.toLowerCase().replace(/-/g, '')));
+        return sanitizeUsers(userLoader._enrich(DEFAULT_USERS.filter(u => u.clinic_id?.toLowerCase().replace(/-/g, '') === clinicId?.toLowerCase().replace(/-/g, ''))));
       }
     },
 
@@ -2132,26 +2183,21 @@ export const base44 = {
         const stored = localStorage.getItem('system_users');
         if (!stored) {
           localStorage.setItem('system_users', JSON.stringify(DEFAULT_USERS));
-          return DEFAULT_USERS;
+          return sanitizeUsers(DEFAULT_USERS);
         }
-        return JSON.parse(stored);
+        return sanitizeUsers(JSON.parse(stored));
       }
       
       try {
         const users = await db.users.getAll();
         if (users.length === 0) {
-          // Insert default users
-          for (const user of DEFAULT_USERS) {
-            await db.users.create(user);
-          }
-          return DEFAULT_USERS;
+          return sanitizeUsers(DEFAULT_USERS);
         }
-        return users;
+        return sanitizeUsers(users);
       } catch (error) {
         console.error('Error fetching users from Supabase:', error);
-        // Fallback to localStorage
         const stored = localStorage.getItem('system_users');
-        return stored ? JSON.parse(stored) : DEFAULT_USERS;
+        return sanitizeUsers(stored ? JSON.parse(stored) : DEFAULT_USERS);
       }
     },
 
@@ -2170,7 +2216,7 @@ export const base44 = {
         // localStorage fallback
         const stored = localStorage.getItem('system_users');
         const users = stored ? JSON.parse(stored) : DEFAULT_USERS;
-        return users.find(u => u.id === userId) || null;
+        return sanitizeUser(users.find(u => u.id === userId) || null);
       }
 
       const promise = (async () => {
@@ -2185,16 +2231,16 @@ export const base44 = {
             // Fallback: localStorage'dan qidirish
             const stored = localStorage.getItem('system_users');
             const users = stored ? JSON.parse(stored) : DEFAULT_USERS;
-            return users.find(u => u.id === userId) || null;
+            return sanitizeUser(users.find(u => u.id === userId) || null);
           }
 
-          // Tech fields ni decode qilib qaytarish
-          return userLoader._decodeNotes(data);
+          // Tech fields ni decode qilib qaytarish — parolni UI/cache ga chiqarmaymiz
+          return sanitizeUser(userLoader._decodeNotes(data));
         } catch (err) {
           console.error('[getUserById] Error:', err);
           const stored = localStorage.getItem('system_users');
           const users = stored ? JSON.parse(stored) : DEFAULT_USERS;
-          return users.find(u => u.id === userId) || null;
+          return sanitizeUser(users.find(u => u.id === userId) || null);
         }
       })();
 
@@ -2228,6 +2274,7 @@ export const base44 = {
 
     // Add new user - saves to BOTH Supabase AND localStorage for reliable login
     addUser: async (userData) => {
+      const hashedPassword = await preparePasswordForWrite(userData.password);
       const newUser = {
         ...userData,
         id: userData.id || 'user-' + Math.random().toString(36).substring(2, 11),
@@ -2235,6 +2282,8 @@ export const base44 = {
         full_name: userData.full_name || userData.name || userData.username,
         created_at: new Date().toISOString()
       };
+      if (hashedPassword) newUser.password = hashedPassword;
+      else delete newUser.password;
 
       // ALWAYS save to localStorage first (guaranteed fallback for login)
       try {
@@ -2252,7 +2301,6 @@ export const base44 = {
       // Also save to Supabase if connected
       if (import.meta.env.VITE_SUPABASE_URL) {
         try {
-          // Use a dummy HybridEntityLoader to get tech fields and encode them
           const userLoader = new HybridEntityLoader('User');
           let record = userLoader._encodeNotes({ ...newUser });
           
@@ -2271,18 +2319,23 @@ export const base44 = {
               break;
             }
             console.log('✅ User saved to Supabase:', newUser.username);
-            return data || newUser;
+            return sanitizeUser(data || newUser);
           }
         } catch (e) {
           console.error('Supabase addUser error (localStorage fallback active):', e);
         }
       }
 
-      return newUser;
+      return sanitizeUser(newUser);
     },
 
     // Update user
     updateUser: async (id, data) => {
+      const hashedPassword = await preparePasswordForWrite(data?.password);
+      const writeData = { ...data };
+      if (hashedPassword) writeData.password = hashedPassword;
+      else delete writeData.password;
+
       // 1. Update in localStorage system_users
       try {
         const stored = localStorage.getItem('system_users');
@@ -2290,7 +2343,7 @@ export const base44 = {
           const users = JSON.parse(stored);
           const index = users.findIndex(u => u.id === id);
           if (index >= 0) {
-            users[index] = { ...users[index], ...data };
+            users[index] = { ...users[index], ...writeData };
             localStorage.setItem('system_users', JSON.stringify(users));
           }
         }
@@ -2300,12 +2353,12 @@ export const base44 = {
 
       // 2. Update via User entity loader (Supabase + local cache)
       try {
-        const updatedUser = await base44.entities.User.update(id, data);
+        const updatedUser = await base44.entities.User.update(id, writeData);
         console.log('✅ User updated:', id);
-        return updatedUser || data;
+        return sanitizeUser(updatedUser || writeData);
       } catch (error) {
         console.error('Error updating user in entity loader:', error);
-        return data;
+        return sanitizeUser(writeData);
       }
     },
 
@@ -2337,15 +2390,23 @@ export const base44 = {
     login: async (clinicId, username, password) => {
       console.log('🔐 Login attempt:', { clinicId, username });
       
-      // Search ALL sources for the user
       const normalizeId = (id) => (id || '').toLowerCase().trim().replace(/-/g, '_');
+      const wantedUsername = (username || '').toLowerCase().trim();
       
       let allUsers = [];
 
-      // Source 1: Supabase
+      // Source 1: Supabase — username bo'yicha qidirish (barcha parollarni yuklamaslik)
       if (import.meta.env.VITE_SUPABASE_URL) {
         try {
-          const { data, error } = await supabase.from('users').select('*');
+          let { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .ilike('username', wantedUsername);
+          if (error || !data || data.length === 0) {
+            const fallback = await supabase.from('users').select('*');
+            data = fallback.data;
+            error = fallback.error;
+          }
           if (data && !error) {
             allUsers.push(...data);
             console.log('✅ Supabase users loaded:', data.length);
@@ -2372,31 +2433,40 @@ export const base44 = {
         });
       } catch (e) {}
 
-      // Decode any notes-encoded users (eski formatdagi foydalanuvchilar uchun)
       const userLoaderForLogin = new HybridEntityLoader('User');
       allUsers = allUsers.map(u => {
         if (u.notes && typeof u.notes === 'string' && u.notes.startsWith('[TECH_DATA]')) {
-          const decoded = userLoaderForLogin._decodeNotes(u);
-          // Agar password notes'dan decoded bo'lsa, uni asosiy ustun sifatida ishlatamiz
-          return decoded;
+          return userLoaderForLogin._decodeNotes(u);
         }
         return u;
       });
 
       console.log('🔍 Total users in all sources:', allUsers.length);
       
-      // Find user by clinic_id and username (case-insensitive, flexible matching)
-      const user = allUsers.find(u => {
-        if (!u || !u.clinic_id || !u.username) return false;
+      let user = null;
+      for (const u of allUsers) {
+        if (!u || !u.clinic_id || !u.username) continue;
         const clinicMatch = normalizeId(u.clinic_id) === normalizeId(clinicId);
-        const usernameMatch = u.username.toLowerCase().trim() === username.toLowerCase().trim();
-        const passwordMatch = String(u.password || '') === String(password || '');
-        return clinicMatch && usernameMatch && passwordMatch;
-      });
+        const usernameMatch = u.username.toLowerCase().trim() === wantedUsername;
+        if (!clinicMatch || !usernameMatch) continue;
+        if (await verifyPassword(password, u.password)) {
+          user = u;
+          break;
+        }
+      }
       
       if (!user) {
         console.warn('❌ Login failed. Users checked:', allUsers.map(u => `[${u.clinic_id}] ${u.username}`));
         return { success: false, error: 'Klinika ID, login yoki parol noto\'g\'ri' };
+      }
+
+      // Legacy plaintext parolni birinchi muvaffaqiyatli kirishda hash qilish
+      if (user.password && !isPasswordHash(user.password)) {
+        try {
+          await base44.auth.updateUser(user.id, { password });
+        } catch (rehashErr) {
+          console.warn('Password rehash skipped:', rehashErr?.message || rehashErr);
+        }
       }
       
       // Check if clinic exists and is active
@@ -2414,7 +2484,6 @@ export const base44 = {
       // Check Expiry Date
       if (clinic.expires_at) {
         const expiryDate = new Date(clinic.expires_at);
-        // Allow access until the end of the expiration day
         expiryDate.setHours(23, 59, 59, 999);
         
         const today = new Date();
@@ -2425,16 +2494,16 @@ export const base44 = {
       
       console.log('✅ Login successful:', user.name, '| Role:', user.role);
       
-      // Simulate JWT Token
       const mockToken = btoa(JSON.stringify({ 
         sub: user.id, 
         role: user.role, 
         exp: Date.now() + 86400000 
       }));
 
-      // Set session - use actual clinic plan, default to 'pro' for security
       const clinicPlan = (clinic.plan || 'pro').toLowerCase();
       console.log('📋 Clinic plan:', clinicPlan, '| Clinic:', clinic.id);
+
+      const safeUser = sanitizeUser(user);
       
       localStorage.setItem('auth_token', mockToken);
       localStorage.setItem('is_authenticated', 'true');
@@ -2444,7 +2513,7 @@ export const base44 = {
       localStorage.setItem('clinic_id', user.clinic_id);
       localStorage.setItem('current_clinic_id', user.clinic_id);
       localStorage.setItem('clinic_plan', clinicPlan);
-      localStorage.setItem('user_data', JSON.stringify(user));
+      localStorage.setItem('user_data', JSON.stringify(safeUser));
       
       return { 
         success: true, 

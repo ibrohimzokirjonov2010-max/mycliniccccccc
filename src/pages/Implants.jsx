@@ -266,7 +266,7 @@ export default function Implants() {
     try {
       setLoading(true);
       const [imps, pats, svcs, brnds, extraCatalog] = await Promise.all([
-        base44.entities.Implant.list('-created_at', 400),
+        base44.entities.Implant.list('-created_date', 400),
         base44.entities.Patient.list('full_name', 100),
         base44.entities.Service.filter({ is_active: true }, 'name', 100),
         getOrSeedImplantBrands(),
@@ -458,9 +458,9 @@ export default function Implants() {
           return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
         case 'date':
         default:
-          // Eng oxirgi qo'shilgan birinchi ko'rinsin: created_at → id → placement_date fallback
-          valA = new Date(a.created_at || a.placement_date || '1970-01-01').getTime();
-          valB = new Date(b.created_at || b.placement_date || '1970-01-01').getTime();
+          // Eng oxirgi qo'shilgan birinchi ko'rinsin: created_date → created_at → placement_date
+          valA = new Date(a.created_date || a.created_at || a.placement_date || '1970-01-01').getTime();
+          valB = new Date(b.created_date || b.created_at || b.placement_date || '1970-01-01').getTime();
           if (valA !== valB) return sortOrder === 'asc' ? valA - valB : valB - valA;
           // Same timestamp — use numeric ID as tiebreaker (higher = newer)
           const idA = parseInt(String(a.id).replace(/[^0-9]/g,''), 10) || 0;
