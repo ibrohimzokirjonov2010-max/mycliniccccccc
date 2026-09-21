@@ -14,6 +14,9 @@ Each folder has 32 adult teeth:
 - `breket/`
 - `metal-keramika/`
 - `sirkon/`
+- `protez-syomniy/` — removable denture
+- `protez-implant/` — prosthesis on implant
+- `protez-babochka/` — butterfly partial
 - `missing/` — extracted / Yo‘q / edentulous
 
 ## Default / healthy

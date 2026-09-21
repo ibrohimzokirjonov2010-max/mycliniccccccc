@@ -12,7 +12,7 @@ import {
   resolveToothIllustrationKind,
 } from '../src/utils/toothIllustration.js';
 
-const kinds = ['endo', 'caries', 'implant', 'plomba', 'shtift', 'breket', 'metal-keramika', 'sirkon', 'missing', 'healthy'];
+const kinds = ['endo', 'caries', 'implant', 'plomba', 'shtift', 'breket', 'metal-keramika', 'sirkon', 'protez-syomniy', 'protez-implant', 'protez-babochka', 'missing', 'healthy'];
 const fdis = [1, 2, 3, 4].flatMap((q) => Array.from({ length: 8 }, (_, i) => `${q}${i + 1}`));
 
 let failed = 0;
@@ -44,6 +44,13 @@ const cases = [
   ['Missing tooth', null, 'missing'],
   ["Yo'q", null, 'missing'],
   ['Edentulous ridge', null, 'missing'],
+  ['olinadigan protez', 'ORTOPEDIYA', 'protez-syomniy'],
+  ['Siyomniy protez', null, 'protez-syomniy'],
+  ['Removable denture', null, 'protez-syomniy'],
+  ['Babochka protez', null, 'protez-babochka'],
+  ['Butterfly partial', null, 'protez-babochka'],
+  ['Implant protez', 'IMPLANTATSIYA', 'protez-implant'],
+  ['Implant karonka', null, 'protez-implant'],
 ];
 
 for (const [name, cat, expected] of cases) {
@@ -78,6 +85,9 @@ if (resolveToothIllustrationKind({ status: 'extracted', isExtracted: true, hasIm
   fail('extracted+implant should stay implant');
 }
 if (matchIllustrationKind('Kanal davolash (1 kanal)', 'ENDODONTIYA') !== 'endo') fail('endo unchanged');
+if (matchIllustrationKind("Implantat o'rnatish", 'IMPLANTATSIYA') !== 'implant') fail('fixture implant unchanged');
+if (resolveToothIllustrationKind({ status: 'extracted' }) !== 'missing') fail('missing unchanged');
+if (getToothIllustrationSrc(21, 'protez-babochka') !== '/teeth/protez-babochka/21.png') fail('babochka src');
 
 if (failed) {
   console.error(`${failed} failure(s)`);

@@ -13,13 +13,19 @@ export const TOOTH_ILLUSTRATION_KINDS = [
   'breket',
   'metal-keramika',
   'sirkon',
+  'protez-syomniy',
+  'protez-implant',
+  'protez-babochka',
   'missing',
   'healthy',
 ];
 
 /** Visual priority when several treatments exist on one saved tooth. */
 export const TOOTH_ILLUSTRATION_PRIORITY = [
+  'protez-implant',
   'implant',
+  'protez-babochka',
+  'protez-syomniy',
   'metal-keramika',
   'sirkon',
   'breket',
@@ -84,7 +90,24 @@ export function matchIllustrationKind(text, category) {
   if (isEndodonticsCategory(cat)) return 'endo';
   if (!s.trim() && !cat.trim()) return null;
 
-  if (/implant|имплант/.test(s) || /implant|имплант/i.test(cat)) return 'implant';
+  if (/babochka|butterfly|бабочк/.test(s)) return 'protez-babochka';
+
+  const hasImplantWord = /implant|имплант/.test(s) || /implant|имплант/i.test(cat);
+  const hasProsthesisWord = /protez|prosthes|karonka|koronka|\bcrown\b|\btoj\b|протез/.test(s);
+  if (hasImplantWord && hasProsthesisWord) return 'protez-implant';
+
+  if (
+    /syomniy|siyomniy|syomnyy|съ[её]мн|olinadigan|removable|denture|byugel|бюгель/.test(s)
+    || (/protez|prosthes|протез/.test(s) && /olinadigan|syom|siyom|removable|to[''ʻ’`]?liq/.test(s))
+  ) {
+    return 'protez-syomniy';
+  }
+
+  if (hasImplantWord) return 'implant';
+
+  if (/protez|prosthes|протез/.test(s) && !/karonka|koronka|sirkon|zirkon|metal/.test(s)) {
+    return 'protez-syomniy';
+  }
 
   if (
     /edentulous|adsentia|аденти/.test(s)

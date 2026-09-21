@@ -13,6 +13,16 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Odontogramma — protez-syomniy / protez-implant / protez-babochka
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/utils/toothIllustration.js`](src/utils/toothIllustration.js)
+  - [`public/teeth/protez-syomniy/`](public/teeth/protez-syomniy/)
+  - [`public/teeth/protez-implant/`](public/teeth/protez-implant/)
+  - [`public/teeth/protez-babochka/`](public/teeth/protez-babochka/)
+- **Muammo Tavsifi:** Olinadigan protez, implant ustidagi protez va babochka uchun alohida Dizyner rasmlari yo‘q edi.
+- **Qaytalamaslik choralari:** `implant o'rnatish` ni `protez-implant` ga o‘tkazmang — faqat implant + protez/karonka. ENDODONTIYA, healthy va missing mappingni buzmang. Generic `protez` (karonka/sirkon/metal yo‘q) → `protez-syomniy`.
+
 ### 🦷 Yangi implant wizard — mobile 390px unusable
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**
