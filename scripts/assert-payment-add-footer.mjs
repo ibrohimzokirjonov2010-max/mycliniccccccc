@@ -26,13 +26,14 @@ html, body { margin: 0; min-height: 2000px; background: #64748b; }
     role="dialog"
     data-radix-dialog-content
     data-state="open"
-    data-payment-add="payment-add-teal-v4-desktop-stable"
+    data-payment-add="payment-add-teal-v5-single-center"
     class="payment-add-dialog"
     style="
       position:fixed;
       left:50%;
       top:50%;
       transform:translate(-50%,-50%);
+      translate:-50% -50%;
       z-index:100;
       display:flex;
       flex-direction:column;
@@ -82,6 +83,7 @@ html, body { margin: 0; min-height: 2000px; background: #64748b; }
         top: r.top, bottom: r.bottom, left: r.left, right: r.right,
         height: r.height, width: r.width,
         position: cs.position, transform: cs.transform,
+        cssTranslate: cs.translate,
         centerX: (r.left + r.right) / 2,
         centerY: (r.top + r.bottom) / 2
       };
@@ -194,7 +196,15 @@ const desktop = runIframe({
 
 assert(desktop.before.innerWidth === 1280, `desktop width ${desktop.before.innerWidth}`);
 assert(desktop.before.innerHeight === 800, `desktop height ${desktop.before.innerHeight}`);
-assert(desktop.before.dialog.transform !== 'none', `desktop lost Radix transform ${desktop.before.dialog.transform}`);
+assert(desktop.before.dialog.transform !== 'none', `desktop lost transform ${desktop.before.dialog.transform}`);
+assert(
+  desktop.before.dialog.cssTranslate === 'none',
+  `desktop still has independent translate ${desktop.before.dialog.cssTranslate}`
+);
+assert(desktop.before.dialog.left > 8, `desktop off-screen left ${desktop.before.dialog.left}`);
+assert(desktop.before.dialog.top > 8, `desktop off-screen top ${desktop.before.dialog.top}`);
+assert(desktop.before.dialog.right < 1280 - 8, `desktop overflow right ${desktop.before.dialog.right}`);
+assert(desktop.before.dialog.bottom < 800 + 1, `desktop overflow bottom ${desktop.before.dialog.bottom}`);
 assert(
   Math.abs(desktop.before.dialog.centerX - 640) < 24,
   `desktop not centered ${desktop.before.dialog.centerX}`

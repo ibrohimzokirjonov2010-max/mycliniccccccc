@@ -31,8 +31,10 @@ const DialogContent = React.forwardRef(({ className, children, style, ...props }
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-[100] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] border border-slate-100 bg-white p-6 shadow-2xl shadow-slate-200/50 duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-[2.5rem] overflow-hidden",
-        columnLayout ? "flex flex-col gap-0 overflow-hidden p-0" : "grid gap-4",
+        "fixed z-[100] w-full max-w-lg border border-slate-100 bg-white p-6 shadow-2xl shadow-slate-200/50 duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-[2.5rem] overflow-hidden",
+        columnLayout
+          ? "left-[50%] top-[50%] flex flex-col gap-0 overflow-hidden p-0"
+          : "left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] grid gap-4 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         className
       )}
       style={{

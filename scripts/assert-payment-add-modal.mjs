@@ -22,7 +22,7 @@ const uz = JSON.parse(read('src/i18n/translations/uz.json'));
 const ru = JSON.parse(read('src/i18n/translations/ru.json'));
 const en = JSON.parse(read('src/i18n/translations/en.json'));
 
-assert(css.includes('payment-add-teal-v4-desktop-stable'), 'css marker');
+assert(css.includes('payment-add-teal-v5-single-center'), 'css marker');
 assert(css.includes('#0d9488'), 'teal accent');
 assert(!css.includes('indigo') && !css.includes('purple'), 'no purple in payment css');
 assert(css.includes('.payment-add-footer'), 'sticky footer class');
@@ -40,24 +40,24 @@ assert(css.includes('@container payment-add'), 'named container footer');
 
 const [cssBeforeMobile, cssMobile = ''] = css.split('@media (max-width: 767px)');
 assert(cssMobile.includes('transform: none !important'), 'transform none is mobile-only');
-assert(cssMobile.includes('translate: none !important'), 'translate none is mobile-only');
+assert(cssMobile.includes('translate: none !important'), 'mobile also clears independent translate');
 assert(cssMobile.includes('position: absolute !important'), 'absolute footer is mobile-only');
-assert(!cssBeforeMobile.includes('transform: none'), 'desktop must not kill transform');
-assert(!cssBeforeMobile.includes('translate: none'), 'desktop must not kill translate');
-assert(!cssBeforeMobile.includes('translate: -50%'), 'desktop must not double-apply CSS translate');
-assert(!cssBeforeMobile.includes('left: 50% !important'), 'desktop uses Radix left/top, not CSS !important');
+assert(cssBeforeMobile.includes('transform: translate(-50%, -50%) !important'), 'desktop uses transform only');
+assert(cssBeforeMobile.includes('translate: none !important'), 'desktop kills independent translate channel');
+assert(!cssBeforeMobile.includes('translate: -50%'), 'desktop must not set translate -50%');
 assert(cssBeforeMobile.includes('position: relative'), 'desktop footer in-flow');
 
 assert(indexCss.includes('[data-sonner-toaster]'), 'toaster z-index park');
 assert(indexCss.includes('z-index: 40 !important'), 'toasts behind dialog overlay');
 assert(indexCss.includes('body:has([data-radix-dialog-content])'), 'park toasts when dialog open');
 
-assert(mobile.includes("PAYMENT_ADD_MARKER = 'payment-add-teal-v4-desktop-stable'"), 'mobile marker const');
+assert(mobile.includes("PAYMENT_ADD_MARKER = 'payment-add-teal-v5-single-center'"), 'mobile marker const');
 assert(mobile.includes('minHeight: 0'), 'mobile dialog minHeight 0');
-assert(desktop.includes("PAYMENT_ADD_MARKER = 'payment-add-teal-v4-desktop-stable'"), 'desktop marker const');
+assert(desktop.includes("PAYMENT_ADD_MARKER = 'payment-add-teal-v5-single-center'"), 'desktop marker const');
 const dialogSrc = read('src/components/ui/dialog.jsx');
-assert(dialogSrc.includes("translate-x-[-50%]"), 'DialogContent restores Radix translate centering');
-assert(!dialogSrc.includes('translate-x-0 translate-y-0'), 'payment-add must not zero Radix translate');
+assert(dialogSrc.includes("translate-x-[-50%]"), 'other dialogs keep Radix translate utilities');
+assert(dialogSrc.includes('? "left-[50%] top-[50%] flex flex-col'), 'payment-add omits Tailwind translate utilities');
+assert(!dialogSrc.includes('translate-x-0 translate-y-0'), 'payment-add must not zero translate utilities');
 assert(mobile.includes('payment-add-footer'), 'mobile sticky footer');
 assert(mobile.includes('data-payment-quick-chips'), 'mobile chips');
 assert(!mobile.includes('alert(t(\'common.error\'))'), 'no alert() for amount');

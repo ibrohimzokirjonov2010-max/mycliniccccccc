@@ -133,7 +133,7 @@ export default defineConfig({
             urlPattern: /\/assets\/.*\.(?:js|css)$/,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'assets-cache-v9-payment-desktop-center',
+              cacheName: 'assets-cache-v10-payment-single-center',
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 7 },
               cacheableResponse: { statuses: [0, 200] }

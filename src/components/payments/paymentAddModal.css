@@ -1,8 +1,8 @@
-/* PAYMENT_ADD_TEAL_V4 — desktop stays Radix-centered; mobile footer stays pinned
-   Marker: payment-add-teal-v4-desktop-stable
-   Desktop (≥768): keep Radix left/top 50% + translate-x/y -50%. Do not zero
-   those utilities or add an independent CSS `translate` offset (double-shift).
-   Mobile (≤767): inset-pin the sheet, drop the centering matrix, absolute footer. */
+/* PAYMENT_ADD_TEAL_V5 — one desktop centering channel (transform only)
+   Marker: payment-add-teal-v5-single-center
+   Desktop: left/top 50% + transform:translate(-50%,-50%). Independent CSS
+   `translate` MUST stay none or the sheet double-offsets off-screen.
+   Mobile (≤767): inset-pin, no matrix, absolute footer. */
 
 [data-radix-dialog-content].payment-add-dialog,
 .payment-add-dialog {
@@ -22,6 +22,13 @@
   height: auto;
   max-height: min(92vh, 820px) !important;
   min-height: 0 !important;
+  left: 50%;
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  /* ONE channel. `translate: none` kills Tailwind/Radix's second offset. */
+  transform: translate(-50%, -50%) !important;
+  translate: none !important;
   border-radius: 20px;
   container-type: inline-size;
   container-name: payment-add;
@@ -293,10 +300,17 @@
 }
 
 @media (min-width: 768px) {
+  [data-radix-dialog-content].payment-add-dialog,
   .payment-add-dialog {
     width: min(42rem, 95vw);
     height: auto !important;
     max-height: min(92vh, 820px) !important;
+    left: 50% !important;
+    top: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+    translate: none !important;
     border-radius: 24px;
   }
 

@@ -29,7 +29,7 @@ import { formatPhone } from '@/lib/utils';
 import { format } from 'date-fns';
 import '@/components/payments/paymentAddModal.css';
 
-const PAYMENT_ADD_MARKER = 'payment-add-teal-v4-desktop-stable';
+const PAYMENT_ADD_MARKER = 'payment-add-teal-v5-single-center';
 const PAYMENT_QUICK_AMOUNTS = [50000, 100000, 500000, 1000000];
 const paymentAddDialogStyle = {
   display: 'flex',

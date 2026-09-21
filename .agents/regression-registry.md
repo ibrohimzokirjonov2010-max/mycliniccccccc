@@ -13,6 +13,16 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 💳 Yangi to'lov modal — desktop double-offset off-screen
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/payments/paymentAddModal.css`](src/components/payments/paymentAddModal.css)
+  - [`src/components/ui/dialog.jsx`](src/components/ui/dialog.jsx)
+- **Muammo Tavsifi:** 1280×800 da modal markazda emas, deyarli ekrandan tashqarida (`x≈-32, y≈-336`).
+- **Sababi:** `transform: translate(-50%,-50%)` VA independent `translate: -50% -50%` birga ishlagan (Tailwind `translate-x/y-[-50%]` + CSS transform). Offset ikki marta qo'llanadi.
+- **Qanday tuzatildi:** Desktopda faqat `transform: translate(-50%,-50%)`. `translate: none !important`. Payment-add DialogContent dan Tailwind translate/zoom/slide olib tashlandi. Mobile inset-pin o'zgarmadi.
+- **Qaytalamaslik choralari:** Desktopda `translate: -50%` yozmang. Fixture ikkala channelni ham qo'yib, `translate` none va dialog `left>0` ekanini tekshiradi. Marker `payment-add-teal-v5-single-center`.
+
 ### 💳 Yangi to'lov modal — desktop centering drift
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**
