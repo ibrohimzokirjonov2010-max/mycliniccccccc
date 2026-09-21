@@ -349,3 +349,19 @@
   content-visibility: auto;
   contain-intrinsic-size: 0 74px; /* Approximates the standard card height */
 }
+
+/* Toasts sit below dialog overlay (z-100) so system alerts never cover modal UI.
+   Marker: payment-add-teal-v1-0d9488 */
+[data-sonner-toaster] {
+  z-index: 90 !important;
+}
+
+body:has([data-radix-dialog-content]),
+body:has([role="dialog"][data-state="open"]) {
+  --payment-modal-toast-park: 1;
+}
+
+body:has([data-radix-dialog-content]) [data-sonner-toaster],
+body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
+  z-index: 40 !important;
+}

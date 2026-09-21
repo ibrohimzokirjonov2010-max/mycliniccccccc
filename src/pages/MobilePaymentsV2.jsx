@@ -20,6 +20,19 @@ import { toast } from 'sonner';
 import PatientSelect from '@/components/patients/PatientSelect';
 import { useTranslation } from '@/i18n/LanguageContext';
 import PullToRefresh from '@/components/ui/PullToRefresh';
+import '@/components/payments/paymentAddModal.css';
+
+const PAYMENT_ADD_MARKER = 'payment-add-teal-v1-0d9488';
+const PAYMENT_QUICK_AMOUNTS = [50000, 100000, 500000, 1000000];
+const paymentAddDialogStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 0,
+  padding: 0,
+  paddingBottom: 0,
+  overflow: 'hidden',
+  maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 12px)',
+};
 
 const CATEGORY_TRANSLATIONS = {
   'treatment': 'Davolash',
@@ -117,7 +130,7 @@ const getLocalDatetimeString = () => {
  * Modern financial dashboard with transaction management
  */
 export default function MobilePaymentsV2() {
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isDoctor } = useAuth();
@@ -130,6 +143,7 @@ export default function MobilePaymentsV2() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [formError, setFormError] = useState('');
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [saving, setSaving] = useState(false);
   const [patientBalances, setPatientBalances] = useState({});
@@ -328,6 +342,8 @@ export default function MobilePaymentsV2() {
   // Handle modal opening, reset, and prefill
   useEffect(() => {
     if (showAddModal) {
+      toast.dismiss('implant-incomplete-notification');
+      setFormError('');
       const prefillPatient = location.state?.prefillPatient || '';
       const prefillAmount = location.state?.prefillAmount || '';
       const prefillCategory = location.state?.prefillCategory || 'Treatment';
@@ -649,7 +665,7 @@ export default function MobilePaymentsV2() {
     const parsedAmount = parseAmountInput(formData.amount);
 
     if (!parsedAmount || parsedAmount <= 0) {
-      alert(t('common.error'));
+      setFormError(t('payments.formErrorAmount'));
       return;
     }
 
@@ -698,12 +714,12 @@ export default function MobilePaymentsV2() {
 
         if (formData.type === 'Income') {
           if (currentDebt <= 0) {
-            toast.error("Bu bemorda qarz yo'q");
+            setFormError(t('payments.formErrorNoDebt'));
             return;
           }
 
           if (parsedAmount > currentDebt) {
-            toast.error("Kiritilgan summa bemor qarzidan ko'p! Maksimal: " + currentDebt.toLocaleString() + " so'm");
+            setFormError(t('payments.formErrorOverDebt', { amount: currentDebt.toLocaleString() }));
             return;
           }
         }
@@ -833,7 +849,7 @@ export default function MobilePaymentsV2() {
       loadData();
     } catch (error) {
       console.error('Failed to add payment:', error);
-      toast.error(t('common.error'));
+      setFormError(t('common.errorSave') || t('common.error'));
     } finally {
       setSaving(false);
     }
@@ -1104,43 +1120,67 @@ export default function MobilePaymentsV2() {
         <div className="h-8" />
 
         {/* Add Payment Modal */}
-        <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <DialogContent className="w-[95%] sm:max-w-xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl max-h-[min(90vh,calc(100dvh-4.5rem))] flex flex-col pb-[env(safe-area-inset-bottom,0px)]">
+        <Dialog open={showAddModal} onOpenChange={(open) => {
+          setShowAddModal(open);
+          if (open) toast.dismiss('implant-incomplete-notification');
+        }}>
+          <DialogContent
+            className="payment-add-dialog !flex !flex-col !p-0 !gap-0 w-[95vw] !max-w-xl overflow-hidden border border-[#e5e7eb] shadow-2xl"
+            style={paymentAddDialogStyle}
+            data-payment-add={PAYMENT_ADD_MARKER}
+            aria-describedby={undefined}
+          >
             {(() => {
               const currentType = formData.type || 'Income';
-              const headerBg = currentType === 'Income' ? 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600' :
-                               currentType === 'Expense' ? 'bg-gradient-to-r from-rose-500 via-rose-600 to-red-600' :
-                               'bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600';
-              
+              const headerTone = currentType === 'Expense' ? 'is-expense' : currentType === 'Debt' ? 'is-debt' : '';
               const HeaderIcon = currentType === 'Income' ? Wallet :
                                  currentType === 'Expense' ? TrendingDown :
                                  AlertTriangle;
-
               const patient = patients.find(p => p.id === formData.patient_id);
 
               return (
                 <>
-                  <div className={`${headerBg} px-6 py-5 flex items-center justify-between shrink-0 transition-colors duration-300`}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm">
-                        <HeaderIcon className="w-5 h-5 stroke-[2.5]" />
+                  <DialogHeader className="shrink-0 space-y-0">
+                    <div className={`payment-add-header ${headerTone}`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
+                          <HeaderIcon className="w-5 h-5 stroke-[2.5]" />
+                        </div>
+                        <div className="payment-add-header-titles">
+                          <DialogTitle className="payment-add-header-title">
+                            {t('payments.addNew')}
+                          </DialogTitle>
+                          <p className="payment-add-header-sub">
+                            {patient ? patient.full_name : (t('payments.receiveAmount') || t('payments.type'))}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-lg font-black text-white uppercase tracking-tight">{t('payments.addNew')}</h3>
-                        <p className="text-[10px] font-bold text-white/80 uppercase tracking-widest mt-0.5">
-                          {patient ? patient.full_name : t('payments.type')}
-                        </p>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddModal(false)}
+                        className="payment-add-close compact-hit"
+                        aria-label={t('common.close')}
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
                     </div>
-                    <button 
-                      onClick={() => setShowAddModal(false)} 
-                      className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
+                  </DialogHeader>
 
-                  <div className="p-6 space-y-5 bg-white flex-1 overflow-y-auto no-scrollbar pb-12" style={{ paddingBottom: 'calc(3rem + env(safe-area-inset-bottom, 0px))' }}>
+                  {formError ? (
+                    <div className="payment-add-banner" role="alert">
+                      <p>{formError}</p>
+                      <button
+                        type="button"
+                        className="payment-add-banner-dismiss compact-hit"
+                        onClick={() => setFormError('')}
+                        aria-label={t('common.close')}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <div className="payment-add-body space-y-4 no-scrollbar">
                     
                     {(formData.type === 'Income' || formData.type === 'Debt') && (
                       <div className="space-y-4 relative z-50">
@@ -1205,7 +1245,7 @@ export default function MobilePaymentsV2() {
                         {/* Davolash rejalari */}
                         {patientPlans.length > 0 && (
                           <div className="space-y-2 relative z-30">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-[#1499AD] ml-1 flex items-center gap-1.5">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-[#0d9488] ml-1 flex items-center gap-1.5">
                               <FileText className="w-3.5 h-3.5" /> {t('patientProfile.treatmentPlanSingular') || 'Davolash rejasi'}
                             </Label>
                             <div className="flex flex-col gap-2.5">
@@ -1222,13 +1262,13 @@ export default function MobilePaymentsV2() {
                                     className={cn(
                                       "flex items-center justify-between rounded-2xl border p-3.5 shadow-sm cursor-pointer transition-all active:scale-[0.98]",
                                       isSelected 
-                                        ? "border-blue-500 bg-blue-50/30 ring-1 ring-blue-500/20" 
+                                        ? "border-[#0d9488] bg-teal-50/40 ring-1 ring-[#0d9488]/20" 
                                         : "border-slate-100 bg-white hover:border-slate-200"
                                     )}
                                   >
                                     <div className="min-w-0 flex-1 mr-2">
                                       <div className="flex items-center gap-1.5">
-                                        {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 stroke-[3]" />}
+                                        {isSelected && <Check className="w-3.5 h-3.5 text-[#0d9488] stroke-[3]" />}
                                         <p className="text-[12px] font-black text-slate-800 truncate">{plan.name || (t ? t('patientProfile.treatmentPlanSingular') : 'Davolash rejasi')}</p>
                                       </div>
                                       <p className="text-[10px] text-slate-500 font-bold mt-0.5">
@@ -1239,7 +1279,7 @@ export default function MobilePaymentsV2() {
                                     <button
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); setSelectedPlanForInvoice(plan); setShowPlanInvoiceModal(true); }}
-                                      className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 text-[9px] font-black uppercase hover:bg-blue-100 active:scale-95 transition-all"
+                                      className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-teal-50 border border-teal-100 text-[#0d9488] text-[9px] font-black uppercase hover:bg-teal-100 active:scale-95 transition-all"
                                     >
                                       Faktura
                                     </button>
@@ -1261,7 +1301,7 @@ export default function MobilePaymentsV2() {
                             <SelectTrigger className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold">
                               <SelectValue placeholder={t('payments.doctor')} />
                             </SelectTrigger>
-                            <SelectContent className="rounded-2xl border-slate-100">
+                            <SelectContent className="rounded-2xl border-slate-100 z-[110]">
                               {isDoctor ? (
                                 <SelectItem value={String(user?.id)} className="rounded-xl font-bold">{user?.name}</SelectItem>
                               ) : (
@@ -1284,14 +1324,15 @@ export default function MobilePaymentsV2() {
 
                     {/* Fintech Summa Input */}
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('payments.amount')}</Label>
-                      <div className="relative flex items-center justify-center bg-slate-50 rounded-3xl border border-slate-100 px-6 py-4 shadow-inner">
+                      <Label className="payment-add-label">{t('payments.amount')}</Label>
+                      <div className="relative flex items-center justify-center bg-slate-50 rounded-2xl border border-slate-100 px-6 py-3">
                         <input
                           type="text"
                           inputMode="numeric"
                           value={formData.amount === '' || Number(formData.amount) === 0 ? '' : Number(formData.amount).toLocaleString('uz-UZ')}
                           onChange={e => {
                             const raw = e.target.value.replace(/\s/g, '').replace(/,/g, '').replace(/\./g, '').replace(/'/g, '');
+                            setFormError('');
                             if (raw === '') setFormData({ ...formData, amount: '' });
                             else if (/^\d+$/.test(raw)) setFormData({ ...formData, amount: raw });
                           }}
@@ -1300,17 +1341,19 @@ export default function MobilePaymentsV2() {
                           placeholder="0"
                           className="w-full text-center bg-transparent text-3xl font-[1000] text-slate-900 outline-none placeholder-slate-300"
                         />
-                        <span className="absolute right-6 text-xs font-black text-slate-400 uppercase tracking-widest pointer-events-none">{t('common.currency') || 'so\'m'}</span>
+                        <span className="absolute right-6 text-xs font-bold text-slate-400 uppercase tracking-widest pointer-events-none">{t('common.currency') || 'so\'m'}</span>
                       </div>
                       
-                      {/* Sum shortcuts */}
-                      <div className="flex flex-wrap gap-1.5 mt-2 justify-center">
-                        {[50000, 100000, 500000, 1000000].map(val => (
+                      <div className="payment-add-chips" data-payment-quick-chips="true">
+                        {PAYMENT_QUICK_AMOUNTS.map(val => (
                           <button
                             key={val}
                             type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, amount: String((Number(prev.amount) || 0) + val) }))}
-                            className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 text-[10px] font-black text-slate-600 transition-all active:scale-95 shadow-sm"
+                            onClick={() => {
+                              setFormError('');
+                              setFormData(prev => ({ ...prev, amount: String((Number(prev.amount) || 0) + val) }));
+                            }}
+                            className="payment-add-chip compact-hit"
                           >
                             +{val.toLocaleString()}
                           </button>
@@ -1318,18 +1361,24 @@ export default function MobilePaymentsV2() {
                         {selectedPatientDebt > 0 && (
                           <button
                             type="button"
-                            onClick={() => setFormData({ ...formData, amount: String(selectedPatientDebt) })}
-                            className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-100 hover:bg-amber-100 text-[10px] font-black text-amber-700 transition-all active:scale-95 shadow-sm"
+                            onClick={() => {
+                              setFormError('');
+                              setFormData({ ...formData, amount: String(selectedPatientDebt) });
+                            }}
+                            className="payment-add-chip is-debt compact-hit"
                           >
-                            Jami qarz ({selectedPatientDebt.toLocaleString()})
+                            {t('payments.fillDebt')} ({selectedPatientDebt.toLocaleString()})
                           </button>
                         )}
                         <button
                           type="button"
-                          onClick={() => setFormData({ ...formData, amount: '' })}
-                          className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 text-[10px] font-black text-slate-500 transition-all active:scale-95 shadow-sm"
+                          onClick={() => {
+                            setFormError('');
+                            setFormData({ ...formData, amount: '' });
+                          }}
+                          className="payment-add-chip is-clear compact-hit"
                         >
-                          Tozalash
+                          {t('common.clear')}
                         </button>
                       </div>
                     </div>
@@ -1348,7 +1397,7 @@ export default function MobilePaymentsV2() {
                         )}>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="rounded-2xl border-slate-100">
+                        <SelectContent className="rounded-2xl border-slate-100 z-[110]">
                           {formData.type === 'Income' || formData.type === 'Debt' ? (
                             <>
                               <SelectItem value="Treatment" className="rounded-xl font-bold">{t('appointments.service')}</SelectItem>
@@ -1372,8 +1421,8 @@ export default function MobilePaymentsV2() {
 
                     {/* To'lov usuli (Cards UI) */}
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('payments.method')}</Label>
-                      <div className="grid grid-cols-2 gap-2">
+                      <Label className="payment-add-label">{t('payments.method')}</Label>
+                      <div className="payment-add-methods">
                         {[
                           { value: 'Cash', label: t('payments.methods.Cash') || 'Naqd', icon: Wallet },
                           { value: 'Card', label: t('payments.methods.Card') || 'Plastik', icon: CreditCard },
@@ -1387,16 +1436,12 @@ export default function MobilePaymentsV2() {
                               key={m.value}
                               type="button"
                               onClick={() => setFormData({ ...formData, method: m.value })}
-                              className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all duration-200 text-center relative ${
-                                isActive 
-                                  ? 'border-slate-900 bg-slate-900 text-white shadow-md' 
-                                  : 'border-slate-100 bg-slate-50 text-slate-500 hover:bg-slate-100/70 hover:border-slate-200'
-                              }`}
+                              className={cn('payment-add-method compact-hit', isActive && 'is-active')}
                             >
-                              <Icon className={`w-5 h-5 mb-1.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                              <span className="text-[11px] font-bold tracking-tight">{m.label}</span>
+                              <Icon className="w-5 h-5" />
+                              <span className="text-[13px] font-bold tracking-tight">{m.label}</span>
                               {isActive && (
-                                <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center">
+                                <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-white text-[#0d9488] flex items-center justify-center">
                                   <Check className="w-2 h-2 stroke-[4]" />
                                 </div>
                               )}
@@ -1531,31 +1576,28 @@ export default function MobilePaymentsV2() {
                       </div>
                     )}
 
-                    {/* Action buttons */}
-                    <div className="flex gap-3 pt-3">
-                      <Button
-                        variant="ghost"
-                        onClick={() => setShowAddModal(false)}
-                        className="flex-1 h-12 rounded-2xl font-black uppercase text-[10px] tracking-wider text-slate-400 hover:bg-slate-50"
-                      >
-                        {t('common.cancel')}
-                      </Button>
-                      <Button
-                        onClick={handleAddPayment}
-                        disabled={saving || isIncomeBlockedForPatient || (formData.type === 'Income' && parseAmountInput(formData.amount) > selectedPatientDebt)}
-                        className="flex-1 h-12 rounded-2xl bg-slate-950 hover:bg-slate-900 text-white font-black uppercase text-xs tracking-wider border-none relative overflow-hidden group shadow-lg"
-                      >
-                        <span className="relative z-10 transition-transform group-hover:scale-105 block">
-                          {saving 
-                            ? t('common.loading') 
-                            : formData.type === 'Income' 
-                              ? (language === 'uz' ? "To'lash" : language === 'ru' ? "Оплатить" : "Pay") 
-                              : t('common.save')}
-                        </span>
-                        <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                      </Button>
-                    </div>
+                  </div>
 
+                  <div className="payment-add-footer">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddModal(false)}
+                      className="payment-add-footer-cancel"
+                    >
+                      {t('common.cancel')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddPayment}
+                      disabled={saving || isIncomeBlockedForPatient || (formData.type === 'Income' && parseAmountInput(formData.amount) > selectedPatientDebt)}
+                      className="payment-add-footer-cta"
+                    >
+                      {saving
+                        ? t('common.loading')
+                        : formData.type === 'Income'
+                          ? t('payments.submitPay')
+                          : t('common.save')}
+                    </button>
                   </div>
                 </>
               );

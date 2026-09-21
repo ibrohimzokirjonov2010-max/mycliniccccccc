@@ -259,7 +259,17 @@ function App() {
             <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <AuthenticatedApp />
             </Router>
-            <Toaster richColors closeButton position="top-right" duration={3000} expand={false} />
+            <Toaster
+              richColors
+              closeButton
+              position="top-right"
+              duration={3000}
+              expand={false}
+              style={{ zIndex: 90 }}
+              toastOptions={{
+                className: 'payment-toast-behind-modal',
+              }}
+            />
           </QueryClientProvider>
         </ClinicProvider>
       </AuthProvider>

@@ -6,6 +6,13 @@ import { useAuth } from '@/lib/AuthContext';
 
 const REMINDER_INTERVAL_MS = 20 * 60 * 1000; // 20 daqiqa
 
+const isBlockingModalOpen = () => {
+  if (typeof document === 'undefined') return false;
+  return Boolean(
+    document.querySelector('[data-radix-dialog-content], [role="dialog"][data-state="open"]')
+  );
+};
+
 /**
  * ImplantAlerter Component
  * Background worker that checks for incomplete implant records (from new patient wizard or treatments)
@@ -31,6 +38,8 @@ export default function ImplantAlerter() {
       );
 
       if (incompleteList.length > 0) {
+        if (isBlockingModalOpen()) return;
+
         const top = incompleteList[0];
         const toothNum = top.tooth_number || (top.tooth_numbers && top.tooth_numbers[0]) || '';
         const toothText = toothNum ? ` (Tish #${toothNum})` : '';

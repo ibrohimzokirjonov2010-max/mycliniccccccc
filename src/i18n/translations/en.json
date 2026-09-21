@@ -1180,7 +1180,14 @@
       "Transfer": "Transfer",
       "Click": "Click",
       "Payme": "Payme"
-    }
+    },
+    "submitPay": "Pay",
+    "patientDebt": "Patient debt",
+    "fillDebt": "Full debt",
+    "formErrorFill": "Please enter the patient and payment amount",
+    "formErrorAmount": "Please enter a payment amount",
+    "formErrorNoDebt": "This patient has no debt. An incoming payment cannot be recorded.",
+    "formErrorOverDebt": "Amount exceeds the patient's debt. Maximum: {amount} sum"
   },
   "receipt": {
     "title": "Receipt",

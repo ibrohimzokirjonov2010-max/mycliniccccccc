@@ -1269,7 +1269,14 @@
       "Transfer": "Перевод",
       "Click": "Click",
       "Payme": "Payme"
-    }
+    },
+    "submitPay": "Оплатить",
+    "patientDebt": "Долг пациента",
+    "fillDebt": "Весь долг",
+    "formErrorFill": "Укажите пациента и сумму платежа",
+    "formErrorAmount": "Укажите сумму платежа",
+    "formErrorNoDebt": "У этого пациента нет долга. Входящий платёж принять нельзя.",
+    "formErrorOverDebt": "Сумма больше долга пациента. Максимум: {amount} сум"
   },
   "receipt": {
     "title": "Чек",

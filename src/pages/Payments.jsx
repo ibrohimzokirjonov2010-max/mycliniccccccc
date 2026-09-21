@@ -12,7 +12,7 @@ import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,6 +27,19 @@ import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel, 
 import { toast } from 'sonner';
 import { formatPhone } from '@/lib/utils';
 import { format } from 'date-fns';
+import '@/components/payments/paymentAddModal.css';
+
+const PAYMENT_ADD_MARKER = 'payment-add-teal-v1-0d9488';
+const PAYMENT_QUICK_AMOUNTS = [50000, 100000, 500000, 1000000];
+const paymentAddDialogStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 0,
+  padding: 0,
+  paddingBottom: 0,
+  overflow: 'hidden',
+  maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 12px)',
+};
 
 const formatPhoneSingleLine = (phone) => {
   if (!phone) return '—';
@@ -172,6 +185,7 @@ export default function Payments() {
   const [loadingMore, setLoadingMore] = useState(false);
   const loadingTimerRef = useRef(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [formError, setFormError] = useState('');
   const [newPatientOpen, setNewPatientOpen] = useState(false);
 
   // Excel filter, sort & density states
@@ -353,6 +367,7 @@ export default function Payments() {
       });
 
       setModalOpen(true);
+      toast.dismiss('implant-incomplete-notification');
 
       // Clean up history state so page refresh doesn't reopen modal endlessly
       window.history.replaceState({}, document.title);
@@ -837,6 +852,7 @@ export default function Payments() {
     setSaving(false);
     setRealPatientDebt(null);
     setLoadingDebt(false);
+    setFormError('');
 
     // Forma va boshqa state larni async tozalash (UI block qilmasin)
     setTimeout(() => {
@@ -866,7 +882,7 @@ export default function Payments() {
 
   const handleSave = async () => {
     if (!form.patient_id || !form.amount || Number(form.amount) === 0) {
-      toast.error('Iltimos, barcha maydonlarni to\'ldiring');
+      setFormError(t('payments.formErrorFill'));
       return;
     }
 
@@ -875,11 +891,11 @@ export default function Payments() {
     const currentAmount = Number(form.amount) || 0;
     if (isIncomeType && !loadingDebt && realPatientDebt !== null) {
       if (realPatientDebt === 0) {
-        toast.error('Bu bemorning qarzi yo\'q. Kirim to\'lov qilib bo\'lmaydi!');
+        setFormError(t('payments.formErrorNoDebt'));
         return;
       }
       if (currentAmount > realPatientDebt) {
-        toast.error('Kiritilgan summa bemor qarzidan ko\'p! Maksimal: ' + realPatientDebt.toLocaleString() + ' UZS');
+        setFormError(t('payments.formErrorOverDebt', { amount: realPatientDebt.toLocaleString() }));
         return;
       }
     }
@@ -1029,7 +1045,7 @@ export default function Payments() {
 
     } catch (error) {
       console.error('Payment Save error:', error);
-      toast.error(error.message || 'Saqlashda xatolik yuz berdi. Iltimos qaytadan urunib ko\'ring.');
+      setFormError(error.message || t('common.errorSave'));
       setSaving(false);
     }
   };
@@ -1949,7 +1965,11 @@ export default function Payments() {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => setModalOpen(true)}
+            onClick={() => {
+              toast.dismiss('implant-incomplete-notification');
+              setFormError('');
+              setModalOpen(true);
+            }}
             className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[11px] font-black uppercase tracking-wider shadow-md transition-all border-none"
           >
             <Plus className="w-4 h-4 text-[#1499AD]" />
@@ -2504,14 +2524,51 @@ export default function Payments() {
       )}
 
       {/* Enhanced Multi-step Payment Modal */}
-      <Dialog open={modalOpen} onOpenChange={(open) => !open && resetModal()}>
-        <DialogContent className="max-w-xl p-0 overflow-hidden rounded-[2rem] border-none shadow-3xl">
-          <div className="premium-bg-gradient px-8 py-5 text-white relative">
-            <h2 className="text-xl font-[900] tracking-tighter uppercase mb-0.5">{t('payments.addNew')}</h2>
-            <p className="text-[10px] font-black text-white/50 tracking-[0.3em] uppercase">{t('payments.receiveAmount') || "Mablag' qabul qilish"}</p>
-          </div>
+      <Dialog open={modalOpen} onOpenChange={(open) => {
+        if (!open) resetModal();
+        else {
+          toast.dismiss('implant-incomplete-notification');
+          setFormError('');
+        }
+      }}>
+        <DialogContent
+          className="payment-add-dialog !flex !flex-col !p-0 !gap-0 w-[95vw] !max-w-xl overflow-hidden border border-[#e5e7eb] shadow-2xl"
+          style={paymentAddDialogStyle}
+          data-payment-add={PAYMENT_ADD_MARKER}
+          aria-describedby={undefined}
+        >
+          <DialogHeader className="shrink-0 space-y-0">
+            <div className="payment-add-header">
+              <div className="payment-add-header-titles">
+                <DialogTitle className="payment-add-header-title">{t('payments.addNew')}</DialogTitle>
+                <p className="payment-add-header-sub">{t('payments.receiveAmount') || "Mablag' qabul qilish"}</p>
+              </div>
+              <button
+                type="button"
+                onClick={resetModal}
+                className="payment-add-close compact-hit"
+                aria-label={t('common.close')}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </DialogHeader>
 
-          <div className="p-5 bg-white max-h-[65vh] overflow-y-auto no-scrollbar">
+          {formError ? (
+            <div className="payment-add-banner" role="alert">
+              <p>{formError}</p>
+              <button
+                type="button"
+                className="payment-add-banner-dismiss compact-hit"
+                onClick={() => setFormError('')}
+                aria-label={t('common.close')}
+              >
+                ×
+              </button>
+            </div>
+          ) : null}
+
+          <div className="payment-add-body no-scrollbar">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-3">
                    <div className="space-y-1.5 relative z-50">
@@ -2519,7 +2576,7 @@ export default function Payments() {
                         <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('patients.title')}</Label>
                         <button 
                           onClick={() => setNewPatientOpen(true)}
-                          className="text-[9px] font-black text-[#1499AD] uppercase tracking-widest hover:underline"
+                          className="text-[9px] font-black text-[#0d9488] uppercase tracking-widest hover:underline"
                         >
                           + {t('patients.addNew')}
                         </button>
@@ -2561,7 +2618,7 @@ export default function Payments() {
                    {patientPlans && patientPlans.length > 0 && (
                       <div className="space-y-1.5 pt-2.5 border-t border-slate-100/85 relative z-20">
                         <div className="flex items-center justify-between ml-1">
-                          <Label className="text-[9px] font-black text-[#1499AD] uppercase tracking-widest flex items-center gap-1.5">
+                          <Label className="text-[9px] font-black text-[#0d9488] uppercase tracking-widest flex items-center gap-1.5">
                             <Receipt className="w-3 h-3" /> {t('patientProfile.tabs.treatments') || 'Davolash rejalari'}
                           </Label>
                           {patientPlans.length > 2 && (
@@ -2605,7 +2662,7 @@ export default function Payments() {
                                   <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); setSelectedPlanForInvoice(plan); setShowPlanInvoiceModal(true); }}
-                                    className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 border border-blue-100 text-blue-600 text-[9px] font-black uppercase tracking-wide hover:bg-blue-100 active:scale-95 transition-all"
+                                    className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md bg-teal-50 border border-teal-100 text-[#0d9488] text-[9px] font-black uppercase tracking-wide hover:bg-teal-100 active:scale-95 transition-all"
                                   >
                                     <FileText className="w-2.5 h-2.5" />
                                     {t('common.invoice') || 'Faktura'}
@@ -2630,7 +2687,7 @@ export default function Payments() {
                              <SelectTrigger className="h-11 rounded-xl border-none bg-slate-50 px-4 font-black text-slate-900 text-sm focus:ring-0">
                                <SelectValue placeholder={t('payments.doctor') || "Shifokor"} />
                              </SelectTrigger>
-                             <SelectContent className="rounded-xl border-none shadow-2xl p-1">
+                             <SelectContent className="rounded-xl border-none shadow-2xl p-1 z-[110]">
                                {doctors.map(d => (
                                  <SelectItem key={d.id} value={String(d.id)} className="rounded-xl py-2 font-black text-xs uppercase tracking-widest">
                                    {d.name || d.full_name}
@@ -2654,7 +2711,7 @@ export default function Payments() {
                              <SelectTrigger className="h-11 rounded-xl border-none bg-slate-50 px-4 font-black text-slate-900 text-sm focus:ring-0">
                                <SelectValue placeholder={t('payments.method') || "Usuli"} />
                              </SelectTrigger>
-                             <SelectContent className="rounded-xl border-none shadow-2xl">
+                             <SelectContent className="rounded-xl border-none shadow-2xl z-[110]">
                                <SelectItem value="Cash" className="font-bold py-2">{t('payments.methods.Cash') || "Naqd pul"}</SelectItem>
                                <SelectItem value="Card" className="font-bold py-2">{t('payments.methods.Card') || "Plastik karta"}</SelectItem>
                                <SelectItem value="Click" className="font-bold py-2">Click</SelectItem>
@@ -2688,6 +2745,7 @@ export default function Payments() {
                          onChange={e => {
                            // Faqat raqamlarni qabul qilamiz, ajratgichlarni olib tashlaymiz
                            const raw = e.target.value.replace(/\s/g, '').replace(/,/g, '').replace(/\./g, '').replace(/'/g, '');
+                           setFormError('');
                            if (raw === '' || raw === '0') {
                              setForm({ ...form, amount: '' });
                            } else if (/^\d+$/.test(raw)) {
@@ -2701,10 +2759,35 @@ export default function Payments() {
                            }
                          }}
                          onWheel={e => e.target.blur()} // Scroll bilan o'zgarishni bloklash
-                         className="w-full h-14 rounded-xl border-none bg-slate-50 px-5 pr-16 font-[900] text-2xl text-emerald-600 placeholder:text-slate-300 focus:ring-0 outline-none text-center tracking-wider"
+                         className="w-full h-14 rounded-xl border-none bg-slate-50 px-5 pr-16 font-[900] text-2xl text-[#0d9488] placeholder:text-slate-300 focus:ring-0 outline-none text-center tracking-wider"
                          placeholder="Summa"
                        />
                        <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-slate-300 text-sm uppercase">UZS</span>
+                     </div>
+                     <div className="payment-add-chips" data-payment-quick-chips="true">
+                       {PAYMENT_QUICK_AMOUNTS.map(val => (
+                         <button
+                           key={val}
+                           type="button"
+                           onClick={() => {
+                             setFormError('');
+                             setForm(prev => ({ ...prev, amount: (Number(prev.amount) || 0) + val }));
+                           }}
+                           className="payment-add-chip compact-hit"
+                         >
+                           +{val.toLocaleString()}
+                         </button>
+                       ))}
+                       <button
+                         type="button"
+                         onClick={() => {
+                           setFormError('');
+                           setForm(prev => ({ ...prev, amount: '' }));
+                         }}
+                         className="payment-add-chip is-clear compact-hit"
+                       >
+                         {t('common.clear')}
+                       </button>
                      </div>
                      {form.patient_id && (() => {
                         const debt = realPatientDebt !== null ? realPatientDebt : (Number(patients.find(p => p.id === form.patient_id)?.total_debt) || 0);
@@ -2725,14 +2808,8 @@ export default function Payments() {
                                     <button
                                       type="button"
                                       onClick={() => {
+                                        setFormError('');
                                         setForm(prev => ({ ...prev, amount: debt }));
-                                        toast.success(
-                                          language === 'ru' 
-                                            ? `Сумма долга (${debt.toLocaleString()} UZS) введена` 
-                                            : language === 'en' 
-                                            ? `Debt amount (${debt.toLocaleString()} UZS) entered` 
-                                            : `Qarz summasi (${debt.toLocaleString()} UZS) kiritildi`
-                                        );
                                       }}
                                       className="text-[9px] font-black text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1 rounded-md border border-emerald-300 transition-colors uppercase tracking-wider cursor-pointer active:scale-95 shadow-xs"
                                     >
@@ -2875,42 +2952,35 @@ export default function Payments() {
              </div>
           </div>
 
-          {/* Premium Footer */}
-          <div className="px-6 py-4 bg-slate-100/30 border-t border-slate-50 flex items-center justify-between">
-            <div className="flex flex-col">
-               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('common.totalSum') || 'Jami Summa'}</span>
-               <span className="text-lg font-[900] text-slate-900">{form.amount ? Number(form.amount).toLocaleString() : '—'} <span className="text-xs text-slate-300 font-black">UZS</span></span>
+          <div className="payment-add-footer">
+            <div className="payment-add-footer-sum">
+              <span className="payment-add-footer-sum-label">{t('common.totalSum') || 'Jami Summa'}</span>
+              <span className="payment-add-footer-sum-value">
+                {form.amount ? Number(form.amount).toLocaleString() : '—'}
+                <span className="text-xs font-bold text-teal-700"> UZS</span>
+              </span>
             </div>
-            
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={resetModal}
-                className="text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-all"
-              >
-                {t('common.cancel')}
-              </button>
-              <Button 
-                onClick={handleSave} 
-                disabled={saving || !form.amount || Number(form.amount) === 0 || !form.patient_id || (
-                  // Qarz yo'q bemorga Income to'lov bloklash — faqat hisoblash tugaganda
-                  !loadingDebt &&
-                  realPatientDebt !== null &&
-                  form.patient_id &&
-                  (form.type || 'Income').toLowerCase() === 'income' &&
-                  (realPatientDebt === 0 || Number(form.amount) > realPatientDebt)
-                )} 
-                className="h-11 px-8 rounded-xl premium-bg-gradient hover:opacity-90 text-white font-[900] uppercase text-[11px] tracking-widest shadow-xl shadow-[#1499AD]/30 border-none transition-all active:scale-95 flex items-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {saving ? (
-                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <Wallet className="w-4 h-4" />
-                    {t('common.save')}
-                  </>
-                )}
-              </Button>
-            </div>
+            <button
+              type="button"
+              onClick={resetModal}
+              className="payment-add-footer-cancel"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !form.amount || Number(form.amount) === 0 || !form.patient_id || (
+                !loadingDebt &&
+                realPatientDebt !== null &&
+                form.patient_id &&
+                (form.type || 'Income').toLowerCase() === 'income' &&
+                (realPatientDebt === 0 || Number(form.amount) > realPatientDebt)
+              )}
+              className="payment-add-footer-cta"
+            >
+              {saving ? t('common.loading') : t('payments.submitPay')}
+            </button>
           </div>
         </DialogContent>
       </Dialog>

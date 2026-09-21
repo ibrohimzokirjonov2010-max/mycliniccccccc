@@ -13,6 +13,20 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 💳 Yangi to'lov modal — toast overlay + sticky footer (390px)
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/payments/paymentAddModal.css`](src/components/payments/paymentAddModal.css)
+  - [`src/pages/MobilePaymentsV2.jsx`](src/pages/MobilePaymentsV2.jsx)
+  - [`src/pages/Payments.jsx`](src/pages/Payments.jsx)
+  - [`src/index.css`](src/index.css)
+  - [`src/App.jsx`](src/App.jsx)
+  - [`src/components/notifications/ImplantAlerter.jsx`](src/components/notifications/ImplantAlerter.jsx)
+- **Muammo Tavsifi:** Mobil YANGI TO'LOV oynasida sariq "Implant ma'lumotlarini kiritish kerak" toast modal ustiga chiqib +50 000 chip-larini bosib qolgan. Bekor qilish / To'lash footer skroll ichida edi — telefonda pastga tushmasdan to'lab bo'lmasdi.
+- **Sababi:** Sonner toaster default z-index (~999999999) dialog overlay (`z-[100]`) dan yuqori; action tugmalari `overflow-y-auto` body ichida edi.
+- **Qanday tuzatildi:** Toaster dialog ochiq bo'lganda `z-index: 40` (overlay orqasida). ImplantAlerter modal ochiq bo'lsa toast chiqarmaydi. Validatsiya inline banner (header ostida). Sticky footer 44px teng Bekor qilish / To'lash. Teal `#0d9488`, chip-lar har doim skrollda.
+- **Qaytalamaslik choralari:** Sonner toaster ni dialog `z-[100]` dan yuqoriga ko'tarmang. To'lov CTA ni `overflow-y-auto` body ichiga qaytarmang — `.payment-add-footer` `flex-shrink: 0`. Marker `payment-add-teal-v1-0d9488`. Validatsiyada `alert()` va modal-ustidagi toast qaytarmang. Indigo/purple CTA yo'q. `node scripts/assert-payment-add-modal.mjs` o'tsin.
+
 ### 🦷 Yangi implant wizard — clinic-grade mobile polish
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**

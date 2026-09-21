@@ -1273,7 +1273,14 @@
       "Transfer": "O'tkazma",
       "Click": "Click",
       "Payme": "Payme"
-    }
+    },
+    "submitPay": "To'lash",
+    "patientDebt": "Bemor qarzi",
+    "fillDebt": "Jami qarz",
+    "formErrorFill": "Iltimos, bemor va to'lov summasini kiriting",
+    "formErrorAmount": "Iltimos, to'lov summasini kiriting",
+    "formErrorNoDebt": "Bu bemorda qarz yo'q. Kirim to'lov qilib bo'lmaydi.",
+    "formErrorOverDebt": "Kiritilgan summa bemor qarzidan ko'p. Maksimal: {amount} so'm"
   },
   "receipt": {
     "title": "Chek",
