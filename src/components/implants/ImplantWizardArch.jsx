@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getToothIllustrationSrc } from '@/utils/toothIllustration';
 
 const UPPER_FDI = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
 const LOWER_FDI = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
@@ -32,14 +33,15 @@ function WizardTooth({ fdi, selected, onClick, numberPosition }) {
             : 'bg-[#f4efe6] border-[#e4d9c8] text-[#c4b8a4] group-hover:border-[#0d9488]/50 group-hover:bg-[#f0fdfa]'
         )}
       >
-        {selected ? (
-          <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
-        ) : (
-          <svg viewBox="0 0 20 22" className="w-3.5 h-4" fill="none" aria-hidden>
-            <path d="M5 8.5c0-3 2.2-5 5-5s5 2 5 5c0 1.6-.6 3.2-1.4 4.2-.5.6-1.4.8-3.6.8s-3.1-.2-3.6-.8C5.6 11.7 5 10.1 5 8.5Z" fill="currentColor" opacity="0.55" />
-            <path d="M7.2 13.2 6.6 18c0 .7 1.4.9 1.7.2L10 13.2M10 13.2l1.7 5c.3.7 1.7.5 1.7-.2l-.6-4.8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" opacity="0.5" />
-          </svg>
+        {selected && (
+          <Check className="absolute top-0.5 right-0.5 z-10 w-2.5 h-2.5 text-white drop-shadow" strokeWidth={3} />
         )}
+        <img
+          src={getToothIllustrationSrc(fdi, selected ? 'implant' : 'healthy')}
+          alt=""
+          draggable={false}
+          className="w-[22px] h-[28px] object-contain pointer-events-none"
+        />
       </span>
       {numberPosition === 'bottom' && (
         <span className={cn(

@@ -110,7 +110,8 @@ export default defineConfig({
       manifest: false, // manifest.json allaqachon public/ da bor
       workbox: {
         // Asosiy sahifalarni cache qilish strategiyasi
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,svg,woff,woff2}'],
+        globIgnores: ['**/teeth/**'],
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
@@ -143,7 +144,7 @@ export default defineConfig({
             urlPattern: /\.(?:png|jpg|jpeg|svg|webp|gif)$/,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'images-cache',
+              cacheName: 'images-cache-v2-dizyner-teeth',
               expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 }
             }
           },

@@ -22,6 +22,7 @@ import ImplantForm from '../components/implants/ImplantForm';
 import MobileCompactOdontogram, {
   fdiToInternalId,
 } from '../components/patients/MobileCompactOdontogram';
+import { matchIllustrationKind } from '@/utils/toothIllustration';
 
 const TEAL = '#14b8a6';
 const TEAL_DARK = '#0d9488';
@@ -107,6 +108,7 @@ const inferStatus = (text) => {
   if (/implant/.test(s)) return 'implant';
   if (/crown|toj|karonka|koronka/.test(s)) return 'crown';
   if (/extract|sug['']ur|olingan|missing|yo['']q/.test(s)) return 'extracted';
+  if (/endo|kanal|pulpit|endodont/.test(s)) return 'in_progress';
   if (/plomba|filling|kompozit|davolangan/.test(s)) return 'completed';
   if (/karies|caries|kariyes|cavity/.test(s)) return 'caries';
   if (/jarayonda|progress/.test(s)) return 'in_progress';
@@ -293,7 +295,7 @@ export default function MobilePatientProfile() {
       fdi.split(',').map(s => s.trim()).filter(Boolean).forEach((token) => {
         const id = fdiToInternalId(token);
         if (!id) return;
-        const next = { status, fdi: token, ...extra };
+        const next = { status, fdi: token, illustrationKind: extra.illustrationKind, ...extra };
         const prev = map[id];
         const rank = { extracted: 6, implant: 5, crown: 4, completed: 3, caries: 2, in_progress: 1, planned: 0 };
         if (!prev || (rank[status] || 0) >= (rank[prev.status] || 0)) {
@@ -304,8 +306,9 @@ export default function MobilePatientProfile() {
     };
 
     (toothRecords || []).forEach((r) => {
-      const st = inferStatus(`${r.condition || ''} ${r.treatment || ''} ${r.status || ''} ${r.notes || ''}`) || (r.status && STATUS_LABEL_KEY[r.status] ? r.status : null);
-      if (st) assign(r.tooth_number, st, { diagnosis: r.condition || r.treatment });
+      const blob = `${r.condition || ''} ${r.treatment || ''} ${r.status || ''} ${r.notes || ''}`;
+      const st = inferStatus(blob) || (r.status && STATUS_LABEL_KEY[r.status] ? r.status : null);
+      if (st) assign(r.tooth_number, st, { diagnosis: r.condition || r.treatment, illustrationKind: matchIllustrationKind(blob) || undefined });
     });
 
     (plans || []).forEach((plan) => {
@@ -313,11 +316,12 @@ export default function MobilePatientProfile() {
       const planTooth = String(plan.tooth_number || '').trim();
       const items = planServices.length
         ? planServices
-        : (planTooth ? [{ service_name: plan.name, status: plan.status, tooth_number: planTooth }] : []);
+        : (planTooth ? [{ service_name: plan.name, status: plan.status, tooth_number: planTooth, category: plan.category }] : []);
       items.forEach((svc) => {
         const fdi = svc.tooth_number || svc.tooth_id || planTooth;
-        const st = inferStatus(`${svc.service_name || ''} ${svc.name || ''} ${plan.name || ''} ${svc.status || ''} ${plan.status || ''}`);
-        if (st && fdi) assign(fdi, st, { diagnosis: svc.service_name || plan.name });
+        const blob = `${svc.service_name || ''} ${svc.name || ''} ${plan.name || ''} ${svc.status || ''} ${plan.status || ''} ${svc.category || ''} ${plan.category || ''}`;
+        const st = inferStatus(blob);
+        if (st && fdi) assign(fdi, st, { diagnosis: svc.service_name || plan.name, illustrationKind: matchIllustrationKind(blob, svc.category || plan.category) || undefined });
       });
     });
 

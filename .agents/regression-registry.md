@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Odontogramma — Dizyner Tish PNG va ENDO mapping
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/utils/toothIllustration.js`](src/utils/toothIllustration.js)
+  - [`src/components/patients/ProfessionalOdontogram.jsx`](src/components/patients/ProfessionalOdontogram.jsx)
+  - [`src/components/treatments/TreatmentPlanModal.jsx`](src/components/treatments/TreatmentPlanModal.jsx)
+  - [`public/teeth/`](public/teeth/)
+- **Muammo Tavsifi:** Chairside/odontogramma cliniccards PNG yo'llariga qaram edi, fayllar repo da yo'q edi. ENDO xizmati tanlanganda tish rasmi o'zgarmasdi.
+- **Sababi:** `/teeth/cliniccards/*_root.png` assetlari yo'q; holat faqat SVG overlay bilan ko'rsatilgan.
+- **Qanday tuzatildi:** Dizyner Tish to'plamlari `public/teeth/{endo,caries,implant,plomba,shtift,breket,metal-keramika,sirkon}/{fdi}.png` ga qo'yildi. ENDO (kanal davolash / ENDODONTIYA) tanlanganda shu FDI uchun `endo` rasmi chiqadi. `TERAPIYA (ENDO + PLOMBA)` kategoriyasi yolg'iz endo deb olinmaydi.
+- **Qaytalamaslik choralari:** FDI-nomli Dizyner PNG larni `scaleX(-1)` qilmang — 11–48 allaqachon to'g'ri tomon. `TERAPIYA (ENDO + PLOMBA)` ni `ENDODONTIYA` bilan adashtirmang. PWA precache ga `public/teeth/**` ni qo'shmang (≈27MB). Tish tanlash/saqlash API (`tooth_number`, internal `ur1` id) ni o'zgartirmang.
+
 ### 🦷 Yangi implant Step 2 — live bundle eski UI ni ko'rsatgan
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**

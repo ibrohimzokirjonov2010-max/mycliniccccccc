@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { getToothIllustrationSrc } from '@/utils/toothIllustration';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -250,7 +251,7 @@ export default function PatientXraysOdontogram({ patientId }) {
           title={`${fdi}-tish — bosib rentgen ko'ring yoki yuklang`}
         >
           <img
-            src={`/teeth/${src}.png`}
+            src={getToothIllustrationSrc(fdi, 'healthy') || `/teeth/${src}.png`}
             alt={`Tish ${fdi}`}
             className="w-6 h-8 sm:w-8 sm:h-10 object-contain pointer-events-none"
             draggable={false}
@@ -374,7 +375,7 @@ export default function PatientXraysOdontogram({ patientId }) {
           <div className="flex items-center justify-between px-4 py-3 bg-cyan-50 border-b border-cyan-200">
             <div className="flex items-center gap-3">
               <img
-                src={`/teeth/${activeTooth.src}.png`}
+                src={getToothIllustrationSrc(activeTooth.fdi, 'healthy') || `/teeth/${activeTooth.src}.png`}
                 alt={`Tish ${activeTooth.fdi}`}
                 className="w-8 h-10 object-contain"
               />

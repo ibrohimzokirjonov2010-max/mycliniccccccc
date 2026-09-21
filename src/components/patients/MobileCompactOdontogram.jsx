@@ -1,5 +1,6 @@
 import { memo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { getToothIllustrationSrcFromStatus } from '@/utils/toothIllustration';
 
 export const FDI_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
 export const FDI_LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
@@ -44,32 +45,42 @@ export function internalIdToFdi(id) {
   return `${qMap[quad]}${num}`;
 }
 
-const ToothPill = memo(function ToothPill({ fdi, selected, statusKey, onSelect }) {
+const ToothPill = memo(function ToothPill({ fdi, selected, statusKey, toothStatus, onSelect }) {
   const pip = statusKey && statusKey !== 'healthy' ? STATUS_PIP[statusKey] : null;
+  const imgSrc = getToothIllustrationSrcFromStatus(fdi, toothStatus || { status: statusKey || 'healthy' });
   return (
     <button
       type="button"
       onClick={() => onSelect(fdi)}
       aria-pressed={selected}
       aria-label={`FDI ${fdi}`}
-      style={{ width: 34, minWidth: 34, height: 48, minHeight: 48, pointerEvents: 'auto' }}
+      style={{ width: 34, minWidth: 34, height: 52, minHeight: 52, pointerEvents: 'auto' }}
       className={cn(
-        'odontogram-tooth relative z-10 flex items-center justify-center shrink-0 rounded-full text-[11px] font-black tabular-nums leading-none transition-transform active:scale-90 touch-manipulation',
+        'odontogram-tooth relative z-10 flex flex-col items-center justify-end shrink-0 rounded-2xl text-[10px] font-black tabular-nums leading-none transition-transform active:scale-90 touch-manipulation overflow-hidden',
         selected
           ? 'bg-[#14b8a6] text-white shadow-[0_4px_10px_rgba(20,184,166,0.35)] z-20'
           : 'bg-white text-slate-600 border border-slate-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
       )}
     >
+      {imgSrc && (
+        <img
+          src={imgSrc}
+          alt=""
+          draggable={false}
+          className="absolute inset-x-0 top-0 h-[34px] w-full object-contain pointer-events-none"
+          style={{ filter: selected ? 'brightness(1.05)' : undefined }}
+        />
+      )}
       {selected && (
-        <span className="absolute top-[4px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white/95" />
+        <span className="absolute top-[3px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white/95 z-10" />
       )}
       {!selected && pip && (
         <span
-          className="absolute top-[4px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full"
+          className="absolute top-[3px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full z-10"
           style={{ backgroundColor: pip }}
         />
       )}
-      <span className={selected ? 'mt-0.5' : ''}>{fdi}</span>
+      <span className="relative z-10 mt-auto mb-1">{fdi}</span>
     </button>
   );
 });
@@ -102,6 +113,7 @@ export default function MobileCompactOdontogram({
             fdi={fdi}
             selected={String(selectedFdi) === String(fdi)}
             statusKey={st?.status}
+            toothStatus={st}
             onSelect={handleSelect}
           />
         );
@@ -118,6 +130,7 @@ export default function MobileCompactOdontogram({
             fdi={fdi}
             selected={String(selectedFdi) === String(fdi)}
             statusKey={st?.status}
+            toothStatus={st}
             onSelect={handleSelect}
           />
         );

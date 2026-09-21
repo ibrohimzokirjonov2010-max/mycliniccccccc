@@ -15,6 +15,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Tooth, ImplantIcon, XrayIcon } from '@/components/ui/Icons';
 import { cn, resolveDoctorId } from '@/lib/utils';
+import { pickIllustrationKindFromServices, matchIllustrationKind } from '@/utils/toothIllustration';
 import {
   bootstrapTelegramBotConfig,
   getEnvBotUsername,
@@ -1432,10 +1433,19 @@ export default function PatientProfile() {
       else if (anyCompleted) derivedStatus = 'completed';
       else if (anyInProgress) derivedStatus = 'in_progress';
 
+      const illustrationKind = pickIllustrationKindFromServices(
+        items.map((it) => ({
+          service_name: it.service.service_name || it.service.name || it.plan.name || it.plan.title,
+          category: it.service.category || it.plan.category,
+        })),
+        { preferLast: false }
+      );
+
       toothStatusMap[toothId] = {
         status: derivedStatus,
         isExtracted: hasExtractionSvc,
         hasImplant: hasImplantSvc,
+        illustrationKind: illustrationKind || undefined,
         condition: conditionsList[0] || null,
         conditions: conditionsList,
         treatment: treatmentsList[0] || 'Davolangan',
@@ -1457,6 +1467,7 @@ export default function PatientProfile() {
         if (!internalId) return;
         toothStatusMap[internalId] = {
           status: 'implant',
+          illustrationKind: 'implant',
           condition: null,
           treatment: 'Implant',
           serviceName: `${imp.firma || ''} Implant`,
@@ -1477,6 +1488,7 @@ export default function PatientProfile() {
       if (mappedStatus) {
         toothStatusMap[internalId] = {
           status: mappedStatus,
+          illustrationKind: matchIllustrationKind(`${rec.condition || ''} ${rec.treatment || ''}`) || undefined,
           condition: rec.condition,
           treatment: rec.treatment,
           serviceName: rec.treatment || rec.condition || 'Qayd',
@@ -1497,6 +1509,7 @@ export default function PatientProfile() {
         if (mappedStatus) {
           toothStatusMap[internalId] = {
             status: mappedStatus,
+            illustrationKind: matchIllustrationKind(`${editData.condition || ''} ${editData.treatment || ''}`) || undefined,
             condition: editData.condition,
             treatment: editData.treatment,
             serviceName: editData.treatment || editData.condition || 'Tahrirlanmoqda',

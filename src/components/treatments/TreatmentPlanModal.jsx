@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ProfessionalOdontogram from '../patients/ProfessionalOdontogram';
 import PatientSelect from '../patients/PatientSelect';
 import { cn, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
+import { pickIllustrationKindFromServices } from '@/utils/toothIllustration';
 
 const idToFdi = (idStr) => {
   if (!idStr) return '';
@@ -432,12 +433,15 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       let hasFilling = false;
       let hasCaries = false;
       let hasCrown = false;
+      let hasImplant = false;
 
       servicesList.forEach(svc => {
         const name = String(svc.service_name || svc.name || '').toLowerCase();
         if (name.includes('olish') || name.includes('sug\'urish') || name.includes('ekstraks') || name.includes('extraction')) {
           hasExtracted = true;
-        } else if (name.includes('endo') || name.includes('kanal') || name.includes('pulpit')) {
+        } else if (name.includes('implant')) {
+          hasImplant = true;
+        } else if (name.includes('endo') || name.includes('kanal') || name.includes('pulpit') || name.includes('endodont')) {
           hasCanal = true;
         } else if (name.includes('plomba') || name.includes('restavratsiya') || name.includes('vinir')) {
           hasFilling = true;
@@ -450,15 +454,22 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
 
       let statusKey = 'planned';
       if (hasExtracted) statusKey = 'extracted';
+      else if (hasImplant) statusKey = 'implant';
       else if (hasCrown) statusKey = 'crown';
-      else if (hasCanal) statusKey = 'completed';
+      else if (hasCanal) statusKey = 'in_progress';
       else if (hasFilling) statusKey = 'completed';
       else if (hasCaries) statusKey = 'caries';
 
+      // Last selected service wins so choosing ENDO immediately swaps the PNG.
+      const illustrationKind = pickIllustrationKindFromServices(servicesList, { preferLast: true });
+
       statuses[tId] = {
         status: statusKey,
+        illustrationKind: illustrationKind || undefined,
+        services: servicesList,
+        preferLastIllustration: true,
         condition: hasCaries ? 'Kariyes' : (hasCanal ? 'Pulpit' : null),
-        treatment: hasExtracted ? "Sug'urilgan" : (hasCanal ? 'Kanal' : (hasFilling ? 'Restavratsiya' : (hasCrown ? 'Toj' : 'Davolash'))),
+        treatment: hasExtracted ? "Sug'urilgan" : (hasCanal ? 'Kanal' : (hasFilling ? 'Restavratsiya' : (hasCrown ? 'Toj' : (hasImplant ? 'Implant' : 'Davolash')))),
         serviceName: servicesList.map(s => s.service_name || s.name).join(', '),
       };
     });

@@ -3,11 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
+import {
+  getToothIllustrationSrcFromStatus,
+  resolveToothIllustrationKind,
+} from '@/utils/toothIllustration';
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════╗
  * ║   PROFESSIONAL DENTAL ODONTOGRAM — FDI Notation System             ║
- * ║   Uses real cliniccards tooth images (crown + root PNGs)           ║
+ * ║   Dizyner Tish PNGs per FDI + treatment (endo/caries/implant/…)   ║
  * ║   Perfect 2x2 grid crosshair layout matching reference design      ║
  * ╚══════════════════════════════════════════════════════════════════════╝
  */
@@ -128,16 +132,23 @@ const ToothColumn = memo(function ToothColumn({
   const hasExtractedHistory = Boolean(toothStatus?.isExtracted || statusKey === 'extracted' || statusKey === 'missing');
   const isExtracted = (statusKey === 'extracted' || statusKey === 'missing') && !hasImplant;
 
-  // _root.png  = full LATERAL side view (root pointing UP in source image)
-  // _crown.png = small OCCLUSAL top-down view (the oval biting surface)
-  const lateralSrc  = `/teeth/cliniccards/${baseName}_root.png`;
+  const illustrationKind = resolveToothIllustrationKind(toothStatus);
+  const illustrationSrc = getToothIllustrationSrcFromStatus(fdi, isExtracted ? { status: 'healthy' } : toothStatus);
+  const useIllustration = Boolean(illustrationSrc);
+  const skipTreatmentOverlays = useIllustration && illustrationKind && illustrationKind !== 'healthy';
+
+  // Dizyner / healthy PNGs are full crown+root laterals, already oriented per FDI.
+  // cliniccards (crown + root split) remain a fallback if a PNG is missing.
+  const lateralSrc = illustrationSrc || `/teeth/cliniccards/${baseName}_root.png`;
   const occlusalSrc = `/teeth/cliniccards/${baseName}_crown.png`;
+  const showOcclusalView = showOcclusal && !useIllustration;
 
   // If it's a shared image (e.g. t11_21), it needs mirroring on left side.
   // Unique images (e.g. t11, t12) are mirrored horizontally to align curvature distally.
+  // Dizyner FDI-named assets must not be flipped.
   const isShared = baseName.includes('_');
-  const hFlip = isShared ? (side === 'left') : true;
-  const vFlip = isShared ? (!isUpper) : false;
+  const hFlip = useIllustration ? false : (isShared ? (side === 'left') : true);
+  const vFlip = useIllustration ? false : (isShared ? (!isUpper) : false);
 
   const lateralTransform = (() => {
     if (hFlip && vFlip) return 'scale(-1, -1)';
@@ -160,7 +171,7 @@ const ToothColumn = memo(function ToothColumn({
   else if (hovered && !isDisabled) filterStyle = `drop-shadow(0 2px 6px ${st.color}50)`;
 
   // Lateral view height (compact & balanced) and occlusal view height
-  const LATERAL_H  = compact ? 50 : 76;
+  const LATERAL_H  = useIllustration ? (compact ? 58 : 86) : (compact ? 50 : 76);
   const OCCLUSAL_H = compact ? 16 : 24;
   const scaleFactor = compact ? 0.65 : 1.0;
 
@@ -199,9 +210,19 @@ const ToothColumn = memo(function ToothColumn({
             transform,
             filter: isExtracted ? 'grayscale(1) opacity(0.25)' : (hasImplant && hasExtractedHistory ? 'grayscale(0.6) opacity(0.5)' : undefined),
           }}
+          onError={(e) => {
+            if (e.currentTarget.dataset.fallback === '1') {
+              e.currentTarget.style.visibility = 'hidden';
+              return;
+            }
+            e.currentTarget.dataset.fallback = '1';
+            if (useIllustration && !isCrown) {
+              e.currentTarget.src = `/teeth/cliniccards/${baseName}_root.png`;
+            }
+          }}
         />
-        {/* Status color overlay — skip for conditions that have dedicated SVG */}
-        {overlayStyle && !isExtracted && !hasCavity && !hasFilling && !hasCanal && !hasCalculus && !hasFissurePigment && !hasSecondaryCavity && !hasImplant && (
+        {/* Status color overlay — skip for conditions that have dedicated SVG or Dizyner PNG */}
+        {overlayStyle && !skipTreatmentOverlays && !isExtracted && !hasCavity && !hasFilling && !hasCanal && !hasCalculus && !hasFissurePigment && !hasSecondaryCavity && !hasImplant && (
           <div className="absolute inset-0 pointer-events-none" style={overlayStyle} />
         )}
         {/* PSR alert red overlay on lateral roots view */}
@@ -212,7 +233,7 @@ const ToothColumn = memo(function ToothColumn({
         {/* ═══════ 1. OCCLUSAL CROWN OVERLAYS ═══════ */}
 
         {/* Implant Hex on occlusal view */}
-        {isCrown && !isExtracted && hasImplant && (
+        {isCrown && !skipTreatmentOverlays && !isExtracted && hasImplant && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
             <circle cx="50" cy="50" r="18" fill="#f97316" fillOpacity="0.3" stroke="#ea580c" strokeWidth="2.5" />
             <polygon points="50,38 60,44 60,56 50,62 40,56 40,44" fill="#ea580c" />
@@ -220,7 +241,7 @@ const ToothColumn = memo(function ToothColumn({
         )}
 
         {/* Filling / Restoration — pink area with dark fissure lines */}
-        {isCrown && !isExtracted && hasFilling && !hasSecondaryCavity && (
+        {isCrown && !skipTreatmentOverlays && !isExtracted && hasFilling && !hasSecondaryCavity && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
             <path
               d="M 22 35 Q 50 20 78 35 Q 88 52 78 72 Q 50 88 22 72 Q 12 52 22 35 Z"
@@ -235,7 +256,7 @@ const ToothColumn = memo(function ToothColumn({
         )}
 
         {/* Secondary Cavity — filling + orange decay around the filling edge */}
-        {isCrown && !isExtracted && hasSecondaryCavity && (
+        {isCrown && !skipTreatmentOverlays && !isExtracted && hasSecondaryCavity && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
             {/* Outer orange ring — secondary decay */}
             <path
@@ -260,7 +281,7 @@ const ToothColumn = memo(function ToothColumn({
         )}
 
         {/* Cavity / Caries — dark black area (bo'shliq) */}
-        {isCrown && !isExtracted && hasCavity && !hasFilling && !hasSecondaryCavity && !hasFissurePigment && (
+        {isCrown && !skipTreatmentOverlays && !isExtracted && hasCavity && !hasFilling && !hasSecondaryCavity && !hasFissurePigment && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
             <path
               d="M 28 36 Q 50 22 72 36 Q 84 52 72 72 Q 50 86 28 72 Q 16 52 28 36 Z"
@@ -275,7 +296,7 @@ const ToothColumn = memo(function ToothColumn({
         )}
 
         {/* Fissure Pigmentation (initial caries) — brown spots in fissures */}
-        {isCrown && !isExtracted && hasFissurePigment && !hasFilling && (
+        {isCrown && !skipTreatmentOverlays && !isExtracted && hasFissurePigment && !hasFilling && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
             {/* Brown/amber fissure pigmentation spots */}
             <path d="M 34 44 Q 50 55 66 44" stroke="#92400e" strokeWidth="3.5" fill="none" strokeLinecap="round" opacity="0.8" />
@@ -287,7 +308,7 @@ const ToothColumn = memo(function ToothColumn({
         )}
 
         {/* Canal — red/pink pulp chamber center */}
-        {isCrown && !isExtracted && hasCanal && !hasCavity && (
+        {isCrown && !skipTreatmentOverlays && !isExtracted && hasCanal && !hasCavity && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
             <circle cx="50" cy="50" r="16" fill="#f43f5e" stroke="#1e293b" strokeWidth="3" />
             <circle cx="50" cy="50" r="6" fill="#1e293b" />
@@ -297,7 +318,7 @@ const ToothColumn = memo(function ToothColumn({
         {/* ═══════ 2. LATERAL ROOT & CROWN VIEW OVERLAYS ═══════ */}
 
         {/* Implant Screw on lateral root view */}
-        {!isCrown && !isExtracted && hasImplant && (
+        {!isCrown && !skipTreatmentOverlays && !isExtracted && hasImplant && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
             {/* Implant cylinder screw body */}
             <rect
@@ -320,7 +341,7 @@ const ToothColumn = memo(function ToothColumn({
         )}
 
         {/* Canal (full) — pink/red line down the full root */}
-        {!isCrown && !isExtracted && hasCanal && !isCanalPartial && (
+        {!isCrown && !skipTreatmentOverlays && !isExtracted && hasCanal && !isCanalPartial && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
             <line
               x1="50" y1={isUpper ? "10" : "90"}
@@ -341,7 +362,7 @@ const ToothColumn = memo(function ToothColumn({
         )}
 
         {/* Canal partially sealed — line goes only halfway down the root */}
-        {!isCrown && !isExtracted && hasCanal && isCanalPartial && (
+        {!isCrown && !skipTreatmentOverlays && !isExtracted && hasCanal && isCanalPartial && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
             <line
               x1="50" y1={isUpper ? "50" : "50"}
@@ -372,7 +393,7 @@ const ToothColumn = memo(function ToothColumn({
         )}
 
         {/* Filling / Crown restoration on lateral view — pink crown overlay */}
-        {!isCrown && !isExtracted && (hasFilling || isCrownRestoration) && !hasSecondaryCavity && (
+        {!isCrown && !skipTreatmentOverlays && !isExtracted && (hasFilling || isCrownRestoration) && !hasSecondaryCavity && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
             <path
               d={isUpper
@@ -389,7 +410,7 @@ const ToothColumn = memo(function ToothColumn({
         )}
 
         {/* Secondary cavity on lateral view — filling + orange decay band */}
-        {!isCrown && !isExtracted && hasSecondaryCavity && (
+        {!isCrown && !skipTreatmentOverlays && !isExtracted && hasSecondaryCavity && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
             {/* Orange decay band at margin */}
             <path
@@ -419,7 +440,7 @@ const ToothColumn = memo(function ToothColumn({
         )}
 
         {/* Cavity on lateral view — dark ellipse on crown area */}
-        {!isCrown && !isExtracted && hasCavity && !hasFilling && !hasSecondaryCavity && (
+        {!isCrown && !skipTreatmentOverlays && !isExtracted && hasCavity && !hasFilling && !hasSecondaryCavity && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
             <ellipse
               cx="50"
@@ -445,7 +466,7 @@ const ToothColumn = memo(function ToothColumn({
         )}
 
         {/* Fissure pigmentation on lateral — brown dots at crown edge */}
-        {!isCrown && !isExtracted && hasFissurePigment && !hasCavity && (
+        {!isCrown && !skipTreatmentOverlays && !isExtracted && hasFissurePigment && !hasCavity && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
             <circle cx="40" cy={isUpper ? "75" : "25"} r="5" fill="#92400e" opacity="0.45" />
             <circle cx="60" cy={isUpper ? "75" : "25"} r="5" fill="#92400e" opacity="0.45" />
@@ -454,7 +475,7 @@ const ToothColumn = memo(function ToothColumn({
         )}
 
         {/* Dental Calculus — yellow-brown deposits at gumline */}
-        {!isCrown && !isExtracted && (hasCalculus || hasPeriodontit) && (
+        {!isCrown && !skipTreatmentOverlays && !isExtracted && (hasCalculus || hasPeriodontit) && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
             {/* Irregular calculus deposits at the cervical neck */}
             <path
@@ -528,14 +549,14 @@ const ToothColumn = memo(function ToothColumn({
         /* UPPER JAW: lateral(roots up) → occlusal(oval) → number */
         <>
           <ToothImg src={lateralSrc}  alt={`#${fdi} yon`}     isCrown={false} transform={lateralTransform}  />
-          {showOcclusal && <ToothImg src={occlusalSrc} alt={`#${fdi} oklüzal`} isCrown={true}  transform={occlusalTransform} />}
+          {showOcclusalView && <ToothImg src={occlusalSrc} alt={`#${fdi} oklüzal`} isCrown={true}  transform={occlusalTransform} />}
           <div className={labelCls} style={selected ? { backgroundColor: st.color, marginTop: 2 } : { marginTop: 2 }}>{fdi}</div>
         </>
       ) : (
         /* LOWER JAW: number → occlusal(oval) → lateral(roots down) */
         <>
           <div className={labelCls} style={selected ? { backgroundColor: st.color, marginBottom: 2 } : { marginBottom: 2 }}>{fdi}</div>
-          {showOcclusal && <ToothImg src={occlusalSrc} alt={`#${fdi} oklüzal`} isCrown={true}  transform={occlusalTransform} />}
+          {showOcclusalView && <ToothImg src={occlusalSrc} alt={`#${fdi} oklüzal`} isCrown={true}  transform={occlusalTransform} />}
           <ToothImg src={lateralSrc}  alt={`#${fdi} yon`}     isCrown={false} transform={lateralTransform}  />
         </>
       )}
@@ -778,7 +799,7 @@ function ProfessionalOdontogram({
           isUpper={isUpper}
           selected={selectedTeeth.includes(tooth.id)}
           isFocused={focusedTooth === tooth.id}
-          toothStatus={toothStatuses[tooth.id]}
+          toothStatus={toothStatuses[tooth.id] || toothStatuses[String(tooth.fdi)]}
           isDisabled={disabledSet.has(String(tooth.id))}
           onClick={handleToothClick}
           isPsrAlert={isPsrAlert}
