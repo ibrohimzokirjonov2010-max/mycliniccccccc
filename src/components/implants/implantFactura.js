@@ -428,3 +428,34 @@ export function parseFacturaSnapshot(record) {
   }
   return null;
 }
+
+export function isDesktopViewport() {
+  return typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
+}
+
+let printCleanupTimer = 0;
+let printCleanupFn = null;
+
+export function printImplantFactura() {
+  if (typeof window === 'undefined' || typeof window.print !== 'function') return false;
+  const root = document.documentElement;
+  const overlay = document.querySelector('.implant-wizard-factura-overlay');
+  if (printCleanupFn) printCleanupFn();
+  const cleanup = () => {
+    root.classList.remove('printing-implant-factura', 'printing-implant-factura-overlay');
+    window.removeEventListener('afterprint', cleanup);
+    if (printCleanupTimer) {
+      window.clearTimeout(printCleanupTimer);
+      printCleanupTimer = 0;
+    }
+    printCleanupFn = null;
+  };
+  printCleanupFn = cleanup;
+  if (overlay) root.classList.add('printing-implant-factura-overlay');
+  root.classList.add('printing-implant-factura');
+  window.addEventListener('afterprint', cleanup);
+  printCleanupTimer = window.setTimeout(cleanup, 8000);
+  window.print();
+  return true;
+}
+
