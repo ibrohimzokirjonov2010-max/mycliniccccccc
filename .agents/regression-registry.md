@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant Step 3 — faktura pastda chiqishi (overlay)
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+  - [`src/components/implants/implantFactura.js`](src/components/implants/implantFactura.js)
+  - [`scripts/assert-implant-factura.mjs`](scripts/assert-implant-factura.mjs)
+- **Muammo Tavsifi:** Step 3 da to'liq faktura kartasi wizard body oxiriga tushib qolgan / `Faktura olish` `scrollIntoView` bilan pastga surgan. Foydalanuvchi fakturani footer ostidan skroll qilib topgan; overlay o'rniga uzun blok.
+- **Sababi:** `data-implant-factura-slot` ichida to'liq `ImplantWizardFactura` mount + `openFactura` `scrollIntoView`. Overlay bor edi, lekin in-page dump asosiy ko'rinishni buzgan.
+- **Qanday tuzatildi:** To'liq qog'oz faktura faqat `createPortal` overlayda. Step 3 slot tepada ixcham teaser. `Faktura olish` overlay ochadi, skroll qilmaydi. Desktop overlay + print, mobil o'qiladigan overlay. Dialog overlay ochiq bo'lganda `interactOutside` yopilmaydi.
+- **Qaytalamaslik choralari:** `openFactura` ichida `scrollIntoView` qaytarmang. To'liq `.implant-factura` ni Step 3 scroll body / footerga tashlamang — faqat `.implant-wizard-factura-overlay` (body portal, z-index ≥ 400). Slot `data-implant-factura-slot` Step 3 **yuqorisida** ixcham teaser bo'lishi mumkin. Footer `[Orqaga] [Faktura olish] [Saqlash]` twin qoidalari, `#0d9488`, 390px Orqaga `display:none` qilmang. `alert()` qaytarmang. Marker `implant-step3-factura-overlay-v2-0d9488`. `node scripts/assert-implant-factura.mjs` o'tsin. Step 3 ga Ø/L/Ncm/Lot qaytarmang.
+
 ### 🦷 Yangi implant wizard — to'g'ri ikki qator tish chizig'i
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**
@@ -20,7 +32,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
   - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
 - **Muammo Tavsifi:** Wizard tish tanlash egri/oval arkada edi. Foydalanuvchi to'g'ri ikki qator (18→28 yuqori, 48→38 past) so'radi.
 - **Qanday tuzatildi:** `data-layout="linear"`. Slotlarda `translateY`/`rotate` yo'q. Dizyner PNG o'z orientatsiyasida (yuqori ildiz yuqorida, pastki ildiz pastda) — `scaleX`/`scaleY` qo'yilmagan. FDI yorliq har tish ostida.
-- **Qaytalamaslik choralari:** Wizard chartga egri `transform` yoki `rounded-t-full` ark qaytarmang. Chairside `ProfessionalOdontogram` ni bu o'zgarish bilan burmang. FDI tartibi 18→11, 21→28 va 48→41, 31→38. `#0d9488` va step 3 faktura qolsin.
+- **Qaytalamaslik choralari:** Wizard chartga egri `transform` yoki `rounded-t-full` ark qaytarmang. Chairside `ProfessionalOdontogram` ni bu o'zgarish bilan burmang. FDI tartibi 18→11, 21→28 va 48→41, 31→38. `#0d9488` va step 3 faktura overlay qolsin.
 
 ### 🦷 Yangi implant wizard — bemor implantlari, tish paneli, o'lchovlarsiz
 - **Sana:** 2026-09-21
@@ -32,7 +44,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 - **Muammo Tavsifi:** 1-qadamda bemor tanlangach uning implantlari chiqmasdi. Tish bosilganda ma'lumot shu zahoti kiritilmasdi. 3-qadamda Ø / L / Ncm / Lot maydonlari keraksiz edi.
 - **Sababi:** Chart faqat tanlashni almashtirardi; o'lchovlar alohida qadamda edi; bemor implantlari so'ralmasdi.
 - **Qanday tuzatildi:** Bemor tanlangach ro'yxat yoki bo'sh holat «+ Yangi bemor» ostida. Tish bosilganda brend, narx, izoh va qo'shimcha xizmatlar inline ochiladi va keyingi tishlar qabul qilinadi. 3-qadam faktura, eslatma va hujjatlar. Bo'sh o'lchov maydonlari saqlash payloadidan tushiriladi, mavjud qiymatlar qoladi.
-- **Qaytalamaslik choralari:** Step 3 ga Ø/L/Ncm/Lot qaytarmang. Faktura `data-implant-factura-slot` step 3 bodyda, footer `[Orqaga] [Faktura olish] [Saqlash]`. Desktop Step 2 `.implant-wizard-teeth { width: 240px }` va marker `implant-step2-teal-v2-240px-0d9488` qolsin. CTA `#0d9488`. Mobil arkda `transform` qaytarmang. `alert()` qaytarmang. Tishni ikkinchi marta bosish tanlovni o'chirmasin — ma'lumot paneli ochiq qolsin.
+- **Qaytalamaslik choralari:** Step 3 ga Ø/L/Ncm/Lot qaytarmang. Faktura slot Step 3 **yuqorisida** ixcham teaser; to'liq karta overlayda. Footer `[Orqaga] [Faktura olish] [Saqlash]`. Desktop Step 2 `.implant-wizard-teeth { width: 240px }` va marker `implant-step2-teal-v2-240px-0d9488` qolsin. CTA `#0d9488`. Mobil arkda `transform` qaytarmang. `alert()` qaytarmang. Tishni ikkinchi marta bosish tanlovni o'chirmasin — ma'lumot paneli ochiq qolsin.
 
 ### 👤 Bemor qo'shish — shifokor majburiy
 - **Sana:** 2026-09-21
@@ -103,7 +115,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
   - [`vite.config.js`](vite.config.js)
 - **Muammo Tavsifi:** 390px wizard ishlagan, lekin klinik ilova darajasida emas: FDI 11px, header `BEMOR TANLANMAGAN` baqirgan, Step 3 Jami kichik kulrang qator, chip/tab silliqlik yetishmagan.
 - **Qanday tuzatildi:** Mobil tish tanlash 12px tabular FDI + snap-scroll + midline; toza chip; Step 3 tibbiy footer (katta teal Jami, 44px teng Faktura/Saqlash, teal border); inline xato `alert()` o'rniga; header title-case; ixcham Step 1 bemor qatori.
-- **Qaytalamaslik choralari:** Desktop Step 2 `.implant-wizard-teeth { width: 240px }` va marker `implant-step2-teal-v2-240px-0d9488` qolsin. CTA `#0d9488`. Mobil arkda `transform` qaytarmang. Step 3 **content** da `data-implant-factura-slot` (IMPLANT CENTER karta); footer faqat Jami + `Faktura olish` + `Saqlash` — kartani footerga ko‘chirmang. `alert()` qaytarmang. `data-implant-factura-card` qolsin.
+- **Qaytalamaslik choralari:** Desktop Step 2 `.implant-wizard-teeth { width: 240px }` va marker `implant-step2-teal-v2-240px-0d9488` qolsin. CTA `#0d9488`. Mobil arkda `transform` qaytarmang. Step 3 **content tepasida** `data-implant-factura-slot` (ixcham teaser); to'liq faktura overlayda. Footer faqat Jami + `Faktura olish` + `Saqlash` — kartani footerga ko‘chirmang. `alert()` qaytarmang. Overlayda `data-implant-factura-card` qolsin.
 
 ### 🦷 Yangi implant Step 3 — IMPLANT CENTER faktura
 - **Sana:** 2026-09-21
@@ -114,7 +126,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
   - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
 - **Muammo Tavsifi:** 3-qadamda faqat Ø/L/Ncm/Lot bor edi; qog'ozdagi Implant Center faktura / davolash rejasi (1-bosqich hozir, 2-bosqich 2–3 oy) chiqmasdi.
 - **Qanday tuzatildi:** Step 3 ga teal faktura kartasi qo'shildi: bemor, sana, FDI formula, brend × soni, step 2 extralar, sirkoniy/metallokeramika placeholderlar, 3 oylik eslatma. Snapshot `factura` + `notes` ichidagi `[FAKTURA_JSON]` da saqlanadi.
-- **Qaytalamaslik choralari:** Faktura UI ni alohida sahifaga chiqarmang — `ImplantForm` step 3. Indigo/purple ishlatmang (`#0d9488`). Xizmat ID/i18n kalitini chiqarmang. `body * { visibility: hidden }` ni global print CSS qilib qo'ymang (faqat `html.printing-implant-factura`). `node scripts/assert-implant-factura.mjs` o'tsin. 390px da `.implant-factura-cols` 1 ustun. Desktop Step 2 `240px` va mobil sticky footer/390px qoidalarini buzmang. Step 3 footer: `[Orqaga] [Faktura olish] [Saqlash]` — Faktura va Saqlash `.implant-wizard-twin` teng o'lcham; 390px da Orqaga `display:none` qilmang. Faktura preview saqlashsiz ochilsin (`printImplantFactura`).
+- **Qaytalamaslik choralari:** Faktura UI ni alohida sahifaga chiqarmang — `ImplantForm` step 3 overlay. Indigo/purple ishlatmang (`#0d9488`). Xizmat ID/i18n kalitini chiqarmang. `body * { visibility: hidden }` ni global print CSS qilib qo'ymang (faqat `html.printing-implant-factura`). `node scripts/assert-implant-factura.mjs` o'tsin. 390px da `.implant-factura-cols` 1 ustun. Desktop Step 2 `240px` va mobil sticky footer/390px qoidalarini buzmang. Step 3 footer: `[Orqaga] [Faktura olish] [Saqlash]` — Faktura va Saqlash `.implant-wizard-twin` teng o'lcham; 390px da Orqaga `display:none` qilmang. Faktura preview saqlashsiz overlayda ochilsin (`printImplantFactura`). `scrollIntoView` bilan wizard body ni pastga tashlamang.
 
 ### 🦷 Odontogramma — protez-syomniy / protez-implant / protez-babochka
 - **Sana:** 2026-09-21
@@ -134,7 +146,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
   - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
   - [`src/components/implants/ImplantWizardFactura.jsx`](src/components/implants/ImplantWizardFactura.jsx)
 - **Muammo Tavsifi:** 390px da tish tanlash 8+8 grid edi; mockup gorizontal scroll + hint, Step 2 chip, Step 3 full-width Saqlash / Faktura olish ni ko'rsatadi.
-- **Qaytalamaslik choralari:** Mobil odontogrammada egri `transform` qoldirmang — har ark `overflow-x: auto`. Desktop 240px chap kolonka va `#0d9488` CTA saqlansin. Step 3 footer da `Saqlash` + `Faktura olish` teng kenglikda. `data-implant-factura-slot` Step 3 **body** content (karta), footer emas. `alert()` qaytarmang.
+- **Qaytalamaslik choralari:** Mobil odontogrammada egri `transform` qoldirmang — har ark `overflow-x: auto`. Desktop 240px chap kolonka va `#0d9488` CTA saqlansin. Step 3 footer da `Saqlash` + `Faktura olish` teng kenglikda. `data-implant-factura-slot` Step 3 **body yuqorisida** (ixcham teaser), footer emas; to'liq karta overlayda. `alert()` qaytarmang.
 
 ### 🦷 Yangi implant wizard — mobile 390px unusable
 - **Sana:** 2026-09-21

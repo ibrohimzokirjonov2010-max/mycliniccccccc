@@ -1771,6 +1771,7 @@
       "placementDate": "Дата установки",
       "noServiceMatch": "Услуга не найдена",
       "factura": {
+        "kicker": "СЧЁТ",
         "title": "Счёт / план лечения",
         "date": "Дата",
         "patient": "Пациент Ф.И.О",

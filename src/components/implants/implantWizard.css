@@ -610,7 +610,7 @@
   margin-bottom: 8px;
 }
 
-/* Step 3 content mount for IMPLANT CENTER factura — not the wizard footer */
+/* Step 3 content mount for IMPLANT CENTER factura — compact teaser, not a dumped paper form */
 .implant-wizard-step3 {
   min-width: 0;
 }
@@ -619,10 +619,87 @@
   min-width: 0;
   width: 100%;
   flex: 0 0 auto;
+  order: 0;
 }
 
 .implant-wizard-factura-slot:empty {
   display: none;
+}
+
+.implant-wizard-factura-teaser {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  font: inherit;
+  background: #ffffff;
+  border: 1px solid #99f6e4;
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  color: #111827;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.implant-wizard-factura-teaser:hover {
+  border-color: #0d9488;
+  background: #f0fdfa;
+}
+
+.implant-wizard-factura-teaser-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.implant-wizard-factura-teaser-copy strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.implant-wizard-factura-teaser-copy > span:last-child {
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.implant-wizard-factura-teaser-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.implant-wizard-factura-teaser-meta strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0d9488;
+  white-space: nowrap;
+}
+
+.implant-wizard-factura-teaser-meta strong span {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f766e;
+  margin-left: 4px;
+}
+
+.implant-wizard-factura-teaser-meta em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #0f766e;
+  background: #ccfbf1;
+  border-radius: 999px;
+  padding: 3px 8px;
 }
 
 /* ---- Mobile ~390px ---- */
@@ -1100,39 +1177,92 @@
     gap: 12px;
     padding-bottom: 4px;
   }
+
+  .implant-wizard-factura-slot {
+    order: 0;
+  }
 }
 
 .implant-wizard-factura-overlay {
   position: fixed;
   inset: 0;
-  z-index: 220;
-  background: rgba(15, 23, 42, 0.45);
+  z-index: 400;
+  background: rgba(15, 23, 42, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
+  padding: 16px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .implant-wizard-factura-sheet {
-  width: min(860px, calc(100vw - 16px));
-  max-height: min(92dvh, 860px);
+  width: min(860px, calc(100vw - 24px));
+  max-height: min(90dvh, 880px);
   overflow: auto;
+  margin: auto;
   background: #fff;
   border-radius: 16px;
   padding: 12px 12px 16px;
   color: #111827;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .implant-wizard-factura-toolbar {
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+  flex-shrink: 0;
 }
 
 .implant-wizard-factura-toolbar .implant-wizard-ghost,
 .implant-wizard-factura-toolbar .implant-wizard-cta {
   flex: 1;
+}
+
+.implant-wizard-factura-sheet .implant-factura {
+  overflow: visible;
+  flex: 1 1 auto;
+  min-height: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 767px) {
+  .implant-wizard-factura-overlay {
+    align-items: stretch;
+    justify-content: center;
+    padding: 8px;
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .implant-wizard-factura-sheet {
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - 16px);
+    border-radius: 12px;
+    padding: 10px 10px 14px;
+  }
+
+  .implant-wizard-factura-teaser {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .implant-wizard-factura-teaser-meta {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 }
 
 .implant-wizard-factura-kicker {
@@ -1203,9 +1333,11 @@
     background: #fff;
     padding: 0;
     inset: auto;
+    overflow: visible;
   }
   .implant-wizard-dialog,
   .implant-wizard-factura-toolbar,
+  .implant-wizard-factura-teaser,
   .no-print {
     display: none !important;
   }

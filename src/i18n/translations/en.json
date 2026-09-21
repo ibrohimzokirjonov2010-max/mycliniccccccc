@@ -1525,6 +1525,7 @@
       "placementDate": "Placement date",
       "noServiceMatch": "No matching service",
       "factura": {
+        "kicker": "INVOICE",
         "title": "Invoice / treatment plan",
         "date": "Date",
         "patient": "Patient full name",

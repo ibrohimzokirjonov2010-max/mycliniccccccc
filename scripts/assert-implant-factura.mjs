@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   buildFacturaDocument,
   extraIdsFromFactura,
@@ -9,6 +12,7 @@ import {
   formatSom,
   printImplantFactura,
   isDesktopViewport,
+  IMPLANT_WIZARD_FACTURA_MARKER,
 } from '../src/components/implants/implantFactura.js';
 
 function assert(cond, msg) {
@@ -104,5 +108,33 @@ assert(empty.stage2.some((l) => l.id === 'zircon_std' && l.qty === 0), 'empty zi
 assert(typeof printImplantFactura === 'function', 'print helper');
 assert(typeof isDesktopViewport === 'function', 'desktop helper');
 assert(printImplantFactura() === false, 'print no-ops without window.print');
+assert(
+  IMPLANT_WIZARD_FACTURA_MARKER === 'implant-step3-factura-overlay-v2-0d9488',
+  `marker ${IMPLANT_WIZARD_FACTURA_MARKER}`
+);
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const formSrc = fs.readFileSync(path.join(here, '../src/components/implants/ImplantForm.jsx'), 'utf8');
+const openStart = formSrc.indexOf('const openFactura');
+const openEnd = formSrc.indexOf('useEffect', openStart);
+assert(openStart >= 0 && openEnd > openStart, 'openFactura bounds');
+const openSrc = formSrc.slice(openStart, openEnd);
+assert(!openSrc.includes('scrollIntoView'), 'openFactura must not scrollIntoView the wizard factura');
+assert(formSrc.includes('setFacturaPreviewOpen(true)'), 'Faktura olish opens overlay state');
+assert(formSrc.includes('data-implant-factura-overlay'), 'overlay marker');
+assert(formSrc.includes('createPortal'), 'factura overlay is portaled');
+assert((formSrc.split('<ImplantWizardFactura').length - 1) === 1, 'full factura mounts once (overlay only)');
+assert(formSrc.includes('implant-wizard-factura-teaser'), 'compact teaser stays at top of step 3');
+assert(formSrc.includes('data-implant-factura-slot'), 'slot remains in step 3 content');
+const step3Start = formSrc.indexOf('const renderStep3');
+const step3End = formSrc.indexOf('const footerSummary', step3Start);
+assert(step3Start >= 0 && step3End > step3Start, 'renderStep3 bounds');
+const step3Src = formSrc.slice(step3Start, step3End);
+assert(!step3Src.includes('<ImplantWizardFactura'), 'do not dump full factura in renderStep3');
+assert(step3Src.includes('implant-wizard-factura-teaser'), 'teaser is first-class in step 3');
+
+const cssSrc = fs.readFileSync(path.join(here, '../src/components/implants/implantWizard.css'), 'utf8');
+assert(cssSrc.includes('z-index: 400'), 'overlay stacks above wizard dialog z-100');
+assert(cssSrc.includes('.implant-wizard-factura-teaser'), 'teaser styles');
 
 console.log('assert-implant-factura: ok');

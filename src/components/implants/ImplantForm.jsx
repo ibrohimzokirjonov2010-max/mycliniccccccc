@@ -946,20 +946,20 @@ export default function ImplantForm({
   }, []);
 
   const openFactura = useCallback(() => {
-    const slot = document.querySelector('[data-implant-factura-slot]');
-    const card = wizardBodyRef.current?.querySelector('[data-implant-factura-card], .implant-factura')
-      || slot?.querySelector('[data-implant-factura-card], .implant-factura')
-      || document.querySelector('[data-implant-factura-card], .implant-factura');
-    card?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     setFacturaPreviewOpen(true);
   }, []);
 
   useEffect(() => {
     if (!facturaPreviewOpen) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const onKey = (e) => {
-      if (e.key === 'Escape') setFacturaPreviewOpen(false);
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      setFacturaPreviewOpen(false);
     };
-    window.addEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
     let printTimer = 0;
     if (isDesktopViewport()) {
       printTimer = window.setTimeout(() => {
@@ -967,7 +967,8 @@ export default function ImplantForm({
       }, 60);
     }
     return () => {
-      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey, true);
       if (printTimer) window.clearTimeout(printTimer);
     };
   }, [facturaPreviewOpen]);
@@ -1238,12 +1239,28 @@ export default function ImplantForm({
   const renderStep3 = () => (
     <div className="implant-wizard-step3 flex flex-col gap-4" data-testid="implant-wizard-step3">
       <div className="implant-wizard-factura-slot" data-implant-factura-slot>
-        <ImplantWizardFactura
-          snapshot={facturaDoc}
-          clinicName={clinicName}
-          onEdit={handleFacturaEdit}
-          tw={tf}
-        />
+        <button
+          type="button"
+          className="implant-wizard-factura-teaser"
+          data-testid="implant-wizard-factura-teaser"
+          onClick={openFactura}
+        >
+          <span className="implant-wizard-factura-teaser-copy">
+            <span className="implant-wizard-factura-kicker">{tf('kicker', 'FAKTURA')}</span>
+            <strong>{tf('title', 'Faktura / davolash rejasi')}</strong>
+            <span>
+              {facturaDoc.patient_name || tw('noPatient', 'Bemor tanlanmagan')}
+              {facturaDoc.date ? ` · ${toDMY(facturaDoc.date)}` : ''}
+            </span>
+          </span>
+          <span className="implant-wizard-factura-teaser-meta">
+            <strong>
+              {formatSom(facturaDoc.stage1Total)}
+              <span> so&apos;m</span>
+            </strong>
+            <em>{tw('getInvoice', 'Faktura olish')}</em>
+          </span>
+        </button>
       </div>
 
       <section className={cardClass}>
@@ -1398,6 +1415,20 @@ export default function ImplantForm({
           data-implant-wizard={IMPLANT_WIZARD_STEP2_MARKER}
           data-implant-factura={IMPLANT_WIZARD_FACTURA_MARKER}
           aria-describedby={undefined}
+          onPointerDownOutside={(e) => {
+            if (facturaPreviewOpen) e.preventDefault();
+          }}
+          onFocusOutside={(e) => {
+            if (facturaPreviewOpen) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (facturaPreviewOpen) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (!facturaPreviewOpen) return;
+            e.preventDefault();
+            setFacturaPreviewOpen(false);
+          }}
         >
           <DialogHeader className="shrink-0 space-y-0">
             <div className="implant-wizard-header h-14 px-5 flex items-center justify-between text-white" style={{ background: '#0d9488' }}>
@@ -1498,6 +1529,7 @@ export default function ImplantForm({
       {facturaPreviewOpen && createPortal(
         <div
           className="implant-wizard-factura-overlay"
+          data-implant-factura-overlay
           role="dialog"
           aria-modal="true"
           aria-label={tf('title', 'Faktura / davolash rejasi')}

@@ -1622,6 +1622,7 @@
       "placementDate": "O'rnatilgan sana",
       "noServiceMatch": "Xizmat topilmadi",
       "factura": {
+        "kicker": "FAKTURA",
         "title": "Faktura / davolash rejasi",
         "date": "Sana",
         "patient": "Bemor F.I.Sh",

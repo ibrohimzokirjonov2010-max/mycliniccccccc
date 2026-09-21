@@ -2,7 +2,7 @@
 
 import { getServiceLabel, normalizeServiceId, looksLikeI18nKey } from './implantWizardLabels.js';
 
-export const IMPLANT_WIZARD_FACTURA_MARKER = 'implant-step3-factura-v1-0d9488';
+export const IMPLANT_WIZARD_FACTURA_MARKER = 'implant-step3-factura-overlay-v2-0d9488';
 
 export const FAKTURA_JSON_START = '[FAKTURA_JSON]';
 export const FAKTURA_JSON_END = '[/FAKTURA_JSON]';
