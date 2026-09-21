@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { safeLocalStorage as localStorage } from '@/utils/safeStorage';
+import { preparePasswordForWrite, sanitizeUser, sanitizeUsers } from '@/utils/password';
 
 // Supabase configuration
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://zvyggjldzkxwufpnaatr.supabase.co';
@@ -259,21 +260,24 @@ export const db = {
     getAll: async () => {
       const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
       if (error) { console.error('Error fetching users:', error); return []; }
-      return data || [];
+      return sanitizeUsers(data || []);
     },
 
     getByClinic: async (clinicId) => {
       const { data, error } = await supabase.from('users').select('*').eq('clinic_id', clinicId);
       if (error) { console.error('Error fetching users:', error); return []; }
-      return data || [];
+      return sanitizeUsers(data || []);
     },
 
     create: async (user) => {
       const MAX_RETRIES = 3;
+      const hashed = await preparePasswordForWrite(user.password);
       let record = { 
         ...user,
         created_at: user.created_at || new Date().toISOString()
       };
+      if (hashed) record.password = hashed;
+      else delete record.password;
       
       for (let i = 0; i < MAX_RETRIES; i++) {
         const { data, error } = await supabase.from('users').insert([record]).select().single();
@@ -290,14 +294,17 @@ export const db = {
           }
           throw error;
         }
-        return data;
+        return sanitizeUser(data);
       }
       throw new Error('Users creation failed after 3 retries');
     },
 
     update: async (id, updates) => {
       const MAX_RETRIES = 3;
+      const hashed = await preparePasswordForWrite(updates.password);
       let record = { ...updates };
+      if (hashed) record.password = hashed;
+      else delete record.password;
       for (let i = 0; i < MAX_RETRIES; i++) {
         const { data, error } = await supabase.from('users').update(record).eq('id', id).select().single();
         if (error) {
@@ -313,7 +320,7 @@ export const db = {
           }
           throw error;
         }
-        return data;
+        return sanitizeUser(data);
       }
       throw new Error('Users update failed after 3 retries');
     },

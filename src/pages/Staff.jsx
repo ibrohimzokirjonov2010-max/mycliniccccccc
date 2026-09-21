@@ -153,7 +153,7 @@ export default function Staff() {
     setEditStaffForm({
       full_name: user.full_name || user.name || '',
       username: user.username || '',
-      password: user.password || '',
+      password: '',
       phone: user.phone || '',
       specialty: user.specialty || 'Stomatolog',
       role: user.role || 'doctor',
@@ -175,12 +175,18 @@ export default function Staff() {
         name: editStaffForm.full_name.trim(),
         full_name: editStaffForm.full_name.trim(),
         username: cleanUsername,
-        password: editStaffForm.password,
         phone: editStaffForm.phone?.trim() || '',
         specialty: editStaffForm.specialty?.trim() || 'Stomatolog',
         role: editStaffForm.role || 'doctor',
         commission_rate: Number(editStaffForm.commission || 0)
       };
+      if (editStaffForm.password && editStaffForm.password.trim()) {
+        if (editStaffForm.password.trim().length < 4) {
+          toast.error(t('settings.staff.errorMinPassword') || 'Parol kamida 4 ta belgidan iborat bo\'lishi kerak!');
+          return;
+        }
+        updatedData.password = editStaffForm.password.trim();
+      }
 
       await base44.auth.updateUser(editingStaff.id, updatedData);
       toast.success(t('settings.staff.doctorUpdated') || "Xodim ma'lumotlari muvaffaqiyatli yangilandi!");
@@ -647,12 +653,14 @@ export default function Staff() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-600">{t('staff.password')}</Label>
                 <Input 
-                  type="text"
-                  placeholder="••••••" 
+                  type="password"
+                  placeholder={t('staff.passwordUnchanged') || '•••••••• (bo\'sh qoldiring)'}
+                  autoComplete="new-password"
                   value={editStaffForm.password}
                   onChange={e => setEditStaffForm({ ...editStaffForm, password: e.target.value })}
                   className="rounded-xl h-11 font-mono text-sm"
                 />
+                <p className="text-[10px] text-slate-400">{t('staff.passwordHint') || "Bo'sh qoldirsangiz, parol o'zgarmaydi"}</p>
               </div>
             </div>
 

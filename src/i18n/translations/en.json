@@ -747,6 +747,7 @@
       "fullName": "Doctor Full Name",
       "password": "Password",
       "passwordLogin": "Password * (login password)",
+      "passwordUnchanged": "•••••••• (leave blank to keep)",
       "share": "Share (%)",
       "role": "Role / Position",
       "loginUsername": "Login (Username)",
@@ -1534,7 +1535,9 @@
     "understand": "Got it, close",
     "status": "Status",
     "active": "Active",
-    "noStaff": "No staff found"
+    "noStaff": "No staff found",
+    "passwordUnchanged": "•••••••• (leave blank to keep)",
+    "passwordHint": "Leave empty to keep the current password"
   },
   "leads": {
     "title": "Leads",

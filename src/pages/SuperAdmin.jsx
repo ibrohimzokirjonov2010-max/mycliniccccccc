@@ -330,7 +330,7 @@ export default function SuperAdmin() {
     setUserForm({ 
       clinic_id: user.clinic_id || '', 
       username: user.username || '', 
-      password: user.password || '', 
+      password: '', 
       name: user.name || '', 
       role: user.role || 'doctor',
       commission_rate: user.commission_rate || 0 
@@ -349,14 +349,20 @@ export default function SuperAdmin() {
 
   const handleUserSubmit = async (e) => {
     e.preventDefault();
-    if (!userForm.username || !userForm.password || !userForm.name || !userForm.clinic_id) {
+    if (!userForm.username || !userForm.name || !userForm.clinic_id) {
       toast.error('Barcha majburiy maydonlarni to\'ldiring!');
+      return;
+    }
+    if (!editingUser && !userForm.password) {
+      toast.error('Yangi xodim uchun parol kiriting!');
       return;
     }
     
     try {
       if (editingUser) {
-        await base44.auth.updateUser(editingUser.id, userForm);
+        const payload = { ...userForm };
+        if (!payload.password) delete payload.password;
+        await base44.auth.updateUser(editingUser.id, payload);
         toast.success('Foydalanuvchi muvaffaqiyatli yangilandi');
       } else {
         const existingUser = users.find(u => 
@@ -1636,23 +1642,9 @@ export default function SuperAdmin() {
                             {/* 4. Password */}
                             <td className="py-3.5 px-4 font-mono">
                               <div className="flex items-center gap-1.5 bg-white/[0.03] border border-white/5 px-2 py-1 rounded-lg w-fit">
-                                <span className="text-[11px] text-slate-300">
-                                  {isPassRevealed ? u.password : '••••••'}
+                                <span className="text-[11px] text-slate-300 tracking-widest">
+                                  ••••••••
                                 </span>
-                                <button 
-                                  onClick={() => togglePasswordVisibility(u.id || u.username)} 
-                                  className="text-slate-400 hover:text-white p-0.5"
-                                  title={isPassRevealed ? "Yashirish" : "Ko'rsatish"}
-                                >
-                                  {isPassRevealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                                </button>
-                                <button 
-                                  onClick={() => copyToClipboard(u.password, 'Parol')} 
-                                  className="text-slate-400 hover:text-white p-0.5"
-                                  title="Parolni nusxalash"
-                                >
-                                  <Copy className="w-3 h-3" />
-                                </button>
                               </div>
                             </td>
 
@@ -2229,7 +2221,9 @@ export default function SuperAdmin() {
               </div>
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <Label className="text-[10px] font-bold text-slate-400 uppercase">Parol *</Label>
+                  <Label className="text-[10px] font-bold text-slate-400 uppercase">
+                    {editingUser ? "Yangi parol (bo'sh = o'zgarmaydi)" : 'Parol *'}
+                  </Label>
                   <button 
                     type="button" 
                     onClick={() => setUserForm({...userForm, password: Math.random().toString(36).substring(2, 8)})}
@@ -2239,6 +2233,8 @@ export default function SuperAdmin() {
                   </button>
                 </div>
                 <Input 
+                  type="password"
+                  autoComplete="new-password"
                   value={userForm.password} 
                   onChange={e => setUserForm({...userForm, password: e.target.value})} 
                   placeholder="••••••••" 
@@ -2424,7 +2420,7 @@ export default function SuperAdmin() {
                       <div key={user.id || user.username} className="flex items-center justify-between p-2.5 bg-white/[0.02] border border-white/5 rounded-xl">
                         <div>
                           <p className="font-bold text-white text-xs">{user.name}</p>
-                          <p className="text-[11px] text-slate-400 font-mono">@{user.username} • Parol: {user.password}</p>
+                          <p className="text-[11px] text-slate-400 font-mono">@{user.username}</p>
                         </div>
                         <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-white/5 text-slate-300">
                           {user.role}

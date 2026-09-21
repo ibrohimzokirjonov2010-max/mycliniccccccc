@@ -13,6 +13,35 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🔐 Xodim parollari — plaintext UI va saqlash
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/utils/password.js`](src/utils/password.js)
+  - [`src/api/base44Client.jsx`](src/api/base44Client.jsx)
+  - [`src/api/supabaseClient.js`](src/api/supabaseClient.js)
+  - [`src/pages/Settings.jsx`](src/pages/Settings.jsx)
+  - [`src/pages/Staff.jsx`](src/pages/Staff.jsx)
+  - [`src/pages/MobileSettings.jsx`](src/pages/MobileSettings.jsx)
+  - [`src/pages/SuperAdmin.jsx`](src/pages/SuperAdmin.jsx)
+  - [`src/lib/AuthContext.jsx`](src/lib/AuthContext.jsx)
+  - [`backend/src/users/users.service.ts`](backend/src/users/users.service.ts)
+  - [`backend/src/users/schemas/user.schema.ts`](backend/src/users/schemas/user.schema.ts)
+- **Muammo Tavsifi:** Settings → Xodimlar jadvalida shifokor parollari ochiq matn (plaintext) ko'rinardi. Tahrirlash formasi ham haqiqiy parol bilan to'ldirilar edi. `users.password` ustuni ochiq saqlanardi va `select('*')` orqali frontendga qaytarilardi.
+- **Sababi:** Staff/Settings sahifalari `doctor.password` ni to'g'ridan-to'g'ri render qilgan; login solishtirish `===` bilan ochiq parolga qilingan; API qatlamida parol maydoni olib tashlanmagan.
+- **Qanday tuzatildi:** Yangi/yangilangan parollar bcryptjs bilan hash qilinadi. Login hash va (o'tish davri uchun) eski plaintext ni tekshiradi; muvaffaqiyatli kirishda plaintext avtomatik hash qilinadi. Barcha user API javoblaridan `password` olib tashlanadi. UI da parol hech qachon ko'rsatilmaydi yoki formaga to'ldirilmaydi; bo'sh parol maydoni "o'zgartirmaslik" degani.
+- **Qaytalamaslik choralari:** `users` yoki staff jadvallarida `password` ni hech qachon render qilmang. `select('*')` dan keyin user obyektini sanitizatsiya qiling. Tahrirlashda parol maydonini prefill qilmang. `console.log` ga parol yozmang. Yangi yozuvlarda faqat hash saqlang.
+
+### 🦷 Implantlar ro'yxati — `created_at` ustuni yo'q
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Implants.jsx`](src/pages/Implants.jsx)
+  - [`src/components/notifications/ImplantAlerter.jsx`](src/components/notifications/ImplantAlerter.jsx)
+  - [`src/api/base44Client.jsx`](src/api/base44Client.jsx)
+- **Muammo Tavsifi:** Implantlar sahifasi `implants.created_at` bo'yicha ORDER BY qilgan, lekin production jadvalida faqat `created_date` bor. So'rov 400 qaytargan, jadval bo'sh ko'rinardi.
+- **Sababi:** Kod `created_at` (users/clinics standarti) ni implantlar jadvaliga ham qo'llagan. Generic fallback ham yana `created_at` ga qayta urinardi, `created_date` ga emas.
+- **Qanday tuzatildi:** Implant list/order `created_date` ga o'tkazildi. Generic entity loader yo'q ustun bo'lsa avval `created_date`, keyin `created_at`, keyin ordersiz qayta urinadi (query qayta quriladi).
+- **Qaytalamaslik choralari:** Implant so'rovlarida `created_at` ishlatmang — schema `created_date`. Boshqa jadvallar uchun ham mavjud bo'lmagan timestamp ustuniga qattiq bog'lanmang; fallback `created_date` ↔ `created_at` bo'lishi kerak.
+
 ### 📱 Mobil bemor profili — Chairside desktopni buzmaslik
 - **Sana:** 2026-09-08
 - **Tuzatilgan Fayllar:**

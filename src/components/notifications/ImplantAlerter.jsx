@@ -21,7 +21,7 @@ export default function ImplantAlerter() {
     if (!isAuthenticated || !user) return;
 
     try {
-      const implants = await base44.entities.Implant.list('-created_at', 200).catch(() => []);
+      const implants = await base44.entities.Implant.list('-created_date', 200).catch(() => []);
       if (!Array.isArray(implants) || implants.length === 0) return;
 
       const incompleteList = implants.filter(i => 
