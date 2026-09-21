@@ -14,6 +14,7 @@ Each folder has 32 adult teeth:
 - `breket/`
 - `metal-keramika/`
 - `sirkon/`
+- `missing/` — extracted / Yo‘q / edentulous
 
 ## Default / healthy
 

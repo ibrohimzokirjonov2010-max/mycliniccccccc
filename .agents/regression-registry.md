@@ -13,6 +13,15 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Odontogramma — missing / Yo‘q Dizyner PNG
+- **Sana:** 2026-09-21
+- **Tuzatilgan Fayllar:**
+  - [`src/utils/toothIllustration.js`](src/utils/toothIllustration.js)
+  - [`src/components/patients/ProfessionalOdontogram.jsx`](src/components/patients/ProfessionalOdontogram.jsx)
+  - [`public/teeth/missing/`](public/teeth/missing/)
+- **Muammo Tavsifi:** extracted/missing holatidagi tishlar healthy PNG ni grayscale qilardi, Dizyner missing to‘plami ishlatilmasdi.
+- **Qaytalamaslik choralari:** `status === 'extracted'|'missing'` yoki `isExtracted` da `teeth/missing/{fdi}.png` ko‘rsatilsin. Implant bo‘lsa missing emas, implant rasmi qolsin. ENDO/healthy mappingni o‘zgartirmang.
+
 ### 🦷 Odontogramma — Dizyner Tish PNG va ENDO mapping
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**

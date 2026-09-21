@@ -13,6 +13,7 @@ export const TOOTH_ILLUSTRATION_KINDS = [
   'breket',
   'metal-keramika',
   'sirkon',
+  'missing',
   'healthy',
 ];
 
@@ -86,6 +87,14 @@ export function matchIllustrationKind(text, category) {
   if (/implant|имплант/.test(s) || /implant|имплант/i.test(cat)) return 'implant';
 
   if (
+    /edentulous|adsentia|аденти/.test(s)
+    || /missing tooth|all teeth missing|tish yo[''ʻ’`]?q|\byo[''ʻ’`]?q\b/.test(s)
+    || /extract|ekstraks|sug[''ʻ’`]?ur|olib tashlangan|tish olingan|tishini olish|\btish olish\b/.test(s)
+  ) {
+    return 'missing';
+  }
+
+  if (
     /metal[- _]?keram|metallokeram|metalkeram|metal.?ceram|металлокерам/.test(s)
   ) {
     return 'metal-keramika';
@@ -137,13 +146,16 @@ export function pickIllustrationKindFromServices(services = [], { preferLast = t
 
 /**
  * Resolve which PNG folder a toothStatus object should use.
- * extracted/missing → null (caller keeps dashed/empty rendering).
+ * extracted / missing / edentulous → missing/ (unless an implant is present).
  */
 export function resolveToothIllustrationKind(toothStatus) {
   if (!toothStatus) return 'healthy';
   const statusKey = String(toothStatus.status || '').toLowerCase();
-  if ((statusKey === 'extracted' || statusKey === 'missing') && !toothStatus.hasImplant) {
-    return null;
+  if (
+    (statusKey === 'extracted' || statusKey === 'missing' || toothStatus.isExtracted)
+    && !toothStatus.hasImplant
+  ) {
+    return 'missing';
   }
   const explicit = String(toothStatus.illustrationKind || toothStatus.illustration_kind || '').trim();
   if (explicit && TOOTH_ILLUSTRATION_KINDS.includes(explicit)) return explicit;

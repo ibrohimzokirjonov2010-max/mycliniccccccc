@@ -133,9 +133,10 @@ const ToothColumn = memo(function ToothColumn({
   const isExtracted = (statusKey === 'extracted' || statusKey === 'missing') && !hasImplant;
 
   const illustrationKind = resolveToothIllustrationKind(toothStatus);
-  const illustrationSrc = getToothIllustrationSrcFromStatus(fdi, isExtracted ? { status: 'healthy' } : toothStatus);
+  const illustrationSrc = getToothIllustrationSrcFromStatus(fdi, toothStatus);
   const useIllustration = Boolean(illustrationSrc);
   const skipTreatmentOverlays = useIllustration && illustrationKind && illustrationKind !== 'healthy';
+  const useMissingArt = illustrationKind === 'missing';
 
   // Dizyner / healthy PNGs are full crown+root laterals, already oriented per FDI.
   // cliniccards (crown + root split) remain a fallback if a PNG is missing.
@@ -208,7 +209,9 @@ const ToothColumn = memo(function ToothColumn({
             height: '100%',
             objectFit: 'contain',
             transform,
-            filter: isExtracted ? 'grayscale(1) opacity(0.25)' : (hasImplant && hasExtractedHistory ? 'grayscale(0.6) opacity(0.5)' : undefined),
+            filter: (isExtracted && !useMissingArt)
+              ? 'grayscale(1) opacity(0.25)'
+              : (hasImplant && hasExtractedHistory ? 'grayscale(0.6) opacity(0.5)' : undefined),
           }}
           onError={(e) => {
             if (e.currentTarget.dataset.fallback === '1') {

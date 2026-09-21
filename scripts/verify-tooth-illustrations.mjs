@@ -12,7 +12,7 @@ import {
   resolveToothIllustrationKind,
 } from '../src/utils/toothIllustration.js';
 
-const kinds = ['endo', 'caries', 'implant', 'plomba', 'shtift', 'breket', 'metal-keramika', 'sirkon', 'healthy'];
+const kinds = ['endo', 'caries', 'implant', 'plomba', 'shtift', 'breket', 'metal-keramika', 'sirkon', 'missing', 'healthy'];
 const fdis = [1, 2, 3, 4].flatMap((q) => Array.from({ length: 8 }, (_, i) => `${q}${i + 1}`));
 
 let failed = 0;
@@ -40,6 +40,10 @@ const cases = [
   ['Breketlar (keramika)', 'ORTODONTIYA', 'breket'],
   ['Metallokeramika karonka', 'ORTOPEDIYA', 'metal-keramika'],
   ['Zirkon toj', null, 'sirkon'],
+  ['Tish olish', 'XIRURGIYA', 'missing'],
+  ['Missing tooth', null, 'missing'],
+  ["Yo'q", null, 'missing'],
+  ['Edentulous ridge', null, 'missing'],
 ];
 
 for (const [name, cat, expected] of cases) {
@@ -66,6 +70,14 @@ const kind = resolveToothIllustrationKind({
   serviceName: 'Kanal davolash',
 });
 if (kind !== 'endo') fail(`resolve ${kind}`);
+
+if (getToothIllustrationSrc(16, 'missing') !== '/teeth/missing/16.png') fail('missing src');
+if (resolveToothIllustrationKind({ status: 'extracted' }) !== 'missing') fail('extracted → missing');
+if (resolveToothIllustrationKind({ status: 'missing' }) !== 'missing') fail('status missing → missing');
+if (resolveToothIllustrationKind({ status: 'extracted', isExtracted: true, hasImplant: true, serviceName: 'Implant' }) !== 'implant') {
+  fail('extracted+implant should stay implant');
+}
+if (matchIllustrationKind('Kanal davolash (1 kanal)', 'ENDODONTIYA') !== 'endo') fail('endo unchanged');
 
 if (failed) {
   console.error(`${failed} failure(s)`);
