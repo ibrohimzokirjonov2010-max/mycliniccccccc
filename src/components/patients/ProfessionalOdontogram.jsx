@@ -6,6 +6,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import {
   getToothIllustrationSrcFromStatus,
   resolveToothIllustrationKind,
+  withToothAssetVersion,
 } from '@/utils/toothIllustration';
 import {
   ADULT_FDI_ARCS,
@@ -190,8 +191,8 @@ const ToothColumn = memo(function ToothColumn({
 
   // Dizyner / healthy PNGs are full crown+root laterals, already oriented per FDI.
   // cliniccards (crown + root split) remain a fallback if a PNG is missing.
-  const lateralSrc = illustrationSrc || `/teeth/cliniccards/${baseName}_root.png`;
-  const occlusalSrc = `/teeth/cliniccards/${baseName}_crown.png`;
+  const lateralSrc = illustrationSrc || withToothAssetVersion(`/teeth/cliniccards/${baseName}_root.png`);
+  const occlusalSrc = withToothAssetVersion(`/teeth/cliniccards/${baseName}_crown.png`);
   const showOcclusalView = showOcclusal && !useIllustration;
 
   // If it's a shared image (e.g. t11_21), it needs mirroring on left side.
@@ -271,7 +272,7 @@ const ToothColumn = memo(function ToothColumn({
             }
             e.currentTarget.dataset.fallback = '1';
             if (useIllustration && !isCrown) {
-              e.currentTarget.src = `/teeth/cliniccards/${baseName}_root.png`;
+              e.currentTarget.src = withToothAssetVersion(`/teeth/cliniccards/${baseName}_root.png`);
             }
           }}
         />
@@ -798,22 +799,28 @@ function ProfessionalOdontogram({
   const gridRef = useRef(null);
   const [scale, setScale] = useState(1);
 
-  // Fit full adult arch (incl. FDI 18/28/38/48) into container without clipping
+  // Fit the adult arch into the container. CSS transform scale does not shrink
+  // layout size, so a 0.55 floor on a 900px chart overflowed ~390px screens and
+  // a negative marginBottom pulled the next section up over the chart.
+  // `zoom` changes layout size in Chromium/Safari (the PWA browsers).
   useLayoutEffect(() => {
     const box = chartBoxRef.current;
     const grid = gridRef.current;
-    if (!box) return undefined;
+    if (!box || !grid) return undefined;
     const handleResize = () => {
       const width = box.clientWidth || 0;
       if (!width) return;
-      const natural = (grid && (grid.scrollWidth || grid.offsetWidth)) || (compact ? 530 : 900);
-      const pad = compact ? 8 : 16;
+      const prevZoom = grid.style.zoom;
+      grid.style.zoom = '1';
+      const natural = grid.scrollWidth || grid.offsetWidth || (compact ? 530 : 920);
+      grid.style.zoom = prevZoom;
+      const pad = 8;
       const next = Math.min(1, (width - pad) / natural);
-      setScale(Number.isFinite(next) && next > 0 ? Math.max(next, compact ? 0.4 : 0.55) : 1);
+      const fitted = Number.isFinite(next) && next > 0 ? Math.max(next, 0.32) : 1;
+      setScale((cur) => (Math.abs(cur - fitted) < 0.01 ? cur : fitted));
     };
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(handleResize) : null;
     ro?.observe(box);
-    if (grid) ro?.observe(grid);
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => {
@@ -1005,7 +1012,7 @@ function ProfessionalOdontogram({
       )}
 
       {/* ── Chart Area ──────────────────────────────────────────────────── */}
-      <div className="pt-3 pb-2 px-1 sm:px-2 flex justify-center w-full min-w-0 overflow-x-auto overflow-y-visible no-scrollbar">
+      <div className="pt-3 pb-2 px-1 sm:px-2 flex justify-center w-full min-w-0 overflow-x-hidden overflow-y-visible">
         {quadrantFilter === 'Q1' ? (
           <div className="flex flex-col items-center gap-2 p-3 bg-slate-50/70 border border-slate-200 rounded-xl shadow-2xs">
             <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono">Q1 — O'ng Yuqori Jag' (18 - 11)</span>
@@ -1043,13 +1050,10 @@ function ProfessionalOdontogram({
             data-fdi-lower-left={fdiSeq.lowerLeft.join(',')}
             data-fdi-lower-right={fdiSeq.lowerRight.join(',')}
             className="grid grid-cols-2 gap-1 p-1 bg-slate-100/70 rounded-2xl border border-slate-200/80 relative select-none origin-top-center transition-transform duration-150"
-            style={{ 
-              width: 'max-content', 
-              margin: '0 auto', 
-              minWidth: compact ? 500 : 900,
-              transform: scale < 1 ? `scale(${scale})` : undefined,
-              transformOrigin: 'top center',
-              marginBottom: scale < 1 ? `${-220 * (1 - scale)}px` : undefined
+            style={{
+              width: 'max-content',
+              margin: '0 auto',
+              zoom: scale < 0.995 ? scale : 1,
             }}
           >
             {/* Quadrant 1: Upper Right (teeth 18-11) */}

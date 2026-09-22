@@ -10,6 +10,7 @@ import {
   getToothIllustrationSrc,
   normalizeFdi,
   resolveToothIllustrationKind,
+  TOOTH_ASSET_VERSION,
 } from '../src/utils/toothIllustration.js';
 
 const kinds = ['endo', 'caries', 'implant', 'plomba', 'shtift', 'breket', 'metal-keramika', 'sirkon', 'protez-syomniy', 'protez-implant', 'protez-babochka', 'missing', 'healthy'];
@@ -69,7 +70,7 @@ if (normalizeFdi(36) !== '36') fail('36');
 if (normalizeFdi(51) !== '11') fail('51 → 11');
 
 const src = getToothIllustrationSrc(16, 'endo');
-if (src !== '/teeth/endo/16.png') fail(`src ${src}`);
+if (src !== `/teeth/endo/16.png?v=${TOOTH_ASSET_VERSION}`) fail(`src ${src}`);
 
 const kind = resolveToothIllustrationKind({
   status: 'in_progress',
@@ -78,7 +79,7 @@ const kind = resolveToothIllustrationKind({
 });
 if (kind !== 'endo') fail(`resolve ${kind}`);
 
-if (getToothIllustrationSrc(16, 'missing') !== '/teeth/missing/16.png') fail('missing src');
+if (getToothIllustrationSrc(16, 'missing') !== `/teeth/missing/16.png?v=${TOOTH_ASSET_VERSION}`) fail('missing src');
 if (resolveToothIllustrationKind({ status: 'extracted' }) !== 'missing') fail('extracted → missing');
 if (resolveToothIllustrationKind({ status: 'missing' }) !== 'missing') fail('status missing → missing');
 if (resolveToothIllustrationKind({ status: 'extracted', isExtracted: true, hasImplant: true, serviceName: 'Implant' }) !== 'implant') {
@@ -87,7 +88,7 @@ if (resolveToothIllustrationKind({ status: 'extracted', isExtracted: true, hasIm
 if (matchIllustrationKind('Kanal davolash (1 kanal)', 'ENDODONTIYA') !== 'endo') fail('endo unchanged');
 if (matchIllustrationKind("Implantat o'rnatish", 'IMPLANTATSIYA') !== 'implant') fail('fixture implant unchanged');
 if (resolveToothIllustrationKind({ status: 'extracted' }) !== 'missing') fail('missing unchanged');
-if (getToothIllustrationSrc(21, 'protez-babochka') !== '/teeth/protez-babochka/21.png') fail('babochka src');
+if (getToothIllustrationSrc(21, 'protez-babochka') !== `/teeth/protez-babochka/21.png?v=${TOOTH_ASSET_VERSION}`) fail('babochka src');
 
 if (failed) {
   console.error(`${failed} failure(s)`);

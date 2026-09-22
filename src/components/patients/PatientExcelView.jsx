@@ -8,6 +8,7 @@ import {
 import { cn, formatPhone } from '@/lib/utils';
 import { toast } from 'sonner';
 import { exportPatientToExcel } from '@/lib/patientExcelExport';
+import { patientGenderLabel } from '@/lib/patientGender';
 
 /**
  * PatientExcelView Component
@@ -414,7 +415,7 @@ export default function PatientExcelView({
               { label: "F.I.SH. (To'liq ism)", val: patient.full_name, icon: "👤", bold: true },
               { label: "Telefon raqami", val: formatPhone(patient.phone), icon: "📞", mono: true },
               { label: "Tug'ilgan sana / Yoshi", val: `${patient.birth_date || '—'} (${patient.birth_date ? new Date().getFullYear() - new Date(patient.birth_date).getFullYear() : '—'} yosh)`, icon: "🎂" },
-              { label: "Jinsi", val: patient.gender === 'Female' ? 'Ayol' : 'Erkak', icon: "⚧" },
+              { label: "Jinsi", val: patientGenderLabel(patient.gender, 'uz') || '—', icon: "⚧" },
               { label: "Yashash manzili", val: patient.address || '—', icon: "📍" },
               { label: "Bemor Statusi", val: patient.status || 'Faol', icon: "🏷️", badge: true },
               { label: "Biriktirilgan shifokor", val: doctors.find(d => d.id === patient.main_treatment_provider)?.name || patient.main_treatment_provider || 'Belgilanmagan', icon: "👨‍⚕️" },

@@ -13,6 +13,55 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 👤 Bemor profili — jins, pasport 404, tablar
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/lib/patientGender.js`](src/lib/patientGender.js)
+  - [`src/pages/PatientProfile.jsx`](src/pages/PatientProfile.jsx)
+  - [`src/pages/MobilePatientProfile.jsx`](src/pages/MobilePatientProfile.jsx)
+  - [`src/components/patients/PatientModal.jsx`](src/components/patients/PatientModal.jsx)
+  - [`src/components/patients/NewPatientFlow.jsx`](src/components/patients/NewPatientFlow.jsx)
+  - [`src/App.jsx`](src/App.jsx)
+  - [`src/components/patients/ExcelImplantsView.jsx`](src/components/patients/ExcelImplantsView.jsx)
+- **Muammo Tavsifi:** Jins `female` bo'lsa ham «Erkak» chiqardi yoki kartada umuman yo'q edi. Yangi bemor «Unspecified» yuborardi (CHECK buzilishi). Pasport tugmasi `/implant-passport/:id` ga olib borardi — bunday route yo'q, 404. Tablar kesilardi.
+- **Sababi:** DB `male|female|other`, UI faqat `Female`/`Male` solishtirardi. Select qiymati `male`, boshlang'ich holat `Male`. Pasport havolasi mavjud bo'lmagan path.
+- **Qanday tuzatildi:** `patientGenderLabel` hamma ko'rinishda. Saqlash `male|female|other`. `/implant-passport/:id` → `/implants/:id`. Tablar sm+ da o'raladi, telefonda qisqa yorliq.
+- **Qaytalamaslik choralari:** Jinsni faqat `=== 'Female'` bilan chiqarmang. `Unspecified` yubormang. Pasportni `/implants/:id` dan boshqa pathga qaytarmang. Shifokor majburiy va to'lov modal markazi o'zgarmasin. `node scripts/assert-patient-gender.mjs` o'tsin.
+
+### 🦷 Implant profili — toast va overflow
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/App.jsx`](src/App.jsx)
+  - [`src/pages/ImplantDetail.jsx`](src/pages/ImplantDetail.jsx)
+  - [`src/components/implants/DentalArchFdi.jsx`](src/components/implants/DentalArchFdi.jsx)
+  - [`src/components/notifications/ImplantAlerter.jsx`](src/components/notifications/ImplantAlerter.jsx)
+- **Muammo Tavsifi:** Toastlar o'ng yuqorida PDF / Tahrirlash ni yopardi. Tish bosilganda qo'shimcha toast. Legend 390px da chiqib ketardi.
+- **Qanday tuzatildi:** Toaster pastki markaz, mobil nav ustida, ko'pi bilan 2 ta. Dialog ochiq bo'lsa z-index 40 (to'lov modali ortida). `/implants` da to'liqsiz-implant toasti chiqmaydi. Legend o'raladi.
+- **Qaytalamaslik choralari:** Toaster z-index ni dialog `z-[100]` dan yuqoriga ko'tarmang. `position="top-right"` qaytarmang. Step 3 faktura overlay va `#0d9488` o'zgarmasin.
+
+### 🦷 Odontogramma — 390px sig'im va tish PNG kesh
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/patients/ProfessionalOdontogram.jsx`](src/components/patients/ProfessionalOdontogram.jsx)
+  - [`src/components/patients/MobileCompactOdontogram.jsx`](src/components/patients/MobileCompactOdontogram.jsx)
+  - [`src/utils/toothIllustration.js`](src/utils/toothIllustration.js)
+  - [`src/index.css`](src/index.css)
+  - [`vite.config.js`](vite.config.js)
+- **Muammo Tavsifi:** 900px chart `scale` + `marginBottom` manfiy edi: 390px da kesilardi va keyingi blok ustiga chiqardi. Mobil qator 16 ta tishni yashirin scroll qilardi. PNG lar 30 kun CacheFirst.
+- **Qanday tuzatildi:** `zoom` layout o'lchamini kichraytiradi, manfiy margin yo'q. Mobil 8+8 qator. PNG URL `?v=20260922a`, SW `/teeth/` uchun StaleWhileRevalidate.
+- **Qaytalamaslik choralari:** `minWidth: 900` va manfiy `marginBottom` qaytarmang. FDI ni qo'lda yozmang. Dizyner PNG ga `scaleX(-1)` qo'ymang. `node scripts/assert-odontogram-fdi.mjs` o'tsin. `navigateFallback: 'index.html'` va activate-reload qolsin.
+
+### 📦 PWA — yangi deploy ochiq oynani yangilaydi
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`vite.config.js`](vite.config.js)
+  - [`public/sw-activate-reload.js`](public/sw-activate-reload.js)
+  - [`src/lib/swUpdate.js`](src/lib/swUpdate.js)
+  - [`vercel.json`](vercel.json)
+- **Muammo Tavsifi:** Precache qilingan `index.html` yangi deploydan keyin ham ochiq oynada qolardi. Tish PNG lari 30 kun CacheFirst edi.
+- **Qanday tuzatildi:** Offline shell precache saqlanadi. Yangi worker tokeni `profile-shell-v1` ochiq oynalarni bir marta navigate qiladi. Sahifa `controllerchange` da reload. `sw.js` / `index.html` HTTP `no-cache`. `/teeth/*.png` StaleWhileRevalidate va `?v=` bilan.
+- **Qaytalamaslik choralari:** `navigateFallback: 'index.html'` ni olib tashlamang (offline). `importScripts: ['sw-activate-reload.js']` va `listenForAppUpdates` qolsin. Tokenni yangi deployda yangilang, aks holda bir martalik navigate qayta ishlamaydi. `node scripts/assert-implant-wizard-ux.mjs` o'tsin.
+
 ### 🦷 Yangi implant — faktura pastga tushishi va saqlash bazaga yozilmasligi
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**

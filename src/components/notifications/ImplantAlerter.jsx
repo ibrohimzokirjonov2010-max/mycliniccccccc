@@ -38,7 +38,8 @@ export default function ImplantAlerter() {
       );
 
       if (incompleteList.length > 0) {
-        if (isBlockingModalOpen()) return;
+        const path = typeof window !== 'undefined' ? window.location.pathname : '';
+        if (isBlockingModalOpen() || path.startsWith('/implants')) return;
 
         const top = incompleteList[0];
         const toothNum = top.tooth_number || (top.tooth_numbers && top.tooth_numbers[0]) || '';

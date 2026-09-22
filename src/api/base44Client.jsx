@@ -8,6 +8,7 @@ import {
   sanitizeUsers,
   preparePasswordForWrite,
 } from '@/utils/password';
+import { patientGenderForDb } from '@/lib/patientGender';
 
 // Plan configurations
 export const PLAN_FEATURES = {
@@ -835,8 +836,10 @@ class HybridEntityLoader {
       };
       cleanPayload.status = statusMap[cleanPayload.status] || (typeof cleanPayload.status === 'string' ? cleanPayload.status.charAt(0).toUpperCase() + cleanPayload.status.slice(1) : cleanPayload.status);
     }
-    if (cleanPayload.gender && tableName === 'patients') {
-      cleanPayload.gender = cleanPayload.gender.toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(cleanPayload, 'gender') && tableName === 'patients') {
+      const gender = patientGenderForDb(cleanPayload.gender);
+      if (gender) cleanPayload.gender = gender;
+      else delete cleanPayload.gender;
     }
 
     // Determine timestamp column (User and Clinic tables typically use created_at)
@@ -1009,8 +1012,10 @@ class HybridEntityLoader {
           cleanPayload.status = statusMap[cleanPayload.status] || (typeof cleanPayload.status === 'string' ? cleanPayload.status.charAt(0).toUpperCase() + cleanPayload.status.slice(1) : cleanPayload.status);
         }
       }
-      if (cleanPayload.gender && tableName === 'patients') {
-        cleanPayload.gender = cleanPayload.gender.toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(cleanPayload, 'gender') && tableName === 'patients') {
+        const gender = patientGenderForDb(cleanPayload.gender);
+        if (gender) cleanPayload.gender = gender;
+        else delete cleanPayload.gender;
       }
 
       // Preserve previously encoded tech fields on partial updates.

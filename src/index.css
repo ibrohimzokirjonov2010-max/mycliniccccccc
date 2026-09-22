@@ -245,6 +245,8 @@
   overflow: hidden;
   max-width: 100%;
   box-sizing: border-box;
+  font-size: 10px !important;
+  line-height: 1.1 !important;
 }
 
 /* Touch-friendly controls on mobile.
@@ -268,6 +270,14 @@
     /* Allow explicit larger FDI hit targets (~34×48); do not force 44×44 global min */
     min-width: 34px !important;
     min-height: 48px !important;
+  }
+
+  /* Phone chart: 8 FDI labels per row must fit ~390px without a hidden scrollbar. */
+  .odontogram-tooth.odonto-fit-tooth {
+    min-width: 0 !important;
+    width: 100% !important;
+    min-height: 52px !important;
+    height: 56px;
   }
 
   .compact-hit {

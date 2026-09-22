@@ -109,10 +109,9 @@ export default defineConfig({
       includeAssets: ['icon-192x192.svg', 'icon-512x512.svg', 'logo.png'],
       manifest: false, // manifest.json allaqachon public/ da bor
       workbox: {
-        // Asosiy sahifalarni cache qilish strategiyasi.
-        // index.html stays precached for offline, but sw-activate-reload.js
-        // navigates open windows once a new worker activates so the clinic
-        // PWA cannot keep the previous Yangi implant wizard shell.
+        // Offline shell stays precached (navigateFallback: 'index.html').
+        // It is not sticky forever: sw-activate-reload.js navigates open windows
+        // when a new worker activates, and the page reloads on controllerchange.
         globPatterns: ['**/*.{js,css,html,ico,svg,woff,woff2}'],
         globIgnores: ['**/teeth/**', '**/sw-activate-reload.js'],
         cleanupOutdatedCaches: true,
@@ -122,7 +121,6 @@ export default defineConfig({
         importScripts: ['sw-activate-reload.js'],
         runtimeCaching: [
           {
-            // API so'rovlar uchun NetworkFirst — yangi ma'lumot bo'lmasa cache ishlaydi
             urlPattern: /^\/api\//,
             handler: 'NetworkFirst',
             options: {
@@ -133,27 +131,35 @@ export default defineConfig({
             }
           },
           {
-            // JS/CSS chunks — NetworkFirst so post-deploy hashes are not stuck stale
             urlPattern: /\/assets\/.*\.(?:js|css)$/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'assets-cache-v11-implant-wizard',
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 7 },
-              cacheableResponse: { statuses: [0, 200] }
+              cacheableResponse: { statuses: [200] }
             }
           },
           {
-            // Rasmlar uchun CacheFirst — tez yuklanadi
-            urlPattern: /\.(?:png|jpg|jpeg|svg|webp|gif)$/,
+            // Tooth PNGs change in place. SWR + ?v= in the URL, never 30-day CacheFirst.
+            urlPattern: ({ url }) => url.pathname.startsWith('/teeth/') && /\.png$/i.test(url.pathname),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'teeth-png-v3-rev',
+              expiration: { maxEntries: 450, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              cacheableResponse: { statuses: [200] }
+            }
+          },
+          {
+            urlPattern: ({ url }) => !url.pathname.startsWith('/teeth/') && /\.(?:png|jpg|jpeg|svg|webp|gif)$/i.test(url.pathname),
             handler: 'CacheFirst',
             options: {
-              cacheName: 'images-cache-v2-dizyner-teeth',
-              expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 }
+              cacheName: 'images-cache-v3',
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [200] }
             }
           },
           {
-            // Google Fonts
             urlPattern: /^https:\/\/fonts\.googleapis\.com/,
             handler: 'StaleWhileRevalidate',
             options: { cacheName: 'google-fonts-cache' }

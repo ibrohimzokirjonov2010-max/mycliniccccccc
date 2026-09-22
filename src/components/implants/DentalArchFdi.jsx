@@ -283,7 +283,7 @@ export function DentalArchFdi({
       <div className="relative w-full max-w-[280px] sm:max-w-[300px] aspect-[1/1] flex items-center justify-center my-1">
         <svg
           viewBox="0 0 320 320"
-          className="w-full h-full overflow-visible"
+          className="w-full h-full overflow-hidden"
         >
           {/* Subtle dental arch guideline */}
           <ellipse
@@ -376,7 +376,7 @@ export function DentalArchFdi({
       </div>
 
       {/* Legend below the arch matching reference screenshot */}
-      <div className="flex items-center justify-center gap-5 pt-3 text-[11px] font-bold text-slate-500 border-t border-slate-100 w-full mt-1">
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 pt-3 text-[11px] font-bold text-slate-500 border-t border-slate-100 w-full min-w-0 mt-1 px-1">
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-[#14b8a6] ring-2 ring-teal-100" />
           <span className="text-slate-700 font-semibold">Implant joylashgan (#{primaryFdi})</span>

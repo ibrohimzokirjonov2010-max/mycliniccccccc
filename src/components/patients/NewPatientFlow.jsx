@@ -18,6 +18,7 @@ import { CheckCircle2, User, ClipboardList, ArrowLeft, Printer, Download, X, Che
 import { useTranslation } from '@/i18n/LanguageContext';
 import { applyPhoneMask, cn, capitalizeName, validateAddress, capitalizeAsYouType } from '@/lib/utils';
 import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
+import { normalizePatientGender, patientGenderForDb } from '@/lib/patientGender';
 
 /**
  * Wizard steps configuration
@@ -445,7 +446,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     phone_secondary: '',
     email: '',
     address: '',
-    gender: 'Unspecified',
+    gender: '',
     birth_day: '',
     birth_month: '',
     birth_year: '',
@@ -533,7 +534,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         phone_secondary: '',
         email: prefillData?.email || '',
         address: prefillData?.address || '',
-        gender: 'Unspecified',
+        gender: '',
         birth_day: '',
         birth_month: '',
         birth_year: '',
@@ -805,6 +806,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         patientForm.comment ? `Izoh: ${patientForm.comment}` : ''
       ].filter(Boolean).join('\n');
 
+      const gender = patientGenderForDb(patientForm.gender);
+
       const payload = {
         photo_url: patientForm.photo_url || '',
         first_name: normalizedFirstName,
@@ -815,7 +818,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         phone_secondary: (patientForm.phone_secondary || '').replace(/\D/g, ''),
         email: patientForm.email || '',
         address: patientForm.address || '',
-        gender: patientForm.gender || 'Unspecified',
+        ...(gender ? { gender } : {}),
         birth_date: birthDate,
         important_info: patientForm.important_info || '',
         comment: patientForm.comment || '',
@@ -1488,14 +1491,14 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.gender')}</label>
                     <div className="flex items-center gap-4 h-9">
                       <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input type="radio" name="gender" value="Male" checked={patientForm.gender === 'Male'}
-                          onChange={() => setPatientForm({ ...patientForm, gender: 'Male' })}
+                        <input type="radio" name="gender" value="male" checked={normalizePatientGender(patientForm.gender) === 'male'}
+                          onChange={() => setPatientForm({ ...patientForm, gender: 'male' })}
                           className="w-4 h-4 text-emerald-600 border-slate-300 focus:ring-0" />
                         <span className="text-sm font-medium text-slate-700">{t('patients.male')}</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input type="radio" name="gender" value="Female" checked={patientForm.gender === 'Female'}
-                          onChange={() => setPatientForm({ ...patientForm, gender: 'Female' })}
+                        <input type="radio" name="gender" value="female" checked={normalizePatientGender(patientForm.gender) === 'female'}
+                          onChange={() => setPatientForm({ ...patientForm, gender: 'female' })}
                           className="w-4 h-4 text-emerald-600 border-slate-300 focus:ring-0" />
                         <span className="text-sm font-medium text-slate-700">{t('patients.female')}</span>
                       </label>

@@ -15,6 +15,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Tooth, ImplantIcon, XrayIcon } from '@/components/ui/Icons';
 import { cn, resolveDoctorId } from '@/lib/utils';
+import { patientGenderLabel } from '@/lib/patientGender';
 import { pickIllustrationKindFromServices, matchIllustrationKind } from '@/utils/toothIllustration';
 import {
   bootstrapTelegramBotConfig,
@@ -2710,7 +2711,7 @@ export default function PatientProfile() {
     doc.text(`Ism: ${patient.full_name}`, 20, 46);
     doc.text(`Telefon: ${patient.phone}`, 20, 54);
     doc.text(`Tug'ilgan sana: ${patient.birth_date || '—'}`, 20, 62);
-    doc.text(`Jinsi: ${patient.gender || '—'}`, 20, 70);
+    doc.text(`Jinsi: ${patientGenderLabel(patient.gender, language) || '—'}`, 20, 70);
     doc.text(`Manzil: ${patient.address || '—'}`, 20, 78);
     doc.text(`Status: ${patient.status || 'New'}`, 20, 86);
     doc.line(20, 90, 190, 90);
@@ -2844,9 +2845,9 @@ export default function PatientProfile() {
 
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-sm font-black text-slate-900 truncate">{patient.full_name}</span>
-              {patient.gender && (
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold border border-slate-200/60 hidden sm:inline">
-                  {patient.gender === 'Female' ? 'Ayol' : 'Erkak'}
+              {patientGenderLabel(patient.gender, language) && (
+                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold border border-slate-200/60 shrink-0">
+                  {patientGenderLabel(patient.gender, language)}
                 </span>
               )}
               <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/70 rounded-lg text-[10px] font-black uppercase tracking-wider hidden sm:inline">
@@ -3000,6 +3001,19 @@ export default function PatientProfile() {
 
             {/* 3. Patient Information List (Compact with Bold Text) */}
             <div className="space-y-1.5">
+              {/* Jinsi */}
+              <div className="bg-[#f8fafc] border border-slate-200/90 rounded-xl p-2 flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 text-slate-700 shadow-2xs">
+                  <User className="w-3.5 h-3.5 text-slate-700" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] font-black uppercase text-slate-500 leading-none">JINSI</p>
+                  <p className="text-xs font-black text-slate-900 leading-snug mt-0.5 truncate">
+                    {patientGenderLabel(patient.gender, language) || '—'}
+                  </p>
+                </div>
+              </div>
+
               {/* Tug'ilgan sana */}
               <div className="bg-[#f8fafc] border border-slate-200/90 rounded-xl p-2 flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 text-slate-700 shadow-2xs">
@@ -3130,7 +3144,8 @@ export default function PatientProfile() {
           </div>
 
           {/* ── 2. BO'LIMLAR (TABS) ROW - DIRECTLY UNDER SEARCH BAR ── */}
-          <div className="bg-white rounded-2xl p-1.5 sm:p-2 border border-slate-200/90 shadow-xs flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <div className="bg-white rounded-2xl p-1.5 sm:p-2 border border-slate-200/90 shadow-xs w-full min-w-0 max-w-full">
+            <div className="flex flex-nowrap sm:flex-wrap items-center gap-1.5 w-full min-w-0 overflow-x-auto sm:overflow-visible pb-0.5 sm:pb-0 [scrollbar-width:thin]">
             {[
               { id: 'info',         label: "Tish xaritasi",      icon: Tooth,           iconColor: "text-sky-600" },
               { id: 'treatments',   label: "Davolash rejalari",  icon: ClipboardList,   iconColor: "text-indigo-600", count: (plans || []).length },
@@ -3146,7 +3161,7 @@ export default function PatientProfile() {
                 <button
                   key={tabItem.id}
                   onClick={() => setActiveTab(tabItem.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs transition-all cursor-pointer shrink-0 font-bold ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all cursor-pointer shrink-0 sm:shrink font-bold max-w-full ${
                     isActive
                       ? 'bg-blue-50/80 text-blue-600 border-2 border-blue-500 shadow-xs ring-2 ring-blue-500/20 font-black'
                       : 'bg-white text-slate-700 border border-slate-200/90 hover:bg-slate-50 hover:text-slate-900 shadow-2xs'
@@ -3164,6 +3179,7 @@ export default function PatientProfile() {
                 </button>
               );
             })}
+            </div>
           </div>
 
           {/* ── TAB CONTENT & VIEWS ── */}

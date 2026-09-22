@@ -54,9 +54,8 @@ const ToothPill = memo(function ToothPill({ fdi, selected, statusKey, toothStatu
       onClick={() => onSelect(fdi)}
       aria-pressed={selected}
       aria-label={`FDI ${fdi}`}
-      style={{ width: 34, minWidth: 34, height: 52, minHeight: 52, pointerEvents: 'auto' }}
       className={cn(
-        'odontogram-tooth relative z-10 flex flex-col items-center justify-end shrink-0 rounded-2xl text-[10px] font-black tabular-nums leading-none transition-transform active:scale-90 touch-manipulation overflow-hidden',
+        'odontogram-tooth odonto-fit-tooth relative z-10 flex flex-col items-center justify-end w-full min-w-0 rounded-xl text-[10px] font-black tabular-nums leading-none transition-transform active:scale-95 touch-manipulation overflow-hidden',
         selected
           ? 'bg-[#14b8a6] text-white shadow-[0_4px_10px_rgba(20,184,166,0.35)] z-20'
           : 'bg-white text-slate-600 border border-slate-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
@@ -80,15 +79,15 @@ const ToothPill = memo(function ToothPill({ fdi, selected, statusKey, toothStatu
           style={{ backgroundColor: pip }}
         />
       )}
-      <span className="relative z-10 mt-auto mb-1">{fdi}</span>
+      <span className="odontogram-fdi-label relative z-10 mt-auto mb-0.5 max-w-full">{fdi}</span>
     </button>
   );
 });
 
 /**
- * Compact FDI odontogram for ~390–430px phones.
- * Larger hit targets (34×48) with light horizontal scroll so labels stay readable.
- * Always includes wisdom teeth (18 / 28 / 38 / 48). Isolated from desktop Chairside.
+ * Compact FDI odontogram for ~390px phones.
+ * Four rows of 8 (18–11, 21–28, 48–41, 31–38) so every label fits
+ * without a hidden horizontal scrollbar. Wisdom teeth stay visible.
  */
 export default function MobileCompactOdontogram({
   selectedFdi,
@@ -99,29 +98,9 @@ export default function MobileCompactOdontogram({
     if (onSelect) onSelect(String(fdi));
   }, [onSelect]);
 
-  const renderRow = (row) => (
-    <div
-      className="flex items-end justify-center gap-1.5 isolate mx-auto"
-      style={{ width: 'max-content', minWidth: '100%' }}
-    >
-      {row.slice(0, 8).map((fdi) => {
-        const id = fdiToInternalId(fdi);
-        const st = toothStatuses[id] || toothStatuses[String(fdi)];
-        return (
-          <ToothPill
-            key={fdi}
-            fdi={fdi}
-            selected={String(selectedFdi) === String(fdi)}
-            statusKey={st?.status}
-            toothStatus={st}
-            onSelect={handleSelect}
-          />
-        );
-      })}
-      <div aria-hidden className="self-stretch flex items-center justify-center w-2.5 shrink-0">
-        <span className="w-px h-8 rounded-full bg-slate-200/90" />
-      </div>
-      {row.slice(8).map((fdi) => {
+  const renderQuadrant = (fdis) => (
+    <div className="grid grid-cols-8 gap-0.5 w-full min-w-0">
+      {fdis.map((fdi) => {
         const id = fdiToInternalId(fdi);
         const st = toothStatuses[id] || toothStatuses[String(fdi)];
         return (
@@ -139,13 +118,16 @@ export default function MobileCompactOdontogram({
   );
 
   return (
-    <div
-      className="w-full min-w-0 select-none touch-manipulation overflow-x-auto no-scrollbar overscroll-x-contain -mx-0.5 px-0.5"
-      style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
-    >
-      {renderRow(FDI_UPPER)}
+    <div className="w-full min-w-0 select-none touch-manipulation overflow-x-hidden">
+      <div className="grid grid-cols-1 gap-1">
+        {renderQuadrant(FDI_UPPER.slice(0, 8))}
+        {renderQuadrant(FDI_UPPER.slice(8))}
+      </div>
       <div className="h-px my-2 mx-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-      {renderRow(FDI_LOWER)}
+      <div className="grid grid-cols-1 gap-1">
+        {renderQuadrant(FDI_LOWER.slice(0, 8))}
+        {renderQuadrant(FDI_LOWER.slice(8))}
+      </div>
     </div>
   );
 }
