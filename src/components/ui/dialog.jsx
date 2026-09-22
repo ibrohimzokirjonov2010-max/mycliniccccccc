@@ -24,12 +24,23 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 // Avtomatik X tugmasi olib tashlangan - har bir modal o'z yopish tugmasini boshqaradi
 const DialogContent = React.forwardRef(({ className, children, style, ...props }, ref) => {
-  const columnLayout = typeof className === 'string' && className.includes('payment-add-dialog');
+  const classStr = typeof className === 'string' ? className : '';
+  const columnLayout = classStr.includes('payment-add-dialog');
+  // Fluid shells (payment / implant / callers with max-h-*) own their height —
+  // do not force a second inline maxHeight that fights Tailwind/CSS.
+  const fluidShell =
+    columnLayout ||
+    classStr.includes('implant-wizard-dialog') ||
+    classStr.includes('dialog-shell-fluid') ||
+    /(?:^|\s)max-h-\[/.test(classStr) ||
+    (style && style.maxHeight != null);
+
   return (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      data-dialog-shell={fluidShell ? 'notebook-fluid-v1' : 'default'}
       className={cn(
         "fixed z-[100] w-full max-w-lg border border-slate-100 bg-white p-6 shadow-2xl shadow-slate-200/50 duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-[2.5rem] overflow-hidden",
         columnLayout
@@ -38,8 +49,13 @@ const DialogContent = React.forwardRef(({ className, children, style, ...props }
         className
       )}
       style={{
-        // Clear notch + home indicator + sticky bottom nav (~54px) on phones
-        maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)',
+        // Default: leave ~1.25rem chrome; notebooks need more body than the old 2rem tax.
+        ...(fluidShell
+          ? null
+          : {
+              maxHeight:
+                'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.25rem)',
+            }),
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         ...(columnLayout ? {
           display: 'flex',

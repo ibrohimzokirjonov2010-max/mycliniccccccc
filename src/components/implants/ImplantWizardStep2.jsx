@@ -54,7 +54,7 @@ export default function ImplantWizardStep2({
       data-implant-wizard={IMPLANT_WIZARD_STEP2_MARKER}
       data-testid="implant-wizard-step2"
     >
-      <aside className="implant-wizard-teeth" style={{ width: 240, minWidth: 240 }}>
+      <aside className="implant-wizard-teeth">
         <div className="implant-wizard-teeth-head mb-3">
           <h3 className="text-[15px] font-bold text-[#111827]">{tw('selectedTeeth', 'Tanlangan tishlar')}</h3>
           <div className="implant-wizard-teeth-sub mt-1 h-[3px] w-10 rounded-full" style={{ background: '#0d9488' }} />
@@ -82,7 +82,7 @@ export default function ImplantWizardStep2({
           onClick={onBackToStep1}
           className="implant-wizard-teeth-back mt-3 text-left text-xs text-[#9ca3af] hover:text-[#0d9488] bg-transparent border-0 p-0 cursor-pointer flex items-center gap-1"
         >
-          <span className="w-4 h-4 rounded-full border border-[#e5e7eb] text-[9px] flex items-center justify-center">i</span>
+          <span className="w-5 h-5 rounded-full border border-[#e5e7eb] text-[11px] flex items-center justify-center">i</span>
           {tw('fromStep1', '1-qadamdan')}
         </button>
         <div className="implant-wizard-teeth-foot mt-3 pt-3 border-t border-[#e5e7eb] flex items-end justify-between">
@@ -166,7 +166,7 @@ export default function ImplantWizardStep2({
                         onSetPrice(service.id, digits === '' ? 0 : Number(digits));
                       }}
                       onBlur={() => setEditingPriceId(null)}
-                      className="w-[92px] h-7 text-right text-xs font-semibold rounded-md px-1.5 outline-none"
+                      className="w-[100px] h-8 text-right text-sm font-semibold rounded-md px-1.5 outline-none"
                       style={{ border: '1px solid #0d9488' }}
                     />
                   ) : (

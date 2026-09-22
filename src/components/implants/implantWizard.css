@@ -5,10 +5,11 @@
 .implant-wizard-dialog {
   display: flex !important;
   flex-direction: column !important;
-  max-width: 920px !important;
-  width: min(920px, 95vw) !important;
+  max-width: 960px !important;
+  width: min(960px, 95vw) !important;
   height: auto !important;
-  max-height: min(92vh, 820px) !important;
+  /* Notebooks (~768h): prefer dvh over a hard 820px ceiling that starves the body. */
+  max-height: min(94dvh, 900px) !important;
   padding: 0 !important;
   gap: 0 !important;
   border-radius: 16px !important;
@@ -69,18 +70,19 @@
   flex-direction: row;
   align-items: stretch;
   gap: 16px;
-  min-height: 460px;
+  min-height: 0;
 }
 
 .implant-wizard-teeth {
-  width: 240px;
-  min-width: 240px;
+  width: 220px;
+  min-width: 200px;
   max-width: 240px;
+  flex: 0 0 220px;
   flex-shrink: 0;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  padding: 16px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
 }
@@ -245,8 +247,8 @@
 
 .implant-wizard-tooth-slot {
   position: relative;
-  flex: 0 0 36px;
-  width: 36px;
+  flex: 0 0 40px;
+  width: 40px;
   margin: 0;
   transform: none;
 }
@@ -390,7 +392,7 @@
   grid-template-columns: 1fr;
   gap: 8px;
   overflow-y: auto;
-  max-height: 340px;
+  max-height: min(340px, 42vh);
   /* Keep scrollbar clear of the 2nd card column (was 2px — too tight). */
   padding-right: 12px;
   padding-inline-end: 12px;
@@ -398,7 +400,8 @@
   scrollbar-width: thin;
 }
 
-@media (min-width: 640px) {
+/* Two columns only when the services pane is wide enough (notebook+). */
+@media (min-width: 1024px) {
   .implant-wizard-service-list {
     grid-template-columns: 1fr 1fr;
   }
@@ -450,7 +453,7 @@
 
 .implant-wizard-selected-live-title {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -681,7 +684,7 @@
 }
 .implant-wizard-field-label {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #6b7280;
   margin-bottom: 4px;
@@ -828,6 +831,53 @@
   background: #ccfbf1;
   border-radius: 999px;
   padding: 3px 8px;
+}
+
+/* ---- Notebook / short laptop (~1366×768) ---- */
+@media (min-width: 768px) and (max-height: 820px) {
+  .implant-wizard-dialog {
+    max-height: min(96dvh, 900px) !important;
+  }
+
+  .implant-wizard-body {
+    padding: 12px 14px;
+  }
+
+  .implant-wizard-footer {
+    min-height: 56px;
+    padding: 8px 16px;
+  }
+
+  .implant-wizard-step2 {
+    min-height: 0;
+    gap: 12px;
+  }
+
+  .implant-wizard-teeth {
+    width: 200px;
+    min-width: 200px;
+    max-width: 200px;
+    flex-basis: 200px;
+    padding: 12px;
+  }
+
+  .implant-wizard-service-list {
+    max-height: min(320px, 48vh);
+  }
+
+  .implant-wizard-tooth-slot {
+    flex-basis: 40px;
+    width: 40px;
+  }
+
+  .implant-wizard-tooth-face {
+    width: 36px !important;
+    height: 44px !important;
+  }
+
+  .implant-wizard-tooth-fdi {
+    font-size: 12px !important;
+  }
 }
 
 /* ---- Mobile ~390px ---- */

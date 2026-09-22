@@ -562,7 +562,7 @@ export default function AppointmentModal({
   return (
     <>
       <Dialog open={open && !showNewPatient} onOpenChange={onClose}>
-        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[min(90vh,calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-4.5rem))] p-0 rounded-[2.5rem] border-0 shadow-2xl bg-white/95 backdrop-blur-xl flex flex-col overflow-visible">
+        <DialogContent className="dialog-shell-fluid w-[95vw] sm:max-w-lg max-h-[min(90vh,calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-4.5rem))] p-0 rounded-[2.5rem] border-0 shadow-2xl bg-white/95 backdrop-blur-xl flex flex-col overflow-visible">
           
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between shrink-0 rounded-t-[2.5rem]">
@@ -710,9 +710,9 @@ export default function AppointmentModal({
                     {t('appointments.timeGrid') || 'Vaqt grafigi'}
                   </Label>
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-[#1499AD]" /><span className="text-[7.5px] font-bold text-slate-400 uppercase">{t('appointments.legendSelected') || 'Tanlangan'}</span></div>
-                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-rose-300" /><span className="text-[7.5px] font-bold text-slate-400 uppercase">{t('appointments.legendBusy') || 'Band'}</span></div>
-                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-slate-300" /><span className="text-[7.5px] font-bold text-slate-400 uppercase">{t('appointments.legendAvailable') || "Bo'sh"}</span></div>
+                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-[#1499AD]" /><span className="text-[10px] font-bold text-slate-400 uppercase">{t('appointments.legendSelected') || 'Tanlangan'}</span></div>
+                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-rose-300" /><span className="text-[10px] font-bold text-slate-400 uppercase">{t('appointments.legendBusy') || 'Band'}</span></div>
+                    <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-slate-300" /><span className="text-[10px] font-bold text-slate-400 uppercase">{t('appointments.legendAvailable') || "Bo'sh"}</span></div>
                   </div>
                 </div>
 
@@ -914,7 +914,7 @@ export default function AppointmentModal({
                   <div className="text-[8px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1.5 text-center">
                     Tepada o'ng / chap (18-28)
                   </div>
-                  <div className="grid grid-cols-8 gap-1.5">
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5">
                     {[18, 17, 16, 15, 14, 13, 12, 11].map(num => renderToothButton(num))}
                     {[21, 22, 23, 24, 25, 26, 27, 28].map(num => renderToothButton(num))}
                   </div>
@@ -924,7 +924,7 @@ export default function AppointmentModal({
                   <div className="text-[8px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1.5 text-center">
                     Pastda o'ng / chap (48-38)
                   </div>
-                  <div className="grid grid-cols-8 gap-1.5">
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5">
                     {[48, 47, 46, 45, 44, 43, 42, 41].map(num => renderToothButton(num))}
                     {[31, 32, 33, 34, 35, 36, 37, 38].map(num => renderToothButton(num))}
                   </div>

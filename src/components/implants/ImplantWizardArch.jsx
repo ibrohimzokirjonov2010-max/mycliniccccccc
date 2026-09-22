@@ -21,7 +21,7 @@ function WizardTooth({ fdi, selected, active, onClick }) {
     >
       <span
         className={cn(
-          'implant-wizard-tooth-face relative flex items-center justify-center w-[32px] h-[40px] rounded-[10px] border transition-all duration-150',
+          'implant-wizard-tooth-face relative flex items-center justify-center w-[36px] h-[44px] sm:w-[38px] sm:h-[46px] rounded-[10px] border transition-all duration-150',
           active && 'is-active',
           selected
             ? 'bg-[#0d9488] border-[#0f766e] shadow-sm text-white'
@@ -35,11 +35,11 @@ function WizardTooth({ fdi, selected, active, onClick }) {
           src={getToothIllustrationSrc(fdi, selected ? 'implant' : 'healthy')}
           alt=""
           draggable={false}
-          className="implant-wizard-tooth-img w-[20px] h-[32px] object-contain pointer-events-none"
+          className="implant-wizard-tooth-img w-[22px] h-[34px] object-contain pointer-events-none"
         />
       </span>
       <span className={cn(
-        'implant-wizard-tooth-fdi text-[10px] font-semibold tabular-nums leading-none',
+        'implant-wizard-tooth-fdi text-xs font-semibold tabular-nums leading-none',
         selected ? 'text-[#0d9488]' : 'text-[#6b7280]'
       )}>
         {fdi}

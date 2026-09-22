@@ -203,9 +203,9 @@ const fieldInput =
   'h-10 rounded-[10px] border border-[#e5e7eb] bg-white text-sm text-[#111827] font-medium shadow-none focus-visible:ring-[#0d9488]/20 focus-visible:border-[#0d9488]';
 const cardClass = 'implant-wizard-card bg-white rounded-xl border border-[#e5e7eb] p-4';
 const wizardDialogStyle = {
-  maxWidth: 920,
-  width: 'min(920px, 95vw)',
-  maxHeight: 'min(92vh, 820px)',
+  maxWidth: 960,
+  width: 'min(960px, 95vw)',
+  maxHeight: 'min(94dvh, 900px)',
   padding: 0,
   gap: 0,
   borderRadius: 16,
@@ -1197,8 +1197,8 @@ export default function ImplantForm({
   );
 
   const renderStep1 = () => (
-    <div className="flex flex-col md:flex-row gap-4 min-h-0">
-      <aside className="implant-wizard-step1-patient w-full md:w-[240px] shrink-0 bg-white rounded-xl border border-[#e5e7eb] p-4 flex flex-col gap-3 relative z-20">
+    <div className="flex flex-col lg:flex-row gap-4 min-h-0">
+      <aside className="implant-wizard-step1-patient w-full lg:w-[220px] shrink-0 bg-white rounded-xl border border-[#e5e7eb] p-3 sm:p-4 flex flex-col gap-3 relative z-20">
         <div className="implant-wizard-step1-heading">
           <h3 className="text-[15px] font-bold text-[#111827]">{tw('stepPatient', 'Bemor')}</h3>
           <div className="mt-1 h-[3px] w-10 rounded-full bg-[#0d9488]" />
@@ -1387,7 +1387,7 @@ export default function ImplantForm({
 
       <section className={cardClass}>
         <h3 className="text-[15px] font-bold text-[#111827] mb-3">{tw('followUp', 'Nazorat eslatmasi')}</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           {REMINDER_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -1512,7 +1512,7 @@ export default function ImplantForm({
     <>
       <Dialog open={open && !newPatientOpen} onOpenChange={onClose}>
         <DialogContent
-          className="implant-wizard-dialog !flex !flex-col !p-0 !gap-0 w-[95vw] !max-w-[920px] max-h-[92vh] overflow-hidden !rounded-2xl sm:!rounded-2xl border border-[#e5e7eb] bg-[#f3f4f6] shadow-2xl"
+          className="implant-wizard-dialog dialog-shell-fluid !flex !flex-col !p-0 !gap-0 w-[95vw] !max-w-[960px] max-h-[min(94dvh,900px)] overflow-hidden !rounded-2xl sm:!rounded-2xl border border-[#e5e7eb] bg-[#f3f4f6] shadow-2xl"
           style={wizardDialogStyle}
           data-implant-wizard={IMPLANT_WIZARD_STEP2_MARKER}
           data-implant-factura={IMPLANT_WIZARD_FACTURA_MARKER}

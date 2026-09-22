@@ -1165,7 +1165,7 @@ function ExcelPaymentsView({
               </div>
 
               {/* ── Modal Scrollable Body ── */}
-              <div className="p-4 sm:p-5 space-y-3.5 max-h-[78vh] overflow-y-auto bg-slate-50/50">
+              <div className="p-4 sm:p-5 space-y-3.5 max-h-[min(78vh,calc(100dvh-9rem))] overflow-y-auto bg-slate-50/50">
 
                 {/* ─── 1. Bemor va To'lov Parametrlari (Data Grid Table) ─── */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
@@ -1332,7 +1332,7 @@ function ExcelPaymentsView({
                       </span>
                     </div>
 
-                    <div className="overflow-x-auto max-h-[225px] overflow-y-auto scrollbar-thin flex-1">
+                    <div className="overflow-x-auto max-h-[min(280px,32vh)] overflow-y-auto scrollbar-thin flex-1">
                       {realIncomePayments.length === 0 ? (
                         <div className="py-12 text-center text-xs text-slate-400 italic">Boshqa to'lovlar topilmadi</div>
                       ) : (

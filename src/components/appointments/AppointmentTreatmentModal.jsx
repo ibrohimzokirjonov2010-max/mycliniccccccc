@@ -486,7 +486,7 @@ export default function AppointmentTreatmentModal({ open, onClose, appointment, 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-[96vw] sm:max-w-xl max-h-[92dvh] overflow-hidden flex flex-col p-0 rounded-3xl border-0 shadow-2xl bg-white">
+      <DialogContent className="dialog-shell-fluid w-[96vw] sm:max-w-xl max-h-[min(92dvh,calc(100dvh-1.5rem))] overflow-hidden flex flex-col p-0 rounded-3xl border-0 shadow-2xl bg-white">
         
         {/* MODAL HEADER WITH STEP INDICATOR */}
         <div className="sticky top-0 bg-white z-20 px-6 py-4 border-b border-slate-100 flex-shrink-0">
@@ -753,7 +753,7 @@ export default function AppointmentTreatmentModal({ open, onClose, appointment, 
                   <p className="text-xs font-bold text-slate-400">Ushbu bo'limda material topilmadi</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-2.5 max-h-[300px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 gap-2.5 max-h-[min(40dvh,320px)] overflow-y-auto pr-1">
                   {filteredInventoryItems.map(item => {
                     const usedQty = usedMaterials[item.id] || 0;
                     const stock = Number(item.quantity) || 0;

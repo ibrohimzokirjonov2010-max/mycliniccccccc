@@ -2569,7 +2569,7 @@ export default function Payments() {
           ) : null}
 
           <div className="payment-add-body no-scrollbar">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-3">
                    <div className="space-y-1.5 relative z-50">
                      <div className="flex items-center justify-between ml-4">
@@ -2627,7 +2627,7 @@ export default function Payments() {
                             </span>
                           )}
                         </div>
-                        <div className="flex flex-col gap-1.5 max-h-[110px] overflow-y-auto pr-1">
+                        <div className="flex flex-col gap-1.5 max-h-[min(160px,22vh)] overflow-y-auto pr-1">
                           {patientPlans.map(plan => {
                             const paid = Number(plan.paid_amount) || 0;
                             const total = Number(plan.total_price) || 0;
@@ -3153,7 +3153,7 @@ export default function Payments() {
               </div>
 
               {/* ── Modal Scrollable Body ── */}
-              <div className="p-4 sm:p-5 space-y-3.5 max-h-[78vh] overflow-y-auto bg-slate-50/50">
+              <div className="p-4 sm:p-5 space-y-3.5 max-h-[min(78vh,calc(100dvh-9rem))] overflow-y-auto bg-slate-50/50">
 
                 {/* ─── 1. Bemor va To'lov Parametrlari (Excel Data Grid Table) ─── */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
@@ -3332,7 +3332,7 @@ export default function Payments() {
                       </span>
                     </div>
 
-                    <div className="overflow-x-auto max-h-[225px] overflow-y-auto scrollbar-thin flex-1">
+                    <div className="overflow-x-auto max-h-[min(280px,32vh)] overflow-y-auto scrollbar-thin flex-1">
                       {loadingHistory ? (
                         <div className="py-12 text-center text-xs text-slate-400">Yuklanmoqda...</div>
                       ) : patientPaymentsHistory.length === 0 ? (

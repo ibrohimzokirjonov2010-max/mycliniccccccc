@@ -73,7 +73,7 @@ assert(css.includes('.implant-wizard-arch-curve'), 'legacy curve class stays hid
 assert(css.includes('display: none !important'), 'legacy curve cannot paint');
 
 assert(vite.includes("navigateFallback: 'index.html'"), 'offline app shell stays precached');
-assert(vite.includes('assets-cache-v14-step2-scroll-pad'), 'asset runtime cache bumped');
+assert(vite.includes('assets-cache-v15-notebook-fluid'), 'asset runtime cache bumped');
 assert(vite.includes("importScripts: ['sw-activate-reload.js']"), 'activate reload script is imported');
 assert(sw.includes('client.navigate'), 'new service worker reloads open clients');
 assert(main.includes('listenForAppUpdates'), 'page reloads when a new worker takes control');

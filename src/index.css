@@ -262,8 +262,8 @@
   flex-direction: column;
   width: 100%;
   min-width: 0;
-  gap: 4px;
-  padding: 6px;
+  gap: 6px;
+  padding: 8px;
   border-radius: 16px;
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
@@ -332,16 +332,16 @@
 }
 .odonto-lateral {
   width: 100%;
-  height: clamp(64px, 20cqw, 112px);
+  height: clamp(72px, 22cqw, 128px);
   min-width: 0;
   min-height: 0;
 }
 .odonto-fit-frame[data-compact="true"] .odonto-lateral {
-  height: clamp(52px, 14cqw, 84px);
+  height: clamp(56px, 16cqw, 96px);
 }
 .odonto-occlusal {
   width: 100%;
-  height: 16px;
+  height: clamp(16px, 4.5cqw, 28px);
   min-width: 0;
 }
 .odontogram-tooth.odonto-fit-tooth {

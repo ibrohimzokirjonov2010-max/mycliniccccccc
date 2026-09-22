@@ -13,6 +13,27 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🖥 CRM notebook fluid — dialog / implant / to'lov / odontogram
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/ui/dialog.jsx`](src/components/ui/dialog.jsx)
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/components/implants/ImplantWizardArch.jsx`](src/components/implants/ImplantWizardArch.jsx)
+  - [`src/components/implants/ImplantWizardStep2.jsx`](src/components/implants/ImplantWizardStep2.jsx)
+  - [`src/components/payments/paymentAddModal.css`](src/components/payments/paymentAddModal.css)
+  - [`src/pages/Payments.jsx`](src/pages/Payments.jsx)
+  - [`src/components/patients/ExcelPaymentsView.jsx`](src/components/patients/ExcelPaymentsView.jsx)
+  - [`src/index.css`](src/index.css)
+  - [`src/components/patients/ChairsidePatientProfile.jsx`](src/components/patients/ChairsidePatientProfile.jsx)
+  - [`src/components/patients/ExcelDentalChartView.jsx`](src/components/patients/ExcelDentalChartView.jsx)
+  - [`src/components/appointments/AppointmentModal.jsx`](src/components/appointments/AppointmentModal.jsx)
+  - [`src/components/appointments/AppointmentTreatmentModal.jsx`](src/components/appointments/AppointmentTreatmentModal.jsx)
+  - [`scripts/assert-crm-notebook-responsive.mjs`](scripts/assert-crm-notebook-responsive.mjs)
+- **Muammo Tavsifi:** Notebook (~1366×768) da zich modal/sahifalar hammasi mayda: dialog inline `maxHeight` Tailwind ni yutardi; implant/to'lov `820px` ceiling; odontogram lateral qisqa; appointment legend `7.5px`.
+- **Qanday tuzatildi:** Fluid dialog shell (`notebook-fluid-v1`) — payment/implant/`max-h-*` o'z balandligini boshqaradi. Implant: `94dvh/900`, step1 `lg` rail, kattaroq tish, step2 2-col `lg+`. Payment: taller shell, `lg` form grid, fluid scroll caps (redesign YO'Q). Odontogram: `cqw` clamp + chart padding. Appointment: fluid shell + responsive tooth grid.
+- **Qaytalamaslik choralari:** Dialogga yana majburiy inline `maxHeight` qo'ymang (fluid classlarni yutmasin). Implant faktura/print CSS va payment `payment-add-teal-v5-single-center` ni buzmang. Payments redesign mockupini kodlamang. `node scripts/assert-crm-notebook-responsive.mjs` + `assert-payment-add-modal.mjs` + `assert-implant-wizard-ux.mjs` o'tsin.
+
 ### 👤 Yangi bemor REJA — notebookda ixcham / mayda UI
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**
