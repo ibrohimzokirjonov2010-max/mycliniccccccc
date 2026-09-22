@@ -13,6 +13,16 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 👤 Yangi bemor REJA — notebookda ixcham / mayda UI
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/patients/NewPatientFlow.jsx`](src/components/patients/NewPatientFlow.jsx)
+  - [`scripts/assert-new-patient-reja-responsive.mjs`](scripts/assert-new-patient-reja-responsive.mjs)
+- **Muammo Tavsifi:** «Yangi bemor qo'shish» → REJA qadamida notebook (~1366×768 / 1280) ekranda ikki ustun, 28px tish chiplari va 9–10px shriftlar hammasi mayda ko'rinardi; bosish qiyin.
+- **Sababi:** Desktop ikki ustun `md` (768px) dan boshlanardi; `ToothBtn` fixed `w-7 h-7`; dialog `max-w-5xl` + `88dvh`; jadval/narxlar `text-[9px]`/`text-[10px]`.
+- **Qanday tuzatildi:** Step 2 shell `max-w-6xl` + `min(92dvh,900px)`. Ikki ustun faqat `lg+`; undan past stacked (mobil) layout. Tishlar `sm/lg/xl` da 32–36px. Xizmat qatorlari va narxlar ro'yxati `text-xs` + `min-h-[40px]`; panel ichida scroll. Marker `notebook-fluid-v1`.
+- **Qaytalamaslik choralari:** REJA ikki ustunni yana `md` ga tushirmang. `ToothBtn` ni faqat `w-7 h-7` qilib qoldirmang. To'lovlar redesign / boshqa modallarga kengaytirmang. `node scripts/assert-new-patient-reja-responsive.mjs` o'tsin. Shifokor Select `z-[110]` va hisob-faktura overlay o'zgarmasin.
+
 ### 👤 Yangi bemor — SHIFOKOR Select ro'yxati ko'rinmasligi
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**
