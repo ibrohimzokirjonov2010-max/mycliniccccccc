@@ -1,16 +1,16 @@
 import { randomBytes } from "crypto";
-import { LICENSE_DAYS } from "../config/tariffs";
+import { crmPlanForTariff, LICENSE_DAYS, TRIAL_DAYS } from "../config/tariffs";
 import { clinicNameFor } from "./billing";
 import {
   readStore,
   updateStore,
   type DemoLead,
+  type LedgerEntry,
   type License,
   type Order,
   type Subscription,
+  type SubscriptionStatus,
 } from "./store";
-
-const TRIAL_DAYS = 14;
 const CRM_FALLBACK_URL = "https://zvyggjldzkxwufpnaatr.supabase.co";
 const CRM_FALLBACK_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2eWdnamxkemt4d3VmcG5hYXRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MTg3NTAsImV4cCI6MjEwMjk5NDc1MH0.v4IyrtyJR8a9bQ7tAapDQxe2VHZHiH_IVuHfeC6MeN4";
@@ -28,8 +28,12 @@ export function crmConfig(): CrmConfig | null {
 }
 
 export function crmPlanColumn(planId: string): "basic" | "pro" {
-  if (planId === "start" || planId === "trial") return "basic";
-  return "pro";
+  return crmPlanForTariff(planId);
+}
+
+export function subscriptionStatusFor(kind: "trial" | "paid", expired: boolean): SubscriptionStatus {
+  if (expired) return "expired";
+  return kind === "trial" ? "trialing" : "active";
 }
 
 export function clinicIdForOrder(orderId: string) {
@@ -73,8 +77,12 @@ export function buildCrmRows(sub: Subscription) {
       payment_method: sub.paymentMethod,
       tariff: sub.planId,
       billing_status: sub.status,
+      subscription_status: sub.subscriptionStatus,
+      trial_ends_at: sub.planId === "trial" ? sub.expiresAt.slice(0, 10) : "",
+      period_ends_at: sub.expiresAt.slice(0, 10),
       access_unlocked: sub.accessUnlocked,
       license_key: sub.licenseKey,
+      payment_ledger: sub.paymentLedger ?? [],
     }),
     expires_at: sub.expiresAt.slice(0, 10),
     status: sub.accessUnlocked ? "Active" : "Expired",
@@ -90,7 +98,8 @@ export function buildCrmRows(sub: Subscription) {
     name: sub.doctorName,
     full_name: sub.doctorName,
     phone: sub.phone,
-    role: "doctor",
+    role: "admin",
+    commission_rate: 0,
   };
   if (sub.email) user.notes = sub.email;
   return { clinic, user };
@@ -106,6 +115,7 @@ function paidSubscription(order: Order, license: License, expired: boolean): Sub
     planId: order.planId,
     planName: order.planName,
     status: expired ? "expired" : "paid",
+    subscriptionStatus: subscriptionStatusFor("paid", expired),
     amountUzs: license.amountUzs,
     paymentMethod: license.provider,
     accessUnlocked: !expired && license.status === "active",
@@ -115,6 +125,7 @@ function paidSubscription(order: Order, license: License, expired: boolean): Sub
     licenseKey: license.key,
     orderId: order.id,
     leadId: null,
+    paymentLedger: [],
     temporaryPassword: "",
     updatedAt: new Date().toISOString(),
   };
@@ -133,6 +144,7 @@ function trialSubscription(lead: DemoLead): Subscription {
     planId: "trial",
     planName: "Sinov",
     status: expired ? "expired" : "trial",
+    subscriptionStatus: subscriptionStatusFor("trial", expired),
     amountUzs: 0,
     paymentMethod: "trial",
     accessUnlocked: !expired,
@@ -142,9 +154,36 @@ function trialSubscription(lead: DemoLead): Subscription {
     licenseKey: "",
     orderId: null,
     leadId: lead.id,
+    paymentLedger: [],
     temporaryPassword: "",
     updatedAt: new Date().toISOString(),
   };
+}
+
+function ledgerId(sub: Subscription) {
+  if (sub.orderId) return `pay-${sub.orderId}`;
+  if (sub.leadId) return `trial-${sub.leadId}`;
+  return `sub-${sub.id}`;
+}
+
+export function mergeLedger(previous: LedgerEntry[] | undefined, sub: Subscription): LedgerEntry[] {
+  const prior = previous ?? [];
+  const id = ledgerId(sub);
+  if (prior.some((entry) => entry.id === id)) return prior;
+  if (sub.subscriptionStatus === "expired") return prior;
+  const note = sub.subscriptionStatus === "trialing" ? "Bepul sinov" : `${sub.planName} to'lovi`;
+  return [
+    ...prior,
+    {
+      id,
+      amountUzs: sub.amountUzs,
+      method: sub.paymentMethod,
+      paidAt: (sub.paidAt || sub.startedAt).slice(0, 10),
+      subscriptionStatus: sub.subscriptionStatus,
+      orderId: sub.orderId,
+      note,
+    },
+  ];
 }
 
 async function remember(sub: Subscription) {
@@ -152,6 +191,7 @@ async function remember(sub: Subscription) {
     const previous = db.subscriptions[sub.id];
     const next: Subscription = {
       ...sub,
+      paymentLedger: mergeLedger(previous?.paymentLedger, sub),
       temporaryPassword: previous?.temporaryPassword || makePassword(),
       updatedAt: new Date().toISOString(),
     };

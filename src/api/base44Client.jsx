@@ -1891,7 +1891,9 @@ export const base44 = {
       'slug', 'is_public', 'description', 'address', 'working_hours',
       'telegram_link', 'instagram_link', 'whatsapp_link', 'yandex_map_link',
       'phone', 'subtitle', 'api_key',
-      'email', 'doctor_name', 'payment_method', 'tariff', 'billing_status', 'access_unlocked', 'license_key'
+      'email', 'doctor_name', 'payment_method', 'tariff', 'billing_status',
+      'subscription_status', 'trial_ends_at', 'period_ends_at', 'access_unlocked',
+      'license_key', 'payment_ledger'
     ],
 
     _encodeClinicNotes(clinic) {

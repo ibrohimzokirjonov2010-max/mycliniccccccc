@@ -22,6 +22,7 @@ import {
   deleteAd 
 } from '@/utils/adManager';
 import { uploadImage, formatFileSize } from '@/utils/imageUpload';
+import shifoTariffs from '../../landing/config/shifo-tariffs.json';
 import { 
   AreaChart, 
   Area, 
@@ -45,10 +46,16 @@ function landingTariffLabel(clinic) {
 }
 
 function landingBillingLabel(status) {
-  if (status === 'trial') return 'Sinov';
-  if (status === 'paid') return "To'langan";
+  if (status === 'trialing' || status === 'trial') return 'Sinovda';
+  if (status === 'active' || status === 'paid') return 'Faol';
   if (status === 'expired') return 'Tugagan';
   return '';
+}
+
+function appendLedger(clinic, entry) {
+  const ledger = Array.isArray(clinic.payment_ledger) ? clinic.payment_ledger : [];
+  if (ledger.some((row) => row.id === entry.id)) return ledger;
+  return [...ledger, entry];
 }
 
 function landingPayLabel(method) {
@@ -134,7 +141,7 @@ export default function SuperAdmin() {
   // Clinic Form
   const [form, setForm] = useState({ 
     id: '', name: '', password: '', 
-    monthly_fee: 189000, plan: 'pro', status: 'Active', 
+    monthly_fee: shifoTariffs.legacyPortalMonthlyFee.pro, plan: 'pro', status: 'Active', 
     expires_at: '', last_payment_date: '',
     admin_username: '', admin_password: '', admin_name: ''
   });
@@ -209,14 +216,24 @@ export default function SuperAdmin() {
       
       // Data consistency check for plans & fees
       let hasChanges = false;
+      const legacyBasic = shifoTariffs.legacyPortalMonthlyFee.basic;
+      const legacyPro = shifoTariffs.legacyPortalMonthlyFee.pro;
       const fixedData = (data || []).map(c => {
+        const landingTariff = shifoTariffs.tariffs.find((plan) => plan.id === c.tariff);
+        if (landingTariff) {
+          if (c.plan !== landingTariff.crmPlan) {
+            hasChanges = true;
+            return { ...c, plan: landingTariff.crmPlan };
+          }
+          return c;
+        }
         const fee = Number(c.monthly_fee);
         let correctPlan = c.plan || 'pro';
         
-        if (fee === 99000 && c.plan !== 'basic') {
+        if (fee === legacyBasic && c.plan !== 'basic') {
           correctPlan = 'basic';
           hasChanges = true;
-        } else if (fee === 189000 && c.plan !== 'pro') {
+        } else if (fee === legacyPro && c.plan !== 'pro') {
           correctPlan = 'pro';
           hasChanges = true;
         }
@@ -297,7 +314,17 @@ export default function SuperAdmin() {
         ...c,
         expires_at: newExpiryStr,
         last_payment_date: todayStr,
-        status: 'Active'
+        status: 'Active',
+        subscription_status: 'active',
+        payment_ledger: appendLedger(c, {
+          id: `renew-${c.id}-${newExpiryStr}`,
+          amountUzs: Number(c.monthly_fee) || 0,
+          method: 'manual',
+          paidAt: todayStr,
+          subscriptionStatus: 'active',
+          orderId: null,
+          note: 'Obuna uzaytirildi',
+        }),
       } : c);
       
       await base44.clinic.saveAll(updatedClinics);
@@ -621,7 +648,20 @@ export default function SuperAdmin() {
 
   const markAsPaid = async (id) => {
     const today = new Date().toISOString().split('T')[0];
-    const newClinics = clinics.map(c => c.id === id ? { ...c, last_payment_date: today } : c);
+    const newClinics = clinics.map(c => c.id === id ? {
+      ...c,
+      last_payment_date: today,
+      subscription_status: 'active',
+      payment_ledger: appendLedger(c, {
+        id: `manual-${c.id}-${today}`,
+        amountUzs: Number(c.monthly_fee) || 0,
+        method: 'manual',
+        paidAt: today,
+        subscriptionStatus: 'active',
+        orderId: null,
+        note: "Qo'lda qabul qilindi",
+      }),
+    } : c);
     await base44.clinic.saveAll(newClinics);
     setClinics(newClinics);
     toast.success('To\'lov qabul qilindi');
@@ -633,7 +673,7 @@ export default function SuperAdmin() {
     } else {
       setForm({
         id: '', name: '', password: Math.random().toString(36).substring(2, 8), 
-        monthly_fee: 189000, plan: 'pro', status: 'Active', 
+        monthly_fee: shifoTariffs.legacyPortalMonthlyFee.pro, plan: 'pro', status: 'Active', 
         expires_at: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
         last_payment_date: new Date().toISOString().split('T')[0],
         admin_username: '', admin_password: '', admin_name: ''
@@ -1344,8 +1384,8 @@ export default function SuperAdmin() {
                                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-black uppercase tracking-wider border border-indigo-500/30">
                                     {landingTariffLabel(c)}
                                   </span>
-                                  {landingBillingLabel(c.billing_status) && (
-                                    <p className="text-[10px] text-slate-400">{landingBillingLabel(c.billing_status)}</p>
+                                  {landingBillingLabel(c.subscription_status || c.billing_status) && (
+                                    <p className="text-[10px] text-slate-400">{landingBillingLabel(c.subscription_status || c.billing_status)}</p>
                                   )}
                                 </div>
                               ) : c.plan === 'basic' ? (
@@ -1435,6 +1475,11 @@ export default function SuperAdmin() {
                                     {c.access_unlocked ? 'Kirish ochiq' : 'Kirish yopiq'}
                                   </p>
                                 )}
+                                {Array.isArray(c.payment_ledger) && c.payment_ledger.slice(-2).map((entry) => (
+                                  <p key={entry.id} className="text-[10px] text-slate-400">
+                                    {entry.note || entry.method}: {Number(entry.amountUzs || 0).toLocaleString()} · {String(entry.paidAt || '').slice(0, 10)}
+                                  </p>
+                                ))}
                               </div>
                             </td>
 
@@ -2160,13 +2205,18 @@ export default function SuperAdmin() {
                   value={form.plan || 'pro'} 
                   onChange={e => {
                     const newPlan = e.target.value;
-                    setForm({ ...form, plan: newPlan, monthly_fee: newPlan === 'basic' ? 99000 : 189000 });
+                    const legacy = shifoTariffs.legacyPortalMonthlyFee;
+                    setForm({ ...form, plan: newPlan, monthly_fee: newPlan === 'basic' ? legacy.basic : legacy.pro });
                   }} 
                   className="w-full h-10 bg-white/[0.04] border border-white/10 rounded-xl px-3 text-white text-xs focus:border-indigo-500"
                 >
-                  <option value="basic" className="bg-slate-900 text-white">⭐ BASIC (99.000 UZS / oy)</option>
-                  <option value="pro" className="bg-slate-900 text-white">🚀 PRO (189.000 UZS / oy)</option>
+                  <option value="basic" className="bg-slate-900 text-white">⭐ BASIC ({shifoTariffs.legacyPortalMonthlyFee.basic.toLocaleString()} UZS / oy)</option>
+                  <option value="pro" className="bg-slate-900 text-white">🚀 PRO ({shifoTariffs.legacyPortalMonthlyFee.pro.toLocaleString()} UZS / oy)</option>
                 </select>
+                <p className="text-[10px] leading-snug text-slate-500">
+                  Landing narxlari: {shifoTariffs.tariffs.filter((plan) => plan.id !== 'trial').map((plan) => `${plan.name} ${plan.priceUzs.toLocaleString()} → ${plan.crmPlan.toUpperCase()}`).join(', ')}.
+                  Qo'lda yaratilgan klinika {shifoTariffs.legacyPortalMonthlyFee.basic.toLocaleString()} / {shifoTariffs.legacyPortalMonthlyFee.pro.toLocaleString()} UZS da qoladi.
+                </p>
               </div>
 
               <div className="space-y-1">

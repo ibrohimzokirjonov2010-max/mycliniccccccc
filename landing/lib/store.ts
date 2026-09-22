@@ -62,7 +62,18 @@ export type DemoLead = {
 };
 
 export type BillingStatus = "trial" | "paid" | "expired";
+export type SubscriptionStatus = "trialing" | "active" | "expired";
 export type PaymentMethod = Provider | "trial";
+
+export type LedgerEntry = {
+  id: string;
+  amountUzs: number;
+  method: string;
+  paidAt: string;
+  subscriptionStatus: SubscriptionStatus;
+  orderId: string | null;
+  note: string;
+};
 
 export type Subscription = {
   id: string;
@@ -73,6 +84,7 @@ export type Subscription = {
   planId: string;
   planName: string;
   status: BillingStatus;
+  subscriptionStatus: SubscriptionStatus;
   amountUzs: number;
   paymentMethod: PaymentMethod;
   accessUnlocked: boolean;
@@ -82,6 +94,7 @@ export type Subscription = {
   licenseKey: string;
   orderId: string | null;
   leadId: string | null;
+  paymentLedger: LedgerEntry[];
   temporaryPassword: string;
   updatedAt: string;
 };

@@ -1,0 +1,47 @@
+{
+  "currency": "UZS",
+  "licenseDays": 30,
+  "trialDays": 14,
+  "legacyPortalMonthlyFee": {
+    "basic": 99000,
+    "pro": 189000
+  },
+  "tariffs": [
+    {
+      "id": "start",
+      "name": "Start",
+      "priceUzs": 990000,
+      "crmPlan": "basic",
+      "recommended": false,
+      "period": "oy",
+      "subscriptionStatus": "active"
+    },
+    {
+      "id": "pro",
+      "name": "Pro",
+      "priceUzs": 1990000,
+      "crmPlan": "pro",
+      "recommended": true,
+      "period": "oy",
+      "subscriptionStatus": "active"
+    },
+    {
+      "id": "klinika",
+      "name": "Klinika",
+      "priceUzs": 3490000,
+      "crmPlan": "pro",
+      "recommended": false,
+      "period": "oy",
+      "subscriptionStatus": "active"
+    },
+    {
+      "id": "trial",
+      "name": "Sinov",
+      "priceUzs": 0,
+      "crmPlan": "basic",
+      "recommended": false,
+      "period": "oy",
+      "subscriptionStatus": "trialing"
+    }
+  ]
+}

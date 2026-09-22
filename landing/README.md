@@ -12,7 +12,7 @@ Open http://localhost:3000.
 
 ## Tariffs
 
-Prices are in `config/tariffs.ts` (UZS per month):
+Prices and the Nexus plan map are in `config/shifo-tariffs.json` (Start → BASIC, Pro and Klinika → PRO). The portal form for a hand-created clinic still uses the older BASIC 99 000 / PRO 189 000 fees from that same file. Landing charges the Start / Pro / Klinika prices.
 
 | Plan | Price | |
 | --- | ---: | --- |

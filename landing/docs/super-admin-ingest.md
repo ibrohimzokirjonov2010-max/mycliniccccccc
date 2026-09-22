@@ -4,13 +4,22 @@ Landing purchases and free trials are written into the same Supabase project the
 
 Activation does not wait on a successful CRM write. The landing license is opened first. The ingest runs in the same request and any CRM error is logged, not returned to Payme, Click, or the buyer.
 
+## Data layer
+
+Nexus SuperAdmin (`src/pages/SuperAdmin.jsx`, routes `/super-admin` and `/super-admin-portal`) loads `base44.clinic.getAll()` and `base44.auth.getAllUsers()`.
+
+- Online, those calls read Supabase `public.clinics` and `public.users`. `getAll` then copies clinics into the browser key `system_clinics`. The System tab label "LocalStorage Sync" is that offline fallback.
+- The landing server cannot write the CEO's browser storage. It upserts the same Supabase rows. The next portal load copies them into localStorage.
+- Native payment columns are `monthly_fee` and `last_payment_date`. **To'lovni Qabul Qilish** only used to set `last_payment_date`. It now also appends a ledger row.
+- There is no `clinic_payments` table and no Payme/Click client in the CRM. The ledger is `payment_ledger` inside the clinic `logo` blob (the same `[EXT]…[/EXT]` envelope SuperAdmin already decodes). A SQL `clinic_payments` table is the upgrade if finance needs to query payments outside the portal.
+
 ## When a row is created
 
-| Event | Landing status | CRM `clinics.status` | Access |
+| Event | `subscription_status` | CRM `clinics.status` | Access |
 | --- | --- | --- | --- |
-| Payme `PerformTransaction`, Click complete (`error` 0 and order becomes active), or demo pay | `paid` | `Active` | unlocked for 30 days |
-| Payme `CancelTransaction` after perform, or a cancelled license | `expired` | `Expired` | locked |
-| `POST /api/demo` (Bepul demo) | `trial` | `Active` | unlocked for 14 days, amount 0 |
+| Payme `PerformTransaction`, Click complete that opens a license, or demo pay | `active` | `Active` | unlocked for 30 days, `monthly_fee` = landing tariff, `last_payment_date` set |
+| Payme `CancelTransaction` after perform, or a cancelled license | `expired` | `Expired` | locked, the original ledger row stays |
+| `POST /api/demo` (Bepul demo) | `trialing` | `Active` | unlocked for 14 days, amount 0, no `last_payment_date` |
 
 A Click or Payme callback that never opens a license does not create a clinic. Clinic id is stable: `c` + the first 10 characters of the order id, or `t` + the first 10 characters of the trial id. Repeating the webhook updates the same row and keeps the temporary password.
 
@@ -18,17 +27,26 @@ A Click or Payme callback that never opens a license does not create a clinic. C
 
 `clinics`: `id`, `name` (clinic), `password` (temporary), `expires_at` (`YYYY-MM-DD`), `status` (`Active` or `Expired`), `monthly_fee` (UZS, `0` for trial), `last_payment_date` (paid only), `plan`.
 
-`plan` only allows `basic` and `pro` on some databases. Landing maps Start and trial to `basic`, and Pro and Klinika to `pro`. The real tariff is inside `logo`.
+`plan` only allows `basic` and `pro` on some databases. The map is `landing/config/shifo-tariffs.json` (also imported by the landing price list and by the Nexus clinic form):
 
-`users`: one doctor row, `id` `user-{clinicId}`, `role` `doctor`, `name` / `full_name` the doctor, `phone`, `notes` the email, same temporary password.
+| Landing tariff | Monthly UZS | CRM `plan` | `subscription_status` when paid |
+| --- | ---: | --- | --- |
+| Start | 990000 | `basic` | `active` |
+| Pro | 1990000 | `pro` | `active` |
+| Klinika | 3490000 | `pro` | `active` |
+| Trial | 0 | `basic` | `trialing` |
+
+The Nexus form for a clinic created by hand still offers the older fees in that same file: BASIC `99000`, PRO `189000`. Landing fees are not rewritten to those amounts. A clinic that already has a `tariff` field keeps the landing plan.
+
+`users`: one clinic-owner row, `id` `user-{clinicId}`, `role` `admin`, `commission_rate` 0, `name` / `full_name` the doctor, `phone`, `notes` the email, same temporary password. SuperAdmin **Kirish** picks the admin user.
 
 Fields the `clinics` table has no column for are stored in `logo` with the prefix the CRM already decodes:
 
 ```text
-[EXT]{"phone":"+998901234567","email":"a@b.uz","doctor_name":"Akmal Karimov","payment_method":"payme","tariff":"pro","billing_status":"paid","access_unlocked":true,"license_key":"SHIFO-PRO-...."}[/EXT]
+[EXT]{"phone":"+998901234567","email":"a@b.uz","doctor_name":"Akmal Karimov","payment_method":"payme","tariff":"pro","billing_status":"paid","subscription_status":"active","period_ends_at":"2026-10-22","access_unlocked":true,"license_key":"SHIFO-PRO-....","payment_ledger":[{"id":"pay-ORDER","amountUzs":1990000,"method":"payme","paidAt":"2026-09-22","subscriptionStatus":"active","orderId":"ORDER","note":"Pro to'lovi"}]}[/EXT]
 ```
 
-`payment_method` is `payme`, `click`, `mock`, or `trial`. `billing_status` is `trial`, `paid`, or `expired`. `tariff` is `start`, `pro`, `klinika`, or `trial`.
+`payment_method` is `payme`, `click`, `mock`, or `trial`. `subscription_status` is `trialing`, `active`, or `expired`. `billing_status` stays `trial`, `paid`, or `expired` for older rows. `tariff` is `start`, `pro`, `klinika`, or `trial`. `payment_ledger` is appended once per order or trial. Repeating a webhook does not add a second row. Manual **To'lovni Qabul Qilish** and **+Muddat** append a `manual` row and set `last_payment_date`.
 
 The portal shows clinic name, mapped plan, monthly fee, expiry, password, and the doctor in the users list as soon as the row exists. Doctor, phone, email, tariff name, billing status, payment method, and access text render after the CRM project that contains this repo's `SuperAdmin.jsx` is deployed.
 

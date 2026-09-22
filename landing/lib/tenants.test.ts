@@ -52,12 +52,19 @@ describe("super admin ingest", { concurrency: 1 }, () => {
     assert.equal(clinic.plan, "pro");
     assert.equal(clinic.status, "Active");
     assert.equal(clinic.monthly_fee, 1_990_000);
-    assert.equal(user.role, "doctor");
+    assert.equal(user.role, "admin");
+    assert.equal(user.commission_rate, 0);
     assert.equal(user.name, "Akmal Karimov");
     assert.equal(user.notes, "akmal@smile.uz");
     const extra = decodeLogo(String(clinic.logo));
+    assert.equal(saved.subscriptionStatus, "active");
+    assert.equal(saved.paymentLedger.length, 1);
+    assert.equal(saved.paymentLedger[0]?.amountUzs, 1_990_000);
+    assert.equal(again?.paymentLedger.length, 1);
     assert.equal(extra.tariff, "pro");
+    assert.equal(extra.subscription_status, "active");
     assert.equal(extra.billing_status, "paid");
+    assert.equal(Array.isArray(extra.payment_ledger), true);
     assert.equal(extra.access_unlocked, true);
     assert.equal(extra.payment_method, "mock");
     assert.equal(extra.doctor_name, "Akmal Karimov");
@@ -73,11 +80,17 @@ describe("super admin ingest", { concurrency: 1 }, () => {
     });
     assert.equal(order.clinic, "Dilnoza Rahimova klinikasi");
     await activateOrder({ orderId: order.id, provider: "click", providerTransactionId: "click-1" });
+    const active = await syncOrderToAdmin(order.id);
+    assert.equal(active?.subscriptionStatus, "active");
+    assert.equal(active?.paymentLedger.length, 1);
     await updateStore((db) => {
       revokeLicenseInDb(db, order.id);
     });
     const saved = await syncOrderToAdmin(order.id);
     assert.equal(saved?.status, "expired");
+    assert.equal(saved?.subscriptionStatus, "expired");
+    assert.equal(saved?.paymentLedger.length, 1);
+    assert.equal(saved?.paymentLedger[0]?.amountUzs, 990_000);
     assert.equal(saved?.accessUnlocked, false);
     const { clinic } = buildCrmRows(saved!);
     assert.equal(clinic.plan, "basic");
@@ -95,6 +108,8 @@ describe("super admin ingest", { concurrency: 1 }, () => {
     });
     const saved = await publishTrial(lead);
     assert.equal(saved.status, "trial");
+    assert.equal(saved.subscriptionStatus, "trialing");
+    assert.equal(saved.paymentLedger[0]?.note, "Bepul sinov");
     assert.equal(saved.amountUzs, 0);
     assert.equal(saved.paymentMethod, "trial");
     assert.equal(saved.accessUnlocked, true);
@@ -103,7 +118,7 @@ describe("super admin ingest", { concurrency: 1 }, () => {
     assert.equal(clinic.plan, "basic");
     assert.equal(clinic.monthly_fee, 0);
     assert.equal(clinic.last_payment_date, undefined);
-    assert.equal(decodeLogo(String(clinic.logo)).billing_status, "trial");
+    assert.equal(decodeLogo(String(clinic.logo)).subscription_status, "trialing");
     const listed = await listSubscriptions();
     assert.equal(listed[0]?.id, saved.id);
   });
