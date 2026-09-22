@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant Step 1 — tish panelidan Izoh / Qo'shimcha xizmatlar olib tashlandi
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/ImplantWizardToothEntry.jsx`](src/components/implants/ImplantWizardToothEntry.jsx)
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`scripts/assert-implant-wizard-ux.mjs`](scripts/assert-implant-wizard-ux.mjs)
+  - [`vite.config.js`](vite.config.js)
+- **Muammo Tavsifi:** 1-qadamdagi tish detal panelida «Izoh» va «Qo'shimcha xizmatlar» (qidiruv + teglar) keraksiz edi; foydalanuvchi faqat Brend, Narx, Diametr, Uzunlikni xohlaydi.
+- **Sababi:** `ImplantWizardToothEntry` notes maydoni va `extraServices` teglarini step 1 da ko'rsatardi (xizmatlar allaqachon step 2 da).
+- **Qanday tuzatildi:** Panel faqat Brend / Narx / Ø / L. Extra services `ImplantWizardStep2` da qoldi. Form `notes` va `extra_services` saqlash oqimi o'zgarmadi. SW asset cache `v13-tooth-panel-slim`.
+- **Qaytalamaslik choralari:** Step 1 tish paneliga Izoh yoki Qo'shimcha xizmatlar UI ni qaytarmang. Ø/L `implant-tooth-diameter` / `implant-tooth-length` da qolsin. Step 3 faktura overlay va NewPatientFlow o'zgarmasin. `node scripts/assert-implant-wizard-ux.mjs` o'tsin.
+
 ### 🦷 Bemor profili — tish charti karta ichida
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**

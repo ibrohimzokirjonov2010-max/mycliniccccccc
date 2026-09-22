@@ -43,8 +43,13 @@ assert(entry.includes("tw('diameterLabel', 'Diametr (Ø)')"), 'Uzbek diameter la
 assert(entry.includes("tw('lengthLabel', 'Uzunlik (L)')"), 'Uzbek length label');
 assert(entry.includes('implant-wizard-size-grid'), 'diameter and length share one grid');
 assert(!entry.includes('lot_number') && !entry.includes('Ncm') && !entry.includes('torque'), 'tooth panel does not add lot or torque');
+assert(!entry.includes("tw('notes'"), 'step 1 tooth panel has no Izoh field');
+assert(!entry.includes("tw('extraServices'"), 'step 1 tooth panel has no Qo\'shimcha xizmatlar block');
+assert(!entry.includes('implant-wizard-tooth-extras'), 'step 1 tooth panel has no extra-service tags');
+assert(!entry.includes('onToggleExtra'), 'step 1 tooth panel does not toggle extras');
 assert(form.includes('data-tooth-size="step1-diameter-length"'), 'size marker stays on step 1');
 assert(form.includes('formatToothSizeSummary'), 'selected rows can show Ø×L');
+assert(form.includes('<ImplantWizardStep2'), 'extra services stay on step 2');
 
 const step3Start = form.indexOf('const renderStep3');
 const step3End = form.indexOf('const footerSummary', step3Start);
@@ -68,7 +73,7 @@ assert(css.includes('.implant-wizard-arch-curve'), 'legacy curve class stays hid
 assert(css.includes('display: none !important'), 'legacy curve cannot paint');
 
 assert(vite.includes("navigateFallback: 'index.html'"), 'offline app shell stays precached');
-assert(vite.includes('assets-cache-v12-implant-size'), 'asset runtime cache bumped');
+assert(vite.includes('assets-cache-v13-tooth-panel-slim'), 'asset runtime cache bumped');
 assert(vite.includes("importScripts: ['sw-activate-reload.js']"), 'activate reload script is imported');
 assert(sw.includes('client.navigate'), 'new service worker reloads open clients');
 assert(main.includes('listenForAppUpdates'), 'page reloads when a new worker takes control');

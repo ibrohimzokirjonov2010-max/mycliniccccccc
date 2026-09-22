@@ -134,7 +134,7 @@ export default defineConfig({
             urlPattern: /\/assets\/.*\.(?:js|css)$/,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'assets-cache-v12-implant-size',
+              cacheName: 'assets-cache-v13-tooth-panel-slim',
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 7 },
               cacheableResponse: { statuses: [200] }

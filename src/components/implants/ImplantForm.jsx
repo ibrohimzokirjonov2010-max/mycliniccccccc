@@ -1293,12 +1293,8 @@ export default function ImplantForm({
               brands={BRANDS}
               onChange={updateActiveTooth}
               onRemove={() => removeTooth(activeFdi)}
-              extraServices={extraServicesList}
-              selectedExtraIds={form.extra_services || []}
-              onToggleExtra={toggleExtraService}
               promptSizes={promptSizes}
               tw={tw}
-              t={t}
             />
           ) : (
             <p className="implant-wizard-tooth-hint">{tw('toothEntryHint', "Tishni bosing — brend, narx, diametr va uzunlik shu yerda ochiladi")}</p>

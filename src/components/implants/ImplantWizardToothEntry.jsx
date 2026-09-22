@@ -1,8 +1,6 @@
-import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatSom } from './implantFactura';
-import { getServiceLabel } from './implantWizardLabels';
 import { toothSizeIssue } from './implantSize';
 import './implantWizard.css';
 
@@ -15,32 +13,12 @@ export default function ImplantWizardToothEntry({
   brands,
   onChange,
   onRemove,
-  extraServices,
-  selectedExtraIds,
-  onToggleExtra,
   promptSizes = false,
   tw,
-  t,
 }) {
-  const [query, setQuery] = useState('');
   const firma = data?.firma || 'Osstem';
   const brandOptions = (brands || []).includes(firma) ? brands : [firma, ...(brands || [])];
   const price = data?.price ?? 1500000;
-  const notes = data?.notes || '';
-  const selected = useMemo(() => new Set(selectedExtraIds || []), [selectedExtraIds]);
-
-  const services = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const list = (extraServices || []).filter((service) => {
-      if (!q) return true;
-      return getServiceLabel(service, t).toLowerCase().includes(q);
-    });
-    return [...list].sort((a, b) => {
-      const ai = selected.has(a.id) ? 0 : 1;
-      const bi = selected.has(b.id) ? 0 : 1;
-      return ai - bi;
-    });
-  }, [extraServices, query, selected, t]);
 
   const title = tw('toothEntryTitle', "Tish #{n} — ma'lumot kiriting").replace('{n}', fdi);
   const liveIssue = toothSizeIssue(data, { strict: false });
@@ -158,44 +136,6 @@ export default function ImplantWizardToothEntry({
       {sizeMessage ? (
         <p className="implant-wizard-size-error" role="alert">{sizeMessage}</p>
       ) : null}
-
-      <div className="mt-2">
-        <span className="implant-wizard-field-label">{tw('notes', 'Izoh')}</span>
-        <input
-          value={notes}
-          onChange={(e) => onChange({ notes: e.target.value })}
-          placeholder={tw('notes', 'Izoh')}
-          className="w-full h-10 rounded-[10px] border border-[#e5e7eb] bg-white px-3 text-sm outline-none focus:border-[#0d9488]"
-        />
-      </div>
-
-      <div className="mt-3">
-        <span className="implant-wizard-field-label">{tw('extraServices', "Qo'shimcha xizmatlar")}</span>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={tw('searchService', 'Xizmat nomini qidirish...')}
-          className="w-full h-9 rounded-[10px] border border-[#e5e7eb] bg-white px-3 text-sm outline-none focus:border-[#0d9488]"
-        />
-        <div className="implant-wizard-tooth-extras">
-          {services.length === 0 ? (
-            <p className="implant-wizard-tooth-extra-empty">{tw('noServiceMatch', 'Xizmat topilmadi')}</p>
-          ) : services.map((service) => {
-            const on = selected.has(service.id);
-            return (
-              <button
-                key={service.id}
-                type="button"
-                aria-pressed={on}
-                onClick={() => onToggleExtra(service.id)}
-                className={on ? 'implant-wizard-tooth-extra is-on' : 'implant-wizard-tooth-extra'}
-              >
-                {getServiceLabel(service, t)}
-              </button>
-            );
-          })}
-        </div>
-      </div>
     </section>
   );
 }
