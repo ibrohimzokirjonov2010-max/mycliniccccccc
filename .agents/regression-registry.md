@@ -13,6 +13,21 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 📱 Mobil klinika — toast, tish tanlash, pastki menyu
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/notifications/ImplantAlerter.jsx`](src/components/notifications/ImplantAlerter.jsx)
+  - [`src/components/layout/NativeMobileLayout.jsx`](src/components/layout/NativeMobileLayout.jsx)
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+  - [`src/pages/MobilePatientsV2.jsx`](src/pages/MobilePatientsV2.jsx)
+  - [`src/pages/MobilePaymentsV2.jsx`](src/pages/MobilePaymentsV2.jsx)
+  - [`src/pages/MobileAppointmentsV2.jsx`](src/pages/MobileAppointmentsV2.jsx)
+  - [`src/pages/MobilePatientProfile.jsx`](src/pages/MobilePatientProfile.jsx)
+- **Muammo Tavsifi:** Sariq implant eslatmasi bemor kartalari, odontogramma va to'lov qatorlarini yopardi. Yangi implant sehrgarida tishlar 390px da gorizontal skroll bilan kesilardi va pastki tugmalar yo'riqnomani yopardi. Pastki menyuda implant yo'q, yorliqlar ~9.5px. Ismlar qattiq kesilardi. Hafta strelkasi ekrandan chiqardi. Profil sticky header + qarz lentasi tarixni yopardi.
+- **Sababi:** Sonner `toast.warning` pastki markazda katta karta. Ark `46px` slot + o'ng mask. Tab bar `h-[50px]` va 4 ta tab. `truncate max-w-[150px]`. Hafta `w-11 × 7` + strelkalar 390px ga sig'masdi. Qarz lentasi `sticky` header ichida edi.
+- **Qanday tuzatildi:** Eslatma `#mobile-implant-banner-slot` ichida oqimda (yopish 44px). `/implants` va uchrashuvlar sahifasida chiqmaydi. Telefon arkasi 16 tishni qatorga sig'diradi, body `min-height:0` + pastki padding. 5-tab (Navbat, Bemorlar, Kalendar, Implant, To'lov), yorliq 11px, bar ≥56px. Ismlar 2 qator, asosiy ikonkalar 44px. Hafta grid + shifokor chiplari bir qator scroll. Qarz faqat oqimdagi kartada.
+- **Qaytalamaslik choralari:** Implant eslatmasini yana sonner toast qilib kontent ustiga qo'ymang. Uchrashuvlar va `/implants` da ko'rsatmang. 390px arkga `overflow-x: auto`, `46px` slot yoki o'ng `mask-image` qaytarmang. `transform`/`rotate` qaytarmang. Tab yorlig'ini 9.5px uppercase ga qaytarmang. Qarz lentasini sticky header ichiga qaytarmang. To'lov modalining in-flow footerini buzmang.
+
 ### 💳 To'lov modal (390) — footer overlap + 0 summada To'lash
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**

@@ -243,7 +243,10 @@
     "marketing": "Marketing",
     "cases": "Mening Keyslarim",
     "staff": "Xodimlar",
-    "chairsideToday": "Bugungi navbat"
+    "chairsideToday": "Bugungi navbat",
+    "tabChairside": "Navbat",
+    "tabImplants": "Implant",
+    "tabPayments": "To'lov"
   },
   "marketing": {
     "title": "Marketing Markazi",

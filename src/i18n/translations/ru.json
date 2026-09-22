@@ -240,7 +240,10 @@
     "marketing": "Маркетинг",
     "cases": "Мои кейсы",
     "staff": "Сотрудники",
-    "chairsideToday": "Очередь на сегодня"
+    "chairsideToday": "Очередь на сегодня",
+    "tabChairside": "Очередь",
+    "tabImplants": "Имплант",
+    "tabPayments": "Оплата"
   },
   "marketing": {
     "title": "Маркетинговый Центр",

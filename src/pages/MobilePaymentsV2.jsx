@@ -904,19 +904,19 @@ export default function MobilePaymentsV2() {
         className="bg-white rounded-xl px-3.5 py-2.5 mb-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.06)] active:scale-[0.98] transition-transform content-visibility-auto"
       >
         <div className="flex items-center gap-2.5">
-          {/* Colored icon */}
-          <div className={`w-9 h-9 rounded-xl ${style.bg} flex items-center justify-center flex-shrink-0`}>
-            <TypeIcon className={`w-4 h-4 ${style.text}`} />
+          {/* Colored icon — whole row opens the payment; keep a 44px visual target */}
+          <div className={`w-11 h-11 rounded-xl ${style.bg} flex items-center justify-center flex-shrink-0`}>
+            <TypeIcon className={`w-5 h-5 ${style.text}`} />
           </div>
 
           {/* Left info block */}
           <div className="flex-1 min-w-0 space-y-0.5">
 
-            {/* Row 1: patient name + type badge + Chek badge */}
-            <div className="flex items-center gap-1.5 leading-none">
-              <span className="text-[13px] font-bold text-slate-900 truncate max-w-[150px]">
-                {payment.patient_name || '—'}
-              </span>
+            {/* Row 1: patient name can wrap so similar names stay distinct */}
+            <p className="text-[14px] font-bold text-slate-900 leading-snug line-clamp-2 break-words">
+              {payment.patient_name || '—'}
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5 leading-none">
               <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-black tracking-wide ${style.bg} ${style.text}`}>
                 {style.label}
               </span>
@@ -927,9 +927,9 @@ export default function MobilePaymentsV2() {
                     e.stopPropagation();
                     setPreviewReceiptUrl(payment.receipt_url || payment.receipt_image || payment.check_image);
                   }}
-                  className="shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-black tracking-wide bg-blue-100 text-blue-700 hover:bg-blue-200 flex items-center gap-0.5 shadow-xs active:scale-90 transition-transform"
+                  className="shrink-0 min-h-11 px-2.5 rounded-full text-[11px] font-black tracking-wide bg-blue-100 text-blue-700 hover:bg-blue-200 inline-flex items-center gap-1 shadow-xs active:scale-90 transition-transform"
                 >
-                  <Receipt className="w-2.5 h-2.5" /> Chek
+                  <Receipt className="w-3.5 h-3.5" /> Chek
                 </button>
               )}
             </div>

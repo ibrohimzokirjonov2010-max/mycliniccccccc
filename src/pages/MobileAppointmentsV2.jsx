@@ -376,9 +376,9 @@ export default function MobileAppointmentsV2() {
           )}
           
           <div className="flex items-start justify-between mb-2">
-            <div className="flex-1">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <h3 className="font-extrabold text-slate-900 text-[13.5px] leading-tight">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start gap-1.5 mb-0.5 min-w-0">
+                <h3 className="min-w-0 flex-1 font-extrabold text-slate-900 text-[14px] leading-snug line-clamp-2 break-words">
                   {app.patient_name}
                 </h3>
                 {isContinuing && <span className="text-[9px] text-slate-400 font-medium">(Davomi)</span>}
@@ -424,7 +424,7 @@ export default function MobileAppointmentsV2() {
                   if (app.patient_phone) window.open(`tel:${app.patient_phone}`, '_self');
                   else toast.error("Raqam yo'q");
                 }}
-                className={`${btnBase} w-8 h-8 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl`}
+                className={`${btnBase} w-11 h-11 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl`}
               >
                 <Phone className="w-3.5 h-3.5 fill-emerald-100" />
               </button>
@@ -436,14 +436,14 @@ export default function MobileAppointmentsV2() {
                   if (phone) window.open(`https://t.me/+${phone}`, '_blank');
                   else toast.error("Raqam kiritilmagan");
                 }}
-                className={`${btnBase} w-8 h-8 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl`}
+                className={`${btnBase} w-11 h-11 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl`}
               >
                 <MessageCircle className="w-3.5 h-3.5 fill-blue-100" />
               </button>
               
               <button 
                 onClick={(e) => { e.stopPropagation(); openEditModal(app); }} 
-                className={`${btnBase} w-8 h-8 bg-slate-50 text-slate-500 hover:bg-slate-100 rounded-xl`}
+                className={`${btnBase} w-11 h-11 bg-slate-50 text-slate-500 hover:bg-slate-100 rounded-xl`}
               >
                 <Pencil className="w-3 h-3" />
               </button>
@@ -453,14 +453,14 @@ export default function MobileAppointmentsV2() {
               {app.status === 'Scheduled' || app.status === 'Waiting' ? (
                  <button 
                   onClick={(e) => { e.stopPropagation(); handleStartAppointment(app); }} 
-                  className="h-8 px-3.5 bg-slate-900 text-white rounded-xl text-[8px] font-black uppercase tracking-[0.1em] shadow-lg shadow-slate-200 active:scale-95 transition-all"
+                  className="min-h-11 px-3.5 bg-slate-900 text-white rounded-xl text-[11px] font-bold uppercase tracking-wide shadow-lg shadow-slate-200 active:scale-95 transition-all"
                  >
                    {t('common.start')}
                  </button>
               ) : app.status === 'In Progress' ? (
                  <button 
                   onClick={(e) => { e.stopPropagation(); handleCompleteAppointment(app.id); }} 
-                  className="h-8 px-3.5 bg-emerald-500 text-white rounded-xl text-[8px] font-black uppercase tracking-[0.1em] shadow-lg shadow-emerald-100 active:scale-95 transition-all"
+                  className="min-h-11 px-3.5 bg-emerald-500 text-white rounded-xl text-[11px] font-bold uppercase tracking-wide shadow-lg shadow-emerald-100 active:scale-95 transition-all"
                  >
                    {t('common.finish')}
                  </button>
@@ -509,17 +509,17 @@ export default function MobileAppointmentsV2() {
                   </div>
                 </motion.div>
               ) : !showMonthView ? (
-                <motion.div key="week-view" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex items-center justify-between mb-5">
-                  <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate()-7); setSelectedDate(d); }} className="p-2"><ChevronLeft className="w-5 h-5" /></button>
-                  <div className="flex-1 flex justify-center gap-1">
+                <motion.div key="week-view" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-3 flex min-w-0 items-center gap-1">
+                  <button type="button" aria-label="Oldingi hafta" onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate()-7); setSelectedDate(d); }} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-600 active:bg-slate-100"><ChevronLeft className="w-5 h-5" /></button>
+                  <div className="grid min-w-0 flex-1 grid-cols-7 gap-0.5">
                     {getWeekDays().map((day, idx) => (
-                      <button key={idx} onClick={() => setSelectedDate(day)} className={`flex flex-col items-center justify-center w-11 h-16 rounded-2xl transition-all ${isSelected(day) ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' : isToday(day) ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-50 text-slate-500'}`}>
-                        <span className="text-[10px] font-bold uppercase mb-1">{weekDaysShort[idx]}</span>
-                        <span className="text-lg font-black">{day.getDate()}</span>
+                      <button key={idx} onClick={() => setSelectedDate(day)} className={`flex h-14 min-w-0 flex-col items-center justify-center rounded-xl transition-all ${isSelected(day) ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' : isToday(day) ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-50 text-slate-500'}`}>
+                        <span className="text-[10px] font-bold uppercase leading-none">{weekDaysShort[idx]}</span>
+                        <span className="mt-0.5 text-base font-black leading-none">{day.getDate()}</span>
                       </button>
                     ))}
                   </div>
-                  <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate()+7); setSelectedDate(d); }} className="p-2"><ChevronRight className="w-5 h-5" /></button>
+                  <button type="button" aria-label="Keyingi hafta" onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate()+7); setSelectedDate(d); }} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-600 active:bg-slate-100"><ChevronRight className="w-5 h-5" /></button>
                 </motion.div>
               ) : (
                 <motion.div key="month-view" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mb-6 bg-slate-50/50 rounded-3xl p-4 border border-slate-100">
@@ -562,18 +562,18 @@ export default function MobileAppointmentsV2() {
               )}
             </AnimatePresence>
 
-            {/* Doctors Selection Strip — wrap + horizontal scroll so long names are never clipped */}
-            <div className="mt-4 pb-2 -mx-5 px-5">
+            {/* Doctors — one scrolling row so the timeline starts higher */}
+            <div className="mt-2 pb-1 -mx-5 px-5">
               <div
-                className="flex flex-wrap items-center gap-2.5 overflow-x-auto no-scrollbar overscroll-x-contain pb-2 px-1"
-                style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}
+                className="flex flex-nowrap items-center gap-2 overflow-x-auto no-scrollbar overscroll-x-contain pb-1"
+                style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
               >
                 {doctors.map((doc) => (
                   <button
                     key={doc.id}
                     type="button"
                     onClick={() => setSelectedDoctorId(doc.id)}
-                    className={`flex items-center gap-2 px-4 min-h-[44px] py-2.5 rounded-2xl whitespace-nowrap transition-all border shrink-0 max-w-full ${
+                    className={`flex items-center gap-2 px-3 min-h-[44px] py-2 rounded-2xl whitespace-nowrap transition-all border shrink-0 max-w-[10.5rem] ${
                       selectedDoctorId === doc.id
                         ? 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-200 z-10'
                         : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50 shadow-sm'

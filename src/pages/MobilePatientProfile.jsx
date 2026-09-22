@@ -566,7 +566,7 @@ export default function MobilePatientProfile() {
   return (
     <div
       className="bg-[#F3F6F8] flex flex-col w-full min-w-0 max-w-none"
-      style={{ minHeight: 'calc(100dvh - 54px - env(safe-area-inset-bottom, 0px))' }}
+      style={{ minHeight: 'calc(100dvh - 62px - env(safe-area-inset-bottom, 0px))' }}
     >
 
       {medicalAlerts.length > 0 && (
@@ -593,7 +593,7 @@ export default function MobilePatientProfile() {
             type="button"
             onClick={handleBack}
             aria-label={t('patientProfile.backToList', 'Orqaga')}
-            className="w-10 h-10 rounded-full bg-white/18 border border-white/25 flex items-center justify-center shrink-0 active:scale-95 transition-transform"
+            className="w-11 h-11 rounded-full bg-white/18 border border-white/25 flex items-center justify-center shrink-0 active:scale-95 transition-transform"
           >
             <ArrowLeft className="w-5 h-5 text-white" />
           </button>
@@ -604,7 +604,7 @@ export default function MobilePatientProfile() {
               onClick={() => setPatientModalOpen(true)}
               className="min-w-0 text-center px-0.5"
             >
-              <h1 className="text-[20px] font-black leading-tight truncate drop-shadow-sm max-w-[200px]">{patient.full_name}</h1>
+              <h1 className="text-[18px] font-black leading-tight line-clamp-2 break-words drop-shadow-sm">{patient.full_name}</h1>
               <p className="text-[11px] font-semibold text-white/80 mt-0.5 truncate max-w-[220px]">
                 {[
                   patientGenderLabel(patient.gender, language),
@@ -628,7 +628,7 @@ export default function MobilePatientProfile() {
           {phoneHref ? (
             <a
               href={phoneHref}
-              className="w-10 h-10 rounded-full bg-white/18 border border-white/25 flex items-center justify-center shrink-0 active:scale-95 transition-transform"
+              className="w-11 h-11 rounded-full bg-white/18 border border-white/25 flex items-center justify-center shrink-0 active:scale-95 transition-transform"
               aria-label={t('patientProfile.call', "Qo'ng'iroq qilish")}
             >
               <Phone className="w-5 h-5 text-white" />
@@ -640,18 +640,7 @@ export default function MobilePatientProfile() {
           )}
         </div>
 
-        {financials.debt > 0 && (
-          <div className="mx-3 mb-2 flex items-center justify-between gap-2.5 rounded-xl px-3 py-1.5 bg-black/20 border border-white/10 backdrop-blur-[6px]">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-              <span className="text-[11px] font-bold text-white/90">{t('patientProfile.mobile.debt', 'Qarzdorlik')}</span>
-            </div>
-            <span className="text-[12px] font-black tabular-nums whitespace-nowrap text-amber-200">
-              {fmt(financials.debt)} {t('dashboard.currency', "so'm")}
-            </span>
-          </div>
-        )}
-        {financials.debt <= 0 && <div className="h-2" />}
+        <div className="h-2" />
       </div>
 
       {/* IDENTITY STRIP */}
@@ -667,7 +656,7 @@ export default function MobilePatientProfile() {
               : getInitials(patient.full_name)}
           </button>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-black text-[#0f172a] truncate">{patient.full_name}</p>
+            <p className="text-[13px] font-black text-[#0f172a] leading-snug line-clamp-2 break-words">{patient.full_name}</p>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               {patient.phone ? (
                 <a href={phoneHref} className="text-[11px] font-bold text-[#0d9488] font-mono truncate">{formatPhone(patient.phone)}</a>
@@ -1174,7 +1163,7 @@ export default function MobilePatientProfile() {
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 26, stiffness: 300 }}
               className="fixed bottom-0 left-0 right-0 z-[100] bg-white rounded-t-3xl shadow-2xl px-5 pt-4 max-h-[70vh] overflow-y-auto"
-              style={{ paddingBottom: 'calc(54px + env(safe-area-inset-bottom, 0px) + 1rem)' }}
+              style={{ paddingBottom: 'calc(62px + env(safe-area-inset-bottom, 0px) + 1rem)' }}
             >
               <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
               <div className="flex items-center justify-between mb-4">
@@ -1214,7 +1203,7 @@ export default function MobilePatientProfile() {
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 26, stiffness: 300 }}
               className="fixed bottom-0 left-0 right-0 z-[100] bg-white rounded-t-3xl shadow-2xl px-5 pt-4 max-h-[85dvh] overflow-y-auto"
-              style={{ paddingBottom: 'calc(54px + env(safe-area-inset-bottom, 0px) + 1rem)' }}
+              style={{ paddingBottom: 'calc(62px + env(safe-area-inset-bottom, 0px) + 1rem)' }}
             >
               <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
               <div className="flex items-center justify-between mb-4">

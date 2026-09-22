@@ -1,5 +1,5 @@
 /* IMPLANT_WIZARD_STEP2_TEAL_V2 — layout must survive Tailwind/Dialog defaults */
-/* IMPLANT_WIZARD_MOBILE_390_V2 — h-scroll arches, chips, sticky footer, factura slot */
+/* IMPLANT_WIZARD_MOBILE_390_V3 — fluid tooth rows (no h-scroll), in-flow footer, factura slot */
 /* IMPLANT_WIZARD_MOBILE_POLISH_V1 — clinic-grade 390: 12px FDI, medical Jami footer, no alert() */
 
 .implant-wizard-dialog {
@@ -892,10 +892,19 @@
     left: 50% !important;
     transform: translate(-50%, -50%) !important;
     overflow-x: hidden !important;
+    overflow-y: hidden !important;
+    min-height: 0 !important;
   }
 
   .implant-wizard-body {
-    padding: 10px 12px 12px;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    /* Extra end padding so the in-flow footer never covers the tooth hint. */
+    padding: 10px 12px 32px;
+    scroll-padding-bottom: 24px;
   }
 
   .implant-wizard-stepper {
@@ -1024,6 +1033,9 @@
   }
 
   .implant-wizard-footer {
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-end;
@@ -1052,19 +1064,25 @@
     font-weight: 700;
   }
 
-  /* One horizontal scroller for both straight rows — larger tap targets */
+  /* Both jaws fit ~390px. No horizontal scroll and no edge fade. */
   .implant-wizard-arch {
     position: relative;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .implant-wizard-arch-scroll {
+    overflow-x: hidden !important;
+    overflow-y: hidden;
     scrollbar-width: none;
-    padding: 4px 0 8px;
-    scroll-snap-type: x proximity;
-    scroll-padding-inline: 6px 28px;
-    overscroll-behavior-x: contain;
-    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
+    padding: 2px 0 4px;
+    scroll-snap-type: none;
+    overscroll-behavior-x: none;
+    mask-image: none;
+    -webkit-mask-image: none;
+    width: 100%;
+    min-width: 0;
   }
 
   .implant-wizard-arch-scroll::-webkit-scrollbar {
@@ -1072,53 +1090,72 @@
   }
 
   .implant-wizard-arch-rows {
-    gap: 8px;
+    gap: 6px;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100%;
   }
 
   .implant-wizard-arch-row {
-    gap: 4px;
+    gap: 1px;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100%;
+    justify-content: stretch;
   }
 
   .implant-wizard-tooth-slot {
     transform: none !important;
     margin: 0 !important;
-    flex: 0 0 46px;
-    width: 46px;
-    scroll-snap-align: start;
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none;
+    scroll-snap-align: none;
   }
 
   .implant-wizard-arch-midline {
-    flex: 0 0 8px;
-    width: 8px;
-    margin: 2px 2px;
+    flex: 0 0 3px;
+    width: 3px;
+    margin: 0;
     opacity: 0.7;
   }
 
-  .implant-wizard-tooth-btn {
+  .implant-wizard-tooth-btn.odontogram-tooth {
     width: 100%;
-    gap: 4px;
+    min-width: 0 !important;
+    max-width: 100%;
+    min-height: 0 !important;
+    height: auto;
+    gap: 2px;
+    flex-shrink: 1;
     touch-action: manipulation;
   }
 
-  .implant-wizard-tooth-fdi,
-  .implant-wizard-tooth-btn span:first-child,
-  .implant-wizard-tooth-btn span:last-child {
-    font-size: 12px !important;
+  .implant-wizard-tooth-fdi {
+    font-size: clamp(7px, 2.15vw, 10px) !important;
     font-weight: 700;
-    line-height: 1.2;
+    line-height: 1.05 !important;
+    letter-spacing: -0.03em;
     font-variant-numeric: tabular-nums;
   }
 
   .implant-wizard-tooth-face {
-    width: 46px !important;
-    max-width: 46px;
-    height: 54px !important;
-    border-radius: 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 40px !important;
+    min-height: 0 !important;
+    aspect-ratio: auto;
+    border-radius: 6px !important;
+    padding: 1px;
   }
 
-  .implant-wizard-tooth-face img {
-    width: 26px !important;
-    height: 34px !important;
+  .implant-wizard-tooth-face img,
+  .implant-wizard-tooth-img {
+    width: 100% !important;
+    height: 30px !important;
+    max-height: 30px !important;
+    object-fit: contain;
   }
 
   .implant-wizard-params-grid {
@@ -1165,9 +1202,12 @@
     justify-content: space-between;
     gap: 8px;
     padding-top: 8px;
-    position: sticky;
-    bottom: 0;
-    background: #ffffff;
+    position: static;
+    background: transparent;
+  }
+
+  .implant-wizard-tooth-hint {
+    margin-bottom: 8px;
   }
 
   .implant-wizard-tooth-cards {
@@ -1194,6 +1234,11 @@
     color: #9ca3af;
     text-align: right;
     letter-spacing: 0.04em;
+  }
+
+  /* Step 1 arch fits the phone, so the "swipe sideways" hint is noise. */
+  .implant-wizard-arch .implant-wizard-scroll-hint {
+    display: none !important;
   }
 
   .implant-wizard-header {
