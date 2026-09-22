@@ -3,7 +3,7 @@
    Yangi implant wizard until a second full reload. Claiming clients and
    navigating them once per build token loads the new shell immediately.
    Later deploys still refresh via the page controllerchange listener. */
-const SW_RELOAD_TOKEN = 'profile-shell-v1';
+const SW_RELOAD_TOKEN = 'implant-size-mm-v1';
 const SW_RELOAD_FLAG = `https://sw-reload.local/${SW_RELOAD_TOKEN}`;
 
 self.addEventListener('activate', (event) => {

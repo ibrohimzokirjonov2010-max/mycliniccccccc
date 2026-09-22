@@ -13,6 +13,16 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant — Ø va L tish panelida, aniq mm yorliqlari
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/ImplantWizardToothEntry.jsx`](src/components/implants/ImplantWizardToothEntry.jsx)
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/components/implants/implantSize.js`](src/components/implants/implantSize.js)
+- **Muammo Tavsifi:** Diametr va uzunlik tish panelida qisqa Ø / L yorlig'i bilan bor edi. Foydalanuvchi uzunlik va diametrni bir joyda, mm bilan, aniq ko'rmoqchi.
+- **Qanday tuzatildi:** Panelda «Diametr (Ø)» va «Uzunlik (L)», ikkalasi mm. Keyingi qadamdan oldin ikkalasi ham kiritiladi (diametr 1.5–8, uzunlik 4–30). Chipda `Ø4.0×10`. `tooth_data_map` va faktura `toothLines` shu qiymatlarni oladi.
+- **Qaytalamaslik choralari:** Ø/L ni 3-qadamga qaytarmang. Ncm va Lot ni wizardga qo'shmang. Test id `implant-tooth-diameter` va `implant-tooth-length` tish panelida qolsin. Faktura ochilishida avtomatik chop etmang. `node scripts/assert-implant-size.mjs`, `assert-implant-wizard-ux.mjs`, `assert-implant-factura.mjs` o'tsin.
+
 ### 👤 Bemor profili — jins, pasport 404, tablar
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**

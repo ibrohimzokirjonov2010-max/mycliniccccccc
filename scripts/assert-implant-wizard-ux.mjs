@@ -12,6 +12,7 @@ const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 
 const form = read('src/components/implants/ImplantForm.jsx');
 const arch = read('src/components/implants/ImplantWizardArch.jsx');
+const entry = read('src/components/implants/ImplantWizardToothEntry.jsx');
 const css = read('src/components/implants/implantWizard.css');
 const vite = read('vite.config.js');
 const sw = read('public/sw-activate-reload.js');
@@ -35,6 +36,15 @@ assert(step1.includes('activeFdi ?'), 'entry panel is tied to the focused tooth'
 assert(step1.indexOf("renderSelectedStack('implant-wizard-selected-teeth')") > step1.indexOf('implant-wizard-new-patient'), 'patient stack sits under + Yangi bemor');
 assert(step1.indexOf("renderSelectedStack('implant-wizard-selected-stack')") > step1.indexOf('ImplantWizardArch'), 'chart stack sits below the tooth strip');
 assert(step1.includes('implant-wizard-new-patient'), 'new patient action stays');
+assert(step1.includes('promptSizes={promptSizes}'), 'tooth panel receives the size prompt');
+assert(entry.includes('data-testid="implant-tooth-diameter"'), 'diameter field on the tooth panel');
+assert(entry.includes('data-testid="implant-tooth-length"'), 'length field on the tooth panel');
+assert(entry.includes("tw('diameterLabel', 'Diametr (Ø)')"), 'Uzbek diameter label');
+assert(entry.includes("tw('lengthLabel', 'Uzunlik (L)')"), 'Uzbek length label');
+assert(entry.includes('implant-wizard-size-grid'), 'diameter and length share one grid');
+assert(!entry.includes('lot_number') && !entry.includes('Ncm') && !entry.includes('torque'), 'tooth panel does not add lot or torque');
+assert(form.includes('data-tooth-size="step1-diameter-length"'), 'size marker stays on step 1');
+assert(form.includes('formatToothSizeSummary'), 'selected rows can show Ø×L');
 
 const step3Start = form.indexOf('const renderStep3');
 const step3End = form.indexOf('const footerSummary', step3Start);
@@ -58,7 +68,7 @@ assert(css.includes('.implant-wizard-arch-curve'), 'legacy curve class stays hid
 assert(css.includes('display: none !important'), 'legacy curve cannot paint');
 
 assert(vite.includes("navigateFallback: 'index.html'"), 'offline app shell stays precached');
-assert(vite.includes('assets-cache-v11-implant-wizard'), 'asset runtime cache bumped');
+assert(vite.includes('assets-cache-v12-implant-size'), 'asset runtime cache bumped');
 assert(vite.includes("importScripts: ['sw-activate-reload.js']"), 'activate reload script is imported');
 assert(sw.includes('client.navigate'), 'new service worker reloads open clients');
 assert(main.includes('listenForAppUpdates'), 'page reloads when a new worker takes control');
