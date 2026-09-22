@@ -198,7 +198,14 @@ assert(formSrc.includes('data-testid="implant-wizard-factura-print"'), 'print bu
 assert(cssSrc.includes('.implant-wizard-factura-teaser'), 'teaser styles');
 assert(cssSrc.includes('margin-top: auto'), 'overlay sheet centers without clipping the top');
 assert(cssSrc.includes('html.printing-implant-factura-overlay .implant-wizard-factura-overlay'), 'print targets the overlay');
-const printBlock = cssSrc.slice(cssSrc.indexOf('html.printing-implant-factura-overlay .implant-wizard-factura-overlay {'));
-assert(printBlock.includes('top: 0'), 'print overlay starts at the top of the page');
+const printBlock = cssSrc.slice(cssSrc.indexOf('html.printing-implant-factura-overlay,'));
+assert(printBlock.includes('body > *:not(.implant-wizard-factura-overlay)'), 'print hides wizard chrome and other body children');
+assert(printBlock.includes('position: static !important'), 'printed factura stays in flow at the top of the page');
+assert(printBlock.includes('overflow: visible !important'), 'print releases the 100dvh overflow clip');
+assert(!/top:\s*0[\s\S]{0,120}inset:\s*auto/.test(printBlock), 'inset shorthand must not cancel a top offset on the print overlay');
+const overlayPos = printBlock.slice(printBlock.lastIndexOf('html.printing-implant-factura-overlay .implant-wizard-factura-overlay {'));
+const overlayPosRule = overlayPos.slice(0, overlayPos.indexOf('}'));
+assert(overlayPosRule.includes('position: static !important'), 'print overlay rule is in normal flow');
+assert(!overlayPosRule.includes('position: absolute'), 'print overlay must not be taken out of flow');
 
 console.log('assert-implant-factura: ok');

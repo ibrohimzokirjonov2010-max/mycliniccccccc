@@ -13,6 +13,16 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant Step 3 — Chop etish bo'sh sahifa
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+  - [`scripts/assert-implant-factura.mjs`](scripts/assert-implant-factura.mjs)
+- **Muammo Tavsifi:** Faktura ekranda ko'rinadi, Yopish va Chop etish bosiladi, lekin chop etish oynasi bo'sh oq sahifa.
+- **Sababi:** Chop etish qoidasi `top: 0` dan keyin `inset: auto` qo'ygan — shorthand `top`/`left` ni `auto` ga qaytaradi. `position: absolute` + `top: auto` qog'ozni statik joyida, ya'ni `height: 100dvh` bo'lgan `#root` dan keyin qoldiradi. `html, body { overflow: hidden }` shu qog'ozni sahifadan kesib tashlaydi.
+- **Qanday tuzatildi:** `html.printing-implant-factura-overlay` da boshqa `body` bolalari `display: none`, overlay `position: static` (oqimdagi yagona hujjat, sahifa boshida). `html`/`body` balandligi `auto`, `overflow: visible`. Toolbar chop etilmaydi. Ekrandagi `pointer-events: auto` o'zgarmaydi.
+- **Qaytalamaslik choralari:** Overlay chop etishda `inset: auto` ni `top: 0` dan keyin qo'ymang. Boshqa body bolalarini oqimda qoldirib `position: static` qilmang (qog'oz pastga tushadi) va siblinglarni `display: none` qilgan holda overlayni `position: absolute` qilmang (sahifa balandligi 0 bo'lib yana bo'sh chiqadi). Ekrandagi markazlash va `pointer-events: auto` qolsin. `node scripts/assert-implant-factura.mjs` o'tsin.
+
 ### 🦷 Yangi implant Step 3 — faktura Yopish / Chop etish bosilmaydi
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**
@@ -96,7 +106,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 - **Muammo Tavsifi:** «Faktura olish» ochilishi bilan desktopda chop etish rejimi yoqilgan, faktura sahifa pastiga yopishib qolgan. Wizard saqlash muvaffaqiyatli yopilgan, lekin implant bemor va implant ro'yxatlarida chiqmagan.
 - **Sababi:** `openFactura` 60 ms dan keyin `printImplantFactura()` chaqirgan. Chop etish CSS overlay ni `position: static` qilgan, yashirin sahifa balandligi fakturani pastga surgan. Saqlash payloadida `factura` ustuni yo'q (`column implants.factura does not exist`, kod 42703). Eski regex faqat `column "name"` ni taniydi, `implants.factura` ni emas. Xato localStorage ga yutilgan, Supabase ga yozilmagan, ro'yxat esa bazadan o'qiladi.
 - **Qanday tuzatildi:** Faktura markaziy overlayda qoladi; Yopish yopadi; Chop etish alohida bosiladi va chop etishda karta sahifa boshida. `missingColumnFromError` sxema-qualified ustunni olib tashlab qayta yozadi (`created_date` ↔ `created_at`). Implant yaratish/yangilash xatosi localStorage ga yashirilmaydi — o'zbekcha `saveFailed` chiqadi. Brend va Ø×L tish panelidan fakturaga tushadi.
-- **Qaytalamaslik choralari:** Faktura ochilishida `printImplantFactura` ni avtomatik chaqirmang. Overlay chop etishda `position: static` qilmang — `top: 0`. `column implants.<name> does not exist` ni yutib localStorage ga qaytarmang. Implant `create` xatosini jim yutmang. Step 3 ga Ø/L/Ncm/Lot qaytarmang — o'lchov tish panelida (`implant-tooth-diameter` / `implant-tooth-length`). `node scripts/assert-implant-factura.mjs` o'tsin.
+- **Qaytalamaslik choralari:** Faktura ochilishida `printImplantFactura` ni avtomatik chaqirmang. Chop etishda `top: 0` dan keyin `inset: auto` qo'ymang — qog'oz `100dvh` dan keyin qolib bo'sh sahifa beradi. Faqat fakturani chop etish: `body > *:not(.implant-wizard-factura-overlay) { display: none }` va overlay `position: static`, `html/body` `overflow: visible`. Siblinglar oqimda turgan holatda `position: static` qog'ozni pastga suradi. `column implants.<name> does not exist` ni yutib localStorage ga qaytarmang. Implant `create` xatosini jim yutmang. Step 3 ga Ø/L/Ncm/Lot qaytarmang — o'lchov tish panelida (`implant-tooth-diameter` / `implant-tooth-length`). `node scripts/assert-implant-factura.mjs` o'tsin.
 
 ### 🦷 Yangi implant wizard — productionda eski ark va tish paneli yo'q
 - **Sana:** 2026-09-22
