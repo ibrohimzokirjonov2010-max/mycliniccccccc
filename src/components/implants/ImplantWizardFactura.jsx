@@ -171,6 +171,17 @@ export default function ImplantWizardFactura({
                 : '—'}
             </strong>
           </p>
+          {snapshot.toothLines?.length ? (
+            <ul className="implant-factura-sizes">
+              {snapshot.toothLines.map((row) => (
+                <li key={row.fdi}>
+                  <span>#{row.fdi}</span>
+                  {row.brand ? <span>{row.brand}</span> : null}
+                  {row.size ? <strong>{row.size}</strong> : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
         <div className="implant-factura-umumiy">
           <span>{tw('overall', 'Umumiy')}</span>

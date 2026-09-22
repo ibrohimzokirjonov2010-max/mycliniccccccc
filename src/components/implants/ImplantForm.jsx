@@ -28,7 +28,6 @@ import {
   parseFacturaSnapshot,
   IMPLANT_WIZARD_FACTURA_MARKER,
   printImplantFactura,
-  isDesktopViewport,
 } from './implantFactura';
 import { cn } from '@/lib/utils';
 import './implantWizard.css';
@@ -145,6 +144,23 @@ function DateField({ value, onChange, className }) {
 }
 
 const SIZE_FIELDS = ['diameter', 'length', 'torque', 'isq', 'lot_number'];
+
+function wizardToothLines(selectedFdis, toothDataMap, form) {
+  return (selectedFdis || []).map((fdi) => {
+    const entry = toothDataMap?.[fdi] || toothDataMap?.[String(fdi)] || {};
+    const firma = entry.firma || form?.firma || '';
+    const brand = firma === 'Boshqa'
+      ? (entry.firma_custom || entry.brend || form?.firma_custom || form?.brend || '')
+      : (entry.brend || firma || form?.brend || '');
+    const diameter = entry.diameter !== undefined && entry.diameter !== ''
+      ? entry.diameter
+      : (form?.diameter || '');
+    const length = entry.length !== undefined && entry.length !== ''
+      ? entry.length
+      : (form?.length || '');
+    return { fdi, brand, diameter, length };
+  });
+}
 
 function omitEmptySizeFields(data) {
   const next = { ...data };
@@ -590,10 +606,18 @@ export default function ImplantForm({
       }
       return { ...prev, [id]: next };
     });
-    if (patch.price === undefined && patch.firma === undefined && patch.firma_custom === undefined) return;
+    if (
+      patch.price === undefined
+      && patch.firma === undefined
+      && patch.firma_custom === undefined
+      && patch.diameter === undefined
+      && patch.length === undefined
+    ) return;
     setForm((prev) => {
       const next = { ...prev };
       if (patch.price !== undefined) next.price = patch.price;
+      if (patch.diameter !== undefined) next.diameter = patch.diameter;
+      if (patch.length !== undefined) next.length = patch.length;
       if (patch.firma !== undefined) {
         next.firma = patch.firma;
         if (patch.firma !== 'Boshqa') {
@@ -808,6 +832,13 @@ export default function ImplantForm({
         selectedServiceIds: form.extra_services || [],
         extraServicePrices,
         edits: facturaEdits,
+        toothLines: wizardToothLines(fdiNumbers, cleanedToothMap, {
+          firma: finalFirma,
+          firma_custom: finalFirmaCustom,
+          brend: finalBrend,
+          diameter: finalDiameter,
+          length: finalLength,
+        }),
         t,
       });
       const fromFactura = extraIdsFromFactura(facturaSnapshot);
@@ -878,7 +909,8 @@ export default function ImplantForm({
       onClose();
     } catch (error) {
       console.error('Save failed:', error);
-      setFormError((t('common.saveError') || 'Saqlashda xatolik') + ': ' + (error.message || ''));
+      const detail = String(error?.message || '').replace(/^Supabase DB Error \([^)]+\):\s*/, '');
+      setFormError(tw('saveFailed', "Saqlashda xatolik yuz berdi. Implant bazaga yozilmadi.") + (detail ? ` (${detail})` : ''));
     } finally {
       setSaving(false);
     }
@@ -926,9 +958,10 @@ export default function ImplantForm({
     selectedServiceIds: form.extra_services || [],
     extraServicePrices,
     edits: facturaEdits,
+    toothLines: wizardToothLines(selectedFdis, toothDataMap, form),
     t,
   }), [
-    form.placement_date, today, form.patient_name, clinicName, selectedFdis,
+    form, today, form.patient_name, clinicName, selectedFdis, toothDataMap,
     brandLabel, implantUnitPrice, extraServicesList, form.extra_services,
     extraServicePrices, facturaEdits, t,
   ]);
@@ -960,16 +993,9 @@ export default function ImplantForm({
       setFacturaPreviewOpen(false);
     };
     window.addEventListener('keydown', onKey, true);
-    let printTimer = 0;
-    if (isDesktopViewport()) {
-      printTimer = window.setTimeout(() => {
-        printImplantFactura();
-      }, 60);
-    }
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener('keydown', onKey, true);
-      if (printTimer) window.clearTimeout(printTimer);
     };
   }, [facturaPreviewOpen]);
 

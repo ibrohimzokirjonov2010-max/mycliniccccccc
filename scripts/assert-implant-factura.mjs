@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   buildFacturaDocument,
+  formatImplantSize,
+  summarizeToothLines,
   extraIdsFromFactura,
   encodeFacturaNotes,
   stripFacturaFromNotes,
@@ -104,6 +106,40 @@ const empty = buildFacturaDocument({
 });
 assert(empty.clinic === 'DentaNova', 'custom clinic kept');
 assert(empty.stage1[0].qty === 0, 'zero teeth implant qty');
+
+const sized = buildFacturaDocument({
+  date: '2026-09-22',
+  patientName: 'Ali Valiyev',
+  clinicName: 'DentaNova',
+  selectedFdis: ['16', '26'],
+  brandLabel: 'Osstem',
+  implantUnitPrice: 1500000,
+  extraServicesList: extras,
+  selectedServiceIds: [],
+  toothLines: [
+    { fdi: '16', brand: 'Osstem', diameter: '4.5', length: '10' },
+    { fdi: '26', brand: 'Straumann', diameter: '4.0', length: '8' },
+  ],
+});
+assert(sized.stage1[0].label === 'Osstem', `mixed sizes keep brand label: ${sized.stage1[0].label}`);
+assert(sized.toothLines[0].size === 'Ø4.5×L10', `size 16 ${sized.toothLines[0].size}`);
+assert(sized.toothLines[1].size === 'Ø4.0×L8', `size 26 ${sized.toothLines[1].size}`);
+assert(sized.toothLines[1].brand === 'Straumann', 'per-tooth brand');
+const sameSize = buildFacturaDocument({
+  date: '2026-09-22',
+  patientName: 'Ali Valiyev',
+  clinicName: 'DentaNova',
+  selectedFdis: ['16'],
+  brandLabel: 'Osstem',
+  implantUnitPrice: 1500000,
+  toothLines: [{ fdi: '16', brand: 'Osstem', diameter: '4.5', length: '10' }],
+});
+assert(sameSize.stage1[0].label === 'Osstem · Ø4.5×L10', `uniform size label ${sameSize.stage1[0].label}`);
+assert(formatImplantSize('4.5', '') === 'Ø4.5', 'diameter only');
+assert(summarizeToothLines([{ fdi: '#36', diameter: '5', length: '11.5' }])[0].size === 'Ø5×L11.5', 'summarize');
+const sizedNotes = encodeFacturaNotes('', sameSize);
+assert(sizedNotes.includes('Ø4.5×L10'), 'factura text includes size');
+assert(sizedNotes.includes('Osstem'), 'factura text includes brand');
 assert(empty.stage2.some((l) => l.id === 'zircon_std' && l.qty === 0), 'empty zircon tiers');
 assert(typeof printImplantFactura === 'function', 'print helper');
 assert(typeof isDesktopViewport === 'function', 'desktop helper');
@@ -132,9 +168,22 @@ assert(step3Start >= 0 && step3End > step3Start, 'renderStep3 bounds');
 const step3Src = formSrc.slice(step3Start, step3End);
 assert(!step3Src.includes('<ImplantWizardFactura'), 'do not dump full factura in renderStep3');
 assert(step3Src.includes('implant-wizard-factura-teaser'), 'teaser is first-class in step 3');
+const effectStart = formSrc.indexOf('if (!facturaPreviewOpen) return undefined;');
+const effectEnd = formSrc.indexOf('}, [facturaPreviewOpen]');
+assert(effectStart >= 0 && effectEnd > effectStart, 'factura open effect');
+assert(!formSrc.slice(effectStart, effectEnd).includes('printImplantFactura'), 'opening factura must not auto-print');
+assert(formSrc.includes('saveFailed'), 'save failure surfaces an Uzbek message');
+const toothSrc = fs.readFileSync(path.join(here, '../src/components/implants/ImplantWizardToothEntry.jsx'), 'utf8');
+assert(toothSrc.includes('data-testid="implant-tooth-diameter"'), 'per-tooth diameter stays on the tooth panel');
+assert(toothSrc.includes('data-testid="implant-tooth-length"'), 'per-tooth length stays on the tooth panel');
+assert(!step3Src.includes('implant-tooth-diameter'), 'diameter input is not on step 3');
 
 const cssSrc = fs.readFileSync(path.join(here, '../src/components/implants/implantWizard.css'), 'utf8');
 assert(cssSrc.includes('z-index: 400'), 'overlay stacks above wizard dialog z-100');
 assert(cssSrc.includes('.implant-wizard-factura-teaser'), 'teaser styles');
+assert(cssSrc.includes('margin-top: auto'), 'overlay sheet centers without clipping the top');
+assert(cssSrc.includes('html.printing-implant-factura-overlay .implant-wizard-factura-overlay'), 'print targets the overlay');
+const printBlock = cssSrc.slice(cssSrc.indexOf('html.printing-implant-factura-overlay .implant-wizard-factura-overlay {'));
+assert(printBlock.includes('top: 0'), 'print overlay starts at the top of the page');
 
 console.log('assert-implant-factura: ok');

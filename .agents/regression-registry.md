@@ -13,6 +13,21 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant — faktura pastga tushishi va saqlash bazaga yozilmasligi
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/api/missingColumn.js`](src/api/missingColumn.js)
+  - [`src/api/base44Client.jsx`](src/api/base44Client.jsx)
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/components/implants/ImplantWizardFactura.jsx`](src/components/implants/ImplantWizardFactura.jsx)
+  - [`src/components/implants/implantFactura.js`](src/components/implants/implantFactura.js)
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+  - [`src/components/implants/ImplantWizardToothEntry.jsx`](src/components/implants/ImplantWizardToothEntry.jsx)
+- **Muammo Tavsifi:** «Faktura olish» ochilishi bilan desktopda chop etish rejimi yoqilgan, faktura sahifa pastiga yopishib qolgan. Wizard saqlash muvaffaqiyatli yopilgan, lekin implant bemor va implant ro'yxatlarida chiqmagan.
+- **Sababi:** `openFactura` 60 ms dan keyin `printImplantFactura()` chaqirgan. Chop etish CSS overlay ni `position: static` qilgan, yashirin sahifa balandligi fakturani pastga surgan. Saqlash payloadida `factura` ustuni yo'q (`column implants.factura does not exist`, kod 42703). Eski regex faqat `column "name"` ni taniydi, `implants.factura` ni emas. Xato localStorage ga yutilgan, Supabase ga yozilmagan, ro'yxat esa bazadan o'qiladi.
+- **Qanday tuzatildi:** Faktura markaziy overlayda qoladi; Yopish yopadi; Chop etish alohida bosiladi va chop etishda karta sahifa boshida. `missingColumnFromError` sxema-qualified ustunni olib tashlab qayta yozadi (`created_date` ↔ `created_at`). Implant yaratish/yangilash xatosi localStorage ga yashirilmaydi — o'zbekcha `saveFailed` chiqadi. Brend va Ø×L tish panelidan fakturaga tushadi.
+- **Qaytalamaslik choralari:** Faktura ochilishida `printImplantFactura` ni avtomatik chaqirmang. Overlay chop etishda `position: static` qilmang — `top: 0`. `column implants.<name> does not exist` ni yutib localStorage ga qaytarmang. Implant `create` xatosini jim yutmang. Step 3 ga Ø/L/Ncm/Lot qaytarmang — o'lchov tish panelida (`implant-tooth-diameter` / `implant-tooth-length`). `node scripts/assert-implant-factura.mjs` o'tsin.
+
 ### 🦷 Yangi implant wizard — productionda eski ark va tish paneli yo'q
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**

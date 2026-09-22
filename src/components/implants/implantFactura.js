@@ -52,6 +52,39 @@ export function formatSom(n) {
   return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
+export function formatImplantSize(diameter, length) {
+  const d = String(diameter ?? '').trim().replace(/^[Øø]\s*/u, '');
+  const l = String(length ?? '').trim().replace(/^[Ll]\s*/, '');
+  if (d && l) return `Ø${d}×L${l}`;
+  if (d) return `Ø${d}`;
+  if (l) return `L${l}`;
+  return '';
+}
+
+export function summarizeToothLines(rows = []) {
+  return (rows || []).map((row) => {
+    const fdi = String(row?.fdi || '').replace(/^#/, '');
+    const brand = String(row?.brand || '').trim();
+    const diameter = String(row?.diameter ?? '').trim();
+    const length = String(row?.length ?? '').trim();
+    return {
+      fdi,
+      brand,
+      diameter,
+      length,
+      size: formatImplantSize(diameter, length),
+    };
+  }).filter((row) => row.fdi);
+}
+
+function implantLineLabel(brandLabel, lines) {
+  const brands = [...new Set((lines || []).map((row) => row.brand).filter(Boolean))];
+  const sizes = [...new Set((lines || []).map((row) => row.size).filter(Boolean))];
+  const brand = brands.length <= 1 ? (brands[0] || brandLabel || 'Implant') : (brandLabel || brands[0] || 'Implant');
+  if (sizes.length === 1) return `${brand} · ${sizes[0]}`;
+  return brand || 'Implant';
+}
+
 export function toDMY(iso) {
   if (!iso) return '';
   const s = String(iso).slice(0, 10);
@@ -160,9 +193,11 @@ export function buildFacturaDocument({
   selectedServiceIds = [],
   extraServicePrices = {},
   edits = {},
+  toothLines = [],
   t,
 } = {}) {
   const teeth = [...new Set((selectedFdis || []).map((n) => String(n).replace(/^#/, '')).filter(Boolean))];
+  const lines = summarizeToothLines(toothLines);
   const teethCount = teeth.length;
   const selected = new Set((selectedServiceIds || []).map(normalizeServiceId).filter(Boolean));
   const used = new Set();
@@ -177,7 +212,7 @@ export function buildFacturaDocument({
   const implantLine = applyEdit(
     makeLine({
       id: 'implant',
-      label: brandLabel || 'Implant',
+      label: implantLineLabel(brandLabel, lines),
       unitPrice: Number(implantUnitPrice) || 0,
       qty: defaultLineQty('implant', teethCount, { selected: true }),
       stage: 1,
@@ -320,6 +355,7 @@ export function buildFacturaDocument({
     patient_name: patientName || '',
     clinic: resolveClinicTitle(clinicName),
     teeth,
+    toothLines: lines,
     brand: brandLabel || '',
     implant_unit_price: Number(implantLine.unitPrice) || 0,
     implant_qty: Number(implantLine.qty) || 0,
@@ -365,6 +401,10 @@ export function formatFacturaText(snapshot) {
     `Klinika: ${snapshot.clinic || 'Implant Center'}`,
     `Tishlar: ${(snapshot.teeth || []).map((n) => `#${n}`).join(', ') || '—'}`,
     `Brend: ${snapshot.brand || ''}`,
+    ...((snapshot.toothLines || []).map((row) => {
+      const bits = [`#${row.fdi}`, row.brand, row.size].filter(Boolean);
+      return bits.length ? `  ${bits.join(' ')}` : '';
+    }).filter(Boolean)),
     '1-bosqich (jarrohlik / hozir):',
   ];
   (snapshot.stage1 || []).forEach((line) => {

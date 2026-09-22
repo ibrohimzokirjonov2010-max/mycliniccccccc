@@ -107,6 +107,33 @@ export default function ImplantWizardToothEntry({
         </div>
       </div>
 
+      <div className="implant-wizard-tooth-size-grid">
+        <div>
+          <span className="implant-wizard-field-label">{tw('diameter', 'Ø')}</span>
+          <input
+            inputMode="decimal"
+            data-testid="implant-tooth-diameter"
+            aria-label={tw('diameter', 'Ø')}
+            placeholder="4.5"
+            value={data?.diameter || ''}
+            onChange={(e) => onChange({ diameter: e.target.value })}
+            className="h-10 w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 text-sm text-[#111827] font-medium outline-none focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488]/20"
+          />
+        </div>
+        <div>
+          <span className="implant-wizard-field-label">{tw('length', 'L')}</span>
+          <input
+            inputMode="decimal"
+            data-testid="implant-tooth-length"
+            aria-label={tw('length', 'L')}
+            placeholder="10"
+            value={data?.length || ''}
+            onChange={(e) => onChange({ length: e.target.value })}
+            className="h-10 w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 text-sm text-[#111827] font-medium outline-none focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488]/20"
+          />
+        </div>
+      </div>
+
       <div className="mt-2">
         <span className="implant-wizard-field-label">{tw('notes', 'Izoh')}</span>
         <input

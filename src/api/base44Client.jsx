@@ -1,4 +1,5 @@
 import { supabase, db } from './supabaseClient';
+import { missingColumnFromError, omitMissingColumn } from './missingColumn';
 import { sendTelegramMessage, formatLeadMessage } from './telegramBot';
 import {
   verifyPassword,
@@ -184,7 +185,8 @@ class HybridEntityLoader {
               'extra_services', 'tooth_numbers', 'timeline', 'audit_log',
               'complications', 'xray_urls', 'passport_url', 'reminder_months', 'reminder_date',
               'tooth_data', 'tooth_data_map', 'placement_date', 'lifecycle_status', 'tooth_id',
-              'service_name', 'hizmat_turi', 'price', 'narxi', 'stage_items', 'services_list', 'stage_media'];
+              'service_name', 'hizmat_turi', 'price', 'narxi', 'factura', 'extra_service_prices',
+              'stage_items', 'services_list', 'stage_media'];
     }
     if (this.entityName === 'Payment') {
       return ['doctor_id', 'commission_rate', 'patient_name', 'category', 'debt_amount', 'method'];
@@ -887,27 +889,19 @@ class HybridEntityLoader {
           .single();
         
         if (error) {
-          // PGRST204, 42703 or generic 400 with "column" in message: Column not found — remove it and retry
-          if ((error.code === 'PGRST204' || error.code === '42703' || error.code === 'PGRST200' || error.code === '400') && error.message) {
-            const colMatch = error.message.match(/the '(\w+)' column/) || 
-                             error.message.match(/column "(\w+)"/) || 
-                             error.message.match(/column '(\w+)'/) ||
-                             error.message.match(/field "(\w+)"/);
-            
-            if (colMatch) {
-              const badCol = colMatch[1];
-              // PROTECT critical columns - never strip these
-              const protectedCols = ['notes', 'clinic_id', 'id', 'recall_date', 'patient_id'];
-              if (protectedCols.includes(badCol)) {
-                console.warn(`⚠️ [${this.entityName}] Protected column '${badCol}' missing or invalid in DB!`);
-                throw error; // Can't proceed without these
-              }
-              console.warn(`⚠️ [${this.entityName}] Column '${badCol}' not in DB (Code: ${error.code}), removing and retry...`);
-              removedCols.push(badCol);
-              record = { ...record };
-              delete record[badCol];
-              continue; // retry
+          // PGRST204, 42703 or generic 400 with "column" in message: Column not found — remove it and retry.
+          // Live Postgres reports `column implants.factura does not exist`, which the old quoted-name regex missed.
+          const badCol = missingColumnFromError(error);
+          if (badCol && !removedCols.includes(badCol)) {
+            const protectedCols = ['notes', 'clinic_id', 'id', 'recall_date', 'patient_id'];
+            if (protectedCols.includes(badCol)) {
+              console.warn(`⚠️ [${this.entityName}] Protected column '${badCol}' missing or invalid in DB!`);
+              throw error;
             }
+            console.warn(`⚠️ [${this.entityName}] Column '${badCol}' not in DB (Code: ${error.code}), removing and retry...`);
+            removedCols.push(badCol);
+            record = omitMissingColumn(record, badCol);
+            continue;
           }
           // Unique constraint violation (e.g. username already exists)
           if (error.code === '23505') {
@@ -940,18 +934,37 @@ class HybridEntityLoader {
         return this._enrich([enrichedRecord])[0] || enrichedRecord;
       } catch (error) {
         console.error(`Error creating ${this.entityName}:`, error);
-        
+
+        const badCol = missingColumnFromError(error);
+        if (badCol && !removedCols.includes(badCol)) {
+          const protectedCols = ['notes', 'clinic_id', 'id', 'recall_date', 'patient_id'];
+          if (!protectedCols.includes(badCol)) {
+            console.warn(`⚠️ [${this.entityName}] Column '${badCol}' not in DB, removing and retry...`);
+            removedCols.push(badCol);
+            record = omitMissingColumn(record, badCol);
+            continue;
+          }
+        }
+
         // DO NOT silently fallback to localstorage if it's a known conflict or validation error
         if (error.message && (error.message.includes('23505') || error.message.includes('23514'))) {
            throw error; // Throw to UI
         }
-        
+
+        // Implant saves must reach Supabase. A local-only row disappears from the implant list.
+        if (this.entityName === 'Implant') {
+          throw new Error(error?.message || "Implant saqlanmadi. Ma'lumotlar bazaga yozilmadi.");
+        }
+
         return this._localStorageCreate(incoming);
       }
     }
     
-    // All retries failed - fall back to localStorage
+    // All retries failed - fall back to localStorage (implants must not pretend success)
     console.error(`❌ [${this.entityName}] All retries failed. Using localStorage.`);
+    if (this.entityName === 'Implant') {
+      throw new Error("Implant saqlanmadi. Ma'lumotlar bazaga yozilmadi.");
+    }
     const fallbackRes = this._localStorageCreate(incoming);
     if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('crm-data-updated'));
     return this.entityName === 'User' ? sanitizeUser(fallbackRes) : fallbackRes;
@@ -1079,25 +1092,19 @@ class HybridEntityLoader {
           
           if (error) {
             // PGRST204 or 42703: Column not found — remove it and retry
-            if ((error.code === 'PGRST204' || error.code === '42703') && error.message) {
-              const colMatch = error.message.match(/the '(\w+)' column/) || error.message.match(/column "(\w+)"/);
-              if (colMatch) {
-                const badCol = colMatch[1];
-                // PROTECT critical columns - never strip these
-                const protectedCols = ['notes', 'tooth_data'];
-                if (protectedCols.includes(badCol)) {
-                  console.warn(`⚠️ [${this.entityName}] Protected column '${badCol}' NOT in DB. Using notes fallback.`);
-                  removedCols.push(badCol);
-                  recordToUpdate = { ...recordToUpdate };
-                  delete recordToUpdate[badCol];
-                  continue;
-                }
-                console.warn(`⚠️ [${this.entityName}] Column '${badCol}' not in DB, removing and retry...`);
+            const badCol = missingColumnFromError(error);
+            if (badCol && !removedCols.includes(badCol)) {
+              const protectedCols = ['notes', 'tooth_data'];
+              if (protectedCols.includes(badCol)) {
+                console.warn(`⚠️ [${this.entityName}] Protected column '${badCol}' NOT in DB. Using notes fallback.`);
                 removedCols.push(badCol);
-                recordToUpdate = { ...recordToUpdate };
-                delete recordToUpdate[badCol];
-                continue; // retry
+                recordToUpdate = omitMissingColumn(recordToUpdate, badCol);
+                continue;
               }
+              console.warn(`⚠️ [${this.entityName}] Column '${badCol}' not in DB, removing and retry...`);
+              removedCols.push(badCol);
+              recordToUpdate = omitMissingColumn(recordToUpdate, badCol);
+              continue;
             }
             if (error.code === '23514') {
               console.error(`❌ [${this.entityName}] Check constraint failed:`, error.message);
@@ -1118,11 +1125,19 @@ class HybridEntityLoader {
           return this._enrich([{ ...data, id }])[0] || data;
         } catch (error) {
           console.error(`Error updating ${this.entityName} (attempt ${attempt}):`, error);
+          const badCol = missingColumnFromError(error);
+          if (badCol && !removedCols.includes(badCol) && !['notes', 'tooth_data'].includes(badCol)) {
+            removedCols.push(badCol);
+            recordToUpdate = omitMissingColumn(recordToUpdate, badCol);
+            continue;
+          }
+          if (this.entityName === 'Implant') throw error;
           if (attempt === 49) throw error;
         }
       }
       throw new Error(`All retries failed for ${this.entityName} update`);
     } catch (error) {
+      if (this.entityName === 'Implant') throw error;
       const fallbackRes = this._localStorageUpdate(id, incoming);
       if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('crm-data-updated'));
       return this.entityName === 'User' ? sanitizeUser(fallbackRes) : fallbackRes;
