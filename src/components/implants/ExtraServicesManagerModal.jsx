@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -226,7 +226,6 @@ export default function ExtraServicesManagerModal({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent 
         className="w-[95vw] max-w-4xl max-h-[92vh] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl flex flex-col bg-white" 
-        aria-describedby={undefined}
       >
         {/* Header */}
         <DialogHeader className="shrink-0">
@@ -242,9 +241,9 @@ export default function ExtraServicesManagerModal({
                     {stats.total} ta xizmat
                   </span>
                 </DialogTitle>
-                <p className="text-[10px] font-bold text-slate-300 mt-0.5">
+                <DialogDescription className="text-[10px] font-bold text-slate-300 mt-0.5">
                   Klinikadagi barcha qo'shimcha xizmatlar, karonkalar, abutmentlar va narxlarni boshqarish
-                </p>
+                </DialogDescription>
               </div>
             </div>
             

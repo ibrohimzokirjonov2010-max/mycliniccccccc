@@ -10,7 +10,7 @@ import {
   parseBotTechData,
   resolveBotUsernameFromConfig,
 } from '@/lib/telegramBotConfig';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,6 +18,7 @@ import { CheckCircle2, User, ClipboardList, ArrowLeft, Printer, Download, X, Che
 import { useTranslation } from '@/i18n/LanguageContext';
 import { applyPhoneMask, cn, capitalizeName, validateAddress, capitalizeAsYouType } from '@/lib/utils';
 import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
+import { resolveAssignedDoctorName } from '@/lib/treatingDoctor';
 import { normalizePatientGender, patientGenderForDb } from '@/lib/patientGender';
 
 /**
@@ -1085,8 +1086,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         }
       }
       
+      const assignedDoctorName = selectedDoc?.name || selectedDoc?.full_name || lastPlan?.doctor_name || '';
       setCreatedPlan({ 
         ...lastPlan, 
+        doctor_name: assignedDoctorName,
+        doctor_id: patientForm.main_treatment_provider || lastPlan?.doctor_id || '',
         total_price: totalDebt, 
         _count: teethList.length,
         services: allServices,
@@ -1340,7 +1344,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="!p-0 w-[95vw] sm:w-[94vw] md:w-[92vw] max-w-5xl h-[88dvh] max-h-[88dvh] flex flex-col overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border-0 shadow-2xl gap-0 !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
+      <DialogContent className="!p-0 w-[95vw] sm:w-[94vw] md:w-[92vw] max-w-5xl h-[88dvh] max-h-[88dvh] flex flex-col overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border-0 shadow-2xl gap-0 !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]">
 
          {/* Header */}
          <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 pb-0 flex items-start justify-between shrink-0 rounded-t-[2rem] sm:rounded-t-[2.5rem] text-white no-print" style={{ paddingTop: 'calc(max(20px, env(safe-area-inset-top, 20px)) + 8px)' }}>
@@ -1365,7 +1369,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                 <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
                   {t('patients.addNew')}
                 </DialogTitle>
-                <p className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('patients.wizard.registrationTitle')}</p>
+                <DialogDescription className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('patients.wizard.registrationTitle')}</DialogDescription>
               </div>
             </div>
             <button 
@@ -2520,7 +2524,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     </div>
                     <div>
                       <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold uppercase mb-0.5">{t('implants.doctor')}</p>
-                      <p className="text-[13px] sm:text-sm font-bold text-slate-800">{localStorage.getItem('user_name') || 'Demo Admin'}</p>
+                      <p className="text-[13px] sm:text-sm font-bold text-slate-800" data-testid="invoice-doctor">
+                        {createdPlan?.doctor_name || resolveAssignedDoctorName(createdPatient, doctors) || '—'}
+                      </p>
                     </div>
                     <div>
                       <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold uppercase mb-0.5">{t('patients.treatmentType') && t('patients.treatmentType') !== 'patients.treatmentType' ? t('patients.treatmentType') : t('patients.wizard.treatmentPlan')}</p>
@@ -2864,12 +2870,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
             <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl shadow-inner border border-white/30 animate-pulse">
               🔩
             </div>
-            <h3 className="text-lg font-black uppercase tracking-tight">
+            <DialogTitle className="text-lg font-black uppercase tracking-tight">
               Implant Bo'limiga O'tish
-            </h3>
-            <p className="text-xs font-bold text-white/80 mt-1">
+            </DialogTitle>
+            <DialogDescription className="text-xs font-bold text-white/80 mt-1">
               Siz implant bo'limiga o'tib jarayonni yakunlab qo'ying
-            </p>
+            </DialogDescription>
           </div>
 
           <div className="p-6 space-y-4">

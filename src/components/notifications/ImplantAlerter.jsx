@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import { isAppointmentCalendarPath } from '@/lib/alertRoutes';
 
 const REMINDER_INTERVAL_MS = 20 * 60 * 1000; // 20 daqiqa
 
@@ -21,6 +22,7 @@ const isBlockingModalOpen = () => {
 export default function ImplantAlerter() {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const timerRef = useRef(null);
   const initialTimerRef = useRef(null);
 
@@ -39,7 +41,7 @@ export default function ImplantAlerter() {
 
       if (incompleteList.length > 0) {
         const path = typeof window !== 'undefined' ? window.location.pathname : '';
-        if (isBlockingModalOpen() || path.startsWith('/implants')) return;
+        if (isBlockingModalOpen() || path.startsWith('/implants') || isAppointmentCalendarPath(path)) return;
 
         const top = incompleteList[0];
         const toothNum = top.tooth_number || (top.tooth_numbers && top.tooth_numbers[0]) || '';
@@ -61,6 +63,12 @@ export default function ImplantAlerter() {
       console.error('Failed to check incomplete implants:', err);
     }
   };
+
+  useEffect(() => {
+    if (isAppointmentCalendarPath(location.pathname)) {
+      toast.dismiss('implant-incomplete-notification');
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!isAuthenticated) return;

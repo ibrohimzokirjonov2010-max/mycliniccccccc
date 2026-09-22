@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { Tooth, ImplantIcon, XrayIcon } from '@/components/ui/Icons';
 import { cn, resolveDoctorId } from '@/lib/utils';
 import { patientGenderLabel } from '@/lib/patientGender';
+import { countImplantTeeth, implantRecordFdis } from '@/lib/fdiNotation';
 import { pickIllustrationKindFromServices, matchIllustrationKind } from '@/utils/toothIllustration';
 import {
   bootstrapTelegramBotConfig,
@@ -47,7 +48,7 @@ import PatientModal from '../components/patients/PatientModal';
 import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
 import TreatmentPlanInvoice from '../components/treatments/TreatmentPlanInvoice';
 import ImplantForm from '../components/implants/ImplantForm';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -3152,7 +3153,7 @@ export default function PatientProfile() {
               { id: 'appointments', label: "Uchrashuvlar",       icon: Calendar,        iconColor: "text-blue-600", count: (appointments || []).length },
               { id: 'payments',     label: "To'lovlar",          icon: CreditCard,      iconColor: "text-emerald-600", count: (payments || []).filter(p => { const t = (p.type || 'Income').toLowerCase(); return t !== 'debt' && t !== 'discount' && !(p.notes || '').toLowerCase().includes('linked to plan'); }).length },
               { id: 'notes',        label: "Eslatmalar",         icon: FileText,        iconColor: "text-amber-600" },
-              { id: 'implants',     label: "Implantlar",         icon: ImplantIcon,     iconColor: "text-purple-600", count: (implants || []).length },
+              { id: 'implants',     label: "Implantlar",         icon: ImplantIcon,     iconColor: "text-purple-600", count: countImplantTeeth(implants) },
               { id: 'photos',       label: "Rentgen & Rasmlar",  icon: XrayIcon,        iconColor: "text-cyan-600", count: (xrays || []).length },
             ].map(tabItem => {
               const IconComponent = tabItem.icon;
@@ -3355,6 +3356,9 @@ export default function PatientProfile() {
               </div>
               Tish tarixi va holati
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {selectedTooth?.fdi ? `${selectedTooth.fdi}-tish bo'yicha xizmatlar va yozuvlar` : 'Tish tarixi'}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-8 mt-4">
@@ -3464,12 +3468,12 @@ export default function PatientProfile() {
             </section>
 
             {/* Implants Section */}
-            {implants.some(imp => (imp.tooth_numbers || [imp.tooth_number]).includes(selectedTooth?.fdi)) && (
+            {implants.some(imp => implantRecordFdis(imp).includes(String(selectedTooth?.fdi || ''))) && (
               <section>
                 <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                   <Shield className="w-4 h-4" /> Implant ma'lumotlari
                 </h4>
-                {implants.filter(imp => (imp.tooth_numbers || [imp.tooth_number]).includes(selectedTooth?.fdi)).map(imp => (
+                {implants.filter(imp => implantRecordFdis(imp).includes(String(selectedTooth?.fdi || ''))).map(imp => (
                   <div key={imp.id} className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-bold text-indigo-900">{imp.firma} {imp.brend}</span>
@@ -3550,6 +3554,9 @@ export default function PatientProfile() {
                   <DialogTitle className="text-2xl font-[1000] text-slate-900 uppercase tracking-tight text-center">
                     {detailModal.title}
                   </DialogTitle>
+                  <DialogDescription className="sr-only">
+                    {patient?.full_name ? `${patient.full_name}: ${detailModal.title || 'Tafsilot'}` : (detailModal.title || 'Bemor tafsiloti')}
+                  </DialogDescription>
                   {detailModal.type === 'installments' && patient?.full_name && (
                     <p className="mt-1 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">
                       {patient.full_name}
@@ -3629,10 +3636,8 @@ export default function PatientProfile() {
                         <div className="flex items-center gap-6">
                           <div className="w-16 h-16 bg-slate-900 rounded-[1.5rem] flex items-center justify-center text-white font-black text-2xl shadow-lg group-hover:bg-indigo-600 transition-colors">
                              #{(() => {
-                               const tns = imp.tooth_numbers;
-                               if (Array.isArray(tns)) return tns.join(', ');
-                               if (typeof tns === 'string') return tns;
-                               return imp.tooth_number || '?';
+                               const fdis = implantRecordFdis(imp);
+                               return fdis.length ? fdis.join(', ') : '?';
                              })()}
                           </div>
                           <div>
@@ -3791,6 +3796,7 @@ export default function PatientProfile() {
               <DialogTitle className="text-xl font-black tracking-tight">
                 Muddatli to'lovni kiritish
               </DialogTitle>
+              <DialogDescription className="sr-only">Tanlangan oy uchun to'lov summasini kiriting</DialogDescription>
             </DialogHeader>
             {(() => {
               const selectedPlan = installmentPlans.find(p => p.id === installmentPaymentModal.planId);
@@ -3936,7 +3942,14 @@ export default function PatientProfile() {
           {(() => {
             const selectedPlan = installmentPlans.find(p => p.id === installmentHistoryModal.planId);
             const monthIndex = installmentHistoryModal.monthIndex;
-            if (!selectedPlan || monthIndex == null) return null;
+            if (!selectedPlan || monthIndex == null) {
+              return (
+                <>
+                  <DialogTitle className="sr-only">Muddatli to'lov tafsilotlari</DialogTitle>
+                  <DialogDescription className="sr-only">Oylik to'lovlar ro'yxati</DialogDescription>
+                </>
+              );
+            }
 
             const inst = selectedPlan.installment_plan || {};
             const targetAmount = getInstallmentMonthTarget(selectedPlan, monthIndex);
@@ -3965,6 +3978,9 @@ export default function PatientProfile() {
                     <DialogTitle className="text-xl font-black tracking-tight">
                       Muddatli to'lov tafsilotlari
                     </DialogTitle>
+                    <DialogDescription className="sr-only">
+                      {selectedPlan?.name || 'Reja'} bo'yicha oylik to'lovlar
+                    </DialogDescription>
                   </DialogHeader>
                   <p className="text-[11px] font-black text-white/60 uppercase tracking-[0.2em] mt-1">
                     {selectedPlan.name} | {monthLabel}
@@ -4096,10 +4112,8 @@ export default function PatientProfile() {
                       <HeaderIcon className="w-4 h-4 stroke-[2.5]" />
                     </div>
                     <div>
-                      <DialogTitle asChild>
-                        <h3 className="text-sm font-black text-white uppercase tracking-tight leading-tight">To'lov qo'shish</h3>
-                      </DialogTitle>
-                      <p className="text-[9.5px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{patient.full_name}</p>
+                      <DialogTitle className="text-sm font-black text-white uppercase tracking-tight leading-tight">To'lov qo'shish</DialogTitle>
+                      <DialogDescription className="text-[9.5px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{patient.full_name}</DialogDescription>
                     </div>
                   </div>
                   <button 
@@ -4437,6 +4451,7 @@ export default function PatientProfile() {
         <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] p-6 rounded-[2.5rem] border-none shadow-2xl flex flex-col overflow-visible">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black uppercase tracking-tight">Eslatma qo'shish</DialogTitle>
+            <DialogDescription className="sr-only">Bemor kartasiga klinik eslatma yozish</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4 overflow-y-auto max-h-[60vh] pb-2 no-scrollbar">
             <Textarea 
@@ -4463,6 +4478,7 @@ export default function PatientProfile() {
         <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] p-6 rounded-[2.5rem] border-none shadow-2xl flex flex-col overflow-visible">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black uppercase tracking-tight">Muolaja / Tarix qo'shish</DialogTitle>
+            <DialogDescription className="sr-only">Tish bo'yicha muolaja yoki tashxis yozuvi</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4 overflow-y-auto max-h-[60vh] pb-2 no-scrollbar">
             <div className="space-y-2">

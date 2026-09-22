@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -290,7 +290,6 @@ export default function ExtraServiceModal({
       <Dialog open={open && !newPatientOpen} onOpenChange={onClose}>
         <DialogContent 
           className="w-[95vw] max-w-2xl max-h-[92vh] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl flex flex-col bg-white" 
-          aria-describedby={undefined}
         >
           {/* Header */}
           <DialogHeader className="shrink-0">
@@ -303,9 +302,9 @@ export default function ExtraServiceModal({
                   <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
                     {serviceItem ? "Qo'shimcha xizmatni tahrirlash" : "Yangi qo'shimcha xizmat qo'shish"}
                   </DialogTitle>
-                  <p className="text-[10px] font-bold text-indigo-200 mt-0.5">
+                  <DialogDescription className="text-[10px] font-bold text-indigo-200 mt-0.5">
                     Karonka, Abatment, Sinus-lifting, Suyak ekish va boshqa xizmatlar reyestri
-                  </p>
+                  </DialogDescription>
                 </div>
               </div>
               

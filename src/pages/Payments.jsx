@@ -12,7 +12,7 @@ import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -2535,12 +2535,12 @@ export default function Payments() {
           className="payment-add-dialog !flex !flex-col !p-0 !gap-0 overflow-hidden border border-[#e5e7eb] shadow-2xl"
           style={paymentAddDialogStyle}
           data-payment-add={PAYMENT_ADD_MARKER}
-          aria-describedby={undefined}
         >
           <DialogHeader className="shrink-0 space-y-0">
             <div className="payment-add-header">
               <div className="payment-add-header-titles">
                 <DialogTitle className="payment-add-header-title">{t('payments.addNew')}</DialogTitle>
+                <DialogDescription className="sr-only">{t('payments.receiveAmount') || "Mablag' qabul qilish"}</DialogDescription>
                 <p className="payment-add-header-sub">{t('payments.receiveAmount') || "Mablag' qabul qilish"}</p>
               </div>
               <button
@@ -3004,10 +3004,10 @@ export default function Payments() {
         <DialogContent className="sm:max-w-md rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-br from-[#1499AD] to-[#0e7a8a] px-8 pt-8 pb-6">
-            <h2 className="text-white font-[900] text-lg uppercase tracking-widest mb-1">Shifokor Biriktirish</h2>
-            <p className="text-white/70 text-xs font-medium">
+            <DialogTitle className="text-white font-[900] text-lg uppercase tracking-widest mb-1">Shifokor Biriktirish</DialogTitle>
+            <DialogDescription className="text-white/70 text-xs font-medium">
               {editPayment?.patient_name} — {editPayment?.amount?.toLocaleString()} UZS
-            </p>
+            </DialogDescription>
           </div>
 
           {/* Doctor list */}
@@ -3114,6 +3114,8 @@ export default function Payments() {
 
           return (
             <DialogContent className="w-[96vw] max-w-4xl lg:max-w-5xl p-0 overflow-hidden rounded-2xl border border-slate-300 shadow-2xl [&>button]:hidden bg-white">
+              <DialogTitle className="sr-only">To'lov cheki</DialogTitle>
+              <DialogDescription className="sr-only">Tanlangan to'lov bo'yicha kvitansiya</DialogDescription>
               
               {/* ── Top Header Bar ── */}
               <div className="bg-slate-900 text-white px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-b-2 border-emerald-500">
@@ -3463,8 +3465,8 @@ export default function Payments() {
         <DialogContent className="max-w-lg p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
           <div className="premium-bg-gradient px-6 py-4 text-white flex items-center justify-between">
             <div>
-              <p className="text-[9px] font-black text-white/50 uppercase tracking-[0.3em]">Hisob Faktura</p>
-              <h2 className="text-lg font-[900] tracking-tight">{invoiceData?.patient?.full_name}</h2>
+              <DialogDescription className="text-[9px] font-black text-white/50 uppercase tracking-[0.3em]">Hisob Faktura</DialogDescription>
+              <DialogTitle className="text-lg font-[900] tracking-tight">{invoiceData?.patient?.full_name || 'Hisob faktura'}</DialogTitle>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -3574,6 +3576,8 @@ export default function Payments() {
       {/* Fullscreen Receipt Lightbox */}
       <Dialog open={!!previewReceiptUrl} onOpenChange={(open) => !open && setPreviewReceiptUrl(null)}>
         <DialogContent className="max-w-3xl w-[95vw] max-h-[92vh] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-slate-950 flex flex-col [&>button]:hidden">
+          <DialogTitle className="sr-only">To'lov cheki</DialogTitle>
+          <DialogDescription className="sr-only">Chek rasmini ko'rish</DialogDescription>
           <div className="p-3.5 px-5 bg-slate-900 text-white flex items-center justify-between">
             <span className="text-xs font-black uppercase tracking-wider flex items-center gap-2">
               <Receipt className="w-4 h-4 text-emerald-400" /> To'lov cheki / Kvitansiya

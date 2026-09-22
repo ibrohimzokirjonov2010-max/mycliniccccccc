@@ -17,7 +17,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toImplantFdi, uniqueImplantToothKeys } from '@/lib/fdiNotation';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { toast } from 'sonner';
@@ -161,11 +162,10 @@ export default function ImplantDetail() {
 
     const expandMultiTooth = (rec) => {
       const teeth = rec.tooth_numbers || (rec.tooth_number ? [rec.tooth_number] : (rec.tooth_id ? [rec.tooth_id] : []));
-      const uniqueTeeth = [...new Set(teeth.map(String))].filter(Boolean);
+      const uniqueTeeth = uniqueImplantToothKeys(Array.isArray(teeth) ? teeth : String(teeth || '').split(/[,·]/));
       if (uniqueTeeth.length <= 1) return null;
       return uniqueTeeth.map((tId) => {
-        const match = String(tId).match(/^(ur|ul|lr|ll)(\d+)$/);
-        const fdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : String(tId);
+        const fdi = toImplantFdi(tId);
         const tData = rec.tooth_data_map?.[tId] || rec.tooth_data_map?.[fdi] || {};
         const toothTimeline = Array.isArray(tData.timeline) ? tData.timeline : null;
         return {
@@ -1057,6 +1057,8 @@ export default function ImplantDetail() {
       {/* ─── Xray Zoom Lightbox Dialog ──────────────────────────────── */}
       <Dialog open={!!zoomImg} onOpenChange={() => setZoomImg(null)}>
         <DialogContent className="max-w-3xl p-2 rounded-2xl overflow-hidden bg-black/90 border-0">
+          <DialogTitle className="sr-only">Rentgen surati</DialogTitle>
+          <DialogDescription className="sr-only">Kattalashtirilgan diagnostik rasm</DialogDescription>
           <img src={zoomImg} alt="Zoom" className="w-full h-auto max-h-[85vh] object-contain rounded-xl" />
         </DialogContent>
       </Dialog>
@@ -1068,6 +1070,9 @@ export default function ImplantDetail() {
             <DialogTitle className="text-lg font-black text-slate-900">
               {language === 'ru' ? 'Добавить услугу и операцию' : 'Yangi Xizmat & Amaliyot Qo\'shish'}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {language === 'ru' ? 'Дополнительная услуга для этого импланта' : "Ushbu implant uchun qo'shimcha xizmat"}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 pt-2">
@@ -1223,10 +1228,10 @@ export default function ImplantDetail() {
         <DialogContent className="sm:max-w-sm rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-base font-black text-slate-900">O'chirishni tasdiqlaysizmi?</DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 leading-relaxed">
+              Ushbu implant va unga tegishli barcha jarrohlik ma'lumotlari o'chiriladi. Ushbu amalni ortga qaytarib bo'lmaydi.
+            </DialogDescription>
           </DialogHeader>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Ushbu implant va unga tegishli barcha jarrohlik ma'lumotlari o'chiriladi. Ushbu amalni ortga qaytarib bo'lmaydi.
-          </p>
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setDeleteConfirm(false)} className="rounded-xl text-xs font-bold">
               Bekor qilish
@@ -1270,6 +1275,9 @@ export default function ImplantDetail() {
               <Clock className="w-4 h-4 text-[#14b8a6]" />
               {language === 'ru' ? 'Добавить клинический этап' : "Yangi klinik bosqichni qayd etish"}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {language === 'ru' ? 'Клинический этап импланта' : 'Implant klinik bosqichi'}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 pt-2">

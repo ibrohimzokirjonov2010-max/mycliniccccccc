@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
 import { notificationStore } from '@/lib/notificationStore';
+import { isAppointmentCalendarPath } from '@/lib/alertRoutes';
 
 /**
  * GlobalAlerter Component (v2 — Birlashtrilgan)
@@ -86,6 +87,8 @@ export default function GlobalAlerter() {
 
       // 3️⃣ Implantlar — alohida so'rov (xatolik bo'lsa boshqalarga ta'sir qilmasin)
       try {
+        const path = typeof window !== 'undefined' ? window.location.pathname : '';
+        if (isAppointmentCalendarPath(path)) return;
         const implants = await base44.entities.Implant.list('-created_date', 50);
         (implants || []).forEach(imp => {
           if (!imp.reminder_date || imp.lifecycle_status === 'Tugallangan') return;

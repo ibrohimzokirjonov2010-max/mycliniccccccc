@@ -568,6 +568,7 @@
     "legendSelected": "Tanlangan",
     "legendBusy": "Band",
     "legendPast": "O'tgan",
+    "legendAvailable": "Bo'sh",
     "timePassed": "Ushbu vaqt o'tib ketgan",
     "timeBusy": "⚠️ {time} da band: {patient}",
     "calendar": "Kalendar",
