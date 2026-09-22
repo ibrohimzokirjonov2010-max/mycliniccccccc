@@ -24,14 +24,21 @@ export const DEFAULT_IMPLANT_BRANDS = [
  * Fetch or auto-seed implant brands
  */
 export async function getOrSeedImplantBrands() {
+  const defaults = () => DEFAULT_IMPLANT_BRANDS.map((d, i) => ({ id: `default_${i}`, ...d }));
   try {
-    let brands = await base44.entities.ImplantBrand.list('name', 100);
+    const brandApi = base44.entities?.ImplantBrand;
+    if (!brandApi || typeof brandApi.list !== 'function') {
+      console.warn('ImplantBrand entity missing; using default brands');
+      return defaults();
+    }
+
+    let brands = await brandApi.list('name', 100);
     if (!brands || brands.length === 0) {
       // Auto seed default brands if completely empty
       const created = [];
       for (const d of DEFAULT_IMPLANT_BRANDS) {
         try {
-          const res = await base44.entities.ImplantBrand.create({
+          const res = await brandApi.create({
             ...d,
             created_date: new Date().toISOString(),
             is_active: true
@@ -46,7 +53,7 @@ export async function getOrSeedImplantBrands() {
     return brands;
   } catch (err) {
     console.error('Error fetching implant brands:', err);
-    return DEFAULT_IMPLANT_BRANDS.map((d, i) => ({ id: `default_${i}`, ...d }));
+    return defaults();
   }
 }
 

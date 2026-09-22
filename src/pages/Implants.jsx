@@ -563,7 +563,7 @@ export default function Implants() {
   }, [sortedImplants]);
 
   return (
-    <div className="space-y-3.5 pb-6">
+    <div className="space-y-3.5 pb-6 min-w-0 max-w-full" data-implant-registry="notebook-scroll-v1">
       {/* ─── Header Bar ────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs">
         <div>
@@ -879,7 +879,7 @@ export default function Implants() {
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden relative"
+          className="bg-white rounded-2xl border border-slate-200/90 shadow-sm relative min-w-0 max-w-full"
         >
           {loading && (
             <div className="absolute inset-x-0 top-0 h-0.5 bg-slate-100 overflow-hidden z-20">
@@ -891,8 +891,11 @@ export default function Implants() {
             </div>
           )}
           
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left select-text">
+          <div
+            className="implant-registry-scroll min-w-0 w-full max-w-full overflow-x-auto overscroll-x-contain"
+            data-implant-registry-scroll="v1"
+          >
+            <table className="w-full min-w-[1080px] border-collapse text-left select-text">
               {/* ─── Excel Table Header ────────────────── */}
               <thead>
                 <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 text-[11px] font-black uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
@@ -905,7 +908,7 @@ export default function Implants() {
                   {/* 1. BEMOR (F.I.SH) */}
                   <th 
                     onClick={() => handleSort('patient')}
-                    className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[190px]"
+                    className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[160px]"
                   >
                     <div className="flex items-center justify-between gap-1.5">
                       <span>{language === 'ru' ? '1. Пациент (Ф.И.О)' : '1. Bemor (F.I.Sh)'}</span>
@@ -935,7 +938,7 @@ export default function Implants() {
                   {/* 3. FIRMA NOMI */}
                   <th 
                     onClick={() => handleSort('brand')}
-                    className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[170px]"
+                    className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[140px]"
                   >
                     <div className="flex items-center justify-between gap-1.5">
                       <span>{language === 'ru' ? '3. Фирма / Бренд' : '3. Firma nomi'}</span>
@@ -977,8 +980,8 @@ export default function Implants() {
                     </div>
                   </th>
 
-                  {/* 6. AMALLAR */}
-                  <th className="px-3 py-3 text-center text-slate-700 whitespace-nowrap select-none min-w-[210px]">
+                  {/* 6. AMALLAR — sticky so actions stay reachable while scrolling */}
+                  <th className="implant-registry-actions px-3 py-3 text-center text-slate-700 whitespace-nowrap select-none min-w-[180px]">
                     <span>{language === 'ru' ? '6. Действия' : '6. Amallar'}</span>
                   </th>
 
@@ -1103,7 +1106,7 @@ export default function Implants() {
                         </td>
 
                         {/* 6. AMALLAR Cell */}
-                        <td className={`text-center whitespace-nowrap ${isCompact ? 'py-1 px-2' : 'py-2 px-2.5'}`} onClick={(e) => e.stopPropagation()}>
+                        <td className={`implant-registry-actions text-center whitespace-nowrap ${isCompact ? 'py-1 px-2' : 'py-2 px-2.5'}`} onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1.5">
                             <Select 
                               value={statusCode} 

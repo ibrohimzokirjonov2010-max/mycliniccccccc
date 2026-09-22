@@ -1591,8 +1591,15 @@ export default function MobilePaymentsV2() {
                     <button
                       type="button"
                       onClick={handleAddPayment}
-                      disabled={saving || isIncomeBlockedForPatient || (formData.type === 'Income' && parseAmountInput(formData.amount) > selectedPatientDebt)}
+                      disabled={
+                        saving ||
+                        isIncomeBlockedForPatient ||
+                        parseAmountInput(formData.amount) <= 0 ||
+                        ((formData.type === 'Income' || formData.type === 'Debt') && !formData.patient_id) ||
+                        (formData.type === 'Income' && parseAmountInput(formData.amount) > selectedPatientDebt)
+                      }
                       className="payment-add-footer-cta"
+                      data-payment-cta-guard="amount-gt-zero"
                     >
                       {saving
                         ? t('common.loading')

@@ -182,10 +182,15 @@ assert(
   `footer moved with scroll ${mobile.before.footer.top} -> ${mobile.after.footer.top}`
 );
 assert(
-  mobile.after.footer.position === 'absolute' || mobile.after.footer.position === 'fixed',
-  `mobile footer not pinned ${mobile.after.footer.position}`
+  mobile.after.footer.position === 'relative' || mobile.after.footer.position === 'static',
+  `mobile footer must be in-flow (not absolute overlay) ${mobile.after.footer.position}`
 );
 assert(mobile.after.dialog.transform === 'none', `mobile dialog still transformed ${mobile.after.dialog.transform}`);
+// Footer sits below body — after long-form scroll, body moves but footer stays pinned in flex layout
+assert(
+  mobile.after.footer.bottom <= mobile.after.innerHeight + 1,
+  `footer below viewport after scroll ${JSON.stringify(mobile.after.footer)}`
+);
 
 const desktop = runIframe({
   width: 1280,

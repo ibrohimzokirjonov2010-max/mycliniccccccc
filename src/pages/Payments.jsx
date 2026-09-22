@@ -2978,6 +2978,7 @@ export default function Payments() {
                 (realPatientDebt === 0 || Number(form.amount) > realPatientDebt)
               )}
               className="payment-add-footer-cta"
+              data-payment-cta-guard="amount-gt-zero"
             >
               {saving ? t('common.loading') : t('payments.submitPay')}
             </button>

@@ -498,3 +498,44 @@ body:has([data-radix-dialog-content]) [data-sonner-toaster],
 body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
   z-index: 40 !important;
 }
+
+/* Implant registry — contained horizontal scroll at notebook (~1280) widths.
+   Marker: implant-registry-notebook-scroll-v1 */
+.implant-registry-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+.implant-registry-scroll::-webkit-scrollbar {
+  height: 8px;
+  display: block;
+}
+
+.implant-registry-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 999px;
+}
+
+.implant-registry-scroll th.implant-registry-actions,
+.implant-registry-scroll td.implant-registry-actions {
+  position: sticky;
+  right: 0;
+  z-index: 5;
+  background: #ffffff;
+  box-shadow: -8px 0 12px -10px rgba(15, 23, 42, 0.35);
+}
+
+.implant-registry-scroll thead th.implant-registry-actions {
+  z-index: 6;
+  background: rgb(241 245 249 / 0.95);
+}
+
+.implant-registry-scroll tbody tr:nth-child(even) td.implant-registry-actions {
+  background: rgb(248 250 252 / 0.98);
+}
+
+.implant-registry-scroll tbody tr:hover td.implant-registry-actions {
+  background: rgb(20 153 173 / 0.08);
+}

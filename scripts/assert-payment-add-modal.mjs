@@ -26,7 +26,7 @@ assert(css.includes('payment-add-teal-v5-single-center'), 'css marker');
 assert(css.includes('#0d9488'), 'teal accent');
 assert(!css.includes('indigo') && !css.includes('purple'), 'no purple in payment css');
 assert(css.includes('.payment-add-footer'), 'sticky footer class');
-assert(css.includes('position: absolute !important'), 'mobile footer pinned absolute');
+assert(css.includes('position: relative !important'), 'mobile footer in-flow relative');
 assert(css.includes('transform: none !important'), 'mobile kills centering transform');
 assert(css.includes('height: auto !important'), 'mobile inset / desktop auto height');
 assert(css.includes('flex: 1 1 0%'), 'body flex basis 0');
@@ -41,7 +41,8 @@ assert(css.includes('@container payment-add'), 'named container footer');
 const [cssBeforeMobile, cssMobile = ''] = css.split('@media (max-width: 767px)');
 assert(cssMobile.includes('transform: none !important'), 'transform none is mobile-only');
 assert(cssMobile.includes('translate: none !important'), 'mobile also clears independent translate');
-assert(cssMobile.includes('position: absolute !important'), 'absolute footer is mobile-only');
+assert(cssMobile.includes('position: relative !important'), 'in-flow footer is mobile-only');
+assert(!cssMobile.includes('position: absolute !important'), 'mobile must not overlay footer on body');
 assert(cssBeforeMobile.includes('transform: translate(-50%, -50%) !important'), 'desktop uses transform only');
 assert(cssBeforeMobile.includes('translate: none !important'), 'desktop kills independent translate channel');
 assert(!cssBeforeMobile.includes('translate: -50%'), 'desktop must not set translate -50%');
@@ -60,6 +61,8 @@ assert(dialogSrc.includes('? "left-[50%] top-[50%] flex flex-col'), 'payment-add
 assert(!dialogSrc.includes('translate-x-0 translate-y-0'), 'payment-add must not zero translate utilities');
 assert(mobile.includes('payment-add-footer'), 'mobile sticky footer');
 assert(mobile.includes('data-payment-quick-chips'), 'mobile chips');
+assert(mobile.includes("data-payment-cta-guard=\"amount-gt-zero\""), 'mobile CTA amount guard');
+assert(mobile.includes('parseAmountInput(formData.amount) <= 0'), 'mobile disables CTA when amount is 0');
 assert(!mobile.includes('alert(t(\'common.error\'))'), 'no alert() for amount');
 assert(mobile.includes('setFormError'), 'inline form errors');
 assert(mobile.includes('toast.dismiss(\'implant-incomplete-notification\')'), 'dismiss implant toast');
@@ -68,6 +71,7 @@ assert(!/bg-slate-950 hover:bg-slate-900/.test(mobile.slice(mobile.indexOf('Add 
 assert(desktop.includes('data-payment-add={PAYMENT_ADD_MARKER}'), 'desktop marker');
 assert(desktop.includes('payment-add-footer'), 'desktop sticky footer');
 assert(desktop.includes('data-payment-quick-chips'), 'desktop chips');
+assert(desktop.includes("data-payment-cta-guard=\"amount-gt-zero\""), 'desktop CTA amount guard');
 assert(desktop.includes('setFormError(t(\'payments.formErrorFill\'))'), 'desktop inline fill error');
 
 assert(alerter.includes('isBlockingModalOpen'), 'alerter skips open modals');

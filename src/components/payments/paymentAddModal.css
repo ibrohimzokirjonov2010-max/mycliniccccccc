@@ -2,7 +2,7 @@
    Marker: payment-add-teal-v5-single-center
    Desktop: left/top 50% + transform:translate(-50%,-50%). Independent CSS
    `translate` MUST stay none or the sheet double-offsets off-screen.
-   Mobile (≤767): inset-pin, no matrix, absolute footer. */
+   Mobile (≤767): inset-pin, no matrix, in-flow footer above scroll body. */
 
 [data-radix-dialog-content].payment-add-dialog,
 .payment-add-dialog {
@@ -394,17 +394,24 @@
     min-width: 0 !important;
   }
 
+  /* In-flow footer (not absolute): body scrolls above sticky actions so
+     Click/Payme, Sana, and Izoh stay reachable without footer overlay. */
   .payment-add-body {
-    padding: 14px 16px calc(var(--payment-add-footer-h) + 12px);
+    padding: 14px 16px 16px;
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
   }
 
   .payment-add-footer {
-    /* absolute inside the inset-pinned sheet — sticky fails with overflow */
-    position: absolute !important;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    position: relative !important;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    flex-shrink: 0 !important;
     flex-wrap: nowrap;
+    z-index: 30;
   }
 
   .payment-add-footer-cancel,

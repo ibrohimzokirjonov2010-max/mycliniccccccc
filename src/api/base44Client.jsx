@@ -602,7 +602,12 @@ class HybridEntityLoader {
 
       return enriched;
     } catch (error) {
-      console.error(`Error fetching ${this.entityName}:`, error);
+      // implant_brands may be absent on older Supabase schemas — local fallback is expected
+      if (this.entityName === 'ImplantBrand') {
+        console.warn(`[ImplantBrand] using local store (${error?.message || error})`);
+      } else {
+        console.error(`Error fetching ${this.entityName}:`, error);
+      }
       return this._localStorageList(orderBy, limit);
     }
   }
@@ -1205,6 +1210,7 @@ class HybridEntityLoader {
       'Expense': 'expenses',
       'ToothRecord': 'tooth_records',
       'Implant': 'implants',
+      'ImplantBrand': 'implant_brands',
       'Note': 'notes',
       'Xray': 'xrays',
       'TechnicianJob': 'technician_jobs',
@@ -1826,6 +1832,7 @@ export const base44 = {
     Expense: new HybridEntityLoader('Expense'),
     ToothRecord: new HybridEntityLoader('ToothRecord'),
     Implant: new HybridEntityLoader('Implant'),
+    ImplantBrand: new HybridEntityLoader('ImplantBrand'),
     Note: new HybridEntityLoader('Note'),
     Xray: new HybridEntityLoader('Xray'),
     TechnicianJob: new HybridEntityLoader('TechnicianJob'),

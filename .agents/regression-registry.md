@@ -13,6 +13,41 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 💳 To'lov modal (390) — footer overlap + 0 summada To'lash
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/payments/paymentAddModal.css`](src/components/payments/paymentAddModal.css)
+  - [`src/pages/MobilePaymentsV2.jsx`](src/pages/MobilePaymentsV2.jsx)
+  - [`src/pages/Payments.jsx`](src/pages/Payments.jsx)
+  - [`scripts/assert-payment-add-modal.mjs`](scripts/assert-payment-add-modal.mjs)
+  - [`scripts/assert-payment-add-footer.mjs`](scripts/assert-payment-add-footer.mjs)
+- **Muammo Tavsifi:** Mobil YANGI TO'LOV oynasida absolute footer Click/Payme ustiga chiqardi; Sana/Izoh skrollsiz yashirin qolardi. «To'lash» 0 summada ham yoqilgan ko'rinardi.
+- **Sababi:** Absolute footer body padding bilan ishonchsiz overlay qilardi; MobilePaymentsV2 CTA faqat qarz/block holatini tekshirardi, `amount <= 0` ni emas.
+- **Qanday tuzatildi:** ≤767 da footer in-flow (`position: relative`) — body `flex:1; min-height:0; overflow-y:auto` footer ustida skrollaydi. CTA `amount > 0` (+ Income/Debt uchun bemor) bo'lmaguncha disabled. Marker `payment-add-teal-v5-single-center`, redesign YO'Q.
+- **Qaytalamaslik choralari:** Mobil to'lov footerini yana `position: absolute` qilib body ustiga qo'ymang. CTA dan `parseAmountInput(...) <= 0` guardini olib tashlamang. `node scripts/assert-payment-add-modal.mjs` + `assert-payment-add-footer.mjs` o'tsin.
+
+### 🦷 Implant reestr jadvali — 1280px overflow
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Implants.jsx`](src/pages/Implants.jsx)
+  - [`src/index.css`](src/index.css)
+  - [`scripts/assert-implant-registry-scroll.mjs`](scripts/assert-implant-registry-scroll.mjs)
+- **Muammo Tavsifi:** Notebook (~1280) da jadval ~1209px panel (~1000px) dan chiqib Amallar ustunini kesib tashlardi; gorizontal skroll noaniq edi.
+- **Sababi:** Parent `overflow-hidden` + keng `min-w` ustunlar; scroll wrapper `min-w-0` bilan cheklanmagan; Amallar sticky emas edi.
+- **Qanday tuzatildi:** `implant-registry-scroll` + `min-w-[1080px]` table, aniq scrollbar, Amallar `position: sticky; right: 0`. Marker `implant-registry-notebook-scroll-v1`.
+- **Qaytalamaslik choralari:** Scroll wrapperdan `min-w-0` / `overflow-x-auto` ni olib tashlamang. Amallar sticky klassini yo'qotmang. `node scripts/assert-implant-registry-scroll.mjs` o'tsin.
+
+### 🏷 ImplantBrand — brands.list undefined
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/api/base44Client.jsx`](src/api/base44Client.jsx)
+  - [`src/components/implants/ImplantBrandsModal.jsx`](src/components/implants/ImplantBrandsModal.jsx)
+  - [`scripts/assert-implant-brand-entity.mjs`](scripts/assert-implant-brand-entity.mjs)
+- **Muammo Tavsifi:** Konsolda `Error fetching implant brands … undefined (reading 'list')`. Default brendlar fallback orqali chiqardi.
+- **Sababi:** `base44.entities` da `ImplantBrand` HybridEntityLoader ro'yxatga olinmagan edi (`_techFields`/`featureMap` bor edi, `entities` yo'q).
+- **Qanday tuzatildi:** `ImplantBrand: new HybridEntityLoader(...)` + jadval `implant_brands`. `getOrSeedImplantBrands` entity/list mavjudligini tekshiradi; yo'q jadvalda localStore fallback.
+- **Qaytalamaslik choralari:** `ImplantBrand` ni `entities` dan olib tashlamang. `base44.entities.ImplantBrand.list` ni guard'siz chaqirmang. `node scripts/assert-implant-brand-entity.mjs` o'tsin.
+
 ### 🖥 CRM notebook fluid — dialog / implant / to'lov / odontogram
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**
