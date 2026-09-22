@@ -1893,20 +1893,27 @@ export const base44 = {
       'phone', 'subtitle', 'api_key',
       'email', 'doctor_name', 'payment_method', 'tariff', 'billing_status',
       'subscription_status', 'trial_ends_at', 'period_ends_at', 'access_unlocked',
-      'license_key', 'payment_ledger'
+      'license_key',
+      'owner_email', 'owner_phone', 'signup_source',
+      'payme_merchant_id', 'click_service_id', 'click_merchant_id',
+      'webhook_status', 'last_webhook_at', 'payment_provider',
+      'payment_ledger'
     ],
 
     _encodeClinicNotes(clinic) {
       const extra = {};
       this._EXTRA_FIELDS.forEach(f => {
-        if (clinic[f] !== undefined && clinic[f] !== null && clinic[f] !== '') {
-          extra[f] = clinic[f];
-        }
+        const value = clinic[f];
+        if (value === undefined || value === null || value === '') return;
+        if (Array.isArray(value) && value.length === 0) return;
+        extra[f] = value;
       });
-      // Faqat DB ustunlari payloadda bo'ladi
+      // Faqat DB ustunlari payloadda bo'ladi.
+      // expires_at shart: obuna uzaytirish keyingi yuklashda yo'qolmasin.
       const payload = {};
-      ['id','name','status','created_at','monthly_fee','last_payment_date','plan'].forEach(f => {
-        if (clinic[f] !== undefined) payload[f] = clinic[f];
+      ['id','name','password','status','created_at','expires_at','monthly_fee','last_payment_date','plan'].forEach(f => {
+        if (clinic[f] === undefined || clinic[f] === null || clinic[f] === '') return;
+        payload[f] = clinic[f];
       });
       // logo = '[EXT]{...}[/EXT]base64...' yoki oddiy base64
       const rawLogo = typeof clinic.logo === 'string' && clinic.logo.startsWith('[EXT]')
@@ -2040,7 +2047,7 @@ export const base44 = {
       if (import.meta.env.VITE_SUPABASE_URL) {
         // Save clinic to Supabase
         try {
-          await db.clinics.create(newClinic);
+          await db.clinics.create(base44.clinic._encodeClinicNotes(newClinic));
           console.log('✅ Clinic saved to Supabase:', newClinic.id);
         } catch (e) {
           console.warn('Supabase clinic save failed (localStorage fallback active):', e.message);

@@ -2,11 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { 
   Building2, Plus, Trash2, Edit2, ShieldCheck,
   Search, CalendarDays, Lock, User, UserPlus, ArrowRight, Loader2, LogOut,
-  TrendingUp, Users, CreditCard, AlertCircle, Zap,
-  Image as ImageIcon, Link as LinkIcon, Clock, BarChart3, Eye, EyeOff, MousePointer, 
-  Upload, X, Copy, Check, ExternalLink, RefreshCw, Download, Filter, 
-  ChevronRight, Stethoscope, Briefcase, Database, Activity, Sparkles, 
-  CheckCircle2, AlertTriangle, KeyRound, ArrowUpRight, DollarSign, CalendarCheck
+  TrendingUp, Users, CreditCard,
+  Image as ImageIcon, Link as LinkIcon, Clock, BarChart3, Eye, EyeOff, 
+  Upload, X, Copy, RefreshCw, Download,
+  Stethoscope, Database, Activity,
+  AlertTriangle, KeyRound, DollarSign, CalendarCheck
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -14,14 +14,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { 
   getAllAds, 
   saveAd, 
   deleteAd 
 } from '@/utils/adManager';
-import { uploadImage, formatFileSize } from '@/utils/imageUpload';
+import { uploadImage } from '@/utils/imageUpload';
 import shifoTariffs from '../../landing/config/shifo-tariffs.json';
 import { 
   AreaChart, 
@@ -34,8 +34,30 @@ import {
   BarChart,
   Bar
 } from 'recharts';
+import BillingPanel from '@/components/superadmin/BillingPanel';
+import {
+  METHOD_LABELS,
+  WEBHOOK_LABELS,
+  SOURCE_LABELS,
+  catalogAmount,
+  isCustomMonthly,
+  resolveLifecycle,
+  getTimeRemaining,
+  isPaymentOverdue,
+  extendExpiry,
+  buildPaymentEntry,
+  mergeLedgers,
+  readLedger,
+  writeLedger,
+  normalizeClinicBilling,
+  stripAdminFields,
+  formatMoney,
+  webhookStatusFor,
+} from '@/utils/superAdminBilling';
 
 const SUPER_ADMIN = { username: 'admin', password: 'admin123' };
+const FIELD = 'h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-teal-400/50';
+const SELECT = 'w-full h-10 bg-[#0c1218] border border-white/10 rounded-xl px-3 text-white text-xs focus:border-teal-400/50 focus:outline-none';
 
 function landingTariffLabel(clinic) {
   if (clinic?.tariff === 'start') return 'START';
@@ -43,19 +65,6 @@ function landingTariffLabel(clinic) {
   if (clinic?.tariff === 'klinika') return 'KLINIKA';
   if (clinic?.tariff === 'trial') return 'SINOV';
   return '';
-}
-
-function landingBillingLabel(status) {
-  if (status === 'trialing' || status === 'trial') return 'Sinovda';
-  if (status === 'active' || status === 'paid') return 'Faol';
-  if (status === 'expired') return 'Tugagan';
-  return '';
-}
-
-function appendLedger(clinic, entry) {
-  const ledger = Array.isArray(clinic.payment_ledger) ? clinic.payment_ledger : [];
-  if (ledger.some((row) => row.id === entry.id)) return ledger;
-  return [...ledger, entry];
 }
 
 function landingPayLabel(method) {
@@ -66,21 +75,34 @@ function landingPayLabel(method) {
   return '';
 }
 
-// Animated Background Component
 const AnimatedBackground = () => (
   <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-    <div className="absolute top-[-10%] left-[-5%] w-[45%] h-[45%] rounded-full bg-indigo-600/10 blur-[130px]" />
-    <div className="absolute bottom-[-10%] right-[-5%] w-[45%] h-[45%] rounded-full bg-cyan-600/10 blur-[130px]" />
-    <div className="absolute top-[40%] right-[20%] w-[30%] h-[30%] rounded-full bg-purple-600/5 blur-[100px]" />
+    <div className="absolute top-[-14%] left-[-8%] w-[46%] h-[46%] rounded-full bg-teal-500/[0.07] blur-[140px]" />
+    <div className="absolute bottom-[-16%] right-[-8%] w-[40%] h-[40%] rounded-full bg-teal-800/[0.12] blur-[150px]" />
   </div>
 );
 
-// Copy helper function
-const copyToClipboard = (text, label) => {
+const copyToClipboard = (text, label, { sensitive = false } = {}) => {
   if (!text) return;
   navigator.clipboard.writeText(text);
-  toast.success(`📋 ${label} nusxalandi: ${text}`);
+  toast.success(sensitive ? `${label} buferga nusxalandi` : `${label} nusxalandi`);
 };
+
+function LifecycleBadge({ clinic }) {
+  const life = resolveLifecycle(clinic);
+  const tones = {
+    trialing: 'bg-teal-400/15 text-teal-200 border-teal-300/30',
+    active: 'bg-emerald-400/15 text-emerald-200 border-emerald-300/25',
+    expiring: 'bg-amber-400/15 text-amber-100 border-amber-300/30',
+    past_due: 'bg-orange-400/15 text-orange-100 border-orange-300/30',
+    expired: 'bg-rose-400/15 text-rose-100 border-rose-300/30',
+  };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wide border ${tones[life.key] || tones.active}`}>
+      {life.label}
+    </span>
+  );
+}
 
 export default function SuperAdmin() {
   const { t } = useTranslation();
@@ -101,6 +123,20 @@ export default function SuperAdmin() {
   const [userClinicFilter, setUserClinicFilter] = useState('all');
   const [showCharts, setShowCharts] = useState(true);
   const [revealedPasswords, setRevealedPasswords] = useState({}); // { id: boolean }
+  const [ledger, setLedger] = useState(() => readLedger());
+  const [payMethod, setPayMethod] = useState('manual');
+  const [payAmount, setPayAmount] = useState(0);
+  const [payAmountTouched, setPayAmountTouched] = useState(false);
+  const [paySaving, setPaySaving] = useState(false);
+  const [secretPrompt, setSecretPrompt] = useState(null);
+  const [issuedCreds, setIssuedCreds] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [showFormPassword, setShowFormPassword] = useState(false);
+  const [billingSearch, setBillingSearch] = useState('');
+  const [billingPlan, setBillingPlan] = useState('all');
+  const [billingLife, setBillingLife] = useState('all');
+  const [ledgerMethod, setLedgerMethod] = useState('all');
+  const [ledgerStatus, setLedgerStatus] = useState('all');
 
   // Modals state
   const [modalOpen, setModalOpen] = useState(false);
@@ -151,10 +187,44 @@ export default function SuperAdmin() {
     clinic_id: '', username: '', password: '', name: '', role: 'doctor', commission_rate: 0 
   });
 
-  // Toggle show/hide password
-  const togglePasswordVisibility = (id) => {
-    setRevealedPasswords(prev => ({ ...prev, [id]: !prev[id] }));
+  const requestRevealPassword = (id) => {
+    if (revealedPasswords[id]) {
+      setRevealedPasswords(prev => ({ ...prev, [id]: false }));
+      return;
+    }
+    setSecretPrompt({ mode: 'reveal', targetId: id });
   };
+
+  const requestCopyPassword = (value) => {
+    if (!value) {
+      toast.error('Nusxalanadigan parol yo\'q');
+      return;
+    }
+    setSecretPrompt({ mode: 'copy', value });
+  };
+
+  const confirmSecret = () => {
+    if (!secretPrompt) return;
+    if (secretPrompt.mode === 'reveal') {
+      setRevealedPasswords(prev => ({ ...prev, [secretPrompt.targetId]: true }));
+      toast.success('Parol ochildi. 20 soniyadan keyin yana yashiriladi.');
+    } else {
+      copyToClipboard(secretPrompt.value, 'Parol', { sensitive: true });
+    }
+    setSecretPrompt(null);
+  };
+
+  useEffect(() => {
+    const open = Object.keys(revealedPasswords).filter((id) => revealedPasswords[id]);
+    if (!open.length) return undefined;
+    const timer = setTimeout(() => setRevealedPasswords({}), 20000);
+    return () => clearTimeout(timer);
+  }, [revealedPasswords]);
+
+  useEffect(() => {
+    if (!renewingClinic || payAmountTouched) return;
+    setPayAmount(Number(renewingClinic.monthly_fee || 0) * Number(renewMonths || 1));
+  }, [renewMonths, renewingClinic, payAmountTouched]);
 
   useEffect(() => {
     const auth = localStorage.getItem('admin_auth');
@@ -213,40 +283,22 @@ export default function SuperAdmin() {
     setRefreshing(true);
     try {
       const data = await base44.clinic.getAll();
-      
-      // Data consistency check for plans & fees
       let hasChanges = false;
-      const legacyBasic = shifoTariffs.legacyPortalMonthlyFee.basic;
-      const legacyPro = shifoTariffs.legacyPortalMonthlyFee.pro;
-      const fixedData = (data || []).map(c => {
+      const fixedData = (data || []).map((c) => {
         const landingTariff = shifoTariffs.tariffs.find((plan) => plan.id === c.tariff);
-        if (landingTariff) {
-          if (c.plan !== landingTariff.crmPlan) {
-            hasChanges = true;
-            return { ...c, plan: landingTariff.crmPlan };
-          }
-          return c;
-        }
-        const fee = Number(c.monthly_fee);
-        let correctPlan = c.plan || 'pro';
-        
-        if (fee === legacyBasic && c.plan !== 'basic') {
-          correctPlan = 'basic';
+        if (landingTariff && c.plan !== landingTariff.crmPlan) {
           hasChanges = true;
-        } else if (fee === legacyPro && c.plan !== 'pro') {
-          correctPlan = 'pro';
-          hasChanges = true;
+          return { ...c, plan: landingTariff.crmPlan };
         }
-        
-        return { ...c, plan: correctPlan };
+        return c;
       });
-
       if (hasChanges) {
         await base44.clinic.saveAll(fixedData);
-        setClinics(fixedData);
-      } else {
-        setClinics(fixedData);
       }
+      setClinics(fixedData);
+      const mergedLedger = mergeLedgers(fixedData, readLedger());
+      writeLedger(mergedLedger);
+      setLedger(mergedLedger);
 
       // Fetch all users
       const allUsers = await base44.auth.getAllUsers();
@@ -292,48 +344,65 @@ export default function SuperAdmin() {
     }, 400);
   };
 
-  // Quick Subscription Renew Action
   const handleOpenRenewModal = (clinic) => {
     setRenewingClinic(clinic);
     setRenewMonths(1);
+    const incoming = clinic.payment_provider || clinic.payment_method;
+    const provider = ['manual', 'payme', 'click', 'mock'].includes(incoming) ? incoming : 'manual';
+    setPayMethod(provider);
+    setPayAmount(Number(clinic.monthly_fee || 0));
+    setPayAmountTouched(false);
     setRenewModalOpen(true);
   };
 
   const handleConfirmRenew = async () => {
-    if (!renewingClinic) return;
-    
+    if (!renewingClinic || paySaving) return;
+    const months = Number(renewMonths) || 1;
+    const periodDays = months * 30;
+    const amount = Number(payAmount);
+    if (!Number.isFinite(amount) || amount < 0) {
+      toast.error('To\'lov summasini kiriting');
+      return;
+    }
+
+    setPaySaving(true);
     try {
-      const currentExpiry = renewingClinic.expires_at ? new Date(renewingClinic.expires_at) : new Date();
-      const baseDate = currentExpiry > new Date() ? currentExpiry : new Date();
-      baseDate.setDate(baseDate.getDate() + (renewMonths * 30));
-      
-      const newExpiryStr = baseDate.toISOString().split('T')[0];
+      const newExpiryStr = extendExpiry(renewingClinic.expires_at, periodDays);
       const todayStr = new Date().toISOString().split('T')[0];
-      
+      const entry = buildPaymentEntry({
+        clinic: renewingClinic,
+        amount,
+        method: payMethod,
+        periodDays,
+      });
       const updatedClinics = clinics.map(c => c.id === renewingClinic.id ? {
         ...c,
         expires_at: newExpiryStr,
         last_payment_date: todayStr,
         status: 'Active',
         subscription_status: 'active',
-        payment_ledger: appendLedger(c, {
-          id: `renew-${c.id}-${newExpiryStr}`,
-          amountUzs: Number(c.monthly_fee) || 0,
-          method: 'manual',
-          paidAt: todayStr,
-          subscriptionStatus: 'active',
-          orderId: null,
-          note: 'Obuna uzaytirildi',
-        }),
+        billing_status: 'paid',
+        access_unlocked: true,
+        period_ends_at: newExpiryStr,
+        payment_method: payMethod,
+        payment_provider: payMethod,
+        webhook_status: entry.webhook_status,
+        last_webhook_at: entry.webhook_status === 'received' ? new Date().toISOString() : c.last_webhook_at,
+        payment_ledger: [entry, ...(Array.isArray(c.payment_ledger) ? c.payment_ledger : [])].slice(0, 40),
       } : c);
-      
+
       await base44.clinic.saveAll(updatedClinics);
       setClinics(updatedClinics);
+      const mergedLedger = mergeLedgers(updatedClinics, readLedger());
+      writeLedger(mergedLedger);
+      setLedger(mergedLedger);
       setRenewModalOpen(false);
       setRenewingClinic(null);
-      toast.success(`✅ '${renewingClinic.name}' obunasi ${renewMonths * 30} kunga uzaytirildi (${newExpiryStr} gacha)`);
+      toast.success(`'${renewingClinic.name}' to'lovi qabul qilindi. Muddat ${newExpiryStr} gacha.`);
     } catch (err) {
-      toast.error('Obunani uzaytirishda xatolik yuz berdi');
+      toast.error('To\'lovni saqlashda xatolik yuz berdi');
+    } finally {
+      setPaySaving(false);
     }
   };
 
@@ -342,12 +411,13 @@ export default function SuperAdmin() {
     const backupData = {
       appName: 'MyClinic Dental CRM',
       exportDate: new Date().toISOString(),
-      version: '2.5.0',
+      version: '2.6.0',
       totalClinics: clinics.length,
       totalUsers: users.length,
       clinics: clinics,
       users: users,
       ads: ads,
+      paymentLedger: mergeLedgers(clinics, ledger),
     };
     
     const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
@@ -442,65 +512,40 @@ export default function SuperAdmin() {
     return users.filter(u => u.clinic_id?.toLowerCase() === clinicId.toLowerCase());
   };
 
-  // Helper date calculations
-  const getTimeRemaining = (expiryDateStr) => {
-    if (!expiryDateStr) return { text: 'Noma\'lum', color: 'text-slate-500', bg: 'bg-slate-500/10 border-slate-500/20', isUrgent: false };
-    const expiry = new Date(expiryDateStr);
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const diffTime = expiry - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) return { text: 'Muddati tugagan', color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/30', isUrgent: true, days: diffDays };
-    if (diffDays === 0) return { text: 'Bugun tugaydi', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30', isUrgent: true, days: 0 };
-    if (diffDays <= 7) return { text: `${diffDays} kun qoldi`, color: 'text-amber-300', bg: 'bg-amber-500/10 border-amber-500/20', isUrgent: true, days: diffDays };
-    if (diffDays <= 30) return { text: `${diffDays} kun qoldi`, color: 'text-cyan-300', bg: 'bg-cyan-500/10 border-cyan-500/20', isUrgent: false, days: diffDays };
-    
-    const months = Math.floor(diffDays / 30);
-    const remainingDays = diffDays % 30;
-    return { 
-      text: `${months} oy${remainingDays > 0 ? ` ${remainingDays} k` : ''}`, 
-      color: 'text-emerald-400', 
-      bg: 'bg-emerald-500/10 border-emerald-500/20',
-      isUrgent: false,
-      days: diffDays
-    };
-  };
-
-  const isPaymentOverdue = (lastPaymentStr) => {
-    if (!lastPaymentStr) return true;
-    const lastPayment = new Date(lastPaymentStr);
-    const today = new Date();
-    return Math.ceil(Math.abs(today - lastPayment) / (1000 * 60 * 60 * 24)) > 30;
-  };
-
-  // Comprehensive System Statistics
   const stats = useMemo(() => {
     let totalRevenue = 0;
+    let atRisk = 0;
     let basicCount = 0;
     let proCount = 0;
+    let customCount = 0;
+    let trialCount = 0;
+    let pastDueCount = 0;
+    let expiringCount = 0;
+    let expiredCount = 0;
+    let activeLifeCount = 0;
+    let watchCount = 0;
 
-    clinics.forEach(c => { 
-      if (c.status === 'Active') {
-        totalRevenue += Number(c.monthly_fee || 0);
-      }
+    clinics.forEach(c => {
+      const life = resolveLifecycle(c);
+      const fee = Number(c.monthly_fee || 0);
+      if (life.key === 'trialing') trialCount++;
+      else if (life.key === 'past_due') {
+        pastDueCount++;
+        atRisk += fee;
+      } else if (life.key === 'expiring') expiringCount++;
+      else if (life.key === 'expired') expiredCount++;
+      else activeLifeCount++;
+
+      if (life.key === 'active' || life.key === 'expiring') totalRevenue += fee;
+      if (life.days !== null && life.days >= 0 && life.days <= 15 && life.key !== 'expired') watchCount++;
       if (c.plan === 'basic') basicCount++;
       else proCount++;
+      if (isCustomMonthly(c)) customCount++;
     });
 
     const doctorsCount = users.filter(u => u.role === 'doctor').length;
     const adminUsersCount = users.filter(u => u.role === 'admin').length;
     const receptionistCount = users.filter(u => u.role === 'receptionist').length;
-
-    const expiringSoonClinics = clinics.filter(c => {
-      const timeInfo = getTimeRemaining(c.expires_at);
-      return timeInfo.isUrgent && timeInfo.days >= 0;
-    });
-
-    const expiredClinics = clinics.filter(c => {
-      const timeInfo = getTimeRemaining(c.expires_at);
-      return timeInfo.days < 0;
-    });
 
     // Trend simulation
     const revenueData = [
@@ -523,10 +568,15 @@ export default function SuperAdmin() {
 
     return { 
       total: clinics.length, 
-      active: clinics.filter(c => c.status === 'Active').length, 
+      active: activeLifeCount, 
       inactive: clinics.filter(c => c.status !== 'Active').length,
-      expiring: expiringSoonClinics.length,
-      expired: expiredClinics.length,
+      expiring: expiringCount,
+      expired: expiredCount,
+      trialing: trialCount,
+      pastDue: pastDueCount,
+      watch: watchCount,
+      atRisk,
+      customCount,
       mrr: totalRevenue,
       basicCount,
       proCount,
@@ -542,15 +592,17 @@ export default function SuperAdmin() {
   // Filtered Clinics
   const filteredClinics = useMemo(() => {
     return clinics.filter(c => {
-      const matchesSearch = 
-        c.name?.toLowerCase().includes(search.toLowerCase()) || 
-        c.id?.toLowerCase().includes(search.toLowerCase());
-      
-      const timeInfo = getTimeRemaining(c.expires_at);
+      const haystack = [c.name, c.id, c.owner_email, c.owner_phone, c.email, c.phone, c.doctor_name, c.tariff, c.signup_source]
+        .join(' ')
+        .toLowerCase();
+      const matchesSearch = haystack.includes(search.toLowerCase());
+      const life = resolveLifecycle(c);
       let matchesStatus = true;
-      if (clinicStatusFilter === 'active') matchesStatus = c.status === 'Active' && timeInfo.days >= 0;
-      if (clinicStatusFilter === 'expiring') matchesStatus = timeInfo.isUrgent && timeInfo.days >= 0;
-      if (clinicStatusFilter === 'expired') matchesStatus = timeInfo.days < 0 || c.status !== 'Active';
+      if (clinicStatusFilter === 'active') matchesStatus = life.key === 'active';
+      if (clinicStatusFilter === 'trialing') matchesStatus = life.key === 'trialing';
+      if (clinicStatusFilter === 'expiring') matchesStatus = life.key === 'expiring';
+      if (clinicStatusFilter === 'past_due') matchesStatus = life.key === 'past_due';
+      if (clinicStatusFilter === 'expired') matchesStatus = life.key === 'expired';
 
       let matchesPlan = true;
       if (clinicPlanFilter === 'basic') matchesPlan = c.plan === 'basic';
@@ -578,11 +630,38 @@ export default function SuperAdmin() {
     });
   }, [users, userSearch, userRoleFilter, userClinicFilter]);
 
+  const billingClinics = useMemo(() => {
+    return clinics.filter((c) => {
+      const life = resolveLifecycle(c);
+      const haystack = [c.name, c.id, c.owner_email, c.email, c.doctor_name, c.phone, c.payme_merchant_id, c.click_service_id].join(' ').toLowerCase();
+      if (billingSearch && !haystack.includes(billingSearch.toLowerCase())) return false;
+      if (billingPlan === 'basic' && c.plan !== 'basic') return false;
+      if (billingPlan === 'pro' && c.plan === 'basic') return false;
+      if (billingLife !== 'all' && life.key !== billingLife) return false;
+      return true;
+    });
+  }, [clinics, billingSearch, billingPlan, billingLife]);
+
+  const filteredLedger = useMemo(() => {
+    return ledger.filter((row) => {
+      const haystack = `${row.clinic_name || ''} ${row.clinic_id || ''}`.toLowerCase();
+      if (billingSearch && !haystack.includes(billingSearch.toLowerCase())) return false;
+      if (ledgerMethod !== 'all' && row.method !== ledgerMethod) return false;
+      if (ledgerStatus !== 'all' && row.status !== ledgerStatus) return false;
+      if (billingPlan !== 'all') {
+        const clinic = clinics.find((c) => c.id === row.clinic_id);
+        if (billingPlan === 'basic' && clinic?.plan !== 'basic') return false;
+        if (billingPlan === 'pro' && clinic?.plan === 'basic') return false;
+      }
+      return true;
+    });
+  }, [ledger, clinics, billingSearch, billingPlan, ledgerMethod, ledgerStatus]);
+
   // Clinic Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!form.id || !form.name || !form.password) { 
+    if (!form.id || !form.name || (!editingClinic && !form.password)) { 
       toast.error('Barcha majburiy maydonlarni to\'ldiring!'); 
       return; 
     }
@@ -593,12 +672,22 @@ export default function SuperAdmin() {
     }
     
     try {
+      const billing = stripAdminFields(normalizeClinicBilling({
+        ...form,
+        password: form.password || editingClinic?.password || '',
+      }));
+      if (!billing.subscription_status) delete billing.subscription_status;
+
       if (editingClinic) {
-        const updatedClinic = { ...editingClinic, ...form };
+        const updatedClinic = { ...editingClinic, ...billing };
+        if (!billing.subscription_status) delete updatedClinic.subscription_status;
+        delete updatedClinic.admin_password;
+        delete updatedClinic.admin_username;
+        delete updatedClinic.admin_name;
         const newClinics = clinics.map(c => c.id === editingClinic.id ? updatedClinic : c);
         await base44.clinic.saveAll(newClinics);
         setClinics(newClinics);
-        toast.success('✅ Klinika ma\'lumotlari tahrirlandi');
+        toast.success('Klinika ma\'lumotlari tahrirlandi');
       } else {
         if (clinics.find(c => c.id.toLowerCase() === form.id.toLowerCase())) { 
           toast.error('Ushbu ID bilan klinika allaqachon mavjud!'); 
@@ -606,8 +695,8 @@ export default function SuperAdmin() {
         }
         
         const newClinic = { 
-          ...form, 
-          status: form.status || 'Active',
+          ...billing, 
+          status: billing.status || 'Active',
           created_at: new Date().toISOString() 
         };
 
@@ -625,7 +714,14 @@ export default function SuperAdmin() {
           commission_rate: 0
         });
 
-        toast.success(`🎉 '${newClinic.name}' muvaffaqiyatli yaratildi!\nAdmin: ${adminUsername} | Parol: ${adminPassword}`);
+        toast.success(`'${newClinic.name}' yaratildi`);
+        setIssuedCreds({
+          clinicName: newClinic.name,
+          clinicId: newClinic.id,
+          clinicPassword: newClinic.password,
+          adminUsername,
+          adminPassword,
+        });
       }
       
       setModalOpen(false);
@@ -637,46 +733,57 @@ export default function SuperAdmin() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (confirm('Haqiqatdan ham bu klinikani va unga tegishli barcha ma\'lumotlarni o\'chirmoqchimisiz?')) {
-      const newClinics = clinics.filter(c => c.id !== id);
-      await base44.clinic.saveAll(newClinics);
-      setClinics(newClinics);
-      toast.success('Klinika o\'chirildi');
-    }
+  const handleDelete = (id) => {
+    const clinic = clinics.find(c => c.id === id);
+    setDeleteTarget(clinic || { id, name: id });
   };
 
-  const markAsPaid = async (id) => {
-    const today = new Date().toISOString().split('T')[0];
-    const newClinics = clinics.map(c => c.id === id ? {
-      ...c,
-      last_payment_date: today,
-      subscription_status: 'active',
-      payment_ledger: appendLedger(c, {
-        id: `manual-${c.id}-${today}`,
-        amountUzs: Number(c.monthly_fee) || 0,
-        method: 'manual',
-        paidAt: today,
-        subscriptionStatus: 'active',
-        orderId: null,
-        note: "Qo'lda qabul qilindi",
-      }),
-    } : c);
+  const confirmDeleteClinic = async () => {
+    if (!deleteTarget) return;
+    const newClinics = clinics.filter(c => c.id !== deleteTarget.id);
     await base44.clinic.saveAll(newClinics);
     setClinics(newClinics);
-    toast.success('To\'lov qabul qilindi');
+    setDeleteTarget(null);
+    toast.success('Klinika ro\'yxatdan olib tashlandi');
+  };
+
+  const markAsPaid = (id) => {
+    const clinic = clinics.find(c => c.id === id);
+    if (!clinic) return;
+    handleOpenRenewModal(clinic);
   };
 
   const resetForm = (clinic = null) => {
+    setShowFormPassword(false);
     if (clinic) {
-      setForm({ ...clinic, password: clinic.password || '', plan: clinic.plan || 'pro' });
+      setForm({
+        ...clinic,
+        password: '',
+        plan: clinic.plan || 'pro',
+        owner_email: clinic.owner_email || clinic.email || '',
+        owner_phone: clinic.owner_phone || clinic.phone || '',
+        signup_source: clinic.signup_source || (clinic.tariff || clinic.email ? 'landing' : 'manual'),
+        subscription_status: clinic.subscription_status || '',
+        trial_ends_at: clinic.trial_ends_at || '',
+        payme_merchant_id: clinic.payme_merchant_id || '',
+        click_service_id: clinic.click_service_id || '',
+        click_merchant_id: clinic.click_merchant_id || '',
+        webhook_status: clinic.webhook_status || '',
+        payment_provider: clinic.payment_provider || 'manual',
+      });
     } else {
+      const start = new Date();
+      start.setDate(start.getDate() + 30);
       setForm({
         id: '', name: '', password: Math.random().toString(36).substring(2, 8), 
         monthly_fee: shifoTariffs.legacyPortalMonthlyFee.pro, plan: 'pro', status: 'Active', 
-        expires_at: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+        expires_at: start.toISOString().split('T')[0],
         last_payment_date: new Date().toISOString().split('T')[0],
-        admin_username: '', admin_password: '', admin_name: ''
+        admin_username: '', admin_password: '', admin_name: '',
+        owner_email: '', owner_phone: '', signup_source: 'manual',
+        subscription_status: 'active', trial_ends_at: '',
+        payme_merchant_id: '', click_service_id: '', click_merchant_id: '',
+        webhook_status: '', payment_provider: 'manual',
       });
     }
     setEditClinic(clinic);
@@ -806,7 +913,7 @@ export default function SuperAdmin() {
   // Login Screen
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-[#07080d] flex items-center justify-center p-4 font-sans relative overflow-hidden">
+      <div className="min-h-screen bg-[#07090d] flex items-center justify-center p-4 font-sans relative overflow-hidden">
         <AnimatedBackground />
         
         <motion.div 
@@ -816,10 +923,10 @@ export default function SuperAdmin() {
           className="relative z-10 w-full max-w-[420px]"
         >
           <div className="relative bg-[#0d0f18]/90 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.8)] overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400" />
+            <div className="absolute top-0 left-0 w-full h-1 bg-teal-400" />
             
             <div className="text-center mb-8">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-indigo-500 via-purple-600 to-cyan-500 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/20 border border-white/20">
+              <div className="w-16 h-16 mx-auto mb-4 bg-teal-500 rounded-2xl flex items-center justify-center shadow-xl shadow-teal-900/40 border border-white/15">
                 <ShieldCheck className="w-9 h-9 text-white drop-shadow" />
               </div>
               <h1 className="text-2xl font-black text-white tracking-tight">Nexus SuperAdmin</h1>
@@ -835,7 +942,7 @@ export default function SuperAdmin() {
                     value={loginForm.username} 
                     onChange={e => setLoginForm({...loginForm, username: e.target.value})} 
                     placeholder="admin" 
-                    className="h-11 pl-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-sm focus:border-indigo-500" 
+                    className="h-11 pl-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-sm focus:border-teal-400" 
                   />
                 </div>
               </div>
@@ -849,7 +956,7 @@ export default function SuperAdmin() {
                     value={loginForm.password} 
                     onChange={e => setLoginForm({...loginForm, password: e.target.value})} 
                     placeholder="••••••••" 
-                    className="h-11 pl-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-sm focus:border-indigo-500" 
+                    className="h-11 pl-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-sm focus:border-teal-400" 
                   />
                 </div>
               </div>
@@ -857,7 +964,7 @@ export default function SuperAdmin() {
               <Button 
                 type="submit" 
                 disabled={loginLoading} 
-                className="w-full h-12 mt-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 hover:opacity-95 text-white rounded-xl font-bold tracking-wide shadow-lg shadow-indigo-500/25 transition-all"
+                className="w-full h-12 mt-2 bg-teal-500 hover:bg-teal-400 text-[#04221e] rounded-xl font-semibold tracking-wide shadow-lg shadow-teal-950/40 transition-all"
               >
                 {loginLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin mx-auto" />
@@ -871,7 +978,7 @@ export default function SuperAdmin() {
 
             <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between text-[10px] font-bold text-slate-500">
               <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" /> Xavfsiz Shifrlangan Tizim</span>
-              <span>v2.5.0</span>
+              <span>v2.6.0</span>
             </div>
           </div>
         </motion.div>
@@ -881,47 +988,41 @@ export default function SuperAdmin() {
 
   // Super Admin Main Dashboard
   return (
-    <div className="min-h-screen bg-[#08090e] font-sans text-slate-100 relative">
+    <div className="min-h-screen bg-[#07090d] font-sans text-slate-100 relative">
       <AnimatedBackground />
 
-      {/* Top Navbar */}
-      <header className="sticky top-0 z-40 bg-[#08090e]/85 backdrop-blur-xl border-b border-white/[0.07] px-4 md:px-8 py-3">
+      <header className="sticky top-0 z-40 bg-[#07090d]/90 backdrop-blur-xl border-b border-white/[0.06] px-4 md:px-8 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          
-          {/* Logo & Status */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 border border-white/20 flex-shrink-0">
-              <ShieldCheck className="w-6 h-6 text-white" />
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-teal-950/50 flex-shrink-0">
+              <ShieldCheck className="w-5 h-5 text-[#04221e]" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-black text-white tracking-tight">SuperAdmin Nexus</h1>
-                <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <h1 className="text-[15px] font-semibold text-white tracking-tight">SuperAdmin Nexus</h1>
+                <span className="text-[9px] font-semibold uppercase px-2 py-0.5 rounded-full bg-teal-400/15 text-teal-200 border border-teal-300/25">
                   Global
                 </span>
               </div>
-              <p className="text-[10px] text-slate-400 font-medium">Barcha klinikalar va foydalanuvchilar boshqaruvi</p>
+              <p className="text-[11px] text-slate-400 truncate">Boshqaruv xonasi — klinikalar, obuna va to'lovlar</p>
             </div>
           </div>
 
-          {/* Quick Stats Pill (Desktop) */}
           <div className="hidden lg:flex items-center gap-3 px-3 py-1.5 bg-white/[0.03] border border-white/[0.06] rounded-xl text-xs">
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-slate-400">Faol:</span>
-              <strong className="text-white">{stats.active}/{stats.total} klinika</strong>
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-300" />
+              <span className="text-slate-400">Faol obuna:</span>
+              <strong className="text-white tabular-nums">{stats.active}/{stats.total}</strong>
             </div>
-            <span className="text-slate-600">|</span>
+            <span className="text-slate-700">|</span>
             <div className="flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="text-slate-400">Xodimlar:</span>
-              <strong className="text-white">{stats.totalUsers}</strong>
+              <Users className="w-3.5 h-3.5 text-teal-300" />
+              <strong className="text-white tabular-nums">{stats.totalUsers}</strong>
             </div>
-            <span className="text-slate-600">|</span>
+            <span className="text-slate-700">|</span>
             <div className="flex items-center gap-1.5">
-              <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-slate-400">MRR:</span>
-              <strong className="text-emerald-400">{(stats.mrr / 1000).toLocaleString()}k UZS</strong>
+              <DollarSign className="w-3.5 h-3.5 text-teal-300" />
+              <strong className="text-teal-200 tabular-nums">{formatMoney(stats.mrr)} UZS</strong>
             </div>
           </div>
 
@@ -935,7 +1036,7 @@ export default function SuperAdmin() {
               className="h-9 px-3 bg-white/[0.04] border-white/10 hover:bg-white/[0.08] text-slate-300 rounded-xl text-xs"
               title="Yangilash"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-cyan-400' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-teal-300' : ''}`} />
               <span className="hidden sm:inline ml-1.5">Yangilash</span>
             </Button>
 
@@ -946,7 +1047,7 @@ export default function SuperAdmin() {
               className="h-9 px-3 bg-white/[0.04] border-white/10 hover:bg-white/[0.08] text-slate-300 rounded-xl text-xs"
               title="Tizim zaxirasini yuklab olish"
             >
-              <Download className="w-3.5 h-3.5 text-indigo-400" />
+              <Download className="w-3.5 h-3.5 text-teal-300" />
               <span className="hidden sm:inline ml-1.5">Backup JSON</span>
             </Button>
 
@@ -968,92 +1069,65 @@ export default function SuperAdmin() {
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-5 space-y-6">
         
-        {/* TOP KPI CARDS - Highly Compact & Information-Dense */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-          
-          {/* Card 1: Klinikalar */}
-          <div className="bg-gradient-to-b from-indigo-950/40 to-slate-900/40 border border-indigo-500/20 rounded-2xl p-4 relative overflow-hidden group hover:border-indigo-500/40 transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider">Jami Klinikalar</span>
-              <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-                <Building2 className="w-4 h-4" />
-              </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-[#0e141c] border border-white/[0.07] rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Jami klinikalar</span>
+              <Building2 className="w-4 h-4 text-teal-300" />
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl md:text-3xl font-black text-white">{stats.total}</span>
-              <span className="text-xs text-emerald-400 font-bold">({stats.active} faol)</span>
-            </div>
-            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/5">
-              <span>PRO: <strong className="text-white">{stats.proCount}</strong></span>
-              <span>BASIC: <strong className="text-white">{stats.basicCount}</strong></span>
+            <div className="text-3xl font-semibold text-white tabular-nums tracking-tight">{stats.total}</div>
+            <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/[0.05]">
+              <span>PRO {stats.proCount}</span>
+              <span>BASIC {stats.basicCount}</span>
+              <span>Maxsus {stats.customCount}</span>
             </div>
           </div>
 
-          {/* Card 2: Foydalanuvchilar */}
-          <div className="bg-gradient-to-b from-cyan-950/40 to-slate-900/40 border border-cyan-500/20 rounded-2xl p-4 relative overflow-hidden group hover:border-cyan-500/40 transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-cyan-300 uppercase tracking-wider">Foydalanuvchilar</span>
-              <div className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
-                <Users className="w-4 h-4" />
-              </div>
+          <div className="bg-[#0e141c] border border-white/[0.07] rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Obuna holati</span>
+              <CalendarDays className="w-4 h-4 text-teal-300" />
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl md:text-3xl font-black text-white">{stats.totalUsers}</span>
-              <span className="text-xs text-slate-400 font-medium">xodim</span>
-            </div>
-            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/5">
-              <span>Shifokor: <strong className="text-cyan-300">{stats.doctorsCount}</strong></span>
-              <span>Admin: <strong className="text-indigo-300">{stats.adminUsersCount}</strong></span>
+            <div className="text-3xl font-semibold text-white tabular-nums tracking-tight">{stats.active}</div>
+            <p className="text-[11px] text-slate-500 mt-0.5">faol obuna</p>
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-400 pt-2 border-t border-white/[0.05]">
+              <span>Sinov <strong className="text-teal-200">{stats.trialing}</strong></span>
+              <span>Tugayapti <strong className="text-amber-200">{stats.expiring}</strong></span>
+              <span>≤15 kun <strong className="text-slate-200">{stats.watch}</strong></span>
             </div>
           </div>
 
-          {/* Card 3: Obunalar & Muddatlar */}
-          <div className="bg-gradient-to-b from-amber-950/40 to-slate-900/40 border border-amber-500/20 rounded-2xl p-4 relative overflow-hidden group hover:border-amber-500/40 transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider">Obunalar Holati</span>
-              <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                <CalendarDays className="w-4 h-4" />
-              </div>
+          <div className="bg-[#0e141c] border border-white/[0.07] rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">E'tibor talab</span>
+              <AlertTriangle className="w-4 h-4 text-amber-300" />
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl md:text-3xl font-black text-white">{stats.active}</span>
-              {stats.expiring > 0 ? (
-                <span className="text-xs text-amber-400 font-bold animate-pulse">({stats.expiring} tugamoqda)</span>
-              ) : (
-                <span className="text-xs text-emerald-400 font-medium">Barchasi joyida</span>
-              )}
-            </div>
-            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/5">
-              <span>Muddati o'tgan: <strong className={stats.expired > 0 ? 'text-rose-400' : 'text-slate-400'}>{stats.expired}</strong></span>
-              <span className="text-amber-400 font-bold">&lt;15 kun: {stats.expiring}</span>
+            <div className="text-3xl font-semibold text-white tabular-nums tracking-tight">{stats.pastDue + stats.expired}</div>
+            <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/[0.05]">
+              <span>Qarzdor <strong className="text-orange-200">{stats.pastDue}</strong></span>
+              <span>Tugagan <strong className={stats.expired ? 'text-rose-300' : 'text-slate-300'}>{stats.expired}</strong></span>
             </div>
           </div>
 
-          {/* Card 4: Oylik MRR */}
-          <div className="bg-gradient-to-b from-emerald-950/40 to-slate-900/40 border border-emerald-500/20 rounded-2xl p-4 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Oylik MRR Daromad</span>
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                <CreditCard className="w-4 h-4" />
-              </div>
+          <div className="bg-[#0e141c] border border-white/[0.07] rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Oylik MRR</span>
+              <CreditCard className="w-4 h-4 text-teal-300" />
             </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl md:text-3xl font-black text-white">{stats.mrr?.toLocaleString()}</span>
-              <span className="text-xs text-slate-400">UZS</span>
-            </div>
-            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/5">
-              <span>Yillik prognoz:</span>
-              <strong className="text-emerald-300">{((stats.mrr * 12) / 1000000).toFixed(1)}M UZS</strong>
+            <div className="text-[28px] leading-none font-semibold text-white tabular-nums tracking-tight">{formatMoney(stats.mrr)}</div>
+            <p className="text-[11px] text-slate-500 mt-1">UZS · faol va tugayotgan</p>
+            <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/[0.05]">
+              <span>Xavf ostida</span>
+              <strong className="text-orange-200 tabular-nums">{formatMoney(stats.atRisk)}</strong>
             </div>
           </div>
-
         </div>
 
         {/* Analytics Dinamikasi (Compact & Collapsible) */}
         <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-indigo-400" />
+              <BarChart3 className="w-4 h-4 text-teal-300" />
               <h3 className="text-xs font-black text-white uppercase tracking-wider">O'sish va Daromad Dinamikasi</h3>
             </div>
             <button 
@@ -1079,8 +1153,8 @@ export default function SuperAdmin() {
                     <AreaChart data={stats.revenueData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
-                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#2dd4bf" stopOpacity={0.35}/>
+                          <stop offset="95%" stopColor="#2dd4bf" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
@@ -1090,7 +1164,7 @@ export default function SuperAdmin() {
                         contentStyle={{ backgroundColor: '#0f111a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }} 
                         formatter={(val) => [`${Number(val).toLocaleString()} UZS`, 'MRR']}
                       />
-                      <Area type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2.5} fillOpacity={1} fill="url(#revenueGrad)" />
+                      <Area type="monotone" dataKey="value" stroke="#2dd4bf" strokeWidth={2.5} fillOpacity={1} fill="url(#revenueGrad)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -1100,7 +1174,7 @@ export default function SuperAdmin() {
               <div className="bg-black/20 border border-white/5 rounded-xl p-3.5">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[11px] font-bold text-slate-300">Klinikalar va Foydalanuvchilar O'sishi</span>
-                  <span className="text-[10px] text-cyan-400 font-bold flex items-center gap-1">
+                  <span className="text-[10px] text-teal-300 font-semibold flex items-center gap-1">
                     <Activity className="w-3 h-3" /> Faol o'sish
                   </span>
                 </div>
@@ -1113,8 +1187,8 @@ export default function SuperAdmin() {
                       <Tooltip 
                         contentStyle={{ backgroundColor: '#0f111a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }} 
                       />
-                      <Bar dataKey="clinics" name="Klinikalar" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="users" name="Foydalanuvchilar" fill="#818cf8" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="clinics" name="Klinikalar" fill="#2dd4bf" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="users" name="Foydalanuvchilar" fill="#115e59" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1124,7 +1198,7 @@ export default function SuperAdmin() {
         </div>
 
         {/* PRIMARY TAB NAVIGATION BAR */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-1 border-b border-white/[0.08]">
+        <div className="sticky top-[60px] z-30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 py-2 -mx-4 px-4 md:-mx-8 md:px-8 bg-[#07090d]/95 backdrop-blur-xl border-b border-white/[0.06]">
           
           {/* Tabs */}
           <div className="flex flex-wrap items-center gap-1.5 p-1 bg-white/[0.03] border border-white/[0.07] rounded-xl">
@@ -1132,7 +1206,7 @@ export default function SuperAdmin() {
               onClick={() => setActiveTab('clinics')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'clinics'
-                  ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-md'
+                  ? 'bg-teal-500 text-[#04221e] shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
@@ -1145,7 +1219,7 @@ export default function SuperAdmin() {
               onClick={() => setActiveTab('users')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'users'
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                  ? 'bg-teal-500 text-[#04221e] shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
@@ -1158,7 +1232,7 @@ export default function SuperAdmin() {
               onClick={() => setActiveTab('ads')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'ads'
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-md'
+                  ? 'bg-teal-500 text-[#04221e] shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
@@ -1171,7 +1245,7 @@ export default function SuperAdmin() {
               onClick={() => setActiveTab('billing')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'billing'
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                  ? 'bg-teal-500 text-[#04221e] shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
@@ -1183,7 +1257,7 @@ export default function SuperAdmin() {
               onClick={() => setActiveTab('system')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'system'
-                  ? 'bg-gradient-to-r from-slate-600 to-slate-700 text-white shadow-md'
+                  ? 'bg-teal-500 text-[#04221e] shadow-sm'
                   : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
@@ -1197,7 +1271,7 @@ export default function SuperAdmin() {
             {activeTab === 'clinics' && (
               <Button 
                 onClick={() => { resetForm(); setModalOpen(true); }} 
-                className="h-9 px-4 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:opacity-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-500/20"
+                className="h-9 px-4 bg-teal-500 hover:bg-teal-400 text-[#04221e] font-semibold text-xs rounded-xl"
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" /> Yangi Klinika
               </Button>
@@ -1206,7 +1280,7 @@ export default function SuperAdmin() {
             {activeTab === 'users' && (
               <Button 
                 onClick={() => handleAddUser()} 
-                className="h-9 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-cyan-500/20"
+                className="h-9 px-4 bg-teal-500 hover:bg-teal-400 text-[#04221e] font-semibold text-xs rounded-xl"
               >
                 <UserPlus className="w-3.5 h-3.5 mr-1.5" /> Yangi Foydalanuvchi
               </Button>
@@ -1215,7 +1289,7 @@ export default function SuperAdmin() {
             {activeTab === 'ads' && (
               <Button 
                 onClick={handleAddAd} 
-                className="h-9 px-4 bg-gradient-to-r from-purple-500 to-pink-600 hover:opacity-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-purple-500/20"
+                className="h-9 px-4 bg-teal-500 hover:bg-teal-400 text-[#04221e] font-semibold text-xs rounded-xl"
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" /> Reklama Qo'shish
               </Button>
@@ -1235,7 +1309,7 @@ export default function SuperAdmin() {
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input 
-                  placeholder="Klinika nomi yoki ID bo'yicha qidirish..." 
+                  placeholder="Nom, ID, email yoki telefon..." 
                   value={search} 
                   onChange={e => setSearch(e.target.value)} 
                   className="h-10 pl-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs placeholder:text-slate-500" 
@@ -1264,10 +1338,22 @@ export default function SuperAdmin() {
                     Faol ({stats.active})
                   </button>
                   <button 
+                    onClick={() => setClinicStatusFilter('trialing')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${clinicStatusFilter === 'trialing' ? 'bg-teal-500/20 text-teal-200' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Sinov ({stats.trialing})
+                  </button>
+                  <button 
                     onClick={() => setClinicStatusFilter('expiring')}
                     className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${clinicStatusFilter === 'expiring' ? 'bg-amber-500/20 text-amber-300' : 'text-slate-400 hover:text-slate-200'}`}
                   >
-                    Tugayotgan ({stats.expiring})
+                    Tugayapti ({stats.expiring})
+                  </button>
+                  <button 
+                    onClick={() => setClinicStatusFilter('past_due')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${clinicStatusFilter === 'past_due' ? 'bg-orange-500/20 text-orange-200' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Qarzdor ({stats.pastDue})
                   </button>
                   <button 
                     onClick={() => setClinicStatusFilter('expired')}
@@ -1287,7 +1373,7 @@ export default function SuperAdmin() {
                   </button>
                   <button 
                     onClick={() => setClinicPlanFilter('pro')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${clinicPlanFilter === 'pro' ? 'bg-indigo-500/20 text-indigo-300' : 'text-slate-400'}`}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${clinicPlanFilter === 'pro' ? 'bg-teal-500/20 text-teal-200' : 'text-slate-400'}`}
                   >
                     PRO
                   </button>
@@ -1303,11 +1389,11 @@ export default function SuperAdmin() {
             </div>
 
             {/* Clinics Table */}
-            <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto">
+            <div className="bg-[#0e141c] border border-white/[0.07] rounded-2xl overflow-hidden">
+              <div className="overflow-auto max-h-[640px]">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="bg-white/[0.03] border-b border-white/[0.06] text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    <tr className="sticky top-0 z-10 bg-[#121920] border-b border-white/[0.06] text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                       <th className="py-3 px-4">Klinika Nomi & ID</th>
                       <th className="py-3 px-4">Ta'rif</th>
                       <th className="py-3 px-4">Xodimlar</th>
@@ -1328,9 +1414,10 @@ export default function SuperAdmin() {
                       ))
                     ) : filteredClinics.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-12 text-center text-slate-500">
-                          <Building2 className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                          <p className="text-sm font-semibold">Mos keluvchi klinika topilmadi</p>
+                        <td colSpan={7} className="py-14 text-center text-slate-500">
+                          <Building2 className="w-8 h-8 mx-auto mb-2 text-teal-700" />
+                          <p className="text-sm font-medium text-slate-300">Mos klinika topilmadi</p>
+                          <p className="text-xs mt-1">Qidiruv yoki holat filtrini tozalang.</p>
                         </td>
                       </tr>
                     ) : (
@@ -1346,17 +1433,13 @@ export default function SuperAdmin() {
                             {/* 1. Name & ID */}
                             <td className="py-3.5 px-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center font-black text-indigo-300 text-sm flex-shrink-0">
+                                <div className="w-9 h-9 rounded-xl bg-teal-500/15 border border-teal-400/20 flex items-center justify-center font-semibold text-teal-100 text-sm flex-shrink-0">
                                   {c.name?.charAt(0).toUpperCase() || 'K'}
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-bold text-white truncate">{c.name}</span>
-                                    {c.status === 'Active' && timeInfo.days >= 0 ? (
-                                      <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" title="Faol" />
-                                    ) : (
-                                      <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse flex-shrink-0" title="Nofaol / Tugagan" />
-                                    )}
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-semibold text-white truncate">{c.name}</span>
+                                    <LifecycleBadge clinic={c} />
                                   </div>
                                   {(c.doctor_name || c.phone || c.email) && (
                                     <p className="text-[11px] text-slate-400 mt-0.5 max-w-[220px] truncate" title={[c.doctor_name, c.phone, c.email].filter(Boolean).join(' · ')}>
@@ -1373,6 +1456,9 @@ export default function SuperAdmin() {
                                       <Copy className="w-3 h-3" />
                                     </button>
                                   </div>
+                                  <p className="text-[10px] text-slate-500 mt-0.5 truncate max-w-[240px]">
+                                    {(c.owner_email || c.email) || 'Email yo\'q'} · {(c.owner_phone || c.phone) || 'Tel yo\'q'} · {SOURCE_LABELS[c.signup_source] || (c.tariff ? 'Landing' : 'Qo\'lda')}
+                                  </p>
                                 </div>
                               </div>
                             </td>
@@ -1381,19 +1467,17 @@ export default function SuperAdmin() {
                             <td className="py-3.5 px-4">
                               {landingTariffLabel(c) ? (
                                 <div className="space-y-1">
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-black uppercase tracking-wider border border-indigo-500/30">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-teal-500/15 text-teal-100 text-[10px] font-semibold uppercase tracking-wider border border-teal-400/25">
                                     {landingTariffLabel(c)}
                                   </span>
-                                  {landingBillingLabel(c.subscription_status || c.billing_status) && (
-                                    <p className="text-[10px] text-slate-400">{landingBillingLabel(c.subscription_status || c.billing_status)}</p>
-                                  )}
+                                  <p className="text-[10px] text-slate-500">{c.plan === 'basic' ? 'BASIC' : 'PRO'}</p>
                                 </div>
                               ) : c.plan === 'basic' ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-[10px] font-black uppercase tracking-wider border border-slate-700">
                                   ⭐ BASIC
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-black uppercase tracking-wider border border-indigo-500/30">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-teal-500/15 text-teal-100 text-[10px] font-semibold uppercase tracking-wider border border-teal-400/25">
                                   🚀 PRO
                                 </span>
                               )}
@@ -1430,16 +1514,16 @@ export default function SuperAdmin() {
                                   {isPassRevealed ? c.password : '••••••'}
                                 </span>
                                 <button 
-                                  onClick={() => togglePasswordVisibility(c.id)} 
+                                  onClick={() => requestRevealPassword(c.id)} 
                                   className="text-slate-400 hover:text-white p-0.5"
-                                  title={isPassRevealed ? "Yashirish" : "Ko'rsatish"}
+                                  title={isPassRevealed ? 'Yashirish' : 'Tasdiqlab ko\'rsatish'}
                                 >
                                   {isPassRevealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                                 </button>
                                 <button 
-                                  onClick={() => copyToClipboard(c.password, 'Parol')} 
+                                  onClick={() => requestCopyPassword(c.password)} 
                                   className="text-slate-400 hover:text-white p-0.5"
-                                  title="Parolni nusxalash"
+                                  title="Tasdiqlab nusxalash"
                                 >
                                   <Copy className="w-3 h-3" />
                                 </button>
@@ -1463,9 +1547,12 @@ export default function SuperAdmin() {
                             {/* 6. Monthly Fee */}
                             <td className="py-3.5 px-4">
                               <div>
-                                <p className="font-bold text-white text-xs">{c.monthly_fee?.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">UZS</span></p>
-                                <p className={`text-[10px] ${overdue ? 'text-rose-400 font-bold' : 'text-emerald-400'}`}>
-                                  Oxirgi: {c.last_payment_date || "To'lanmagan"}
+                                <p className="font-semibold text-white text-xs tabular-nums">{formatMoney(c.monthly_fee)} <span className="text-[10px] text-slate-400 font-normal">UZS</span></p>
+                                {isCustomMonthly(c) && (
+                                  <p className="text-[10px] text-teal-300">Maxsus · katalog {formatMoney(catalogAmount(c.plan))}</p>
+                                )}
+                                <p className={`text-[10px] ${overdue ? 'text-orange-300' : 'text-emerald-400'}`}>
+                                  Oxirgi: {c.last_payment_date || 'To\'lanmagan'}
                                 </p>
                                 {landingPayLabel(c.payment_method) && (
                                   <p className="text-[10px] text-slate-400">{landingPayLabel(c.payment_method)}</p>
@@ -1475,11 +1562,6 @@ export default function SuperAdmin() {
                                     {c.access_unlocked ? 'Kirish ochiq' : 'Kirish yopiq'}
                                   </p>
                                 )}
-                                {Array.isArray(c.payment_ledger) && c.payment_ledger.slice(-2).map((entry) => (
-                                  <p key={entry.id} className="text-[10px] text-slate-400">
-                                    {entry.note || entry.method}: {Number(entry.amountUzs || 0).toLocaleString()} · {String(entry.paidAt || '').slice(0, 10)}
-                                  </p>
-                                ))}
                               </div>
                             </td>
 
@@ -1492,10 +1574,10 @@ export default function SuperAdmin() {
                                   size="sm" 
                                   variant="outline"
                                   onClick={() => handleImpersonateClinic(c)}
-                                  className="h-8 px-2.5 bg-indigo-500/10 border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 text-xs font-bold rounded-lg"
+                                  className="h-8 px-2.5 bg-teal-500/10 border-teal-400/30 text-teal-100 hover:bg-teal-500/20 text-xs font-semibold rounded-lg"
                                   title="Klinika boshqaruviga kirish"
                                 >
-                                  <KeyRound className="w-3.5 h-3.5 mr-1 text-indigo-400" />
+                                  <KeyRound className="w-3.5 h-3.5 mr-1 text-teal-300" />
                                   <span>Kirish</span>
                                 </Button>
 
@@ -1643,10 +1725,10 @@ export default function SuperAdmin() {
 
             {/* Users Table */}
             <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[640px]">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="bg-white/[0.03] border-b border-white/[0.06] text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    <tr className="sticky top-0 z-10 bg-[#121920] border-b border-white/[0.06] text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                       <th className="py-3 px-4">Foydalanuvchi & Login</th>
                       <th className="py-3 px-4">Biriktirilgan Klinika</th>
                       <th className="py-3 px-4">Tizimdagi Roli</th>
@@ -1658,15 +1740,15 @@ export default function SuperAdmin() {
                   <tbody className="divide-y divide-white/[0.04] text-xs">
                     {filteredUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-slate-500">
-                          <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                          <p className="text-sm font-semibold">Hech qanday foydalanuvchi topilmadi</p>
+                        <td colSpan={6} className="py-14 text-center text-slate-500">
+                          <Users className="w-8 h-8 mx-auto mb-2 text-teal-700" />
+                          <p className="text-sm font-medium text-slate-300">Foydalanuvchi topilmadi</p>
+                          <p className="text-xs mt-1">Boshqa klinika yoki rolni tanlang.</p>
                         </td>
                       </tr>
                     ) : (
                       filteredUsers.map((u) => {
                         const clinic = clinics.find(c => c.id?.toLowerCase() === u.clinic_id?.toLowerCase());
-                        const isPassRevealed = revealedPasswords[u.id || u.username];
 
                         return (
                           <tr key={u.id || u.username} className="hover:bg-white/[0.03] transition-colors group">
@@ -1733,11 +1815,9 @@ export default function SuperAdmin() {
 
                             {/* 4. Password */}
                             <td className="py-3.5 px-4 font-mono">
-                              <div className="flex items-center gap-1.5 bg-white/[0.03] border border-white/5 px-2 py-1 rounded-lg w-fit">
-                                <span className="text-[11px] text-slate-300 tracking-widest">
-                                  ••••••••
-                                </span>
-                              </div>
+                              <span className="text-[11px] text-slate-500 tracking-widest" title="Xodim paroli ko'rsatilmaydi">
+                                ••••••••
+                              </span>
                             </td>
 
                             {/* 5. Commission rate */}
@@ -1807,10 +1887,10 @@ export default function SuperAdmin() {
 
             {/* Ads Table */}
             <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[640px]">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="bg-white/[0.03] border-b border-white/[0.06] text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    <tr className="sticky top-0 z-10 bg-[#121920] border-b border-white/[0.06] text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                       <th className="py-3 px-4">Reklama & Banner</th>
                       <th className="py-3 px-4">Havola (Link)</th>
                       <th className="py-3 px-4">Vaqt Grafigi</th>
@@ -1822,9 +1902,10 @@ export default function SuperAdmin() {
                   <tbody className="divide-y divide-white/[0.04] text-xs">
                     {ads.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-slate-500">
-                          <ImageIcon className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                          <p className="text-sm font-semibold">Hech qanday reklama qo'shilmagan</p>
+                        <td colSpan={6} className="py-14 text-center text-slate-500">
+                          <ImageIcon className="w-8 h-8 mx-auto mb-2 text-teal-700" />
+                          <p className="text-sm font-medium text-slate-300">Reklama hali yo'q</p>
+                          <p className="text-xs mt-1">Banner qo'shish uchun yuqoridagi tugmani bosing.</p>
                         </td>
                       </tr>
                     ) : (
@@ -1915,113 +1996,24 @@ export default function SuperAdmin() {
           </div>
         )}
 
-        {/* ════════════════════ TAB 4: TO'LOVLAR VA TARIFLAR (BILLING) ════════════════════ */}
         {activeTab === 'billing' && (
-          <div className="space-y-4">
-            
-            {/* Tariff Comparison Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
-              {/* Basic Plan Info */}
-              <div className="bg-gradient-to-b from-slate-900 to-[#0d0f18] border border-slate-700/60 rounded-2xl p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">⭐</span>
-                    <h4 className="text-base font-black text-white">BASIC Ta'rifi</h4>
-                  </div>
-                  <span className="text-base font-black text-slate-200">99,000 UZS <span className="text-xs text-slate-400 font-normal">/ oy</span></span>
-                </div>
-                <p className="text-xs text-slate-400 mb-4">Kichik va o'rta stomatologiya klinikalari uchun to'liq boshlang'ich tizim.</p>
-                <div className="space-y-1.5 text-xs text-slate-300">
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Bemorlar bazasi & Tarix</div>
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Qabullar & Navbat taqvimi</div>
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> To'lovlar & Qarzdorlik nazorati</div>
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Omborxona & Xarajatlar</div>
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Xodimlar & Ish haqi (Payroll)</div>
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Davolash rejalari & Retseptlar</div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
-                  <span>Biriktirilgan klinikalar:</span>
-                  <strong className="text-white">{stats.basicCount} ta</strong>
-                </div>
-              </div>
-
-              {/* Pro Plan Info */}
-              <div className="bg-gradient-to-b from-indigo-950/40 to-[#0d0f18] border border-indigo-500/30 rounded-2xl p-5 relative overflow-hidden">
-                <div className="absolute top-0 right-0 bg-indigo-500 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl">
-                  Eng Ommabop
-                </div>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🚀</span>
-                    <h4 className="text-base font-black text-indigo-300">PRO Ta'rifi</h4>
-                  </div>
-                  <span className="text-base font-black text-white">189,000 UZS <span className="text-xs text-slate-400 font-normal">/ oy</span></span>
-                </div>
-                <p className="text-xs text-slate-400 mb-4">Barcha professional va zamonaviy imkoniyatlarga ega to'liq versiya.</p>
-                <div className="space-y-1.5 text-xs text-slate-300">
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> <strong>BASIC dagi barcha modullar</strong></div>
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> Implantologiya & Pasportlar moduli</div>
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> Marketing & Reklama kanallari ROI tahlili</div>
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> Klinik keyslar (Before/After Portfolio)</div>
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> SMS va Telegram orqali avto-eslatmalar</div>
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> Ustuvor 24/7 texnik yordam</div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
-                  <span>Biriktirilgan klinikalar:</span>
-                  <strong className="text-indigo-300">{stats.proCount} ta</strong>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Overdue / Expiring Clinics Action Table */}
-            <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-400" /> To'lov Muddati Yaqinlashgan yoki O'tgan Klinikalar
-                </h4>
-              </div>
-              <div className="space-y-2">
-                {clinics.filter(c => isPaymentOverdue(c.last_payment_date) || getTimeRemaining(c.expires_at).days <= 7).map(c => {
-                  const timeInfo = getTimeRemaining(c.expires_at);
-                  return (
-                    <div key={c.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-white/[0.02] border border-white/5 rounded-xl">
-                      <div>
-                        <p className="font-bold text-white text-sm">{c.name} <span className="text-xs text-slate-400 font-mono">({c.id})</span></p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Muddati: <strong className={timeInfo.color}>{c.expires_at} ({timeInfo.text})</strong> • Oylik to'lov: <strong>{c.monthly_fee?.toLocaleString()} UZS</strong>
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          size="sm" 
-                          onClick={() => markAsPaid(c.id)}
-                          className="h-8 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold"
-                        >
-                          To'lovni Qabul Qilish
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleOpenRenewModal(c)}
-                          className="h-8 bg-white/5 text-slate-300 hover:text-white border-white/10 text-xs"
-                        >
-                          Muddatni Uzaytirish
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-                {clinics.filter(c => isPaymentOverdue(c.last_payment_date) || getTimeRemaining(c.expires_at).days <= 7).length === 0 && (
-                  <p className="text-xs text-emerald-400 text-center py-4 font-semibold">
-                    ✓ Hozirda qarzdor yoki muddati tugagan klinika mavjud emas!
-                  </p>
-                )}
-              </div>
-            </div>
-
-          </div>
+          <BillingPanel
+            clinics={billingClinics}
+            catalogClinics={clinics}
+            stats={stats}
+            ledger={filteredLedger}
+            billingSearch={billingSearch}
+            setBillingSearch={setBillingSearch}
+            billingPlan={billingPlan}
+            setBillingPlan={setBillingPlan}
+            billingLife={billingLife}
+            setBillingLife={setBillingLife}
+            ledgerMethod={ledgerMethod}
+            setLedgerMethod={setLedgerMethod}
+            ledgerStatus={ledgerStatus}
+            setLedgerStatus={setLedgerStatus}
+            onAcceptPayment={markAsPaid}
+          />
         )}
 
         {/* ════════════════════ TAB 5: TIZIM VA ZAXIRA (SYSTEM) ════════════════════ */}
@@ -2032,7 +2024,7 @@ export default function SuperAdmin() {
               
               <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl p-5">
                 <div className="flex items-center gap-2 mb-3">
-                  <Database className="w-4 h-4 text-indigo-400" />
+                  <Database className="w-4 h-4 text-teal-300" />
                   <h4 className="text-sm font-bold text-white">Ma'lumotlar Bazasi</h4>
                 </div>
                 <div className="space-y-2 text-xs text-slate-300">
@@ -2071,11 +2063,15 @@ export default function SuperAdmin() {
                   </div>
                   <div className="flex justify-between py-1 border-b border-white/5">
                     <span className="text-slate-400">Tizim Versiyasi:</span>
-                    <strong className="text-white">v2.5.0 Enterprise</strong>
+                    <strong className="text-white">v2.6.0</strong>
                   </div>
-                  <div className="flex justify-between py-1">
+                  <div className="flex justify-between py-1 border-b border-white/5">
                     <span className="text-slate-400">Offline Fallback:</span>
                     <strong className="text-emerald-400">Yoqilgan (LocalStorage Sync)</strong>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-slate-400">To'lov daftari:</span>
+                    <strong className="text-white">{ledger.length} yozuv</strong>
                   </div>
                 </div>
               </div>
@@ -2083,14 +2079,14 @@ export default function SuperAdmin() {
               <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl p-5 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <Download className="w-4 h-4 text-indigo-400" />
+                    <Download className="w-4 h-4 text-teal-300" />
                     <h4 className="text-sm font-bold text-white">Tizim Zaxira Nusxasi (Backup)</h4>
                   </div>
                   <p className="text-xs text-slate-400 mb-4">Barcha klinika va foydalanuvchilar ma'lumotlarini to'liq JSON formatida eksport qiling.</p>
                 </div>
                 <Button 
                   onClick={handleExportBackup}
-                  className="w-full bg-gradient-to-r from-indigo-500 to-cyan-500 hover:opacity-95 text-white font-bold text-xs h-10 rounded-xl"
+                  className="w-full bg-teal-500 hover:bg-teal-400 text-[#04221e] font-semibold text-xs h-10 rounded-xl"
                 >
                   <Download className="w-3.5 h-3.5 mr-2" /> Zaxira Nusxani Yuklab Olish
                 </Button>
@@ -2105,11 +2101,11 @@ export default function SuperAdmin() {
 
       {/* ════════════════════ MODAL 1: KLINIKA QO'SHISH / TAHRIRLASH ════════════════════ */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-[550px] rounded-3xl p-6 border border-white/10 bg-[#0d0f18] text-white">
+        <DialogContent className="max-w-[640px] max-h-[88vh] overflow-y-auto rounded-3xl p-6 border border-white/10 bg-[#0d0f18] text-white">
           <DialogHeader className="mb-4">
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-indigo-400" />
-              {editingClinic ? 'Klinika Ma\'lumotlarini Tahrirlash' : 'Yangi Klinika Yaratish'}
+              <Building2 className="w-5 h-5 text-teal-300" />
+              {editingClinic ? 'Klinika ma\'lumotlarini tahrirlash' : 'Yangi klinika yaratish'}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-400">
               Klinika asosiy ma'lumotlari, ta'rifi va administrator hisobini sozlang.
@@ -2120,23 +2116,30 @@ export default function SuperAdmin() {
             
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-[10px] font-bold text-slate-400 uppercase">Klinika ID (Unique) *</Label>
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Klinika ID *</Label>
                 <Input 
                   disabled={!!editingClinic} 
                   value={form.id} 
                   onChange={e => setForm({...form, id: e.target.value})} 
                   placeholder="star_med" 
-                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
+                  className={FIELD} 
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-[10px] font-bold text-slate-400 uppercase">Master Parol *</Label>
-                <Input 
-                  value={form.password} 
-                  onChange={e => setForm({...form, password: e.target.value})} 
-                  placeholder="Parol" 
-                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
-                />
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">{editingClinic ? 'Yangi master parol' : 'Master parol *'}</Label>
+                <div className="relative">
+                  <Input 
+                    type={showFormPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    value={form.password} 
+                    onChange={e => setForm({...form, password: e.target.value})} 
+                    placeholder={editingClinic ? 'Bo\'sh qolsa o\'zgarmaydi' : 'Parol'} 
+                    className={`${FIELD} pr-10`} 
+                  />
+                  <button type="button" onClick={() => setShowFormPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    {showFormPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -2153,16 +2156,49 @@ export default function SuperAdmin() {
                   });
                 }} 
                 placeholder="Star Med Dental Clinic" 
-                className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
+                className={FIELD} 
               />
             </div>
 
-            {/* Admin User Section (New clinic creation only) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Egasi emaili</Label>
+                <Input value={form.owner_email || ''} onChange={e => setForm({...form, owner_email: e.target.value})} placeholder="owner@klinika.uz" className={FIELD} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Egasi telefoni</Label>
+                <Input value={form.owner_phone || ''} onChange={e => setForm({...form, owner_phone: e.target.value})} placeholder="+998 90 000 00 00" className={FIELD} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Ro'yxat manbai</Label>
+                <select value={form.signup_source || 'manual'} onChange={e => setForm({...form, signup_source: e.target.value})} className={SELECT}>
+                  <option value="manual" className="bg-slate-900">Qo'lda</option>
+                  <option value="landing" className="bg-slate-900">Landing</option>
+                  <option value="telegram" className="bg-slate-900">Telegram</option>
+                  <option value="referral" className="bg-slate-900">Tavsiya</option>
+                  <option value="other" className="bg-slate-900">Boshqa</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Obuna holati</Label>
+                <select value={form.subscription_status || 'auto'} onChange={e => setForm({...form, subscription_status: e.target.value === 'auto' ? '' : e.target.value})} className={SELECT}>
+                  <option value="auto" className="bg-slate-900">Sanalardan hisoblansin</option>
+                  <option value="trialing" className="bg-slate-900">Sinov (14 kun)</option>
+                  <option value="active" className="bg-slate-900">Faol</option>
+                  <option value="past_due" className="bg-slate-900">Qarzdor</option>
+                  <option value="expired" className="bg-slate-900">Tugagan</option>
+                </select>
+              </div>
+            </div>
+
             {!editingClinic && (
-              <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-2.5">
+              <div className="p-3.5 rounded-2xl bg-teal-500/10 border border-teal-400/20 space-y-2.5">
                 <div className="flex items-center gap-1.5">
-                  <UserPlus className="w-3.5 h-3.5 text-indigo-400" />
-                  <span className="text-[11px] font-bold text-indigo-300 uppercase">Klinika Bosh Administratori</span>
+                  <UserPlus className="w-3.5 h-3.5 text-teal-300" />
+                  <span className="text-[11px] font-semibold text-teal-100 uppercase">Klinika bosh administratori</span>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-2.5">
@@ -2178,9 +2214,11 @@ export default function SuperAdmin() {
                   <div className="space-y-1">
                     <Label className="text-[9px] font-bold text-slate-400 uppercase">Admin Paroli</Label>
                     <Input 
-                      value={form.admin_password || form.password} 
+                      type="password"
+                      autoComplete="new-password"
+                      value={form.admin_password || ''} 
                       onChange={e => setForm({...form, admin_password: e.target.value})} 
-                      placeholder="••••••••" 
+                      placeholder="Bo'sh bo'lsa master parol" 
                       className="h-9 bg-black/30 border-white/10 rounded-lg text-xs" 
                     />
                   </div>
@@ -2197,61 +2235,99 @@ export default function SuperAdmin() {
               </div>
             )}
 
-            {/* Plan and Monthly Fee */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-[10px] font-bold text-slate-400 uppercase">Ta'rif (Plan)</Label>
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Ta'rif</Label>
                 <select 
                   value={form.plan || 'pro'} 
                   onChange={e => {
                     const newPlan = e.target.value;
                     const legacy = shifoTariffs.legacyPortalMonthlyFee;
-                    setForm({ ...form, plan: newPlan, monthly_fee: newPlan === 'basic' ? legacy.basic : legacy.pro });
+                    const current = Number(form.monthly_fee);
+                    const wasLegacy = current === legacy.basic || current === legacy.pro;
+                    const nextFee = wasLegacy || !current
+                      ? (newPlan === 'basic' ? legacy.basic : legacy.pro)
+                      : current;
+                    setForm({ ...form, plan: newPlan, monthly_fee: nextFee });
                   }} 
-                  className="w-full h-10 bg-white/[0.04] border border-white/10 rounded-xl px-3 text-white text-xs focus:border-indigo-500"
+                  className={SELECT}
                 >
-                  <option value="basic" className="bg-slate-900 text-white">⭐ BASIC ({shifoTariffs.legacyPortalMonthlyFee.basic.toLocaleString()} UZS / oy)</option>
-                  <option value="pro" className="bg-slate-900 text-white">🚀 PRO ({shifoTariffs.legacyPortalMonthlyFee.pro.toLocaleString()} UZS / oy)</option>
+                  <option value="basic" className="bg-slate-900 text-white">BASIC · qo'lda {shifoTariffs.legacyPortalMonthlyFee.basic.toLocaleString()} UZS</option>
+                  <option value="pro" className="bg-slate-900 text-white">PRO · qo'lda {shifoTariffs.legacyPortalMonthlyFee.pro.toLocaleString()} UZS</option>
                 </select>
                 <p className="text-[10px] leading-snug text-slate-500">
                   Landing narxlari: {shifoTariffs.tariffs.filter((plan) => plan.id !== 'trial').map((plan) => `${plan.name} ${plan.priceUzs.toLocaleString()} → ${plan.crmPlan.toUpperCase()}`).join(', ')}.
                   Qo'lda yaratilgan klinika {shifoTariffs.legacyPortalMonthlyFee.basic.toLocaleString()} / {shifoTariffs.legacyPortalMonthlyFee.pro.toLocaleString()} UZS da qoladi.
                 </p>
               </div>
-
               <div className="space-y-1">
-                <Label className="text-[10px] font-bold text-slate-400 uppercase">Oylik To'lov (UZS)</Label>
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Oylik summa (maxsus bo'lishi mumkin)</Label>
                 <Input 
                   type="number"
                   value={form.monthly_fee} 
                   onChange={e => setForm({...form, monthly_fee: Number(e.target.value)})} 
-                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
+                  className={FIELD} 
                 />
               </div>
             </div>
+            <p className="text-[10px] text-slate-500 -mt-2">Start → BASIC, Pro va Klinika → PRO. Summani o'zgartirsangiz maxsus narx saqlanadi.</p>
 
-            {/* Status & Expiry */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-[10px] font-bold text-slate-400 uppercase">Holat</Label>
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Kirish holati</Label>
                 <select 
                   value={form.status} 
                   onChange={e => setForm({...form, status: e.target.value})} 
-                  className="w-full h-10 bg-white/[0.04] border border-white/10 rounded-xl px-3 text-white text-xs focus:border-indigo-500"
+                  className={SELECT}
                 >
-                  <option value="Active" className="bg-slate-900 text-white">Faol (Active)</option>
-                  <option value="Inactive" className="bg-slate-900 text-white">Nofaol (Inactive)</option>
+                  <option value="Active" className="bg-slate-900 text-white">Faol (kirish ochiq)</option>
+                  <option value="Inactive" className="bg-slate-900 text-white">Nofaol (kirish yopiq)</option>
                 </select>
               </div>
-
               <div className="space-y-1">
-                <Label className="text-[10px] font-bold text-slate-400 uppercase">Obuna Tugash Sanasi</Label>
-                <Input 
-                  type="date" 
-                  value={form.expires_at} 
-                  onChange={e => setForm({...form, expires_at: e.target.value})} 
-                  className="h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs" 
-                />
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Obuna tugash sanasi</Label>
+                <Input type="date" value={form.expires_at || ''} onChange={e => setForm({...form, expires_at: e.target.value})} className={FIELD} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Sinov tugashi</Label>
+                <Input type="date" value={form.trial_ends_at || ''} onChange={e => setForm({...form, trial_ends_at: e.target.value})} className={FIELD} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">To'lov usuli</Label>
+                <select value={form.payment_provider || 'manual'} onChange={e => setForm({...form, payment_provider: e.target.value})} className={SELECT}>
+                  <option value="manual" className="bg-slate-900">Qo'lda</option>
+                  <option value="payme" className="bg-slate-900">Payme</option>
+                  <option value="click" className="bg-slate-900">Click</option>
+                  <option value="mock" className="bg-slate-900">Mock</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Payme merchant ID</Label>
+                <Input value={form.payme_merchant_id || ''} onChange={e => setForm({...form, payme_merchant_id: e.target.value})} placeholder="merchant id" className={FIELD} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Click service ID</Label>
+                <Input value={form.click_service_id || ''} onChange={e => setForm({...form, click_service_id: e.target.value})} placeholder="service id" className={FIELD} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Click merchant ID</Label>
+                <Input value={form.click_merchant_id || ''} onChange={e => setForm({...form, click_merchant_id: e.target.value})} placeholder="merchant id" className={FIELD} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase">Webhook holati</Label>
+                <select value={form.webhook_status || ''} onChange={e => setForm({...form, webhook_status: e.target.value})} className={SELECT}>
+                  <option value="" className="bg-slate-900">Avto</option>
+                  <option value="not_configured" className="bg-slate-900">Sozlanmagan</option>
+                  <option value="waiting" className="bg-slate-900">Kutilmoqda</option>
+                  <option value="received" className="bg-slate-900">Qabul qilindi</option>
+                  <option value="failed" className="bg-slate-900">Xato</option>
+                </select>
               </div>
             </div>
 
@@ -2259,8 +2335,8 @@ export default function SuperAdmin() {
               <Button type="button" variant="ghost" onClick={() => setModalOpen(false)} className="flex-1 h-10 rounded-xl text-slate-400 text-xs">
                 Bekor qilish
               </Button>
-              <Button type="submit" className="flex-[2] h-10 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:opacity-95 text-white font-bold text-xs rounded-xl">
-                {editingClinic ? 'O\'zgarishlarni Saqlash' : 'Klinikani Yaratish'}
+              <Button type="submit" className="flex-[2] h-10 bg-teal-500 hover:bg-teal-400 text-[#04221e] font-semibold text-xs rounded-xl">
+                {editingClinic ? 'O\'zgarishlarni saqlash' : 'Klinikani yaratish'}
               </Button>
             </div>
 
@@ -2387,41 +2463,44 @@ export default function SuperAdmin() {
       </Dialog>
 
       {/* ════════════════════ MODAL 3: OBUNANI UZAYTIRISH (QUICK RENEW) ════════════════════ */}
-      <Dialog open={renewModalOpen} onOpenChange={setRenewModalOpen}>
-        <DialogContent className="max-w-[420px] rounded-3xl p-6 border border-white/10 bg-[#0d0f18] text-white">
+      <Dialog open={renewModalOpen} onOpenChange={(open) => { if (!paySaving) setRenewModalOpen(open); }}>
+        <DialogContent className="max-w-[460px] rounded-3xl p-6 border border-white/10 bg-[#0d0f18] text-white">
           <DialogHeader className="mb-4">
-            <DialogTitle className="text-xl font-bold flex items-center gap-2">
-              <CalendarCheck className="w-5 h-5 text-emerald-400" />
-              Obunani Uzaytirish
+            <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+              <CalendarCheck className="w-5 h-5 text-teal-300" />
+              To'lovni tasdiqlash
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-400">
-              {renewingClinic?.name} ({renewingClinic?.id}) uchun obuna muddatini uzaytiring.
+              {renewingClinic?.name} ({renewingClinic?.id}). Tasdiqlamaguncha muddat va daftar o'zgarmaydi.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 text-xs">
+            <div className="p-3 bg-amber-500/10 border border-amber-400/20 rounded-xl text-amber-100 leading-relaxed">
+              Bu amal to'lovni daftarga yozadi, oxirgi to'lov sanasini yangilaydi va obunani uzaytiradi.
+            </div>
             <div className="p-3 bg-white/[0.03] border border-white/5 rounded-xl space-y-1">
               <div className="flex justify-between text-slate-400">
-                <span>Hozirgi muddat:</span>
+                <span>Hozirgi muddat</span>
                 <strong className="text-white">{renewingClinic?.expires_at || 'Muddatsiz'}</strong>
               </div>
               <div className="flex justify-between text-slate-400">
-                <span>Oylik to'lov summasi:</span>
-                <strong className="text-emerald-400">{renewingClinic?.monthly_fee?.toLocaleString()} UZS</strong>
+                <span>Yangi muddat</span>
+                <strong className="text-teal-200">{renewingClinic ? extendExpiry(renewingClinic.expires_at, renewMonths * 30) : '—'}</strong>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold text-slate-400 uppercase">Muddatni tanlang:</Label>
+              <Label className="text-[10px] font-semibold text-slate-400 uppercase">Davr</Label>
               <div className="grid grid-cols-4 gap-2">
                 {[1, 3, 6, 12].map(m => (
                   <button
                     key={m}
                     type="button"
                     onClick={() => setRenewMonths(m)}
-                    className={`py-2.5 rounded-xl border text-xs font-bold transition-all ${
+                    className={`py-2.5 rounded-xl border text-xs font-semibold transition-all ${
                       renewMonths === m 
-                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-md' 
+                        ? 'bg-teal-500/20 border-teal-400/50 text-teal-100' 
                         : 'bg-white/[0.03] border-white/10 text-slate-400 hover:text-white'
                     }`}
                   >
@@ -2431,24 +2510,48 @@ export default function SuperAdmin() {
               </div>
             </div>
 
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between">
-              <span className="text-emerald-300 font-medium">Jami to'lov:</span>
-              <strong className="text-emerald-400 text-sm">{((renewingClinic?.monthly_fee || 0) * renewMonths).toLocaleString()} UZS</strong>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-semibold text-slate-400 uppercase">Usul</Label>
+                <select value={payMethod} onChange={e => setPayMethod(e.target.value)} className={SELECT}>
+                  <option value="manual" className="bg-slate-900">Qo'lda</option>
+                  <option value="payme" className="bg-slate-900">Payme</option>
+                  <option value="click" className="bg-slate-900">Click</option>
+                  <option value="mock" className="bg-slate-900">Mock</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-semibold text-slate-400 uppercase">Summa (UZS)</Label>
+                <Input
+                  type="number"
+                  value={payAmount}
+                  onChange={e => { setPayAmountTouched(true); setPayAmount(Number(e.target.value)); }}
+                  className={FIELD}
+                />
+              </div>
             </div>
+
+            <p className="text-[11px] text-slate-400">
+              Webhook: {WEBHOOK_LABELS[webhookStatusFor(renewingClinic, payMethod)] || '—'}. 
+              {payMethod === 'payme' && !renewingClinic?.payme_merchant_id ? ' Payme merchant ID kiritilmagan.' : ''}
+              {payMethod === 'click' && !(renewingClinic?.click_service_id || renewingClinic?.click_merchant_id) ? ' Click identifikatori kiritilmagan.' : ''}
+            </p>
 
             <div className="flex gap-2 pt-2">
               <Button 
                 variant="ghost" 
                 onClick={() => setRenewModalOpen(false)} 
+                disabled={paySaving}
                 className="flex-1 h-10 text-xs rounded-xl text-slate-400"
               >
                 Bekor qilish
               </Button>
               <Button 
                 onClick={handleConfirmRenew} 
-                className="flex-[2] h-10 bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 text-white font-bold text-xs rounded-xl"
+                disabled={paySaving}
+                className="flex-[2] h-10 bg-teal-500 hover:bg-teal-400 text-[#04221e] font-semibold text-xs rounded-xl"
               >
-                Obunani Uzaytirish
+                {paySaving ? 'Saqlanmoqda...' : `${formatMoney(payAmount)} UZS qabul qilish`}
               </Button>
             </div>
           </div>
@@ -2463,11 +2566,11 @@ export default function SuperAdmin() {
               <DialogHeader className="mb-4">
                 <DialogTitle className="text-xl font-bold flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Building2 className="w-5 h-5 text-indigo-400" />
+                    <Building2 className="w-5 h-5 text-teal-300" />
                     <span>{selectedClinicForDetail.name}</span>
                   </div>
                   <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg ${
-                    selectedClinicForDetail.plan === 'basic' ? 'bg-slate-800 text-slate-300' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                    selectedClinicForDetail.plan === 'basic' ? 'bg-slate-800 text-slate-300' : 'bg-teal-500/15 text-teal-100 border border-teal-400/30'
                   }`}>
                     {selectedClinicForDetail.plan === 'basic' ? '⭐ BASIC' : '🚀 PRO'}
                   </span>
@@ -2482,16 +2585,34 @@ export default function SuperAdmin() {
                     <strong className="font-mono text-white text-xs">{selectedClinicForDetail.id}</strong>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[10px] block">Master Parol:</span>
-                    <strong className="font-mono text-white text-xs">{selectedClinicForDetail.password}</strong>
+                    <span className="text-slate-400 text-[10px] block">Master parol</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <strong className="font-mono text-white text-xs">{revealedPasswords[selectedClinicForDetail.id] ? selectedClinicForDetail.password : '••••••'}</strong>
+                      <button type="button" onClick={() => requestRevealPassword(selectedClinicForDetail.id)} className="text-slate-400 hover:text-white">
+                        {revealedPasswords[selectedClinicForDetail.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                      <button type="button" onClick={() => requestCopyPassword(selectedClinicForDetail.password)} className="text-slate-400 hover:text-white">
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[10px] block">Obuna Tugash Sanasi:</span>
-                    <strong className="text-white text-xs">{selectedClinicForDetail.expires_at}</strong>
+                    <span className="text-slate-400 text-[10px] block">Obuna</span>
+                    <strong className="text-white text-xs">{selectedClinicForDetail.expires_at || 'Muddatsiz'}</strong>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[10px] block">Oylik To'lov:</span>
-                    <strong className="text-emerald-400 text-xs">{selectedClinicForDetail.monthly_fee?.toLocaleString()} UZS</strong>
+                    <span className="text-slate-400 text-[10px] block">Oylik to'lov</span>
+                    <strong className="text-teal-200 text-xs">{formatMoney(selectedClinicForDetail.monthly_fee)} UZS</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] block">Egasi</span>
+                    <strong className="text-white text-xs">{selectedClinicForDetail.doctor_name || selectedClinicForDetail.owner_email || selectedClinicForDetail.email || '—'}</strong>
+                    <span className="block text-[10px] text-slate-500">{selectedClinicForDetail.owner_email || selectedClinicForDetail.email || ''} · {selectedClinicForDetail.owner_phone || selectedClinicForDetail.phone || ''} · {SOURCE_LABELS[selectedClinicForDetail.signup_source] || (selectedClinicForDetail.tariff ? 'Landing' : 'Qo\'lda')}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] block">Provayder</span>
+                    <strong className="text-white text-xs">{METHOD_LABELS[selectedClinicForDetail.payment_provider || selectedClinicForDetail.payment_method] || 'Qo\'lda'}</strong>
+                    <span className="block text-[10px] text-slate-500">Payme {selectedClinicForDetail.payme_merchant_id || '—'} · Click {selectedClinicForDetail.click_service_id || selectedClinicForDetail.click_merchant_id || '—'}</span>
                   </div>
                 </div>
 
@@ -2536,7 +2657,7 @@ export default function SuperAdmin() {
                       setDetailModalOpen(false);
                       handleImpersonateClinic(selectedClinicForDetail);
                     }}
-                    className="flex-1 h-10 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl"
+                    className="flex-1 h-10 bg-teal-500 hover:bg-teal-400 text-[#04221e] font-semibold text-xs rounded-xl"
                   >
                     <KeyRound className="w-3.5 h-3.5 mr-1.5" /> Ushbu Klinikaga Kirish
                   </Button>
@@ -2664,12 +2785,72 @@ export default function SuperAdmin() {
               <Button type="button" variant="ghost" onClick={() => setAdModalOpen(false)} className="flex-1 h-10 rounded-xl text-slate-400 text-xs">
                 Bekor qilish
               </Button>
-              <Button type="submit" className="flex-[2] h-10 bg-gradient-to-r from-purple-500 to-pink-600 hover:opacity-95 text-white font-bold text-xs rounded-xl">
+              <Button type="submit" className="flex-[2] h-10 bg-teal-500 hover:bg-teal-400 text-[#04221e] font-semibold text-xs rounded-xl">
                 {editingAd ? 'O\'zgarishlarni Saqlash' : 'Reklamani Qo\'shish'}
               </Button>
             </div>
 
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!secretPrompt} onOpenChange={(open) => { if (!open) setSecretPrompt(null); }}>
+        <DialogContent className="max-w-[400px] rounded-3xl p-6 border border-white/10 bg-[#0d0f18] text-white">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-lg font-semibold">Parolni tasdiqlang</DialogTitle>
+            <DialogDescription className="text-xs text-slate-400">
+              {secretPrompt?.mode === 'copy'
+                ? 'Parol buferga nusxalanadi. Matn bildirishnomada ko\'rsatilmaydi.'
+                : 'Parol jadvalda 20 soniya ochiq turadi, so\'ng yana yashiriladi.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setSecretPrompt(null)} className="flex-1 h-10 text-xs text-slate-400">Bekor qilish</Button>
+            <Button onClick={confirmSecret} className="flex-[2] h-10 bg-teal-500 hover:bg-teal-400 text-[#04221e] text-xs font-semibold">Tasdiqlash</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="max-w-[420px] rounded-3xl p-6 border border-white/10 bg-[#0d0f18] text-white">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-lg font-semibold">Klinikani olib tashlash</DialogTitle>
+            <DialogDescription className="text-xs text-slate-400">
+              {deleteTarget?.name} ro'yxatdan o'chadi. Xodim yozuvlari alohida qoladi. Klinika logini shu ID bilan ishlamaydi.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)} className="flex-1 h-10 text-xs text-slate-400">Bekor qilish</Button>
+            <Button onClick={confirmDeleteClinic} className="flex-[2] h-10 bg-rose-500 hover:bg-rose-400 text-white text-xs font-semibold">O'chirish</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!issuedCreds} onOpenChange={(open) => { if (!open) setIssuedCreds(null); }}>
+        <DialogContent className="max-w-[440px] rounded-3xl p-6 border border-white/10 bg-[#0d0f18] text-white">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-lg font-semibold">Kirish ma'lumotlari</DialogTitle>
+            <DialogDescription className="text-xs text-slate-400">
+              Parol shu oynada bir marta ko'rsatiladi. Jadvalda u yashirin turadi.
+            </DialogDescription>
+          </DialogHeader>
+          {issuedCreds && (
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between rounded-xl bg-white/[0.04] px-3 py-2">
+                <span className="text-slate-400">Klinika ID</span>
+                <button type="button" className="font-mono text-white" onClick={() => copyToClipboard(issuedCreds.clinicId, 'Klinika ID')}>{issuedCreds.clinicId}</button>
+              </div>
+              <div className="flex items-center justify-between rounded-xl bg-white/[0.04] px-3 py-2">
+                <span className="text-slate-400">Admin login</span>
+                <button type="button" className="font-mono text-white" onClick={() => copyToClipboard(issuedCreds.adminUsername, 'Login')}>{issuedCreds.adminUsername}</button>
+              </div>
+              <div className="flex items-center justify-between rounded-xl bg-white/[0.04] px-3 py-2">
+                <span className="text-slate-400">Admin parol</span>
+                <button type="button" className="font-mono text-teal-200" onClick={() => copyToClipboard(issuedCreds.adminPassword, 'Parol', { sensitive: true })}>{issuedCreds.adminPassword}</button>
+              </div>
+            </div>
+          )}
+          <Button onClick={() => setIssuedCreds(null)} className="w-full h-10 mt-3 bg-teal-500 hover:bg-teal-400 text-[#04221e] text-xs font-semibold">Yopish</Button>
         </DialogContent>
       </Dialog>
 
