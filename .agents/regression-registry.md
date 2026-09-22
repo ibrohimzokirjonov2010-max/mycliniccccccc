@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant Step 2 — xizmatlar scrollbar kartalarga yopishib qolishi
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+  - [`src/components/implants/implantWizardLabels.js`](src/components/implants/implantWizardLabels.js)
+  - [`scripts/assert-implant-wizard-ux.mjs`](scripts/assert-implant-wizard-ux.mjs)
+  - [`vite.config.js`](vite.config.js)
+- **Muammo Tavsifi:** Step 2 «Qo'shimcha xizmatlar» ro'yxatida vertikal scrollbar ikkinchi ustun kartalariga juda yaqin turardi.
+- **Sababi:** `.implant-wizard-service-list` da `padding-right: 2px` edi.
+- **Qanday tuzatildi:** `padding-inline-end: 12px` + `scrollbar-gutter: stable`; ikki ustun grid saqlanadi. Marker `implant-step2-services-scroll-pad-v3`, SW cache `v14-step2-scroll-pad`.
+- **Qaytalamaslik choralari:** Step 2 scroll paddingni 2px ga qaytarmang. Scrollbarni olib tashlamang. Step 1 tish paneliga Izoh/extras qaytarmang. `node scripts/assert-implant-wizard-ux.mjs` o'tsin.
+
 ### 🦷 Yangi implant Step 1 — tish panelidan Izoh / Qo'shimcha xizmatlar olib tashlandi
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**

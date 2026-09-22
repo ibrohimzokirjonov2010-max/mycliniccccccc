@@ -1,6 +1,6 @@
 /** Human labels for implant extra services — never render raw i18n keys. */
 
-export const IMPLANT_WIZARD_STEP2_MARKER = 'implant-step2-teal-v2-240px-0d9488';
+export const IMPLANT_WIZARD_STEP2_MARKER = 'implant-step2-services-scroll-pad-v3';
 
 export const SERVICE_FALLBACKS = {
   surgical_guide: 'Jarrohlik shabloni',

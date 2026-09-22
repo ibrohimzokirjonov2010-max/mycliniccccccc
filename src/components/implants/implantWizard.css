@@ -391,7 +391,11 @@
   gap: 8px;
   overflow-y: auto;
   max-height: 340px;
-  padding-right: 2px;
+  /* Keep scrollbar clear of the 2nd card column (was 2px — too tight). */
+  padding-right: 12px;
+  padding-inline-end: 12px;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
 }
 
 @media (min-width: 640px) {

@@ -73,9 +73,15 @@ assert(css.includes('.implant-wizard-arch-curve'), 'legacy curve class stays hid
 assert(css.includes('display: none !important'), 'legacy curve cannot paint');
 
 assert(vite.includes("navigateFallback: 'index.html'"), 'offline app shell stays precached');
-assert(vite.includes('assets-cache-v13-tooth-panel-slim'), 'asset runtime cache bumped');
+assert(vite.includes('assets-cache-v14-step2-scroll-pad'), 'asset runtime cache bumped');
 assert(vite.includes("importScripts: ['sw-activate-reload.js']"), 'activate reload script is imported');
 assert(sw.includes('client.navigate'), 'new service worker reloads open clients');
 assert(main.includes('listenForAppUpdates'), 'page reloads when a new worker takes control');
+
+const labels = read('src/components/implants/implantWizardLabels.js');
+assert(css.includes('padding-inline-end: 12px'), 'step 2 service list keeps scrollbar clear of cards');
+assert(css.includes('scrollbar-gutter: stable'), 'step 2 reserves scrollbar gutter');
+assert(css.includes('.implant-wizard-service-list'), 'step 2 services list styles exist');
+assert(labels.includes('implant-step2-services-scroll-pad-v3'), 'step 2 build marker bumped');
 
 console.log('assert-implant-wizard-ux: ok');
