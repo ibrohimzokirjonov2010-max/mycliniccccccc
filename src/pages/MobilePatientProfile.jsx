@@ -15,6 +15,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { cn, resolveDoctorId } from '@/lib/utils';
 import { patientGenderLabel } from '@/lib/patientGender';
+import { countImplantTeeth, implantRecordFdis } from '@/lib/fdiNotation';
 import { formatPhone, capitalizeName } from '@/lib/utils';
 import AppointmentModal from '../components/appointments/AppointmentModal';
 import PatientModal from '../components/patients/PatientModal';
@@ -1088,7 +1089,7 @@ export default function MobilePatientProfile() {
             {activeTab === 'implant' && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-black text-slate-800">{t('patientProfile.tabs.implants', 'Implantlar')} ({implants.length})</h2>
+                  <h2 className="text-sm font-black text-slate-800">{t('patientProfile.tabs.implants', 'Implantlar')} ({countImplantTeeth(implants)})</h2>
                   <button
                     type="button"
                     onClick={() => { setSelectedImplant(null); setImplantModalOpen(true); }}
@@ -1113,7 +1114,7 @@ export default function MobilePatientProfile() {
                     </button>
                   </div>
                 ) : implants.map((imp) => {
-                  const teeth = [...new Set((imp.tooth_numbers || (imp.tooth_number ? [imp.tooth_number] : [])).map(String))];
+                  const teeth = implantRecordFdis(imp);
                   return (
                     <button
                       key={imp.id}

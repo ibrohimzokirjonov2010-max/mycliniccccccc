@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { ImplantIcon } from '@/components/ui/Icons';
 import EmptyState from '../ui/EmptyState';
+import { implantRecordFdis } from '@/lib/fdiNotation';
 
 function ExcelImplantsView({
   patient: _patient,
@@ -34,7 +35,7 @@ function ExcelImplantsView({
         (imp.brend && imp.brend.toLowerCase().includes(q)) ||
         (imp.doctor && imp.doctor.toLowerCase().includes(q)) ||
         (imp.lot_number && String(imp.lot_number).includes(q)) ||
-        (imp.tooth_number && String(imp.tooth_number).includes(q))
+        implantRecordFdis(imp).some((fdi) => String(fdi).toLowerCase().includes(q))
       );
     }
 
@@ -101,25 +102,28 @@ function ExcelImplantsView({
         ) : (
           filteredImplants.map((imp, idx) => {
             const locale = language === 'ru' ? 'ru-RU' : language === 'en' ? 'en-US' : 'uz-UZ';
-            const dateStr = imp.installed_date || imp.date
-              ? new Date(imp.installed_date || imp.date).toLocaleDateString(locale) : '—';
+            const dateStr = imp.installed_date || imp.date || imp.placement_date
+              ? new Date(imp.installed_date || imp.date || imp.placement_date).toLocaleDateString(locale) : '—';
             const sizeStr = imp.diameter && imp.length ? `Ø${imp.diameter}×${imp.length}mm` : (imp.size || '—');
             const brandName = imp.brend || imp.firma || (language === 'ru' ? 'Имплант' : 'Implantat');
+            const fdis = implantRecordFdis(imp);
 
             return (
               <div key={imp.id || idx} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
                 {/* Card top */}
                 <div className="p-3.5 flex items-start gap-3">
                   <div className="w-11 h-11 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
-                    {imp.tooth_number ? (
-                      <span className="text-[11px] font-black text-purple-700">#{imp.tooth_number}</span>
+                    {fdis.length === 1 ? (
+                      <span className="text-[11px] font-black text-purple-700">#{fdis[0]}</span>
                     ) : (
                       <ImplantIcon className="w-5 h-5 text-purple-500" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-black text-slate-900 leading-tight">{brandName}</p>
-                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">{imp.firma && imp.brend ? imp.firma : 'Implant tizimi'}</p>
+                    <p className="text-[10px] font-bold text-purple-700 mt-0.5">
+                      {fdis.length ? fdis.map((fdi) => `#${fdi}`).join(' · ') : (imp.firma && imp.brend ? imp.firma : 'Implant tizimi')}
+                    </p>
                   </div>
                   {getStatusBadge(imp.lifecycle_status || imp.status)}
                 </div>
@@ -171,7 +175,7 @@ function ExcelImplantsView({
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
                 <th className="py-2.5 px-2 border-r border-slate-100 w-8 min-w-[28px] text-center">№</th>
-                <th className="py-2.5 px-1.5 border-r border-slate-100 w-14 min-w-[46px] text-center">Tish FDI</th>
+                <th className="py-2.5 px-1.5 border-r border-slate-100 w-auto min-w-[72px] text-center">Tish FDI</th>
                 <th className="py-2.5 px-2 border-r border-slate-100 min-w-[105px] max-w-[145px]">{t('patientProfile.brandSystemCol') || "Brend / Tizim"}</th>
                 <th className="py-2.5 px-1.5 border-r border-slate-100 text-center w-24 min-w-[78px]">{t('patientProfile.sizeCol') || "O'lchami"}</th>
                 <th className="py-2.5 px-1.5 border-r border-slate-100 text-center w-20 min-w-[68px]">Lot #</th>
@@ -193,17 +197,23 @@ function ExcelImplantsView({
                 </tr>
               ) : filteredImplants.map((imp, idx) => {
                 const locale = language === 'ru' ? 'ru-RU' : language === 'en' ? 'en-US' : 'uz-UZ';
-                const dateStr = imp.installed_date || imp.date ? new Date(imp.installed_date || imp.date).toLocaleDateString(locale) : '—';
+                const dateStr = imp.installed_date || imp.date || imp.placement_date
+                  ? new Date(imp.installed_date || imp.date || imp.placement_date).toLocaleDateString(locale) : '—';
                 const brandName = imp.brend || imp.firma || 'Implantat';
+                const fdis = implantRecordFdis(imp);
 
                 return (
                   <tr key={imp.id || idx} className={cn("border-b border-slate-100 hover:bg-purple-50/20 transition-colors", idx % 2 === 1 && "bg-slate-50/30")}>
                     <td className="py-2 px-1 text-center font-mono text-[11px] text-slate-400 border-r border-slate-100">{idx + 1}</td>
                     <td className="py-2 px-1.5 text-center border-r border-slate-100">
-                      {imp.tooth_number ? (
-                        <span className="inline-flex items-center justify-center font-mono font-black text-purple-600 text-xs bg-purple-50/70 px-1.5 py-0.5 rounded border border-purple-100">
-                          #{imp.tooth_number}
-                        </span>
+                      {fdis.length ? (
+                        <div className="flex flex-wrap items-center justify-center gap-1" data-testid="profile-implant-fdis">
+                          {fdis.map((fdi) => (
+                            <span key={fdi} className="inline-flex items-center justify-center font-mono font-black text-purple-600 text-xs bg-purple-50/70 px-1.5 py-0.5 rounded border border-purple-100">
+                              #{fdi}
+                            </span>
+                          ))}
+                        </div>
                       ) : (
                         <span className="text-slate-300 font-mono text-xs">—</span>
                       )}

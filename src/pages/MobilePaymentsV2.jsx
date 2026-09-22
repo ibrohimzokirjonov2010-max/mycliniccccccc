@@ -14,7 +14,7 @@ import { cn, resolveDoctorId } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
 import PatientSelect from '@/components/patients/PatientSelect';
@@ -1128,7 +1128,6 @@ export default function MobilePaymentsV2() {
             className="payment-add-dialog !flex !flex-col !p-0 !gap-0 overflow-hidden border border-[#e5e7eb] shadow-2xl"
             style={paymentAddDialogStyle}
             data-payment-add={PAYMENT_ADD_MARKER}
-            aria-describedby={undefined}
           >
             {(() => {
               const currentType = formData.type || 'Income';
@@ -1150,6 +1149,9 @@ export default function MobilePaymentsV2() {
                           <DialogTitle className="payment-add-header-title">
                             {t('payments.addNew')}
                           </DialogTitle>
+                          <DialogDescription className="sr-only">
+                            {patient ? patient.full_name : (t('payments.receiveAmount') || t('payments.type'))}
+                          </DialogDescription>
                           <p className="payment-add-header-sub">
                             {patient ? patient.full_name : (t('payments.receiveAmount') || t('payments.type'))}
                           </p>
@@ -1618,6 +1620,7 @@ onClose={() => { setShowPlanInvoiceModal(false); setSelectedPlanForInvoice(null)
           <DialogContent className="sm:max-w-md w-[95%] rounded-3xl p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
             <DialogHeader className="sr-only">
               <DialogTitle>To'lov tafsilotlari</DialogTitle>
+              <DialogDescription>Tanlangan to'lov summasi, bemor va holati</DialogDescription>
             </DialogHeader>
             {selectedPayment && (() => {
               const sp = selectedPayment;
@@ -1821,6 +1824,8 @@ onClose={() => { setShowPlanInvoiceModal(false); setSelectedPlanForInvoice(null)
         {/* Fullscreen Receipt Lightbox */}
         <Dialog open={!!previewReceiptUrl} onOpenChange={(open) => !open && setPreviewReceiptUrl(null)}>
           <DialogContent className="max-w-2xl w-[95vw] max-h-[92vh] p-0 overflow-hidden rounded-3xl border-none shadow-2xl bg-slate-950 flex flex-col [&>button]:hidden">
+            <DialogTitle className="sr-only">To'lov cheki</DialogTitle>
+            <DialogDescription className="sr-only">Chek rasmini ko'rish</DialogDescription>
             <div className="p-3.5 px-5 bg-slate-900 text-white flex items-center justify-between">
               <span className="text-xs font-black uppercase tracking-wider flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-emerald-400" /> To'lov cheki / Kvitansiya

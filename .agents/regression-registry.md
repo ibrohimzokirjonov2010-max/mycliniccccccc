@@ -25,6 +25,58 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 - **Qanday tuzatildi:** 4-qadamda ixcham kartochka (bemor, sana, 3 qator, jami). To'liq qog'oz `createPortal` overlayda (`z-index: 400`, `pointer-events: auto`), balandligi `86dvh` ichida skroll. Chop etish alohida bosiladi; chop etishda boshqa `body` bolalari yashirinadi, overlay `position: static`. Summa chop etishda qora fon o'rniga qora matn.
 - **Qaytalamaslik choralari:** `#new-patient-receipt` ni yana wizard scroll tanasiga qaytarmang. Overlay ochilishida `printNewPatientReceipt` yoki `scrollIntoView` chaqirmang. Chop etish CSS da `inset` shorthand ishlatmang. Shifokor majburiy, jins saqlash va implant faktura overlay (`implant-wizard-factura-overlay`) o'zgarmasin. `node scripts/assert-new-patient-receipt.mjs` o'tsin.
 
+### 🧾 Faktura shifokori — admin fallback
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/patients/NewPatientFlow.jsx`](src/components/patients/NewPatientFlow.jsx)
+  - [`src/components/patients/NewPatientReceipt.jsx`](src/components/patients/NewPatientReceipt.jsx)
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/lib/treatingDoctor.js`](src/lib/treatingDoctor.js)
+- **Muammo Tavsifi:** Yangi bemor fakturasi «Demo Admin» (kirgan admin) ni ko'rsatardi, davolash rejasida esa biriktirilgan shifokor («Dr kamron») turardi.
+- **Sababi:** Faktura `localStorage.user_name` dan o'qilardi. Implant formasidagi bo'sh shifokor ham joriy foydalanuvchi yoki ro'yxatdagi birinchi admin bilan to'ldirilardi.
+- **Qanday tuzatildi:** Overlay qog'ozi `doctorName` propini oladi (`createdPlan.doctor_name` yoki bemorning `main_treatment_provider`). Implant yozuvi ham biriktirilgan shifokor bor bo'lsa admin muhrini almashtiradi.
+- **Qaytalamaslik choralari:** Fakturada `localStorage.getItem('user_name')` yoki «Demo Admin» qaytarmang. Biriktirilgan shifokor borida admin nomini yozmang. Shifokor-majburiy bemor oqimi (`getPatientDoctorRequiredError`) o'zgarmasin. `node scripts/assert-audit-clinical.mjs` o'tsin.
+
+### 🦷 Bemor profili Implantlar — ko'p tish va takroriy FDI
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/lib/fdiNotation.js`](src/lib/fdiNotation.js)
+  - [`src/components/patients/ExcelImplantsView.jsx`](src/components/patients/ExcelImplantsView.jsx)
+  - [`src/pages/PatientProfile.jsx`](src/pages/PatientProfile.jsx)
+  - [`src/pages/Implants.jsx`](src/pages/Implants.jsx)
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+- **Muammo Tavsifi:** Bitta yozuv #16 va #17 ni qamrab olsa, reestr ikkalasini ko'rsatardi, profil Implantlar esa faqat #16 va hisob 1. Ba'zi qatorlarda bir xil FDI ikki marta chiqardi (`ur6` va `16`).
+- **Sababi:** Profil faqat `tooth_number` (birinchi tish) ni o'qidi. Chip lar xom id bo'yicha `Set` qilardi, FDI ga aylantirgandan keyin takror yig'ilmasdi. Saqlash `tooth_numbers` ni yagona qilmasdi.
+- **Qanday tuzatildi:** `implantRecordFdis` barcha manbalarni yagona FDI ga yig'adi. Profil, reestr va detal shu ro'yxatni chiqaradi. Tab hisobi tishlar soni. Saqlash va tahrirlash `uniqueFdis` bilan yozadi.
+- **Qaytalamaslik choralari:** Profil jadvalida faqat `imp.tooth_number` ni chip qilmang. `ur6` va `16` ni alohida tish deb chiqarmang. `node scripts/assert-audit-clinical.mjs` o'tsin.
+
+### ♿ Dialog sarlavhasi va tavsifi
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/components/patients/NewPatientFlow.jsx`](src/components/patients/NewPatientFlow.jsx)
+  - [`src/components/patients/PatientModal.jsx`](src/components/patients/PatientModal.jsx)
+  - [`src/pages/Payments.jsx`](src/pages/Payments.jsx)
+  - [`src/pages/PatientProfile.jsx`](src/pages/PatientProfile.jsx)
+- **Muammo Tavsifi:** Konsol implant, to'lov va bemor dialoglarida `DialogTitle` yoki description yo'qligi haqida ogohlantirdi.
+- **Sababi:** Radix `aria-describedby` id sini qo'yadi, lekin `DialogDescription` elementi yo'q edi. Ba'zi oynalarda sarlavha oddiy `h2`/`h3` edi. `aria-describedby={undefined}` ogohlantirishni yashiradi, lekin tavsifni ulamaydi.
+- **Qanday tuzatildi:** Implant, to'lov va bemor dialoglariga `DialogTitle` va `DialogDescription` qo'shildi. Ko'rinishi o'zgarmasligi kerak bo'lgan joyda tavsif `sr-only`.
+- **Qaytalamaslik choralari:** Yangi dialogga `DialogTitle` siz ochilmang. To'lov qo'shish oynasida `payment-add-header-sub` klassi va markazlash CSS i qolsin. `aria-describedby={undefined}` bilan description ni o'chirmang.
+
+### 📅 Uchrashuvlar — Bo'sh yorlig'i va begona implant toast
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/i18n/translations/uz.json`](src/i18n/translations/uz.json)
+  - [`src/i18n/translations/ru.json`](src/i18n/translations/ru.json)
+  - [`src/i18n/translations/en.json`](src/i18n/translations/en.json)
+  - [`src/components/notifications/ImplantAlerter.jsx`](src/components/notifications/ImplantAlerter.jsx)
+  - [`src/lib/alertRoutes.js`](src/lib/alertRoutes.js)
+- **Muammo Tavsifi:** Vaqt grafigida `appointments.legendAvailable` kaliti chiqardi. Kalendar/uchrashuvlarda boshqa bemorlarning to'liqsiz implant ogohlantirishlari chiqardi.
+- **Sababi:** Kalit tarjima fayllarida yo'q edi, `t()` kalitning o'zini qaytaradi va `|| "Bo'sh"` ishlamaydi. `ImplantAlerter` 10 soniyadan keyin har qanday sahifada birinchi to'liqsiz implantni toast qiladi.
+- **Qanday tuzatildi:** uz «Bo'sh», ru «Свободно», en «Available». `/appointments` va `/calendar` da implant toast chiqmaydi va ochiq toast yopiladi.
+- **Qaytalamaslik choralari:** `legendAvailable` ni bo'sh qoldirmang. Implant to'liqsiz toastni uchrashuvlar sahifasiga qaytarmang. PWA activate-reload va faktura overlay o'zgarmasin.
+
+
 ### 🦷 Yangi implant Step 3 — Chop etish bo'sh sahifa
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**

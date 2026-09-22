@@ -14,7 +14,7 @@ import {
   parseBotTechData,
   resolveBotUsernameFromConfig,
 } from '@/lib/telegramBotConfig';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,6 +22,7 @@ import { CheckCircle2, User, ClipboardList, ArrowLeft, Printer, X, Check, Messag
 import { useTranslation } from '@/i18n/LanguageContext';
 import { applyPhoneMask, cn, capitalizeName, validateAddress, capitalizeAsYouType } from '@/lib/utils';
 import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
+import { resolveAssignedDoctorName } from '@/lib/treatingDoctor';
 import { normalizePatientGender, patientGenderForDb } from '@/lib/patientGender';
 
 /**
@@ -1127,8 +1128,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         }
       }
       
+      const assignedDoctorName = selectedDoc?.name || selectedDoc?.full_name || lastPlan?.doctor_name || '';
       setCreatedPlan({ 
         ...lastPlan, 
+        doctor_name: assignedDoctorName,
+        doctor_id: patientForm.main_treatment_provider || lastPlan?.doctor_id || '',
         total_price: totalDebt, 
         _count: teethList.length,
         services: allServices,
@@ -1399,7 +1403,6 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
         className="!p-0 w-[95vw] sm:w-[94vw] md:w-[92vw] max-w-5xl h-[88dvh] max-h-[88dvh] flex flex-col overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border-0 shadow-2xl gap-0 !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]"
-        aria-describedby={undefined}
         onPointerDownOutside={(e) => { if (receiptOpen) e.preventDefault(); }}
         onFocusOutside={(e) => { if (receiptOpen) e.preventDefault(); }}
         onInteractOutside={(e) => { if (receiptOpen) e.preventDefault(); }}
@@ -1433,7 +1436,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                 <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
                   {t('patients.addNew')}
                 </DialogTitle>
-                <p className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('patients.wizard.registrationTitle')}</p>
+                <DialogDescription className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('patients.wizard.registrationTitle')}</DialogDescription>
               </div>
             </div>
             <button 
@@ -2558,6 +2561,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       receiptNo={receiptNo}
       rows={receiptRows}
       treatmentName={createdPlan?.services?.[0]?.service_name || createdPlan?.name || t('patients.wizard.treatmentPlan')}
+      doctorName={createdPlan?.doctor_name || resolveAssignedDoctorName(createdPatient, doctors) || ''}
       servicesTotal={receiptServicesTotal}
       discountAmount={appliedDiscountAmount}
       discountPercent={discountPercent}
@@ -2577,12 +2581,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
             <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl shadow-inner border border-white/30 animate-pulse">
               🔩
             </div>
-            <h3 className="text-lg font-black uppercase tracking-tight">
+            <DialogTitle className="text-lg font-black uppercase tracking-tight">
               Implant Bo'limiga O'tish
-            </h3>
-            <p className="text-xs font-bold text-white/80 mt-1">
+            </DialogTitle>
+            <DialogDescription className="text-xs font-bold text-white/80 mt-1">
               Siz implant bo'limiga o'tib jarayonni yakunlab qo'ying
-            </p>
+            </DialogDescription>
           </div>
 
           <div className="p-6 space-y-4">

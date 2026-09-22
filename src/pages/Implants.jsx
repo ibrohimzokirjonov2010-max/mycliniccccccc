@@ -24,6 +24,7 @@ import ImplantBrandsModal, { getOrSeedImplantBrands, calculateBrandStockStats } 
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
 import { cn } from '@/lib/utils';
+import { implantRecordFdis } from '@/lib/fdiNotation';
 import { toast } from 'sonner';
 
 // Defensive rendering helper
@@ -524,8 +525,7 @@ export default function Implants() {
         "Holat"
       ];
       const rows = sortedImplants.map((i, idx) => {
-        const rawTeeth = (i.tooth_numbers || (i.tooth_number ? [i.tooth_number] : []));
-        const teeth = [...new Set(rawTeeth.map(String))].map(n => toothIdToFdi(n)).join(', ');
+        const teeth = implantRecordFdis(i).join(', ');
         const svc = resolveService(i);
         const price = resolvePrice(i);
         const firma = i.firma === 'Boshqa' ? (i.firma_custom || 'Boshqa') : (i.firma || 'Dentium');
@@ -990,10 +990,7 @@ export default function Implants() {
                 {sortedImplants.length > 0 ? (
                   sortedImplants.map((i, idx) => {
                     const isCompact = density === 'compact';
-                    const rawTeeth = (Array.isArray(i.tooth_numbers) && i.tooth_numbers.length > 0)
-                      ? i.tooth_numbers
-                      : (i.tooth_number ? [i.tooth_number] : []);
-                    const teethList = [...new Set(rawTeeth.map(toothIdToFdi).filter(Boolean))];
+                    const teethList = implantRecordFdis(i);
                     const serviceName = resolveService(i);
                     const serviceCfg = SERVICE_CONFIG[serviceName] || { label: serviceName, emoji: '⚡', badge: 'bg-slate-100 text-slate-700 border-slate-200' };
                     const priceVal = resolvePrice(i);
@@ -1045,14 +1042,10 @@ export default function Implants() {
                         <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
                           {teethList.length > 0 ? (
                             <div className="flex items-center justify-center gap-1 flex-wrap">
-                              {(Array.isArray(i.tooth_numbers) && i.tooth_numbers.length > 0
-                                  ? [...new Set(i.tooth_numbers.map(String))]
-                                  : teethList
-                                ).map(tId => {
-                                const fdi = toothIdToFdi(tId);
-                                const size = getToothSizeLabel(i, tId);
+                              {teethList.map((fdi) => {
+                                const size = getToothSizeLabel(i, fdi);
                                 return (
-                                  <span key={tId} className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-slate-900 text-white shadow-xs inline-flex flex-col items-center leading-tight">
+                                  <span key={fdi} className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-slate-900 text-white shadow-xs inline-flex flex-col items-center leading-tight">
                                     <span>#{fdi}</span>
                                     {size ? <span className="text-[8px] font-bold text-teal-200">{size}</span> : null}
                                   </span>

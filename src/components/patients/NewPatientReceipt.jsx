@@ -117,6 +117,7 @@ function ReceiptPaper({
   discountPercent,
   advanceTotal,
   dueTotal,
+  doctorName,
   isInstallment,
   installmentMonths,
   installmentStartDate,
@@ -169,7 +170,7 @@ function ReceiptPaper({
           </div>
           <div className="min-w-0">
             <p className="text-[10px] text-slate-400 font-semibold uppercase">{t('implants.doctor')}</p>
-            <p className="text-[13px] font-bold text-slate-800 truncate">{localStorage.getItem('user_name') || 'Demo Admin'}</p>
+            <p className="text-[13px] font-bold text-slate-800 truncate" data-testid="invoice-doctor">{doctorName || '—'}</p>
           </div>
           <div className="min-w-0">
             <p className="text-[10px] text-slate-400 font-semibold uppercase">

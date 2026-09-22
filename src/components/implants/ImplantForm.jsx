@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Plus, FileText, X, Check, ArrowLeft, ArrowRight,
@@ -30,6 +30,11 @@ import {
   printImplantFactura,
 } from './implantFactura';
 import { cn } from '@/lib/utils';
+import {
+  clinicianDisplayName,
+  isTreatingClinician,
+  resolveAssignedDoctorName,
+} from '@/lib/treatingDoctor';
 import { applyToothSizes, firstToothSizeIssue, formatToothSizeSummary } from './implantSize';
 import './implantWizard.css';
 
@@ -374,7 +379,7 @@ export default function ImplantForm({
 
     if (implant) {
       const rawTeeth = [...(implant.tooth_numbers || []), ...(implant.tooth_number ? [implant.tooth_number] : [])];
-      const uniqueTeeth = [...new Set(rawTeeth.map(String))].filter(Boolean);
+      const uniqueTeeth = uniqueFdis(rawTeeth);
       const uniqueServices = [...new Set((implant.extra_services || []).map(normalizeServiceId))].filter(Boolean);
 
       const savedFactura = parseFacturaSnapshot(implant);
@@ -515,16 +520,31 @@ export default function ImplantForm({
   }, [open, form.patient_id, form.patient_name, implant?.id, knownPatientImplants]);
 
   useEffect(() => {
-    if (!open || form.doctor) return;
-    const currentUserName = user?.full_name || user?.name;
-    const match = doctors.find((d) => (d.full_name || d.name) === currentUserName) || doctors[0];
-    const name = match
-      ? (match.full_name || match.name || match.username || '')
-      : (currentUserName || '');
-    if (name) {
-      setForm((prev) => prev.doctor ? prev : { ...prev, doctor: name });
-    }
-  }, [open, doctors, form.doctor, user]);
+    if (!open) return;
+    const patient = localPatients.find((p) => String(p.id) === String(form.patient_id));
+    const assigned = resolveAssignedDoctorName(patient, doctors);
+    const userName = clinicianDisplayName(user);
+    const userIsClinician = isTreatingClinician(user);
+    setForm((prev) => {
+      const current = String(prev.doctor || '').trim();
+      const firstListName = clinicianDisplayName(doctors[0]);
+      const adminNames = new Set();
+      if (userName && !userIsClinician) adminNames.add(userName);
+      if (firstListName && doctors[0] && !isTreatingClinician(doctors[0])) adminNames.add(firstListName);
+      const autoStamp = !current || adminNames.has(current);
+      if (assigned && autoStamp && current !== assigned) {
+        return { ...prev, doctor: assigned };
+      }
+      if (current) return prev;
+      const clinician = doctors.find((d) => isTreatingClinician(d));
+      const name = (userIsClinician && userName)
+        || clinicianDisplayName(clinician)
+        || userName
+        || firstListName;
+      if (!name) return prev;
+      return { ...prev, doctor: name };
+    });
+  }, [open, form.patient_id, doctors, user, localPatients]);
 
   const setField = useCallback((key, val) => {
     setForm((prev) => ({ ...prev, [key]: val }));
@@ -786,7 +806,7 @@ export default function ImplantForm({
         { date: now, status: form.lifecycle_status, note: implant ? t('common.edit') : t('implants.status.planned') },
       ];
 
-      const fdiNumbers = form.tooth_numbers.map(toFdi);
+      const fdiNumbers = uniqueFdis(form.tooth_numbers);
 
       let safeReminderMonths = 1;
       if (typeof form.reminder_months === 'number') {
@@ -899,8 +919,8 @@ export default function ImplantForm({
         extra_service_prices: mergedExtraPrices,
         reminder_months: safeReminderMonths,
         tooth_number: fdiNumbers[0] || '',
-        tooth_id: form.tooth_numbers[0] || '',
-        tooth_numbers: form.tooth_numbers,
+        tooth_id: fdiNumbers[0] || '',
+        tooth_numbers: fdiNumbers,
         incomplete_data: false,
         needs_fill: false,
         audit_log: auditLog,
@@ -1502,7 +1522,6 @@ export default function ImplantForm({
           data-implant-factura={IMPLANT_WIZARD_FACTURA_MARKER}
           data-wizard-ux="linear-stack-v3"
           data-tooth-size="step1-diameter-length"
-          aria-describedby={undefined}
           onPointerDownOutside={(e) => {
             if (facturaPreviewOpen) e.preventDefault();
           }}
@@ -1524,6 +1543,9 @@ export default function ImplantForm({
                 <DialogTitle className="text-[15px] font-bold tracking-wide text-white">
                   {implant ? t('common.edit') : tw('title', 'Yangi implant')}
                 </DialogTitle>
+                <DialogDescription className="sr-only">
+                  {tw('wizardDescription', 'Bemor, tishlar va implant fakturasi')}
+                </DialogDescription>
                 <p className={cn('implant-wizard-header-patient', !form.patient_name && 'is-empty')}>
                   {form.patient_name || tw('noPatient', 'Bemor tanlanmagan')}
                 </p>

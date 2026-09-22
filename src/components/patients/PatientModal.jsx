@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -219,7 +219,7 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
               <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
                 {isEditMode ? t('patients.editPatient') : t('patients.addNew')}
               </DialogTitle>
-              <p className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('patients.patientInfo')}</p>
+              <DialogDescription className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('patients.patientInfo')}</DialogDescription>
             </div>
           </div>
           <button 

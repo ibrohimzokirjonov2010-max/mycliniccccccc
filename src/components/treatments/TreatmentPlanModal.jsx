@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -860,7 +860,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="!p-0 w-[95vw] sm:w-[94vw] md:w-[92vw] max-w-6xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden rounded-[2.5rem] border-0 shadow-2xl bg-white gap-0 !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
+      <DialogContent className="!p-0 w-[95vw] sm:w-[94vw] md:w-[92vw] max-w-6xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden rounded-[2.5rem] border-0 shadow-2xl bg-white gap-0 !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]">
         
         {/* Gradient Header */}
         <div className="bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 px-6 py-4 flex items-center justify-between shrink-0 rounded-t-[2.5rem] text-white no-print">
@@ -883,7 +883,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
               <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
                 {plan ? t('treatmentPlan.editPlan') : t('treatmentPlan.createNew')}
               </DialogTitle>
-              <p className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('treatmentPlan.subtitle') || 'Bemorga davolash rejasi tayinlash'}</p>
+              <DialogDescription className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('treatmentPlan.subtitle') || 'Bemorga davolash rejasi tayinlash'}</DialogDescription>
             </div>
           </div>
           <button 

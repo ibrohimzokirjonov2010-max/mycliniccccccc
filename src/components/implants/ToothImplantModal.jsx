@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Check, X } from 'lucide-react';
@@ -139,7 +139,6 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent
         className="w-[92vw] max-w-sm max-h-[88vh] p-0 border-none rounded-[2rem] bg-white shadow-2xl flex flex-col overflow-hidden"
-        aria-describedby={undefined}
       >
         {/* Green Gradient Header */}
         <DialogHeader className="shrink-0">
@@ -152,7 +151,7 @@ export default function ToothImplantModal({ open, onClose, toothId, fdiNumber, o
                 <DialogTitle className="text-[15px] font-black text-white uppercase leading-none tracking-tight">
                   Tish {fdiNumber}
                 </DialogTitle>
-                <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Implant ma'lumotlari</p>
+                <DialogDescription className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Implant ma'lumotlari</DialogDescription>
               </div>
             </div>
             <button

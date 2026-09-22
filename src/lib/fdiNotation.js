@@ -62,6 +62,54 @@ export function findDuplicateFdis(fdis) {
   return [...counts.entries()].filter(([, c]) => c > 1).map(([n]) => n);
 }
 
+/** Internal id or "#16" / "16" / "ur6" → canonical FDI string. */
+export function toImplantFdi(id) {
+  const raw = String(id ?? '').trim().replace(/^#/, '');
+  if (!raw) return '';
+  const internal = internalIdToFdi(raw);
+  return internal || raw;
+}
+
+/** One key per FDI, first occurrence wins (so ur6 + 16 collapse). */
+export function uniqueImplantToothKeys(values = []) {
+  const seen = new Set();
+  const out = [];
+  const list = Array.isArray(values)
+    ? values
+    : String(values || '').split(/[,·]/);
+  for (const item of list) {
+    const fdi = toImplantFdi(item);
+    if (!fdi || seen.has(fdi)) continue;
+    seen.add(fdi);
+    out.push(String(item).trim());
+  }
+  return out;
+}
+
+/** Unique FDI labels for an implant row (tooth_numbers + tooth_number + tooth_id). */
+export function implantRecordFdis(record) {
+  if (!record) return [];
+  const raw = [];
+  const tn = record.tooth_numbers;
+  if (Array.isArray(tn)) raw.push(...tn);
+  else if (typeof tn === 'string' && tn.trim()) raw.push(...tn.split(/[,·]/));
+  if (record.tooth_number) raw.push(record.tooth_number);
+  if (record.tooth_id) raw.push(record.tooth_id);
+  return uniqueImplantToothKeys(raw).map(toImplantFdi);
+}
+
+/**
+ * Tooth count across implant rows. A row with several FDIs counts each once.
+ * A row with no FDI still counts as one record so the tab badge does not vanish.
+ */
+export function countImplantTeeth(records = []) {
+  return (records || []).reduce((sum, rec) => {
+    if (!rec) return sum;
+    const n = implantRecordFdis(rec).length;
+    return sum + (n > 0 ? n : 1);
+  }, 0);
+}
+
 export function assertUniqueFdis(fdis, expectedCount) {
   const nums = fdis.map(Number).filter((n) => Number.isFinite(n));
   const dupes = findDuplicateFdis(nums);

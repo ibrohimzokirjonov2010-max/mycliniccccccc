@@ -12,6 +12,7 @@ import {
   LIFECYCLE_COLORS,
 } from './ClinicalStepper';
 import DentalArchFdi from './DentalArchFdi';
+import { implantRecordFdis } from '@/lib/fdiNotation';
 
 export { DentalArchFdi };
 
@@ -50,8 +51,7 @@ export function toothIdToFdi(id) {
 }
 
 export function getToothFdiList(implant) {
-  const raw = implant?.tooth_numbers || (implant?.tooth_number ? [implant.tooth_number] : []);
-  return [...new Set(raw.map(String))].map(toothIdToFdi);
+  return implantRecordFdis(implant);
 }
 
 /** Backward compatible MiniFdiChart */
