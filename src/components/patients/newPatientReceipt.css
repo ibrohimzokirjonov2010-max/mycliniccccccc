@@ -1,0 +1,204 @@
+/* New-patient step 4: full hisob-faktura sits in a body portal, not the wizard body. */
+
+.new-patient-receipt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  isolation: isolate;
+  pointer-events: auto;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 16px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.new-patient-receipt-sheet {
+  width: min(720px, calc(100vw - 24px));
+  max-height: min(86dvh, 760px);
+  overflow: auto;
+  margin-top: auto;
+  margin-bottom: auto;
+  flex: 0 1 auto;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  background: #fff;
+  border-radius: 16px;
+  padding: 10px;
+  color: #0f172a;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.new-patient-receipt-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  pointer-events: auto;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.new-patient-receipt-toolbar button {
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
+  flex: 1 1 30%;
+  min-width: 0;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.new-patient-receipt-toolbar button:hover {
+  background: #f8fafc;
+}
+
+.new-patient-receipt-toolbar button.is-print {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.new-patient-receipt-toolbar button.is-print:hover {
+  background: #1d4ed8;
+}
+
+.new-patient-receipt-toolbar button.is-save {
+  background: #059669;
+  border-color: #059669;
+  color: #fff;
+}
+
+.new-patient-receipt-toolbar button.is-save:hover {
+  background: #047857;
+}
+
+#new-patient-receipt {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+@media (max-width: 767px) {
+  .new-patient-receipt-overlay {
+    padding: 8px;
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .new-patient-receipt-sheet {
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - 16px);
+    border-radius: 12px;
+    padding: 8px;
+  }
+}
+
+@media print {
+  html.printing-new-patient-receipt,
+  html.printing-new-patient-receipt body {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  html.printing-new-patient-receipt body > *:not(.new-patient-receipt-overlay) {
+    display: none !important;
+  }
+
+  html.printing-new-patient-receipt .new-patient-receipt-overlay,
+  html.printing-new-patient-receipt .new-patient-receipt-sheet,
+  html.printing-new-patient-receipt #new-patient-receipt,
+  html.printing-new-patient-receipt #new-patient-receipt * {
+    visibility: visible !important;
+  }
+
+  /* In-flow document at the top of the page. Do not follow an explicit top
+     offset with the inset shorthand — that resets top/left and parks the
+     paper after a 100dvh root. */
+  html.printing-new-patient-receipt .new-patient-receipt-overlay {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    overflow: visible !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    z-index: auto !important;
+  }
+
+  html.printing-new-patient-receipt .new-patient-receipt-sheet,
+  html.printing-new-patient-receipt #new-patient-receipt {
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    flex: none !important;
+  }
+
+  html.printing-new-patient-receipt .new-patient-receipt-toolbar,
+  html.printing-new-patient-receipt .no-print {
+    display: none !important;
+  }
+
+  html.printing-new-patient-receipt .print-only {
+    display: block !important;
+  }
+
+  html.printing-new-patient-receipt .page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+    display: block !important;
+  }
+
+  html.printing-new-patient-receipt .receipt-total-bar {
+    background: #fff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  html.printing-new-patient-receipt .receipt-total-bar,
+  html.printing-new-patient-receipt .receipt-total-bar * {
+    color: #0f172a !important;
+  }
+}

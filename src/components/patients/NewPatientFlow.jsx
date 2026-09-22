@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  NewPatientReceiptTeaser,
+  NewPatientReceiptOverlay,
+  formatReceiptDate,
+} from '@/components/patients/NewPatientReceipt';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -14,7 +18,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle2, User, ClipboardList, ArrowLeft, Printer, Download, X, Check, MessageCircle, Copy, Share2, Calendar, QrCode, Phone, Mail, AlertTriangle, Search } from 'lucide-react';
+import { CheckCircle2, User, ClipboardList, ArrowLeft, Printer, X, Check, MessageCircle, Copy, Share2, Calendar, QrCode, Phone, AlertTriangle, Search } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { applyPhoneMask, cn, capitalizeName, validateAddress, capitalizeAsYouType } from '@/lib/utils';
 import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
@@ -283,8 +287,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   const [implantPrompt, setImplantPrompt] = useState(null);
   const [botUsername, setBotUsername] = useState(''); // Telegram bot username (without @)
   const [showQr, setShowQr] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const [clinicInfo, setClinicInfo] = useState(null);
   const mobileTeethScrollRef = useRef(null);
+  const fallbackReceiptNoRef = useRef(String(Date.now()).slice(-6));
 
   useEffect(() => {
     if (step === 2 && mobileTeethScrollRef.current) {
@@ -520,6 +526,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   useEffect(() => {
     if (open) {
       setStep(1);
+      setReceiptOpen(false);
       setSavingError(null);
       setDoctorError('');
       setCreatedPatient(null);
@@ -712,6 +719,41 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     }
     return grandTotal || 0;
   }, [createdPlan, grandTotal]);
+
+  const receiptRows = useMemo(() => {
+    const rows = [];
+    (createdPlan?.services || []).forEach((s, i) => {
+      const cleanName = (s.service_name || '').replace(/^#general/i, '').trim();
+      rows.push({
+        key: i,
+        name: cleanName || s.service_name,
+        tooth: s.tooth_number ? t('patients.fdiTooth', { number: s.tooth_number }) : null,
+        price: Number(s.price) || 0,
+      });
+    });
+    if (rows.length === 0) {
+      rows.push({
+        key: 0,
+        name: createdPlan?.name || t('patients.wizard.treatmentPlan'),
+        tooth: null,
+        price: Number(createdPlan?.total_price) || 0,
+      });
+    }
+    return rows;
+  }, [createdPlan, t]);
+
+  const receiptNo = createdPlan?.id
+    ? String(createdPlan.id).split('-').pop()?.toUpperCase()
+    : fallbackReceiptNoRef.current;
+  const receiptNow = new Date();
+  const receiptDateLabel = formatReceiptDate(receiptNow, t);
+  const receiptTimeLabel = receiptNow.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+  const receiptDueTotal = Math.max(0, receiptServicesTotal - appliedDiscountAmount - createdPlanAdvanceTotal);
+  const closeReceipt = useCallback(() => setReceiptOpen(false), []);
+
+  useEffect(() => {
+    if (step !== 4) setReceiptOpen(false);
+  }, [step]);
 
   const receiptBaseTotal = Number(createdPlan?.total_price || grandTotal || 0);
   const customDiscountPercentValue = Math.max(0, Math.min(100, Number(customDiscountAmount) || 0));
@@ -1138,13 +1180,24 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       }
       
       const element = document.getElementById('new-patient-receipt');
+      if (!element) {
+        toast.error(t('common.errorSave'), { id: 'img-download' });
+        return;
+      }
       const oldWidth = element.style.width;
       const oldTransform = element.style.transform;
+      const sheet = element.closest('.new-patient-receipt-sheet');
+      const oldSheetOverflow = sheet?.style.overflow;
+      const oldSheetMaxHeight = sheet?.style.maxHeight;
       
       // Use viewport width so it looks good on mobile
       const viewW = Math.min(window.innerWidth, 420);
       element.style.width = viewW + 'px';
       element.style.transform = 'none';
+      if (sheet) {
+        sheet.style.overflow = 'visible';
+        sheet.style.maxHeight = 'none';
+      }
 
       const canvas = await window.html2canvas(element, {
         scale: 2, 
@@ -1158,6 +1211,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       // Revert styles
       element.style.width = oldWidth;
       element.style.transform = oldTransform;
+      if (sheet) {
+        sheet.style.overflow = oldSheetOverflow;
+        sheet.style.maxHeight = oldSheetMaxHeight;
+      }
       
       const link = document.createElement('a');
       link.download = `Chek_${createdPatient?.full_name?.replace(/\\s+/g, '_') || t('patients.wizard.patient')}.png`;
@@ -1340,7 +1397,18 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="!p-0 w-[95vw] sm:w-[94vw] md:w-[92vw] max-w-5xl h-[88dvh] max-h-[88dvh] flex flex-col overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border-0 shadow-2xl gap-0 !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
+      <DialogContent
+        className="!p-0 w-[95vw] sm:w-[94vw] md:w-[92vw] max-w-5xl h-[88dvh] max-h-[88dvh] flex flex-col overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border-0 shadow-2xl gap-0 !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]"
+        aria-describedby={undefined}
+        onPointerDownOutside={(e) => { if (receiptOpen) e.preventDefault(); }}
+        onFocusOutside={(e) => { if (receiptOpen) e.preventDefault(); }}
+        onInteractOutside={(e) => { if (receiptOpen) e.preventDefault(); }}
+        onEscapeKeyDown={(e) => {
+          if (!receiptOpen) return;
+          e.preventDefault();
+          setReceiptOpen(false);
+        }}
+      >
 
          {/* Header */}
          <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 pb-0 flex items-start justify-between shrink-0 rounded-t-[2rem] sm:rounded-t-[2.5rem] text-white no-print" style={{ paddingTop: 'calc(max(20px, env(safe-area-inset-top, 20px)) + 8px)' }}>
@@ -2361,493 +2429,115 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
           </div>
         )}
 
-        {/* STEP 4: Receipt / Hisob-faktura */}
+        {/* STEP 4: compact hisob-faktura. Full paper opens in NewPatientReceiptOverlay. */}
         {step === 4 && (
-          <div className="flex-1 overflow-y-auto w-full p-4 sm:p-5 bg-slate-50/50">
-            <div className="max-w-2xl mx-auto space-y-4">
-              
-              {/* Success Banner */}
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-center gap-4 mb-2"
-              >
-                <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-emerald-100">
-                  <CheckCircle2 className="w-6 h-6" />
+          <div className="flex-1 overflow-y-auto w-full p-3 sm:p-4 bg-slate-50/50" data-new-patient-receipt="compact-v1">
+            <div className="max-w-lg mx-auto space-y-3">
+              <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2.5 flex items-center gap-3">
+                <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white shrink-0">
+                  <CheckCircle2 className="w-4 h-4" />
                 </div>
-                <div>
-                  <h4 className="text-sm font-black text-emerald-900 uppercase tracking-tight">{t('common.success')}</h4>
-                  <p className="text-[11px] text-emerald-700 font-medium">{t('patients.wizard.successMsg')}</p>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-black text-emerald-900 uppercase tracking-tight">{t('common.success')}</h4>
+                  <p className="text-[11px] text-emerald-700 font-medium leading-snug">{t('patients.wizard.successMsg')}</p>
                 </div>
-              </motion.div>
+              </div>
 
-              {/* Header */}
-              <div className="flex items-center gap-2 mb-4">
-                 <button 
-                  onClick={() => setStep(3)}
-                  className="p-2 rounded-lg hover:bg-slate-200 text-slate-600 transition-colors"
+              <NewPatientReceiptTeaser
+                patientName={createdPatient?.full_name}
+                dateLabel={receiptDateLabel}
+                receiptNo={receiptNo}
+                rows={receiptRows}
+                dueTotal={receiptDueTotal}
+                currency={t('common.currency')}
+                invoiceLabel={t('patients.wizard.invoice')}
+                openLabel={t('patients.wizard.viewReceipt')}
+                totalLabel={t('patients.wizard.totalDebt')}
+                onOpen={() => setReceiptOpen(true)}
+              />
+
+              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3">
+                <div className="flex items-center gap-2.5 mb-2.5">
+                  <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white shrink-0">
+                    <MessageCircle className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <p className="text-xs font-black text-blue-900 uppercase tracking-tight">{t('patients.wizard.reminderSystem')}</p>
+                    <p className="text-[11px] text-blue-700 font-medium">{t('patients.wizard.connectBot')}</p>
+                  </div>
+                </div>
+                <div className="bg-white px-3 py-2 rounded-lg border border-blue-100 flex items-center justify-between gap-2 mb-2">
+                  <span className="text-[11px] font-mono text-blue-600 truncate flex-1 font-bold">
+                    {getTelegramDeepLink(createdPatient?.id) || "Bot havolasi topilmadi (Telegram Bot sozlamasida token/username tekshiring)"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const link = getTelegramDeepLink(createdPatient?.id);
+                      if (!link) return;
+                      navigator.clipboard.writeText(link);
+                      toast.success(t('patients.wizard.linkCopied'));
+                    }}
+                    className="h-8 w-8 shrink-0 rounded-lg text-blue-500 hover:bg-blue-50 flex items-center justify-center"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const link = getTelegramDeepLink(createdPatient?.id);
+                      if (!link) return;
+                      window.open(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(t('patients.wizard.botPrompt'))}`, '_blank');
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 h-10 rounded-xl text-xs font-bold gap-2"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    {t('patients.wizard.sendToTelegram')}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setShowQr(v => !v)}
+                    className="w-full flex items-center justify-center gap-2 h-9 rounded-xl border border-blue-200 text-blue-600 text-[11px] font-bold hover:bg-blue-50 transition-colors"
+                  >
+                    <QrCode className="w-4 h-4" />
+                    {showQr ? "QR kodni yashirish" : "QR kod ko'rsatish"}
+                  </button>
+                  {showQr && getTelegramDeepLink(createdPatient?.id) && (
+                    <div className="flex flex-col items-center gap-1.5 pt-1">
+                      <div className="bg-white p-2 rounded-xl border border-blue-100">
+                        <QRCodeSVG
+                          id="flow-qr-svg"
+                          value={getTelegramDeepLink(createdPatient?.id)}
+                          size={128}
+                          level="M"
+                          includeMargin={false}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  data-testid="new-patient-receipt-open"
+                  onClick={() => setReceiptOpen(true)}
+                  className="h-10 px-4 rounded-xl border border-emerald-200 bg-white text-emerald-800 text-xs font-bold hover:bg-emerald-50 inline-flex items-center justify-center gap-2"
                 >
-                  <ArrowLeft className="w-5 h-5" />
+                  <Printer className="w-4 h-4" />
+                  {t('patients.wizard.viewReceipt')}
                 </button>
-                <h2 className="text-xl font-black text-slate-800 tracking-tight">{t('patients.wizard.invoice')}</h2>
-              </div>
-
-
-              {/* Invoice Canvas Area */}
-              <div 
-                id="new-patient-receipt"
-                className="bg-white rounded-2xl md:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden w-full relative"
-              >
-                {/* Print Styles */}
-                {open && step === 4 && (
-                  <style dangerouslySetInnerHTML={{__html:`
-                  @page { size: auto; margin: 0mm !important; }
-                  @media screen {
-                    .print-only { display: none !important; }
-                  }
-                  @media print {
-                    .no-print { display: none !important; }
-                    .print-only { display: block !important; }
-                    #root { display: none !important; }
-                    body { visibility: hidden !important; background: white !important; margin: 0 !important; padding: 0 !important; }
-                    [data-radix-portal], [data-radix-portal] * { visibility: hidden !important; }
-
-                    #new-patient-receipt { 
-                      visibility: visible !important; 
-                      display: block !important;
-                      position: absolute !important; 
-                      left: 0 !important; 
-                      top: 0 !important; 
-                      width: 100% !important; 
-                      margin: 0 !important;
-                      padding: 5mm 10mm !important;
-                      box-shadow: none !important;
-                      border: none !important;
-                      overflow: visible !important;
-                      border-radius: 0 !important;
-                      background: white !important;
-                    }
-                    #new-patient-receipt * { 
-                      visibility: visible !important; 
-                      overflow: visible !important;
-                    }
-
-                    .page-break {
-                      page-break-before: always !important;
-                      margin-top: 5mm !important;
-                      display: block !important;
-                    }
-
-                    /* Explicitly show parents of the receipt but nothing else */
-                    div[role="dialog"], 
-                    div.flex-1, 
-                    div.overflow-y-auto,
-                    [data-radix-portal],
-                    [data-radix-portal] > div {
-                      visibility: visible !important;
-                      display: block !important;
-                      position: static !important;
-                      width: 100% !important;
-                      height: auto !important;
-                      overflow: visible !important;
-                      background: transparent !important;
-                      padding: 0 !important;
-                      margin: 0 !important;
-                      border: none !important;
-                      box-shadow: none !important;
-                    }
-
-                    div[role="dialog"] {
-                      max-width: none !important;
-                      max-height: none !important;
-                      transform: none !important;
-                    }
-                  }
-                `}} />
-                )}
-
-                {/* Header Section */}
-                <div className="p-4 flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-slate-100 bg-gradient-to-br from-white to-slate-50/50">
-                  <div className="flex items-start gap-4">
-                    {clinicInfo?.logo ? (
-                      <img 
-                        src={clinicInfo.logo} 
-                        alt="Clinic Logo" 
-                        className="w-[42px] h-[42px] rounded-xl object-cover shadow-inner flex-shrink-0"
-                      />
-                    ) : (
-                      <div className="w-[42px] h-[42px] rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 shadow-inner">
-                        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.7 2 6 4.7 6 8c0 4 3 7 6 10 3-3 6-6 6-10 0-3.3-2.7-6-6-6z" />
-                        </svg>
-                      </div>
-                    )}
-                    <div>
-                      <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight leading-none mb-1">
-                        {clinicInfo?.name || 'DentaCRM'}
-                      </h1>
-                      <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
-                        {clinicInfo?.description || t('clinic.description')}
-                      </p>
-                      <p className="text-[10px] sm:text-[11px] text-slate-400 mt-1">
-                        Tel: {clinicInfo?.phone || '+998 71 123 45 67'} | {clinicInfo?.address || t('clinic.address')}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="text-left sm:text-right flex flex-col gap-1 items-start sm:items-end bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded-xl">
-                    <h3 className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-widest text-right w-full sm:w-auto">{t('patients.wizard.invoice').toUpperCase()}</h3>
-                    <p className="text-[11px] text-slate-500 font-medium">{t('common.date')}: {new Date().getDate()}-{(t('common.months') || ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'])[new Date().getMonth()]}, {new Date().getFullYear()}</p>
-                    <p className="text-[11px] text-slate-400 font-medium">№ {createdPlan?.id ? createdPlan.id.split('-').pop()?.toUpperCase() : String(Date.now()).slice(-6)}</p>
-                  </div>
-                </div>
-
-                {/* Patient Info Section */}
-                <div className="p-5 sm:p-6 lg:px-8 border-b border-slate-100">
-                  <p className="text-[10px] sm:text-xs font-bold text-blue-500 uppercase tracking-wider mb-2">{t('implants.form.patientInfo').toUpperCase()}</p>
-                  <div className="grid grid-cols-2 gap-y-4 gap-x-2 sm:gap-6">
-                    <div>
-                      <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold uppercase mb-0.5">{t('patients.fullName')}</p>
-                      <p className="text-[13px] sm:text-sm font-bold text-slate-800">{createdPatient?.full_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold uppercase mb-0.5">
-                        {t('patients.appointmentDate') && t('patients.appointmentDate') !== 'patients.appointmentDate' ? t('patients.appointmentDate') : t('appointments.date')}
-                      </p>
-                      <p className="text-[13px] sm:text-sm font-bold text-slate-800">
-                        {new Date().getDate()}-{(t('common.months') || ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'])[new Date().getMonth()]}, {new Date().getFullYear()} {new Date().toLocaleTimeString("uz-UZ", {hour:'2-digit',minute:'2-digit'})}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold uppercase mb-0.5">{t('implants.doctor')}</p>
-                      <p className="text-[13px] sm:text-sm font-bold text-slate-800">{localStorage.getItem('user_name') || 'Demo Admin'}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold uppercase mb-0.5">{t('patients.treatmentType') && t('patients.treatmentType') !== 'patients.treatmentType' ? t('patients.treatmentType') : t('patients.wizard.treatmentPlan')}</p>
-                      <p className="text-[13px] sm:text-sm font-bold text-slate-800">
-                         {createdPlan?.services?.[0]?.service_name || createdPlan?.name || t('patients.wizard.treatmentPlan')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Treatment List */}
-                <div className="p-4 sm:p-5 lg:px-8 bg-slate-50/50">
-                  <p className="text-[10px] sm:text-xs font-bold text-blue-500 uppercase tracking-wider mb-4">{t('patients.wizard.treatmentList') || "DAVOLASHLAR RO'YXATI"}</p>
-                  
-                  <div className="hidden sm:grid grid-cols-12 gap-2 mb-2 pb-2 border-b border-slate-200">
-                    <div className="col-span-8 text-[11px] font-bold text-slate-400 uppercase">{t('patients.wizard.treatmentName')}</div>
-                    <div className="col-span-4 text-[11px] font-bold text-slate-400 uppercase text-right">{t('common.total')}</div>
-                  </div>
-
-                  <div className="space-y-3 sm:space-y-0">
-                    {(() => {
-                      let rows = [];
-                      (createdPlan?.services || []).forEach((s, i) => {
-                        // '#general' prefiksini olib tashlash
-                        const cleanName = (s.service_name || '').replace(/^#general/i, '').trim();
-                        rows.push({ 
-                          key: i, 
-                          name: cleanName || s.service_name, 
-                          tooth: s.tooth_number ? t('patients.fdiTooth', { number: s.tooth_number }) : null, 
-                          price: s.price 
-                        });
-                      });
-                      if (rows.length === 0) {
-                        rows.push({ key: 0, name: createdPlan?.name || t('patients.wizard.treatmentPlan'), tooth: '—', price: createdPlan?.total_price || 0 });
-                      }
-                      
-                      return rows.map((row, idx) => (
-                        <div key={row.key} className={`bg-white sm:bg-transparent rounded-lg sm:rounded-none p-3 border border-slate-100 sm:border-0 sm:border-b sm:border-dashed sm:border-slate-200 sm:p-0 sm:py-2 grid grid-cols-1 sm:grid-cols-12 gap-1 sm:gap-2 items-center`}>
-                          <div className="col-span-8">
-                            <p className="text-[13px] sm:text-sm font-black text-slate-800 uppercase tracking-tight">{row.name}</p>
-                            {row.tooth && row.tooth !== '—' && (
-                              <span className="inline-block mt-1 px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold uppercase">{row.tooth}</span>
-                            )}
-                          </div>
-                          <div className="col-span-4 text-left sm:text-right mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-slate-100 sm:border-0">
-                            <p className="text-[14px] font-black text-slate-900">
-                              {(row.price || 0).toLocaleString()} <span className="text-[10px] text-slate-500 font-medium ml-0.5">{t('common.currency')}</span>
-                            </p>
-                          </div>
-                        </div>
-                      ));
-                    })()}
-                  </div>
-
-                  {/* Summary Totals */}
-                  <div className="mt-2 sm:mt-4 flex flex-col items-end gap-1.5 pt-2">
-                    <div className="flex items-center justify-between w-full sm:w-64 mb-1">
-                      <span className="text-[12px] sm:text-sm text-slate-500 font-medium">{t('patients.wizard.services')}:</span>
-                      {/* receiptServicesTotal = original (chegirmasiz) narx */}
-                      <span className="text-[13px] sm:text-sm font-bold text-slate-800">{receiptServicesTotal.toLocaleString()} {t('common.currency')}</span>
-                    </div>
-                    {appliedDiscountAmount > 0 && (
-                      <div className="flex items-center justify-between w-full sm:w-64 mb-1">
-                        <span className="text-[12px] sm:text-sm text-rose-500 font-bold">
-                          {discountPercent > 0 ? `${t('patients.wizard.discount')} (${discountPercent}%):` : `${t('patients.wizard.discount')}:`}
-                        </span>
-                        <span className="text-[13px] sm:text-sm font-black text-rose-500">
-                          - {appliedDiscountAmount.toLocaleString()} {t('common.currency')}
-                        </span>
-                      </div>
-                    )}
-                    {createdPlanAdvanceTotal > 0 && (
-                      <div className="flex items-center justify-between w-full sm:w-64 mb-1 border-b border-dashed border-slate-200 pb-2">
-                        <span className="text-[12px] sm:text-sm text-emerald-600 font-bold">
-                          {t('patients.wizard.downPayment')}:
-                        </span>
-                        <span className="text-[13px] sm:text-sm font-black text-emerald-600">
-                          - {createdPlanAdvanceTotal.toLocaleString()} {t('common.currency')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Final Total */}
-                <div className="p-4 sm:p-6 lg:px-8 border-t border-slate-100 bg-white">
-                  <div className="bg-slate-900 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg relative overflow-hidden">
-                    {appliedDiscountAmount > 0 && (
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500 rounded-full blur-[40px] opacity-20 -mr-10 -mt-10 pointer-events-none"></div>
-                    )}
-                    <div className="z-10">
-                      <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest">{t('patients.wizard.totalDebt')}</p>
-                      <p className="text-[12px] text-yellow-400 font-semibold mt-0.5">{t('patients.wizard.paymentPending')}</p>
-                    </div>
-                    <div className="text-left sm:text-right z-10 w-full sm:w-auto flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start -mt-1 sm:mt-0">
-                      {appliedDiscountAmount > 0 && (
-                        <p className="text-[12px] text-slate-400 line-through font-medium sm:mb-1 opacity-80">
-                          {receiptServicesTotal.toLocaleString()}
-                        </p>
-                      )}
-                      {/* Chegirmali to'lov: receiptServicesTotal - discount - advance */}
-                      {/* MUHIM: createdPlan.total_price allaqachon chegirmali, shuning uchun uni ishlatmaymiz */}
-                      <p className="text-2xl sm:text-3xl font-black text-white">
-                        {Math.max(0, receiptServicesTotal - appliedDiscountAmount - createdPlanAdvanceTotal).toLocaleString()} 
-                        <span className="text-sm font-medium text-slate-400 ml-1">{t('common.currency')}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Signatures for Page 1 */}
-                  <div className="grid grid-cols-2 gap-8 mt-6">
-                    <div className="flex flex-col items-center">
-                      <div className="w-full border-b border-slate-300 mb-1 h-[25px]" />
-                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">{t('patients.wizard.doctorSignature')}</p>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <div className="w-full border-b border-slate-300 mb-1 h-[25px]" />
-                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">{t('patients.wizard.patientSignature')}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Installment Schedule Section (Page 2) */}
-                {isInstallment && (
-                  <div className="page-break p-4 sm:p-6 lg:px-8 bg-white border-t border-slate-100 sm:border-t-0">
-                    {/* Page 2 Header */}
-                    <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
-                      <div className="flex items-center gap-3">
-                         <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white">
-                           <Calendar className="w-5 h-5" />
-                         </div>
-                         <div>
-                           <h4 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">{t('patients.wizard.paymentSchedule')}</h4>
-                           <p className="text-[10px] text-slate-500 font-bold uppercase">{createdPatient?.full_name}</p>
-                         </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[9px] font-black text-slate-400 uppercase">№ {createdPlan?.id ? createdPlan.id.split('-').pop()?.toUpperCase() : String(Date.now()).slice(-6)}</p>
-                        <p className="text-[10px] font-bold text-slate-800">{new Date().getDate()}-{(t('common.months') || ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'])[new Date().getMonth()]}, {new Date().getFullYear()}</p>
-                      </div>
-                    </div>
-
-                    <div className="border border-blue-100 rounded-2xl overflow-hidden shadow-sm">
-                      <div className="bg-blue-600 px-4 py-2.5 flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-white" />
-                        <span className="text-[10px] font-black text-white uppercase tracking-widest">{t('patients.wizard.installmentSchedule')}</span>
-                      </div>
-                      
-                      {/* Summary for Installment */}
-                      <div className="bg-blue-50/50 p-4 border-b border-blue-100 grid grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">{t('common.total')}</p>
-                          <p className="text-[13px] font-black text-slate-800">
-                            {Math.max(0, receiptServicesTotal - appliedDiscountAmount).toLocaleString()} <span className="text-[10px] opacity-50">{t('common.currency')}</span>
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">{t('patients.wizard.downPayment')}</p>
-                          <p className="text-[13px] font-black text-emerald-600">
-                            {createdPlanAdvanceTotal.toLocaleString()} <span className="text-[10px] opacity-50">{t('common.currency')}</span>
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">{t('patients.wizard.remainingDebt')}</p>
-                          <p className="text-[13px] font-black text-rose-600">
-                            {Math.max(0, receiptServicesTotal - createdPlanAdvanceTotal - appliedDiscountAmount).toLocaleString()} <span className="text-[10px] opacity-50">{t('common.currency')}</span>
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="p-0">
-                        <table className="w-full text-left">
-                          <thead>
-                            <tr className="bg-blue-50/50 border-b border-blue-100">
-                              <th className="px-4 py-2 text-[10px] font-bold text-blue-600 uppercase">{t('patients.wizard.stage')}</th>
-                              <th className="px-4 py-2 text-[10px] font-bold text-blue-600 uppercase">{t('patients.wizard.date')}</th>
-                              <th className="px-4 py-2 text-[10px] font-bold text-blue-600 uppercase text-right">{t('patients.wizard.amount')}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(() => {
-                              const totalToPay = Math.max(0, receiptServicesTotal - createdPlanAdvanceTotal - appliedDiscountAmount);
-                              const standardMonthly = Math.floor(totalToPay / installmentMonths);
-                              const remainder = totalToPay - (standardMonthly * installmentMonths);
-
-                              return Array.from({ length: installmentMonths }).map((_, i) => {
-                                const d = new Date(installmentStartDate);
-                                d.setMonth(d.getMonth() + i);
-                                const lastDayOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-                                d.setDate(Math.min(installmentDay || 15, lastDayOfMonth));
-                                
-                                const monthly = (i === installmentMonths - 1) ? standardMonthly + remainder : standardMonthly;
-                                
-                                return (
-                                  <tr key={i} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
-                                    <td className="px-4 py-3 text-[11px] font-black text-slate-700">{t('patients.wizard.monthlyPayment', { month: i + 1 })}</td>
-                                    <td className="px-4 py-3 text-[11px] text-slate-500 font-medium">
-                                      {d.getDate()}-{(t('common.months') || ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'])[d.getMonth()]}, {d.getFullYear()}
-                                    </td>
-                                    <td className="px-4 py-3 text-[11px] font-black text-slate-900 text-right">
-                                      {monthly.toLocaleString()} <span className="text-[9px] opacity-30">{t('common.currency')}</span>
-                                    </td>
-                                  </tr>
-                                );
-                              });
-                            })()}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div className="bg-slate-50 px-4 py-3 border-t border-slate-100 italic">
-                        <p className="text-[10px] text-slate-400 font-black tracking-tight">{t('patients.wizard.paymentWarning')}</p>
-                      </div>
-                    </div>
-
-                    {/* Signatures for Page 2 */}
-                    <div className="grid grid-cols-2 gap-8 mt-16 p-2">
-                      <div className="flex flex-col items-center">
-                        <div className="w-full border-b border-slate-300 mb-2 h-[45px]" />
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">{t('patients.wizard.doctorSignature')}</p>
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <div className="w-full border-b border-slate-300 mb-2 h-[45px]" />
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">{t('patients.wizard.patientSignature')}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Telegram Bot Connection (Professional UI) - No Print */}
-                <div className="p-5 border-t border-slate-100 bg-blue-50/50 no-print">
-                  <div className="max-w-md mx-auto">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-blue-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
-                        <MessageCircle className="w-5 h-5" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-sm font-black text-blue-900 uppercase tracking-tight">{t('patients.wizard.reminderSystem')}</p>
-                        <p className="text-[11px] text-blue-700 font-medium">Bemorga Telegram bot linkini yuboring</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col gap-3">
-                      <div className="bg-white p-3.5 rounded-2xl border border-blue-100 flex items-center justify-between gap-3 shadow-sm">
-                        <span className="text-[11px] font-mono text-blue-600 truncate flex-1 font-bold">
-                           {getTelegramDeepLink(createdPatient?.id) || "Bot havolasi topilmadi (Telegram Bot sozlamasida token/username tekshiring)"}
-                        </span>
-                        <Button 
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            const link = getTelegramDeepLink(createdPatient?.id);
-                            if (!link) return;
-                            navigator.clipboard.writeText(link);
-                            toast.success("t('patients.wizard.linkCopied')");
-                          }}
-                          className="h-8 w-8 p-0 hover:bg-blue-50 text-blue-500 rounded-xl"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      
-                      <Button 
-                        type="button"
-                        onClick={() => {
-                          const link = getTelegramDeepLink(createdPatient?.id);
-                          if (!link) return;
-                          window.open(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Assalomu alaykum! Klinikadan avtomatik eslatmalar olish uchun botimizga qo'shiling:")}`, '_blank');
-                        }}
-                        className="w-full bg-blue-600 hover:bg-blue-700 h-12 rounded-2xl text-[11px] font-black uppercase tracking-widest gap-2 shadow-lg shadow-blue-200 transition-all active:scale-[0.98]"
-                      >
-                        <Share2 className="w-4 h-4" />
-                        Telegramga yuborish
-                      </Button>
-
-                      {/* QR Kod */}
-                      <button
-                        type="button"
-                        onClick={() => setShowQr(v => !v)}
-                        className="w-full flex items-center justify-center gap-2 h-10 rounded-2xl border border-blue-200 text-blue-600 text-[11px] font-black uppercase tracking-widest hover:bg-blue-50 transition-all"
-                      >
-                        <QrCode className="w-4 h-4" />
-                        {showQr ? 'QR kodni yashirish' : 'QR kod ko\'rsatish'}
-                      </button>
-
-                      {showQr && getTelegramDeepLink(createdPatient?.id) && (
-                        <div className="flex flex-col items-center gap-2 pt-2">
-                          <div className="bg-white p-3 rounded-2xl border border-blue-100 shadow-sm">
-                            <QRCodeSVG
-                              id="flow-qr-svg"
-                              value={getTelegramDeepLink(createdPatient?.id)}
-                              size={160}
-                              level="M"
-                              includeMargin={false}
-                            />
-                          </div>
-                          <p className="text-[10px] font-bold text-blue-600 text-center">
-                            Skaner qiling → Bot avtomatik ulanganda
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Actions Section */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3 mt-6 no-print rounded-b-[2.5rem]">
-                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                  <button
-                    onClick={handleDownloadImage}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#10b981] hover:bg-[#059669] text-white py-3 px-6 rounded-xl font-[900] shadow-lg shadow-emerald-100 transition-all active:scale-95 text-xs uppercase tracking-wider"
-                  >
-                    <Download className="w-4 h-4" /> {t('common.save')}
-                  </button>
-                  <button
-                    onClick={() => window.print()}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#3b82f6] hover:bg-[#2563eb] text-white py-3 px-6 rounded-xl font-[900] shadow-lg shadow-blue-100 transition-all active:scale-95 text-xs uppercase tracking-wider"
-                  >
-                    <Printer className="w-4 h-4" /> {t('common.print')}
-                  </button>
-                  <button
-                    onClick={handleClose}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white py-3 px-8 rounded-xl font-[900] shadow-lg transition-all active:scale-95 text-xs uppercase tracking-wider"
-                  >
-                    <Check className="w-4 h-4 text-emerald-400" /> {t('common.finish')}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="h-10 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold inline-flex items-center justify-center gap-2"
+                >
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  {t('common.finish')}
+                </button>
               </div>
             </div>
           </div>
@@ -2855,6 +2545,29 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         </div>
       </DialogContent>
     </Dialog>
+
+    <NewPatientReceiptOverlay
+      open={step === 4 && receiptOpen}
+      onClose={closeReceipt}
+      onDownload={handleDownloadImage}
+      t={t}
+      clinicInfo={clinicInfo}
+      patientName={createdPatient?.full_name}
+      dateLabel={receiptDateLabel}
+      timeLabel={receiptTimeLabel}
+      receiptNo={receiptNo}
+      rows={receiptRows}
+      treatmentName={createdPlan?.services?.[0]?.service_name || createdPlan?.name || t('patients.wizard.treatmentPlan')}
+      servicesTotal={receiptServicesTotal}
+      discountAmount={appliedDiscountAmount}
+      discountPercent={discountPercent}
+      advanceTotal={createdPlanAdvanceTotal}
+      dueTotal={receiptDueTotal}
+      isInstallment={isInstallment}
+      installmentMonths={installmentMonths}
+      installmentStartDate={installmentStartDate}
+      installmentDay={installmentDay}
+    />
 
     {/* ─── Implant Bo'limiga O'tish Taklifi Dialogi ─── */}
     {implantPrompt && (

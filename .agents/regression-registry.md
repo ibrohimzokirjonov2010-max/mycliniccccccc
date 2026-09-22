@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 👤 Bemor qo'shish — hisob-faktura butun oynani egallashi
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/patients/NewPatientFlow.jsx`](src/components/patients/NewPatientFlow.jsx)
+  - [`src/components/patients/NewPatientReceipt.jsx`](src/components/patients/NewPatientReceipt.jsx)
+  - [`src/components/patients/newPatientReceipt.css`](src/components/patients/newPatientReceipt.css)
+  - [`scripts/assert-new-patient-receipt.mjs`](scripts/assert-new-patient-receipt.mjs)
+- **Muammo Tavsifi:** Yangi bemor ketma-ketligining 4-qadamida hisob-faktura to'liq qog'oz bo'lib dialogni (88dvh) egallardi: katta padding, imzo, Telegram bloki va qora jami qator birga ekranni to'ldirardi.
+- **Sababi:** `#new-patient-receipt` to'g'ridan-to'g'ri wizard tanasi ichida, cheklanmagan balandlikda chizilardi.
+- **Qanday tuzatildi:** 4-qadamda ixcham kartochka (bemor, sana, 3 qator, jami). To'liq qog'oz `createPortal` overlayda (`z-index: 400`, `pointer-events: auto`), balandligi `86dvh` ichida skroll. Chop etish alohida bosiladi; chop etishda boshqa `body` bolalari yashirinadi, overlay `position: static`. Summa chop etishda qora fon o'rniga qora matn.
+- **Qaytalamaslik choralari:** `#new-patient-receipt` ni yana wizard scroll tanasiga qaytarmang. Overlay ochilishida `printNewPatientReceipt` yoki `scrollIntoView` chaqirmang. Chop etish CSS da `inset` shorthand ishlatmang. Shifokor majburiy, jins saqlash va implant faktura overlay (`implant-wizard-factura-overlay`) o'zgarmasin. `node scripts/assert-new-patient-receipt.mjs` o'tsin.
+
 ### 🦷 Yangi implant Step 3 — Chop etish bo'sh sahifa
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**
