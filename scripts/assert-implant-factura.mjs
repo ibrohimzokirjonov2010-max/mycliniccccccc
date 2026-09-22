@@ -178,6 +178,20 @@ assert(toothSrc.includes('data-testid="implant-tooth-diameter"'), 'per-tooth dia
 assert(toothSrc.includes('data-testid="implant-tooth-length"'), 'per-tooth length stays on the tooth panel');
 assert(!step3Src.includes('implant-tooth-diameter'), 'diameter input is not on step 3');
 
+const facturaSrc = fs.readFileSync(path.join(here, '../src/components/implants/ImplantWizardFactura.jsx'), 'utf8');
+assert(facturaSrc.includes('data-factura-layout="implant-center-paper"'), 'paper factura layout marker');
+assert(facturaSrc.includes('IMPLANT CENTER'), 'paper masthead');
+assert(facturaSrc.includes('Tish qatori formulasi'), 'tooth formula title');
+assert(facturaSrc.includes('Suyak material'), 'bone material row');
+assert(facturaSrc.includes('0.1 gr'), 'bone 0.1 gr unit');
+assert(facturaSrc.includes('Vaqtinchalik koronka PMMA'), 'PMMA row');
+assert(facturaSrc.includes('Operatsion harajatlar'), 'operation row');
+assert(facturaSrc.includes('Sirkoniy koronka'), 'zircon row');
+assert(facturaSrc.includes('Metallokeramika'), 'metal ceramic row');
+assert(facturaSrc.includes('Eslatma!'), 'eslatma footer');
+assert(facturaSrc.includes('data-factura-tooth'), 'arch marks selected teeth');
+assert(facturaSrc.includes("2–3 oydan so'ng"), 'stage 2 timing');
+
 const cssSrc = fs.readFileSync(path.join(here, '../src/components/implants/implantWizard.css'), 'utf8');
 const overlayCss = cssSrc.slice(
   cssSrc.indexOf('.implant-wizard-factura-overlay {'),
