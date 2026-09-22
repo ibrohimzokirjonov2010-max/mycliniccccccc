@@ -18,9 +18,11 @@ const sw = read('public/sw-activate-reload.js');
 const main = read('src/main.jsx');
 
 assert(form.includes('onToggle={focusTooth}'), 'chart click must focus the tooth, not only toggle');
-assert(form.includes('data-testid="implant-wizard-selected-teeth"'), 'live chips under the patient panel');
+assert(form.includes("renderSelectedStack('implant-wizard-selected-teeth')"), 'live stack under the patient panel');
+assert(form.includes("renderSelectedStack('implant-wizard-selected-stack')"), 'live stack at the bottom of the chart panel');
+assert(form.includes('data-stack="down"'), 'selected teeth stack downward');
 assert(form.includes('Hali tish tanlanmagan'), 'empty selected-teeth state');
-assert(form.includes('data-wizard-ux="linear-click-v2"'), 'wizard build marker');
+assert(form.includes('data-wizard-ux="linear-stack-v3"'), 'wizard build marker');
 assert(!form.includes("tw('implantParams'"), 'step 1 must not render the old Implant parametrlari row');
 assert(!form.includes('toggleFdi'), 'old toggle-only handler must stay removed');
 
@@ -30,7 +32,8 @@ assert(step1Start >= 0 && step1End > step1Start, 'renderStep1 bounds');
 const step1 = form.slice(step1Start, step1End);
 assert(step1.includes('<ImplantWizardToothEntry'), 'click opens the tooth entry panel on step 1');
 assert(step1.includes('activeFdi ?'), 'entry panel is tied to the focused tooth');
-assert(step1.indexOf('implant-wizard-selected-live') < step1.indexOf('implant-wizard-new-patient') + 800, 'chips sit with the patient column');
+assert(step1.indexOf("renderSelectedStack('implant-wizard-selected-teeth')") > step1.indexOf('implant-wizard-new-patient'), 'patient stack sits under + Yangi bemor');
+assert(step1.indexOf("renderSelectedStack('implant-wizard-selected-stack')") > step1.indexOf('ImplantWizardArch'), 'chart stack sits below the tooth strip');
 assert(step1.includes('implant-wizard-new-patient'), 'new patient action stays');
 
 const step3Start = form.indexOf('const renderStep3');
@@ -49,6 +52,8 @@ assert(arch.includes('LOWER_FDI = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 3
 assert(!arch.includes('archT'), 'curved arch lift helper must stay removed');
 assert(!arch.includes('rotate('), 'tooth slots must not rotate');
 assert(arch.includes("transform: 'none'"), 'inline transform none beats a stale curve rule');
+assert(css.includes('flex-direction: column'), 'selected list is a vertical stack');
+assert(css.includes('.implant-wizard-selected-row'), 'each selected tooth is its own row');
 assert(css.includes('.implant-wizard-arch-curve'), 'legacy curve class stays hidden');
 assert(css.includes('display: none !important'), 'legacy curve cannot paint');
 

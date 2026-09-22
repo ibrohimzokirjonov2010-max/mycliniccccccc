@@ -455,8 +455,73 @@
 
 .implant-wizard-selected-live-list {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap;
   gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.implant-wizard-selected-row {
+  width: 100%;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid #99f6e4;
+  border-radius: 10px;
+  background: #f0fdfa;
+  color: #0f766e;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.implant-wizard-selected-row.is-active {
+  background: #0d9488;
+  border-color: #0f766e;
+  color: #fff;
+}
+
+.implant-wizard-selected-row-index {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #0d9488;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.implant-wizard-selected-row.is-active .implant-wizard-selected-row-index {
+  background: #fff;
+  color: #0f766e;
+}
+
+.implant-wizard-selected-row-fdi {
+  font-variant-numeric: tabular-nums;
+}
+
+.implant-wizard-selected-row-brand {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: #115e59;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.implant-wizard-selected-row.is-active .implant-wizard-selected-row-brand {
+  color: #ccfbf1;
 }
 
 .implant-wizard-selected-live-empty {
@@ -1187,6 +1252,12 @@
   .implant-wizard-selected-live {
     grid-column: 1 / -1;
     grid-row: 2;
+  }
+
+  .implant-wizard-selected-live-list {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    overflow-x: hidden;
   }
 
   .implant-wizard-patient-implants {

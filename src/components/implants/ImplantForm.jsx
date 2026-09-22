@@ -1079,6 +1079,39 @@ export default function ImplantForm({
     );
   };
 
+  const renderSelectedStack = (testId) => (
+    <div className="implant-wizard-selected-live" data-testid={testId} data-stack="down">
+      <p className="implant-wizard-selected-live-title">
+        {tw('selectedTeeth', 'Tanlangan tishlar')}
+        {selectedFdis.length > 0 ? ` (${selectedFdis.length})` : ''}
+      </p>
+      {selectedFdis.length === 0 ? (
+        <p className="implant-wizard-selected-live-empty">{tw('selectedTeethEmpty', 'Hali tish tanlanmagan')}</p>
+      ) : (
+        <ol className="implant-wizard-selected-live-list">
+          {selectedFdis.map((fdi, index) => {
+            const row = toothDataMap[fdi] || {};
+            const brand = row.firma === 'Boshqa' ? (row.firma_custom || row.brend) : (row.firma || row.brend);
+            return (
+              <li key={fdi}>
+                <button
+                  type="button"
+                  onClick={() => focusTooth(fdi)}
+                  className={cn('implant-wizard-selected-row', activeFdi === fdi && 'is-active')}
+                  data-selected-fdi={fdi}
+                >
+                  <span className="implant-wizard-selected-row-index">{index + 1}</span>
+                  <span className="implant-wizard-selected-row-fdi">#{fdi}</span>
+                  {brand ? <span className="implant-wizard-selected-row-brand">{brand}</span> : null}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </div>
+  );
+
   const renderStep1 = () => (
     <div className="flex flex-col md:flex-row gap-4 min-h-0">
       <aside className="implant-wizard-step1-patient w-full md:w-[240px] shrink-0 bg-white rounded-xl border border-[#e5e7eb] p-4 flex flex-col gap-3 relative z-20">
@@ -1111,29 +1144,7 @@ export default function ImplantForm({
         >
           <Plus className="w-4 h-4" /> {tw('newPatient', 'Yangi bemor')}
         </button>
-        <div className="implant-wizard-selected-live" data-testid="implant-wizard-selected-teeth">
-          <p className="implant-wizard-selected-live-title">
-            {tw('selectedTeeth', 'Tanlangan tishlar')}
-            {selectedFdis.length > 0 ? ` (${selectedFdis.length})` : ''}
-          </p>
-          {selectedFdis.length === 0 ? (
-            <p className="implant-wizard-selected-live-empty">{tw('selectedTeethEmpty', 'Hali tish tanlanmagan')}</p>
-          ) : (
-            <div className="implant-wizard-selected-live-list">
-              {selectedFdis.map((fdi) => (
-                <button
-                  key={fdi}
-                  type="button"
-                  onClick={() => focusTooth(fdi)}
-                  className={cn('implant-wizard-selected-pill', activeFdi === fdi && 'is-active')}
-                  data-selected-fdi={fdi}
-                >
-                  #{fdi}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        {renderSelectedStack('implant-wizard-selected-teeth')}
         {(form.patient_id || form.patient_name) && (
           <div className="implant-wizard-patient-implants" data-testid="implant-wizard-patient-implants">
             <p className="implant-wizard-patient-implants-title">
@@ -1190,20 +1201,7 @@ export default function ImplantForm({
             onToggle={focusTooth}
             scrollHint={tw('scrollHint', '← Yon tomonga suring →')}
           />
-          {selectedFdis.length > 0 && (
-            <div className="implant-wizard-selected-pills">
-              {selectedFdis.map((fdi) => (
-                <button
-                  key={fdi}
-                  type="button"
-                  onClick={() => focusTooth(fdi)}
-                  className={cn('implant-wizard-selected-pill', activeFdi === fdi && 'is-active')}
-                >
-                  #{fdi}
-                </button>
-              ))}
-            </div>
-          )}
+          {renderSelectedStack('implant-wizard-selected-stack')}
           {activeFdi ? (
             <ImplantWizardToothEntry
               fdi={activeFdi}
@@ -1437,7 +1435,7 @@ export default function ImplantForm({
           style={wizardDialogStyle}
           data-implant-wizard={IMPLANT_WIZARD_STEP2_MARKER}
           data-implant-factura={IMPLANT_WIZARD_FACTURA_MARKER}
-          data-wizard-ux="linear-click-v2"
+          data-wizard-ux="linear-stack-v3"
           aria-describedby={undefined}
           onPointerDownOutside={(e) => {
             if (facturaPreviewOpen) e.preventDefault();
