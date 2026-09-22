@@ -1,21 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
-
-const display = Fraunces({
-  subsets: ["latin", "latin-ext"],
-  weight: ["500", "600", "700"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const body = Manrope({
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
@@ -45,8 +30,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="uz" className={`${display.variable} ${body.variable}`}>
-      <body className="font-body antialiased">{children}</body>
+    <html lang="uz">
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
