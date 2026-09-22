@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #0d9488;
+  --color-accent: #0f766e;
+  --color-neutral: #142421;
+  --color-background: #f3efe6;
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 2rem;
+  --spacing-lg: 4rem;
+  --spacing-xl: 6rem;
+  --duration-fast: 150ms;
+  --duration-medium: 300ms;
+  --duration-slow: 700ms;
+  --easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --background: 40 33% 93%;
+  --foreground: 164 28% 11%;
+  --card: 40 43% 97%;
+  --card-foreground: 164 28% 11%;
+  --primary: 174 84% 32%;
+  --primary-foreground: 40 43% 97%;
+  --secondary: 40 28% 90%;
+  --secondary-foreground: 164 28% 11%;
+  --muted: 40 18% 90%;
+  --muted-foreground: 164 8% 39%;
+  --accent: 174 72% 26%;
+  --accent-foreground: 40 43% 97%;
+  --border: 36 28% 85%;
+  --input: 36 28% 85%;
+  --ring: 174 84% 32%;
+  --radius: 1rem;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--color-background);
+  color: var(--color-neutral);
+  font-family: var(--font-body);
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+}
+
+.bg-paper {
+  background-color: #f3efe6;
+  background-image:
+    linear-gradient(to right, rgba(20, 36, 33, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(20, 36, 33, 0.045) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.bg-deep {
+  background-color: #0c3c38;
+  background-image:
+    radial-gradient(circle at 12% 90%, rgba(255, 255, 255, 0.08) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 80% 0%, rgba(13, 148, 136, 0.35), transparent 42%);
+  background-size: 16px 16px, auto;
+}
+
+::selection {
+  background: #0d9488;
+  color: #f7f4ec;
+}
+
+.d1 { animation-delay: 80ms; }
+.d2 { animation-delay: 180ms; }
+.d3 { animation-delay: 300ms; }
+.d4 { animation-delay: 440ms; }
+.d5 { animation-delay: 580ms; }
+
+@supports (animation-timeline: view()) {
+  .rise {
+    animation: fade-up 0.8s var(--easing) both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 24%;
+  }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
