@@ -14,6 +14,7 @@ import { signLicense, verifyLicense } from "./token";
 process.env.LANDING_DATA_DIR = mkdtempSync(path.join(tmpdir(), "shifo-landing-"));
 delete process.env.SUPABASE_URL;
 delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+process.env.CRM_SUPABASE_DISABLED = "1";
 process.env.LICENSE_SIGNING_SECRET = "test-secret";
 
 function clearMerchants() {

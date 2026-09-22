@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "tsx --test --test-concurrency=1 lib/billing.test.ts",
+    "test": "tsx --test --test-concurrency=1 lib/billing.test.ts lib/tenants.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

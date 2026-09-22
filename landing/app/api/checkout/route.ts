@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  let body: { planId?: string; name?: string; phone?: string; email?: string; provider?: string };
+  let body: { planId?: string; name?: string; phone?: string; email?: string; clinic?: string; provider?: string };
   try {
     body = await request.json();
   } catch {
@@ -25,6 +25,7 @@ export async function POST(request: Request) {
       name: body.name ?? "",
       phone: body.phone ?? "",
       email: body.email ?? "",
+      clinic: body.clinic ?? "",
       provider,
     });
     const returnUrl = `${requestOrigin(request)}/tolov/kutilmoqda?order=${order.id}`;

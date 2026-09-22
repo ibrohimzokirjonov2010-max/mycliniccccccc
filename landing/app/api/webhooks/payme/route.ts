@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { handlePaymeRpc } from "@/lib/payments/payme";
+import { ingestPayme, ingestSafely } from "@/lib/tenants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,5 +13,6 @@ export async function POST(request: Request) {
     body = null;
   }
   const result = await handlePaymeRpc(body, request.headers.get("authorization"));
+  await ingestSafely(() => ingestPayme(body));
   return NextResponse.json(result);
 }

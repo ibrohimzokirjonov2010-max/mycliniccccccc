@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { activateOrder, BillingError, getOrder } from "@/lib/billing";
 import { providerLive } from "@/lib/payments/config";
 import { signLicense } from "@/lib/token";
+import { ingestSafely, syncOrderToAdmin } from "@/lib/tenants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
       provider: "mock",
       providerTransactionId: `mock_${order.id}`,
     });
+    await ingestSafely(() => syncOrderToAdmin(order.id));
     const token = signLicense({
       orderId: order.id,
       licenseId: license.id,
@@ -45,6 +47,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof BillingError) {
+      if (error.code === "already_paid") await ingestSafely(() => syncOrderToAdmin(order.id));
       const status = error.code === "already_paid" ? 409 : 400;
       return NextResponse.json({ error: error.message }, { status });
     }

@@ -36,6 +36,29 @@ import {
 
 const SUPER_ADMIN = { username: 'admin', password: 'admin123' };
 
+function landingTariffLabel(clinic) {
+  if (clinic?.tariff === 'start') return 'START';
+  if (clinic?.tariff === 'pro') return 'PRO';
+  if (clinic?.tariff === 'klinika') return 'KLINIKA';
+  if (clinic?.tariff === 'trial') return 'SINOV';
+  return '';
+}
+
+function landingBillingLabel(status) {
+  if (status === 'trial') return 'Sinov';
+  if (status === 'paid') return "To'langan";
+  if (status === 'expired') return 'Tugagan';
+  return '';
+}
+
+function landingPayLabel(method) {
+  if (method === 'payme') return 'Payme';
+  if (method === 'click') return 'Click';
+  if (method === 'mock') return 'Demo';
+  if (method === 'trial') return 'Sinov';
+  return '';
+}
+
 // Animated Background Component
 const AnimatedBackground = () => (
   <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
@@ -1295,6 +1318,11 @@ export default function SuperAdmin() {
                                       <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse flex-shrink-0" title="Nofaol / Tugagan" />
                                     )}
                                   </div>
+                                  {(c.doctor_name || c.phone || c.email) && (
+                                    <p className="text-[11px] text-slate-400 mt-0.5 max-w-[220px] truncate" title={[c.doctor_name, c.phone, c.email].filter(Boolean).join(' · ')}>
+                                      {[c.doctor_name, c.phone, c.email].filter(Boolean).join(' · ')}
+                                    </p>
+                                  )}
                                   <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
                                     <span className="font-mono text-slate-400">ID: {c.id}</span>
                                     <button 
@@ -1311,7 +1339,16 @@ export default function SuperAdmin() {
 
                             {/* 2. Plan */}
                             <td className="py-3.5 px-4">
-                              {c.plan === 'basic' ? (
+                              {landingTariffLabel(c) ? (
+                                <div className="space-y-1">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-black uppercase tracking-wider border border-indigo-500/30">
+                                    {landingTariffLabel(c)}
+                                  </span>
+                                  {landingBillingLabel(c.billing_status) && (
+                                    <p className="text-[10px] text-slate-400">{landingBillingLabel(c.billing_status)}</p>
+                                  )}
+                                </div>
+                              ) : c.plan === 'basic' ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-[10px] font-black uppercase tracking-wider border border-slate-700">
                                   ⭐ BASIC
                                 </span>
@@ -1390,6 +1427,14 @@ export default function SuperAdmin() {
                                 <p className={`text-[10px] ${overdue ? 'text-rose-400 font-bold' : 'text-emerald-400'}`}>
                                   Oxirgi: {c.last_payment_date || "To'lanmagan"}
                                 </p>
+                                {landingPayLabel(c.payment_method) && (
+                                  <p className="text-[10px] text-slate-400">{landingPayLabel(c.payment_method)}</p>
+                                )}
+                                {c.billing_status && (
+                                  <p className={`text-[10px] font-semibold ${c.access_unlocked ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                    {c.access_unlocked ? 'Kirish ochiq' : 'Kirish yopiq'}
+                                  </p>
+                                )}
                               </div>
                             </td>
 
@@ -1593,6 +1638,8 @@ export default function SuperAdmin() {
                                 </div>
                                 <div>
                                   <p className="font-bold text-white">{u.name}</p>
+                                  {u.phone ? <p className="text-[10px] text-slate-500">{u.phone}</p> : null}
+                                  {typeof u.notes === 'string' && u.notes.includes('@') ? <p className="text-[10px] text-slate-500">{u.notes}</p> : null}
                                   <div className="flex items-center gap-1 text-[11px] text-slate-400">
                                     <span className="font-mono">@{u.username}</span>
                                     <button 

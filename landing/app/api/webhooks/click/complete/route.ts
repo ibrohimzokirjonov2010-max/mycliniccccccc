@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleClick } from "@/lib/payments/click";
+import { ingestClick, ingestSafely } from "@/lib/tenants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,9 @@ export async function POST(request: Request) {
   try {
     const params = await readParams(request);
     if (!params.action) params.action = "1";
-    return NextResponse.json(await handleClick(params));
+    const result = await handleClick(params);
+    await ingestSafely(() => ingestClick(params));
+    return NextResponse.json(result);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: -8, error_note: "Bad request" });

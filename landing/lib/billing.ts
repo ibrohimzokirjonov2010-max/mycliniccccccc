@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 import { LICENSE_DAYS, getTariff, type PlanId } from "../config/tariffs";
 import { updateStore, readStore, type Database, type License, type Order, type Provider } from "./store";
-import { normalizeEmail, normalizeName, normalizePhone } from "./validators";
+import { normalizeClinic, normalizeEmail, normalizeName, normalizePhone } from "./validators";
 
 const KEY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -22,11 +22,23 @@ function chunkKey(planId: string) {
   return `SHIFO-${prefix}-${raw.slice(0, 4)}-${raw.slice(4, 8)}`;
 }
 
+export function clinicNameFor(name: string, clinic?: string | null) {
+  const provided = (clinic ?? "").trim();
+  if (!provided) {
+    const fallback = `${name} klinikasi`.slice(0, 80).trim();
+    return fallback.length >= 2 ? fallback : name;
+  }
+  const normalized = normalizeClinic(provided);
+  if (!normalized) throw new BillingError("Klinika nomini kiriting.", "invalid");
+  return normalized;
+}
+
 export async function createOrder(input: {
   planId: string;
   name: string;
   phone: string;
   email: string;
+  clinic?: string;
   provider: "payme" | "click";
 }) {
   const plan = getTariff(input.planId);
@@ -37,6 +49,7 @@ export async function createOrder(input: {
   if (!name) throw new BillingError("Ismingizni to'liq kiriting.", "invalid");
   if (!phone) throw new BillingError("Telefon raqamini +998 bilan kiriting.", "invalid");
   if (!email) throw new BillingError("Email manzilini to'g'ri kiriting.", "invalid");
+  const clinic = clinicNameFor(name, input.clinic);
 
   const order: Order = {
     id: randomBytes(16).toString("hex"),
@@ -46,6 +59,7 @@ export async function createOrder(input: {
     name,
     phone,
     email,
+    clinic,
     provider: input.provider,
     status: "pending",
     createdAt: new Date().toISOString(),
@@ -130,14 +144,17 @@ export function isPlanId(value: string): value is PlanId {
   return getTariff(value) !== null;
 }
 
-export async function saveDemoLead(input: { name: string; phone: string; clinic: string }) {
+export async function saveDemoLead(input: { name: string; phone: string; clinic: string; email?: string }) {
   const name = normalizeName(input.name);
   const phone = normalizePhone(input.phone);
   const clinic = normalizeName(input.clinic);
+  const emailRaw = (input.email ?? "").trim();
+  const email = emailRaw ? normalizeEmail(emailRaw) : "";
   if (!name) throw new BillingError("Ismingizni to'liq kiriting.", "invalid");
   if (!phone) throw new BillingError("Telefon raqamini +998 bilan kiriting.", "invalid");
   if (!clinic) throw new BillingError("Klinika nomini kiriting.", "invalid");
-  const lead = { id: randomBytes(8).toString("hex"), name, phone, clinic, createdAt: new Date().toISOString() };
+  if (emailRaw && !email) throw new BillingError("Email manzilini to'g'ri kiriting.", "invalid");
+  const lead = { id: randomBytes(8).toString("hex"), name, phone, clinic, email: email || "", createdAt: new Date().toISOString() };
   await updateStore((db) => {
     db.demoLeads.push(lead);
   });

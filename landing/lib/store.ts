@@ -12,6 +12,7 @@ export type Order = {
   name: string;
   phone: string;
   email: string;
+  clinic?: string;
   provider: Provider;
   status: OrderStatus;
   createdAt: string;
@@ -56,7 +57,33 @@ export type DemoLead = {
   name: string;
   phone: string;
   clinic: string;
+  email: string;
   createdAt: string;
+};
+
+export type BillingStatus = "trial" | "paid" | "expired";
+export type PaymentMethod = Provider | "trial";
+
+export type Subscription = {
+  id: string;
+  doctorName: string;
+  clinicName: string;
+  phone: string;
+  email: string;
+  planId: string;
+  planName: string;
+  status: BillingStatus;
+  amountUzs: number;
+  paymentMethod: PaymentMethod;
+  accessUnlocked: boolean;
+  startedAt: string;
+  expiresAt: string;
+  paidAt: string | null;
+  licenseKey: string;
+  orderId: string | null;
+  leadId: string | null;
+  temporaryPassword: string;
+  updatedAt: string;
 };
 
 export type Database = {
@@ -65,12 +92,20 @@ export type Database = {
   payme: Record<string, PaymeTransaction>;
   nextPrepareId: number;
   demoLeads: DemoLead[];
+  subscriptions: Record<string, Subscription>;
 };
 
 const TIMEOUT_MS = 12 * 60 * 60 * 1000;
 
 export function emptyDatabase(): Database {
-  return { orders: {}, licenses: {}, payme: {}, nextPrepareId: 1000, demoLeads: [] };
+  return { orders: {}, licenses: {}, payme: {}, nextPrepareId: 1000, demoLeads: [], subscriptions: {} };
+}
+
+function patchDatabase(parsed: Database) {
+  parsed.demoLeads ??= [];
+  parsed.nextPrepareId ??= 1000;
+  parsed.subscriptions ??= {};
+  return parsed;
 }
 
 export function paymeTimedOut(txn: PaymeTransaction, now = Date.now()) {
@@ -105,9 +140,7 @@ async function readFileDb(): Promise<Database> {
     const raw = await readFile(dataFile(), "utf8");
     const parsed = JSON.parse(raw) as Database;
     if (!parsed.orders || !parsed.licenses || !parsed.payme) return emptyDatabase();
-    parsed.demoLeads ??= [];
-    parsed.nextPrepareId ??= 1000;
-    return parsed;
+    return patchDatabase(parsed);
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === "ENOENT") return memory ? clone(memory) : emptyDatabase();
@@ -161,8 +194,7 @@ async function readSupabase(): Promise<{ data: Database; version: number } | nul
   const rows = (await response.json()) as Array<{ data: Database; version: number }>;
   if (!rows.length) return null;
   const data = rows[0].data;
-  data.demoLeads ??= [];
-  data.nextPrepareId ??= 1000;
+  patchDatabase(data);
   return { data, version: rows[0].version };
 }
 

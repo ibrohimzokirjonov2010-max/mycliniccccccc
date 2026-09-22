@@ -25,6 +25,7 @@ export function DemoDialog({ label, size = "lg" }: { label: string; size?: "lg" 
           name: String(form.get("name") || ""),
           phone: String(form.get("phone") || ""),
           clinic: String(form.get("clinic") || ""),
+          email: String(form.get("email") || ""),
         }),
       });
       const data = (await response.json()) as { error?: string };
@@ -60,6 +61,10 @@ export function DemoDialog({ label, size = "lg" }: { label: string; size?: "lg" 
             <div className="space-y-1.5">
               <Label htmlFor="demo-phone">Telefon</Label>
               <Input id="demo-phone" name="phone" required inputMode="tel" placeholder="+998 90 123 45 67" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="demo-email">Email</Label>
+              <Input id="demo-email" name="email" type="email" placeholder="klinika@example.uz" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="demo-clinic">Klinika</Label>

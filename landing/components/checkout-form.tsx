@@ -13,6 +13,7 @@ export function CheckoutForm({ planId }: { planId: string }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [clinic, setClinic] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState<"payme" | "click" | "mock" | null>(null);
   const [mockOrder, setMockOrder] = useState<{ orderId: string; provider: "payme" | "click" } | null>(null);
@@ -28,7 +29,7 @@ export function CheckoutForm({ planId }: { planId: string }) {
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: selected.id, name, phone, email, provider }),
+        body: JSON.stringify({ planId: selected.id, name, phone, email, clinic, provider }),
       });
       const data = (await response.json()) as { error?: string; mode?: string; paymentUrl?: string; orderId?: string };
       if (!response.ok) {
@@ -101,6 +102,10 @@ export function CheckoutForm({ planId }: { planId: string }) {
           <div className="space-y-1.5">
             <Label htmlFor="buyer-phone">Telefon</Label>
             <Input id="buyer-phone" name="phone" inputMode="tel" autoComplete="tel" required value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+998 90 123 45 67" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="buyer-clinic">Klinika</Label>
+            <Input id="buyer-clinic" name="clinic" autoComplete="organization" value={clinic} onChange={(event) => setClinic(event.target.value)} placeholder="Klinika nomi" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="buyer-email">Email</Label>

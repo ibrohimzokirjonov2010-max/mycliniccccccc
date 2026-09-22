@@ -1890,7 +1890,8 @@ export const base44 = {
     _EXTRA_FIELDS: [
       'slug', 'is_public', 'description', 'address', 'working_hours',
       'telegram_link', 'instagram_link', 'whatsapp_link', 'yandex_map_link',
-      'phone', 'subtitle', 'api_key'
+      'phone', 'subtitle', 'api_key',
+      'email', 'doctor_name', 'payment_method', 'tariff', 'billing_status', 'access_unlocked', 'license_key'
     ],
 
     _encodeClinicNotes(clinic) {
