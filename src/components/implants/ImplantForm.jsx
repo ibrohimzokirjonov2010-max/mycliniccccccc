@@ -1204,7 +1204,7 @@ export default function ImplantForm({
               ))}
             </div>
           )}
-          {activeFdi && selectedFdis.includes(activeFdi) ? (
+          {activeFdi ? (
             <ImplantWizardToothEntry
               fdi={activeFdi}
               data={toothDataMap[activeFdi]}
@@ -1437,6 +1437,7 @@ export default function ImplantForm({
           style={wizardDialogStyle}
           data-implant-wizard={IMPLANT_WIZARD_STEP2_MARKER}
           data-implant-factura={IMPLANT_WIZARD_FACTURA_MARKER}
+          data-wizard-ux="linear-click-v2"
           aria-describedby={undefined}
           onPointerDownOutside={(e) => {
             if (facturaPreviewOpen) e.preventDefault();

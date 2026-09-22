@@ -55,11 +55,12 @@ function LinearRow({ teeth, selectedSet, activeFdi, onToggle, variant }) {
       className={cn('implant-wizard-arch-row', isUpper ? 'is-upper' : 'is-lower')}
       role="group"
       aria-label={isUpper ? 'Upper teeth' : 'Lower teeth'}
+      style={{ display: 'flex', flexWrap: 'nowrap', transform: 'none' }}
     >
       {teeth.map((fdi, i) => (
         <Fragment key={fdi}>
           {i === 8 && <span className="implant-wizard-arch-midline" aria-hidden />}
-          <div className="implant-wizard-tooth-slot">
+          <div className="implant-wizard-tooth-slot" style={{ transform: 'none' }}>
             <WizardTooth
               fdi={fdi}
               selected={selectedSet.has(String(fdi))}
@@ -88,7 +89,7 @@ export default function ImplantWizardArch({ selectedFdis = [], activeFdi = '', o
       data-layout="linear"
     >
       <div className="implant-wizard-arch-scroll">
-        <div className="implant-wizard-arch-rows">
+        <div className="implant-wizard-arch-rows" style={{ display: 'flex', flexDirection: 'column', transform: 'none' }}>
           <LinearRow teeth={UPPER_FDI} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} variant="upper" />
           <LinearRow teeth={LOWER_FDI} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} variant="lower" />
         </div>

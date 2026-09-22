@@ -109,13 +109,17 @@ export default defineConfig({
       includeAssets: ['icon-192x192.svg', 'icon-512x512.svg', 'logo.png'],
       manifest: false, // manifest.json allaqachon public/ da bor
       workbox: {
-        // Asosiy sahifalarni cache qilish strategiyasi
+        // Asosiy sahifalarni cache qilish strategiyasi.
+        // index.html stays precached for offline, but sw-activate-reload.js
+        // navigates open windows once a new worker activates so the clinic
+        // PWA cannot keep the previous Yangi implant wizard shell.
         globPatterns: ['**/*.{js,css,html,ico,svg,woff,woff2}'],
-        globIgnores: ['**/teeth/**'],
+        globIgnores: ['**/teeth/**', '**/sw-activate-reload.js'],
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
         navigateFallback: 'index.html',
+        importScripts: ['sw-activate-reload.js'],
         runtimeCaching: [
           {
             // API so'rovlar uchun NetworkFirst — yangi ma'lumot bo'lmasa cache ishlaydi
@@ -133,7 +137,7 @@ export default defineConfig({
             urlPattern: /\/assets\/.*\.(?:js|css)$/,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'assets-cache-v10-payment-single-center',
+              cacheName: 'assets-cache-v11-implant-wizard',
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 7 },
               cacheableResponse: { statuses: [0, 200] }

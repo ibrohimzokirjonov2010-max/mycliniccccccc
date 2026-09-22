@@ -13,6 +13,20 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant wizard — productionda eski ark va tish paneli yo'q
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`vite.config.js`](vite.config.js)
+  - [`public/sw-activate-reload.js`](public/sw-activate-reload.js)
+  - [`src/lib/swUpdate.js`](src/lib/swUpdate.js)
+  - [`src/main.jsx`](src/main.jsx)
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/components/implants/ImplantWizardArch.jsx`](src/components/implants/ImplantWizardArch.jsx)
+- **Muammo Tavsifi:** `main` (`ffc1529`) va production JS allaqachon to'g'ri ikki qator, chip va tish paneli kodini o'z ichiga olgan. Jonli brauzer esa eski «Implant parametrlari» + egri arkni ko'rsatgan: tish bosilsa faqat son oshgan, ma'lumot paneli ochilmagan.
+- **Sababi:** Workbox `index.html` ni precache qilib, navigatsiyani cache-first bergan. Ochiq PWA yangi SHA ni yuklamagan — xotiradagi eski `ImplantForm` (toggle-only `toggleFdi`) qolgan. `/assets` uchun NetworkFirst precache marshrutidan keyin ishlamaydi.
+- **Qanday tuzatildi:** Yangi service worker faollashganda ochiq oynalarni bir marta yangilaydi (`sw-activate-reload.js`). Sahifa `controllerchange` da qayta yuklanadi. Offline precache (`navigateFallback: index.html`) saqlanadi. Tish paneli `activeFdi` bo'yicha ochiladi. Qatorlar inline `transform: none`.
+- **Qaytalamaslik choralari:** Activate-reload skriptini olib tashlamang, aks holda ochiq PWA yana eski wizardda qoladi. Wizard chartga `rotate` / `archT` qaytarmang. `onToggle` ni `focusTooth` dan uzmang. Step 3 overlay va shifokor-majburiy bemor oqimi o'zgarmasin. `node scripts/assert-implant-wizard-ux.mjs` o'tsin.
+
 ### 🦷 Yangi implant wizard — tanlangan tishlar jonli chip
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**
