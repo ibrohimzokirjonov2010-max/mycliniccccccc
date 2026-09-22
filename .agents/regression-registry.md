@@ -275,7 +275,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 - **Muammo Tavsifi:** 1-qadamda bemor tanlangach uning implantlari chiqmasdi. Tish bosilganda ma'lumot shu zahoti kiritilmasdi. 3-qadamda Ø / L / Ncm / Lot maydonlari keraksiz edi.
 - **Sababi:** Chart faqat tanlashni almashtirardi; o'lchovlar alohida qadamda edi; bemor implantlari so'ralmasdi.
 - **Qanday tuzatildi:** Bemor tanlangach ro'yxat yoki bo'sh holat «+ Yangi bemor» ostida. Tish bosilganda brend, narx, izoh va qo'shimcha xizmatlar inline ochiladi va keyingi tishlar qabul qilinadi. 3-qadam faktura, eslatma va hujjatlar. Bo'sh o'lchov maydonlari saqlash payloadidan tushiriladi, mavjud qiymatlar qoladi.
-- **Qaytalamaslik choralari:** Step 3 ga Ø/L/Ncm/Lot qaytarmang. Faktura slot Step 3 **yuqorisida** ixcham teaser; to'liq karta overlayda. Footer `[Orqaga] [Faktura olish] [Saqlash]`. Desktop Step 2 `.implant-wizard-teeth { width: 240px }` va marker `implant-step2-teal-v2-240px-0d9488` qolsin. CTA `#0d9488`. Mobil arkda `transform` qaytarmang. `alert()` qaytarmang. Tishni ikkinchi marta bosish tanlovni o'chirmasin — ma'lumot paneli ochiq qolsin.
+- **Qaytalamaslik choralari:** Step 3 ga Ø/L/Ncm/Lot qaytarmang. Faktura slot Step 3 **yuqorisida** ixcham teaser; to'liq karta overlayda. Footer `[Orqaga] [Faktura olish] [Saqlash]`. Desktop Step 2 `.implant-wizard-teeth { width: 240px }` va marker `implant-step2-services-scroll-pad-v3 (yoki joriy IMPLANT_WIZARD_STEP2_MARKER)` qolsin. CTA `#0d9488`. Mobil arkda `transform` qaytarmang. `alert()` qaytarmang. Tishni ikkinchi marta bosish tanlovni o'chirmasin — ma'lumot paneli ochiq qolsin.
 
 ### 👤 Bemor qo'shish — shifokor majburiy
 - **Sana:** 2026-09-21
@@ -346,7 +346,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
   - [`vite.config.js`](vite.config.js)
 - **Muammo Tavsifi:** 390px wizard ishlagan, lekin klinik ilova darajasida emas: FDI 11px, header `BEMOR TANLANMAGAN` baqirgan, Step 3 Jami kichik kulrang qator, chip/tab silliqlik yetishmagan.
 - **Qanday tuzatildi:** Mobil tish tanlash 12px tabular FDI + snap-scroll + midline; toza chip; Step 3 tibbiy footer (katta teal Jami, 44px teng Faktura/Saqlash, teal border); inline xato `alert()` o'rniga; header title-case; ixcham Step 1 bemor qatori.
-- **Qaytalamaslik choralari:** Desktop Step 2 `.implant-wizard-teeth { width: 240px }` va marker `implant-step2-teal-v2-240px-0d9488` qolsin. CTA `#0d9488`. Mobil arkda `transform` qaytarmang. Step 3 **content tepasida** `data-implant-factura-slot` (ixcham teaser); to'liq faktura overlayda. Footer faqat Jami + `Faktura olish` + `Saqlash` — kartani footerga ko‘chirmang. `alert()` qaytarmang. Overlayda `data-implant-factura-card` qolsin.
+- **Qaytalamaslik choralari:** Desktop Step 2 `.implant-wizard-teeth { width: 240px }` va marker `implant-step2-services-scroll-pad-v3 (yoki joriy IMPLANT_WIZARD_STEP2_MARKER)` qolsin. CTA `#0d9488`. Mobil arkda `transform` qaytarmang. Step 3 **content tepasida** `data-implant-factura-slot` (ixcham teaser); to'liq faktura overlayda. Footer faqat Jami + `Faktura olish` + `Saqlash` — kartani footerga ko‘chirmang. `alert()` qaytarmang. Overlayda `data-implant-factura-card` qolsin.
 
 ### 🦷 Yangi implant Step 3 — IMPLANT CENTER faktura
 - **Sana:** 2026-09-21
@@ -393,7 +393,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 - **Muammo Tavsifi:** YANGI IMPLANT wizard ~390px da yaroqsiz: tish charti kartadan chiqib ketgan, FDI yorliqlar ustma-ust, qadamlar "3 Implant" kesilgan, Step 2 footer "Tanlangan/Jami" tugmalar ostida, Step 3 "Jami so'm" ko'p qatorga o'ralib modal tashqarisiga chiqqan; validatsiya `alert()`.
 - **Sababi:** Desktop egri 16-tish ark va 240px chap kolonka mobilga moslanmagan; footer bir qatorda summary+tugmalar; stepper `last:flex-none` + uzun yorliq overflow-hidden dialogda kesilgan.
 - **Qanday tuzatildi:** ≤767px da 8+8 to'r odontogramma (egri transform o'chiriladi), stepper qisqa yorliqlar, Step 2 tish chip-lari gorizontal, sticky footer (summary bir qator / Step 3 Saqlash full-width teal), Step 3 tish kartalari gorizontal scroll, inline xato `alert()` o'rniga.
-- **Qaytalamaslik choralari:** Desktop Step 2 da `.implant-wizard-teeth { width: 240px }` + inline style saqlansin; CTA `#0d9488`, shadcn `Button`/`indigo` yo'q. Mobil qoidalar `@media (max-width: 767px)` ichida bo'lsin — desktop ark/240px ni buzmang. Marker `implant-step2-teal-v2-240px-0d9488` qolsin. Validatsiyada `alert()` qaytarilmasin.
+- **Qaytalamaslik choralari:** Desktop Step 2 da `.implant-wizard-teeth { width: 240px }` + inline style saqlansin; CTA `#0d9488`, shadcn `Button`/`indigo` yo'q. Mobil qoidalar `@media (max-width: 767px)` ichida bo'lsin — desktop ark/240px ni buzmang. Marker `implant-step2-services-scroll-pad-v3 (yoki joriy IMPLANT_WIZARD_STEP2_MARKER)` qolsin. Validatsiyada `alert()` qaytarilmasin.
 
 ### 🦷 Odontogramma — kattalar FDI yorliqlari takrorlanishi (12/22)
 - **Sana:** 2026-09-21
@@ -439,7 +439,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 - **Muammo Tavsifi:** Production `index-DEXdFwpD.js` i18n JSON ni olib kelgan, lekin Step 2 layout classlari (`240px`, `920px`) JS bundle da yo'q edi. Live UI eski compact radio-chip + binafsha Keyingisi + `implants.services.*` kalitlari bilan qolgan.
 - **Sababi:** DialogContent default `grid` + `max-w-lg` Tailwind classlari wizard `flex`/`max-w-[920px]` ni yengishi mumkin; shadcn Button `bg-primary` CTA ni yopishi mumkin; catalog `id`/`name` ba'zan to'liq i18n kaliti; production deploy ushbu GitHub main dagi ImplantForm JSX ni to'liq build qilmagan.
 - **Qanday tuzatildi:** Step 2 alohida komponent + Tailwind-ga bog'liq bo'lmagan CSS (`width: 240px`, `#0d9488 !important`); native teal CTA (shadcn Button emas); Dialog style merge; xizmat ID normalizatsiyasi va leak-proof label helper; PWA asset cache nomi yangilandi.
-- **Qaytalamaslik choralari:** YANGI IMPLANT Step 2 da `md:w-[240px]` ga ishonmang — `.implant-wizard-teeth { width: 240px }` va inline style majburiy. CTA da `Button`/`bg-indigo-600` ishlatmang. `t('implants.services.'+id)` natijasini tekshirmasdan chiqarmang. Production bundle da `implant-step2-teal-v2-240px-0d9488` marker bo'lishi shart.
+- **Qaytalamaslik choralari:** YANGI IMPLANT Step 2 da `md:w-[240px]` ga ishonmang — `.implant-wizard-teeth { width: 240px }` va inline style majburiy. CTA da `Button`/`bg-indigo-600` ishlatmang. `t('implants.services.'+id)` natijasini tekshirmasdan chiqarmang. Production bundle da `implant-step2-services-scroll-pad-v3 (yoki joriy IMPLANT_WIZARD_STEP2_MARKER)` marker bo'lishi shart.
 
 ### 🦷 Yangi implant wizard — teal dizayn va xizmat nomlari
 - **Sana:** 2026-09-21
