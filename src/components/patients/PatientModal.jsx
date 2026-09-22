@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { applyPhoneMask, capitalizeName, validateAddress, capitalizeAsYouType } from '@/lib/utils';
 import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
+import { normalizePatientGender, patientGenderLabel } from '@/lib/patientGender';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
@@ -42,7 +43,7 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
     full_name: '',
     phone: '',
     birth_date: '',
-    gender: 'Male',
+    gender: 'male',
     address: '',
     status: 'new',
     source: '',
@@ -81,7 +82,7 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
           full_name: patient.full_name || '',
           phone: patient.phone || '',
           birth_date: patient.birth_date || '',
-          gender: patient.gender?.toLowerCase() || 'male',
+          gender: normalizePatientGender(patient.gender) || 'male',
           address: patient.address || '',
           status: patient.status?.toLowerCase() || 'new',
           source: patient.source || '',
@@ -93,7 +94,7 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
           full_name: '',
           phone: '',
           birth_date: '',
-          gender: 'Male',
+          gender: 'male',
           address: '',
           status: 'new',
           source: '',
@@ -168,7 +169,7 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
         ...form,
         full_name: capitalizeName(form.full_name.trim()),
         phone: form.phone.replace(/\D/g, ''), // Save only digits
-        gender: form.gender.toLowerCase(),    // Match DB constraints (male/female)
+        gender: normalizePatientGender(form.gender) || 'male',
         status: form.status,                   // Keep display case, base44Client will handle normalization
         important_info: form.important_info,
         main_treatment_provider: form.main_treatment_provider
@@ -291,8 +292,9 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="male">{t('patients.male')}</SelectItem>
-                  <SelectItem value="female">{t('patients.female')}</SelectItem>
+                  <SelectItem value="male">{patientGenderLabel('male')}</SelectItem>
+                  <SelectItem value="female">{patientGenderLabel('female')}</SelectItem>
+                  <SelectItem value="other">{patientGenderLabel('other')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

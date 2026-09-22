@@ -190,7 +190,7 @@ export function ClinicalStepper({ status, language = 'uz', onSelectStep, classNa
       </ol>
 
       {/* Desktop / tablet: compact horizontal stepper (unchanged pattern) */}
-      <div className="hidden md:flex items-center justify-between gap-1 overflow-x-auto py-1 scrollbar-none">
+      <div className="hidden md:flex items-center justify-between gap-1 overflow-x-auto py-1 scrollbar-none min-w-0 max-w-full">
         {CLINICAL_STEPS.map((step, idx) => {
           const reached = isStepReached(step, rank);
           const isCurrent = (step.rank === rank) || (step.soft && rank === 3);

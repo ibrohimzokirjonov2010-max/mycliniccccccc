@@ -148,7 +148,7 @@ function ExcelImplantsView({
                   </div>
                   {(imp.passport_id || imp.id) ? (
                     <Link
-                      to={`/implant-passport/${imp.passport_id || imp.id}`}
+                      to={`/implants/${imp.id || imp.passport_id}`}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-[10px] font-black transition-all active:scale-95"
                     >
                       <span>Pasport</span>
@@ -235,7 +235,7 @@ function ExcelImplantsView({
                     <td className="py-2 px-1 text-center whitespace-nowrap">
                       {(imp.passport_id || imp.id) ? (
                         <Link
-                          to={`/implant-passport/${imp.passport_id || imp.id}`}
+                          to={`/implants/${imp.id || imp.passport_id}`}
                           className="inline-flex items-center justify-center gap-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-[10.5px] font-bold transition-all border border-purple-200 shadow-2xs"
                         >
                           <span>{language === 'ru' ? 'Паспорт' : language === 'en' ? 'Passport' : 'Pasport'}</span>

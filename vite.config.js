@@ -105,20 +105,35 @@ export default defineConfig({
       babel: false,
     }),
     VitePWA({
-      registerType: 'autoUpdate',
+      // prompt + registerAppUpdate reloads when a new SW claims.
+      // injectRegister null so we do not double-register with main.jsx.
+      registerType: 'prompt',
+      injectRegister: null,
       includeAssets: ['icon-192x192.svg', 'icon-512x512.svg', 'logo.png'],
       manifest: false, // manifest.json allaqachon public/ da bor
       workbox: {
-        // Asosiy sahifalarni cache qilish strategiyasi
-        globPatterns: ['**/*.{js,css,html,ico,svg,woff,woff2}'],
-        globIgnores: ['**/teeth/**'],
+        // index.html is NOT precached. A precached shell stays sticky until the
+        // SW itself updates, which is why deploys kept showing the old UI.
+        globPatterns: ['**/*.{js,css,ico,svg,woff,woff2}'],
+        globIgnores: ['**/index.html', '**/teeth/**'],
+        // Plugin default is navigateFallback: 'index.html', which precache-sticks the shell.
+        navigateFallback: undefined,
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
-        navigateFallback: 'index.html',
         runtimeCaching: [
           {
-            // API so'rovlar uchun NetworkFirst — yangi ma'lumot bo'lmasa cache ishlaydi
+            // Document navigations: network first, short timeout, then last shell.
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'html-shell-v1',
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 },
+              cacheableResponse: { statuses: [200] }
+            }
+          },
+          {
             urlPattern: /^\/api\//,
             handler: 'NetworkFirst',
             options: {
@@ -129,27 +144,35 @@ export default defineConfig({
             }
           },
           {
-            // JS/CSS chunks — NetworkFirst so post-deploy hashes are not stuck stale
             urlPattern: /\/assets\/.*\.(?:js|css)$/,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'assets-cache-v10-payment-single-center',
+              cacheName: 'assets-cache-v11-shell-network',
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 7 },
-              cacheableResponse: { statuses: [0, 200] }
+              cacheableResponse: { statuses: [200] }
             }
           },
           {
-            // Rasmlar uchun CacheFirst — tez yuklanadi
-            urlPattern: /\.(?:png|jpg|jpeg|svg|webp|gif)$/,
+            // Tooth PNGs change in place. SWR + ?v= in the URL, never 30-day CacheFirst.
+            urlPattern: ({ url }) => url.pathname.startsWith('/teeth/') && /\.png$/i.test(url.pathname),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'teeth-png-v3-rev',
+              expiration: { maxEntries: 450, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              cacheableResponse: { statuses: [200] }
+            }
+          },
+          {
+            urlPattern: ({ url }) => !url.pathname.startsWith('/teeth/') && /\.(?:png|jpg|jpeg|svg|webp|gif)$/i.test(url.pathname),
             handler: 'CacheFirst',
             options: {
-              cacheName: 'images-cache-v2-dizyner-teeth',
-              expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 }
+              cacheName: 'images-cache-v3',
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [200] }
             }
           },
           {
-            // Google Fonts
             urlPattern: /^https:\/\/fonts\.googleapis\.com/,
             handler: 'StaleWhileRevalidate',
             options: { cacheName: 'google-fonts-cache' }

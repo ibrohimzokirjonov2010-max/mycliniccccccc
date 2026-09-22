@@ -3,7 +3,7 @@ import { lazyWithRetry as lazy } from '@/utils/lazyWithRetry';
 import { Toaster } from 'sonner';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
-import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { LanguageProvider } from '@/i18n/LanguageContext';
 import { ClinicProvider } from '@/lib/ClinicContext';
@@ -107,6 +107,11 @@ const PageLoader = memo(() => {
     </div>
   );
 });
+
+function ImplantPassportRedirect() {
+  const { id } = useParams();
+  return <Navigate to={id ? `/implants/${id}` : '/implants'} replace />;
+}
 
 // ─── Route guards ─────────────────────────────────────────────────────────────
 const DashboardSwitcher = memo(() => {
@@ -226,6 +231,7 @@ const AuthenticatedApp = memo(() => {
                 element={<PlanRoute feature="implants">{M(<Implants />, <MobileImplants />)}</PlanRoute>} />
               <Route path="/implants/:id"
                 element={<PlanRoute feature="implants"><ImplantDetail /></PlanRoute>} />
+              <Route path="/implant-passport/:id" element={<ImplantPassportRedirect />} />
               <Route path="/marketing"         element={M(<Marketing />, <MobileMarketing />)} />
               <Route path="/settings"          element={M(<Settings />, <MobileSettings />)} />
               <Route path="/public-page"       element={<MobilePublicPage />} />
@@ -262,7 +268,10 @@ function App() {
             <Toaster
               richColors
               closeButton
-              position="top-right"
+              position="bottom-center"
+              visibleToasts={2}
+              offset={{ bottom: 16 }}
+              mobileOffset={{ bottom: 76 }}
               duration={3000}
               expand={false}
               style={{ zIndex: 90 }}

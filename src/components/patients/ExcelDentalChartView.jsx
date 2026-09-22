@@ -313,7 +313,7 @@ function ExcelDentalChartView({
             </div>
           </div>
 
-          <div className="p-2 sm:p-4 overflow-x-auto overflow-y-visible no-scrollbar min-w-0 w-full flex justify-center bg-white">
+          <div className="p-2 sm:p-4 overflow-x-hidden overflow-y-visible min-w-0 w-full flex justify-center bg-white">
             <ProfessionalOdontogram
               selectedTeeth={odontogramSelectedTeeth}
               onChange={stableOnOdontogramChange}

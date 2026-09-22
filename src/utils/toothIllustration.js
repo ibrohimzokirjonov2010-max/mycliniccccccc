@@ -4,6 +4,15 @@
  * Does not change how tooth selection or save APIs work.
  */
 
+/** Bump when public/teeth PNGs change so CacheFirst cannot keep the old drawing. */
+export const TOOTH_ASSET_VERSION = '20260922a';
+
+export function withToothAssetVersion(path) {
+  if (!path) return path;
+  const join = String(path).includes('?') ? '&' : '?';
+  return `${path}${join}v=${TOOTH_ASSET_VERSION}`;
+}
+
 export const TOOTH_ILLUSTRATION_KINDS = [
   'endo',
   'caries',
@@ -211,7 +220,7 @@ export function getToothIllustrationSrc(fdi, kind = 'healthy') {
   const n = normalizeFdi(fdi);
   if (!n) return null;
   const folder = TOOTH_ILLUSTRATION_KINDS.includes(kind) ? kind : 'healthy';
-  return `/teeth/${folder}/${n}.png`;
+  return withToothAssetVersion(`/teeth/${folder}/${n}.png`);
 }
 
 export function getToothIllustrationSrcFromStatus(fdi, toothStatus) {
@@ -229,4 +238,6 @@ export default {
   resolveToothIllustrationKind,
   getToothIllustrationSrc,
   getToothIllustrationSrcFromStatus,
+  withToothAssetVersion,
+  TOOTH_ASSET_VERSION,
 };

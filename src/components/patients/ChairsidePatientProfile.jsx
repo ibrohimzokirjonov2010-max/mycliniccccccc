@@ -3,6 +3,7 @@ import {
   ArrowLeft, Phone, Calendar, Plus, Info, Camera, Copy, Mail, Wallet, AlertTriangle
 } from 'lucide-react';
 import { cn, formatPhone } from '@/lib/utils';
+import { patientGenderLabel } from '@/lib/patientGender';
 import ProfessionalOdontogram from './ProfessionalOdontogram';
 import ToothSidePanel from './ToothSidePanel';
 import TodayPlanBar from './TodayPlanBar';
@@ -155,11 +156,7 @@ export default function ChairsidePatientProfile({
     [todaySteps]
   );
 
-  const genderLabel = patient?.gender === 'Female' || patient?.gender === 'female' || patient?.gender === 'Ayol'
-    ? 'Ayol'
-    : patient?.gender === 'Male' || patient?.gender === 'male' || patient?.gender === 'Erkak'
-      ? 'Erkak'
-      : (patient?.gender || '');
+  const genderLabel = patientGenderLabel(patient?.gender, language);
 
   const debtBadgeText = totalDebt > 0
     ? (language === 'ru' ? 'Есть долг' : language === 'en' ? 'Has debt' : 'ONE qarz bor')
@@ -378,7 +375,7 @@ export default function ChairsidePatientProfile({
 
             <div className="flex flex-col xl:flex-row gap-3.5 items-start">
           <div className="flex-1 min-w-0 w-full">
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] overflow-visible">
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] overflow-hidden min-w-0">
               <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <h3 className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-900 truncate">
@@ -411,7 +408,7 @@ export default function ChairsidePatientProfile({
                   </div>
                 )}
               </div>
-              <div className="p-2 sm:p-3 overflow-x-auto overflow-y-visible no-scrollbar min-w-0 w-full flex justify-center bg-white">
+              <div className="p-2 sm:p-3 overflow-x-hidden overflow-y-visible min-w-0 w-full flex justify-center bg-white">
                 <ProfessionalOdontogram
                   selectedTeeth={odontogramSelectedTeeth}
                   onChange={onOdontogramChange}

@@ -2,6 +2,7 @@
  * patientExcelExport.js
  * Utility to export complete patient EHR data to Excel (.csv with UTF-8 BOM).
  */
+import { patientGenderLabel } from '@/lib/patientGender';
 
 export function exportPatientToExcel({
   patient,
@@ -41,7 +42,7 @@ export function exportPatientToExcel({
   
   const birthYear = patient.birth_date ? new Date(patient.birth_date).getFullYear() : null;
   const age = birthYear ? (new Date().getFullYear() - birthYear) : '—';
-  const genderLabel = patient.gender === 'Female' ? 'Ayol' : patient.gender === 'Male' ? 'Erkak' : (patient.gender || '—');
+  const genderLabel = patientGenderLabel(patient.gender, 'uz') || '—';
   const mainDoc = doctors.find(d => d.id === patient.main_treatment_provider || d.id === patient.created_by_id)?.name || patient.main_treatment_provider || 'Belgilanmagan';
 
   const passportRows = [

@@ -865,7 +865,7 @@ export default function ImplantDetail() {
   })();
 
   return (
-    <div className="space-y-4 pb-12 max-w-7xl mx-auto">
+    <div className="implant-profile space-y-4 pb-24 sm:pb-12 max-w-7xl mx-auto w-full min-w-0 max-w-full overflow-x-clip">
 
       {/* 1) Header row — mockup exact */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -912,8 +912,8 @@ export default function ImplantDetail() {
       </div>
 
       {/* 2) Patient strip */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3.5 sm:px-5">
-        <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3.5 sm:px-5 min-w-0 overflow-hidden">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6 min-w-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-100 to-teal-50 text-[#0f766e] border border-teal-200 flex items-center justify-center text-sm font-black shrink-0">
               {patientInitials}
@@ -988,7 +988,7 @@ export default function ImplantDetail() {
       </div>
 
       {/* 3) Full-width ClinicalStepper */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-4 sm:px-6">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-4 sm:px-6 min-w-0 max-w-full overflow-hidden">
         <ClinicalStepper
           status={activeTooth?.lifecycle_status || activeTooth?.status || 'Rejalashtirilgan'}
           language={language}
@@ -997,7 +997,7 @@ export default function ImplantDetail() {
       </div>
 
       {/* 4) TOP ROW — 3 cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch min-w-0">
         <PassportSpecsCard implant={activeTooth} language={language} />
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 flex flex-col">
@@ -1022,8 +1022,6 @@ export default function ImplantDetail() {
                 if (!String(found.id).includes('__') && found.id !== id) {
                   navigate(`/implants/${found.id}`, { replace: true });
                 }
-              } else {
-                toast.info(`Tish #${fdi} tanlandi`);
               }
             }}
           />
@@ -1040,7 +1038,7 @@ export default function ImplantDetail() {
       </div>
 
       {/* 5) BOTTOM ROW — 2 cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch min-w-0">
         <ClinicalTimeline
           implant={activeTooth}
           language={language}

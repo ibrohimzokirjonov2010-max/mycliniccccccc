@@ -13,6 +13,54 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 👤 Bemor profili — jins, pasport 404, tablar
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/lib/patientGender.js`](src/lib/patientGender.js)
+  - [`src/pages/PatientProfile.jsx`](src/pages/PatientProfile.jsx)
+  - [`src/pages/MobilePatientProfile.jsx`](src/pages/MobilePatientProfile.jsx)
+  - [`src/components/patients/PatientModal.jsx`](src/components/patients/PatientModal.jsx)
+  - [`src/components/patients/NewPatientFlow.jsx`](src/components/patients/NewPatientFlow.jsx)
+  - [`src/App.jsx`](src/App.jsx)
+  - [`src/components/patients/ExcelImplantsView.jsx`](src/components/patients/ExcelImplantsView.jsx)
+- **Muammo Tavsifi:** Jins `female` bo'lsa ham «Erkak» chiqardi yoki kartada umuman yo'q edi. Yangi bemor «Unspecified» yuborardi (CHECK buzilishi). Pasport tugmasi `/implant-passport/:id` ga olib borardi — bunday route yo'q, 404. Tablar kesilardi.
+- **Sababi:** DB `male|female|other`, UI faqat `Female`/`Male` solishtirardi. Select qiymati `male`, boshlang'ich holat `Male`. Pasport havolasi mavjud bo'lmagan path.
+- **Qanday tuzatildi:** `patientGenderLabel` hamma ko'rinishda. Saqlash `male|female|other`. `/implant-passport/:id` → `/implants/:id`. Tablar sm+ da o'raladi, telefonda qisqa yorliq.
+- **Qaytalamaslik choralari:** Jinsni faqat `=== 'Female'` bilan chiqarmang. `Unspecified` yubormang. Pasportni `/implants/:id` dan boshqa pathga qaytarmang. Shifokor majburiy va to'lov modal markazi o'zgarmasin. `node scripts/assert-patient-gender.mjs` o'tsin.
+
+### 🦷 Implant profili — toast va overflow
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/App.jsx`](src/App.jsx)
+  - [`src/pages/ImplantDetail.jsx`](src/pages/ImplantDetail.jsx)
+  - [`src/components/implants/DentalArchFdi.jsx`](src/components/implants/DentalArchFdi.jsx)
+  - [`src/components/notifications/ImplantAlerter.jsx`](src/components/notifications/ImplantAlerter.jsx)
+- **Muammo Tavsifi:** Toastlar o'ng yuqorida PDF / Tahrirlash ni yopardi. Tish bosilganda qo'shimcha toast. Legend 390px da chiqib ketardi.
+- **Qanday tuzatildi:** Toaster pastki markaz, mobil nav ustida, ko'pi bilan 2 ta. Dialog ochiq bo'lsa z-index 40 (to'lov modali ortida). `/implants` da to'liqsiz-implant toasti chiqmaydi. Legend o'raladi.
+- **Qaytalamaslik choralari:** Toaster z-index ni dialog `z-[100]` dan yuqoriga ko'tarmang. `position="top-right"` qaytarmang. Step 3 faktura overlay va `#0d9488` o'zgarmasin.
+
+### 🦷 Odontogramma — 390px sig'im va tish PNG kesh
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/patients/ProfessionalOdontogram.jsx`](src/components/patients/ProfessionalOdontogram.jsx)
+  - [`src/components/patients/MobileCompactOdontogram.jsx`](src/components/patients/MobileCompactOdontogram.jsx)
+  - [`src/utils/toothIllustration.js`](src/utils/toothIllustration.js)
+  - [`src/index.css`](src/index.css)
+- **Muammo Tavsifi:** 900px chart `scale` + `marginBottom` manfiy edi: 390px da kesilardi va keyingi blok ustiga chiqardi. Mobil qator 16 ta tishni yashirin scroll qilardi. PNG lar 30 kun CacheFirst.
+- **Qanday tuzatildi:** `zoom` layout o'lchamini kichraytiradi, manfiy margin yo'q. Mobil 8+8 qator. PNG URL `?v=20260922a`, SW StaleWhileRevalidate.
+- **Qaytalamaslik choralari:** `minWidth: 900` va manfiy `marginBottom` qaytarmang. FDI ni qo'lda yozmang. Dizyner PNG ga `scaleX(-1)` qo'ymang. `node scripts/assert-odontogram-fdi.mjs` o'tsin.
+
+### 📦 PWA — yangi deploy eski shell da qolmasin
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`vite.config.js`](vite.config.js)
+  - [`src/main.jsx`](src/main.jsx)
+  - [`src/pwa/registerAppUpdate.js`](src/pwa/registerAppUpdate.js)
+  - [`vercel.json`](vercel.json)
+- **Muammo Tavsifi:** `index.html` precache + navigateFallback shell ni yangi deploydan keyin ham ushlab turardi.
+- **Qanday tuzatildi:** index.html precache dan chiqarildi. Navigatsiya NetworkFirst (3s). skipWaiting + clientsClaim. Yangi SW claim qilganda bir marta reload. sw.js va index.html `Cache-Control: no-cache`.
+- **Qaytalamaslik choralari:** `navigateFallback: 'index.html'` va `globPatterns` ichiga html qaytarmang. Birinchi o'rnatishda reload qilmang (loop). Offline uchun NetworkFirst cache qolsin.
+
 ### 🦷 Yangi implant wizard — tanlangan tishlar jonli chip
 - **Sana:** 2026-09-21
 - **Tuzatilgan Fayllar:**

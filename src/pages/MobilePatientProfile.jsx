@@ -14,6 +14,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { cn, resolveDoctorId } from '@/lib/utils';
+import { patientGenderLabel } from '@/lib/patientGender';
 import { formatPhone, capitalizeName } from '@/lib/utils';
 import AppointmentModal from '../components/appointments/AppointmentModal';
 import PatientModal from '../components/patients/PatientModal';
@@ -405,10 +406,10 @@ export default function MobilePatientProfile() {
   }, [toothStatuses, selectedTooth]);
 
   const tabs = useMemo(() => ([
-    { id: 'tarix',    label: t('patientProfile.mobile.history', 'Tarix') },
+    { id: 'tarix',    label: t('patientProfile.tabs.historyShort', 'Tarix') },
     { id: 'plan',     label: t('patientProfile.tabs.planShort', 'Reja') },
-    { id: 'payments', label: t('patientProfile.tabs.payments', "To'lovlar & Qarz") },
-    { id: 'implant',  label: t('patientProfile.tabs.implants', 'Implantlar') },
+    { id: 'payments', label: t('patientProfile.tabs.payShort', "To'lov") },
+    { id: 'implant',  label: t('patientProfile.tabs.implantShort', 'Implant') },
   ]), [t]);
 
   const selectedStatus = useMemo(() => {
@@ -586,9 +587,10 @@ export default function MobilePatientProfile() {
             >
               <h1 className="text-[20px] font-black leading-tight truncate drop-shadow-sm max-w-[200px]">{patient.full_name}</h1>
               <p className="text-[11px] font-semibold text-white/80 mt-0.5 truncate max-w-[220px]">
-                {age != null
-                  ? t('patientProfile.mobile.ageClinic', { age, clinic: clinicLabel })
-                  : clinicLabel}
+                {[
+                  patientGenderLabel(patient.gender, language),
+                  age != null ? t('patientProfile.mobile.ageClinic', { age, clinic: clinicLabel }) : clinicLabel,
+                ].filter(Boolean).join(' · ')}
               </p>
             </button>
             <button
@@ -652,6 +654,11 @@ export default function MobilePatientProfile() {
                 <a href={phoneHref} className="text-[11px] font-bold text-[#0d9488] font-mono truncate">{formatPhone(patient.phone)}</a>
               ) : (
                 <span className="text-[11px] font-bold text-slate-400">Telefon yo'q</span>
+              )}
+              {patientGenderLabel(patient.gender, language) && (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-100">
+                  {patientGenderLabel(patient.gender, language)}
+                </span>
               )}
               {age != null && (
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{age} yosh</span>
@@ -810,7 +817,7 @@ export default function MobilePatientProfile() {
 
       {/* PILL TABS */}
       <div className="shrink-0 px-3 pb-3 pt-1 mt-auto">
-        <div className="bg-white rounded-full p-1 shadow-[0_8px_24px_rgba(15,23,42,0.08)] border border-slate-100 flex">
+        <div className="bg-white rounded-full p-1 shadow-[0_8px_24px_rgba(15,23,42,0.08)] border border-slate-100 flex min-w-0 overflow-hidden">
           {tabs.map(tab => {
             const isActive = activeTab === tab.id;
             return (
@@ -819,7 +826,7 @@ export default function MobilePatientProfile() {
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  'flex-1 py-2.5 text-[12px] font-black rounded-full transition-colors',
+                  'flex-1 min-w-0 px-1 py-2.5 text-[11px] leading-tight font-black rounded-full transition-colors truncate',
                   isActive ? 'bg-[#ccfbf1] text-[#0d9488]' : 'text-slate-400'
                 )}
               >
