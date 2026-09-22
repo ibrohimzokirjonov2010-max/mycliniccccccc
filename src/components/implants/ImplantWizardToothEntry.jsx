@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatSom } from './implantFactura';
 import { getServiceLabel } from './implantWizardLabels';
+import { toothSizeIssue } from './implantSize';
 import './implantWizard.css';
 
 const fieldInput =
@@ -17,6 +18,7 @@ export default function ImplantWizardToothEntry({
   extraServices,
   selectedExtraIds,
   onToggleExtra,
+  promptSizes = false,
   tw,
   t,
 }) {
@@ -41,6 +43,18 @@ export default function ImplantWizardToothEntry({
   }, [extraServices, query, selected, t]);
 
   const title = tw('toothEntryTitle', "Tish #{n} — ma'lumot kiriting").replace('{n}', fdi);
+  const liveIssue = toothSizeIssue(data, { strict: false });
+  const strictIssue = promptSizes ? toothSizeIssue(data, { strict: true }) : '';
+  const sizeIssue = liveIssue || strictIssue;
+  const sizeMessage = {
+    missing: tw('needSize', 'Diametr va uzunlikni kiriting (mm)'),
+    'need-diameter': tw('needDiameter', 'Diametrni kiriting (Ø, mm)'),
+    'need-length': tw('needLength', 'Uzunlikni kiriting (L, mm)'),
+    'bad-diameter': tw('badDiameter', "Diametr 1.5–8 mm bo'lsin"),
+    'bad-length': tw('badLength', "Uzunlik 4–30 mm bo'lsin"),
+  }[sizeIssue] || '';
+  const diameterInvalid = sizeIssue === 'missing' || sizeIssue === 'need-diameter' || sizeIssue === 'bad-diameter';
+  const lengthInvalid = sizeIssue === 'missing' || sizeIssue === 'need-length' || sizeIssue === 'bad-length';
 
   return (
     <section
@@ -106,6 +120,44 @@ export default function ImplantWizardToothEntry({
           </div>
         </div>
       </div>
+
+      <div className="implant-wizard-size-grid">
+        <div>
+          <span className="implant-wizard-field-label">{tw('diameterLabel', 'Diametr (Ø)')}</span>
+          <div className="relative">
+            <input
+              data-testid="implant-wizard-diameter"
+              inputMode="decimal"
+              value={data?.diameter ?? ''}
+              onChange={(e) => onChange({ diameter: e.target.value })}
+              placeholder="4.0"
+              aria-invalid={diameterInvalid || undefined}
+              aria-label={tw('diameterLabel', 'Diametr (Ø)')}
+              className={`h-10 w-full rounded-[10px] border bg-white px-3 pr-10 text-sm text-[#111827] font-medium outline-none focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488]/20 ${diameterInvalid ? 'border-rose-400' : 'border-[#e5e7eb]'}`}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#6b7280]">mm</span>
+          </div>
+        </div>
+        <div>
+          <span className="implant-wizard-field-label">{tw('lengthLabel', 'Uzunlik (L)')}</span>
+          <div className="relative">
+            <input
+              data-testid="implant-wizard-length"
+              inputMode="decimal"
+              value={data?.length ?? ''}
+              onChange={(e) => onChange({ length: e.target.value })}
+              placeholder="10"
+              aria-invalid={lengthInvalid || undefined}
+              aria-label={tw('lengthLabel', 'Uzunlik (L)')}
+              className={`h-10 w-full rounded-[10px] border bg-white px-3 pr-10 text-sm text-[#111827] font-medium outline-none focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488]/20 ${lengthInvalid ? 'border-rose-400' : 'border-[#e5e7eb]'}`}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#6b7280]">mm</span>
+          </div>
+        </div>
+      </div>
+      {sizeMessage ? (
+        <p className="implant-wizard-size-error" role="alert">{sizeMessage}</p>
+      ) : null}
 
       <div className="mt-2">
         <span className="implant-wizard-field-label">{tw('notes', 'Izoh')}</span>

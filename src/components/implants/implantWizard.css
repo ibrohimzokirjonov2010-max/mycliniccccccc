@@ -510,6 +510,18 @@
   font-variant-numeric: tabular-nums;
 }
 
+.implant-wizard-selected-row-size {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f766e;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.implant-wizard-selected-row.is-active .implant-wizard-selected-row-size {
+  color: #fff;
+}
+
 .implant-wizard-selected-row-brand {
   margin-left: auto;
   font-size: 12px;
@@ -647,6 +659,20 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
+
+.implant-wizard-size-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.implant-wizard-size-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #be123c;
 }
 
 .implant-wizard-field-label {

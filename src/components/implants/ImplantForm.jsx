@@ -31,6 +31,7 @@ import {
   isDesktopViewport,
 } from './implantFactura';
 import { cn } from '@/lib/utils';
+import { applyToothSizes, firstToothSizeIssue, formatToothSizeSummary } from './implantSize';
 import './implantWizard.css';
 
 const BRANDS = ['Dentium', 'Osstem', 'Straumann', 'Serkon', 'Megagen', 'Neodent', 'Nobel', 'Bredent', 'Nucleoss', 'Boshqa'];
@@ -156,6 +157,21 @@ function omitEmptySizeFields(data) {
   return next;
 }
 
+const SIZE_ISSUE_COPY = {
+  missing: ['needSize', 'Diametr va uzunlikni kiriting (mm)'],
+  'need-diameter': ['needDiameter', 'Diametrni kiriting (Ø, mm)'],
+  'need-length': ['needLength', 'Uzunlikni kiriting (L, mm)'],
+  'bad-diameter': ['badDiameter', "Diametr 1.5–8 mm bo'lsin"],
+  'bad-length': ['badLength', "Uzunlik 4–30 mm bo'lsin"],
+};
+
+function sizeIssueText(issue, fdi, tw) {
+  const pair = SIZE_ISSUE_COPY[issue];
+  if (!pair) return '';
+  const text = tw(pair[0], pair[1]);
+  return fdi ? `#${fdi}: ${text}` : text;
+}
+
 function patientImplantBrand(row) {
   if (!row) return '';
   if (row.firma === 'Boshqa') return row.firma_custom || row.brend || 'Implant';
@@ -244,6 +260,7 @@ export default function ImplantForm({
   const [extraTab, setExtraTab] = useState('all');
   const [editingPriceId, setEditingPriceId] = useState(null);
   const [formError, setFormError] = useState('');
+  const [promptSizes, setPromptSizes] = useState(false);
   const [facturaEdits, setFacturaEdits] = useState({});
   const [facturaPreviewOpen, setFacturaPreviewOpen] = useState(false);
   const wizardBodyRef = useRef(null);
@@ -590,9 +607,18 @@ export default function ImplantForm({
       }
       return { ...prev, [id]: next };
     });
-    if (patch.price === undefined && patch.firma === undefined && patch.firma_custom === undefined) return;
+    const touchesSize = patch.diameter !== undefined || patch.length !== undefined;
+    if (touchesSize) setFormError('');
+    if (patch.price === undefined && patch.firma === undefined && patch.firma_custom === undefined && !touchesSize) return;
     setForm((prev) => {
       const next = { ...prev };
+      if (touchesSize) {
+        const first = uniqueFdis(prev.tooth_numbers)[0];
+        if (!first || first === id) {
+          if (patch.diameter !== undefined) next.diameter = patch.diameter;
+          if (patch.length !== undefined) next.length = patch.length;
+        }
+      }
       if (patch.price !== undefined) next.price = patch.price;
       if (patch.firma !== undefined) {
         next.firma = patch.firma;
@@ -721,7 +747,16 @@ export default function ImplantForm({
       setStep(1);
       return;
     }
+    const sizeProblem = firstToothSizeIssue(uniqueFdis(form.tooth_numbers), toothDataMap, { strict: true });
+    if (sizeProblem) {
+      setPromptSizes(true);
+      setActiveFdi(sizeProblem.fdi);
+      setFormError(sizeIssueText(sizeProblem.issue, sizeProblem.fdi, tw));
+      setStep(1);
+      return;
+    }
     setFormError('');
+    setPromptSizes(false);
 
     setSaving(true);
     try {
@@ -758,8 +793,9 @@ export default function ImplantForm({
         const fdi = toFdi(tid);
         const entry = toothDataMap[tid] || toothDataMap[fdi];
         if (entry) {
-          cleanedToothMap[tid] = entry;
-          cleanedToothMap[fdi] = entry;
+          const sized = applyToothSizes(entry);
+          cleanedToothMap[tid] = sized;
+          cleanedToothMap[fdi] = sized;
         }
       });
 
@@ -1018,7 +1054,15 @@ export default function ImplantForm({
       setFormError(tw('needTeeth', "Iltimos, implant o'rnatiladigan tishni tanlang!"));
       return;
     }
+    const sizeProblem = firstToothSizeIssue(selectedFdis, toothDataMap, { strict: true });
+    if (sizeProblem) {
+      setPromptSizes(true);
+      setActiveFdi(sizeProblem.fdi);
+      setFormError(sizeIssueText(sizeProblem.issue, sizeProblem.fdi, tw));
+      return;
+    }
     setFormError('');
+    setPromptSizes(false);
     setStep(2);
   };
 
@@ -1092,6 +1136,7 @@ export default function ImplantForm({
           {selectedFdis.map((fdi, index) => {
             const row = toothDataMap[fdi] || {};
             const brand = row.firma === 'Boshqa' ? (row.firma_custom || row.brend) : (row.firma || row.brend);
+            const sizeLabel = formatToothSizeSummary(row);
             return (
               <li key={fdi}>
                 <button
@@ -1102,6 +1147,7 @@ export default function ImplantForm({
                 >
                   <span className="implant-wizard-selected-row-index">{index + 1}</span>
                   <span className="implant-wizard-selected-row-fdi">#{fdi}</span>
+                  {sizeLabel ? <span className="implant-wizard-selected-row-size">{sizeLabel}</span> : null}
                   {brand ? <span className="implant-wizard-selected-row-brand">{brand}</span> : null}
                 </button>
               </li>
@@ -1212,16 +1258,17 @@ export default function ImplantForm({
               extraServices={extraServicesList}
               selectedExtraIds={form.extra_services || []}
               onToggleExtra={toggleExtraService}
+              promptSizes={promptSizes}
               tw={tw}
               t={t}
             />
           ) : (
-            <p className="implant-wizard-tooth-hint">{tw('toothEntryHint', "Tishni bosing — brend, narx va izoh shu yerda ochiladi")}</p>
+            <p className="implant-wizard-tooth-hint">{tw('toothEntryHint', "Tishni bosing — brend, narx, diametr va uzunlik shu yerda ochiladi")}</p>
           )}
           <div className="implant-wizard-arch-meta flex items-center justify-between pt-1">
             <button
               type="button"
-              onClick={() => { setField('tooth_numbers', []); setToothDataMap({}); setActiveFdi(null); setFormError(''); }}
+              onClick={() => { setField('tooth_numbers', []); setToothDataMap({}); setActiveFdi(null); setFormError(''); setPromptSizes(false); }}
               className="h-8 px-3 rounded-[10px] border border-[#e5e7eb] bg-white text-sm text-[#6b7280] hover:bg-gray-50 cursor-pointer"
             >
               {tw('clear', 'Tozalash')}
@@ -1436,6 +1483,7 @@ export default function ImplantForm({
           data-implant-wizard={IMPLANT_WIZARD_STEP2_MARKER}
           data-implant-factura={IMPLANT_WIZARD_FACTURA_MARKER}
           data-wizard-ux="linear-stack-v3"
+          data-tooth-size="step1-diameter-length"
           aria-describedby={undefined}
           onPointerDownOutside={(e) => {
             if (facturaPreviewOpen) e.preventDefault();

@@ -13,6 +13,16 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant — Ø va L tish panelida
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/ImplantWizardToothEntry.jsx`](src/components/implants/ImplantWizardToothEntry.jsx)
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`src/components/implants/implantSize.js`](src/components/implants/implantSize.js)
+- **Muammo Tavsifi:** Implant tanlanganda diametr va uzunlik kiritiladigan joy yo'q edi. Oldin bu maydonlar 3-qadamdan olib tashlangan.
+- **Qanday tuzatildi:** Diametr (Ø) va uzunlik (L) tish bosilganda ochiladigan brend/narx panelida, bir qatorda. Qiymat `tooth_data_map` va yuqori darajadagi yozuvga mm sifatida saqlanadi. Keyingi qadamdan oldin ikkalasi ham 1.5–8 / 4–30 mm oralig'ida bo'lishi shart. Chipda `#16` yonida `Ø4.0×10` chiqadi.
+- **Qaytalamaslik choralari:** Ø/L ni 3-qadamga qaytarmang. Ncm va Lot ni wizardga qo'shmang. Maydonlar `ImplantWizardToothEntry` ichida qolsin. `node scripts/assert-implant-size.mjs` va `node scripts/assert-implant-wizard-ux.mjs` o'tsin. Faktura overlay, shifokor majburiy va pastga stacklangan chiplar o'zgarmasin.
+
 ### 🦷 Yangi implant wizard — productionda eski ark va tish paneli yo'q
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**
