@@ -1621,16 +1621,23 @@ export default function ImplantForm({
           role="dialog"
           aria-modal="true"
           aria-label={tf('title', 'Faktura / davolash rejasi')}
+          style={{ pointerEvents: 'auto', zIndex: 400 }}
           onClick={() => setFacturaPreviewOpen(false)}
         >
           <div
             className="implant-wizard-factura-sheet implant-wizard-factura-print-root"
+            style={{ pointerEvents: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="implant-wizard-factura-toolbar">
+            <div
+              className="implant-wizard-factura-toolbar"
+              style={{ pointerEvents: 'auto', zIndex: 30 }}
+            >
               <button
                 type="button"
                 className="implant-wizard-ghost"
+                data-testid="implant-wizard-factura-close"
+                style={{ pointerEvents: 'auto' }}
                 onClick={() => setFacturaPreviewOpen(false)}
               >
                 {t('common.close', 'Yopish')}
@@ -1638,7 +1645,8 @@ export default function ImplantForm({
               <button
                 type="button"
                 className="implant-wizard-cta"
-                style={{ backgroundColor: '#0d9488', color: '#fff' }}
+                data-testid="implant-wizard-factura-print"
+                style={{ backgroundColor: '#0d9488', color: '#fff', pointerEvents: 'auto' }}
                 onClick={() => printImplantFactura()}
               >
                 <Printer className="w-4 h-4" />

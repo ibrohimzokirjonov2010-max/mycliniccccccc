@@ -179,7 +179,22 @@ assert(toothSrc.includes('data-testid="implant-tooth-length"'), 'per-tooth lengt
 assert(!step3Src.includes('implant-tooth-diameter'), 'diameter input is not on step 3');
 
 const cssSrc = fs.readFileSync(path.join(here, '../src/components/implants/implantWizard.css'), 'utf8');
-assert(cssSrc.includes('z-index: 400'), 'overlay stacks above wizard dialog z-100');
+const overlayCss = cssSrc.slice(
+  cssSrc.indexOf('.implant-wizard-factura-overlay {'),
+  cssSrc.indexOf('.implant-wizard-factura-sheet {')
+);
+assert(overlayCss.includes('z-index: 400'), 'overlay stacks above wizard dialog z-100');
+assert(overlayCss.includes('pointer-events: auto'), 'overlay opts out of body pointer-events:none');
+assert(overlayCss.includes('isolation: isolate'), 'overlay is its own stacking context');
+const toolbarCss = cssSrc.slice(
+  cssSrc.indexOf('.implant-wizard-factura-toolbar {'),
+  cssSrc.indexOf('.implant-wizard-factura-toolbar .implant-wizard-ghost')
+);
+assert(toolbarCss.includes('pointer-events: auto'), 'Yopish / Chop etish toolbar receives clicks');
+assert(toolbarCss.includes('z-index: 30'), 'toolbar sits above the wizard dialog chrome');
+assert(formSrc.includes("pointerEvents: 'auto'"), 'portal inline pointer-events survive the Radix body lock');
+assert(formSrc.includes('data-testid="implant-wizard-factura-close"'), 'close button is addressable');
+assert(formSrc.includes('data-testid="implant-wizard-factura-print"'), 'print button is addressable');
 assert(cssSrc.includes('.implant-wizard-factura-teaser'), 'teaser styles');
 assert(cssSrc.includes('margin-top: auto'), 'overlay sheet centers without clipping the top');
 assert(cssSrc.includes('html.printing-implant-factura-overlay .implant-wizard-factura-overlay'), 'print targets the overlay');

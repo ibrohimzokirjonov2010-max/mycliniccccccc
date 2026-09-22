@@ -13,6 +13,17 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Yangi implant Step 3 — faktura Yopish / Chop etish bosilmaydi
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+  - [`src/components/implants/ImplantForm.jsx`](src/components/implants/ImplantForm.jsx)
+  - [`scripts/assert-implant-factura.mjs`](scripts/assert-implant-factura.mjs)
+- **Muammo Tavsifi:** Step 3 faktura overlay markazda ko'rinadi, lekin Yopish va Chop etish bosilmaydi. Bosish pastdagi wizard sarlavhasiga tushadi. Escape overlayni yopadi.
+- **Sababi:** Radix modal `document.body` ga `pointer-events: none` qo'yadi va `auto` ni faqat dialog qatlamiga qaytaradi. Overlay `createPortal(..., document.body)` shu `none` ni meros qiladi. `z-index: 400` chizadi, lekin hit-test wizard headeriga o'tadi.
+- **Qanday tuzatildi:** Overlay, sheet va toolbar `pointer-events: auto` (CSS + inline). Overlay `isolation: isolate` va `z-index: 400`. Toolbar `z-index: 30`.
+- **Qaytalamaslik choralari:** Overlayni dialog ichiga qaytarmang (`overflow`/`transform` kesadi). `pointer-events: auto` ni overlaydan olib tashlamang — body lock qaytadi. Markaz (`margin-top/bottom: auto`) va Ø×L tish panelida qolsin. `node scripts/assert-implant-factura.mjs` o'tsin.
+
 ### 🦷 Yangi implant — Ø va L tish panelida, aniq mm yorliqlari
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**
