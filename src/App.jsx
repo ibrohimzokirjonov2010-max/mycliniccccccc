@@ -79,6 +79,9 @@ const PublicClinicPage    = lazy(() => import('./pages/PublicClinicPage'));
 const ImplantWizardPreview = import.meta.env.DEV
   ? lazy(() => import('./pages/ImplantWizardPreview'))
   : null;
+const OdontogramCardPreview = import.meta.env.DEV
+  ? lazy(() => import('./pages/OdontogramCardPreview'))
+  : null;
 
 // Yeni Cases Sahifalari
 const Cases               = lazy(() => import('./pages/Cases'));
@@ -187,6 +190,9 @@ const AuthenticatedApp = memo(() => {
           <Route path="/super-admin-portal" element={<SuperAdmin />} />
           {import.meta.env.DEV && ImplantWizardPreview && (
             <Route path="/dev/implant-wizard" element={<ImplantWizardPreview />} />
+          )}
+          {import.meta.env.DEV && OdontogramCardPreview && (
+            <Route path="/dev/odontogram-card" element={<OdontogramCardPreview />} />
           )}
 
           {isAuthenticated ? (

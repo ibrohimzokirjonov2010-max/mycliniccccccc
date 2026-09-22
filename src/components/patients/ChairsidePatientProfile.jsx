@@ -408,7 +408,7 @@ export default function ChairsidePatientProfile({
                   </div>
                 )}
               </div>
-              <div className="p-2 sm:p-3 overflow-x-hidden overflow-y-visible min-w-0 w-full flex justify-center bg-white">
+              <div className="p-1.5 sm:p-3 overflow-hidden min-w-0 w-full bg-white">
                 <ProfessionalOdontogram
                   selectedTeeth={odontogramSelectedTeeth}
                   onChange={onOdontogramChange}

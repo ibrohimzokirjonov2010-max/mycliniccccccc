@@ -326,8 +326,30 @@ export default function MobilePatientProfile() {
       });
     });
 
+    (implants || []).forEach((imp) => {
+      const tn = imp.tooth_numbers;
+      const toothNums = Array.isArray(tn)
+        ? tn
+        : (typeof tn === 'string' ? tn.split(',').map((s) => s.trim()) : (imp.tooth_number ? [imp.tooth_number] : []));
+      toothNums.forEach((num) => {
+        if (!num) return;
+        const token = String(num).replace(/^#/, '').trim();
+        const id = fdiToInternalId(token);
+        if (!id) return;
+        const next = {
+          status: 'implant',
+          hasImplant: true,
+          illustrationKind: 'implant',
+          fdi: token,
+          diagnosis: 'Implant',
+        };
+        map[id] = next;
+        map[token] = next;
+      });
+    });
+
     return map;
-  }, [plans, toothRecords]);
+  }, [plans, toothRecords, implants]);
 
   const nextAppointment = useMemo(() => {
     const today = new Date();
@@ -733,7 +755,7 @@ export default function MobilePatientProfile() {
 
       {/* CLINICAL STRIP */}
       <div className="px-3 pt-3 space-y-3">
-                <div className="bg-white rounded-[20px] shadow-[0_8px_24px_rgba(15,23,42,0.05)] border border-slate-100/80 px-2 pt-3 pb-3.5">
+                <div className="bg-white rounded-[20px] shadow-[0_8px_24px_rgba(15,23,42,0.05)] border border-slate-100/80 px-1.5 pt-3 pb-2.5 overflow-hidden min-w-0">
                   <div className="flex items-center justify-between mb-2.5 px-0.5">
                     <h2 className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
                       {t('patientProfile.mobile.odontogram', 'Odontogramma')}

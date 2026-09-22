@@ -84,6 +84,27 @@ if (/>\{fdi\}<\/div>/.test(jsx)) {
   throw new Error('Raw {fdi} label chip is back — use fdiLabel so 13/23 cannot be covered');
 }
 
+if (!jsx.includes('data-odonto-layout="cross"')) {
+  throw new Error('Profile chart must be an anatomical FDI cross that fits the card');
+}
+if (/width:\s*'max-content'|minWidth:\s*900|style\.zoom|zoom:\s*scale/.test(jsx)) {
+  throw new Error('Odontogram zoom / max-content / minWidth 900 is back — it opens a slider');
+}
+if (jsx.includes('grayscale(0.6)')) {
+  throw new Error('Implant art must stay visible — do not fade implant PNGs');
+}
+
+const mobile = fs.readFileSync(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), '../src/components/patients/MobileCompactOdontogram.jsx'),
+  'utf8'
+);
+if (!mobile.includes('data-odonto-layout="cross"') || !mobile.includes('odonto-jaw-upper')) {
+  throw new Error('Phone chart must use the same FDI cross inside the card');
+}
+if (mobile.includes('grid-cols-8') || mobile.includes('h-[34px]')) {
+  throw new Error('Phone chart regressed to 8-wide pills or 34px crops');
+}
+
 console.log('FDI notation OK');
 console.log('adult UR', ADULT_FDI_ARCS.upperRight.join(' '));
 console.log('adult UL', ADULT_FDI_ARCS.upperLeft.join(' '));
