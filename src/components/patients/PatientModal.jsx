@@ -360,9 +360,9 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
               <SelectTrigger aria-invalid={doctorError ? true : undefined} className={doctorError ? 'border-rose-400' : undefined}>
                 <SelectValue placeholder={t('common.select') || "Shifokorni tanlang"} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper" className="z-[110]" data-patient-doctor-select>
                 {doctors.map(d => (
-                  <SelectItem key={d.id || d.full_name || d.name} value={d.id || d.full_name || d.name}>
+                  <SelectItem key={d.id || d.full_name || d.name} value={String(d.id || d.full_name || d.name)}>
                     {d.full_name || d.name || d.username}
                   </SelectItem>
                 ))}

@@ -39,4 +39,12 @@ assert(modal.includes('if (missingDoctor)'), 'PatientModal returns before create
 assert(!modal.includes('main_treatment_provider: next[0]'), 'do not auto-assign the first doctor');
 assert(!modal.includes("main_treatment_provider: user?.id"), 'do not prefill the logged-in user as doctor');
 
+// Doctor Select must portal above Dialog (z-[100]) — Payments already uses z-[110]
+assert(flow.includes('data-patient-doctor-select'), 'NewPatientFlow doctor select marker');
+assert(modal.includes('data-patient-doctor-select'), 'PatientModal doctor select marker');
+assert(flow.includes('position="popper"') && flow.includes('z-[110]'), 'NewPatientFlow doctor menu uses popper + z-[110]');
+assert(modal.includes('position="popper"') && modal.includes('z-[110]'), 'PatientModal doctor menu uses popper + z-[110]');
+const selectUi = read('src/components/ui/select.jsx');
+assert(selectUi.includes('z-[110]'), 'shared SelectContent stacks above Dialog z-[100]');
+
 console.log('patient doctor required: ok');

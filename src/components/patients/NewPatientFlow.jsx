@@ -22,7 +22,7 @@ import { CheckCircle2, User, ClipboardList, ArrowLeft, Printer, X, Check, Messag
 import { useTranslation } from '@/i18n/LanguageContext';
 import { applyPhoneMask, cn, capitalizeName, validateAddress, capitalizeAsYouType } from '@/lib/utils';
 import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
-import { resolveAssignedDoctorName } from '@/lib/treatingDoctor';
+import { resolveAssignedDoctorName, isTreatingClinician, clinicianDisplayName } from '@/lib/treatingDoctor';
 import { normalizePatientGender, patientGenderForDb } from '@/lib/patientGender';
 
 /**
@@ -573,14 +573,16 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       setShowCustomDiscount(false);
       setCustomDiscountAmount('');
       
-      // Load doctors
+      // Load doctors (same staff source as appointments/payments)
       base44.entities.User.list('name', 100)
-        .then(users => {
-          const docList = (users || []).filter(u => 
-            u.role?.toLowerCase() === 'doctor' || 
-            u.role?.toLowerCase() === 'admin'
+        .then(async (users) => {
+          let docList = (users || []).filter(u =>
+            isTreatingClinician(u) || String(u.role || '').toLowerCase() === 'admin'
           );
-          setDoctors(docList);
+          if (docList.length === 0) {
+            docList = await base44.entities.User.filter({ role: 'doctor' }, 'name').catch(() => []);
+          }
+          setDoctors(docList || []);
         })
         .catch(err => console.error("Failed to load doctors:", err));
 
@@ -1603,7 +1605,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.sourceLabel')}</label>
                     <Select value={patientForm.contact} onValueChange={v => setPatientForm({ ...patientForm, contact: v })}>
                       <SelectTrigger className="h-9 rounded-lg border-slate-200 text-sm w-full"><SelectValue placeholder={t('common.select')} /></SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper" className="z-[110]">
                         {WIZARD_SOURCES.map(s => (
                           <SelectItem key={s.value} value={s.value}>{t(`patients.sources.${s.labelKey}`)}</SelectItem>
                         ))}
@@ -1629,9 +1631,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       >
                         <SelectValue placeholder={t('common.select')} />
                       </SelectTrigger>
-                      <SelectContent className="max-h-[200px]">
+                      <SelectContent position="popper" className="max-h-[200px] z-[110]" data-patient-doctor-select>
                         {doctors.map(d => (
-                          <SelectItem key={d.id} value={d.id || d.name}>{d.name}</SelectItem>
+                          <SelectItem key={d.id || d.name || d.full_name} value={String(d.id || d.name || d.full_name)}>
+                            {clinicianDisplayName(d) || d.username}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

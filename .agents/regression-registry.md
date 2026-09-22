@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 👤 Yangi bemor — SHIFOKOR Select ro'yxati ko'rinmasligi
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/ui/select.jsx`](src/components/ui/select.jsx)
+  - [`src/components/patients/NewPatientFlow.jsx`](src/components/patients/NewPatientFlow.jsx)
+  - [`src/components/patients/PatientModal.jsx`](src/components/patients/PatientModal.jsx)
+  - [`scripts/assert-patient-doctor-required.mjs`](scripts/assert-patient-doctor-required.mjs)
+- **Muammo Tavsifi:** «Yangi bemor qo'shish» modalida SHIFOKOR maydoniga bosganda klinikadagi shifokorlar ro'yxati chiqmasdi (focus borderga qarab ochilgandek, lekin optionlar yo'q).
+- **Sababi:** Dialog overlay/content `z-[100]`, Radix SelectContent esa `z-50` bilan `body` ga portal qilinardi — menyu dialog ostida qolardi. Overflow scroll ham kesish ehtimolini oshirardi.
+- **Qanday tuzatildi:** Shared `SelectContent` va bemor formalaridagi doctor Select `position="popper"` + `z-[110]`. Shifokorlar `isTreatingClinician` / admin filtri + bo'sh bo'lsa `User.filter({ role: 'doctor' })`. Majburiy shifokor validatsiyasi saqlanadi.
+- **Qaytalamaslik choralari:** Dialog ichidagi Select ni yana `z-50` ga tushirmang. Shifokorni ixtiyoriy qilmang / auto-assign qilmang. `node scripts/assert-patient-doctor-required.mjs` o'tsin. Implant wizard va invoice layoutlarga tegmang.
+
 ### 🦷 Yangi implant Step 2 — xizmatlar scrollbar kartalarga yopishib qolishi
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**
