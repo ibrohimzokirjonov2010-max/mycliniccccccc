@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Plus,
-  User, Calendar, Clock, Phone, ChevronRight
+  User, Calendar, Clock, Phone
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -251,22 +251,20 @@ export default function MobilePatientsV2() {
 
                     {/* Info Area */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-[15px] text-slate-800 truncate leading-snug group-active:text-[#1499AD]">
-                          {capitalizeName(patient.full_name)}
-                        </h3>
-                        {hasDebt && (
-                          <div className="px-1.5 py-0.5 rounded-md bg-rose-50 text-[10px] font-bold text-rose-500 border border-rose-100/50">
-                            Qarz
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      <h3 className="font-bold text-[15px] text-slate-800 leading-snug line-clamp-2 break-words group-active:text-[#1499AD]">
+                        {capitalizeName(patient.full_name)}
+                      </h3>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         <span className={`w-1 h-1 rounded-full ${status.dot}`} />
                         <p className="text-[10px] font-medium text-slate-500 truncate">{patient.phone || "Noma'lum"}</p>
                         <span className={`text-[10px] font-bold uppercase tracking-tight ${status.text} opacity-80`}>
                           {status.label}
                         </span>
+                        {hasDebt && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-rose-50 text-[10px] font-bold text-rose-500 border border-rose-100/50">
+                            Qarz
+                          </span>
+                        )}
                       </div>
                       {/* Registration Date & Time */}
                       <div className="flex items-center gap-1 mt-1">
@@ -288,6 +286,8 @@ export default function MobilePatientsV2() {
                     {/* Right: Quick Action Icons */}
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
+                        type="button"
+                        aria-label="Qo'ng'iroq"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (patient.phone) {
@@ -297,12 +297,14 @@ export default function MobilePatientsV2() {
                             toast.error("Raqam yo'q");
                           }
                         }}
-                        className="w-9 h-9 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-full flex items-center justify-center active:scale-90 transition-all border border-emerald-100/50 shadow-sm"
+                        className="w-11 h-11 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-full flex items-center justify-center active:scale-90 transition-all border border-emerald-100/50 shadow-sm"
                       >
                         <Phone className="w-4 h-4" />
                       </button>
                       
                       <button
+                        type="button"
+                        aria-label="Telegram"
                         onClick={(e) => {
                           e.stopPropagation();
                           const phone = patient.phone?.replace(/\D/g, '');
@@ -312,17 +314,13 @@ export default function MobilePatientsV2() {
                             toast.error("Raqam kiritilmagan");
                           }
                         }}
-                        className="w-9 h-9 bg-sky-50 text-sky-500 hover:bg-sky-500 hover:text-white rounded-full flex items-center justify-center active:scale-90 transition-all border border-sky-100/50 shadow-sm"
+                        className="w-11 h-11 bg-sky-50 text-sky-500 hover:bg-sky-500 hover:text-white rounded-full flex items-center justify-center active:scale-90 transition-all border border-sky-100/50 shadow-sm"
                       >
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="translate-x-[-1px] translate-y-[0px]">
                           <line x1="22" y1="2" x2="11" y2="13"></line>
                           <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                         </svg>
                       </button>
-
-                      <div className="w-6 h-6 rounded-md bg-slate-50 flex items-center justify-center text-slate-300 ml-0.5">
-                         <ChevronRight className="w-3.5 h-3.5" />
-                      </div>
                     </div>
                   </motion.div>
                 );

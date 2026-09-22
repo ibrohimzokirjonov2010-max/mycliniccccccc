@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react';
 /**
  * Mobile breakpoint in pixels
  */
-const MOBILE_BREAKPOINT = 768;
+/** Matches the 1024px app shell (phone + tablet use the mobile layout). */
+const MOBILE_BREAKPOINT = 1024;
 
 /**
  * useIsMobile Hook

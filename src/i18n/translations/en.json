@@ -241,7 +241,10 @@
     "marketing": "Marketing",
     "cases": "My Cases",
     "staff": "Staff",
-    "chairsideToday": "Today's queue"
+    "chairsideToday": "Today's queue",
+    "tabChairside": "Queue",
+    "tabImplants": "Implant",
+    "tabPayments": "Pay"
   },
   "dashboard": {
     "title": "Dashboard",

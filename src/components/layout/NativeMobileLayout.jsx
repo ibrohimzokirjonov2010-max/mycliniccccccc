@@ -204,10 +204,11 @@ export default function NativeMobileLayout({ children }) {
   }, [isDoctor, user, t]);
 
   const tabs = useMemo(() => [
-    { path: '/chairside', icon: CalendarClock, label: t('navigation.chairsideToday') || 'Navbat', color: '#1499AD' },
+    { path: '/chairside', icon: CalendarClock, label: t('navigation.tabChairside', 'Navbat'), color: '#1499AD' },
     { path: '/patients', icon: Users, label: t('navigation.patients'), color: '#1499AD' },
     { path: '/appointments', icon: Calendar, label: t('appointments.calendar'), color: '#1499AD' },
-    { path: '/payments', icon: Wallet, label: t('navigation.payments'), color: '#1499AD' },
+    { path: '/implants', icon: ImplantIcon, label: t('navigation.tabImplants', 'Implant'), color: '#1499AD' },
+    { path: '/payments', icon: Wallet, label: t('navigation.tabPayments', "To'lov"), color: '#1499AD' },
   ], [t]);
 
   const quickActions = useMemo(() => [
@@ -312,7 +313,7 @@ export default function NativeMobileLayout({ children }) {
           paddingTop: isPatientProfile
             ? 0
             : 'calc(3.5rem + max(env(safe-area-inset-top, 12px), 12px))',
-          paddingBottom: 'calc(54px + env(safe-area-inset-bottom, 0px))'
+          paddingBottom: 'calc(62px + env(safe-area-inset-bottom, 0px))'
         }}
       >
         {!isPatientProfile && (
@@ -320,6 +321,12 @@ export default function NativeMobileLayout({ children }) {
           <SubscriptionBanner />
         </div>
         )}
+        {/* In-flow slot so the implant reminder never covers clinical content. */}
+        <div
+          id="mobile-implant-banner-slot"
+          data-safe={isPatientProfile ? 'top' : undefined}
+          className="px-3"
+        />
         {/*
           Page shell must stay opacity:1. Animating opacity:0→1 races with Suspense
           remounts on heavy lazy routes (/implants, /treatment-plans) and can leave
@@ -355,9 +362,10 @@ export default function NativeMobileLayout({ children }) {
         className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-2xl border-t border-slate-200/60 z-40 overflow-hidden no-print shadow-[0_-2px_16px_rgba(0,0,0,0.03)]"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="flex items-center justify-around h-[50px] px-2 relative">
+        <div className="flex h-14 items-stretch justify-around px-0.5 relative">
           {tabs.map((tab) => {
-            const isActive = location.pathname === tab.path;
+            const isActive = location.pathname === tab.path
+              || (tab.path !== '/chairside' && location.pathname.startsWith(`${tab.path}/`));
             const Icon = tab.icon;
             
             return (
@@ -392,8 +400,8 @@ export default function NativeMobileLayout({ children }) {
                 
                 {/* Label */}
                 <span 
-                  className={`text-[9.5px] font-black mt-0.5 transition-colors duration-200 tracking-tight uppercase leading-none ${
-                    isActive ? 'text-[#1499AD]' : 'text-slate-400'
+                  className={`mt-0.5 max-w-full px-0.5 text-center text-[11px] font-bold leading-tight tracking-tight line-clamp-2 ${
+                    isActive ? 'text-[#1499AD]' : 'text-slate-500'
                   }`}
                 >
                   {tab.label}
@@ -410,7 +418,7 @@ export default function NativeMobileLayout({ children }) {
           whileTap={{ scale: 0.92 }}
           onClick={() => window.dispatchEvent(new CustomEvent('open-expenses-add'))}
           className="fixed right-5 z-40 bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 rounded-full shadow-xl shadow-emerald-500/25 flex items-center justify-center text-white border-[3px] border-white active:scale-95 transition-transform"
-          style={{ width: 48, height: 48, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 58px)' }}
+          style={{ width: 48, height: 48, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 70px)' }}
         >
           <Plus className="w-5 h-5 text-white stroke-[2.5]" />
         </motion.button>
@@ -419,7 +427,7 @@ export default function NativeMobileLayout({ children }) {
           whileTap={{ scale: 0.92 }}
           onClick={() => window.dispatchEvent(new CustomEvent('open-cases-upload'))}
           className="fixed right-5 z-40 bg-gradient-to-br from-[#1499AD] to-[#0E7A8A] rounded-full shadow-xl shadow-[#1499AD]/40 flex items-center justify-center text-white border-[3px] border-white active:scale-95 transition-transform"
-          style={{ width: 48, height: 48, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 58px)' }}
+          style={{ width: 48, height: 48, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 70px)' }}
         >
           <Camera className="w-5 h-5 text-white" />
         </motion.button>
@@ -428,7 +436,7 @@ export default function NativeMobileLayout({ children }) {
           whileTap={{ scale: 0.92 }}
           onClick={() => window.dispatchEvent(new CustomEvent('open-implants-add'))}
           className="fixed right-5 z-40 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-full shadow-xl shadow-indigo-500/30 flex items-center justify-center text-white border-[3px] border-white active:scale-95 transition-transform"
-          style={{ width: 48, height: 48, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 58px)' }}
+          style={{ width: 48, height: 48, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 70px)' }}
         >
           <ImplantIcon className="w-5 h-5 text-white" />
         </motion.button>

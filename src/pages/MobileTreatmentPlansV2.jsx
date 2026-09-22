@@ -8,7 +8,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
-import ProfessionalOdontogram from '@/components/patients/ProfessionalOdontogram';
+import MobileCompactOdontogram, { fdiToInternalId } from '@/components/patients/MobileCompactOdontogram';
 import { formatCurrency } from '@/lib/utils';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -547,7 +547,17 @@ export default function MobileTreatmentPlansV2() {
                     <div className="space-y-4 pb-20">
                        {/* Odontogram Card */}
                        <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-                          <ProfessionalOdontogram selectedTeeth={selectedTeeth} focusedTooth={focusedTooth} multi={true} onChange={setSelectedTeeth} onToothClick={setFocusedTooth} compact={true} />
+                          <MobileCompactOdontogram
+                            selectedFdis={selectedTeeth.map(idToFdi)}
+                            selectedFdi={focusedTooth ? idToFdi(focusedTooth) : ''}
+                            onSelect={(fdi) => {
+                              const id = fdiToInternalId(fdi);
+                              setFocusedTooth(id);
+                              setSelectedTeeth((prev) => (
+                                prev.includes(id) ? prev.filter((toothId) => toothId !== id) : [...prev, id]
+                              ));
+                            }}
+                          />
                        </div>
                        
                        {(focusedTooth || selectedTeeth[0]) && (

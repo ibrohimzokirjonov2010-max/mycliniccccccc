@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
  * Professional Breakpoint Hook
  * Standardizes mobile detection across the application
  */
-export function useIsMobile(breakpoint = 768) {
+/** Matches NativeMobileLayout / App shell (width < 1024). */
+export function useIsMobile(breakpoint = 1024) {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
 
   useEffect(() => {

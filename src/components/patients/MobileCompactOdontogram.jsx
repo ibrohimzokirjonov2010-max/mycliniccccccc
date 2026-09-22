@@ -1,4 +1,4 @@
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { getToothIllustrationSrcFromStatus, resolveToothIllustrationKind } from '@/utils/toothIllustration';
 
@@ -31,7 +31,7 @@ export function internalIdToFdi(id) {
   return `${qMap[quad]}${num}`;
 }
 
-const ToothCell = memo(function ToothCell({ fdi, selected, toothStatus, onSelect, isUpper }) {
+const ToothCell = memo(function ToothCell({ fdi, selected, focused, toothStatus, onSelect, isUpper }) {
   const status = toothStatus || { status: 'healthy' };
   const kind = resolveToothIllustrationKind(status);
   const imgSrc = getToothIllustrationSrcFromStatus(fdi, status);
@@ -46,7 +46,8 @@ const ToothCell = memo(function ToothCell({ fdi, selected, toothStatus, onSelect
       className={cn(
         'odontogram-tooth odonto-fit-tooth relative flex flex-col items-center w-full min-w-0 bg-transparent p-0 border-0 cursor-pointer touch-manipulation',
         isUpper ? 'justify-end' : 'justify-start',
-        selected && 'z-10'
+        selected && 'z-10',
+        focused && 'ring-2 ring-[#0d9488] rounded-md'
       )}
     >
       {!isUpper && (
@@ -89,12 +90,21 @@ const ToothCell = memo(function ToothCell({ fdi, selected, toothStatus, onSelect
  */
 export default function MobileCompactOdontogram({
   selectedFdi,
+  selectedFdis,
   toothStatuses = {},
   onSelect,
 }) {
   const handleSelect = useCallback((fdi) => {
     if (onSelect) onSelect(String(fdi));
   }, [onSelect]);
+
+  const selectedSet = useMemo(() => {
+    const ids = new Set((selectedFdis || []).map((value) => String(value)));
+    if (selectedFdi != null && selectedFdi !== '') ids.add(String(selectedFdi));
+    return ids;
+  }, [selectedFdi, selectedFdis]);
+
+  const focusedFdi = selectedFdi != null && selectedFdi !== '' ? String(selectedFdi) : '';
 
   const renderHalf = (fdis, isUpper) => (
     <div
@@ -110,7 +120,8 @@ export default function MobileCompactOdontogram({
             key={fdi}
             fdi={fdi}
             isUpper={isUpper}
-            selected={String(selectedFdi) === String(fdi)}
+            selected={selectedSet.has(String(fdi))}
+            focused={focusedFdi === String(fdi) && selectedSet.size > 1}
             toothStatus={st}
             onSelect={handleSelect}
           />
