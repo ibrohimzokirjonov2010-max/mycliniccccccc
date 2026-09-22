@@ -297,7 +297,7 @@ function ExcelDentalChartView({
 
       {/* ══ GRAPHICAL ODONTOGRAM CONTAINER ══ */}
       {(viewMode === 'both' || viewMode === 'chart') && (
-        <div className="bg-white border border-slate-200/90 rounded-xl shadow-xs overflow-visible">
+        <div className="bg-white border border-slate-200/90 rounded-xl shadow-xs overflow-hidden">
           {/* Card header */}
           <div className="px-4 py-3 bg-slate-50/80 flex items-center justify-between border-b border-slate-200/80">
             <div className="flex items-center gap-3">
@@ -313,7 +313,7 @@ function ExcelDentalChartView({
             </div>
           </div>
 
-          <div className="p-2 sm:p-4 overflow-x-hidden overflow-y-visible min-w-0 w-full flex justify-center bg-white">
+          <div className="p-1.5 sm:p-3 overflow-hidden min-w-0 w-full bg-white">
             <ProfessionalOdontogram
               selectedTeeth={odontogramSelectedTeeth}
               onChange={stableOnOdontogramChange}

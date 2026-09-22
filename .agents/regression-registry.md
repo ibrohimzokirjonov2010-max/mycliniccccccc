@@ -13,6 +13,20 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Bemor profili — tish charti karta ichida
+- **Sana:** 2026-09-22
+- **Tuzatilgan Fayllar:**
+  - [`src/components/patients/ProfessionalOdontogram.jsx`](src/components/patients/ProfessionalOdontogram.jsx)
+  - [`src/components/patients/MobileCompactOdontogram.jsx`](src/components/patients/MobileCompactOdontogram.jsx)
+  - [`src/components/patients/ChairsidePatientProfile.jsx`](src/components/patients/ChairsidePatientProfile.jsx)
+  - [`src/components/patients/ExcelDentalChartView.jsx`](src/components/patients/ExcelDentalChartView.jsx)
+  - [`src/pages/MobilePatientProfile.jsx`](src/pages/MobilePatientProfile.jsx)
+  - [`src/index.css`](src/index.css)
+- **Muammo Tavsifi:** Odontogramma karta ichida sig'masdi: `max-content` + `zoom` va 34px minimal kenglik ~390px da gorizontal tortuvchi ochardi. Telefon 8+8 qatori 11 va 21 ni yonma-yon qo'ymagan. Implant rasmi kulrang xira bo'lib ketardi. Telefonda implant jadvalidagi tishlar chartga tushmasdi.
+- **Sababi:** Tish ustunlari `minWidth` bilan qisqarmasdi. `overflow-x: hidden` + `overflow-y: visible` brauzerda `overflow-x: auto` bo'lib slider beradi. Mobil qatorlar to'liq yoy emas edi.
+- **Qanday tuzatildi:** Chart karta kengligining 100% i: yuqori 18→11 | 21→28, pastki 48→41 | 31→38. Tor kartada har kvadrant 8 tishli qator. Holat PNG lari (`endo`, `caries`, `plomba`, `implant`, `missing`, `healthy`) o'z joyida. Sog'lom tish `/teeth/healthy/{fdi}.png` (ivory). Implant xira filtrsiz. Telefon charti `implantRecordFdis` dan implantlarni oladi.
+- **Qaytalamaslik choralari:** `width: max-content`, `zoom` va `minWidth: 900` qaytarmang. `.odontogram-tooth` ga 34px min-width ni fit-tooth ustida qayta qo'ymang. FDI ni qo'lda yozmang. Dizyner PNG ga `scaleX(-1)` qo'ymang. Implant rasmini grayscale qilmang. `node scripts/assert-odontogram-fdi.mjs` o'tsin.
+
 ### 👤 Bemor qo'shish — hisob-faktura butun oynani egallashi
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**
@@ -75,7 +89,6 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 - **Sababi:** Kalit tarjima fayllarida yo'q edi, `t()` kalitning o'zini qaytaradi va `|| "Bo'sh"` ishlamaydi. `ImplantAlerter` 10 soniyadan keyin har qanday sahifada birinchi to'liqsiz implantni toast qiladi.
 - **Qanday tuzatildi:** uz «Bo'sh», ru «Свободно», en «Available». `/appointments` va `/calendar` da implant toast chiqmaydi va ochiq toast yopiladi.
 - **Qaytalamaslik choralari:** `legendAvailable` ni bo'sh qoldirmang. Implant to'liqsiz toastni uchrashuvlar sahifasiga qaytarmang. PWA activate-reload va faktura overlay o'zgarmasin.
-
 
 ### 🦷 Yangi implant Step 3 — Chop etish bo'sh sahifa
 - **Sana:** 2026-09-22

@@ -1,4 +1,4 @@
-import { useState, useCallback, memo, useMemo, useLayoutEffect, useRef } from 'react';
+import { useState, useCallback, memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -167,7 +167,7 @@ const getOverlayStyle = (statusKey) => {
 
 // ── Single Tooth Column ───────────────────────────────────────────────────────
 const ToothColumn = memo(function ToothColumn({
-  id, fdi, baseName, side, isUpper, w,
+  id, fdi, baseName, side, isUpper,
   selected, isFocused, toothStatus, isDisabled, onClick,
   isPsrAlert = false,
   showOcclusal = true,
@@ -222,12 +222,6 @@ const ToothColumn = memo(function ToothColumn({
   else if (isFocused)              filterStyle = `drop-shadow(0 0 6px #3b82f680)`;
   else if (hovered && !isDisabled) filterStyle = `drop-shadow(0 2px 6px ${st.color}50)`;
 
-  // Lateral view height (compact & balanced) and occlusal view height
-  const LATERAL_H  = useIllustration ? (compact ? 58 : 86) : (compact ? 50 : 76);
-  const OCCLUSAL_H = compact ? 16 : 24;
-  const scaleFactor = compact ? 0.65 : 1.0;
-  const colW = Math.max(Math.round(w * scaleFactor), compact ? 28 : 32);
-
   const ToothImg = ({ src, alt, isCrown, transform }) => {
     const isRootAlert = !isCrown && isPsrAlert;
     const cond = String(toothStatus?.condition || '').toLowerCase();
@@ -249,8 +243,11 @@ const ToothColumn = memo(function ToothColumn({
 
     return (
       <div
-        className="relative flex justify-center items-center w-full"
-        style={{ height: isCrown ? OCCLUSAL_H : LATERAL_H, overflow: 'hidden', flexShrink: 0 }}
+        className={cn(
+          'relative flex w-full min-w-0 justify-center overflow-hidden',
+          isCrown ? 'odonto-occlusal items-center' : 'odonto-lateral',
+          !isCrown && (isUpper ? 'items-end' : 'items-start'),
+        )}
       >
         <img
           src={src}
@@ -260,10 +257,9 @@ const ToothColumn = memo(function ToothColumn({
             width: '100%',
             height: '100%',
             objectFit: 'contain',
+            objectPosition: isCrown ? 'center' : (isUpper ? 'center bottom' : 'center top'),
             transform,
-            filter: (isExtracted && !useMissingArt)
-              ? 'grayscale(1) opacity(0.25)'
-              : (hasImplant && hasExtractedHistory ? 'grayscale(0.6) opacity(0.5)' : undefined),
+            filter: (isExtracted && !useMissingArt) ? 'grayscale(1) opacity(0.25)' : undefined,
           }}
           onError={(e) => {
             if (e.currentTarget.dataset.fallback === '1') {
@@ -568,6 +564,13 @@ const ToothColumn = memo(function ToothColumn({
           </div>
         )}
 
+        {!isCrown && selected && (
+          <div
+            className="absolute left-0.5 right-0.5 h-[3px] pointer-events-none z-20 rounded-full"
+            style={{ [isUpper ? 'bottom' : 'top']: 1, backgroundColor: st.color }}
+          />
+        )}
+
         {/* Selection border + checkmark */}
         {isCrown && selected && (
           <>
@@ -593,22 +596,23 @@ const ToothColumn = memo(function ToothColumn({
 
   return (
     <motion.div
-      className="odontogram-tooth compact-hit relative flex flex-col items-center select-none shrink-0"
+      className="odontogram-tooth odonto-fit-tooth compact-hit relative flex flex-col items-center select-none w-full min-w-0"
       data-fdi={fdiLabel}
       data-tooth-id={id}
+      data-illustration={illustrationKind || 'healthy'}
       aria-label={`FDI ${fdiLabel}`}
       style={{
-        width: colW,
-        minWidth: colW,
-        flexShrink: 0,
+        width: '100%',
+        minWidth: 0,
+        maxWidth: '100%',
         opacity: containerOpacity,
         cursor: isDisabled && !selected ? 'not-allowed' : 'pointer',
         filter: filterStyle,
         zIndex: hovered || selected || isFocused ? 8 : 1,
         transition: 'filter 0.2s ease, opacity 0.2s ease',
       }}
-      whileHover={!isDisabled ? { y: isUpper ? -2 : 2 } : {}}
-      whileTap={!isDisabled ? { scale: 0.97 } : {}}
+      whileHover={!isDisabled ? { y: isUpper ? -1 : 1 } : {}}
+      whileTap={!isDisabled ? { scale: 0.985 } : {}}
       onHoverStart={() => !isDisabled && setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       onClick={() => !isDisabled && onClick(id)}
@@ -795,39 +799,6 @@ function ProfessionalOdontogram({
 }) {
   const { t } = useTranslation();
 
-  const chartBoxRef = useRef(null);
-  const gridRef = useRef(null);
-  const [scale, setScale] = useState(1);
-
-  // Fit the adult arch into the container. CSS transform scale does not shrink
-  // layout size, so a 0.55 floor on a 900px chart overflowed ~390px screens and
-  // a negative marginBottom pulled the next section up over the chart.
-  // `zoom` changes layout size in Chromium/Safari (the PWA browsers).
-  useLayoutEffect(() => {
-    const box = chartBoxRef.current;
-    const grid = gridRef.current;
-    if (!box || !grid) return undefined;
-    const handleResize = () => {
-      const width = box.clientWidth || 0;
-      if (!width) return;
-      const prevZoom = grid.style.zoom;
-      grid.style.zoom = '1';
-      const natural = grid.scrollWidth || grid.offsetWidth || (compact ? 530 : 920);
-      grid.style.zoom = prevZoom;
-      const pad = 8;
-      const next = Math.min(1, (width - pad) / natural);
-      const fitted = Number.isFinite(next) && next > 0 ? Math.max(next, 0.32) : 1;
-      setScale((cur) => (Math.abs(cur - fitted) < 0.01 ? cur : fitted));
-    };
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(handleResize) : null;
-    ro?.observe(box);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [compact, patientType, chartView, quadrantFilter, showOcclusal]);
   const upperRight = patientType === 'child' ? CHILD_UPPER_RIGHT : UPPER_RIGHT;
   const upperLeft  = patientType === 'child' ? CHILD_UPPER_LEFT  : UPPER_LEFT;
   const lowerRight = patientType === 'child' ? CHILD_LOWER_RIGHT : LOWER_RIGHT;
@@ -980,9 +951,8 @@ function ProfessionalOdontogram({
 
   return (
     <div
-      ref={chartBoxRef}
       className={cn(
-        "bg-white w-full min-w-0",
+        "bg-white w-full min-w-0 overflow-hidden",
         !hideHeader && "rounded-xl border border-slate-200/90 shadow-xs"
       )}
     >
@@ -1011,78 +981,72 @@ function ProfessionalOdontogram({
         </div>
       )}
 
-      {/* ── Chart Area ──────────────────────────────────────────────────── */}
-      <div className="pt-3 pb-2 px-1 sm:px-2 flex justify-center w-full min-w-0 overflow-x-hidden overflow-y-visible">
+      {/* ── Chart Area — fluid FDI cross, card width, no slider ───────── */}
+      <div className="pt-2 pb-2 px-1 sm:px-2 w-full min-w-0 overflow-hidden">
         {quadrantFilter === 'Q1' ? (
-          <div className="flex flex-col items-center gap-2 p-3 bg-slate-50/70 border border-slate-200 rounded-xl shadow-2xs">
-            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono">Q1 — O'ng Yuqori Jag' (18 - 11)</span>
-            <div className="flex justify-center items-end gap-0 border-b border-r border-slate-300 pb-1 pr-1 bg-white/80 rounded-lg p-2">
+          <div className="flex flex-col items-center gap-2 p-2 bg-slate-50/70 border border-slate-200 rounded-xl w-full min-w-0">
+            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono text-center">Q1 — O'ng Yuqori Jag' (18 - 11)</span>
+            <div className="odonto-quad w-full min-w-0" style={{ gridTemplateColumns: `repeat(${upperRight.length}, minmax(0, 1fr))` }}>
               {renderRow(upperRight, true)}
             </div>
           </div>
         ) : quadrantFilter === 'Q2' ? (
-          <div className="flex flex-col items-center gap-2 p-3 bg-slate-50/70 border border-slate-200 rounded-xl shadow-2xs">
-            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono">Q2 — Chap Yuqori Jag' (21 - 28)</span>
-            <div className="flex justify-center items-end gap-0 border-b border-l border-slate-300 pb-1 pl-1 bg-white/80 rounded-lg p-2">
+          <div className="flex flex-col items-center gap-2 p-2 bg-slate-50/70 border border-slate-200 rounded-xl w-full min-w-0">
+            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono text-center">Q2 — Chap Yuqori Jag' (21 - 28)</span>
+            <div className="odonto-quad w-full min-w-0" style={{ gridTemplateColumns: `repeat(${upperLeft.length}, minmax(0, 1fr))` }}>
               {renderRow(upperLeft, true)}
             </div>
           </div>
         ) : quadrantFilter === 'Q3' ? (
-          <div className="flex flex-col items-center gap-2 p-3 bg-slate-50/70 border border-slate-200 rounded-xl shadow-2xs">
-            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono">Q3 — Chap Pastki Jag' (31 - 38)</span>
-            <div className="flex justify-center items-start gap-0 border-t border-l border-slate-300 pt-1 pl-1 bg-white/80 rounded-lg p-2">
+          <div className="flex flex-col items-center gap-2 p-2 bg-slate-50/70 border border-slate-200 rounded-xl w-full min-w-0">
+            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono text-center">Q3 — Chap Pastki Jag' (31 - 38)</span>
+            <div className="odonto-quad w-full min-w-0" style={{ gridTemplateColumns: `repeat(${lowerLeft.length}, minmax(0, 1fr))` }}>
               {renderRow(lowerLeft, false)}
             </div>
           </div>
         ) : quadrantFilter === 'Q4' ? (
-          <div className="flex flex-col items-center gap-2 p-3 bg-slate-50/70 border border-slate-200 rounded-xl shadow-2xs">
-            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono">Q4 — O'ng Pastki Jag' (48 - 41)</span>
-            <div className="flex justify-center items-start gap-0 border-t border-r border-slate-300 pt-1 pr-1 bg-white/80 rounded-lg p-2">
+          <div className="flex flex-col items-center gap-2 p-2 bg-slate-50/70 border border-slate-200 rounded-xl w-full min-w-0">
+            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono text-center">Q4 — O'ng Pastki Jag' (48 - 41)</span>
+            <div className="odonto-quad w-full min-w-0" style={{ gridTemplateColumns: `repeat(${lowerRight.length}, minmax(0, 1fr))` }}>
               {renderRow(lowerRight, false)}
             </div>
           </div>
         ) : (
           <div
-            ref={gridRef}
             data-odonto-grid
+            data-odonto-layout="cross"
             data-fdi-upper-right={fdiSeq.upperRight.join(',')}
             data-fdi-upper-left={fdiSeq.upperLeft.join(',')}
             data-fdi-lower-left={fdiSeq.lowerLeft.join(',')}
             data-fdi-lower-right={fdiSeq.lowerRight.join(',')}
-            className="grid grid-cols-2 gap-1 p-1 bg-slate-100/70 rounded-2xl border border-slate-200/80 relative select-none origin-top-center transition-transform duration-150"
-            style={{
-              width: 'max-content',
-              margin: '0 auto',
-              zoom: scale < 0.995 ? scale : 1,
-            }}
+            className="odonto-fit-frame w-full min-w-0 select-none"
+            data-compact={compact ? 'true' : 'false'}
           >
-            {/* Quadrant 1: Upper Right (teeth 18-11) */}
-            {chartView !== 'mandible' && (
-              <div className="flex justify-end items-end pb-2 pr-1.5 pt-1.5 pl-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0 overflow-visible">
-                {renderRow(upperRight, true)}
-              </div>
-            )}
-
-            {/* Quadrant 2: Upper Left (teeth 21-28) */}
-            {chartView !== 'mandible' && (
-              <div className="flex justify-start items-end pb-2 pl-1.5 pt-1.5 pr-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0 overflow-visible">
-                {renderRow(upperLeft, true)}
-              </div>
-            )}
-
-            {/* Quadrant 4: Lower Right (teeth 48-41) */}
-            {chartView !== 'maxilla' && (
-              <div className="flex justify-end items-start pt-2 pr-1.5 pb-1.5 pl-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0 overflow-visible">
-                {renderRow(lowerRight, false)}
-              </div>
-            )}
-
-            {/* Quadrant 3: Lower Left (teeth 31-38) */}
-            {chartView !== 'maxilla' && (
-              <div className="flex justify-start items-start pt-2 pl-1.5 pb-1.5 pr-2 bg-white rounded-xl border border-slate-200/70 shadow-2xs gap-0 overflow-visible">
-                {renderRow(lowerLeft, false)}
-              </div>
-            )}
+            <div className="odonto-cross">
+              {chartView !== 'mandible' && (
+                <div className="odonto-jaw odonto-jaw-upper">
+                  <div className="odonto-quad" data-label={`${upperRight[0]?.fdi}–${upperRight[upperRight.length - 1]?.fdi}`} style={{ gridTemplateColumns: `repeat(${upperRight.length}, minmax(0, 1fr))` }}>
+                    {renderRow(upperRight, true)}
+                  </div>
+                  <div className="odonto-midline" aria-hidden="true" />
+                  <div className="odonto-quad" data-label={`${upperLeft[0]?.fdi}–${upperLeft[upperLeft.length - 1]?.fdi}`} style={{ gridTemplateColumns: `repeat(${upperLeft.length}, minmax(0, 1fr))` }}>
+                    {renderRow(upperLeft, true)}
+                  </div>
+                </div>
+              )}
+              {chartView === 'teeth' && <div className="odonto-bite-line" aria-hidden="true" />}
+              {chartView !== 'maxilla' && (
+                <div className="odonto-jaw odonto-jaw-lower">
+                  <div className="odonto-quad" data-label={`${lowerRight[0]?.fdi}–${lowerRight[lowerRight.length - 1]?.fdi}`} style={{ gridTemplateColumns: `repeat(${lowerRight.length}, minmax(0, 1fr))` }}>
+                    {renderRow(lowerRight, false)}
+                  </div>
+                  <div className="odonto-midline" aria-hidden="true" />
+                  <div className="odonto-quad" data-label={`${lowerLeft[0]?.fdi}–${lowerLeft[lowerLeft.length - 1]?.fdi}`} style={{ gridTemplateColumns: `repeat(${lowerLeft.length}, minmax(0, 1fr))` }}>
+                    {renderRow(lowerLeft, false)}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

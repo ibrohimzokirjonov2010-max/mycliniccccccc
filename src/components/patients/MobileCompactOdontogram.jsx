@@ -1,23 +1,9 @@
 import { memo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { getToothIllustrationSrcFromStatus } from '@/utils/toothIllustration';
+import { getToothIllustrationSrcFromStatus, resolveToothIllustrationKind } from '@/utils/toothIllustration';
 
 export const FDI_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
 export const FDI_LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
-
-const STATUS_PIP = {
-  caries: '#ef4444',
-  cavity: '#ef4444',
-  completed: '#3b82f6',
-  filling: '#3b82f6',
-  crown: '#eab308',
-  implant: '#94a3b8',
-  extracted: '#0f172a',
-  missing: '#0f172a',
-  in_progress: '#f59e0b',
-  planned: '#6366f1',
-  veneer: '#06b6d4',
-};
 
 export function fdiToInternalId(fdi) {
   const n = parseInt(fdi, 10);
@@ -45,49 +31,61 @@ export function internalIdToFdi(id) {
   return `${qMap[quad]}${num}`;
 }
 
-const ToothPill = memo(function ToothPill({ fdi, selected, statusKey, toothStatus, onSelect }) {
-  const pip = statusKey && statusKey !== 'healthy' ? STATUS_PIP[statusKey] : null;
-  const imgSrc = getToothIllustrationSrcFromStatus(fdi, toothStatus || { status: statusKey || 'healthy' });
+const ToothCell = memo(function ToothCell({ fdi, selected, toothStatus, onSelect, isUpper }) {
+  const status = toothStatus || { status: 'healthy' };
+  const kind = resolveToothIllustrationKind(status);
+  const imgSrc = getToothIllustrationSrcFromStatus(fdi, status);
   return (
     <button
       type="button"
       onClick={() => onSelect(fdi)}
       aria-pressed={selected}
       aria-label={`FDI ${fdi}`}
+      data-fdi={fdi}
+      data-illustration={kind}
       className={cn(
-        'odontogram-tooth odonto-fit-tooth relative z-10 flex flex-col items-center justify-end w-full min-w-0 rounded-xl text-[10px] font-black tabular-nums leading-none transition-transform active:scale-95 touch-manipulation overflow-hidden',
-        selected
-          ? 'bg-[#14b8a6] text-white shadow-[0_4px_10px_rgba(20,184,166,0.35)] z-20'
-          : 'bg-white text-slate-600 border border-slate-200/90 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+        'odontogram-tooth odonto-fit-tooth relative flex flex-col items-center w-full min-w-0 bg-transparent p-0 border-0 cursor-pointer touch-manipulation',
+        isUpper ? 'justify-end' : 'justify-start',
+        selected && 'z-10'
       )}
     >
-      {imgSrc && (
-        <img
-          src={imgSrc}
-          alt=""
-          draggable={false}
-          className="absolute inset-x-0 top-0 h-[34px] w-full object-contain pointer-events-none"
-          style={{ filter: selected ? 'brightness(1.05)' : undefined }}
-        />
+      {!isUpper && (
+        <span className={cn(
+          'odontogram-fdi-label mb-0.5 w-full text-center font-black tabular-nums rounded-sm border',
+          selected ? 'bg-[#14b8a6] text-white border-transparent' : 'text-slate-700 bg-white border-slate-200/80'
+        )}>{fdi}</span>
       )}
-      {selected && (
-        <span className="absolute top-[3px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white/95 z-10" />
+      <span className={cn('odonto-lateral relative flex w-full min-w-0 justify-center', isUpper ? 'items-end' : 'items-start')}>
+        {imgSrc && (
+          <img
+            src={imgSrc}
+            alt=""
+            draggable={false}
+            className="w-full h-full object-contain pointer-events-none"
+            style={{ objectPosition: isUpper ? 'center bottom' : 'center top' }}
+          />
+        )}
+        {selected && (
+          <span
+            className="absolute left-0.5 right-0.5 h-[3px] rounded-full bg-[#14b8a6] pointer-events-none"
+            style={{ [isUpper ? 'bottom' : 'top']: 1 }}
+          />
+        )}
+      </span>
+      {isUpper && (
+        <span className={cn(
+          'odontogram-fdi-label mt-0.5 w-full text-center font-black tabular-nums rounded-sm border',
+          selected ? 'bg-[#14b8a6] text-white border-transparent' : 'text-slate-700 bg-white border-slate-200/80'
+        )}>{fdi}</span>
       )}
-      {!selected && pip && (
-        <span
-          className="absolute top-[3px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full z-10"
-          style={{ backgroundColor: pip }}
-        />
-      )}
-      <span className="odontogram-fdi-label relative z-10 mt-auto mb-0.5 max-w-full">{fdi}</span>
     </button>
   );
 });
 
 /**
- * Compact FDI odontogram for ~390px phones.
- * Four rows of 8 (18–11, 21–28, 48–41, 31–38) so every label fits
- * without a hidden horizontal scrollbar. Wisdom teeth stay visible.
+ * Phone patient-profile chart. Same FDI cross as the desktop card
+ * (18→11 | 21→28 over 48→41 | 31→38), sized to the card so ~390px
+ * has no horizontal slider.
  */
 export default function MobileCompactOdontogram({
   selectedFdi,
@@ -98,17 +96,21 @@ export default function MobileCompactOdontogram({
     if (onSelect) onSelect(String(fdi));
   }, [onSelect]);
 
-  const renderQuadrant = (fdis) => (
-    <div className="grid grid-cols-8 gap-0.5 w-full min-w-0">
+  const renderHalf = (fdis, isUpper) => (
+    <div
+      className="odonto-quad"
+      data-label={fdis.length ? `${fdis[0]}–${fdis[fdis.length - 1]}` : undefined}
+      style={{ gridTemplateColumns: `repeat(${fdis.length}, minmax(0, 1fr))` }}
+    >
       {fdis.map((fdi) => {
         const id = fdiToInternalId(fdi);
         const st = toothStatuses[id] || toothStatuses[String(fdi)];
         return (
-          <ToothPill
+          <ToothCell
             key={fdi}
             fdi={fdi}
+            isUpper={isUpper}
             selected={String(selectedFdi) === String(fdi)}
-            statusKey={st?.status}
             toothStatus={st}
             onSelect={handleSelect}
           />
@@ -118,15 +120,19 @@ export default function MobileCompactOdontogram({
   );
 
   return (
-    <div className="w-full min-w-0 select-none touch-manipulation overflow-x-hidden">
-      <div className="grid grid-cols-1 gap-1">
-        {renderQuadrant(FDI_UPPER.slice(0, 8))}
-        {renderQuadrant(FDI_UPPER.slice(8))}
-      </div>
-      <div className="h-px my-2 mx-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-      <div className="grid grid-cols-1 gap-1">
-        {renderQuadrant(FDI_LOWER.slice(0, 8))}
-        {renderQuadrant(FDI_LOWER.slice(8))}
+    <div className="odonto-fit-frame w-full min-w-0 select-none" data-compact="false" data-odonto-layout="cross">
+      <div className="odonto-cross">
+        <div className="odonto-jaw odonto-jaw-upper">
+          {renderHalf(FDI_UPPER.slice(0, 8), true)}
+          <div className="odonto-midline" aria-hidden="true" />
+          {renderHalf(FDI_UPPER.slice(8), true)}
+        </div>
+        <div className="odonto-bite-line" aria-hidden="true" />
+        <div className="odonto-jaw odonto-jaw-lower">
+          {renderHalf(FDI_LOWER.slice(0, 8), false)}
+          <div className="odonto-midline" aria-hidden="true" />
+          {renderHalf(FDI_LOWER.slice(8), false)}
+        </div>
       </div>
     </div>
   );
