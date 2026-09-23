@@ -21,6 +21,6 @@ Each folder has 32 adult teeth:
 
 ## Default / healthy
 
-- `healthy/` — Dizyner untreated laterals (default)
+- `healthy/` — user sog‘lom-tishlar set (transparent PNGs, 512×512, FDI 11–48). Tooth 44 is a horizontal mirror of 34 (source upload had no 44).
 
 Mapping lives in `src/utils/toothIllustration.js`.
