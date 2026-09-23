@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 export function Pricing({ standalone = false }: { standalone?: boolean }) {
   const [plan, setPlan] = useState<PlanId | null>(null);
   return (
-    <section id="tariflar" className="scroll-mt-24 bg-paper py-20">
+    <section id="tariflar" className="scroll-mt-24 py-20">
       <div className="mx-auto max-w-6xl px-4">
         {standalone ? (
           <div className="mb-8 flex items-center justify-between">
@@ -24,19 +24,19 @@ export function Pricing({ standalone = false }: { standalone?: boolean }) {
         ) : null}
         <div className="mx-auto max-w-2xl text-center">
           {standalone ? (
-            <h1 className="font-display text-4xl leading-tight text-ink sm:text-5xl">Tariflar — klinikangizga mos</h1>
+            <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Tariflar — klinikangizga mos</h1>
           ) : (
-            <h2 className="font-display text-4xl leading-tight text-ink sm:text-5xl">Tariflar — klinikangizga mos</h2>
+            <h2 className="text-4xl font-semibold tracking-tight sm:text-5xl">Tariflar — klinikangizga mos</h2>
           )}
-          <p className="mt-3 text-lg text-mute">Klinikangiz hajmi va ehtiyojingizga mos tarifni tanlang.</p>
+          <p className="mt-3 text-lg text-mute">14 kunlik sinovdan keyin oylik tarif. Payme yoki Click.</p>
         </div>
         <div className="mt-12 grid items-stretch gap-5 lg:grid-cols-3">
           {TARIFFS.map((item) => (
             <article
               key={item.id}
-              className={`relative flex flex-col rounded-[1.7rem] border bg-white p-6 shadow-card ${item.recommended ? "border-teal shadow-lift lg:-translate-y-3" : "border-line"}`}
+              className={`relative flex flex-col rounded-2xl border bg-surface p-6 ${item.recommended ? "border-[#1760ff] shadow-lift lg:-translate-y-3" : "border-line"}`}
             >
-              {item.recommended ? <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">★ Recommended</Badge> : null}
+              {item.recommended ? <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#1760ff]">Tavsiya</Badge> : null}
               <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-teal-soft text-teal">
                 <FeatureIcon id={item.id === "start" ? "doctor" : item.id === "pro" ? "payments" : "branches"} />
               </div>

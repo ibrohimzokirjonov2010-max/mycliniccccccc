@@ -22,7 +22,9 @@ Prices and the Nexus plan map are in `config/shifo-tariffs.json` (Start → BASI
 
 `Sotib olish` collects name, phone, email, and an optional clinic name, then sends the buyer to Payme or Click. The webhook checks the signature and amount, then opens a 30-day license for that plan. The success page links to `NEXT_PUBLIC_APP_URL` (default `https://app-shahobidin-4.vercel.app`).
 
-A verified payment (Payme, Click, or demo pay) and a free trial (`Bepul demo`, 14 days) are also written to the CRM Super Admin database. The buyer still gets the license if that write fails. See [docs/super-admin-ingest.md](docs/super-admin-ingest.md).
+A verified payment (Payme, Click, or demo pay) and a free trial (`Ro'yxatdan o'tish` or `Bepul demo`, 14 days) are also written to the CRM Super Admin database. The buyer still gets the license if that write fails. See [docs/super-admin-ingest.md](docs/super-admin-ingest.md).
+
+`Ro'yxatdan o'tish` asks for a name, a password, a clinic or doctor name, and a phone or email. The password is bcrypt-hashed. `Kirish` checks that hash and sends the browser to the CRM with a two-minute signed handoff. On the CRM project set `VITE_LANDING_URL` to this site's origin so `/login` can redeem it. Without that variable the success screen still shows the clinic id and username for a manual login.
 
 ## Environment
 
@@ -30,10 +32,11 @@ Copy `env.example` to `.env.local`.
 
 | Variable | Purpose |
 | --- | --- |
-| `NEXT_PUBLIC_APP_URL` | CRM link on Kirish and the success page |
+| `NEXT_PUBLIC_APP_URL` | CRM link on the success page and the handoff redirect |
 | `NEXT_PUBLIC_SITE_URL` | Public URL of this landing, used as the Payme/Click return URL |
 | `NEXT_PUBLIC_APP_LABEL` | Footer label, default `app.shifo.uz` |
-| `LICENSE_SIGNING_SECRET` | Signs the success token. Set this in production |
+| `LICENSE_SIGNING_SECRET` | Signs the success token and the CRM handoff. Set this in production |
+| `VITE_LANDING_URL` | Set on the CRM app, not here. Public origin of this landing, so `/login#handoff=` can redeem a session |
 | `PAYME_MERCHANT_ID` | Payme checkout merchant id |
 | `PAYME_SECRET_KEY` | Payme Basic password (`PAYME_LOGIN`, default `Paycom`) |
 | `CLICK_MERCHANT_ID` | Click merchant id |

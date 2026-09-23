@@ -1,69 +1,116 @@
-import { CalendarDays } from "lucide-react";
 import { CountUp } from "@/components/count-up";
-import { LaptopMock } from "@/components/product-views";
+import { TrialButton } from "@/components/auth-forms";
 import { Button } from "@/components/ui/button";
+
+const visits = [
+  ["09:30", "Sardor Aliyev", "Implant", "Tugadi"],
+  ["10:15", "Gulnora Nazarova", "Og'riq", "Davomida"],
+  ["11:00", "Jasur Tursunov", "Kanal", "Kutilmoqda"],
+];
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden bg-paper pb-8 pt-6 sm:pt-10">
-      <div className="pointer-events-none absolute left-0 top-0 h-48 w-72 bg-[radial-gradient(circle_at_0_0,rgba(16,24,26,0.45),transparent_68%)]" />
-      <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-        <div className="relative z-10 max-w-xl">
-          <p className="animate-fade-up text-sm font-semibold uppercase tracking-[0.18em] text-teal-ink">Stomatologiya klinikalari uchun</p>
-          <h1 className="mt-4 font-display text-[2.7rem] font-medium leading-[0.98] text-ink sm:text-6xl lg:text-[4.35rem]">
-            <span className="animate-fade-up block">Klinika chalkashligi</span>
-            <span className="animate-fade-up d2 block">
-              <span className="text-teal">tugadi</span> — stomatolog
-            </span>
-            <span className="animate-fade-up d3 block">CRM bir joyda</span>
-          </h1>
-          <p className="animate-fade-up d3 mt-5 max-w-md text-lg text-mute sm:text-xl">
-            bemor, implant, to&apos;lov, navbat — bitta tizim.
+    <section className="relative overflow-hidden pb-16 pt-10 sm:pt-16">
+      <div className="hero-grid pointer-events-none absolute inset-0" aria-hidden />
+      <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-[#1760ff]/20 blur-3xl" aria-hidden />
+      <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+        <div>
+          <p className="inline-flex items-center gap-2 rounded-full border border-[#1760ff]/40 bg-[#1760ff]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9db7ff]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#1760ff]" />
+            Stomatologiya klinikalari uchun
           </p>
-          <div className="animate-fade-up d4 mt-8 flex flex-wrap gap-3">
-            <Button asChild size="lg">
-              <a href="#modullar">Demo ko&apos;rish <span aria-hidden>→</span></a>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <a href="#tariflar"><CalendarDays className="h-4 w-4" /> Narx so&apos;rash</a>
+          <h1 className="mt-6 max-w-xl text-5xl font-semibold leading-[0.96] tracking-tight sm:text-6xl lg:text-[4.4rem]">
+            Stomatologiya klinikangiz uchun
+            <span className="mt-1 block text-[#1760ff]">bitta operatsion tizim</span>
+          </h1>
+          <p className="mt-5 max-w-md text-lg leading-relaxed text-mute">
+            Tish kartasi, davolash rejasi, qabul, to&apos;lov va hisobotlar bir joyda ishlaydi.
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <TrialButton size="lg" className="w-full sm:w-auto">14 kun bepul sinov</TrialButton>
+            <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
+              <a href="#tariflar">Tariflarni ko&apos;rish</a>
             </Button>
           </div>
-          <dl className="animate-fade-up d5 mt-10 flex flex-wrap items-center gap-x-5 gap-y-4">
-            <div className="flex items-center gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-full bg-teal text-white" aria-hidden>
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="8" cy="9" r="2"/><circle cx="16" cy="9" r="2"/><path d="M4 18c.6-2 2.2-3 4-3s3.4 1 4 3M12 18c.6-2 2.2-3 4-3s3.4 1 4 3"/></svg>
-              </span>
-              <div>
-                <dt className="font-display text-2xl leading-none"><CountUp value={50} suffix="+" /></dt>
-                <dd className="text-sm text-mute">klinika</dd>
-              </div>
+          <dl className="mt-10 grid max-w-lg grid-cols-3 overflow-hidden rounded-2xl border border-white/10">
+            <div className="px-3 py-3 sm:px-4">
+              <dt className="text-2xl font-semibold tracking-tight"><CountUp value={50} suffix="+" /></dt>
+              <dd className="text-xs text-mute">klinikalar</dd>
             </div>
-            <span className="hidden h-10 w-px bg-line sm:block" />
-            <div className="flex items-center gap-3">
-              <span className="text-teal" aria-hidden>★</span>
-              <div>
-                <dt className="font-display text-2xl leading-none"><CountUp value={4.9} decimals={1} /> ★</dt>
-                <dd className="text-sm text-mute">stomatologlar bahosi</dd>
-              </div>
+            <div className="border-l border-white/10 px-3 py-3 sm:px-4">
+              <dt className="text-2xl font-semibold tracking-tight"><CountUp value={14} /></dt>
+              <dd className="text-xs text-mute">kun bepul</dd>
             </div>
-            <span className="hidden h-10 w-px bg-line sm:block" />
-            <div className="flex items-center gap-3">
-              <span className="grid h-11 w-11 place-items-center rounded-full bg-teal text-white" aria-hidden>
-                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M12 3c-2.2 3.2-3.4 5.4-3.4 8.2a3.4 3.4 0 0 0 6.8 0C15.4 8.4 14.2 6.2 12 3z"/></svg>
-              </span>
-              <div>
-                <dt className="sr-only">Modul</dt>
-                <dd className="max-w-[8rem] text-sm font-semibold leading-tight">implant moduli</dd>
-              </div>
+            <div className="border-l border-white/10 px-3 py-3 sm:px-4">
+              <dt className="text-2xl font-semibold tracking-tight"><CountUp value={4.9} decimals={1} /></dt>
+              <dd className="text-xs text-mute">baho</dd>
             </div>
           </dl>
         </div>
-        <div className="relative lg:translate-x-6">
-          <div className="origin-top scale-[0.86] sm:scale-100">
-            <LaptopMock />
+        <DashboardMock />
+      </div>
+    </section>
+  );
+}
+
+function DashboardMock() {
+  return (
+    <div className="relative">
+      <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-[#1760ff]/10 blur-2xl" aria-hidden />
+      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#10151f] shadow-lift">
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 text-[11px] text-mute">
+          <span className="flex gap-1.5" aria-hidden>
+            <i className="h-2 w-2 rounded-full bg-white/20" />
+            <i className="h-2 w-2 rounded-full bg-white/20" />
+            <i className="h-2 w-2 rounded-full bg-white/20" />
+          </span>
+          <span>shifo.uz/panel</span>
+          <span className="font-semibold text-emerald-300">LIVE</span>
+        </div>
+        <div className="grid gap-0 md:grid-cols-[148px_1fr]">
+          <aside className="hidden border-r border-white/10 p-3 md:block">
+            {["Tish kartasi", "Modullar", "Imkoniyatlar", "Hamkorlar"].map((item, index) => (
+              <div key={item} className={`mb-1 rounded-lg px-3 py-2 text-sm ${index === 0 ? "bg-[#1760ff] font-semibold text-white" : "text-mute"}`}>
+                {item}
+              </div>
+            ))}
+          </aside>
+          <div className="p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm text-mute">Bugungi qabullar</p>
+                <p className="text-4xl font-semibold tracking-tight">12 / 14</p>
+              </div>
+              <span className="rounded-full bg-emerald-400/15 px-2.5 py-1 text-xs font-semibold text-emerald-300">+18%</span>
+            </div>
+            <ul className="mt-4 space-y-2">
+              {visits.map((row) => (
+                <li key={row[1]} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0c121c] px-3 py-2.5 text-sm">
+                  <span className="w-12 text-mute">{row[0]}</span>
+                  <span className="min-w-0 flex-1 truncate font-medium">{row[1]}</span>
+                  <span className="hidden text-mute sm:inline">{row[2]}</span>
+                  <span className="rounded-full bg-[#1760ff]/15 px-2 py-0.5 text-xs font-semibold text-[#9db7ff]">{row[3]}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 grid grid-cols-[1fr_128px] gap-3">
+              <div className="flex h-24 items-end gap-1.5 rounded-xl border border-white/10 bg-[#0c121c] px-3 pb-3" aria-hidden>
+                {[40, 62, 48, 80, 56, 90, 70].map((height) => (
+                  <span key={height} className="flex-1 rounded-sm bg-[#1760ff]" style={{ height: `${height}%` }} />
+                ))}
+              </div>
+              <div className="rounded-xl border border-white/10 bg-[#0c121c] p-3">
+                <p className="text-xs font-semibold">Davolash rejasi</p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {["Tashxis", "Rentgen", "Retsept", "Keyingi"].map((item) => (
+                    <span key={item} className="rounded-md bg-[#1760ff]/15 px-1.5 py-0.5 text-[10px] font-semibold text-[#9db7ff]">{item}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }

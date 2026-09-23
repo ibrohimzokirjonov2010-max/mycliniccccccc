@@ -23,7 +23,7 @@ export default async function BuyPage({ params }: { params: Promise<{ plan: stri
     <>
       <Header />
       <main className="bg-paper px-4 py-16">
-        <div className="mx-auto max-w-md rounded-[1.7rem] border border-line bg-white p-6 shadow-card">
+        <div className="mx-auto max-w-md rounded-3xl border border-line bg-surface p-6 shadow-card">
           <h1 className="mb-4 font-display text-4xl">Sotib olish</h1>
           <CheckoutForm planId={plan} />
         </div>

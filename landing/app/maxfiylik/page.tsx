@@ -11,7 +11,7 @@ export default function PrivacyPage() {
       <main className="bg-paper px-4 py-16">
         <article className="prose mx-auto max-w-2xl space-y-4 text-base leading-relaxed">
           <h1 className="font-display text-5xl">Maxfiylik siyosati</h1>
-          <p>SHIFO CRM landingi klinika egasidan faqat tarif sotib olish yoki demo so&apos;rash uchun ism, telefon va email oladi.</p>
+          <p>SHIFO CRM landingi klinika egasidan tarif sotib olish yoki 14 kunlik sinov uchun ism, klinika yoki shifokor nomi, telefon yoki email va parol oladi. Parol bcrypt bilan xeshlangan holda saqlanadi.</p>
           <p>Karta raqami bu saytda kiritilmaydi va saqlanmaydi. To&apos;lov Payme yoki Click sahifasida amalga oshadi.</p>
           <p>Buyurtma, litsenziya kaliti va to&apos;lov identifikatori tarifni ochish uchun saqlanadi. Demo so&apos;rovlar aloqa uchun saqlanadi.</p>
           <p>Savol bo&apos;lsa: hello@shifo.uz.</p>

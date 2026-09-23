@@ -6,26 +6,27 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        cream: "#f3efe6",
-        paper: "#f7f4ec",
-        ink: "#142421",
-        mute: "#5c6b66",
-        line: "#e4ddd0",
+        cream: "#07090f",
+        paper: "#07090f",
+        surface: "#121826",
+        ink: "#f3f6fb",
+        mute: "#93a0b4",
+        line: "#243044",
         teal: {
-          DEFAULT: "#0d9488",
-          deep: "#0c3c38",
-          btn: "#0f766e",
-          ink: "#115e59",
-          soft: "#d7f3ef",
+          DEFAULT: "#1760ff",
+          deep: "#0b1220",
+          btn: "#1760ff",
+          ink: "#9db7ff",
+          soft: "#13233f",
         },
       },
       fontFamily: {
-        display: ["var(--font-display)", "Georgia", "serif"],
-        body: ["var(--font-body)", "sans-serif"],
+        display: ["var(--font-sans)", "ui-sans-serif", "sans-serif"],
+        body: ["var(--font-sans)", "ui-sans-serif", "sans-serif"],
       },
       boxShadow: {
-        lift: "0 24px 60px -28px rgba(12, 60, 56, 0.45)",
-        card: "0 18px 40px -28px rgba(20, 36, 33, 0.35)",
+        lift: "0 30px 80px -36px rgba(23, 96, 255, 0.55)",
+        card: "0 18px 50px -36px rgba(0, 0, 0, 0.7)",
       },
       borderRadius: {
         xl: "1.25rem",

@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+
+const sans = Plus_Jakarta_Sans({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
@@ -9,7 +16,7 @@ export const metadata: Metadata = {
     template: "%s · SHIFO CRM",
   },
   description:
-    "Stomatologiya klinikasi egalari uchun CRM: bemor kartochkasi, implant moduli, navbat va to'lov bir joyda. Payme va Click orqali oylik tarif.",
+    "Stomatologiya klinikasi uchun operatsion tizim: bemor kartasi, navbat, implant, to'lov va hisobot. 14 kunlik bepul sinov, keyin Payme yoki Click.",
   keywords: [
     "stomatolog CRM",
     "klinika CRM",
@@ -30,8 +37,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="uz">
-      <body className="antialiased">{children}</body>
+    <html lang="uz" className={sans.variable}>
+      <body className={`${sans.className} antialiased`}>{children}</body>
     </html>
   );
 }

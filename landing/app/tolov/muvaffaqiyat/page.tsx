@@ -39,7 +39,7 @@ export default async function SuccessPage({
     <>
       <Header />
       <main className="bg-paper px-4 py-16">
-        <div className="mx-auto max-w-lg rounded-[1.8rem] border border-line bg-white p-8 shadow-card">
+        <div className="mx-auto max-w-lg rounded-3xl border border-line bg-surface p-8 shadow-card">
           {active && !cancelled ? (
             <>
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-teal">Tarif ochildi</p>

@@ -12,13 +12,15 @@ export function ToothMark({ className }: { className?: string }) {
   );
 }
 
-export function Logo({ tone = "ink" }: { tone?: "ink" | "light" }) {
+export function Logo({ tone = "light" }: { tone?: "ink" | "light" }) {
   const light = tone === "light";
   return (
-    <span className="inline-flex items-center gap-2">
-      <ToothMark className={cn("h-9 w-9 animate-fade-up", light ? "text-teal-soft" : "text-teal")} />
-      <span className={cn("font-body text-[1.35rem] font-bold tracking-tight", light ? "text-white" : "text-ink")}>
-        SHIFO <span className={light ? "text-[#7ee0d6]" : "text-teal"}>CRM</span>
+    <span className="inline-flex items-center gap-2.5">
+      <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#1760ff] text-white shadow-[0_10px_24px_-12px_#1760ff]">
+        <ToothMark className="h-5 w-5" />
+      </span>
+      <span className={cn("font-body text-[1.2rem] font-semibold tracking-tight", light ? "text-white" : "text-ink")}>
+        shifo <span className="text-[#8eb4ff]">crm</span>
       </span>
     </span>
   );

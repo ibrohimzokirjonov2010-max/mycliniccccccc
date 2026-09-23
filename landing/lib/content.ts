@@ -38,6 +38,14 @@ export const testimonials = [
 
 export const faqs = [
   {
+    q: "14 kunlik bepul sinov qanday ochiladi?",
+    a: "Ro'yxatdan o'tishda ism, parol va klinika yoki shifokor nomini qoldirasiz. Telefon yoki email bilan keyin kirasiz. Sinov darhol ochiladi va 14 kun CRM ishlaydi. Parol ochiq holda saqlanmaydi.",
+  },
+  {
+    q: "Sinov tugagach nima bo'ladi?",
+    a: "14 kun o'tgach kirish yopiladi. Start, Pro yoki Klinika tarifini Payme yoki Click orqali olsangiz, 30 kunlik litsenziya ochiladi.",
+  },
+  {
     q: "Bu bemorlar uchun saytmi?",
     a: "Yo'q. SHIFO CRM stomatologiya klinikasi egalari va shifokorlar uchun boshqaruv tizimi. Bemor bu yerdan navbat olmaydi.",
   },

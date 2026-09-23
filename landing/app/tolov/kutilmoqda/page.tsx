@@ -16,7 +16,7 @@ export default async function WaitingPage({ searchParams }: { searchParams: Prom
     <>
       <Header />
       <main className="bg-paper px-4 py-20">
-        <div className="mx-auto max-w-lg rounded-[1.8rem] border border-line bg-white p-8 shadow-card">
+        <div className="mx-auto max-w-lg rounded-3xl border border-line bg-surface p-8 shadow-card">
           <h1 className="font-display text-4xl">To&apos;lov tekshirilmoqda</h1>
           {order ? <div className="mt-4"><PaymentWait orderId={order} /></div> : <p className="mt-4 text-mute">Buyurtma raqami yo&apos;q.</p>}
         </div>

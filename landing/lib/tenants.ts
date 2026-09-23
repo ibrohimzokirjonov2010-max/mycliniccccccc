@@ -48,7 +48,8 @@ function makePassword() {
   return `Shifo${randomBytes(3).toString("hex")}`;
 }
 
-function usernameFor(sub: Pick<Subscription, "email" | "phone" | "id">) {
+function usernameFor(sub: Pick<Subscription, "email" | "phone" | "id" | "username">) {
+  if (sub.username) return sub.username.toLowerCase();
   const local = sub.email.split("@")[0]?.replace(/[^a-z0-9._-]/gi, "").slice(0, 24) ?? "";
   if (local.length >= 2) return local.toLowerCase();
   const digits = sub.phone.replace(/\D/g, "").slice(-6);
@@ -95,8 +96,8 @@ export function buildCrmRows(sub: Subscription) {
     clinic_id: sub.id,
     username: usernameFor(sub),
     password: sub.temporaryPassword,
-    name: sub.doctorName,
-    full_name: sub.doctorName,
+    name: sub.ownerName || sub.doctorName,
+    full_name: sub.ownerName || sub.doctorName,
     phone: sub.phone,
     role: "admin",
     commission_rate: 0,
@@ -126,6 +127,7 @@ function paidSubscription(order: Order, license: License, expired: boolean): Sub
     orderId: order.id,
     leadId: null,
     paymentLedger: [],
+    username: "",
     temporaryPassword: "",
     updatedAt: new Date().toISOString(),
   };
@@ -155,6 +157,7 @@ function trialSubscription(lead: DemoLead): Subscription {
     orderId: null,
     leadId: lead.id,
     paymentLedger: [],
+    username: "",
     temporaryPassword: "",
     updatedAt: new Date().toISOString(),
   };
@@ -186,18 +189,35 @@ export function mergeLedger(previous: LedgerEntry[] | undefined, sub: Subscripti
   ];
 }
 
-async function remember(sub: Subscription) {
+async function remember(sub: Subscription, password?: string) {
   return updateStore((db) => {
     const previous = db.subscriptions[sub.id];
     const next: Subscription = {
       ...sub,
+      username: previous?.username || sub.username || usernameFor(sub),
       paymentLedger: mergeLedger(previous?.paymentLedger, sub),
-      temporaryPassword: previous?.temporaryPassword || makePassword(),
+      temporaryPassword: previous?.temporaryPassword || password || makePassword(),
       updatedAt: new Date().toISOString(),
     };
     db.subscriptions[sub.id] = next;
     return next;
   });
+}
+
+export function stageTrial(
+  db: { demoLeads: DemoLead[]; subscriptions: Record<string, Subscription> },
+  lead: DemoLead,
+  options: { passwordHash: string; username: string; ownerName?: string },
+) {
+  db.demoLeads.push(lead);
+  const sub = trialSubscription(lead);
+  sub.username = options.username;
+  sub.ownerName = options.ownerName || lead.name;
+  sub.temporaryPassword = options.passwordHash;
+  sub.paymentLedger = mergeLedger(undefined, sub);
+  sub.updatedAt = new Date().toISOString();
+  db.subscriptions[sub.id] = sub;
+  return sub;
 }
 
 function columnFromPostgrest(body: string) {
@@ -278,6 +298,11 @@ export async function publishTrial(lead: DemoLead, fetchImpl: FetchLike = fetch)
   const saved = await remember(trialSubscription(lead));
   await writeCrm(saved, fetchImpl);
   return saved;
+}
+
+export async function publishStagedTrial(sub: Subscription, fetchImpl: FetchLike = fetch) {
+  await writeCrm(sub, fetchImpl);
+  return sub;
 }
 
 export async function listSubscriptions() {

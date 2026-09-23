@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -25,6 +25,7 @@ export default function Login() {
   const { setAuthData } = useAuth();
   
   const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (window.location.hash.includes('handoff=')) return false;
     const completed = localStorage.getItem('has_completed_onboarding');
     const isMobileScreen = window.innerWidth < 1024;
     return isMobileScreen && !completed;
@@ -44,6 +45,74 @@ export default function Login() {
     password: '',
     rememberMe: true
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const token = params.get('handoff');
+    const from = params.get('from');
+    if (!token || !from) return;
+
+    const configured = String(import.meta.env.VITE_LANDING_URL || '').trim().replace(/\/$/, '');
+    let origin = '';
+    try {
+      origin = new URL(from).origin;
+    } catch {
+      origin = '';
+    }
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    setShowOnboarding(false);
+
+    if (!configured || origin !== configured) {
+      setError('Avtomatik kirish yoqilmagan. Klinika ID va login bilan kiring.');
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      try {
+        const response = await fetch(`${configured}/api/auth/handoff`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data?.user) {
+          if (!cancelled) setError(data?.error || 'Sessiya ochilmadi. Klinika ID va login bilan kiring.');
+          return;
+        }
+        const user = data.user;
+        const authToken = data.token || btoa(JSON.stringify({ sub: user.id, role: user.role, exp: Date.now() + 86400000 }));
+        localStorage.setItem('auth_token', authToken);
+        localStorage.setItem('is_authenticated', 'true');
+        localStorage.setItem('user_id', user.id);
+        localStorage.setItem('user_name', user.name || '');
+        localStorage.setItem('user_role', user.role || 'admin');
+        localStorage.setItem('clinic_id', user.clinic_id);
+        localStorage.setItem('current_clinic_id', user.clinic_id);
+        localStorage.setItem('clinic_plan', String(user.plan || 'basic').toLowerCase());
+        localStorage.setItem('user_data', JSON.stringify({
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          role: user.role,
+          clinic_id: user.clinic_id,
+        }));
+        localStorage.setItem('has_completed_onboarding', 'true');
+        if (setAuthData) setAuthData(user, authToken);
+        toast.success('Xush kelibsiz!');
+        navigate(user.role === 'doctor' ? '/doctor/dashboard' : '/admin/dashboard');
+      } catch {
+        if (!cancelled) setError('Sessiya ochilmadi. Klinika ID va login bilan kiring.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, setAuthData]);
 
   const handleLogin = async (e) => {
     e.preventDefault();

@@ -79,7 +79,7 @@ export function CheckoutForm({ planId }: { planId: string }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div className="rounded-2xl bg-white px-4 py-3">
+      <div className="rounded-2xl border border-line bg-[#0c121c] px-4 py-3">
         <p className="text-sm text-mute">{selected.name} tarifi</p>
         <p className="font-display text-3xl text-teal-ink">{formatUzs(selected.priceUzs)} <span className="font-body text-base text-mute">so&apos;m/oy</span></p>
       </div>
@@ -121,7 +121,7 @@ export function CheckoutForm({ planId }: { planId: string }) {
           </div>
         </>
       )}
-      {error ? <p className="text-sm font-semibold text-red-700" role="alert">{error}</p> : null}
+      {error ? <p className="text-sm font-semibold text-rose-300" role="alert">{error}</p> : null}
     </form>
   );
 }

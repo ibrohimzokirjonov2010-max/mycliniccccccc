@@ -19,7 +19,7 @@ Nexus SuperAdmin (`src/pages/SuperAdmin.jsx`, routes `/super-admin` and `/super-
 | --- | --- | --- | --- |
 | Payme `PerformTransaction`, Click complete that opens a license, or demo pay | `active` | `Active` | unlocked for 30 days, `monthly_fee` = landing tariff, `last_payment_date` set |
 | Payme `CancelTransaction` after perform, or a cancelled license | `expired` | `Expired` | locked, the original ledger row stays |
-| `POST /api/demo` (Bepul demo) | `trialing` | `Active` | unlocked for 14 days, amount 0, no `last_payment_date` |
+| `POST /api/demo` (Bepul demo) or `POST /api/auth/register` | `trialing` | `Active` | unlocked for 14 days, amount 0, no `last_payment_date` |
 
 A Click or Payme callback that never opens a license does not create a clinic. Clinic id is stable: `c` + the first 10 characters of the order id, or `t` + the first 10 characters of the trial id. Repeating the webhook updates the same row and keeps the temporary password.
 
@@ -49,6 +49,14 @@ Fields the `clinics` table has no column for are stored in `logo` with the prefi
 `payment_method` is `payme`, `click`, `mock`, or `trial`. `subscription_status` is `trialing`, `active`, or `expired`. `billing_status` stays `trial`, `paid`, or `expired` for older rows. `tariff` is `start`, `pro`, `klinika`, or `trial`. `payment_ledger` is appended once per order or trial. Repeating a webhook does not add a second row. Manual **To'lovni Qabul Qilish** and **+Muddat** append a `manual` row and set `last_payment_date`.
 
 The portal shows clinic name, mapped plan, monthly fee, expiry, password, and the doctor in the users list as soon as the row exists. Doctor, phone, email, tariff name, billing status, payment method, and access text render after the CRM project that contains this repo's `SuperAdmin.jsx` is deployed.
+
+## Self-serve trial (`Ro'yxatdan o'tish`)
+
+`POST /api/auth/register` collects the owner's name, a password, a clinic name or a doctor name, and a phone or email. It stages the same 14-day trial row as `POST /api/demo`, then upserts `clinics` and `users`.
+
+The password is bcrypt-hashed before it is written. `users.password` and `clinics.password` store that hash, never the plaintext. CRM login already calls `bcrypt.compare`, so the hash signs in. SuperAdmin **reveal** shows the hash for these rows because the owner chose the password. Paid checkout temporary passwords stay recoverable for the existing success page.
+
+Login is `POST /api/auth/login` with `identifier` (phone, email, or username) and `password`. A match returns a 2-minute HMAC handoff (`LICENSE_SIGNING_SECRET`) to `{NEXT_PUBLIC_APP_URL}/login#handoff=…&from={landing origin}`. The CRM login page redeems `POST /api/auth/handoff` only when `VITE_LANDING_URL` equals that origin, then writes the same localStorage session as a normal clinic login.
 
 ## Environment
 

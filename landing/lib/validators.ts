@@ -24,3 +24,9 @@ export function normalizeClinic(input: string): string | null {
   if (clinic.length < 2 || clinic.length > 80) return null;
   return clinic;
 }
+
+export function normalizePassword(input: string): string | null {
+  const password = input.trim();
+  if (password.length < 8 || password.length > 72) return null;
+  return password;
+}

@@ -4,18 +4,15 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2 focus-visible:ring-offset-cream disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1760ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#07090f] disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default:
-          "bg-teal-btn text-white shadow-lg shadow-teal-deep/20 hover:scale-[1.03] hover:bg-[#0d9488] hover:shadow-teal/30",
-        outline:
-          "border border-ink/15 bg-white/80 text-ink shadow-sm hover:-translate-y-0.5 hover:border-teal hover:text-teal-ink",
-        cream:
-          "bg-[#f6f1e6] text-ink shadow-lift hover:scale-[1.03] hover:bg-white",
-        ghost: "text-ink hover:bg-ink/5",
-        dark: "bg-teal-deep text-white hover:bg-[#08312e]",
+        default: "bg-[#1760ff] text-white shadow-[0_12px_32px_-16px_rgba(23,96,255,0.95)] hover:bg-[#3c7dff]",
+        outline: "border border-white/15 bg-white/[0.03] text-white hover:border-[#1760ff]/70 hover:bg-white/[0.06]",
+        cream: "border border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.08]",
+        ghost: "text-[#d5deea] hover:bg-white/5",
+        dark: "border border-white/15 bg-[#0e1524] text-white hover:border-[#1760ff]/60",
       },
       size: {
         default: "h-11 px-5 text-sm",

@@ -78,9 +78,12 @@ export type LedgerEntry = {
 export type Subscription = {
   id: string;
   doctorName: string;
+  /** Login display name when it differs from the doctor shown in SuperAdmin. */
+  ownerName?: string;
   clinicName: string;
   phone: string;
   email: string;
+  username: string;
   planId: string;
   planName: string;
   status: BillingStatus;
@@ -95,6 +98,7 @@ export type Subscription = {
   orderId: string | null;
   leadId: string | null;
   paymentLedger: LedgerEntry[];
+  /** Plain temporary password for paid checkouts, or a bcrypt hash for self-serve trials. */
   temporaryPassword: string;
   updatedAt: string;
 };
@@ -118,6 +122,10 @@ function patchDatabase(parsed: Database) {
   parsed.demoLeads ??= [];
   parsed.nextPrepareId ??= 1000;
   parsed.subscriptions ??= {};
+  for (const sub of Object.values(parsed.subscriptions)) {
+    sub.username ??= "";
+    sub.paymentLedger ??= [];
+  }
   return parsed;
 }
 
