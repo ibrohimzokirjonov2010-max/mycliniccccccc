@@ -14,10 +14,12 @@ plomba, shtift, breket, metal-keramika, sirkon, protez-*, missing):
   FDI across every kind, centered horizontally, crown on the occlusal edge
   (upper 11–28 anchored to the bottom, lower 31–48 anchored to the top)
 
-``plomba/21.png`` is a hard crop through the crown (only the left portion of
-the tooth is in the file, and the right edge is solid enamel). Before
-normalization it is replaced with a horizontal mirror of ``plomba/11.png``,
-the contralateral central incisor, so the full tooth is visible.
+A source whose opaque region has one long straight edge was sliced through
+the tooth. Those are rebuilt on the matching healthy silhouette: the intact
+side keeps its treatment art, and the missing side is filled by mirroring
+across the tooth centre. A very thin crop (``plomba/21``) is a mirror of the
+repaired contralateral tooth. Healthy illustrations get a morphological
+opening plus a pass that drops dark, low-saturation pixels on the silhouette.
 
 Requires Pillow, numpy, and scipy.
 
@@ -77,67 +79,270 @@ def load_rgba(path: Path) -> Image.Image:
     return Image.open(path).convert("RGBA")
 
 
-def is_hard_sliver(im: Image.Image) -> bool:
-    """True when the bitmap is a narrow slice cut through the tooth body."""
+def content_metrics(im: Image.Image, thresh: int = 40) -> dict | None:
+    """Aspect and how much of each bbox edge is one straight opaque run."""
     arr = np.asarray(im)
-    height, width = arr.shape[:2]
-    if height < 8 or width / height >= 0.20:
-        return False
     alpha = arr[:, :, 3]
-    right = float((alpha[:, -1] > 200).mean())
-    left = float((alpha[:, 0] > 200).mean())
-    return right > 0.85 or left > 0.85
+    ys, xs = np.where(alpha > thresh)
+    if xs.size < 20:
+        return None
+    x0, y0 = int(xs.min()), int(ys.min())
+    x1, y1 = int(xs.max()) + 1, int(ys.max()) + 1
+    sub = alpha[y0:y1, x0:x1] > thresh
+    height, width = sub.shape
+
+    def longest(line: np.ndarray) -> float:
+        best = cur = 0
+        for value in line:
+            if value:
+                cur += 1
+                best = max(best, cur)
+            else:
+                cur = 0
+        return best / max(1, len(line))
+
+    return {
+        "w": width,
+        "h": height,
+        "asp": width / max(1, height),
+        "L": longest(sub[:, 0]),
+        "R": longest(sub[:, -1]),
+        "T": longest(sub[0]),
+        "B": longest(sub[-1]),
+    }
 
 
-def remove_grey_halo(im: Image.Image) -> tuple[Image.Image, int]:
-    """Clear low-saturation grey/dark pixels that sit beside the tooth body.
-
-    Enamel is bright even when it is nearly grey. Root dentine is chromatic.
-    Photo-background smudges are dark, unsaturated, and outside the core span
-    of the row. The tooth's own neck shading stays, because it lies inside
-    that span.
-    """
+def crop_content(im: Image.Image, thresh: int = 12) -> Image.Image:
     arr = np.array(im)
+    ys, xs = np.where(arr[:, :, 3] > thresh)
+    if xs.size == 0:
+        return im
+    cropped = arr[int(ys.min()) : int(ys.max()) + 1, int(xs.min()) : int(xs.max()) + 1].copy()
+    cropped[cropped[:, :, 3] == 0, :3] = 255
+    return Image.fromarray(cropped)
+
+
+def is_thin_sliver(im: Image.Image) -> bool:
+    measured = content_metrics(im)
+    return bool(measured and measured["asp"] < 0.20)
+
+
+def contralateral(fdi: str) -> str:
+    quadrant = {"1": "2", "2": "1", "3": "4", "4": "3"}
+    return quadrant[fdi[0]] + fdi[1]
+
+
+def opening_keep(alpha: np.ndarray, erode_px: int = 3, thresh: int = 24) -> np.ndarray:
+    """Erode, keep the largest component, dilate back, and AND with the original."""
+    opaque = alpha > thresh
+    core = ndimage.binary_erosion(opaque, iterations=erode_px)
+    labels, count = ndimage.label(core)
+    if count == 0:
+        return opaque
+    sizes = np.bincount(labels.ravel())
+    sizes[0] = 0
+    main = int(sizes.argmax())
+    dilated = ndimage.binary_dilation(labels == main, iterations=erode_px)
+    return dilated & opaque
+
+
+def drop_lateral_fragments(arr: np.ndarray) -> tuple[np.ndarray, int]:
+    """Drop a side piece that is separated from the tooth by a gap.
+
+    A second molar root is wide and stays. A neighbour chip is a narrow run
+    beside the main body. A grey wisp is darker than the enamel on that row.
+    """
+    alpha = arr[:, :, 3]
+    rgb = arr[:, :, :3].astype(np.float32)
+    peak = rgb.max(axis=2)
+    valley = rgb.min(axis=2)
+    sat = np.where(peak > 1.0, (peak - valley) / np.maximum(peak, 1.0), 0.0)
+    lum = rgb.mean(axis=2)
+    opaque = alpha > 28
+    kill = np.zeros(opaque.shape, dtype=bool)
+    height, _width = opaque.shape
+    for y in range(height):
+        row = opaque[y]
+        delta = np.diff(row.astype(np.int8), prepend=0, append=0)
+        starts = np.flatnonzero(delta == 1)
+        ends = np.flatnonzero(delta == -1)
+        if starts.size <= 1:
+            continue
+        segs = sorted(zip(starts.tolist(), ends.tolist()), key=lambda seg: -(seg[1] - seg[0]))
+        main_start, main_end = segs[0]
+        main_w = main_end - main_start
+        if main_w < 6:
+            continue
+        tone = float(np.median(lum[y, main_start:main_end]))
+        for start, end in segs[1:]:
+            seg_w = end - start
+            if seg_w > max(22, int(0.16 * main_w)):
+                continue
+            if start >= main_start and end <= main_end:
+                continue
+            seg_lum = float(lum[y, start:end].mean())
+            seg_sat = float(sat[y, start:end].mean())
+            narrow = seg_w <= 12
+            dark = seg_sat < 0.14 and seg_lum < tone - 22
+            if narrow or dark:
+                kill[y, start:end] = True
+    removed = int(kill.sum())
+    if removed:
+        arr = arr.copy()
+        arr[kill, 3] = 0
+    return arr, removed
+
+
+def kill_edge_grey(arr: np.ndarray, edge_px: int = 5) -> np.ndarray:
+    """Clear low-saturation silhouette pixels that are darker than the tooth tone."""
     rgb = arr[:, :, :3].astype(np.float32)
     alpha = arr[:, :, 3]
     peak = rgb.max(axis=2)
     valley = rgb.min(axis=2)
     sat = np.where(peak > 1.0, (peak - valley) / np.maximum(peak, 1.0), 0.0)
     lum = rgb.mean(axis=2)
-    core = (alpha > 20) & ((lum >= 165.0) | (sat >= 0.10))
-    height, width = alpha.shape
-    columns = np.arange(width)
-    kill = np.zeros((height, width), dtype=bool)
-    pad = 3
+    opaque = alpha > 16
+    dist = ndimage.distance_transform_edt(opaque)
+    kill = np.zeros(opaque.shape, dtype=bool)
+    height, _width = opaque.shape
     for y in range(height):
-        xs = np.flatnonzero(core[y])
-        if xs.size == 0:
+        idx = np.flatnonzero(opaque[y])
+        if idx.size < 8:
             continue
-        left = int(xs[0]) - pad
-        right = int(xs[-1]) + pad
-        outside = (columns < left) | (columns > right)
-        kill[y] = outside & (alpha[y] > 8) & (sat[y] < 0.09) & (lum[y] < 155.0)
-    removed = int(kill.sum())
+        interior = idx[(dist[y, idx] > edge_px) & ((lum[y, idx] >= 145) | (sat[y, idx] >= 0.10))]
+        if interior.size < 4:
+            interior = idx[dist[y, idx] > 2]
+        if interior.size < 4:
+            continue
+        tone = float(np.median(lum[y, interior]))
+        limit = min(tone - 30.0, 160.0)
+        band = np.unique(np.concatenate([idx[:edge_px], idx[-edge_px:]]))
+        for x in band.tolist():
+            if sat[y, x] < 0.10 and lum[y, x] < limit and lum[y, x] < tone * 0.78:
+                kill[y, x] = True
+    return kill
+
+
+def clean_healthy_image(im: Image.Image, upper: bool) -> tuple[Image.Image, list[str]]:
+    notes: list[str] = []
+    arr, removed = drop_lateral_fragments(np.array(im))
     if removed:
-        arr[kill, 3] = 0
-    return Image.fromarray(arr), removed
-
-
-def keep_largest_component(im: Image.Image, thresh: int = 16) -> tuple[Image.Image, int]:
+        notes.append(f"lateral-{removed}px")
+    im, frag = remove_side_fragments(Image.fromarray(arr), upper)
+    if frag:
+        notes.append(f"fragment {frag}")
     arr = np.array(im)
-    opaque = arr[:, :, 3] > thresh
-    labels, count = ndimage.label(opaque)
-    if count <= 1:
-        return im if count == 1 else Image.fromarray(arr), 0
-    sizes = np.bincount(labels.ravel())
-    sizes[0] = 0
-    main = int(sizes.argmax())
-    drop = labels != main
-    # Only drop pixels that were opaque so we don't touch already-clear cells.
-    drop &= opaque
-    removed = int(drop.sum())
-    arr[drop, 3] = 0
-    return Image.fromarray(arr), removed
+    keep = opening_keep(arr[:, :, 3], erode_px=3, thresh=24)
+    opened = int(((arr[:, :, 3] > 24) & ~keep).sum())
+    arr[~keep, 3] = 0
+    if opened:
+        notes.append(f"opening-{opened}px")
+    grey_n = 0
+    for _ in range(2):
+        kill = kill_edge_grey(arr, edge_px=5)
+        count = int(kill.sum())
+        if not count:
+            break
+        arr[kill, 3] = 0
+        grey_n += count
+    if grey_n:
+        notes.append(f"edge-grey-{grey_n}px")
+    return Image.fromarray(arr), notes
+
+
+def _paint_missing(arr: np.ndarray, need: np.ndarray) -> None:
+    if not need.any():
+        return
+    _height, width = need.shape
+    cx = (width - 1) / 2.0
+    ys, xs = np.where(need)
+    mirrored_x = np.clip(np.rint(2 * cx - xs).astype(int), 0, width - 1)
+    src_a = arr[ys, mirrored_x, 3]
+    ok = src_a > 20
+    arr[ys[ok], xs[ok]] = arr[ys[ok], mirrored_x[ok]]
+    alpha = arr[:, :, 3]
+    for y, x in zip(ys[~ok].tolist(), xs[~ok].tolist()):
+        row = alpha[y] > 20
+        if not row.any():
+            continue
+        direction = 1 if x < cx else -1
+        found = None
+        for step in range(1, width):
+            xx = x + direction * step
+            if xx < 0 or xx >= width:
+                break
+            if row[xx]:
+                found = xx
+                break
+        if found is None:
+            idxs = np.flatnonzero(row)
+            found = int(idxs[np.argmin(np.abs(idxs - x))])
+        arr[y, x] = arr[y, found]
+
+
+def rebuild_on_healthy(treat: Image.Image, healthy: Image.Image, cut: str) -> Image.Image:
+    """Rebuild a clipped illustration on the healthy tooth's silhouette.
+
+    ``cut`` is ``L``, ``R``, or ``BOTH``. The intact side keeps its art. The
+    cropped side is filled by mirroring across the tooth centre, and a flat
+    cut that hangs past the healthy contour is cleared.
+    """
+    source = crop_content(treat, 16)
+    mask_im = crop_content(healthy, 16)
+    if source.height < 8 or mask_im.height < 8:
+        return treat
+    scale = source.height / mask_im.height
+    width = max(source.width, int(round(mask_im.width * scale)))
+    mask = mask_im.resize((width, source.height), Image.Resampling.LANCZOS)
+    canvas = Image.new("RGBA", (width, source.height), (0, 0, 0, 0))
+    if cut == "L":
+        tx = width - source.width
+    elif cut == "R":
+        tx = 0
+    else:
+        tx = (width - source.width) // 2
+    tx = int(max(0, min(tx, width - source.width)))
+    canvas.paste(source, (tx, 0), source)
+    arr = np.array(canvas)
+    healthy_a = np.asarray(mask)[:, :, 3]
+    _paint_missing(arr, (healthy_a > 36) & (arr[:, :, 3] < 20))
+    outside = (arr[:, :, 3] > 20) & (healthy_a < 20)
+    if cut == "L":
+        outside[:, int(width * 0.45) :] = False
+    elif cut == "R":
+        outside[:, : int(width * 0.55)] = False
+    arr[outside, 3] = 0
+    arr[arr[:, :, 3] == 0, :3] = 255
+    return Image.fromarray(arr)
+
+
+def clip_cut(kind: str, im: Image.Image, healthy: Image.Image) -> str | None:
+    """Which side of a non-healthy asset was sliced off, if any."""
+    if kind in ("healthy", "missing"):
+        return None
+    measured = content_metrics(im)
+    reference = content_metrics(healthy)
+    if measured is None or reference is None or reference["asp"] <= 0:
+        return None
+    ratio = measured["asp"] / reference["asp"]
+    one_l = measured["L"] >= 0.55 and measured["R"] <= 0.38
+    one_r = measured["R"] >= 0.55 and measured["L"] <= 0.38
+    both = measured["L"] >= 0.45 and measured["R"] >= 0.45
+    severe_l = measured["L"] >= 0.75 and measured["R"] <= 0.35
+    severe_r = measured["R"] >= 0.75 and measured["L"] <= 0.35
+    if (one_l or one_r) and ratio < 0.93:
+        return "L" if (one_l and not one_r) or measured["L"] >= measured["R"] else "R"
+    if (severe_l or severe_r) and ratio < 1.08:
+        return "L" if severe_l and not severe_r else "R" if severe_r and not severe_l else ("L" if measured["L"] >= measured["R"] else "R")
+    if both and ratio < 0.60:
+        return "BOTH"
+    if kind.startswith("protez") and ratio < 0.78 and max(measured["L"], measured["R"]) >= 0.40:
+        if measured["L"] > measured["R"] + 0.22:
+            return "L"
+        if measured["R"] > measured["L"] + 0.22:
+            return "R"
+        return "BOTH"
+    return None
 
 
 def remove_side_fragments(im: Image.Image, upper: bool) -> tuple[Image.Image, str]:
@@ -279,23 +484,11 @@ def place(im: Image.Image, shared_h: int, upper: bool) -> Image.Image:
     return canvas
 
 
-def prepare_one(kind: str, fdi: str, im: Image.Image) -> tuple[Image.Image, list[str]]:
-    notes: list[str] = []
-    if kind == "healthy":
-        im, removed = remove_grey_halo(im)
-        if removed:
-            notes.append(f"halo-{removed}px")
-        im, frag = remove_side_fragments(im, is_upper(fdi))
-        if frag:
-            notes.append(f"fragment {frag}")
-        im, dropped = keep_largest_component(im)
-        if dropped:
-            notes.append(f"stray-{dropped}px")
-    else:
+def prepare_one(kind: str, im: Image.Image) -> Image.Image:
+    if kind != "healthy":
         # Specks only. Screws, brackets, and prosthesis wings stay.
         im = drop_specks(im)
-    im = trim(im)
-    return im, notes
+    return trim(im)
 
 
 def drop_specks(im: Image.Image) -> Image.Image:
@@ -338,12 +531,41 @@ def shared_heights(prepared: dict[tuple[str, str], Image.Image]) -> dict[str, in
     return heights
 
 
-def normalize_tree(src: Path, dest: Path | None) -> None:
-    prepared: dict[tuple[str, str], Image.Image] = {}
-    notes_all: list[str] = []
-    mirror_src = src / "plomba" / "11.png"
-    mirror_im = load_rgba(mirror_src) if mirror_src.exists() else None
+def clip_to_healthy(treat: Image.Image, healthy: Image.Image) -> Image.Image:
+    """Center a full illustration on the healthy silhouette and clip the overflow."""
+    source = crop_content(treat, 16)
+    mask_im = crop_content(healthy, 16)
+    if source.height < 8 or mask_im.height < 8:
+        return treat
+    scale = source.height / mask_im.height
+    width = max(1, int(round(mask_im.width * scale)))
+    mask = mask_im.resize((width, source.height), Image.Resampling.LANCZOS)
+    canvas = Image.new("RGBA", (width, source.height), (0, 0, 0, 0))
+    canvas.paste(source, ((width - source.width) // 2, 0), source)
+    arr = np.array(canvas)
+    healthy_a = np.asarray(mask)[:, :, 3]
+    arr[:, :, 3] = np.minimum(arr[:, :, 3], np.where(healthy_a > 36, healthy_a, 0))
+    _paint_missing(arr, (healthy_a > 36) & (arr[:, :, 3] < 20))
+    arr[arr[:, :, 3] == 0, :3] = 255
+    return Image.fromarray(arr)
 
+
+def _fit_mirror(donor: Image.Image, healthy: Image.Image) -> Image.Image:
+    flipped = donor.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    measured = content_metrics(flipped)
+    reference = content_metrics(healthy)
+    if not measured or not reference or reference["asp"] <= 0:
+        return flipped
+    if measured["asp"] < reference["asp"] * 0.95:
+        return rebuild_on_healthy(flipped, healthy, "BOTH")
+    if measured["asp"] > reference["asp"] * 1.08:
+        return clip_to_healthy(flipped, healthy)
+    return flipped
+
+
+def normalize_tree(src: Path, dest: Path | None) -> None:
+    loaded: dict[tuple[str, str], Image.Image] = {}
+    notes_all: list[str] = []
     for kind in KINDS:
         folder = src / kind
         if not folder.is_dir():
@@ -354,19 +576,63 @@ def normalize_tree(src: Path, dest: Path | None) -> None:
             if not path.exists():
                 print(f"MISSING {kind}/{fdi}.png", file=sys.stderr)
                 continue
-            im = load_rgba(path)
-            if kind == "plomba" and fdi == "21" and is_hard_sliver(im):
-                if mirror_im is None:
-                    print("plomba/21 is a cropped sliver and plomba/11 is missing", file=sys.stderr)
-                else:
-                    im = mirror_im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-                    notes_all.append("plomba/21 replaced with a mirror of plomba/11 (cropped source)")
-            elif is_hard_sliver(im):
-                notes_all.append(f"WARNING still a hard sliver: {kind}/{fdi}.png {im.size}")
-            trimmed, notes = prepare_one(kind, fdi, im)
-            prepared[(kind, fdi)] = trimmed
-            if notes:
-                notes_all.append(f"{kind}/{fdi}: {', '.join(notes)}")
+            loaded[(kind, fdi)] = load_rgba(path)
+
+    healthy: dict[str, Image.Image] = {}
+    for fdi in FDIS:
+        im = loaded.get(("healthy", fdi))
+        if im is None:
+            continue
+        cleaned, notes = clean_healthy_image(im, is_upper(fdi))
+        healthy[fdi] = cleaned
+        loaded[("healthy", fdi)] = cleaned
+        if notes:
+            notes_all.append(f"healthy/{fdi}: {', '.join(notes)}")
+
+    def repair(kind: str, fdi: str, im: Image.Image) -> tuple[Image.Image, str | None]:
+        ref = healthy.get(fdi)
+        if ref is None:
+            return im, None
+        cut = clip_cut(kind, im, ref)
+        if not cut:
+            return im, None
+        return rebuild_on_healthy(im, ref, cut), cut
+
+    for kind in KINDS:
+        if kind == "healthy":
+            continue
+        for fdi in FDIS:
+            im = loaded.get((kind, fdi))
+            if im is None or is_thin_sliver(im):
+                continue
+            rebuilt, cut = repair(kind, fdi, im)
+            loaded[(kind, fdi)] = rebuilt
+            if cut:
+                notes_all.append(f"{kind}/{fdi}: rebuilt full width ({cut} side was clipped)")
+
+    for kind in KINDS:
+        if kind == "healthy":
+            continue
+        for fdi in FDIS:
+            im = loaded.get((kind, fdi))
+            if im is None or not is_thin_sliver(im):
+                continue
+            donor = loaded.get((kind, contralateral(fdi)))
+            ref = healthy.get(fdi)
+            if donor is not None and ref is not None and not is_thin_sliver(donor):
+                loaded[(kind, fdi)] = _fit_mirror(donor, ref)
+                notes_all.append(
+                    f"{kind}/{fdi}: thin crop replaced with a mirror of {kind}/{contralateral(fdi)}"
+                )
+            else:
+                rebuilt, cut = repair(kind, fdi, im)
+                loaded[(kind, fdi)] = rebuilt
+                if cut:
+                    notes_all.append(f"{kind}/{fdi}: rebuilt full width ({cut} side was clipped)")
+
+    prepared: dict[tuple[str, str], Image.Image] = {}
+    for (kind, fdi), im in loaded.items():
+        prepared[(kind, fdi)] = prepare_one(kind, im)
 
     heights = shared_heights(prepared)
     short = {fdi: h for fdi, h in heights.items() if h < int(round(CANVAS * FILL)) - 1}
@@ -409,6 +675,30 @@ def normalize_tree(src: Path, dest: Path | None) -> None:
     print(f"normalized {len(prepared)} PNGs")
     for line in notes_all:
         print(line)
+    leftover = []
+    narrow = []
+    for kind in KINDS:
+        if kind in ("healthy", "missing"):
+            continue
+        for fdi in FDIS:
+            im = prepared.get((kind, fdi))
+            ref = prepared.get(("healthy", fdi))
+            if im is None or ref is None:
+                continue
+            measured = content_metrics(im)
+            reference = content_metrics(ref)
+            if not measured or not reference or reference["asp"] <= 0:
+                continue
+            ratio = measured["asp"] / reference["asp"]
+            cut = clip_cut(kind, im, ref)
+            if cut and ratio < 0.90:
+                leftover.append(f"{kind}/{fdi}:{cut}:{ratio:.2f}")
+            if (kind == "implant" or kind.startswith("protez")) and ratio < 0.75:
+                narrow.append(f"{kind}/{fdi}:{ratio:.2f}")
+    if leftover:
+        print("STILL CLIPPED", ", ".join(leftover))
+    if narrow:
+        print("STILL NARROW", ", ".join(narrow))
     if drifted:
         print("HEIGHT MISMATCH", drifted, file=sys.stderr)
         raise SystemExit(1)
@@ -563,6 +853,54 @@ def write_sheets(root: Path, out_dir: Path, tag: str) -> list[Path]:
     path = out_dir / f"scale-by-kind-{tag}.png"
     board.convert("RGB").save(path, quality=95)
     written.append(path)
+
+    # 3× nearest-neighbour zoom on grey, so a leftover halo or flat cut is obvious.
+    # Same teeth as the zoomed QA crop: 11 is zirconia, 21 is a filling, the rest healthy.
+    groups = [
+        ("11–13", [(11, "sirkon"), (12, "healthy"), (13, "healthy")]),
+        ("21–25", [(21, "plomba"), (22, "healthy"), (23, "healthy"), (24, "healthy"), (25, "healthy")]),
+        ("31–34", [(31, "healthy"), (32, "healthy"), (33, "healthy"), (34, "healthy")]),
+        ("41–44", [(41, "healthy"), (42, "healthy"), (43, "healthy"), (44, "healthy")]),
+    ]
+    zoom = 3
+    pad = 10
+    label_h = 22
+    row_gap = 16
+    max_cols = max(len(group) for _, group in groups)
+    crops: dict[tuple[int, str], Image.Image] = {}
+    for _, group in groups:
+        for fdi, kind in group:
+            src_path = root / kind / f"{fdi}.png"
+            if not src_path.exists():
+                continue
+            crops[(fdi, kind)] = crop_content(load_rgba(src_path), 8)
+    if crops:
+        cell_w = max(im.width for im in crops.values()) * zoom + pad * 2
+        cell_h = max(im.height for im in crops.values()) * zoom + pad * 2
+        sheet_w = pad + max_cols * cell_w
+        sheet_h = pad + len(groups) * (label_h + cell_h + row_gap)
+        zoom_sheet = Image.new("RGBA", (sheet_w, sheet_h), (186, 192, 200, 255))
+        draw = ImageDraw.Draw(zoom_sheet)
+        font = _font(16)
+        for row_i, (title, group) in enumerate(groups):
+            top = pad + row_i * (label_h + cell_h + row_gap)
+            draw.text((pad, top), title, fill=(15, 23, 42, 255), font=font)
+            for col, (fdi, kind) in enumerate(group):
+                im = crops.get((fdi, kind))
+                x = pad + col * cell_w
+                y = top + label_h
+                tile = Image.new("RGBA", (cell_w - 4, cell_h), (176, 182, 190, 255))
+                if im is not None:
+                    scaled = im.resize((im.width * zoom, im.height * zoom), Image.Resampling.NEAREST)
+                    upper = is_upper(str(fdi))
+                    px = (tile.width - scaled.width) // 2
+                    py = (tile.height - scaled.height - 4) if upper else 4
+                    tile.alpha_composite(scaled, (px, py))
+                zoom_sheet.alpha_composite(tile, (x, y))
+                draw.text((x + 6, y + 4), f"{fdi} {kind}", fill=(15, 23, 42, 255), font=font)
+        path = out_dir / f"healthy-zoom-3x-{tag}.png"
+        zoom_sheet.convert("RGB").save(path, quality=95)
+        written.append(path)
     return written
 
 
