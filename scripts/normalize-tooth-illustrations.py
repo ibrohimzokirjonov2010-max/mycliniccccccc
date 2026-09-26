@@ -589,47 +589,10 @@ def normalize_tree(src: Path, dest: Path | None) -> None:
         if notes:
             notes_all.append(f"healthy/{fdi}: {', '.join(notes)}")
 
-    def repair(kind: str, fdi: str, im: Image.Image) -> tuple[Image.Image, str | None]:
-        ref = healthy.get(fdi)
-        if ref is None:
-            return im, None
-        cut = clip_cut(kind, im, ref)
-        if not cut:
-            return im, None
-        return rebuild_on_healthy(im, ref, cut), cut
-
-    for kind in KINDS:
-        if kind == "healthy":
-            continue
-        for fdi in FDIS:
-            im = loaded.get((kind, fdi))
-            if im is None or is_thin_sliver(im):
-                continue
-            rebuilt, cut = repair(kind, fdi, im)
-            loaded[(kind, fdi)] = rebuilt
-            if cut:
-                notes_all.append(f"{kind}/{fdi}: rebuilt full width ({cut} side was clipped)")
-
-    for kind in KINDS:
-        if kind == "healthy":
-            continue
-        for fdi in FDIS:
-            im = loaded.get((kind, fdi))
-            if im is None or not is_thin_sliver(im):
-                continue
-            donor = loaded.get((kind, contralateral(fdi)))
-            ref = healthy.get(fdi)
-            if donor is not None and ref is not None and not is_thin_sliver(donor):
-                loaded[(kind, fdi)] = _fit_mirror(donor, ref)
-                notes_all.append(
-                    f"{kind}/{fdi}: thin crop replaced with a mirror of {kind}/{contralateral(fdi)}"
-                )
-            else:
-                rebuilt, cut = repair(kind, fdi, im)
-                loaded[(kind, fdi)] = rebuilt
-                if cut:
-                    notes_all.append(f"{kind}/{fdi}: rebuilt full width ({cut} side was clipped)")
-
+    # Silhouette-fill (mirroring pixels across a clipped edge) smears the
+    # crown into horizontal streaks. Leave the source art intact here.
+    # ``apply_replacements`` swaps the bad results for a clean contralateral
+    # mirror or a colour overlay on the healthy tooth.
     prepared: dict[tuple[str, str], Image.Image] = {}
     for (kind, fdi), im in loaded.items():
         prepared[(kind, fdi)] = prepare_one(kind, im)
@@ -904,6 +867,262 @@ def write_sheets(root: Path, out_dir: Path, tag: str) -> list[Path]:
     return written
 
 
+# Clean contralateral already on the normalized canvas. Horizontal flip keeps
+# the crown on the occlusal edge, so the scale and anchor stay put.
+HEALTHY_MIRROR = {
+    "22": "12",
+    "23": "13",
+    "24": "14",
+    "25": "15",
+    "31": "41",
+    "32": "42",
+    "33": "43",
+    "34": "45",
+}
+HEALTHY_COPY = {"44": "45"}
+
+# Assets whose silhouette-fill pass smeared pixels. A clean contralateral
+# (not in this set) is mirrored. Everything else is rebuilt from the healthy
+# tooth without stretching pixels.
+OVERLAY_KINDS = {
+    "plomba": list(FDIS),
+    "sirkon": ["11", "18", "21", "28", "38", "48"],
+    "metal-keramika": ["11", "18", "21", "28", "38", "48"],
+    "breket": ["18", "28", "38", "48"],
+}
+# kind -> {fdi: donor fdi to flip}. Donor must not itself be smeared.
+PROTEZ_MIRROR = {
+    "protez-syomniy": {
+        "16": "26",
+        "21": "11",
+        "22": "12",
+        "24": "14",
+        "33": "43",
+        "34": "44",
+        "35": "45",
+        "46": "36",
+        "47": "37",
+    },
+    "protez-implant": {
+        "16": "26",
+        "17": "27",
+        "21": "11",
+        "33": "43",
+        "47": "37",
+    },
+    "protez-babochka": {
+        "32": "42",
+    },
+}
+PROTEZ_RESTORE = {
+    "protez-syomniy": ["13", "23", "32", "42", "38", "48"],
+    "protez-implant": ["36", "46"],
+    "protez-babochka": ["16", "17", "26", "27", "36", "37", "46", "47"],
+}
+
+
+def _body_box(alpha: np.ndarray) -> tuple[int, int, int, int] | None:
+    ys, xs = np.where(alpha > 32)
+    if xs.size == 0:
+        return None
+    return int(ys.min()), int(ys.max()), int(xs.min()), int(xs.max())
+
+
+def _blend_toward(arr: np.ndarray, mask: np.ndarray, target: tuple[int, int, int]) -> None:
+    """Recolour opaque pixels. ``mask`` is 0..1 and is never used to copy pixels sideways."""
+    rgb = arr[:, :, :3].astype(np.float32)
+    strength = mask.astype(np.float32)[..., None]
+    colour = np.array(target, np.float32)
+    rgb = rgb * (1.0 - strength) + colour * strength
+    arr[:, :, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+
+
+def filling_overlay(im: Image.Image, upper: bool) -> Image.Image:
+    """Cool white composite patch on the incisal and proximal crown. Alpha stays."""
+    arr = np.array(im)
+    alpha = arr[:, :, 3]
+    box = _body_box(alpha)
+    if box is None:
+        return im
+    y0, y1, x0, x1 = box
+    height = y1 - y0 + 1
+    width = x1 - x0 + 1
+    yy = np.arange(arr.shape[0])[:, None]
+    xx = np.arange(arr.shape[1])[None, :]
+    if upper:
+        crown0 = y0 + int(height * 0.62)
+        incisal = np.clip((yy - crown0) / max(1, y1 - crown0), 0.0, 1.0)
+    else:
+        crown1 = y0 + int(height * 0.38)
+        incisal = np.clip((crown1 - yy) / max(1, crown1 - y0), 0.0, 1.0)
+    center = (x0 + x1) / 2.0
+    half = max(1.0, width / 2.0)
+    proximal = np.clip((np.abs(xx - center) - 0.22 * half) / (0.70 * half), 0.0, 1.0)
+    mask = np.power(incisal, 1.35) * (0.55 + 0.45 * np.maximum(incisal, proximal * 0.85))
+    mask = ndimage.gaussian_filter(mask, sigma=1.2)
+    mask = np.clip(mask, 0.0, 1.0) * 0.70
+    mask[alpha <= 32] = 0.0
+    _blend_toward(arr, mask, (214, 230, 244))
+    return Image.fromarray(arr)
+
+
+def crown_overlay(im: Image.Image, upper: bool, target: tuple[int, int, int], margin: tuple[int, int, int] | None) -> Image.Image:
+    """Opaque crown recolour with a short cervical fade. The root pixels stay."""
+    arr = np.array(im)
+    alpha = arr[:, :, 3]
+    box = _body_box(alpha)
+    if box is None:
+        return im
+    y0, y1, x0, _x1 = box
+    height = y1 - y0 + 1
+    yy = np.arange(arr.shape[0], dtype=np.float32)[:, None]
+    if upper:
+        cervix = y0 + height * 0.56
+        span = max(1.0, (y1 - cervix) * 0.18)
+        fade = np.clip((yy - cervix) / span, 0.0, 1.0)
+    else:
+        cervix = y0 + height * 0.44
+        span = max(1.0, (cervix - y0) * 0.18)
+        fade = np.clip((cervix - yy) / span, 0.0, 1.0)
+    mask = fade * 0.90
+    mask = mask * np.ones((1, arr.shape[1]), dtype=np.float32)
+    mask = ndimage.gaussian_filter(mask, sigma=(1.4, 0.6))
+    mask[alpha <= 32] = 0.0
+    _blend_toward(arr, mask, target)
+    if margin is not None:
+        rows = np.arange(arr.shape[0])
+        shade = np.zeros(alpha.shape, np.float32)
+        shade[np.abs(rows - cervix) <= 1.6, :] = 0.45
+        shade[alpha <= 32] = 0.0
+        shade = ndimage.gaussian_filter(shade, sigma=0.6)
+        _blend_toward(arr, shade, margin)
+    return Image.fromarray(arr)
+
+
+def bracket_overlay(im: Image.Image, upper: bool) -> Image.Image:
+    """Paint a small metal bracket and wire onto the crown. No copied streaks."""
+    arr = np.array(im)
+    alpha = arr[:, :, 3]
+    box = _body_box(alpha)
+    if box is None:
+        return im
+    y0, y1, x0, x1 = box
+    height = y1 - y0 + 1
+    width = x1 - x0 + 1
+    cx = (x0 + x1) // 2
+    cy = (y1 - int(height * 0.20)) if upper else (y0 + int(height * 0.20))
+    bw = max(8, int(width * 0.22))
+    bh = max(10, int(height * 0.09))
+    silver = np.array([206, 210, 216], np.uint8)
+    slot = np.array([128, 134, 144], np.uint8)
+    wire = np.array([150, 156, 166], np.uint8)
+
+    def put(x: int, y: int, colour: np.ndarray) -> None:
+        if 0 <= y < arr.shape[0] and 0 <= x < arr.shape[1] and alpha[y, x] > 48:
+            arr[y, x, :3] = colour
+
+    x_left = x0 + int(width * 0.18)
+    x_right = x1 - int(width * 0.18)
+    for x in range(x_left, x_right + 1):
+        put(x, cy, wire)
+    for y in range(cy - bh // 2, cy + bh // 2 + 1):
+        for x in range(cx - bw // 2, cx + bw // 2 + 1):
+            put(x, y, silver)
+    for y in range(cy - 1, cy + 2):
+        for x in range(cx - bw // 3, cx + bw // 3 + 1):
+            put(x, y, slot)
+    return Image.fromarray(arr)
+
+
+def _flip(im: Image.Image) -> Image.Image:
+    return im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+
+
+def apply_replacements(root: Path, originals: Path) -> list[tuple[str, str]]:
+    """Replace smeared or dirty teeth. Returns the (kind, fdi) pairs written."""
+    written: list[tuple[str, str]] = []
+
+    def load(kind: str, fdi: str, base: Path = root) -> Image.Image:
+        return load_rgba(base / kind / f"{fdi}.png")
+
+    def store(kind: str, fdi: str, im: Image.Image) -> None:
+        out = root / kind / f"{fdi}.png"
+        tmp = out.with_suffix(".png.tmp")
+        im.save(tmp, format="PNG", optimize=True)
+        tmp.replace(out)
+        written.append((kind, fdi))
+
+    healthy: dict[str, Image.Image] = {fdi: load("healthy", fdi) for fdi in FDIS}
+    for fdi, donor in HEALTHY_MIRROR.items():
+        healthy[fdi] = _flip(healthy[donor])
+        store("healthy", fdi, healthy[fdi])
+    for fdi, donor in HEALTHY_COPY.items():
+        healthy[fdi] = healthy[donor].copy()
+        store("healthy", fdi, healthy[fdi])
+
+    for fdi in OVERLAY_KINDS["plomba"]:
+        store("plomba", fdi, filling_overlay(healthy[fdi], is_upper(fdi)))
+    for fdi in OVERLAY_KINDS["sirkon"]:
+        store("sirkon", fdi, crown_overlay(healthy[fdi], is_upper(fdi), (246, 246, 248), None))
+    for fdi in OVERLAY_KINDS["metal-keramika"]:
+        store(
+            "metal-keramika",
+            fdi,
+            crown_overlay(healthy[fdi], is_upper(fdi), (240, 230, 216), (150, 132, 112)),
+        )
+    for fdi in OVERLAY_KINDS["breket"]:
+        store("breket", fdi, bracket_overlay(healthy[fdi], is_upper(fdi)))
+
+    # Snapshot prosthesis donors before any of them are overwritten.
+    donors: dict[tuple[str, str], Image.Image] = {}
+    for kind, mapping in PROTEZ_MIRROR.items():
+        for donor in mapping.values():
+            donors[(kind, donor)] = load(kind, donor)
+    for kind, mapping in PROTEZ_MIRROR.items():
+        for fdi, donor in mapping.items():
+            store(kind, fdi, _flip(donors[(kind, donor)]))
+    for kind, fdis in PROTEZ_RESTORE.items():
+        for fdi in fdis:
+            raw = load(kind, fdi, originals)
+            raw = prepare_one(kind, raw)
+            store(kind, fdi, place(raw, int(round(CANVAS * FILL)), is_upper(fdi)))
+    return written
+
+
+def write_zoom_grid(root: Path, items: list[tuple[str, str, str]], out_path: Path, title: str, cols: int = 8) -> None:
+    """3× nearest-neighbour contact sheet on grey. items are (label, kind, fdi)."""
+    zoom = 3
+    crops: list[tuple[str, Image.Image]] = []
+    for label, kind, fdi in items:
+        path = root / kind / f"{fdi}.png"
+        if not path.exists():
+            continue
+        crops.append((label, crop_content(load_rgba(path), 8)))
+    if not crops:
+        return
+    pad = 8
+    label_h = 18
+    cell_w = max(im.width for _, im in crops) * zoom + pad * 2
+    cell_h = max(im.height for _, im in crops) * zoom + pad * 2
+    rows = (len(crops) + cols - 1) // cols
+    sheet = Image.new("RGB", (pad + cols * cell_w, 28 + rows * (cell_h + label_h)), (176, 182, 190))
+    draw = ImageDraw.Draw(sheet)
+    font = _font(14)
+    draw.text((pad, 4), title, fill=(15, 23, 42), font=font)
+    for i, (label, im) in enumerate(crops):
+        r, c = divmod(i, cols)
+        scaled = im.resize((im.width * zoom, im.height * zoom), Image.Resampling.NEAREST)
+        x = pad + c * cell_w
+        y = 26 + r * (cell_h + label_h)
+        tile = Image.new("RGBA", (cell_w - 4, cell_h), (176, 182, 190, 255))
+        tile.alpha_composite(scaled, ((tile.width - scaled.width) // 2, (tile.height - scaled.height) // 2))
+        sheet.paste(tile.convert("RGB"), (x, y + label_h))
+        draw.text((x + 4, y), label, fill=(15, 23, 42), font=font)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(out_path, quality=95)
+    print(out_path, sheet.size)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--teeth", type=Path, default=Path("public/teeth"))
@@ -911,8 +1130,42 @@ def main() -> None:
     parser.add_argument("--sheets", type=Path, default=None, help="Also write contact sheets to this directory")
     parser.add_argument("--sheets-only", type=Path, default=None, help="Write contact sheets and do not modify PNGs")
     parser.add_argument("--tag", default="current", help="Filename tag for contact sheets")
+    parser.add_argument(
+        "--repair",
+        action="store_true",
+        help="Replace dirty healthy teeth and smeared treatment art in --teeth",
+    )
+    parser.add_argument(
+        "--originals",
+        type=Path,
+        default=Path("/tmp/teeth-src/teeth"),
+        help="Un-normalized sources used when a prosthesis must be restored",
+    )
     args = parser.parse_args()
     root = args.teeth
+    if args.repair:
+        replaced = apply_replacements(root, args.originals)
+        print(f"replaced {len(replaced)}")
+        for kind, fdi in replaced:
+            print(f"  {kind}/{fdi}")
+        if args.sheets:
+            for path in write_sheets(root, args.sheets, args.tag):
+                print(path)
+            healthy_items = [(fdi, "healthy", fdi) for fdi in FDIS]
+            write_zoom_grid(
+                root,
+                healthy_items,
+                args.sheets / "healthy-zoom-3x-all.png",
+                "All 32 healthy teeth, 3× on grey",
+            )
+            rebuilt_items = [(f"{kind}/{fdi}", kind, fdi) for kind, fdi in replaced]
+            write_zoom_grid(
+                root,
+                rebuilt_items,
+                args.sheets / "rebuilt-zoom-3x.png",
+                "Assets rebuilt this pass, 3× on grey",
+            )
+        return
     if args.sheets_only:
         paths = write_sheets(root, args.sheets_only, args.tag)
         for path in paths:
