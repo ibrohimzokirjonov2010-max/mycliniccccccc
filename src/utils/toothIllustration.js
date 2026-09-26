@@ -5,7 +5,7 @@
  */
 
 /** Bump when public/teeth PNGs change so CacheFirst cannot keep the old drawing. */
-export const TOOTH_ASSET_VERSION = '20260923a';
+export const TOOTH_ASSET_VERSION = '20260926a';
 
 export function withToothAssetVersion(path) {
   if (!path) return path;

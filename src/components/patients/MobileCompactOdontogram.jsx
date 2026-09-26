@@ -61,7 +61,7 @@ const ToothCell = memo(function ToothCell({ fdi, selected, toothStatus, onSelect
             src={imgSrc}
             alt=""
             draggable={false}
-            className="w-full h-full object-contain pointer-events-none"
+            className="tooth-illus w-full h-full object-contain pointer-events-none"
             style={{ objectPosition: isUpper ? 'center bottom' : 'center top' }}
           />
         )}

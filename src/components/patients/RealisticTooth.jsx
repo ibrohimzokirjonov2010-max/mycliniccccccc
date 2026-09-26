@@ -142,6 +142,9 @@ export default function RealisticTooth({
 
   if (isCustomTooth) {
     const mirror = CUSTOM_TOOTH_MIRROR.has(number);
+    const n = Number(number);
+    const crownUp = (n >= 31 && n <= 48) || (n >= 71 && n <= 85);
+    const frameH = Math.round(size * 1.45);
     const oldToothFilter = selected
       ? 'contrast(1.1) brightness(1.0) drop-shadow(0 4px 6px rgba(59,130,246,0.3)) saturate(1.1)'
       : 'contrast(1.0) brightness(1.02) drop-shadow(0 2px 4px rgba(0,0,0,0.05)) saturate(0.95)';
@@ -150,13 +153,13 @@ export default function RealisticTooth({
         className={className}
         style={{
           width: targetW,
-          height: targetH,
+          height: frameH,
           overflow: 'hidden',
           position: 'relative',
           borderRadius: 6,
           filter: oldToothFilter,
           display: 'flex',
-          alignItems: 'center',
+          alignItems: crownUp ? 'flex-start' : 'flex-end',
           justifyContent: 'center',
         }}
       >
@@ -164,10 +167,12 @@ export default function RealisticTooth({
           src={customSrc}
           alt={`Tooth ${number}`}
           draggable={false}
+          className="tooth-illus"
           style={{
             width: '100%',
-            height: targetH * 2,
+            height: '100%',
             objectFit: 'contain',
+            objectPosition: crownUp ? 'center top' : 'center bottom',
             userSelect: 'none',
             pointerEvents: 'none',
             transform: mirror ? 'scaleX(-1)' : undefined,

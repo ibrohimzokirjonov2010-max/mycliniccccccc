@@ -275,8 +275,24 @@
   line-height: 1.1;
 }
 
-.implant-wizard-tooth-img {
+.implant-wizard-tooth-face {
+  overflow: hidden;
+}
+
+.implant-wizard-tooth-img,
+.implant-wizard-tooth-face img {
   transform: none;
+  object-fit: contain;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.implant-wizard-arch-row.is-upper .implant-wizard-tooth-face img {
+  object-position: center bottom;
+}
+
+.implant-wizard-arch-row.is-lower .implant-wizard-tooth-face img {
+  object-position: center top;
 }
 
 .implant-wizard-header-patient-desktop.is-empty {
@@ -1116,9 +1132,16 @@
     border-radius: 12px !important;
   }
 
+  .implant-wizard-tooth-face {
+    overflow: hidden;
+  }
+
   .implant-wizard-tooth-face img {
     width: 26px !important;
     height: 34px !important;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain !important;
   }
 
   .implant-wizard-params-grid {

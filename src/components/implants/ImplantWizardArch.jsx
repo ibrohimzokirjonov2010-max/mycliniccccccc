@@ -35,7 +35,8 @@ function WizardTooth({ fdi, selected, active, onClick }) {
           src={getToothIllustrationSrc(fdi, selected ? 'implant' : 'healthy')}
           alt=""
           draggable={false}
-          className="implant-wizard-tooth-img w-[22px] h-[34px] object-contain pointer-events-none"
+          className="tooth-illus implant-wizard-tooth-img w-[22px] h-[34px] max-w-full max-h-full object-contain pointer-events-none"
+          style={{ objectPosition: Number(fdi) <= 28 ? 'center bottom' : 'center top' }}
         />
       </span>
       <span className={cn(

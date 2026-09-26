@@ -253,6 +253,7 @@ const ToothColumn = memo(function ToothColumn({
           src={src}
           alt={alt}
           draggable={false}
+          className="tooth-illus"
           style={{
             width: '100%',
             height: '100%',

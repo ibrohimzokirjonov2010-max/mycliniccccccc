@@ -239,7 +239,7 @@ export default function PatientXraysOdontogram({ patientId }) {
         <button
           type="button"
           onClick={() => setActiveTooth(isActive ? null : { id, fdi, src })}
-          className={`relative inline-flex items-center justify-center p-1 sm:p-1.5 transition-all duration-200 rounded-lg sm:rounded-xl border-2 ${
+          className={`relative inline-flex items-center justify-center overflow-hidden p-1 sm:p-1.5 transition-all duration-200 rounded-lg sm:rounded-xl border-2 ${
             isActive
               ? 'border-cyan-500 bg-cyan-50 shadow-lg shadow-cyan-200 scale-110 z-10'
               : count > 0
@@ -253,8 +253,9 @@ export default function PatientXraysOdontogram({ patientId }) {
           <img
             src={getToothIllustrationSrc(fdi, 'healthy') || `/teeth/${src}.png`}
             alt={`Tish ${fdi}`}
-            className="w-6 h-8 sm:w-8 sm:h-10 object-contain pointer-events-none"
+            className="tooth-illus w-6 h-8 sm:w-8 sm:h-10 object-contain pointer-events-none"
             draggable={false}
+            style={{ objectPosition: Number(fdi) <= 28 || (Number(fdi) >= 51 && Number(fdi) <= 65) ? 'center bottom' : 'center top' }}
           />
 
           {/* Rentgen soni badge */}
@@ -377,7 +378,8 @@ export default function PatientXraysOdontogram({ patientId }) {
               <img
                 src={getToothIllustrationSrc(activeTooth.fdi, 'healthy') || `/teeth/${activeTooth.src}.png`}
                 alt={`Tish ${activeTooth.fdi}`}
-                className="w-8 h-10 object-contain"
+                className="tooth-illus w-8 h-10 object-contain"
+                style={{ objectPosition: Number(activeTooth.fdi) <= 28 || (Number(activeTooth.fdi) >= 51 && Number(activeTooth.fdi) <= 65) ? 'center bottom' : 'center top' }}
               />
               <div>
                 <h4 className="text-sm font-bold text-slate-800">
