@@ -1423,6 +1423,152 @@ def polish_tree(src: Path, dest: Path) -> None:
     )
 
 
+def endo_overlay(im: Image.Image, upper: bool) -> Image.Image:
+    """Canal filling inside the healthy roots. Alpha stays the healthy silhouette."""
+    arr = np.array(im).copy()
+    alpha = arr[:, :, 3]
+    box = _body_box(alpha)
+    if box is None:
+        return im
+    y0, y1, x0, x1 = box
+    height = y1 - y0 + 1
+    width = x1 - x0 + 1
+    if upper:
+        y_a, y_b = y0, y0 + int(height * 0.62)
+        chamber_y = y0 + int(height * 0.56)
+    else:
+        y_a, y_b = y0 + int(height * 0.38), y1
+        chamber_y = y0 + int(height * 0.44)
+    root = np.zeros(alpha.shape, bool)
+    root[y_a:y_b + 1] = alpha[y_a:y_b + 1] > 48
+    distance = ndimage.distance_transform_edt(root)
+    ridge = np.zeros(distance.shape, np.float32)
+    for y in range(y_a, y_b + 1):
+        row = distance[y]
+        for x in range(1, row.size - 1):
+            if row[x] >= 2.0 and row[x] >= row[x - 1] and row[x] >= row[x + 1] and row[x] > min(row[x - 1], row[x + 1]):
+                ridge[y, x] = row[x]
+    canal = np.zeros(alpha.shape, np.float32)
+    ys, xs = np.where(ridge > 0)
+    for y, x in zip(ys, xs):
+        radius = int(np.clip(round(float(ridge[y, x]) * 0.55), 2, 7))
+        canal[max(0, y - 1):y + 2, max(0, x - radius):x + radius + 1] = 1.0
+    chamber_h = max(10, int(height * 0.08))
+    chamber_w = max(10, int(width * 0.28))
+    center_x = (x0 + x1) // 2
+    yy = np.arange(arr.shape[0])[:, None]
+    xx = np.arange(arr.shape[1])[None, :]
+    ellipse = 1.0 - ((xx - center_x) / (chamber_w / 2.0)) ** 2 - ((yy - chamber_y) / (chamber_h / 2.0)) ** 2
+    canal = np.maximum(canal, np.clip(ellipse, 0.0, 1.0))
+    canal = ndimage.gaussian_filter(canal, 0.7)
+    canal[alpha <= 48] = 0.0
+    strength = np.clip(canal, 0.0, 1.0)
+    edge = np.array([176, 42, 64], np.float32)
+    core = np.array([236, 170, 178], np.float32)
+    colour = edge * (1.0 - strength[..., None]) + core * strength[..., None]
+    rgb = arr[:, :, :3].astype(np.float32)
+    rgb = rgb * (1.0 - 0.90 * strength[..., None]) + colour * (0.90 * strength[..., None])
+    arr[:, :, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    return Image.fromarray(arr)
+
+
+def buccal_bracket(im: Image.Image, upper: bool) -> Image.Image:
+    """One metal bracket and a wire on the buccal face of the healthy crown."""
+    arr = np.array(im).copy()
+    alpha = arr[:, :, 3]
+    box = _body_box(alpha)
+    if box is None:
+        return im
+    y0, y1, x0, x1 = box
+    height = y1 - y0 + 1
+    width = x1 - x0 + 1
+    cy = (y1 - int(height * 0.18)) if upper else (y0 + int(height * 0.18))
+    cx = (x0 + x1) // 2
+    bw = int(np.clip(width * 0.28, 16, 42))
+    bh = int(np.clip(height * 0.075, 16, 34))
+    metal = np.array([214, 218, 224], np.uint8)
+    hi = np.array([244, 246, 248], np.uint8)
+    shade = np.array([150, 156, 166], np.uint8)
+    slot = np.array([96, 102, 112], np.uint8)
+    wire = np.array([120, 126, 136], np.uint8)
+
+    def put(x: int, y: int, colour: np.ndarray, need: int = 64) -> None:
+        if 0 <= y < arr.shape[0] and 0 <= x < arr.shape[1] and alpha[y, x] > need:
+            arr[y, x, :3] = colour
+
+    x_left = x0 + int(width * 0.12)
+    x_right = x1 - int(width * 0.12)
+    for x in range(x_left, x_right + 1):
+        for dy in (-1, 0, 1):
+            put(x, cy + dy, wire, 48)
+    for y in range(cy - bh // 2, cy + bh // 2 + 1):
+        for x in range(cx - bw // 2, cx + bw // 2 + 1):
+            put(x, y, metal)
+    for x in range(cx - bw // 2, cx + bw // 2 + 1):
+        put(x, cy - bh // 2, hi)
+        put(x, cy - bh // 2 + 1, hi)
+        put(x, cy + bh // 2, shade)
+        put(x, cy + bh // 2 - 1, shade)
+    for y in range(cy - 1, cy + 2):
+        for x in range(cx - bw // 2 + 2, cx + bw // 2 - 1):
+            put(x, y, slot)
+    wing = max(3, bw // 6)
+    for y in range(cy - bh // 2, cy + bh // 2 + 1):
+        for x in range(cx - bw // 2 - wing, cx - bw // 2):
+            put(x, y, shade)
+        for x in range(cx + bw // 2 + 1, cx + bw // 2 + wing + 1):
+            put(x, y, shade)
+    return Image.fromarray(arr)
+
+
+def apply_endo_breket(root: Path) -> list[tuple[str, str]]:
+    """Rebuild every endo and breket PNG on the healthy silhouette."""
+    written: list[tuple[str, str]] = []
+    for fdi in FDIS:
+        healthy = load_rgba(root / "healthy" / f"{fdi}.png")
+        upper = is_upper(fdi)
+        for kind, painter in (("endo", endo_overlay), ("breket", buccal_bracket)):
+            painted = painter(healthy, upper)
+            healthy_a = np.array(healthy)
+            painted_a = np.array(painted)
+            if painted_a.shape != healthy_a.shape or not np.array_equal(painted_a[:, :, 3], healthy_a[:, :, 3]):
+                raise SystemExit(f"{kind}/{fdi} silhouette changed")
+            out = root / kind / f"{fdi}.png"
+            tmp = out.with_suffix(".png.tmp")
+            Image.fromarray(painted_a).save(tmp, format="PNG", optimize=True)
+            tmp.replace(out)
+            written.append((kind, fdi))
+    # Match the healthy contralateral pairs exactly, including 44 copied from 45.
+    mirrors = {"22": "12", "23": "13", "24": "14", "25": "15", "31": "41", "32": "42", "33": "43", "34": "45"}
+    for kind in ("endo", "breket"):
+        for fdi, donor in mirrors.items():
+            flipped = _flip(load_rgba(root / kind / f"{donor}.png"))
+            out = root / kind / f"{fdi}.png"
+            tmp = out.with_suffix(".png.tmp")
+            flipped.save(tmp, format="PNG", optimize=True)
+            tmp.replace(out)
+        copied = load_rgba(root / kind / "45.png")
+        out = root / kind / "44.png"
+        tmp = out.with_suffix(".png.tmp")
+        copied.save(tmp, format="PNG", optimize=True)
+        tmp.replace(out)
+        for fdi, donor in mirrors.items():
+            got = np.array(load_rgba(root / kind / f"{fdi}.png"))
+            expect = np.array(_flip(load_rgba(root / kind / f"{donor}.png")))
+            if not np.array_equal(got, expect):
+                raise SystemExit(f"{kind}/{fdi} is not the mirror of {donor}")
+        if not np.array_equal(np.array(load_rgba(root / kind / "44.png")), np.array(load_rgba(root / kind / "45.png"))):
+            raise SystemExit(f"{kind}/44 is not a copy of 45")
+    for kind in ("endo", "breket"):
+        for fdi in FDIS:
+            painted = np.array(load_rgba(root / kind / f"{fdi}.png"))
+            healthy = np.array(load_rgba(root / "healthy" / f"{fdi}.png"))
+            if painted.shape != healthy.shape or not np.array_equal(painted[:, :, 3], healthy[:, :, 3]):
+                raise SystemExit(f"{kind}/{fdi} no longer matches the healthy silhouette")
+    print(f"rebuilt {len(written)} endo and breket images")
+    return written
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--teeth", type=Path, default=Path("public/teeth"))
@@ -1441,6 +1587,11 @@ def main() -> None:
         help="Dechip premolars, shade sirkon and metal-keramika, tighten canvases",
     )
     parser.add_argument(
+        "--endo-breket",
+        action="store_true",
+        help="Rebuild endo and breket on the healthy silhouette",
+    )
+    parser.add_argument(
         "--originals",
         type=Path,
         default=Path("/tmp/teeth-src/teeth"),
@@ -1451,6 +1602,9 @@ def main() -> None:
     if args.polish:
         dest = args.dest or root
         polish_tree(root, dest)
+        return
+    if args.endo_breket:
+        apply_endo_breket(root)
         return
     if args.repair:
         replaced = apply_replacements(root, args.originals)
