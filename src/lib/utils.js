@@ -1,5 +1,13 @@
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import {
+  formatClinicDate,
+  formatClinicDateTime,
+  formatClinicDateWithWeekday,
+  displayDoctorName,
+} from '@/lib/clinicTime';
+
+export { displayDoctorName };
 
 /**
  * Utility function to merge Tailwind CSS classes
@@ -32,8 +40,10 @@ export const isIframe = typeof window !== 'undefined' && window.self !== window.
  * formatCurrency(1500000) // => "1 500 000 so'm"
  */
 export function formatCurrency(amount, currency = "so'm", locale = 'uz-UZ') {
-  if (amount === null || amount === undefined) return "—";
-  return `${amount.toLocaleString(locale)} ${currency}`;
+  if (amount === null || amount === undefined || Number.isNaN(Number(amount))) return "—";
+  const n = Number(amount);
+  const safe = n === 0 ? 0 : n;
+  return `${safe.toLocaleString(locale)} ${currency}`;
 }
 
 /**
@@ -43,16 +53,9 @@ export function formatCurrency(amount, currency = "so'm", locale = 'uz-UZ') {
  * @param {Object} options - Intl.DateTimeFormat options
  * @returns {string} Formatted date string
  */
-export function formatDate(date, options = {}) {
+export function formatDate(date) {
   if (!date) return '—';
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '—';
-  
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  
-  return `${day}.${month}.${year}`;
+  return formatClinicDate(date);
 }
 
 const UZ_MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
@@ -70,21 +73,8 @@ const EN_WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Fr
  */
 export function formatDateWithWeekday(date, lang = 'uz') {
   if (!date) return '';
-  const d = typeof date === 'string' ? new Date(date) : date;
-  if (!d || isNaN(d.getTime())) return String(date || '');
-  
-  const day = d.getDate();
-  const monthIdx = d.getMonth();
-  const dayOfWeek = d.getDay();
-  const year = d.getFullYear();
-
-  if (lang === 'ru') {
-    return `${day} ${RU_MONTHS[monthIdx]} ${year} г., ${RU_WEEKDAYS[dayOfWeek]}`;
-  }
-  if (lang === 'en') {
-    return `${EN_MONTHS[monthIdx]} ${day}, ${year}, ${EN_WEEKDAYS[dayOfWeek]}`;
-  }
-  return `${day}-${UZ_MONTHS[monthIdx]}, ${year} (${UZ_WEEKDAYS[dayOfWeek]})`;
+  const formatted = formatClinicDateWithWeekday(date, lang);
+  return formatted || String(date || '');
 }
 
 /**
@@ -110,14 +100,19 @@ export function getServiceStatusLabel(status, lang = 'uz') {
  * Format treatment plan name or category
  */
 export function getTreatmentTypeLabel(typeOrCategory, lang = 'uz') {
-  if (!typeOrCategory) return lang === 'ru' ? 'План лечения' : lang === 'en' ? 'Treatment Plan' : 'Davolash rejasi';
+  if (!typeOrCategory) return lang === 'en' ? 'Treatment plan' : 'Davolash rejasi';
   const str = String(typeOrCategory).trim();
   const lower = str.toLowerCase();
-  if (lower === 'treatment' || lower === 'davolash') {
-    return lang === 'ru' ? 'Лечение' : lang === 'en' ? 'Treatment' : 'Davolash';
+  if (lower === 'treatment' || lower === 'davolash' || lower === 'лечение') {
+    return lang === 'en' ? 'Treatment' : lang === 'ru' ? 'Лечение' : 'Davolash';
   }
-  if (lower === 'treatment plan' || lower === 'davolash rejasi') {
-    return lang === 'ru' ? 'План лечения' : lang === 'en' ? 'Treatment Plan' : 'Davolash rejasi';
+  if (
+    lower === 'treatment plan'
+    || lower === 'davolash rejasi'
+    || lower === 'план лечения'
+    || lower === 'план лечения'
+  ) {
+    return lang === 'en' ? 'Treatment plan' : 'Davolash rejasi';
   }
   if (lower === 'consultation' || lower === 'maslahat') {
     return lang === 'ru' ? 'Консультация' : lang === 'en' ? 'Consultation' : 'Maslahat';
@@ -171,18 +166,9 @@ export function getServiceCategoryLabel(category, lang = 'uz') {
  * @param {string|Date} date - Date to format
  * @returns {string} Formatted date and time string
  */
-export function formatDateTime(date, locale = 'uz-UZ') {
+export function formatDateTime(date) {
   if (!date) return '—';
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '—';
-  
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  
-  return `${day}.${month}.${year} ${hours}:${minutes}`;
+  return formatClinicDateTime(date);
 }
 
 /**
@@ -225,30 +211,22 @@ export function debounce(func, wait = 300) {
  */
 export function applyPhoneMask(value) {
   if (!value) return "";
-  
-  // Remove all non-digits
-  let digits = value.replace(/\D/g, "");
-  
-  // Smart auto-prefix: If user starts with a local 9-digit number
-  if (digits.length === 9 && !digits.startsWith("998")) {
-    digits = "998" + digits;
-  }
-  
-  // Limit to 12 digits
-  const clean = digits.substring(0, 12);
-  
-  if (clean.length === 0) return "";
-  if (clean.length <= 3) return `+${clean}`;
-  if (clean.length <= 5) return `+${clean.substring(0, 3)} (${clean.substring(3, 5)}`;
-  if (clean.length <= 8) return `+${clean.substring(0, 3)} (${clean.substring(3, 5)}) ${clean.substring(5, 8)}`;
-  if (clean.length <= 10) return `+${clean.substring(0, 3)} (${clean.substring(3, 5)}) ${clean.substring(5, 8)}-${clean.substring(8, 10)}`;
-  return `+${clean.substring(0, 3)} (${clean.substring(3, 5)}) ${clean.substring(5, 8)}-${clean.substring(8, 10)}-${clean.substring(10, 12)}`;
+  let digits = String(value).replace(/\D/g, "");
+  if (digits.startsWith("998")) digits = digits.slice(3);
+  else if (digits.length > 9 && digits.startsWith("8")) digits = digits.replace(/^8+/, "");
+  digits = digits.slice(0, 9);
+  if (!digits) return "+998 ";
+  const op = digits.slice(0, 2);
+  const p1 = digits.slice(2, 5);
+  const p2 = digits.slice(5, 7);
+  const p3 = digits.slice(7, 9);
+  return ["+998", op, p1, p2, p3].filter(Boolean).join(" ");
 }
 
 /**
  * Format a stored phone number for display.
  * Input:  "998901234567" | "+998901234567" | "901234567"
- * Output: "+998 90 123-45-67"
+ * Output: "+998 90 123 45 67"
  *
  * @param {string} phone - Raw phone string
  * @returns {string} Prettily formatted phone or original if unrecognised
@@ -263,7 +241,7 @@ export function formatPhone(phone) {
     const p1  = digits.substring(5, 8);  // 3 digits
     const p2  = digits.substring(8, 10); // 2 digits
     const p3  = digits.substring(10, 12);// 2 digits
-    return `+${cc} ${op} ${p1}-${p2}-${p3}`;
+    return `+${cc} ${op} ${p1} ${p2} ${p3}`;
   }
   // 9-digit local number
   if (digits.length === 9) {
@@ -271,7 +249,7 @@ export function formatPhone(phone) {
     const p1 = digits.substring(2, 5);
     const p2 = digits.substring(5, 7);
     const p3 = digits.substring(7, 9);
-    return `+998 ${op} ${p1}-${p2}-${p3}`;
+    return `+998 ${op} ${p1} ${p2} ${p3}`;
   }
   // Fallback: return as-is (may already be formatted or unknown)
   return phone;
