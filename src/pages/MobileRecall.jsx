@@ -13,8 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import PullToRefresh from '@/components/ui/PullToRefresh';
-import { format } from 'date-fns';
-import { uz } from 'date-fns/locale';
+import { formatClinicDate } from '@/lib/clinicTime';
 import PatientSelect from '@/components/patients/PatientSelect';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -400,7 +399,7 @@ export default function MobileRecall() {
                                   <div className="flex items-center gap-2">
                                      <Clock className="w-3.5 h-3.5 text-slate-400" />
                                      <span className="text-[12px] font-semibold text-slate-800">
-                                        {format(new Date(recall.recall_date), 'dd MMMM, yyyy', { locale: uz })}
+                                        {formatClinicDate(recall.recall_date)}
                                      </span>
                                   </div>
                                   {recall.notes && (
