@@ -219,7 +219,7 @@ export default function ChairsideClinicalTools({
   return (
     <div id="chairside-clinical-tools" className="space-y-2.5 scroll-mt-24">
       {tabbed && (
-        <div className="sticky top-[64px] z-[35] bg-white/95 backdrop-blur-sm border border-slate-200/80 rounded-2xl shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-1.5 flex flex-wrap gap-1">
+        <div className="relative z-0 bg-white border border-slate-200/80 rounded-2xl shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-1.5 flex flex-wrap gap-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -227,10 +227,7 @@ export default function ChairsideClinicalTools({
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }}
+                onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   'flex-1 min-w-[96px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wide transition-all cursor-pointer',
                   isActive

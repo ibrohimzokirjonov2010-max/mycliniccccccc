@@ -259,7 +259,7 @@
   max-width: 100%;
 }
 .odonto-scroll {
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: hidden;
   width: 100%;
   max-width: 100%;
@@ -271,9 +271,9 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-width: 640px;
+  min-width: 0;
   gap: 0;
-  padding: 8px 44px;
+  padding: 6px 32px 8px;
   border-radius: 16px;
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -311,11 +311,14 @@
   grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
   width: 100%;
   min-width: 0;
+  flex: 0 0 auto;
   align-items: stretch;
   background: transparent;
   border: 0;
   border-radius: 0;
-  overflow: visible;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 .odonto-jaw-upper { align-items: end; }
 .odonto-jaw-lower { align-items: start; }
@@ -335,21 +338,36 @@
 }
 .odonto-bite-line {
   height: 1px;
-  margin: 0;
+  margin: 8px 0;
+  flex: 0 0 auto;
   background: #e11d48;
   position: relative;
   z-index: 2;
 }
 .odonto-lateral {
   width: 100%;
-  height: calc(clamp(78px, 16cqw, 132px) * var(--fdi-len, 1));
+  height: calc(clamp(32px, (100cqi - 72px) / 5.4, 118px) * var(--fdi-len, 1));
   min-width: 0;
   min-height: 0;
   overflow: hidden;
   position: relative;
+  flex: 0 0 auto;
 }
 .odonto-fit-frame[data-compact="true"] .odonto-lateral {
-  height: calc(clamp(64px, 14cqw, 104px) * var(--fdi-len, 1));
+  height: calc(clamp(30px, (100cqi - 72px) / 6.2, 96px) * var(--fdi-len, 1));
+}
+/* Phone keeps one horizontal arch. Desktop cards scale all 16 teeth in. */
+@media (max-width: 767px) {
+  .odonto-scroll {
+    overflow-x: auto;
+  }
+  .odonto-cross {
+    min-width: 640px;
+  }
+  .odonto-lateral,
+  .odonto-fit-frame[data-compact="true"] .odonto-lateral {
+    height: calc(70px * var(--fdi-len, 1));
+  }
 }
 .odonto-occlusal {
   width: 100%;
@@ -618,6 +636,16 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
 .fdi-on-crown.is-upper { bottom: 1px; }
 .odonto-jaw-lower .fdi-on-crown,
 .fdi-on-crown.is-lower { top: 1px; }
+@container (max-width: 560px) {
+  .odonto-cross {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+  .odonto-side { font-size: 9px; }
+  .odonto-side-r { left: 3px; }
+  .odonto-side-l { right: 3px; }
+  .fdi-on-crown { font-size: 8px; }
+}
 #tooth-chart-print-host {
   display: none;
 }

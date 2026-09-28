@@ -69,11 +69,7 @@ function LinearRow({ teeth, selectedSet, activeFdi, onToggle, variant }) {
           {i === 8 && <span className="implant-wizard-arch-midline" aria-hidden />}
           <div
             className="implant-wizard-tooth-slot"
-            style={{
-              transform: 'none',
-              flex: `${fdiWidthWeight(fdi)} 0 ${Math.round(28 * fdiWidthWeight(fdi))}px`,
-              width: `${Math.round(34 * fdiWidthWeight(fdi))}px`,
-            }}
+            style={{ '--fdi-w': fdiWidthWeight(fdi), transform: 'none' }}
           >
             <WizardTooth
               fdi={fdi}

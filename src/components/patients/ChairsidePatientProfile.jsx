@@ -454,20 +454,7 @@ export default function ChairsidePatientProfile({
               onQuickStatus={onQuickStatus}
               onSaveNote={onSaveToothNote}
             />
-          ) : (
-            <div className="hidden xl:flex w-[300px] shrink-0 bg-white rounded-2xl border border-dashed border-slate-200 shadow-[0_1px_3px_rgba(15,23,42,0.06)] items-center justify-center px-6 py-16 sticky top-[76px] min-h-[320px]">
-              <div className="text-center">
-                <div
-                  className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center mx-auto mb-3 font-black text-sm"
-                  style={{ color: TEAL }}
-                >
-                  #
-                </div>
-                <p className="text-xs font-bold text-slate-500">Tishni tanlang</p>
-                <p className="text-[10px] text-slate-400 mt-1 leading-snug">Tarix, tez holat va eslatma shu yerda ochiladi</p>
-              </div>
-            </div>
-          )}
+          ) : null}
             </div>
 
           </div>
