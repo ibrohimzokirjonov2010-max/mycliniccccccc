@@ -1,6 +1,8 @@
 import { Fragment } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import './implantWizard.css';
+import { fdiCrownDown, fdiLengthWeight, fdiWidthWeight } from '@/lib/fdiNotation';
 import { getToothIllustrationSrc } from '@/utils/toothIllustration';
 
 /** Dentist view, straight rows — not an arch. */
@@ -8,11 +10,12 @@ const UPPER_FDI = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 2
 const LOWER_FDI = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
 
 function WizardTooth({ fdi, selected, active, onClick }) {
+  const crownDown = fdiCrownDown(fdi);
   return (
     <button
       type="button"
       onClick={() => onClick(String(fdi))}
-      className="odontogram-tooth compact-hit implant-wizard-tooth-btn flex flex-col items-center gap-0.5 bg-transparent border-0 p-0 cursor-pointer group"
+      className="odontogram-tooth compact-hit implant-wizard-tooth-btn flex w-full flex-col items-center gap-0 bg-transparent border-0 p-0 cursor-pointer group"
       title={`#${fdi}`}
       aria-pressed={selected}
       aria-current={active ? 'true' : undefined}
@@ -21,13 +24,14 @@ function WizardTooth({ fdi, selected, active, onClick }) {
     >
       <span
         className={cn(
-          'implant-wizard-tooth-face relative flex justify-center w-[36px] h-[44px] sm:w-[38px] sm:h-[46px] rounded-[10px] border transition-all duration-150 overflow-hidden',
-          Number(fdi) <= 28 ? 'items-end' : 'items-start',
+          'implant-wizard-tooth-face relative flex w-full justify-center rounded-[10px] border transition-all duration-150 overflow-hidden',
+          crownDown ? 'items-end' : 'items-start',
           active && 'is-active',
           selected
             ? 'bg-[#0d9488] border-[#0f766e] shadow-sm text-white'
             : 'bg-[#f4efe6] border-[#e4d9c8] text-[#c4b8a4] group-hover:border-[#0d9488]/50 group-hover:bg-[#f0fdfa]'
         )}
+        style={{ height: `calc(48px * ${fdiLengthWeight(fdi)})` }}
       >
         {selected && (
           <Check className="absolute top-0.5 right-0.5 z-10 w-2.5 h-2.5 text-white drop-shadow" strokeWidth={3} />
@@ -37,14 +41,15 @@ function WizardTooth({ fdi, selected, active, onClick }) {
           alt=""
           draggable={false}
           className="tooth-illus implant-wizard-tooth-img w-full h-[94%] max-w-full max-h-full object-contain pointer-events-none"
-          style={{ objectPosition: Number(fdi) <= 28 ? 'center bottom' : 'center top' }}
+          style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
         />
-      </span>
-      <span className={cn(
-        'implant-wizard-tooth-fdi text-xs font-semibold tabular-nums leading-none',
-        selected ? 'text-[#0d9488]' : 'text-[#6b7280]'
-      )}>
-        {fdi}
+        <span className={cn(
+          'fdi-on-crown implant-wizard-tooth-fdi',
+          crownDown ? 'is-upper' : 'is-lower',
+          selected ? 'text-white' : 'text-[#111827]'
+        )} style={selected ? { color: '#fff', textShadow: '0 0 2px #0f766e' } : undefined}>
+          {fdi}
+        </span>
       </span>
     </button>
   );
@@ -62,7 +67,14 @@ function LinearRow({ teeth, selectedSet, activeFdi, onToggle, variant }) {
       {teeth.map((fdi, i) => (
         <Fragment key={fdi}>
           {i === 8 && <span className="implant-wizard-arch-midline" aria-hidden />}
-          <div className="implant-wizard-tooth-slot" style={{ transform: 'none' }}>
+          <div
+            className="implant-wizard-tooth-slot"
+            style={{
+              transform: 'none',
+              flex: `${fdiWidthWeight(fdi)} 0 ${Math.round(28 * fdiWidthWeight(fdi))}px`,
+              width: `${Math.round(34 * fdiWidthWeight(fdi))}px`,
+            }}
+          >
             <WizardTooth
               fdi={fdi}
               selected={selectedSet.has(String(fdi))}
@@ -92,7 +104,10 @@ export default function ImplantWizardArch({ selectedFdis = [], activeFdi = '', o
     >
       <div className="implant-wizard-arch-scroll">
         <div className="implant-wizard-arch-rows" style={{ display: 'flex', flexDirection: 'column', transform: 'none' }}>
+          <span className="odonto-side odonto-side-r">O‘NG</span>
+          <span className="odonto-side odonto-side-l">CHAP</span>
           <LinearRow teeth={UPPER_FDI} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} variant="upper" />
+          <div className="implant-wizard-bite" aria-hidden="true" />
           <LinearRow teeth={LOWER_FDI} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} variant="lower" />
         </div>
       </div>

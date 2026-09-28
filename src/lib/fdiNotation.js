@@ -110,6 +110,38 @@ export function countImplantTeeth(records = []) {
   }, 0);
 }
 
+/** Position 1–8 (or 1–5 for primary teeth) from an FDI number. */
+export function fdiPosition(fdi) {
+  const n = Number(fdi);
+  if (!Number.isFinite(n)) return 0;
+  return Math.abs(n) % 10;
+}
+
+/** Relative mesio-distal width. Molars widest, laterals narrowest. */
+const FDI_WIDTH = { 1: 0.82, 2: 0.64, 3: 0.74, 4: 0.92, 5: 0.96, 6: 1.32, 7: 1.2, 8: 1.08 };
+
+/** Relative crown-root length. Canines longest. */
+const FDI_LENGTH = { 1: 0.9, 2: 0.8, 3: 1, 4: 0.86, 5: 0.84, 6: 0.82, 7: 0.8, 8: 0.76 };
+
+export function fdiWidthWeight(fdi) {
+  return FDI_WIDTH[fdiPosition(fdi)] || 1;
+}
+
+export function fdiLengthWeight(fdi) {
+  return FDI_LENGTH[fdiPosition(fdi)] || 0.86;
+}
+
+/** CSS grid columns that mirror across the midline (same weights on both halves). */
+export function fdiGridTemplate(fdis) {
+  return (fdis || []).map((n) => `minmax(0, ${fdiWidthWeight(n)}fr)`).join(' ');
+}
+
+/** Upper permanent (11–28) and upper primary (51–65) crowns point down. */
+export function fdiCrownDown(fdi) {
+  const n = Number(fdi);
+  return n <= 28 || (n >= 51 && n <= 65);
+}
+
 export function assertUniqueFdis(fdis, expectedCount) {
   const nums = fdis.map(Number).filter((n) => Number.isFinite(n));
   const dupes = findDuplicateFdis(nums);

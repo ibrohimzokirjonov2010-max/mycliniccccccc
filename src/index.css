@@ -250,96 +250,106 @@
   line-height: 1.1 !important;
 }
 
-/* Patient-profile odontogram: one anatomical cross, width of the card, no slider. */
+/* FDI arch: patient's right on the viewer's left. One horizontal scroller
+   on narrow screens so 18→28 stays above 48→38. Jaws meet at the bite line. */
 .odonto-fit-frame {
   container-type: inline-size;
   width: 100%;
   min-width: 0;
   max-width: 100%;
 }
+.odonto-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
 .odonto-cross {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-width: 0;
-  gap: 6px;
-  padding: 8px;
+  min-width: 640px;
+  gap: 0;
+  padding: 8px 44px;
   border-radius: 16px;
-  background: #f1f5f9;
+  background: #fff;
   border: 1px solid #e2e8f0;
   box-sizing: border-box;
 }
+.odonto-cross::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 50%;
+  width: 1px;
+  background: #e11d48;
+  transform: translateX(-0.5px);
+  pointer-events: none;
+  z-index: 2;
+}
+.odonto-side {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #e11d48;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 3;
+  white-space: nowrap;
+}
+.odonto-side-r { left: 8px; }
+.odonto-side-l { right: 8px; }
 .odonto-jaw {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
   width: 100%;
   min-width: 0;
   align-items: stretch;
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
 }
-.odonto-jaw-upper {
-  align-items: end;
-}
-.odonto-jaw-lower {
-  align-items: start;
-}
+.odonto-jaw-upper { align-items: end; }
+.odonto-jaw-lower { align-items: start; }
 .odonto-quad {
   display: grid;
   min-width: 0;
   width: 100%;
   gap: 0;
+  align-items: stretch;
 }
+.odonto-jaw-upper .odonto-quad { align-items: end; }
+.odonto-jaw-lower .odonto-quad { align-items: start; }
 .odonto-midline {
   width: 1px;
-  background: #cbd5e1;
+  background: transparent;
   justify-self: center;
 }
 .odonto-bite-line {
   height: 1px;
-  margin: 0 8px;
-  background: linear-gradient(90deg, transparent, #94a3b8 12%, #94a3b8 88%, transparent);
-}
-/* Phone card: 16 columns are ~21px and the FDI digits collide.
-   Stack each quadrant as its own row of 8 so teeth stay readable
-   and still follow 18→11, 21→28, 48→41, 31→38. */
-@container (max-width: 520px) {
-  .odonto-jaw {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
-    padding: 4px 2px 6px;
-  }
-  .odonto-midline {
-    display: none;
-  }
-  .odonto-lateral {
-    height: clamp(76px, 24cqw, 104px);
-  }
-  .odonto-quad[data-label]::before {
-    content: attr(data-label);
-    grid-column: 1 / -1;
-    text-align: center;
-    font-size: 9px;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #64748b;
-    line-height: 1.2;
-    padding: 1px 0 2px;
-  }
+  margin: 0;
+  background: #e11d48;
+  position: relative;
+  z-index: 2;
 }
 .odonto-lateral {
   width: 100%;
-  height: clamp(72px, 22cqw, 128px);
+  height: calc(clamp(78px, 16cqw, 132px) * var(--fdi-len, 1));
   min-width: 0;
   min-height: 0;
   overflow: hidden;
   position: relative;
 }
 .odonto-fit-frame[data-compact="true"] .odonto-lateral {
-  height: clamp(56px, 16cqw, 96px);
+  height: calc(clamp(64px, 14cqw, 104px) * var(--fdi-len, 1));
 }
 .odonto-occlusal {
   width: 100%;
@@ -582,8 +592,32 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
   }
 }
 .tooth-chart-root .tooth-face {
-  height: clamp(64px, 8vw, 108px);
+  height: calc(clamp(72px, 9vw, 118px) * var(--fdi-len, 1));
 }
+@media (max-width: 767px) {
+  .tooth-chart-root .tooth-face {
+    height: calc(84px * var(--fdi-len, 1));
+  }
+}
+.fdi-on-crown {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 22;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 800;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: #111827;
+  text-shadow: 0 0 2px #fff, 0 0 3px #fff, 0 1px 0 #fff;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.odonto-jaw-upper .fdi-on-crown,
+.fdi-on-crown.is-upper { bottom: 1px; }
+.odonto-jaw-lower .fdi-on-crown,
+.fdi-on-crown.is-lower { top: 1px; }
 #tooth-chart-print-host {
   display: none;
 }

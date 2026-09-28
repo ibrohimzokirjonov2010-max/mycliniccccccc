@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { cn } from '@/lib/utils';
-import { internalIdToFdi } from '@/lib/fdiNotation';
+import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, internalIdToFdi } from '@/lib/fdiNotation';
 import { getToothIllustrationSrc, matchIllustrationKind } from '@/utils/toothIllustration';
 
 const ADULT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -599,74 +599,49 @@ export default function ToothChartCard({
     window.print();
   };
 
-  const renderRealistic = (fdis, isUpper) => (
-    <div className={cn('flex min-w-0 items-end', phone ? 'w-max gap-1' : 'w-full')}>
-      {fdis.slice(0, Math.ceil(fdis.length / 2)).map((n) => (
-        <ToothCell key={n} fdi={n} isUpper={isUpper} phone={phone} entry={entryFor(n)} active={active === n} picked={selected.includes(n)} dim={!toothMatches(n, entryFor(n))} onClick={() => onTooth(n)} />
-      ))}
-      <span className="mx-1 w-px self-stretch bg-slate-200" />
-      {fdis.slice(Math.ceil(fdis.length / 2)).map((n) => (
-        <ToothCell key={n} fdi={n} isUpper={isUpper} phone={phone} entry={entryFor(n)} active={active === n} picked={selected.includes(n)} dim={!toothMatches(n, entryFor(n))} onClick={() => onTooth(n)} />
-      ))}
+  const renderHalf = (fdis, isUpper) => (
+    <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(fdis) }}>
+      {fdis.map((n) => {
+        const entry = entryFor(n);
+        if (mode === 'realistic') {
+          return (
+            <ToothCell
+              key={n}
+              fdi={n}
+              isUpper={isUpper}
+              entry={entry}
+              active={active === n}
+              picked={selected.includes(n)}
+              dim={!toothMatches(n, entry)}
+              onClick={() => onTooth(n)}
+            />
+          );
+        }
+        const color = entry ? KIND_COLOR[entry.kind] : '#CBD5E1';
+        return (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onTooth(n)}
+            className={cn('relative flex min-w-0 w-full flex-col items-center gap-0.5 px-px', !toothMatches(n, entry) && 'opacity-30')}
+          >
+            {!isUpper && <Num n={n} entry={entry} />}
+            <span className={cn('block w-full min-w-0 rounded-lg p-0.5', active === n && 'ring-2 ring-slate-900', selected.includes(n) && 'bg-slate-900/5')}>
+              <SurfaceGlyph fdi={n} surfaces={entry?.surfaces || []} color={entry ? color : '#CBD5E1'} size={phone ? 32 : 40} />
+            </span>
+            {isUpper && <Num n={n} entry={entry} />}
+            {selected.includes(n) && (
+              <span className="absolute -right-0.5 -top-0.5 grid h-4 w-4 place-items-center rounded-full bg-slate-900 text-white">
+                <Check className="h-2.5 w-2.5" strokeWidth={3} />
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 
-  const renderSchema = (fdis, isUpper) => (
-    <div className={cn('flex min-w-0 items-center', phone ? 'w-max gap-1' : 'w-full')}>
-      {[0, 1].map((half) => (
-        <div key={half} className={cn('flex min-w-0', phone ? '' : 'flex-1', half === 1 && 'border-l border-dashed border-slate-300')}>
-          {fdis.slice(half * Math.ceil(fdis.length / 2), (half + 1) * Math.ceil(fdis.length / 2)).map((n) => {
-            const entry = entryFor(n);
-            const color = entry ? KIND_COLOR[entry.kind] : '#CBD5E1';
-            return (
-              <button
-                key={n}
-                type="button"
-                onClick={() => onTooth(n)}
-                className={cn('relative flex min-w-0 flex-1 basis-0 flex-col items-center gap-1 px-0.5', phone && 'w-12 shrink-0 flex-none', !toothMatches(n, entry) && 'opacity-30')}
-              >
-                {isUpper && <Num n={n} entry={entry} />}
-                <span className={cn('block w-full min-w-0 rounded-lg p-0.5', active === n && 'ring-2 ring-slate-900', selected.includes(n) && 'bg-slate-900/5')}>
-                  <SurfaceGlyph fdi={n} surfaces={entry?.surfaces || []} color={entry ? color : '#CBD5E1'} size={phone ? 36 : 44} />
-                </span>
-                {!isUpper && <Num n={n} entry={entry} />}
-                {selected.includes(n) && (
-                  <span className="absolute -right-0.5 -top-0.5 grid h-4 w-4 place-items-center rounded-full bg-slate-900 text-white">
-                    <Check className="h-2.5 w-2.5" strokeWidth={3} />
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      ))}
-    </div>
-  );
-
-  const jaw = (fdis, isUpper, labelLeft, labelRight) => (
-    <div className="min-w-0">
-      <div className="mb-1 flex items-center justify-between gap-2 px-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-400">
-        <span className="truncate">{phone ? (isUpper ? "YUQORI JAG' · O'NG" : "PASTKI JAG' · O'NG") : labelLeft}</span>
-        <span className="shrink-0 normal-case tracking-normal">
-          {phone && isUpper && "surib ko'ring →"}
-          {phone && !isUpper && (
-            <>
-              {summary.planned > 0 && <b className="text-rose-600">{summary.planned} reja</b>}
-              {summary.planned > 0 && summary.done > 0 ? ' · ' : ''}
-              {summary.done > 0 ? `${summary.done} bajarilgan` : ''}
-            </>
-          )}
-          {!phone && labelRight}
-        </span>
-      </div>
-      <div className="relative min-w-0">
-        <div className={cn(phone ? 'overflow-x-auto pb-1 [scrollbar-width:thin]' : 'overflow-hidden')}>
-          {mode === 'realistic' ? renderRealistic(fdis, isUpper) : renderSchema(fdis, isUpper)}
-        </div>
-        {phone && <span className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent" />}
-      </div>
-    </div>
-  );
+  const splitAt = (list) => Math.ceil(list.length / 2);
 
   return (
     <div id="tooth-chart-print" className="tooth-chart-root min-w-0 max-w-full overflow-x-hidden">
@@ -726,10 +701,32 @@ export default function ToothChartCard({
             ))}
           </div>
 
-          <div className="mt-2 space-y-2">
-            {jaw(upper, true, dentition === 'child' ? "O‘NG ← YUQORI (SUT)" : "O‘NG ← YUQORI JAG‘", dentition === 'child' ? 'YUQORI JAG‘ → CHAP' : 'YUQORI JAG‘ → CHAP')}
-            {jaw(lower, false, dentition === 'child' ? "O‘NG ← PASTKI (SUT)" : "O‘NG ← PASTKI JAG‘", 'PASTKI JAG‘ → CHAP')}
+          <div className="odonto-fit-frame mt-2" data-compact={phone ? 'true' : 'false'}>
+            <div className="odonto-scroll">
+              <div className="odonto-cross">
+                <span className="odonto-side odonto-side-r">O‘NG</span>
+                <span className="odonto-side odonto-side-l">CHAP</span>
+                <div className="odonto-jaw odonto-jaw-upper">
+                  {renderHalf(upper.slice(0, splitAt(upper)), true)}
+                  <div className="odonto-midline" aria-hidden="true" />
+                  {renderHalf(upper.slice(splitAt(upper)), true)}
+                </div>
+                <div className="odonto-bite-line" aria-hidden="true" />
+                <div className="odonto-jaw odonto-jaw-lower">
+                  {renderHalf(lower.slice(0, splitAt(lower)), false)}
+                  <div className="odonto-midline" aria-hidden="true" />
+                  {renderHalf(lower.slice(splitAt(lower)), false)}
+                </div>
+              </div>
+            </div>
           </div>
+          {phone && (summary.planned > 0 || summary.done > 0) && (
+            <p className="mt-1 px-1 text-[11px] text-slate-500">
+              {summary.planned > 0 && <b className="text-rose-600">{summary.planned} reja</b>}
+              {summary.planned > 0 && summary.done > 0 ? ' · ' : ''}
+              {summary.done > 0 ? `${summary.done} bajarilgan` : ''}
+            </p>
+          )}
 
           {mode === 'schema' && (
             <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
@@ -935,17 +932,21 @@ function Num({ n, entry }) {
   );
 }
 
-function ToothCell({ fdi, isUpper, phone, entry, active, picked, dim, onClick }) {
+function ToothCell({ fdi, isUpper, entry, active, picked, dim, onClick }) {
   const color = entry ? KIND_COLOR[entry.kind] : null;
   const src = getToothIllustrationSrc(fdi, entry?.illustration && entry.illustration !== 'missing' ? entry.illustration : (entry?.kind === 'missing' ? 'missing' : 'healthy'));
-  const crownDown = Number(fdi) <= 28 || (Number(fdi) >= 51 && Number(fdi) <= 65);
+  const crownDown = fdiCrownDown(fdi);
   return (
-    <button type="button" onClick={onClick} className={cn('flex min-w-0 flex-1 basis-0 flex-col items-center', phone && 'w-[52px] shrink-0 flex-none', isUpper ? 'justify-end' : 'justify-start', dim && 'opacity-30')}>
-      {!isUpper && <Num n={fdi} entry={entry} />}
+    <button
+      type="button"
+      onClick={onClick}
+      data-fdi={fdi}
+      className={cn('flex w-full min-w-0 flex-col', isUpper ? 'justify-end' : 'justify-start', dim && 'opacity-30')}
+      style={{ '--fdi-len': fdiLengthWeight(fdi) }}
+    >
       <span
-        className={cn('relative mt-0.5 flex w-full items-center justify-center overflow-hidden rounded-lg', !phone && 'tooth-face')}
+        className="tooth-face relative flex w-full items-center justify-center overflow-hidden rounded-md"
         style={{
-          height: phone ? 78 : undefined,
           border: color ? `2px ${entry.done ? 'solid' : 'dashed'} ${color}` : '2px solid transparent',
           opacity: entry?.kind === 'missing' ? 0.45 : 1,
           outline: active || picked ? '2px solid #0F172A' : 'none',
@@ -962,11 +963,23 @@ function ToothCell({ fdi, isUpper, phone, entry, active, picked, dim, onClick })
             style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
           />
         )}
+        <span
+          className={cn('fdi-on-crown', crownDown ? 'is-upper' : 'is-lower')}
+          style={color ? {
+            color: '#fff',
+            background: color,
+            textShadow: 'none',
+            borderRadius: 3,
+            padding: '1px 2px',
+            border: `1.5px ${entry.done ? 'solid' : 'dashed'} ${color}`,
+          } : undefined}
+        >
+          {fdi}
+        </span>
         {entry?.kind === 'missing' && (
-          <X className="absolute h-6 w-6 text-slate-500" strokeWidth={2.5} />
+          <X className="absolute h-5 w-5 text-slate-500" strokeWidth={2.5} />
         )}
       </span>
-      {isUpper && <Num n={fdi} entry={entry} />}
     </button>
   );
 }

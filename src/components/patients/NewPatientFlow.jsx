@@ -24,6 +24,7 @@ import { applyPhoneMask, cn, capitalizeName, validateAddress, capitalizeAsYouTyp
 import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
 import { resolveAssignedDoctorName, isTreatingClinician, clinicianDisplayName } from '@/lib/treatingDoctor';
 import { normalizePatientGender, patientGenderForDb } from '@/lib/patientGender';
+import { fdiGridTemplate, fdiLengthWeight } from '@/lib/fdiNotation';
 
 /**
  * Wizard steps configuration
@@ -1782,17 +1783,47 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     setActiveTooth(next.includes(internalId) ? internalId : null);
                   }}
                   className={cn(
-                    // Phone keeps compact chips; notebooks get ≥32–36px targets.
-                    "w-7 h-7 sm:w-8 sm:h-8 lg:w-8 lg:h-8 xl:w-9 xl:h-9 rounded-lg flex items-center justify-center font-black transition-all cursor-pointer leading-none shrink-0 p-0 border touch-manipulation",
-                    isActive    ? "bg-[#1499AD] text-white border-[#1499AD] ring-2 ring-[#1499AD]/30 shadow-md shadow-[#1499AD]/10 scale-105" :
-                    isSelected  ? "bg-emerald-500 text-white border-emerald-500 shadow-sm" :
+                    "odontogram-tooth compact-hit w-full rounded-md flex items-center justify-center font-black transition-colors cursor-pointer leading-none p-0 border touch-manipulation",
+                    isActive    ? "bg-[#1499AD] text-white border-[#1499AD] ring-2 ring-[#1499AD]/30" :
+                    isSelected  ? "bg-emerald-500 text-white border-emerald-500" :
                                   "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                   )}
+                  style={{ height: `${Math.round(36 * fdiLengthWeight(fdi))}px` }}
                 >
                   <span className="text-[10px] sm:text-[11px] xl:text-xs font-black">{fdi}</span>
                 </button>
               );
             };
+
+            const toothArch = (
+              <div className="odonto-fit-frame w-full min-w-0" data-compact="true">
+                <div className="odonto-scroll">
+                  <div className="odonto-cross">
+                    <span className="odonto-side odonto-side-r">O‘NG</span>
+                    <span className="odonto-side odonto-side-l">CHAP</span>
+                    <div className="odonto-jaw odonto-jaw-upper">
+                      <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(upperRight) }}>
+                        {upperRight.map((n) => <ToothBtn key={n} fdi={n} />)}
+                      </div>
+                      <div className="odonto-midline" aria-hidden="true" />
+                      <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(upperLeft) }}>
+                        {upperLeft.map((n) => <ToothBtn key={n} fdi={n} />)}
+                      </div>
+                    </div>
+                    <div className="odonto-bite-line" aria-hidden="true" />
+                    <div className="odonto-jaw odonto-jaw-lower">
+                      <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(lowerRight) }}>
+                        {lowerRight.map((n) => <ToothBtn key={n} fdi={n} />)}
+                      </div>
+                      <div className="odonto-midline" aria-hidden="true" />
+                      <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(lowerLeft) }}>
+                        {lowerLeft.map((n) => <ToothBtn key={n} fdi={n} />)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
 
             return (
               <div className="flex flex-col h-full bg-white overflow-hidden" data-reja-layout="notebook-fluid-v1">
@@ -1811,30 +1842,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                     {/* ── FDI tooth chart — fluid, larger hit targets on notebooks ── */}
                     <div className="shrink-0 bg-[#fef9f7] border-b border-slate-100 py-3 px-2 sm:px-3 lg:px-4">
-                      <div className="w-full flex flex-col items-center justify-center overflow-x-auto">
-                        {/* Upper jaw */}
-                        <div className="flex items-center justify-center gap-1 mb-1.5 w-full max-w-full">
-                          <div className="flex items-center justify-end gap-1">
-                            {upperRight.map(n => <ToothBtn key={n} fdi={n} />)}
-                          </div>
-                          <div className="w-[2px] h-7 bg-slate-300 mx-1.5 shrink-0 rounded-full" />
-                          <div className="flex items-center justify-start gap-1">
-                            {upperLeft.map(n => <ToothBtn key={n} fdi={n} />)}
-                          </div>
-                        </div>
-                        {/* Midline */}
-                        <div className="w-56 xl:w-72 border-t border-dashed border-slate-200 my-0.5" />
-                        {/* Lower jaw */}
-                        <div className="flex items-center justify-center gap-1 mt-1.5 w-full max-w-full">
-                          <div className="flex items-center justify-end gap-1">
-                            {lowerRight.map(n => <ToothBtn key={n} fdi={n} />)}
-                          </div>
-                          <div className="w-[2px] h-7 bg-slate-300 mx-1.5 shrink-0 rounded-full" />
-                          <div className="flex items-center justify-start gap-1">
-                            {lowerLeft.map(n => <ToothBtn key={n} fdi={n} />)}
-                          </div>
-                        </div>
-                      </div>
+                      {toothArch}
                       {/* Legend */}
                       <div className="flex items-center justify-center gap-4 mt-2.5 shrink-0">
                         <span className="flex items-center gap-1.5 text-[11px] text-slate-500"><span className="w-2.5 h-2.5 rounded-full bg-[#f87171] inline-block" />{t('patients.wizard.selected')}</span>
@@ -2001,31 +2009,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                 <div className="flex lg:hidden flex-col h-full w-full overflow-hidden bg-white">
                   {/* Top: 2-row anatomical tooth selector – fully fits phone screen */}
                   <div className="py-2 px-2 shrink-0 select-none bg-slate-50 border-b border-slate-100">
-                    <div className="flex flex-col gap-1.5">
-
-                      {/* YUQORI JAG' */}
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex flex-1 justify-end gap-[3px]">
-                          {UPPER_RIGHT.map(num => <ToothBtn key={num} fdi={num} />)}
-                        </div>
-                        <div className="w-[2px] h-8 bg-sky-500 rounded-full mx-1 shrink-0" />
-                        <div className="flex flex-1 justify-start gap-[3px]">
-                          {UPPER_LEFT.map(num => <ToothBtn key={num} fdi={num} />)}
-                        </div>
-                      </div>
-
-                      {/* PASTKI JAG' */}
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex flex-1 justify-end gap-[3px]">
-                          {LOWER_RIGHT.map(num => <ToothBtn key={num} fdi={num} />)}
-                        </div>
-                        <div className="w-[2px] h-8 bg-sky-500 rounded-full mx-1 shrink-0" />
-                        <div className="flex flex-1 justify-start gap-[3px]">
-                          {LOWER_LEFT.map(num => <ToothBtn key={num} fdi={num} />)}
-                        </div>
-                      </div>
-
-                    </div>
+                    {toothArch}
                   </div>
 
                   {/* Active Tooth Info Status Bar */}

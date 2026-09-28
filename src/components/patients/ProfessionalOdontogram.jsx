@@ -13,6 +13,8 @@ import {
   CHILD_FDI_ARCS,
   assertUniqueFdis,
   flattenArcs,
+  fdiGridTemplate,
+  fdiLengthWeight,
   internalIdToFdiNumber,
 } from '@/lib/fdiNotation';
 
@@ -248,6 +250,7 @@ const ToothColumn = memo(function ToothColumn({
           isCrown ? 'odonto-occlusal items-center' : 'odonto-lateral',
           !isCrown && (isUpper ? 'items-end' : 'items-start'),
         )}
+        style={!isCrown ? { '--fdi-len': fdiLengthWeight(fdiLabel) } : undefined}
       >
         <img
           src={src}
@@ -581,19 +584,17 @@ const ToothColumn = memo(function ToothColumn({
             </div>
           </>
         )}
+        {!isCrown && (
+          <span
+            className={cn('fdi-on-crown', isUpper ? 'is-upper' : 'is-lower')}
+            style={selected ? { backgroundColor: st.color, color: '#fff', textShadow: 'none', borderRadius: 3, padding: '1px 2px' } : undefined}
+          >
+            {fdiLabel}
+          </span>
+        )}
       </div>
     );
   };
-
-  const labelCls = cn(
-    'odontogram-fdi-label relative z-10 font-mono font-black leading-none rounded-md transition-colors duration-200 text-center tabular-nums w-full overflow-hidden whitespace-nowrap box-border border shadow-2xs',
-    compact ? 'text-[9px] px-0.5 py-px' : 'text-[10px] px-0.5 py-0.5',
-    selected
-      ? 'text-white border-transparent shadow-xs'
-      : hovered
-        ? 'text-slate-900 bg-white border-slate-300'
-        : 'text-slate-700 bg-white/95 border-slate-200/80',
-  );
 
   return (
     <motion.div
@@ -619,16 +620,12 @@ const ToothColumn = memo(function ToothColumn({
       onClick={() => !isDisabled && onClick(id)}
     >
       {isUpper ? (
-        /* UPPER JAW: lateral(roots up) → occlusal(oval) → number */
         <>
           <ToothImg src={lateralSrc}  alt={`#${fdiLabel} yon`}     isCrown={false} transform={lateralTransform}  />
           {showOcclusalView && <ToothImg src={occlusalSrc} alt={`#${fdiLabel} oklüzal`} isCrown={true}  transform={occlusalTransform} />}
-          <div className={labelCls} style={selected ? { backgroundColor: st.color, marginTop: 2 } : { marginTop: 2 }}>{fdiLabel}</div>
         </>
       ) : (
-        /* LOWER JAW: number → occlusal(oval) → lateral(roots down) */
         <>
-          <div className={labelCls} style={selected ? { backgroundColor: st.color, marginBottom: 2 } : { marginBottom: 2 }}>{fdiLabel}</div>
           {showOcclusalView && <ToothImg src={occlusalSrc} alt={`#${fdiLabel} oklüzal`} isCrown={true}  transform={occlusalTransform} />}
           <ToothImg src={lateralSrc}  alt={`#${fdiLabel} yon`}     isCrown={false} transform={lateralTransform}  />
         </>
@@ -987,28 +984,28 @@ function ProfessionalOdontogram({
         {quadrantFilter === 'Q1' ? (
           <div className="flex flex-col items-center gap-2 p-2 bg-slate-50/70 border border-slate-200 rounded-xl w-full min-w-0">
             <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono text-center">Q1 — O'ng Yuqori Jag' (18 - 11)</span>
-            <div className="odonto-quad w-full min-w-0" style={{ gridTemplateColumns: `repeat(${upperRight.length}, minmax(0, 1fr))` }}>
+            <div className="odonto-quad w-full min-w-0" style={{ gridTemplateColumns: fdiGridTemplate(upperRight.map((t) => t.fdi)) }}>
               {renderRow(upperRight, true)}
             </div>
           </div>
         ) : quadrantFilter === 'Q2' ? (
           <div className="flex flex-col items-center gap-2 p-2 bg-slate-50/70 border border-slate-200 rounded-xl w-full min-w-0">
             <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono text-center">Q2 — Chap Yuqori Jag' (21 - 28)</span>
-            <div className="odonto-quad w-full min-w-0" style={{ gridTemplateColumns: `repeat(${upperLeft.length}, minmax(0, 1fr))` }}>
+            <div className="odonto-quad w-full min-w-0" style={{ gridTemplateColumns: fdiGridTemplate(upperLeft.map((t) => t.fdi)) }}>
               {renderRow(upperLeft, true)}
             </div>
           </div>
         ) : quadrantFilter === 'Q3' ? (
           <div className="flex flex-col items-center gap-2 p-2 bg-slate-50/70 border border-slate-200 rounded-xl w-full min-w-0">
             <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono text-center">Q3 — Chap Pastki Jag' (31 - 38)</span>
-            <div className="odonto-quad w-full min-w-0" style={{ gridTemplateColumns: `repeat(${lowerLeft.length}, minmax(0, 1fr))` }}>
+            <div className="odonto-quad w-full min-w-0" style={{ gridTemplateColumns: fdiGridTemplate(lowerLeft.map((t) => t.fdi)) }}>
               {renderRow(lowerLeft, false)}
             </div>
           </div>
         ) : quadrantFilter === 'Q4' ? (
           <div className="flex flex-col items-center gap-2 p-2 bg-slate-50/70 border border-slate-200 rounded-xl w-full min-w-0">
             <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono text-center">Q4 — O'ng Pastki Jag' (48 - 41)</span>
-            <div className="odonto-quad w-full min-w-0" style={{ gridTemplateColumns: `repeat(${lowerRight.length}, minmax(0, 1fr))` }}>
+            <div className="odonto-quad w-full min-w-0" style={{ gridTemplateColumns: fdiGridTemplate(lowerRight.map((t) => t.fdi)) }}>
               {renderRow(lowerRight, false)}
             </div>
           </div>
@@ -1023,14 +1020,17 @@ function ProfessionalOdontogram({
             className="odonto-fit-frame w-full min-w-0 select-none"
             data-compact={compact ? 'true' : 'false'}
           >
+            <div className="odonto-scroll">
             <div className="odonto-cross">
+              <span className="odonto-side odonto-side-r">O‘NG</span>
+              <span className="odonto-side odonto-side-l">CHAP</span>
               {chartView !== 'mandible' && (
                 <div className="odonto-jaw odonto-jaw-upper">
-                  <div className="odonto-quad" data-label={`${upperRight[0]?.fdi}–${upperRight[upperRight.length - 1]?.fdi}`} style={{ gridTemplateColumns: `repeat(${upperRight.length}, minmax(0, 1fr))` }}>
+                  <div className="odonto-quad" data-label={`${upperRight[0]?.fdi}–${upperRight[upperRight.length - 1]?.fdi}`} style={{ gridTemplateColumns: fdiGridTemplate(upperRight.map((t) => t.fdi)) }}>
                     {renderRow(upperRight, true)}
                   </div>
                   <div className="odonto-midline" aria-hidden="true" />
-                  <div className="odonto-quad" data-label={`${upperLeft[0]?.fdi}–${upperLeft[upperLeft.length - 1]?.fdi}`} style={{ gridTemplateColumns: `repeat(${upperLeft.length}, minmax(0, 1fr))` }}>
+                  <div className="odonto-quad" data-label={`${upperLeft[0]?.fdi}–${upperLeft[upperLeft.length - 1]?.fdi}`} style={{ gridTemplateColumns: fdiGridTemplate(upperLeft.map((t) => t.fdi)) }}>
                     {renderRow(upperLeft, true)}
                   </div>
                 </div>
@@ -1038,15 +1038,16 @@ function ProfessionalOdontogram({
               {chartView === 'teeth' && <div className="odonto-bite-line" aria-hidden="true" />}
               {chartView !== 'maxilla' && (
                 <div className="odonto-jaw odonto-jaw-lower">
-                  <div className="odonto-quad" data-label={`${lowerRight[0]?.fdi}–${lowerRight[lowerRight.length - 1]?.fdi}`} style={{ gridTemplateColumns: `repeat(${lowerRight.length}, minmax(0, 1fr))` }}>
+                  <div className="odonto-quad" data-label={`${lowerRight[0]?.fdi}–${lowerRight[lowerRight.length - 1]?.fdi}`} style={{ gridTemplateColumns: fdiGridTemplate(lowerRight.map((t) => t.fdi)) }}>
                     {renderRow(lowerRight, false)}
                   </div>
                   <div className="odonto-midline" aria-hidden="true" />
-                  <div className="odonto-quad" data-label={`${lowerLeft[0]?.fdi}–${lowerLeft[lowerLeft.length - 1]?.fdi}`} style={{ gridTemplateColumns: `repeat(${lowerLeft.length}, minmax(0, 1fr))` }}>
+                  <div className="odonto-quad" data-label={`${lowerLeft[0]?.fdi}–${lowerLeft[lowerLeft.length - 1]?.fdi}`} style={{ gridTemplateColumns: fdiGridTemplate(lowerLeft.map((t) => t.fdi)) }}>
                     {renderRow(lowerLeft, false)}
                   </div>
                 </div>
               )}
+            </div>
             </div>
           </div>
         )}

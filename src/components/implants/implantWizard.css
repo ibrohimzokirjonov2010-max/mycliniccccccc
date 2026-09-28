@@ -219,12 +219,34 @@
 }
 
 .implant-wizard-arch-rows {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   width: max-content;
-  min-width: 100%;
-  padding: 2px 2px 4px;
+  min-width: 640px;
+  padding: 6px 44px 8px;
+}
+
+.implant-wizard-arch-rows::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 50%;
+  width: 1px;
+  background: #e11d48;
+  transform: translateX(-0.5px);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.implant-wizard-bite {
+  height: 1px;
+  width: 100%;
+  background: #e11d48;
+  position: relative;
+  z-index: 2;
 }
 
 .implant-wizard-arch-row {
@@ -232,7 +254,7 @@
   flex-wrap: nowrap;
   align-items: flex-end;
   justify-content: flex-start;
-  gap: 2px;
+  gap: 0;
   width: max-content;
   min-width: 100%;
 }
@@ -247,20 +269,19 @@
 
 .implant-wizard-tooth-slot {
   position: relative;
-  flex: 0 0 40px;
-  width: 40px;
+  flex: 1 0 auto;
+  width: auto;
   margin: 0;
   transform: none;
 }
 
 .implant-wizard-arch-midline {
   display: block;
-  flex: 0 0 10px;
-  width: 10px;
+  flex: 0 0 1px;
+  width: 1px;
   align-self: stretch;
-  margin: 0 2px;
-  border-radius: 2px;
-  background: linear-gradient(to bottom, transparent, #99f6e4 20%, #99f6e4 80%, transparent);
+  margin: 0;
+  background: transparent;
 }
 
 .implant-wizard-tooth-btn {
@@ -881,14 +902,9 @@
     max-height: min(320px, 48vh);
   }
 
-  .implant-wizard-tooth-slot {
-    flex-basis: 40px;
-    width: 40px;
-  }
-
   .implant-wizard-tooth-face {
-    width: 36px !important;
-    height: 44px !important;
+    width: 100% !important;
+    max-width: none;
   }
 
   .implant-wizard-tooth-fdi {
@@ -1088,26 +1104,25 @@
   }
 
   .implant-wizard-arch-rows {
-    gap: 8px;
+    gap: 0;
   }
 
   .implant-wizard-arch-row {
-    gap: 4px;
+    gap: 0;
   }
 
   .implant-wizard-tooth-slot {
     transform: none !important;
     margin: 0 !important;
-    flex: 0 0 46px;
-    width: 46px;
+    width: auto;
     scroll-snap-align: start;
   }
 
   .implant-wizard-arch-midline {
-    flex: 0 0 8px;
-    width: 8px;
-    margin: 2px 2px;
-    opacity: 0.7;
+    flex: 0 0 1px;
+    width: 1px;
+    margin: 0;
+    opacity: 1;
   }
 
   .implant-wizard-tooth-btn {
@@ -1126,9 +1141,8 @@
   }
 
   .implant-wizard-tooth-face {
-    width: 46px !important;
-    max-width: 46px;
-    height: 54px !important;
+    width: 100% !important;
+    max-width: none;
     border-radius: 12px !important;
   }
 

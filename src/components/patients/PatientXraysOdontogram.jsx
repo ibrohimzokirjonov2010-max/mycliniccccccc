@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight } from '@/lib/fdiNotation';
 import { getToothIllustrationSrc } from '@/utils/toothIllustration';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -220,69 +221,57 @@ export default function PatientXraysOdontogram({ patientId }) {
     const isActive  = activeTooth?.id === id;
     const isHovered = hoveredTooth === id;
     const count = xraysForTooth(fdi).length;
-    const n = Number(fdi);
-    const crownDown = n <= 28 || (n >= 51 && n <= 65);
+    const crownDown = fdiCrownDown(fdi);
 
     return (
-      <div
+      <button
         key={id}
-        className="flex flex-col items-center gap-0.5 sm:gap-1"
+        type="button"
+        onClick={() => setActiveTooth(isActive ? null : { id, fdi, src })}
         onMouseEnter={() => setHoveredTooth(id)}
         onMouseLeave={() => setHoveredTooth(null)}
+        data-fdi={fdi}
+        className={`odontogram-tooth relative flex w-full min-w-0 justify-center overflow-hidden p-px transition-colors rounded-md border ${
+          crownDown ? 'items-end' : 'items-start'
+        } odonto-lateral ${
+          isActive
+            ? 'border-cyan-500 bg-cyan-50 z-10'
+            : count > 0
+              ? 'border-emerald-400 bg-emerald-50'
+              : isHovered
+                ? 'border-cyan-300 bg-cyan-50/50'
+                : 'border-transparent bg-transparent'
+        }`}
+        style={{ '--fdi-len': fdiLengthWeight(fdi) }}
+        title={`${fdi}-tish — bosib rentgen ko'ring yoki yuklang`}
       >
-        {/* FDI raqam */}
-        <span className={`text-[8px] sm:text-[9px] font-bold transition-colors ${
-          isActive ? 'text-cyan-600' : count > 0 ? 'text-emerald-600' : 'text-slate-400'
-        }`}>
+        <img
+          src={getToothIllustrationSrc(fdi, 'healthy') || `/teeth/${src}.png`}
+          alt={`Tish ${fdi}`}
+          className="tooth-illus w-full h-[94%] object-contain pointer-events-none"
+          draggable={false}
+          style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
+        />
+        <span
+          className={`fdi-on-crown ${crownDown ? 'is-upper' : 'is-lower'}`}
+          style={count > 0 ? { color: '#059669' } : isActive ? { color: '#0891b2' } : undefined}
+        >
           {fdi}
         </span>
-
-        {/* Tish tugmasi */}
-        <button
-          type="button"
-          onClick={() => setActiveTooth(isActive ? null : { id, fdi, src })}
-          className={`relative inline-flex justify-center overflow-hidden w-7 h-10 sm:w-9 sm:h-[52px] p-px transition-all duration-200 rounded-lg sm:rounded-xl border-2 ${
-            crownDown ? 'items-end' : 'items-start'
-          } ${
-            isActive
-              ? 'border-cyan-500 bg-cyan-50 shadow-lg shadow-cyan-200 scale-110 z-10'
-              : count > 0
-                ? 'border-emerald-400 bg-emerald-50 shadow-sm hover:scale-105'
-                : isHovered
-                  ? 'border-cyan-300 bg-cyan-50/50 scale-105'
-                  : 'border-slate-200 bg-white hover:border-cyan-300'
-          }`}
-          title={`${fdi}-tish — bosib rentgen ko'ring yoki yuklang`}
-        >
-          <img
-            src={getToothIllustrationSrc(fdi, 'healthy') || `/teeth/${src}.png`}
-            alt={`Tish ${fdi}`}
-            className="tooth-illus w-full h-[94%] object-contain pointer-events-none"
-            draggable={false}
-            style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
-          />
-
-          {/* Rentgen soni badge */}
-          {count > 0 && (
-            <span className={`absolute -top-1.5 -right-1.5 w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-black shadow-sm ${
-              isActive ? 'bg-cyan-500 text-white' : 'bg-emerald-500 text-white'
-            }`}>
-              {count}
-            </span>
-          )}
-        </button>
-      </div>
+        {count > 0 && (
+          <span className={`absolute top-0.5 right-0.5 w-3.5 h-3.5 flex items-center justify-center rounded-full text-[8px] font-black shadow-sm z-20 ${
+            isActive ? 'bg-cyan-500 text-white' : 'bg-emerald-500 text-white'
+          }`}>
+            {count}
+          </span>
+        )}
+      </button>
     );
   };
 
-  const renderQuadrant = (teeth, label) => (
-    <div className="min-w-max">
-      <p className="text-[8px] sm:text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-center mb-1 sm:mb-2">
-        {label}
-      </p>
-      <div className={`grid ${teeth.length === 8 ? 'grid-cols-8' : 'grid-cols-5'} gap-0.5 sm:gap-1.5 justify-items-center`}>
-        {teeth.map(t => renderTooth(t))}
-      </div>
+  const renderHalf = (teeth) => (
+    <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(teeth.map((t) => t.fdi)) }}>
+      {teeth.map((t) => renderTooth(t))}
     </div>
   );
 
@@ -324,44 +313,24 @@ export default function PatientXraysOdontogram({ patientId }) {
           </div>
         </div>
 
-        {/* Yuqori jag' */}
-        <div className="px-3 pt-4 pb-1">
-          <div className="text-[9px] font-black text-blue-500 uppercase tracking-widest text-center mb-2">
-            ▲ Yuqori jag'
-          </div>
-          <div className="overflow-x-auto touch-pan-x">
-            <div className="flex w-max mx-auto gap-2 sm:gap-5 pb-1">
-              {renderQuadrant(
-                patientType === 'adult' ? UPPER_RIGHT : UPPER_RIGHT_CHILD,
-                patientType === 'adult' ? "O'ng (18–11)" : "O'ng (55–51)"
-              )}
-              <div className="w-px bg-slate-200 self-stretch my-2 shrink-0" />
-              {renderQuadrant(
-                patientType === 'adult' ? UPPER_LEFT : UPPER_LEFT_CHILD,
-                patientType === 'adult' ? 'Chap (21–28)' : 'Chap (61–65)'
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-dashed border-slate-200 mx-4" />
-
-        {/* Pastki jag' */}
-        <div className="px-3 pt-2 pb-4">
-          <div className="text-[9px] font-black text-rose-500 uppercase tracking-widest text-center mb-2">
-            ▼ Pastki jag'
-          </div>
-          <div className="overflow-x-auto touch-pan-x">
-            <div className="flex w-max mx-auto gap-2 sm:gap-5 pb-1">
-              {renderQuadrant(
-                patientType === 'adult' ? LOWER_RIGHT : LOWER_RIGHT_CHILD,
-                patientType === 'adult' ? "O'ng (48–41)" : "O'ng (85–81)"
-              )}
-              <div className="w-px bg-slate-200 self-stretch my-2 shrink-0" />
-              {renderQuadrant(
-                patientType === 'adult' ? LOWER_LEFT : LOWER_LEFT_CHILD,
-                patientType === 'adult' ? 'Chap (31–38)' : 'Chap (71–75)'
-              )}
+        <div className="px-2 py-3">
+          <div className="odonto-fit-frame" data-compact="true">
+            <div className="odonto-scroll">
+              <div className="odonto-cross">
+                <span className="odonto-side odonto-side-r">O‘NG</span>
+                <span className="odonto-side odonto-side-l">CHAP</span>
+                <div className="odonto-jaw odonto-jaw-upper">
+                  {renderHalf(patientType === 'adult' ? UPPER_RIGHT : UPPER_RIGHT_CHILD)}
+                  <div className="odonto-midline" aria-hidden="true" />
+                  {renderHalf(patientType === 'adult' ? UPPER_LEFT : UPPER_LEFT_CHILD)}
+                </div>
+                <div className="odonto-bite-line" aria-hidden="true" />
+                <div className="odonto-jaw odonto-jaw-lower">
+                  {renderHalf(patientType === 'adult' ? LOWER_RIGHT : LOWER_RIGHT_CHILD)}
+                  <div className="odonto-midline" aria-hidden="true" />
+                  {renderHalf(patientType === 'adult' ? LOWER_LEFT : LOWER_LEFT_CHILD)}
+                </div>
+              </div>
             </div>
           </div>
         </div>
