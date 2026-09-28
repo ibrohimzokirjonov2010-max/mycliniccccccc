@@ -34,7 +34,7 @@ import PatientPayments from '../components/patients/PatientPayments';
 import PatientTreatments from '../components/patients/PatientTreatments';
 import PatientXraysOdontogram from '../components/patients/PatientXraysOdontogram';
 import PatientExcelView from '../components/patients/PatientExcelView';
-import ExcelDentalChartView from '../components/patients/ExcelDentalChartView';
+import ToothChartCard from '../components/patients/ToothChartCard';
 import ExcelTreatmentsView from '../components/patients/ExcelTreatmentsView';
 import ExcelAppointmentsView from '../components/patients/ExcelAppointmentsView';
 import ExcelPaymentsView from '../components/patients/ExcelPaymentsView';
@@ -3123,32 +3123,13 @@ export default function PatientProfile() {
               )}
             </div>
 
-            {/* Right: View Mode Toggle (Xarita + Jadval / Faqat Jadval) */}
-            {activeTab === 'info' && (
-              <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200/60 gap-0.5 shrink-0 self-end md:self-auto">
-                <button
-                  onClick={() => setDentalViewMode('both')}
-                  className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5", dentalViewMode === 'both' ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500 hover:text-slate-800")}
-                >
-                  <Tooth className="w-3.5 h-3.5 text-sky-600" />
-                  <span>Xarita + Jadval</span>
-                </button>
-                <button
-                  onClick={() => setDentalViewMode('table')}
-                  className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5", dentalViewMode === 'table' ? "bg-white text-slate-900 shadow-2xs font-black" : "text-slate-500 hover:text-slate-800")}
-                >
-                  <ClipboardList className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Faqat Jadval</span>
-                </button>
-              </div>
-            )}
           </div>
 
           {/* ── 2. BO'LIMLAR (TABS) ROW - DIRECTLY UNDER SEARCH BAR ── */}
           <div className="bg-white rounded-2xl p-1.5 sm:p-2 border border-slate-200/90 shadow-xs w-full min-w-0 max-w-full">
             <div className="flex flex-nowrap sm:flex-wrap items-center gap-1.5 w-full min-w-0 overflow-x-auto sm:overflow-visible pb-0.5 sm:pb-0 [scrollbar-width:thin]">
             {[
-              { id: 'info',         label: "Tish xaritasi",      icon: Tooth,           iconColor: "text-sky-600" },
+              { id: 'info',         label: "Tish kartasi",       icon: Tooth,           iconColor: "text-sky-600" },
               { id: 'treatments',   label: "Davolash rejalari",  icon: ClipboardList,   iconColor: "text-indigo-600", count: (plans || []).length },
               { id: 'appointments', label: "Uchrashuvlar",       icon: Calendar,        iconColor: "text-blue-600", count: (appointments || []).length },
               { id: 'payments',     label: "To'lovlar",          icon: CreditCard,      iconColor: "text-emerald-600", count: (payments || []).filter(p => { const t = (p.type || 'Income').toLowerCase(); return t !== 'debt' && t !== 'discount' && !(p.notes || '').toLowerCase().includes('linked to plan'); }).length },
@@ -3209,40 +3190,18 @@ export default function PatientProfile() {
         {/* ══ 1. TISH XARITASI (EXCEL DENTAL CHART & FORMULA MATRIX) ══ */}
         <TabsContent value="info" className="outline-none space-y-4">
           {activeTab === 'info' && (
-            <ExcelDentalChartView
+            <ToothChartCard
               patient={patient}
-              search={toothSearchQuery}
-              setSearch={setToothSearchQuery}
-              viewMode={dentalViewMode}
-              setViewMode={setDentalViewMode}
-              odontogramSelectedTeeth={odontogramSelectedTeeth}
-              stableOnOdontogramChange={stableOnOdontogramChange}
-              handleInfoToothClick={handleInfoToothClick}
-              chartEditMode={chartEditMode}
-              setChartEditMode={setChartEditMode}
-              toothStatuses={toothStatuses}
-              patientType={patientType}
-              setPatientType={setPatientType}
-              age={age}
-              chartView={chartView}
-              setChartView={setChartView}
-              showOcclusal={showOcclusal}
-              setShowOcclusal={setShowOcclusal}
-              psrScores={psrScores}
-              occlusionNotes={occlusionNotes}
-              handleOcclusionNotesChange={handleOcclusionNotesChange}
-              occlusionClass={occlusionClass}
-              handleOcclusionClassChange={handleOcclusionClassChange}
-              subSection={subSection}
-              setSubSection={setSubSection}
-              pendingToothEdits={pendingToothEdits}
-              setPendingToothEdits={setPendingToothEdits}
-              editSelectedTooth={editSelectedTooth}
-              setEditSelectedTooth={setEditSelectedTooth}
-              handleSaveChartEdits={handleSaveChartEdits}
-              chartSaving={chartSaving}
-              dentalFormulaSummaryList={dentalFormulaSummaryList}
               plans={plans}
+              payments={payments}
+              appointments={appointments}
+              doctors={doctors}
+              services={services}
+              implants={implants}
+              toothRecords={toothRecords}
+              search={toothSearchQuery}
+              onReload={load}
+              onBookAppointment={() => setApptModalOpen(true)}
             />
           )}
         </TabsContent>

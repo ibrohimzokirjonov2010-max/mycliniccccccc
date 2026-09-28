@@ -567,6 +567,27 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
   background: rgb(20 153 173 / 0.08);
 }
 
+.tooth-chart-root {
+  max-width: 100%;
+}
+.tooth-chart-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+}
+@media (min-width: 1100px) {
+  .tooth-chart-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+  }
+}
+.tooth-chart-root .tooth-face {
+  height: clamp(64px, 8vw, 108px);
+}
+#tooth-chart-print-host {
+  display: none;
+}
+
 @media print {
   @page {
     margin: 12mm;
@@ -608,5 +629,20 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
 
   .reports-print .recharts-responsive-container {
     min-height: 240px !important;
+  }
+
+  body.printing-tooth-chart #root,
+  body.printing-tooth-chart #printable-card-043 {
+    display: none !important;
+  }
+  body.printing-tooth-chart #tooth-chart-print-host {
+    display: block !important;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: #fff;
+  }
+  body.printing-tooth-chart #tooth-chart-print-host aside {
+    display: flex !important;
   }
 }

@@ -1,0 +1,1148 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Check, Layers, Plus, Printer, Target, X,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
+import { cn } from '@/lib/utils';
+import { internalIdToFdi } from '@/lib/fdiNotation';
+import { getToothIllustrationSrc, matchIllustrationKind } from '@/utils/toothIllustration';
+
+const ADULT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
+const ADULT_LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+const CHILD_UPPER = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65];
+const CHILD_LOWER = [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
+
+const LEGEND = [
+  { id: 'caries', label: 'Karies', color: '#E11D48' },
+  { id: 'plomba', label: 'Plomba', color: '#2563EB' },
+  { id: 'endo', label: 'Endo (kanal)', color: '#7C3AED' },
+  { id: 'sirkon', label: 'Toj / sirkon', color: '#CA8A04' },
+  { id: 'implant', label: 'Implant', color: '#64748B' },
+  { id: 'missing', label: 'Olib tashlangan', color: '#94A3B8' },
+  { id: 'breket', label: 'Breket', color: '#DB2777' },
+];
+
+const QUICK = [
+  { id: 'caries', label: 'Karies', service: 'Karies' },
+  { id: 'plomba', label: 'Plomba', service: 'Plomba' },
+  { id: 'endo', label: 'Endo', service: 'Kanal davolash' },
+  { id: 'sirkon', label: 'Toj / sirkon', service: 'Sirkon toj' },
+  { id: 'implant', label: 'Implant', service: 'Implant' },
+  { id: 'missing', label: 'Olib tashlash', service: 'Tish olish' },
+  { id: 'breket', label: 'Breket', service: 'Breket tizimi' },
+];
+
+const KIND_COLOR = Object.fromEntries(LEGEND.map((k) => [k.id, k.color]));
+
+const TOOTH_NAME = {
+  1: 'markaziy kurak', 2: 'yon kurak', 3: 'qoziq tish',
+  4: 'birinchi kichik oziq', 5: 'ikkinchi kichik oziq',
+  6: 'birinchi katta oziq', 7: 'ikkinchi katta oziq', 8: 'aql tishi',
+};
+
+function legendOf(kind) {
+  if (!kind || kind === 'healthy') return null;
+  if (kind === 'metal-keramika' || kind === 'protez-syomniy' || kind === 'protez-babochka') return 'sirkon';
+  if (kind === 'protez-implant') return 'implant';
+  if (kind === 'shtift') return 'endo';
+  return LEGEND.some((k) => k.id === kind) ? kind : null;
+}
+
+function isDoneStatus(status) {
+  const s = String(status || '').toLowerCase().trim();
+  return s === 'completed' || s === 'bajarildi' || s === 'bajarilgan' || s === 'paid' || s === 'done' || s === 'yakunlangan' || s === 'yakunlandi';
+}
+
+function serviceIsDone(svc, plan) {
+  if (svc?.completed === true) return true;
+  if (isDoneStatus(svc?.status) || isDoneStatus(svc?.payment_status)) return true;
+  if (svc?.status || svc?.payment_status) return false;
+  return isDoneStatus(plan?.status);
+}
+
+function tokenToFdi(raw) {
+  const text = String(raw || '').trim().replace(/^#/, '');
+  if (!text) return '';
+  const internal = internalIdToFdi(text);
+  if (internal) return internal;
+  const digits = text.replace(/[^\d]/g, '');
+  return digits.length >= 2 ? digits : '';
+}
+
+function flattenPlanServices(plan) {
+  const raw = Array.isArray(plan?.services) ? plan.services : [];
+  const rows = [];
+  if (!raw.length) {
+    if (plan?.tooth_number || plan?.name) {
+      rows.push({
+        service_name: plan.name || plan.title || '',
+        status: plan.status,
+        price: plan.total_price,
+        tooth_number: plan.tooth_number,
+        notes: plan.notes,
+        category: plan.category,
+        path: null,
+      });
+    }
+    return rows;
+  }
+  raw.forEach((item, parent) => {
+    if (item && Array.isArray(item.items)) {
+      item.items.forEach((svc, itemIndex) => {
+        rows.push({
+          ...svc,
+          service_name: svc.service_name || svc.name || item.service_name || plan.name,
+          tooth_number: svc.tooth_number || svc.tooth_id || svc.tooth || item.tooth_number || item.tooth_id || item.tooth || plan.tooth_number,
+          status: svc.status || item.status,
+          payment_status: svc.payment_status || item.payment_status,
+          price: svc.price ?? item.price,
+          notes: svc.notes || item.notes || '',
+          category: svc.category || item.category || plan.category,
+          path: { parent, item: itemIndex },
+        });
+      });
+      return;
+    }
+    if (!item) return;
+    rows.push({
+      ...item,
+      service_name: item.service_name || item.name || plan.name,
+      tooth_number: item.tooth_number || item.tooth_id || item.tooth || plan.tooth_number,
+      category: item.category || plan.category,
+      notes: item.notes || '',
+      path: { parent, item: null },
+    });
+  });
+  return rows;
+}
+
+function parseSurfaces(text) {
+  const m = String(text || '').match(/yuza:\s*([vmodl,\s]+)/i);
+  if (!m) return [];
+  return m[1].split(/[,\s]+/).map((s) => s.trim().toUpperCase()).filter((s) => ['V', 'M', 'O', 'D', 'L'].includes(s));
+}
+
+function fmtDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+}
+
+function money(n) {
+  const v = Number(n) || 0;
+  if (v <= 0) return null;
+  return `${v.toLocaleString('uz-UZ')} UZS`;
+}
+
+function toothTitle(fdi) {
+  const n = Number(fdi);
+  const pos = n % 10;
+  const q = Math.floor(n / 10);
+  const jaw = q === 1 || q === 2 || q === 5 || q === 6 ? 'yuqori' : 'pastki';
+  const side = q === 1 || q === 4 || q === 5 || q === 8 ? "o'ng" : 'chap';
+  return `${TOOTH_NAME[pos] || 'tish'} · ${jaw} ${side}`;
+}
+
+function mesialIsRight(fdi) {
+  const q = Math.floor(Number(fdi) / 10);
+  return q === 1 || q === 4 || q === 5 || q === 8;
+}
+
+function collectEntries(plans, implants, toothRecords) {
+  const byTooth = {};
+  const add = (fdiRaw, entry) => {
+    String(fdiRaw || '').split(/[,·]/).forEach((part) => {
+      const fdi = tokenToFdi(part);
+      if (!fdi) return;
+      if (!byTooth[fdi]) byTooth[fdi] = [];
+      byTooth[fdi].push(entry);
+    });
+  };
+
+  (plans || []).forEach((plan) => {
+    flattenPlanServices(plan).forEach((svc) => {
+      const blob = `${svc.service_name || ''} ${svc.name || ''} ${plan.name || ''} ${svc.category || ''} ${plan.category || ''}`;
+      const illustration = matchIllustrationKind(blob, svc.category || plan.category);
+      const kind = legendOf(illustration);
+      add(svc.tooth_number || plan.tooth_number, {
+        kind,
+        illustration: illustration || kind,
+        done: serviceIsDone(svc, plan),
+        name: svc.service_name || svc.name || plan.name || kind || 'Yozuv',
+        price: Number(svc.price || svc.cost || 0),
+        doctor: plan.doctor_name || '',
+        date: svc.completion_date || plan.updated_date || plan.updated_at || plan.created_date || plan.date,
+        planId: plan.id,
+        servicePath: svc.path,
+        surfaces: parseSurfaces(`${svc.notes || ''} ${plan.notes || ''}`),
+        notes: svc.notes || '',
+      });
+    });
+  });
+
+  (implants || []).forEach((imp) => {
+    const nums = Array.isArray(imp.tooth_numbers)
+      ? imp.tooth_numbers
+      : String(imp.tooth_numbers || imp.tooth_number || '').split(',');
+    nums.forEach((num) => add(num, {
+      kind: 'implant',
+      illustration: 'implant',
+      done: true,
+      name: 'Implant',
+      price: 0,
+      doctor: imp.doctor_name || '',
+      date: imp.placement_date || imp.created_date,
+      planId: null,
+      surfaces: [],
+      notes: '',
+    }));
+  });
+
+  (toothRecords || []).forEach((rec) => {
+    const blob = `${rec.condition || ''} ${rec.treatment || ''} ${rec.notes || ''}`;
+    const kind = legendOf(matchIllustrationKind(blob));
+    if (!kind) return;
+    add(rec.tooth_number, {
+      kind,
+      illustration: matchIllustrationKind(blob) || kind,
+      done: isDoneStatus(rec.status) || !/reja|plan/i.test(String(rec.status || '')),
+      name: rec.treatment || rec.condition || kind,
+      price: Number(rec.price || 0),
+      doctor: rec.doctor || '',
+      date: rec.updated_date || rec.created_date,
+      planId: null,
+      surfaces: parseSurfaces(rec.notes),
+      notes: rec.notes || '',
+    });
+  });
+
+  return byTooth;
+}
+
+function primaryEntry(entries, filter) {
+  const list = (entries || []).filter((e) => {
+    if (!e.kind) return false;
+    if (filter === 'plan') return !e.done;
+    if (filter === 'done') return e.done;
+    return true;
+  });
+  if (!list.length) return null;
+  const rank = { implant: 8, missing: 7, breket: 6, sirkon: 5, endo: 4, plomba: 3, caries: 2 };
+  return [...list].sort((a, b) => (rank[b.kind] || 0) - (rank[a.kind] || 0))[0];
+}
+
+function mentionsTooth(text, fdi) {
+  return new RegExp(`(^|[^\\d])${fdi}([^\\d]|$)`).test(String(text || ''));
+}
+
+function SurfaceGlyph({ fdi, surfaces, color, size = 40 }) {
+  const right = mesialIsRight(fdi);
+  const on = (s) => surfaces.includes(s);
+  const fill = (s) => (on(s) ? color : '#fff');
+  const stroke = color || '#CBD5E1';
+  const mSide = right ? 'M' : 'D';
+  const dSide = right ? 'D' : 'M';
+  return (
+    <svg width="100%" height={size} viewBox="0 0 40 40" preserveAspectRatio="xMidYMid meet" className="block max-w-full" aria-hidden>
+      <polygon points="3,3 37,3 27,15 13,15" fill={fill('V')} stroke={stroke} strokeWidth="1" />
+      <polygon points="3,37 37,37 27,25 13,25" fill={fill('L')} stroke={stroke} strokeWidth="1" />
+      <polygon points="3,3 13,15 13,25 3,37" fill={fill(right ? 'D' : 'M')} stroke={stroke} strokeWidth="1" />
+      <polygon points="37,3 27,15 27,25 37,37" fill={fill(right ? 'M' : 'D')} stroke={stroke} strokeWidth="1" />
+      <rect x="13" y="15" width="14" height="10" fill={fill('O')} stroke={stroke} strokeWidth="1" />
+      <title>{`M ${mSide} D ${dSide}`}</title>
+    </svg>
+  );
+}
+
+export default function ToothChartCard({
+  patient,
+  plans = [],
+  payments = [],
+  appointments = [],
+  doctors = [],
+  services = [],
+  implants = [],
+  toothRecords = [],
+  onReload,
+  onBookAppointment,
+  sheetOffset = 0,
+  search = '',
+}) {
+  const { user } = useAuth();
+  const [phone, setPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
+  const [mode, setMode] = useState('realistic');
+  const [dentition, setDentition] = useState('adult');
+  const [filter, setFilter] = useState('all');
+  const [multi, setMulti] = useState(false);
+  const [selected, setSelected] = useState([]);
+  const [active, setActive] = useState(null);
+  const [surfaces, setSurfaces] = useState([]);
+  const [groupAction, setGroupAction] = useState('breket');
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [xrays, setXrays] = useState([]);
+  const [viewer, setViewer] = useState(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const onChange = () => setPhone(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  const loadXrays = useCallback(async () => {
+    if (!patient?.id) return;
+    try {
+      const rows = await base44.entities.Xray.filter({ patient_id: patient.id }, '-created_date', 200);
+      setXrays(rows || []);
+    } catch {
+      setXrays([]);
+    }
+  }, [patient?.id]);
+
+  useEffect(() => { loadXrays(); }, [loadXrays]);
+
+  const byTooth = useMemo(
+    () => collectEntries(plans, implants, toothRecords),
+    [plans, implants, toothRecords],
+  );
+
+  const upper = dentition === 'child' ? CHILD_UPPER : ADULT_UPPER;
+  const lower = dentition === 'child' ? CHILD_LOWER : ADULT_LOWER;
+
+  const entryFor = useCallback((fdi) => primaryEntry(byTooth[String(fdi)], filter), [byTooth, filter]);
+
+  const summary = useMemo(() => {
+    const teeth = new Set([...upper, ...lower].map(String));
+    let done = 0;
+    let planned = 0;
+    let plannedSum = 0;
+    teeth.forEach((fdi) => {
+      const list = byTooth[fdi] || [];
+      if (list.some((e) => e.done)) done += 1;
+      const open = list.filter((e) => !e.done);
+      if (open.length) {
+        planned += 1;
+        plannedSum += open.reduce((s, e) => s + (Number(e.price) || 0), 0);
+      }
+    });
+    const dates = (appointments || [])
+      .map((a) => a.date || a.appointment_date)
+      .filter(Boolean)
+      .sort();
+    const lastVisit = dates.length ? dates[dates.length - 1] : null;
+    return { done, planned, plannedSum, lastVisit };
+  }, [byTooth, appointments, upper, lower]);
+
+  const plannedItem = useMemo(() => {
+    const pool = [];
+    Object.entries(byTooth).forEach(([fdi, list]) => {
+      list.filter((e) => !e.done).forEach((e) => pool.push({ fdi, ...e }));
+    });
+    if (active) {
+      const mine = pool.find((e) => e.fdi === String(active));
+      if (mine) return mine;
+    }
+    return pool[0] || null;
+  }, [byTooth, active]);
+
+  const history = useMemo(() => {
+    if (!active) return [];
+    const fdi = String(active);
+    const rows = (byTooth[fdi] || []).map((e, i) => ({
+      id: `${e.planId || 'rec'}-${i}`,
+      color: KIND_COLOR[e.kind] || '#64748B',
+      title: e.surfaces?.length ? `${e.name} (${e.surfaces.join(', ')})` : e.name,
+      price: e.price,
+      meta: [fmtDate(e.date), e.doctor, e.done ? 'bajarildi' : 'reja'].filter(Boolean).join(' · '),
+      date: e.date || '',
+    }));
+    (payments || []).forEach((p) => {
+      const type = String(p.type || '').toLowerCase();
+      if (type === 'debt' || type === 'discount') return;
+      const notes = String(p.notes || '');
+      if (/linked to plan/i.test(notes)) return;
+      const blob = `${p.category || ''} ${notes} ${p.tooth_number || ''}`;
+      if (!mentionsTooth(blob, fdi)) return;
+      rows.push({
+        id: `pay-${p.id}`,
+        color: '#0F172A',
+        title: p.category || p.service_name || p.type || "To'lov",
+        price: p.amount,
+        meta: [fmtDate(p.date), p.type].filter(Boolean).join(' · '),
+        date: p.date || '',
+      });
+    });
+    return rows.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  }, [active, byTooth, payments]);
+
+  const toothXrays = useMemo(() => (
+    xrays.filter((x) => String(x.tooth_number || '') === String(active))
+  ), [xrays, active]);
+
+  const notable = useMemo(() => {
+    const ids = [...upper, ...lower];
+    return ids.map((fdi) => {
+      const e = primaryEntry(byTooth[String(fdi)], 'all');
+      return e ? { fdi, ...e } : null;
+    }).filter(Boolean).slice(0, 6);
+  }, [byTooth, upper, lower]);
+
+  const toggleSurface = (s) => {
+    setSurfaces((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+  };
+
+  const onTooth = (fdi) => {
+    if (multi) {
+      setSelected((prev) => (prev.includes(fdi) ? prev.filter((n) => n !== fdi) : [...prev, fdi]));
+      setActive(null);
+      return;
+    }
+    setActive(fdi);
+    const e = primaryEntry(byTooth[String(fdi)], 'all');
+    setSurfaces(e?.surfaces || []);
+    setNoteOpen(false);
+  };
+
+  const catalogPrice = (label) => {
+    const q = String(label || '').toLowerCase();
+    const hit = (services || []).find((s) => {
+      const name = String(s.name || '').toLowerCase();
+      return name && (name.includes(q) || q.includes(name));
+    });
+    return Number(hit?.price || hit?.cost || 0) || 0;
+  };
+
+  const doctorFields = () => {
+    const doc = (doctors || []).find((d) => String(d.id) === String(user?.id)) || (doctors || [])[0];
+    return {
+      doctor_id: doc?.id || user?.id || '',
+      doctor_name: doc?.name || doc?.full_name || user?.full_name || user?.name || '',
+    };
+  };
+
+  const syncPatientBalance = async (patientId) => {
+    const allPays = await base44.entities.Payment.filter({ patient_id: patientId }, 'date', 5000);
+    const totalOf = (type) => (allPays || [])
+      .filter((p) => String(p.type || '').toLowerCase() === type)
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const totalDebts = totalOf('debt');
+    const totalIncomes = totalOf('income');
+    const totalRefunds = totalOf('refund');
+    const totalDiscounts = (allPays || [])
+      .filter((p) => String(p.type || '').toLowerCase() === 'discount')
+      .reduce((sum, p) => sum + Math.abs(Number(p.amount) || 0), 0);
+    await base44.entities.Patient.update(patientId, {
+      total_paid: totalIncomes,
+      total_debt: Math.max(0, (totalDebts + totalRefunds) - (totalIncomes + totalDiscounts)),
+    });
+  };
+
+  const createPlan = async (fdis, serviceName, kindHint) => {
+    if (!patient?.id) return;
+    const doc = doctorFields();
+    if (!doc.doctor_id) {
+      toast.error('Shifokor tanlanmagan');
+      return;
+    }
+    const price = catalogPrice(serviceName);
+    const surfaceNote = surfaces.length ? `Yuza: ${surfaces.join(', ')}` : '';
+    const list = fdis.map((fdi) => ({
+      service_name: serviceName,
+      tooth_number: String(fdi),
+      price,
+      status: 'planned',
+      category: kindHint || '',
+      notes: surfaceNote,
+    }));
+    const total = price * fdis.length;
+    setBusy(true);
+    try {
+      const created = await base44.entities.TreatmentPlan.create({
+        patient_id: patient.id,
+        patient_name: patient.full_name || '',
+        ...doc,
+        status: 'planned',
+        priority: 'medium',
+        tooth_number: fdis.map(String).join(', '),
+        name: serviceName,
+        services: list.map((row) => ({ ...row, tooth: row.tooth_number })),
+        total_price: total,
+        discount_percent: 0,
+        discount_amount: 0,
+        notes: surfaceNote || `Davolash rejasi: ${fdis.join(', ')}`,
+      });
+      if (total > 0 && created?.id) {
+        await base44.entities.Payment.create({
+          patient_id: patient.id,
+          patient_name: patient.full_name || '',
+          doctor_id: doc.doctor_id,
+          type: 'Debt',
+          category: `Reja: ${fdis.join(', ')}`,
+          amount: total,
+          method: '—',
+          date: new Date().toISOString().split('T')[0],
+          notes: `Linked to Plan: ${created.id}`,
+        });
+        await syncPatientBalance(patient.id);
+      }
+      toast.success('Rejaga qo‘shildi');
+      setNoteOpen(false);
+      setNoteText('');
+      if (onReload) await onReload();
+    } catch (err) {
+      console.error(err);
+      toast.error('Rejani saqlab bo‘lmadi');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const markDone = async (item) => {
+    if (!item?.planId) {
+      toast.error('Bu yozuvni rejadan yopib bo‘lmaydi');
+      return;
+    }
+    const plan = (plans || []).find((p) => p.id === item.planId);
+    if (!plan) return;
+    const markRow = (svc) => ({ ...svc, status: 'completed', completed: true });
+    const services = (plan.services || []).map((svc, index) => {
+      if (Array.isArray(svc.items)) {
+        return {
+          ...svc,
+          items: svc.items.map((inner, itemIndex) => (
+            item.servicePath && item.servicePath.parent === index && item.servicePath.item === itemIndex
+              ? markRow(inner)
+              : inner
+          )),
+        };
+      }
+      const hit = item.servicePath
+        ? item.servicePath.parent === index && item.servicePath.item == null
+        : false;
+      return hit ? markRow(svc) : svc;
+    });
+    const allDone = flattenPlanServices({ ...plan, services }).every((row) => row.completed === true || isDoneStatus(row.status) || isDoneStatus(row.payment_status));
+    setBusy(true);
+    try {
+      await base44.entities.TreatmentPlan.update(plan.id, {
+        services,
+        status: allDone || services.length === 0 ? 'completed' : plan.status,
+      });
+      toast.success('Bajarildi');
+      if (onReload) await onReload();
+    } catch (err) {
+      console.error(err);
+      toast.error('Yangilab bo‘lmadi');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const uploadXray = async (file) => {
+    if (!file || !patient?.id || !active) return;
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    setBusy(true);
+    try {
+      await base44.entities.Xray.create({
+        patient_id: patient.id,
+        image_url: dataUrl,
+        description: `${active}-tish rentgeni`,
+        tooth_number: String(active),
+        date: new Date().toISOString().split('T')[0],
+      });
+      toast.success('Rentgen yuklandi');
+      await loadXrays();
+      if (onReload) await onReload();
+    } catch (err) {
+      console.error(err);
+      toast.error('Rentgen yuklanmadi');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const activeEntry = active ? primaryEntry(byTooth[String(active)], 'all') : null;
+  const showPanel = !phone;
+  const showSheet = phone && (active || (multi && selected.length > 0));
+  const doctorLabel = doctorFields().doctor_name || '';
+  const query = String(search || '').trim().toLowerCase().replace(/^#/, '');
+  const toothMatches = (fdi, entry) => {
+    if (!query) return true;
+    if (String(fdi).includes(query)) return true;
+    return `${entry?.name || ''} ${entry?.kind || ''}`.toLowerCase().includes(query);
+  };
+
+  const printChart = () => {
+    const node = document.getElementById('tooth-chart-print');
+    if (!node) return;
+    const host = document.createElement('div');
+    host.id = 'tooth-chart-print-host';
+    host.appendChild(node.cloneNode(true));
+    document.body.appendChild(host);
+    document.body.classList.add('printing-tooth-chart');
+    const cleanup = () => {
+      document.body.classList.remove('printing-tooth-chart');
+      host.remove();
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    window.print();
+  };
+
+  const renderRealistic = (fdis, isUpper) => (
+    <div className={cn('flex min-w-0 items-end', phone ? 'w-max gap-1' : 'w-full')}>
+      {fdis.slice(0, Math.ceil(fdis.length / 2)).map((n) => (
+        <ToothCell key={n} fdi={n} isUpper={isUpper} phone={phone} entry={entryFor(n)} active={active === n} picked={selected.includes(n)} dim={!toothMatches(n, entryFor(n))} onClick={() => onTooth(n)} />
+      ))}
+      <span className="mx-1 w-px self-stretch bg-slate-200" />
+      {fdis.slice(Math.ceil(fdis.length / 2)).map((n) => (
+        <ToothCell key={n} fdi={n} isUpper={isUpper} phone={phone} entry={entryFor(n)} active={active === n} picked={selected.includes(n)} dim={!toothMatches(n, entryFor(n))} onClick={() => onTooth(n)} />
+      ))}
+    </div>
+  );
+
+  const renderSchema = (fdis, isUpper) => (
+    <div className={cn('flex min-w-0 items-center', phone ? 'w-max gap-1' : 'w-full')}>
+      {[0, 1].map((half) => (
+        <div key={half} className={cn('flex min-w-0', phone ? '' : 'flex-1', half === 1 && 'border-l border-dashed border-slate-300')}>
+          {fdis.slice(half * Math.ceil(fdis.length / 2), (half + 1) * Math.ceil(fdis.length / 2)).map((n) => {
+            const entry = entryFor(n);
+            const color = entry ? KIND_COLOR[entry.kind] : '#CBD5E1';
+            return (
+              <button
+                key={n}
+                type="button"
+                onClick={() => onTooth(n)}
+                className={cn('relative flex min-w-0 flex-1 basis-0 flex-col items-center gap-1 px-0.5', phone && 'w-12 shrink-0 flex-none', !toothMatches(n, entry) && 'opacity-30')}
+              >
+                {isUpper && <Num n={n} entry={entry} />}
+                <span className={cn('block w-full min-w-0 rounded-lg p-0.5', active === n && 'ring-2 ring-slate-900', selected.includes(n) && 'bg-slate-900/5')}>
+                  <SurfaceGlyph fdi={n} surfaces={entry?.surfaces || []} color={entry ? color : '#CBD5E1'} size={phone ? 36 : 44} />
+                </span>
+                {!isUpper && <Num n={n} entry={entry} />}
+                {selected.includes(n) && (
+                  <span className="absolute -right-0.5 -top-0.5 grid h-4 w-4 place-items-center rounded-full bg-slate-900 text-white">
+                    <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+
+  const jaw = (fdis, isUpper, labelLeft, labelRight) => (
+    <div className="min-w-0">
+      <div className="mb-1 flex items-center justify-between gap-2 px-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-slate-400">
+        <span className="truncate">{phone ? (isUpper ? "YUQORI JAG' · O'NG" : "PASTKI JAG' · O'NG") : labelLeft}</span>
+        <span className="shrink-0 normal-case tracking-normal">
+          {phone && isUpper && "surib ko'ring →"}
+          {phone && !isUpper && (
+            <>
+              {summary.planned > 0 && <b className="text-rose-600">{summary.planned} reja</b>}
+              {summary.planned > 0 && summary.done > 0 ? ' · ' : ''}
+              {summary.done > 0 ? `${summary.done} bajarilgan` : ''}
+            </>
+          )}
+          {!phone && labelRight}
+        </span>
+      </div>
+      <div className="relative min-w-0">
+        <div className={cn(phone ? 'overflow-x-auto pb-1 [scrollbar-width:thin]' : 'overflow-hidden')}>
+          {mode === 'realistic' ? renderRealistic(fdis, isUpper) : renderSchema(fdis, isUpper)}
+        </div>
+        {phone && <span className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent" />}
+      </div>
+    </div>
+  );
+
+  return (
+    <div id="tooth-chart-print" className="tooth-chart-root min-w-0 max-w-full overflow-x-hidden">
+      <div className={cn('tooth-chart-grid min-w-0', phone && 'grid gap-3')}>
+        <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {!phone && <h3 className="mr-1 text-sm font-extrabold text-slate-900">Tish kartasi</h3>}
+            <Seg
+              value={mode}
+              onChange={setMode}
+              options={[
+                { id: 'realistic', label: 'Realistik' },
+                { id: 'schema', label: 'Sxema' },
+              ]}
+            />
+            <Seg
+              value={dentition}
+              onChange={setDentition}
+              options={[
+                { id: 'adult', label: 'Doimiy' },
+                { id: 'child', label: 'Sut tishlari' },
+              ]}
+            />
+            <button
+              type="button"
+              onClick={() => { setMulti((v) => !v); setSelected([]); }}
+              className={cn(
+                'inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold',
+                multi ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700',
+              )}
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Ko‘p tanlash{selected.length ? ` · ${selected.length}` : ''}
+            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <Seg
+                value={filter}
+                onChange={setFilter}
+                options={[
+                  { id: 'all', label: 'Hammasi' },
+                  { id: 'plan', label: 'Reja' },
+                  { id: 'done', label: 'Bajarilgan' },
+                ]}
+              />
+              <button type="button" onClick={printChart} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-600" aria-label="Chop etish">
+                <Printer className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
+            {LEGEND.map((k) => (
+              <span key={k.id} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600">
+                <i className="h-2 w-2 rounded-sm" style={{ background: k.color }} />
+                {k.label}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-2 space-y-2">
+            {jaw(upper, true, dentition === 'child' ? "O‘NG ← YUQORI (SUT)" : "O‘NG ← YUQORI JAG‘", dentition === 'child' ? 'YUQORI JAG‘ → CHAP' : 'YUQORI JAG‘ → CHAP')}
+            {jaw(lower, false, dentition === 'child' ? "O‘NG ← PASTKI (SUT)" : "O‘NG ← PASTKI JAG‘", 'PASTKI JAG‘ → CHAP')}
+          </div>
+
+          {mode === 'schema' && (
+            <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+              <span><b className="text-slate-800">V</b> — vestibulyar</span>
+              <span><b className="text-slate-800">L</b> — til/tanglay</span>
+              <span><b className="text-slate-800">M</b> — medial</span>
+              <span><b className="text-slate-800">D</b> — distal</span>
+              <span><b className="text-slate-800">O</b> — chaynov</span>
+            </div>
+          )}
+
+          {mode === 'schema' && notable.length > 0 && (
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {notable.map((e) => (
+                <button key={e.fdi} type="button" onClick={() => onTooth(e.fdi)} className="flex items-center gap-2 rounded-xl border p-2 text-left" style={{ borderStyle: e.done ? 'solid' : 'dashed', borderColor: `${KIND_COLOR[e.kind]}55`, background: '#fff' }}>
+                  <SurfaceGlyph fdi={e.fdi} surfaces={e.surfaces} color={KIND_COLOR[e.kind]} size={30} />
+                  <span className="min-w-0">
+                    <b className="block text-xs font-extrabold text-slate-900">{e.fdi} · {LEGEND.find((k) => k.id === e.kind)?.label}</b>
+                    <span className="text-[11px] text-slate-500">Yuza: {e.surfaces.length ? e.surfaces.join(', ') : '—'} · {e.done ? 'Bajarilgan' : 'Reja'}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {mode === 'realistic' && (
+            <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+              <Stat label="Bajarilgan" value={`${summary.done}`} unit="tish" />
+              <Stat label="Reja" value={`${summary.planned}`} unit="tish" accent="#E11D48" />
+              <Stat label="Reja summasi" value={summary.plannedSum > 0 ? summary.plannedSum.toLocaleString('uz-UZ') : '0'} unit="UZS" />
+              <Stat label="Oxirgi tashrif" value={summary.lastVisit ? fmtDate(summary.lastVisit) : '—'} />
+            </div>
+          )}
+
+          {mode === 'realistic' && plannedItem && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-rose-100 bg-rose-50/70 px-2 py-2">
+              <span className="rounded-md bg-rose-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">{plannedItem.fdi}</span>
+              <b className="text-xs font-bold text-slate-900">{plannedItem.name}</b>
+              <span className="text-[11px] text-slate-500">
+                Reja{plannedItem.doctor ? ` · ${plannedItem.doctor}` : ''}{money(plannedItem.price) ? ` · ${money(plannedItem.price)}` : ''}
+              </span>
+              <span className="ml-auto flex gap-1.5">
+                <button type="button" onClick={() => onBookAppointment && onBookAppointment(plannedItem)} className="h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700">Qabulga yozish</button>
+                <button type="button" disabled={busy} onClick={() => markDone(plannedItem)} className="inline-flex h-8 items-center gap-1 rounded-lg bg-emerald-600 px-2.5 text-xs font-bold text-white disabled:opacity-60">
+                  <Check className="h-3.5 w-3.5" /> Bajarildi
+                </button>
+              </span>
+            </div>
+          )}
+
+          {mode === 'realistic' && !plannedItem && (
+            <p className="mt-2 rounded-xl border border-dashed border-slate-200 px-3 py-2 text-xs font-semibold text-slate-400">Rejadagi ish yo‘q</p>
+          )}
+
+          {multi && selected.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-white">
+              <Layers className="h-4 w-4" />
+              <div className="min-w-0">
+                <b className="block text-xs">{selected.length} ta tish tanlandi</b>
+                <span className="text-[11px] text-white/70">{selected.join(', ')}</span>
+              </div>
+              <span className="ml-auto flex flex-wrap gap-1.5">
+                <button type="button" onClick={() => setSelected([])} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Bekor qilish</button>
+                <button type="button" disabled={busy} onClick={() => createPlan(selected, 'Bir xil davolash', 'plomba')} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Bir xil davolash</button>
+                <button type="button" disabled={busy} onClick={() => createPlan(selected, "Ko‘prik (protez)", 'sirkon')} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Ko‘prik (protez)</button>
+                <button type="button" disabled={busy} onClick={() => createPlan(selected, 'Breket tizimi', 'breket')} className="h-8 rounded-lg bg-pink-600 px-2 text-xs font-bold">Breket qo‘yish</button>
+              </span>
+            </div>
+          )}
+        </div>
+
+        {showPanel && !phone && (
+          <SidePanel
+            active={active}
+            activeEntry={activeEntry}
+            multi={multi}
+            selected={selected}
+            groupAction={groupAction}
+            setGroupAction={setGroupAction}
+            surfaces={surfaces}
+            toggleSurface={toggleSurface}
+            history={history}
+            toothXrays={toothXrays}
+            busy={busy}
+            noteOpen={noteOpen}
+            noteText={noteText}
+            setNoteText={setNoteText}
+            setNoteOpen={setNoteOpen}
+            onClose={() => { setActive(null); setSelected([]); }}
+            onQuick={(item) => createPlan([active], item.service, item.id)}
+            onNote={() => createPlan([active], noteText.trim() || 'Izoh', '')}
+            onGroup={() => {
+              const map = {
+                breket: ['Breket tizimi', 'breket'],
+                bridge: ["Ko‘prik (protez)", 'sirkon'],
+                same: ['Bir xil davolash', 'plomba'],
+                implant: ['Implant', 'implant'],
+              };
+              const [name, kind] = map[groupAction];
+              createPlan(selected, name, kind);
+            }}
+            doctorName={doctorLabel}
+            unitPrice={catalogPrice(({ breket: 'Breket tizimi', bridge: 'Sirkon toj', same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
+            onUpload={uploadXray}
+            onView={setViewer}
+          />
+        )}
+      </div>
+
+      {showSheet && (
+        <div className="fixed inset-x-0 z-[60] mx-auto flex max-h-[70vh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_-12px_40px_rgba(15,23,42,0.25)]" style={{ bottom: sheetOffset }}>
+          <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-slate-200" />
+          <SidePanel
+            sheet
+            active={active}
+            activeEntry={activeEntry}
+            multi={multi}
+            selected={selected}
+            groupAction={groupAction}
+            setGroupAction={setGroupAction}
+            surfaces={surfaces}
+            toggleSurface={toggleSurface}
+            history={history}
+            toothXrays={toothXrays}
+            busy={busy}
+            noteOpen={noteOpen}
+            noteText={noteText}
+            setNoteText={setNoteText}
+            setNoteOpen={setNoteOpen}
+            onClose={() => { setActive(null); setSelected([]); }}
+            onQuick={(item) => createPlan([active], item.service, item.id)}
+            onNote={() => createPlan([active], noteText.trim() || 'Izoh', '')}
+            onGroup={() => {
+              const map = {
+                breket: ['Breket tizimi', 'breket'],
+                bridge: ["Ko‘prik (protez)", 'sirkon'],
+                same: ['Bir xil davolash', 'plomba'],
+                implant: ['Implant', 'implant'],
+              };
+              const [name, kind] = map[groupAction];
+              createPlan(selected, name, kind);
+            }}
+            doctorName={doctorLabel}
+            unitPrice={catalogPrice(({ breket: 'Breket tizimi', bridge: 'Sirkon toj', same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
+            onUpload={uploadXray}
+            onView={setViewer}
+          />
+        </div>
+      )}
+
+      {viewer && (
+        <button type="button" className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" onClick={() => setViewer(null)}>
+          <img src={viewer} alt="Rentgen" className="max-h-[80vh] max-w-full rounded-xl" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Seg({ value, onChange, options }) {
+  return (
+    <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          onClick={() => onChange(o.id)}
+          className={cn('h-7 rounded-md px-2 text-[11px] font-bold', value === o.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500')}
+        >
+          {o.id === 'schema' ? <Target className="mr-1 inline h-3 w-3" /> : null}
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Stat({ label, value, unit, accent }) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-2.5 py-2">
+      <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</div>
+      <div className="text-sm font-extrabold tabular-nums" style={{ color: accent || '#0F172A' }}>
+        {value} {unit && <small className="text-[10px] font-bold text-slate-400">{unit}</small>}
+      </div>
+    </div>
+  );
+}
+
+function Num({ n, entry }) {
+  const color = entry ? KIND_COLOR[entry.kind] : null;
+  return (
+    <span
+      className="max-w-full truncate rounded px-0.5 text-[9px] font-extrabold leading-4 tabular-nums sm:text-[10px]"
+      style={{
+        color: color ? '#fff' : '#334155',
+        background: color || '#fff',
+        border: `1.5px ${entry && !entry.done ? 'dashed' : 'solid'} ${color || '#E2E8F0'}`,
+        opacity: entry?.kind === 'missing' ? 0.7 : 1,
+      }}
+    >
+      {n}
+    </span>
+  );
+}
+
+function ToothCell({ fdi, isUpper, phone, entry, active, picked, dim, onClick }) {
+  const color = entry ? KIND_COLOR[entry.kind] : null;
+  const src = getToothIllustrationSrc(fdi, entry?.illustration && entry.illustration !== 'missing' ? entry.illustration : (entry?.kind === 'missing' ? 'missing' : 'healthy'));
+  const crownDown = Number(fdi) <= 28 || (Number(fdi) >= 51 && Number(fdi) <= 65);
+  return (
+    <button type="button" onClick={onClick} className={cn('flex min-w-0 flex-1 basis-0 flex-col items-center', phone && 'w-[52px] shrink-0 flex-none', isUpper ? 'justify-end' : 'justify-start', dim && 'opacity-30')}>
+      {!isUpper && <Num n={fdi} entry={entry} />}
+      <span
+        className={cn('relative mt-0.5 flex w-full items-center justify-center overflow-hidden rounded-lg', !phone && 'tooth-face')}
+        style={{
+          height: phone ? 78 : undefined,
+          border: color ? `2px ${entry.done ? 'solid' : 'dashed'} ${color}` : '2px solid transparent',
+          opacity: entry?.kind === 'missing' ? 0.45 : 1,
+          outline: active || picked ? '2px solid #0F172A' : 'none',
+          outlineOffset: 1,
+          alignItems: crownDown ? 'flex-end' : 'flex-start',
+        }}
+      >
+        {src && (
+          <img
+            src={src}
+            alt=""
+            draggable={false}
+            className="h-[94%] w-full object-contain"
+            style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
+          />
+        )}
+        {entry?.kind === 'missing' && (
+          <X className="absolute h-6 w-6 text-slate-500" strokeWidth={2.5} />
+        )}
+      </span>
+      {isUpper && <Num n={fdi} entry={entry} />}
+    </button>
+  );
+}
+
+function SidePanel(props) {
+  const {
+    sheet, active, activeEntry, multi, selected, groupAction, setGroupAction,
+    surfaces, toggleSurface, history, toothXrays, busy, noteOpen, noteText,
+    setNoteText, setNoteOpen, onClose, onQuick, onNote, onGroup, onUpload, onView,
+    doctorName, unitPrice,
+  } = props;
+  const group = multi && selected.length > 0 && !active;
+  return (
+    <aside className={cn('flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white', sheet ? 'max-h-[68vh] overflow-y-auto rounded-none border-0' : 'max-h-[calc(100dvh-7rem)] overflow-hidden')}>
+      <div className="flex items-start gap-2 border-b border-slate-100 p-3">
+        {active && !group && (
+          <img
+            src={getToothIllustrationSrc(active, activeEntry?.illustration || activeEntry?.kind || 'healthy')}
+            alt=""
+            className="h-16 w-10 object-contain"
+          />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <h4 className="text-sm font-extrabold text-slate-900">
+              {group ? `Guruh amali · ${selected.length} ta tish` : active ? `${active}-tish` : 'Tish tanlanmagan'}
+            </h4>
+            {(active || group) && (
+              <button type="button" onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full border border-slate-200" aria-label="Yopish">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <p className="text-[11px] text-slate-500">
+            {group ? selected.join(' · ') : active ? toothTitle(active) : 'Kartani ochish uchun tishni bosing'}
+          </p>
+          {activeEntry && !group && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-extrabold text-white" style={{ background: KIND_COLOR[activeEntry.kind] }}>
+                {LEGEND.find((k) => k.id === activeEntry.kind)?.label} · {activeEntry.done ? 'bajarildi' : 'reja'}
+              </span>
+            </div>
+          )}
+          {active && !group && (
+            <div className="mt-2 flex gap-1">
+              {['V', 'M', 'O', 'D', 'L'].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleSurface(s)}
+                  className={cn('grid h-7 w-7 place-items-center rounded-md border text-[11px] font-extrabold', surfaces.includes(s) ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-200 text-slate-600')}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className={cn('space-y-3 p-3', sheet ? '' : 'min-h-0 flex-1 overflow-y-auto')}>
+        {!active && !group && (
+          <p className="rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center text-xs font-semibold text-slate-400">Tishni tanlang</p>
+        )}
+        {group && (
+          <div className="space-y-1.5">
+            {[
+              ['breket', '#DB2777', 'Breket tizimi', 'Tanlangan tishlarga breket'],
+              ['bridge', '#CA8A04', "Ko‘prik (protez)", 'Tayanch va oraliq tishlar'],
+              ['same', '#2563EB', 'Bir xil davolash', 'Bitta reja, har bir tishga'],
+              ['implant', '#64748B', 'Implantlar seriyasi', 'Har bir tishga implant'],
+            ].map(([id, color, title, sub]) => (
+              <button key={id} type="button" onClick={() => setGroupAction(id)} className="flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left" style={{ borderColor: groupAction === id ? color : '#E2E8F0' }}>
+                <i className="h-3 w-3 rounded" style={{ background: color }} />
+                <span className="min-w-0 flex-1">
+                  <b className="block text-xs font-bold">{title}</b>
+                  <span className="text-[11px] text-slate-500">{sub}</span>
+                </span>
+                {groupAction === id && <Check className="h-4 w-4" style={{ color }} />}
+              </button>
+            ))}
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
+              <div className="rounded-lg border border-slate-100 px-2 py-1.5">
+                <div className="text-[10px] font-bold uppercase text-slate-400">Shifokor</div>
+                <div className="truncate text-xs font-bold">{doctorName || '—'}</div>
+              </div>
+              <div className="rounded-lg border border-slate-100 px-2 py-1.5">
+                <div className="text-[10px] font-bold uppercase text-slate-400">Holat</div>
+                <div className="text-xs font-bold">Reja</div>
+              </div>
+              <div className="rounded-lg border border-slate-100 px-2 py-1.5">
+                <div className="text-[10px] font-bold uppercase text-slate-400">Narx</div>
+                <div className="text-xs font-bold">{unitPrice > 0 ? `${selected.length} × ${unitPrice.toLocaleString('uz-UZ')}` : '—'}</div>
+              </div>
+              <div className="rounded-lg border border-slate-100 px-2 py-1.5">
+                <div className="text-[10px] font-bold uppercase text-slate-400">Jami</div>
+                <div className="text-xs font-bold">{unitPrice > 0 ? money(unitPrice * selected.length) : '—'}</div>
+              </div>
+            </div>
+          </div>
+        )}
+        {active && !group && (
+          <>
+            <div>
+              <div className="mb-1.5 text-[10px] font-extrabold uppercase tracking-wide text-slate-400">Tezkor qo‘shish</div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {QUICK.map((item) => (
+                  <button key={item.id} type="button" disabled={busy} onClick={() => onQuick(item)} className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 text-[10px] font-bold text-slate-700 disabled:opacity-50">
+                    <i className="h-2.5 w-2.5 rounded-sm" style={{ background: KIND_COLOR[item.id] }} />
+                    {item.label}
+                  </button>
+                ))}
+                <button type="button" onClick={() => setNoteOpen(true)} className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 text-[10px] font-bold text-slate-700">
+                  <i className="h-2.5 w-2.5 rounded-sm bg-slate-900" />
+                  Izoh
+                </button>
+              </div>
+              {noteOpen && (
+                <div className="mt-2 flex gap-1.5">
+                  <input value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="Izoh" className="h-8 min-w-0 flex-1 rounded-lg border border-slate-200 px-2 text-xs" />
+                  <button type="button" disabled={busy || !noteText.trim()} onClick={onNote} className="h-8 rounded-lg bg-slate-900 px-2 text-xs font-bold text-white disabled:opacity-50">Saqlash</button>
+                </div>
+              )}
+            </div>
+            <div>
+              <div className="mb-1.5 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wide text-slate-400">
+                <span>Tish tarixi</span>
+                <span>{history.length ? `Hammasi (${history.length})` : ''}</span>
+              </div>
+              {history.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">Bu tishda yozuv yo‘q</p>
+              ) : (
+                <div className="space-y-2">
+                  {history.map((row) => (
+                    <div key={row.id} className="border-l-2 pl-2" style={{ borderColor: row.color }}>
+                      <div className="flex items-baseline justify-between gap-2">
+                        <b className="text-xs font-bold text-slate-900">{row.title}</b>
+                        {money(row.price) && <span className="shrink-0 text-[11px] font-bold tabular-nums">{money(row.price)}</span>}
+                      </div>
+                      <div className="text-[11px] text-slate-500">{row.meta}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <div className="mb-1.5 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wide text-slate-400">
+                <span>Rentgen / RVG</span>
+                <label className="cursor-pointer font-bold text-sky-600">
+                  + Yuklash
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ''; }} />
+                </label>
+              </div>
+              {toothXrays.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">Rentgen yo‘q</p>
+              ) : (
+                <div className="flex gap-2 overflow-x-auto">
+                  {toothXrays.map((x) => (
+                    <button key={x.id} type="button" onClick={() => onView(x.image_url)} className="w-16 shrink-0">
+                      <img src={x.image_url} alt="" className="h-14 w-16 rounded-lg object-cover" />
+                      <span className="mt-0.5 block truncate text-[10px] text-slate-500">{fmtDate(x.date)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+      {group && (
+        <div className="flex gap-2 border-t border-slate-100 p-3">
+          <button type="button" onClick={onClose} className="h-9 flex-1 rounded-xl border border-slate-200 text-xs font-bold">Bekor qilish</button>
+          <button type="button" disabled={busy} onClick={onGroup} className="inline-flex h-9 flex-[1.4] items-center justify-center gap-1 rounded-xl bg-slate-900 text-xs font-bold text-white disabled:opacity-60">
+            <Plus className="h-3.5 w-3.5" /> Rejaga qo‘shish ({selected.length})
+          </button>
+        </div>
+      )}
+    </aside>
+  );
+}

@@ -21,9 +21,10 @@ import AppointmentModal from '../components/appointments/AppointmentModal';
 import PatientModal from '../components/patients/PatientModal';
 import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
 import ImplantForm from '../components/implants/ImplantForm';
-import MobileCompactOdontogram, {
+import {
   fdiToInternalId,
 } from '../components/patients/MobileCompactOdontogram';
+import ToothChartCard from '../components/patients/ToothChartCard';
 import { matchIllustrationKind } from '@/utils/toothIllustration';
 
 const TEAL = '#14b8a6';
@@ -431,15 +432,6 @@ export default function MobilePatientProfile() {
     { id: 'implant',  label: t('patientProfile.tabs.implantShort', 'Implant') },
   ]), [t]);
 
-  const selectedStatus = useMemo(() => {
-    if (!selectedTooth) return null;
-    return toothStatuses[selectedTooth.id] || toothStatuses[String(selectedTooth.fdi)] || null;
-  }, [toothStatuses, selectedTooth]);
-
-  const handleToothSelect = useCallback((fdi) => {
-    setSelectedTooth({ id: fdiToInternalId(fdi), fdi: String(fdi) });
-  }, []);
-
   /* ── avatar ── */
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -522,14 +514,6 @@ export default function MobilePatientProfile() {
     ? clinicName
     : t('patientProfile.mobile.clinicFallback', 'stomatolog kabineti');
 
-  const statusLabel = (() => {
-    const key = STATUS_LABEL_KEY[selectedStatus?.status] || 'healthy';
-    const mapped = t(`patientProfile.mobile.${key}`, selectedStatus?.diagnosis || t('patientProfile.mobile.healthy', "Sog'lom"));
-    return selectedStatus?.diagnosis && selectedStatus.status === 'caries'
-      ? `${mapped}`
-      : mapped;
-  })();
-
   /* ── LOADING ── */
   if (loading) return (
     <div className="min-h-screen bg-[#F3F6F8] flex flex-col">
@@ -560,7 +544,6 @@ export default function MobilePatientProfile() {
   );
 
   const phoneHref = patient.phone ? `tel:${String(patient.phone).replace(/\D/g, '')}` : null;
-  const previewHistory = selectedHistory.slice(0, 2);
 
   /* ── RENDER ── */
   return (
@@ -752,85 +735,19 @@ export default function MobilePatientProfile() {
 
       {/* CLINICAL STRIP */}
       <div className="px-3 pt-3 space-y-3">
-                <div className="bg-white rounded-[20px] shadow-[0_8px_24px_rgba(15,23,42,0.05)] border border-slate-100/80 px-1.5 pt-3 pb-2.5 overflow-hidden min-w-0">
-                  <div className="flex items-center justify-between mb-2.5 px-0.5">
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-                      {t('patientProfile.mobile.odontogram', 'Odontogramma')}
-                    </h2>
-                    <span className="text-[10px] font-black uppercase tracking-wide text-[#14b8a6]">
-                      {t('patientProfile.mobile.fdiAdults', 'FDI · Kattalar')}
-                    </span>
-                  </div>
-                  <MobileCompactOdontogram
-                    selectedFdi={selectedTooth?.fdi}
-                    toothStatuses={toothStatuses}
-                    onSelect={handleToothSelect}
-                  />
-                </div>
-
-                {selectedTooth ? (
-                  <div className="bg-white rounded-[20px] shadow-[0_8px_24px_rgba(15,23,42,0.05)] border border-slate-100/80 p-3.5">
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className="w-11 h-11 rounded-xl bg-[#14b8a6] text-white flex items-center justify-center text-[13px] font-black shrink-0 shadow-sm">
-                        #{selectedTooth.fdi}
-                      </div>
-                      <div className="flex-1 min-w-0 pt-0.5">
-                        <p className="text-[13px] font-black text-slate-900 leading-tight">
-                          {t('patientProfile.mobile.selectedTooth', 'Tanlangan tish')}
-                        </p>
-                        <span className="inline-flex mt-1.5 text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                          {statusLabel}
-                        </span>
-                      </div>
-                    </div>
-
-                    {previewHistory.length > 0 ? (
-                      <div className="space-y-2.5 mb-3.5 pl-1">
-                        {previewHistory.map((item) => (
-                          <div key={item.id} className="flex items-start gap-2.5">
-                            <span className={cn('mt-1.5 w-1.5 h-1.5 rounded-full shrink-0', item.highlight ? 'bg-rose-500' : 'bg-[#14b8a6]')} />
-                            <div className="min-w-0">
-                              <p className="text-[10px] font-bold text-slate-400">
-                                {item.date}{item.meta ? ` · ${item.meta}` : ''}
-                              </p>
-                              <p className={cn('text-[12px] font-bold leading-snug', item.highlight ? 'text-rose-600' : 'text-slate-800')}>
-                                {item.title}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-[12px] font-semibold text-slate-400 mb-3.5">
-                        {t('patientProfile.mobile.noHistory', 'Tarix yo\'q')}
-                      </p>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setToothHistoryOpen(true)}
-                        className="h-11 rounded-2xl border-2 border-[#14b8a6]/40 text-[#14b8a6] text-[12px] font-black active:scale-[0.98] transition-transform"
-                      >
-                        {t('patientProfile.mobile.history', 'Tarix')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setTreatModalOpen(true)}
-                        className="h-11 rounded-2xl text-white text-[12px] font-black flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform shadow-[0_6px_16px_rgba(20,153,173,0.28)]"
-                        style={{ background: TEAL }}
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        {t('patientProfile.mobile.newEntry', 'Yangi yozuv')}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-[20px] border border-dashed border-slate-200 px-4 py-8 text-center">
-                    <p className="text-sm font-black text-slate-600">{t('patientProfile.mobile.selectTooth', 'Tishni tanlang')}</p>
-                    <p className="text-[11px] text-slate-400 mt-1">{t('patientProfile.mobile.selectToothHint', 'Tarix va yangi yozuv uchun tishni bosing')}</p>
-                  </div>
-                )}
+                <ToothChartCard
+                  patient={patient}
+                  plans={plans}
+                  payments={payments}
+                  appointments={appointments}
+                  doctors={doctors}
+                  services={services}
+                  implants={implants}
+                  toothRecords={toothRecords}
+                  onReload={load}
+                  onBookAppointment={() => { setSelectedAppt(null); setApptModalOpen(true); }}
+                  sheetOffset={58}
+                />
               
       </div>
 
