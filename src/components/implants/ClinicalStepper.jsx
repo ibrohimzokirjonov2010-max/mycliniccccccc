@@ -5,6 +5,7 @@
 import React from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { implantStatusLabel, implantStatusLabelIfKnown } from '@/lib/implantStatus';
 
 export const LIFECYCLE_MAPPING = {
   planned: "Rejalashtirilgan",
@@ -37,18 +38,22 @@ export const LIFECYCLE_COLORS = {
 };
 
 export const SHORT_STATUS_LABEL = {
-  Rejalashtirilgan: 'Reja',
-  "O'rnatildi": 'Joylandi',
-  'Integratsiya jarayoni': 'Integratsiya',
-  'Healing jarayoni': 'Integratsiya',
-  "Formik qo'yildi": 'Formik',
-  Formik: 'Formik',
-  "Abutment qo'yildi": 'Abutment',
-  'Protez tayyor': 'Protez',
-  'Crown tayyor': 'Protez',
-  Tugallangan: 'Yakun',
-  Muvaffaqiyatsiz: 'Muvaffaqiyatsiz',
-  Failure: 'Muvaffaqiyatsiz',
+  Rejalashtirilgan: 'Rejalashtirilgan',
+  "O'rnatildi": "O'rnatildi",
+  'Integratsiya jarayoni': 'Integratsiyada',
+  'Healing jarayoni': 'Integratsiyada',
+  "Formik qo'yildi": "Formik qo'yildi",
+  Formik: "Formik qo'yildi",
+  "Abutment qo'yildi": "Abutment qo'yildi",
+  'Protez tayyor': 'Koronka',
+  'Crown tayyor': 'Koronka',
+  Tugallangan: 'Tugallangan',
+  Muvaffaqiyatsiz: 'Rad etildi',
+  Failure: 'Rad etildi',
+  placed: "O'rnatildi",
+  planned: 'Rejalashtirilgan',
+  crown: 'Koronka',
+  failure: 'Rad etildi',
 };
 
 export const STATUS_SELECT_OPTIONS = [
@@ -75,11 +80,11 @@ export const DISPLAY_TO_ENUM = {
 
 export const CLINICAL_STEPS = [
   { id: 'reja', label: 'Reja', labelRu: 'План', lifecycleValue: 'Rejalashtirilgan', enumKeys: ['planned', 'Rejalashtirilgan'], rank: 0 },
-  { id: 'joylandi', label: 'Joylandi', labelRu: 'Установлен', lifecycleValue: "O'rnatildi", enumKeys: ['placed', "O'rnatildi"], rank: 1 },
-  { id: 'integratsiya', label: 'Integratsiya', labelRu: 'Интеграция', lifecycleValue: 'Integratsiya jarayoni', enumKeys: ['healing', 'Healing jarayoni', 'Integratsiya jarayoni'], rank: 2 },
-  { id: 'fomik', label: 'Formik', labelRu: 'Формик', lifecycleValue: "Formik qo'yildi", enumKeys: ['formik', 'fomik', "Formik qo'yildi", 'Formik'], rank: 3 },
-  { id: 'abutment', label: 'Abutment', labelRu: 'Абатмент', lifecycleValue: "Abutment qo'yildi", enumKeys: ['abutment', "Abutment qo'yildi"], rank: 4 },
-  { id: 'protez', label: 'Protez', labelRu: 'Протез', lifecycleValue: 'Protez tayyor', enumKeys: ['crown', 'Crown tayyor', 'Protez tayyor'], rank: 5 },
+  { id: 'joylandi', label: "O'rnatildi", labelRu: 'Установлен', lifecycleValue: "O'rnatildi", enumKeys: ['placed', "O'rnatildi", 'Joylandi'], rank: 1 },
+  { id: 'integratsiya', label: 'Integratsiyada', labelRu: 'Интеграция', lifecycleValue: 'Integratsiya jarayoni', enumKeys: ['healing', 'Healing jarayoni', 'Integratsiya jarayoni'], rank: 2 },
+  { id: 'fomik', label: "Formik qo'yildi", labelRu: 'Формик', lifecycleValue: "Formik qo'yildi", enumKeys: ['formik', 'fomik', "Formik qo'yildi", 'Formik'], rank: 3 },
+  { id: 'abutment', label: "Abutment qo'yildi", labelRu: 'Абатмент', lifecycleValue: "Abutment qo'yildi", enumKeys: ['abutment', "Abutment qo'yildi"], rank: 4 },
+  { id: 'protez', label: 'Koronka', labelRu: 'Коронка', lifecycleValue: 'Protez tayyor', enumKeys: ['crown', 'Crown tayyor', 'Protez tayyor', 'Koronka'], rank: 5 },
   { id: 'yakun', label: 'Yakun', labelRu: 'Финиш', lifecycleValue: 'Tugallangan', enumKeys: ['completed', 'Tugallangan'], rank: 6, isFinish: true },
 ];
 
@@ -93,7 +98,7 @@ const RANK_BY_STATUS = (() => {
 
 export function normalizeLifecycleStatus(raw) {
   if (!raw) return 'Rejalashtirilgan';
-  return LIFECYCLE_MAPPING[raw] || raw;
+  return implantStatusLabelIfKnown(raw, 'uz') || LIFECYCLE_MAPPING[raw] || implantStatusLabel(raw, 'uz');
 }
 
 export function getStatusRank(rawStatus) {

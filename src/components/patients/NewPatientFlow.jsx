@@ -35,6 +35,21 @@ const STEPS = [
   { id: 3, label: 'patients.wizard.done', icon: CheckCircle2 },
 ];
 
+function todayDisplayDate() {
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${day}.${month}.${now.getFullYear()}`;
+}
+
+function asDisplayDate(value) {
+  const raw = String(value || '').trim();
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[3]}.${iso[2]}.${iso[1]}`;
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(raw)) return raw;
+  return todayDisplayDate();
+}
+
 const WIZARD_SOURCES = [
   { value: 'Telegram', labelKey: 'Telegram' },
   { value: 'Instagram', labelKey: 'Instagram' },
@@ -465,7 +480,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     contact: '',
     main_treatment_provider: '',
     card_number: '',
-    registration_date: new Date().toLocaleDateString('uz-UZ') // e.g. "17.07.2026"
+    registration_date: todayDisplayDate()
   });
 
   const [doctors, setDoctors] = useState([]);
@@ -554,7 +569,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         contact: prefillData?.source || '',
         main_treatment_provider: '',
         card_number: '',
-        registration_date: new Date().toLocaleDateString('uz-UZ') // format: DD.MM.YYYY
+        registration_date: todayDisplayDate()
       });
       setPlanForm({ 
         name: '', 
@@ -1401,16 +1416,30 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     }
   }, [createdPatient, createdPlan, grandTotal, discountPaymentId, onSaved]);
 
+  const goToStep = (target) => {
+    if (target === step || (target === 3 && step === 4)) return;
+    if (target < step) {
+      setStep(target);
+      return;
+    }
+    if (!createdPatient) {
+      handleSavePatient();
+      return;
+    }
+    setStep(target);
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
         className={cn(
-          "!p-0 w-[95vw] sm:w-[94vw] md:w-[92vw] flex flex-col overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border-0 shadow-2xl gap-0 !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]",
-          // REJA (step 2) needs more width/height on notebooks; other steps stay compact.
+          "new-patient-dialog dialog-shell-fluid !flex !flex-col !p-0 !gap-0 overflow-hidden border-0 shadow-2xl",
+          "max-md:!fixed max-md:!inset-0 max-md:!left-0 max-md:!top-0 max-md:!h-[100dvh] max-md:!max-h-[100dvh] max-md:!w-screen max-md:!max-w-none max-md:!translate-x-0 max-md:!translate-y-0 max-md:!rounded-none",
+          "md:!left-1/2 md:!top-1/2 md:!-translate-x-1/2 md:!-translate-y-1/2 md:w-[min(1120px,94vw)] md:max-w-[1120px] md:rounded-[2rem]",
           step === 2
-            ? "max-w-6xl h-[min(92dvh,900px)] max-h-[92dvh]"
-            : "max-w-5xl h-[88dvh] max-h-[88dvh]"
+            ? "md:h-[min(92dvh,900px)] md:max-h-[92dvh]"
+            : "md:h-[min(92dvh,820px)] md:max-h-[92dvh]"
         )}
         data-new-patient-shell={step === 2 ? "reja-notebook-fluid-v1" : "default"}
         onPointerDownOutside={(e) => { if (receiptOpen) e.preventDefault(); }}
@@ -1466,7 +1495,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                const active = step === s.id || (step === 4 && s.id === 3);
                return (
                  <div key={s.id} className="flex items-center">
-                   <div className="flex flex-col items-center gap-1 min-w-[60px]">
+                   <button
+                     type="button"
+                     onClick={() => goToStep(s.id)}
+                     className="flex flex-col items-center gap-1 min-w-[60px] bg-transparent border-none cursor-pointer"
+                   >
                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300
                        ${done ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100' :
                          active ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100' :
@@ -1476,7 +1509,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                      <span className={`text-[9px] sm:text-[11px] font-bold uppercase tracking-wider ${active || done ? 'text-emerald-600' : 'text-slate-400'}`}>
                        {t(s.label)}
                      </span>
-                   </div>
+                   </button>
                    {i < STEPS.length - 1 && (
                      <div className={`h-[2px] w-12 sm:w-20 mx-[-4px] mb-5 rounded transition-colors duration-300 ${step > s.id ? 'bg-emerald-500' : 'bg-slate-200'}`} />
                    )}
@@ -1492,7 +1525,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
           {step === 1 && (
             <div className="flex flex-col h-full bg-white">
 
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 max-w-3xl mx-auto w-full">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 max-w-5xl mx-auto w-full max-md:overflow-x-hidden">
 
                 {/* Top Section: Photo + Name fields side by side */}
                 <div className="flex gap-4 mb-4">
@@ -1540,10 +1573,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                 </div>
 
                 {/* Main 2-column compact grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
                   {/* Phone */}
-                  <div>
+                  <div className="order-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('common.phone')} <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Phone className="w-4 h-4" /></span>
@@ -1555,7 +1588,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   </div>
 
                   {/* Phone 2 */}
-                  <div>
+                  <div className="order-8">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.wizard.phone2')}</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Phone className="w-4 h-4" /></span>
@@ -1568,7 +1601,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
 
                   {/* Gender */}
-                  <div>
+                  <div className="order-6">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.gender')}</label>
                     <div className="flex items-center gap-4 h-9">
                       <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -1587,7 +1620,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   </div>
 
                   {/* Date of birth */}
-                  <div>
+                  <div className="order-7">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.birthDate')}</label>
                     <div className="grid grid-cols-3 gap-1.5">
                       <EditableSelect value={patientForm.birth_day} onChange={v => setPatientForm(prev => ({ ...prev, birth_day: v }))}
@@ -1601,7 +1634,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
 
                   {/* Address - full width */}
-                  <div className="sm:col-span-2">
+                  <div className="md:col-span-2 order-9">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('common.address')}</label>
                     <Input value={patientForm.address} onChange={e => setPatientForm({ ...patientForm, address: e.target.value })}
                       placeholder={t('patients.addressPlaceholder')}
@@ -1609,7 +1642,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   </div>
 
                   {/* Contact/Source */}
-                  <div>
+                  <div className="order-10">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.sourceLabel')}</label>
                     <Select value={patientForm.contact} onValueChange={v => setPatientForm({ ...patientForm, contact: v })}>
                       <SelectTrigger className="h-9 rounded-lg border-slate-200 text-sm w-full"><SelectValue placeholder={t('common.select')} /></SelectTrigger>
@@ -1622,7 +1655,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   </div>
 
                   {/* Main treatment provider — required to create a patient */}
-                  <div data-patient-doctor-field>
+                  <div className="order-2" data-patient-doctor-field>
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">
                       {t('common.doctor')} <span className="text-red-500 font-bold">*</span>
                     </label>
@@ -1639,7 +1672,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       >
                         <SelectValue placeholder={t('common.select')} />
                       </SelectTrigger>
-                      <SelectContent position="popper" className="max-h-[200px] z-[110]" data-patient-doctor-select>
+                      <SelectContent position="popper" side="top" className="z-[220] max-h-72 overflow-y-auto" data-patient-doctor-select>
                         {doctors.map(d => (
                           <SelectItem key={d.id || d.name || d.full_name} value={String(d.id || d.name || d.full_name)}>
                             {clinicianDisplayName(d) || d.username}
@@ -1655,7 +1688,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   </div>
 
                   {/* Card number */}
-                  <div>
+                  <div className="order-11">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.wizard.cardNumber')}</label>
                     <Input value={patientForm.card_number} onChange={e => setPatientForm({ ...patientForm, card_number: e.target.value })}
                       placeholder={t('patients.wizard.cardNumberPlaceholder')}
@@ -1663,32 +1696,37 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   </div>
 
                   {/* Registration date */}
-                  <div>
+                  <div className="order-3">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.wizard.registrationDate')} <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Calendar className="w-4 h-4" /></span>
-                      <Input value={patientForm.registration_date} onChange={e => setPatientForm({ ...patientForm, registration_date: e.target.value })}
-                        placeholder="" className="h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 pl-10 w-full font-medium" />
+                      <Input value={asDisplayDate(patientForm.registration_date)} onChange={e => setPatientForm({ ...patientForm, registration_date: e.target.value })}
+                        placeholder="kk.oo.yyyy" className="h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 pl-10 w-full font-medium" />
                     </div>
                   </div>
 
                   {/* Important info - full width */}
-                  <div className="sm:col-span-2">
+                  <div className="md:col-span-1 order-4">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
                       {t('patients.importantInfo')}
                       <span className="text-[9px] bg-slate-100 text-slate-500 rounded-full w-4 h-4 flex items-center justify-center cursor-help font-bold" title={t('patients.importantInfoPlaceholder')}>i</span>
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500"><AlertTriangle className="w-4 h-4" /></span>
+                      {patientForm.important_info ? (
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500"><AlertTriangle className="w-4 h-4" /></span>
+                      ) : null}
                       <Input value={patientForm.important_info} onChange={e => setPatientForm({ ...patientForm, important_info: e.target.value })}
-                        placeholder={t('patients.importantInfoPlaceholder')}
-                        className="h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 pl-10 text-rose-600 placeholder-rose-300 font-medium w-full" />
+                        placeholder={`masalan: ${t('patients.importantInfoPlaceholder')}`}
+                        className={cn(
+                          'h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 w-full placeholder:text-slate-400 placeholder:italic placeholder:font-normal',
+                          patientForm.important_info ? 'pl-10 text-rose-700 font-medium' : 'text-slate-800'
+                        )} />
                     </div>
                   </div>
 
 
                   {/* Comment - full width */}
-                  <div className="sm:col-span-2">
+                  <div className="md:col-span-2 order-5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('common.note')}</label>
                     <textarea value={patientForm.comment} onChange={e => setPatientForm({ ...patientForm, comment: e.target.value })}
                       placeholder={t('common.details')}
@@ -1701,7 +1739,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
               
               {/* Cancel / Save actions (Matching color of screenshot) */}
-              <div className="flex-shrink-0 flex flex-col gap-3 p-4 border-t bg-slate-50 z-30 pb-safe-offset-4 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] w-full rounded-b-[2.5rem]">
+              <div className="flex-shrink-0 flex flex-col gap-3 p-4 border-t bg-slate-50 z-30 shadow-[0_-4px_10px_rgba(0,0,0,0.03)] w-full max-md:sticky max-md:bottom-0" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}>
                 {savingError && (
                   <div className="bg-rose-50 border border-rose-100 rounded-2xl p-3 text-xs font-bold text-rose-600 w-full flex items-start gap-2 shadow-inner">
                     <span className="shrink-0 text-base">⚠️</span>

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { cn } from '@/lib/utils';
-import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, fdiMesialIsRight, internalIdToFdi } from '@/lib/fdiNotation';
+import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, fdiMesialIsRight, fdiWidthWeight, internalIdToFdi } from '@/lib/fdiNotation';
 import { getToothIllustrationSrc, matchIllustrationKind } from '@/utils/toothIllustration';
 import { displayServiceName, formatDoctorName } from '@/lib/displayText';
 import { implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
@@ -386,13 +386,24 @@ export default function ToothChartCard({
         plannedSum += open.reduce((s, e) => s + (Number(e.price) || 0), 0);
       }
     });
-    const dates = (appointments || [])
-      .map((a) => a.date || a.appointment_date)
-      .filter(Boolean)
-      .sort();
+    const dateKey = (value) => {
+      const raw = String(value || '');
+      const iso = raw.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+      const dmy = raw.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+      if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+      const parsed = new Date(raw);
+      if (Number.isNaN(parsed.getTime())) return '';
+      return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+    };
+    const dates = [
+      ...(appointments || []).map((a) => a.date || a.appointment_date || a.start_time),
+      ...(plans || []).map((p) => p.start_date || p.date || p.created_date),
+      patient?.last_visit,
+    ].map(dateKey).filter(Boolean).sort();
     const lastVisit = dates.length ? dates[dates.length - 1] : null;
     return { done, planned, plannedSum, lastVisit };
-  }, [byTooth, appointments, upper, lower]);
+  }, [byTooth, appointments, plans, patient?.last_visit, upper, lower]);
 
   const plannedItem = useMemo(() => {
     const pool = [];
@@ -728,8 +739,8 @@ export default function ToothChartCard({
     <div
       className="odonto-quad"
       style={{
-        gridTemplateColumns: phone && mode === 'schema'
-          ? `repeat(${fdis.length}, minmax(32px, 1fr))`
+        gridTemplateColumns: phone
+          ? fdis.map((n) => `minmax(40px, ${fdiWidthWeight(n)}fr)`).join(' ')
           : fdiGridTemplate(fdis),
       }}
     >
@@ -1361,7 +1372,7 @@ function SidePanel(props) {
         </div>
       )}
       {active && !group && (
-        <div className="flex gap-2 border-t border-slate-100 bg-white p-3">
+        <div className="tooth-sheet-actions flex gap-2 border-t border-slate-100 bg-white px-4 py-3">
           <button type="button" disabled={busy} onClick={onAddToPlan} className="h-9 flex-1 rounded-xl bg-slate-900 text-xs font-bold text-white disabled:opacity-60">
             Rejaga qo‘shish
           </button>

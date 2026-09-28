@@ -13,6 +13,7 @@ import {
 } from './ClinicalStepper';
 import DentalArchFdi from './DentalArchFdi';
 import { implantRecordFdis } from '@/lib/fdiNotation';
+import { implantStatusLabelIfKnown } from '@/lib/implantStatus';
 
 export { DentalArchFdi };
 
@@ -176,7 +177,7 @@ function formatTimelineDate(raw) {
 }
 
 /** Large clinical passport specs card matching reference screenshot */
-export function PassportSpecsCard({ implant, language = 'uz' }) {
+export function PassportSpecsCard({ implant, language = 'uz', onSaveField }) {
   const diameter = implant?.diameter != null && String(implant.diameter).trim() !== '' ? String(implant.diameter).trim() : null;
   const length = implant?.length != null && String(implant.length).trim() !== '' ? String(implant.length).trim() : null;
   const sizeText = formatImplantSize(diameter, length, { withUnits: true });
@@ -214,28 +215,54 @@ export function PassportSpecsCard({ implant, language = 'uz' }) {
           </h3>
         </div>
 
+        <div className="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <label className="min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tizim / model</span>
+            {onSaveField ? (
+              <input
+                data-testid="passport-system"
+                defaultValue={implant?.brend || implant?.model || ''}
+                placeholder="masalan: SuperLine"
+                onBlur={(e) => onSaveField('brend', e.target.value.trim())}
+                className="mt-0.5 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-bold text-slate-900 placeholder:font-medium placeholder:italic placeholder:text-slate-400 outline-none focus:border-[#14b8a6]"
+              />
+            ) : (
+              <div className="text-sm font-black text-slate-900 break-words">{implant?.brend || implant?.model || EM}</div>
+            )}
+          </label>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Brend</span>
+            <div className="text-sm font-black text-slate-900 break-words">{(implant?.firma === 'Boshqa' ? implant?.firma_custom : implant?.firma) || EM}</div>
+          </div>
+        </div>
+
         {/* Large Size Display — mockup HUGE Ø × L */}
-        <div className="text-[1.65rem] sm:text-[2.15rem] font-black tracking-tight text-[#14b8a6] mb-3 sm:mb-5 font-mono leading-none">
+        <div className="text-[1.65rem] sm:text-[2.15rem] font-black tracking-tight text-[#14b8a6] mb-3 sm:mb-5 font-mono leading-none break-words">
           {sizeText}
         </div>
 
         {/* Dense label/value rows on phone; 2-col cards from sm+ */}
         <div className="sm:hidden divide-y divide-slate-100 rounded-xl border border-slate-100 overflow-hidden">
           {[
-            { key: 'lot', label: language === 'ru' ? 'LOT / Серия' : 'LOT / Seria', value: lotVal, mono: true, accent: true },
-            { key: 'torque', label: 'Torque', value: torqueVal },
-            { key: 'isq', label: 'ISQ', value: isqVal },
-            { key: 'bone', label: language === 'ru' ? 'Тип кости' : 'Suyak turi', value: boneVal },
-            { key: 'doctor', label: language === 'ru' ? 'Хирург' : 'Jarroh', value: doctorVal },
-            { key: 'date', label: language === 'ru' ? 'Дата установки' : 'Joylash sanasi', value: dateVal },
+            { key: 'lot_number', label: 'LOT / Seria', value: implant?.lot_number || '', placeholder: 'masalan: L24091' },
+            { key: 'torque', label: 'Torque (Ncm)', value: implant?.torque || '', placeholder: 'masalan: 35' },
+            { key: 'isq', label: 'ISQ', value: implant?.isq || '', placeholder: 'masalan: 70' },
+            { key: 'bone', label: 'Suyak turi', value: boneVal, readOnly: true },
+            { key: 'doctor', label: 'Jarroh', value: doctorVal, readOnly: true },
+            { key: 'date', label: 'Joylash sanasi', value: dateVal, readOnly: true },
           ].map((row) => (
-            <div key={row.key} className="flex items-center justify-between gap-3 min-h-[44px] px-3 py-2.5 bg-white">
+            <div key={row.key} className="flex items-center justify-between gap-3 min-h-[44px] px-3 py-2 bg-white">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0">{row.label}</span>
-              <span className={cn(
-                'text-sm font-black text-right truncate max-w-[58%]',
-                row.mono && 'font-mono',
-                row.accent ? 'text-[#14b8a6]' : 'text-slate-900'
-              )}>{row.value}</span>
+              {onSaveField && !row.readOnly ? (
+                <input
+                  defaultValue={row.value}
+                  placeholder={row.placeholder}
+                  onBlur={(e) => onSaveField(row.key, e.target.value.trim())}
+                  className="h-8 min-w-0 flex-1 rounded-lg border border-slate-200 px-2 text-right text-sm font-bold text-slate-900 placeholder:font-medium placeholder:italic placeholder:text-slate-400 outline-none focus:border-[#14b8a6]"
+                />
+              ) : (
+                <span className="text-sm font-black text-right break-words">{row.value || EM}</span>
+              )}
             </div>
           ))}
         </div>
@@ -250,7 +277,17 @@ export function PassportSpecsCard({ implant, language = 'uz' }) {
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 {language === 'ru' ? 'LOT / Серия' : 'LOT / Seria'}
               </div>
-              <div className="text-sm font-black font-mono text-[#14b8a6] truncate">{lotVal}</div>
+              {onSaveField ? (
+                <input
+                  data-testid="passport-lot"
+                  defaultValue={implant?.lot_number || ''}
+                  placeholder="masalan: L24091"
+                  onBlur={(e) => onSaveField('lot_number', e.target.value.trim())}
+                  className="mt-0.5 h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-black font-mono text-[#14b8a6] placeholder:font-medium placeholder:italic placeholder:text-slate-400 outline-none focus:border-[#14b8a6]"
+                />
+              ) : (
+                <div className="text-sm font-black font-mono text-[#14b8a6] break-all">{lotVal}</div>
+              )}
             </div>
           </div>
 
@@ -260,8 +297,19 @@ export function PassportSpecsCard({ implant, language = 'uz' }) {
               <CheckCircle2 className="w-3.5 h-3.5" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Torque</div>
-              <div className="text-sm font-black text-slate-900 truncate">{torqueVal}</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Torque (Ncm)</div>
+              {onSaveField ? (
+                <input
+                  data-testid="passport-torque"
+                  defaultValue={implant?.torque || ''}
+                  inputMode="decimal"
+                  placeholder="masalan: 35"
+                  onBlur={(e) => onSaveField('torque', e.target.value.trim())}
+                  className="mt-0.5 h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-black text-slate-900 placeholder:font-medium placeholder:italic placeholder:text-slate-400 outline-none focus:border-[#14b8a6]"
+                />
+              ) : (
+                <div className="text-sm font-black text-slate-900 break-words">{torqueVal}</div>
+              )}
             </div>
           </div>
 
@@ -272,7 +320,18 @@ export function PassportSpecsCard({ implant, language = 'uz' }) {
             </div>
             <div className="min-w-0">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">ISQ</div>
-              <div className="text-sm font-black text-slate-900 truncate">{isqVal}</div>
+              {onSaveField ? (
+                <input
+                  data-testid="passport-isq"
+                  defaultValue={implant?.isq || ''}
+                  inputMode="decimal"
+                  placeholder="masalan: 70"
+                  onBlur={(e) => onSaveField('isq', e.target.value.trim())}
+                  className="mt-0.5 h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-black text-slate-900 placeholder:font-medium placeholder:italic placeholder:text-slate-400 outline-none focus:border-[#14b8a6]"
+                />
+              ) : (
+                <div className="text-sm font-black text-slate-900 break-words">{isqVal}</div>
+              )}
             </div>
           </div>
 
@@ -298,7 +357,7 @@ export function PassportSpecsCard({ implant, language = 'uz' }) {
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 {language === 'ru' ? 'Хирург' : 'Jarroh'}
               </div>
-              <div className="text-sm font-black text-slate-900 truncate">{doctorVal}</div>
+              <div className="text-sm font-black text-slate-900 break-words">{doctorVal}</div>
             </div>
           </div>
 
@@ -352,7 +411,10 @@ export function buildClinicalHistoryItems(implant, language = 'uz') {
         id: it.id || `tl-${idx}-${it.status || it.title || 'x'}`,
         date: formatTimelineDate(it.date),
         sortKey: parsed ? parsed.getTime() : idx,
-        title: it.status || it.title || (language === 'ru' ? 'Клиническая запись' : 'Klinik qayd'),
+        title: implantStatusLabelIfKnown(it.status || it.title, language)
+          || it.title
+          || it.status
+          || (language === 'ru' ? 'Клиническая запись' : 'Klinik qayd'),
         detail: it.note || it.detail || '',
         toothFdi: it.tooth_fdi || it.tooth_number || null,
       };
@@ -629,7 +691,7 @@ export function StageMediaRail({
       <div className="mt-4 rounded-xl border border-dashed border-teal-300/80 bg-teal-50/30 px-3 py-2.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 min-w-0">
           <FileText className="w-3.5 h-3.5 text-[#14b8a6] shrink-0" />
-          <span className="truncate">{language === 'ru' ? 'Паспорт стикер (PDF)' : 'Pasport stikeri (PDF)'}</span>
+          <span className="break-words">{language === 'ru' ? 'Паспорт stikeri (PDF)' : 'Pasport stikeri (PDF)'}</span>
         </div>
         <button
           type="button"
@@ -645,9 +707,17 @@ export function StageMediaRail({
 }
 
 /** Secondary services list — clean clinical table */
+function serviceDateLabel(raw) {
+  const text = String(raw || '').trim();
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[3]}.${iso[2]}.${iso[1]}`;
+  return text || EM;
+}
+
 export function LinkedServicesCard({
   services = [],
   total = 0,
+  caseTotal = null,
   language = 'uz',
   onAdd,
   onDelete,
@@ -705,7 +775,7 @@ export function LinkedServicesCard({
                     </button>
                   ) : null}
                 </td>
-                <td className="py-3 px-2 align-top font-mono text-slate-500 whitespace-nowrap">{svc.date || EM}</td>
+                <td className="py-3 px-2 align-top font-mono text-slate-500 whitespace-nowrap">{serviceDateLabel(svc.date)}</td>
                 <td className="py-3 pl-2 align-top text-right whitespace-nowrap">
                   <div className="font-mono font-black text-slate-800">
                     {(Number(svc.price) || 0).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">so&apos;m</span>
@@ -727,13 +797,19 @@ export function LinkedServicesCard({
         </table>
       </div>
 
-      <div className="mt-4 pt-4 border-t border-slate-100 flex items-end justify-between gap-3">
-        <span className="text-[11px] font-bold text-slate-500">
-          {language === 'ru' ? 'Итого (все услуги)' : 'Jami (barcha xizmatlar)'}
-        </span>
-        <span className="text-xl sm:text-2xl font-black font-mono text-[#14b8a6] leading-none">
-          {(Number(total) || 0).toLocaleString()} <span className="text-sm font-bold">so&apos;m</span>
-        </span>
+      <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+        <div className="flex items-end justify-between gap-3">
+          <span className="text-[11px] font-bold text-slate-500">Shu tish</span>
+          <span className="text-lg font-black font-mono text-slate-800 leading-none whitespace-nowrap">
+            {(Number(total) || 0).toLocaleString('uz-UZ')} <span className="text-sm font-bold">so&apos;m</span>
+          </span>
+        </div>
+        <div className="flex items-end justify-between gap-3">
+          <span className="text-[11px] font-bold text-slate-500">Jami (barcha tishlar)</span>
+          <span className="text-xl sm:text-2xl font-black font-mono text-[#14b8a6] leading-none whitespace-nowrap">
+            {(Number(caseTotal != null ? caseTotal : total) || 0).toLocaleString('uz-UZ')} <span className="text-sm font-bold">so&apos;m</span>
+          </span>
+        </div>
       </div>
     </div>
   );

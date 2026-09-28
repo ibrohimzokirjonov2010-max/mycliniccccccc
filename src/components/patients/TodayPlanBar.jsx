@@ -9,6 +9,7 @@ const TEAL = '#14b8a6';
  */
 export default function TodayPlanBar({
   steps = [],
+  title = 'Bugungi reja',
   totalDebt = 0,
   planRemaining = 0,
   activeStep = null,
@@ -36,7 +37,7 @@ export default function TodayPlanBar({
         <div className="flex items-center justify-between gap-3 mb-3.5">
           <div className="flex items-center gap-2 min-w-0">
             <CalendarDays className="w-4 h-4 shrink-0" style={{ color: TEAL }} />
-            <h3 className="text-sm font-black text-slate-900 truncate">Bugungi reja</h3>
+            <h3 className="text-sm font-black text-slate-900 truncate">{title}</h3>
           </div>
           <span className={cn(
             'px-2.5 py-1 rounded-full text-[10px] font-black border shrink-0',

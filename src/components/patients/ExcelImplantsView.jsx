@@ -10,7 +10,20 @@ import { ImplantIcon } from '@/components/ui/Icons';
 import EmptyState from '../ui/EmptyState';
 import { implantRecordFdis } from '@/lib/fdiNotation';
 import { implantStatusClass, implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
-import { formatDoctorName } from '@/lib/displayText';
+import { formatDoctorName, formatTableDate } from '@/lib/displayText';
+
+function implantBrandLine(imp) {
+  const firma = imp?.firma === 'Boshqa' ? (imp?.firma_custom || '') : (imp?.firma || '');
+  const system = String(imp?.brend || imp?.model || imp?.system || '').trim();
+  const parts = [firma, system].map((part) => String(part || '').trim()).filter(Boolean);
+  const unique = [...new Set(parts)];
+  return unique.join(' · ') || '—';
+}
+
+function implantSizeLine(imp) {
+  if (imp?.diameter && imp?.length) return `Ø${imp.diameter}×${imp.length}`;
+  return imp?.size || '—';
+}
 
 function ExcelImplantsView({
   patient: _patient,
@@ -93,11 +106,9 @@ function ExcelImplantsView({
           </div>
         ) : (
           filteredImplants.map((imp, idx) => {
-            const locale = language === 'ru' ? 'ru-RU' : language === 'en' ? 'en-US' : 'uz-UZ';
-            const dateStr = imp.installed_date || imp.date || imp.placement_date
-              ? new Date(imp.installed_date || imp.date || imp.placement_date).toLocaleDateString(locale) : '—';
-            const sizeStr = imp.diameter && imp.length ? `Ø${imp.diameter}×${imp.length}mm` : (imp.size || '—');
-            const brandName = imp.brend || imp.firma || (language === 'ru' ? 'Имплант' : 'Implantat');
+            const dateStr = formatTableDate(imp.installed_date || imp.date || imp.placement_date);
+            const sizeStr = implantSizeLine(imp);
+            const brandName = implantBrandLine(imp);
             const fdis = implantRecordFdis(imp);
 
             return (
@@ -163,7 +174,7 @@ function ExcelImplantsView({
       {/* ── DESKTOP TABLE ── */}
       <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-sm">
+            <table className="w-full min-w-[860px] border-collapse text-left text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
                 <th className="py-2.5 px-2 border-r border-slate-100 w-8 min-w-[28px] text-center">№</th>
@@ -174,7 +185,7 @@ function ExcelImplantsView({
                 <th className="py-2.5 px-1.5 border-r border-slate-100 text-center w-20 min-w-[72px]">{t('patientProfile.installedDateCol') || "Sana"}</th>
                 <th className="py-2.5 px-2 border-r border-slate-100 min-w-[85px] max-w-[120px]">{t('patientProfile.surgeonCol') || "Jarroh"}</th>
                 <th className="py-2.5 px-1.5 border-r border-slate-100 text-center w-24 min-w-[80px]">{t('common.status') || "Holati"}</th>
-                <th className="py-2.5 px-1.5 text-center w-20 min-w-[68px]">{t('patientProfile.passportCol') || "Pasport"}</th>
+                <th className="py-2.5 px-1.5 text-center w-24 min-w-[88px] sticky right-0 bg-slate-50">{t('patientProfile.passportCol') || "Pasport"}</th>
               </tr>
             </thead>
             <tbody>
@@ -188,10 +199,8 @@ function ExcelImplantsView({
                   </td>
                 </tr>
               ) : filteredImplants.map((imp, idx) => {
-                const locale = language === 'ru' ? 'ru-RU' : language === 'en' ? 'en-US' : 'uz-UZ';
-                const dateStr = imp.installed_date || imp.date || imp.placement_date
-                  ? new Date(imp.installed_date || imp.date || imp.placement_date).toLocaleDateString(locale) : '—';
-                const brandName = imp.brend || imp.firma || 'Implantat';
+                const dateStr = formatTableDate(imp.installed_date || imp.date || imp.placement_date) || '—';
+                const brandName = implantBrandLine(imp);
                 const fdis = implantRecordFdis(imp);
 
                 return (
@@ -217,7 +226,7 @@ function ExcelImplantsView({
                       </div>
                     </td>
                     <td className="py-2 px-1 text-center font-mono font-bold text-slate-700 text-xs border-r border-slate-100 whitespace-nowrap">
-                      {imp.diameter && imp.length ? `Ø${imp.diameter}×${imp.length}` : (imp.size || '—')}
+                      {implantSizeLine(imp)}
                     </td>
                     <td className="py-2 px-1 text-center font-mono text-slate-600 text-xs border-r border-slate-100 whitespace-nowrap">
                       {imp.lot_number || imp.lot || '—'}
@@ -234,7 +243,7 @@ function ExcelImplantsView({
                     <td className="py-2 px-1 text-center border-r border-slate-100 whitespace-nowrap">
                       {getStatusBadge(imp.lifecycle_status || imp.status)}
                     </td>
-                    <td className="py-2 px-1 text-center whitespace-nowrap">
+                    <td className="py-2 px-1 text-center whitespace-nowrap sticky right-0 bg-white">
                       {(imp.passport_id || imp.id) ? (
                         <Link
                           to={`/implants/${imp.id || imp.passport_id}`}

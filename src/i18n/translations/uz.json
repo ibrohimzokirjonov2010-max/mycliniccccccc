@@ -1449,9 +1449,9 @@
       "healing": "Integratsiyada",
       "formik": "Formik qo'yildi",
       "abutment": "Abutment qo'yildi",
-      "crown": "Crown tayyor",
+      "crown": "Koronka",
       "completed": "Tugallangan",
-      "failure": "Failure"
+      "failure": "Rad etildi"
     },
     "form": {
       "patientInfo": "Bemor ma'lumotlari",

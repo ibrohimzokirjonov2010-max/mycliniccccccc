@@ -349,6 +349,10 @@ export default function ImplantDetail() {
 
   const allServices = [baseServiceRow, ...customServicesList, ...legacyCrownRows];
   const totalAllServicesPrice = allServices.reduce((acc, curr) => acc + (Number(curr.price) || 0), 0);
+  const caseServicesTotal = (switcherItems || []).reduce((sum, item) => {
+    const price = Number(item?.price ?? item?.narxi ?? 0);
+    return sum + (Number.isFinite(price) ? price : 0);
+  }, 0);
 
   const counts = (() => {
     const list = switcherItems.length > 0 ? switcherItems : (implant ? [implant] : []);
@@ -629,7 +633,83 @@ export default function ImplantDetail() {
     }
   };
 
-  // Export PDF
+  const saveClinicalField = async (field, value) => {
+    if (!realImplantId) return;
+    const toothKey = activeTooth?.syntheticToothKey
+      || (Array.isArray(activeTooth?.tooth_numbers) && activeTooth.tooth_numbers.length === 1 ? activeTooth.tooth_numbers[0] : null)
+      || activeTooth?.tooth_id
+      || null;
+    const nextMap = implant?.tooth_data_map ? { ...implant.tooth_data_map } : {};
+    if (toothKey) {
+      const prevEntry = { ...(nextMap[toothKey] || {}) };
+      prevEntry[field] = value;
+      nextMap[toothKey] = prevEntry;
+    }
+    const payload = { [field]: value };
+    if (toothKey) payload.tooth_data_map = nextMap;
+    setImplant((prev) => (prev ? { ...prev, ...payload } : prev));
+    try {
+      await base44.entities.Implant.update(realImplantId, payload);
+      toast.success('Pasport saqlandi');
+    } catch (err) {
+      console.error(err);
+      toast.error('Pasport saqlanmadi');
+      load();
+    }
+  };
+
+  const exportClinicalPassport = () => {
+    const doc = new jsPDF();
+    const brand = (activeTooth.firma === 'Boshqa' ? (activeTooth.firma_custom || 'Boshqa') : activeTooth.firma) || '—';
+    const system = activeTooth.brend || activeTooth.model || '—';
+    const fdi = teethList.map((n) => toothIdToFdi(n)).filter(Boolean).join(', ') || '—';
+    const size = (activeTooth.diameter || activeTooth.length)
+      ? `${activeTooth.diameter || '—'} × ${activeTooth.length || '—'} mm`
+      : '—';
+    const placed = (() => {
+      const raw = String(activeTooth.placement_date || '');
+      const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return iso ? `${iso[3]}.${iso[2]}.${iso[1]}` : (raw || '—');
+    })();
+    doc.setFontSize(16);
+    doc.setTextColor(15, 118, 110);
+    doc.text(`${clinicName || 'Klinika'} — Implant pasporti`, 14, 18);
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(11);
+    const rows = [
+      ['Klinika', clinicName || '—'],
+      ['Bemor', activeTooth.patient_name || '—'],
+      ['Tish (FDI)', fdi],
+      ['Brend', brand],
+      ['Tizim / model', system],
+      ['Diametr × uzunlik', size],
+      ['LOT / seria', activeTooth.lot_number || '—'],
+      ['Suyak turi', activeTooth.bone_type || '—'],
+      ['Torque (Ncm)', activeTooth.torque || '—'],
+      ['ISQ', activeTooth.isq || '—'],
+      ['Joylash sanasi', placed],
+      ['Loading protokoli', activeTooth.loading_protocol || activeTooth.protocol || '—'],
+      ['Jarroh', activeTooth.doctor || '—'],
+      ['Holati', displayStatus || '—'],
+    ];
+    let y = 28;
+    rows.forEach(([label, value]) => {
+      doc.setFont(undefined, 'bold');
+      doc.text(`${label}:`, 14, y);
+      doc.setFont(undefined, 'normal');
+      doc.text(String(value), 70, y);
+      y += 8;
+    });
+    doc.setDrawColor(20, 184, 166);
+    doc.rect(14, y + 4, 80, 36);
+    doc.setFontSize(9);
+    doc.text('Pasport stikeri', 18, y + 14);
+    const tishStr = teethList.map((n) => toothIdToFdi(n)).join('-') || 'tish';
+    doc.save(`Implant_Pasport_${(activeTooth.patient_name || 'Bemor').replace(/\s+/g, '_')}_#${tishStr}.pdf`);
+    toast.success('Klinik pasport PDF yuklandi');
+  };
+
+  // Services card PDF (separate from the clinical passport)
   const exportPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(20);
@@ -883,11 +963,19 @@ export default function ImplantDetail() {
           <Button
             variant="outline"
             size="sm"
-            onClick={exportPDF}
+            onClick={exportClinicalPassport}
             className="min-h-[44px] h-11 sm:h-9 px-3.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 gap-1.5 bg-white hover:bg-slate-50"
           >
             <Download className="w-4 h-4 text-[#14b8a6] shrink-0" />
             <span>{language === 'ru' ? 'PDF Паспорт' : 'PDF Pasport'}</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportPDF}
+            className="min-h-[44px] h-11 sm:h-9 px-3.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 gap-1.5 bg-white hover:bg-slate-50 col-span-2 sm:col-span-1"
+          >
+            <span>Xizmatlar kartasi</span>
           </Button>
           <Button
             size="sm"
@@ -999,7 +1087,7 @@ export default function ImplantDetail() {
 
       {/* 4) TOP ROW — 3 cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch min-w-0">
-        <PassportSpecsCard implant={activeTooth} language={language} />
+        <PassportSpecsCard implant={activeTooth} language={language} onSaveField={saveClinicalField} />
 
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 flex flex-col">
           <div className="flex items-center gap-2 mb-3">
@@ -1032,7 +1120,7 @@ export default function ImplantDetail() {
           implant={activeTooth}
           language={language}
           onZoom={setZoomImg}
-          onOpenPassport={exportPDF}
+          onOpenPassport={exportClinicalPassport}
           onUpload={handleStagePhotoUpload}
           uploadingSlot={uploadingSlot}
         />
@@ -1048,6 +1136,7 @@ export default function ImplantDetail() {
         <LinkedServicesCard
           services={allServices}
           total={totalAllServicesPrice}
+          caseTotal={Math.max(caseServicesTotal, totalAllServicesPrice)}
           language={language}
           onAdd={handleOpenAddService}
           onDelete={handleDeleteService}

@@ -545,7 +545,8 @@ export default function MobileImplants() {
     const recent = implants.filter(i => i.placement_date >= thirtyAgo).length;
     const failures = implants.filter(i => getLifecycleKey(i.lifecycle_status) === 'failure').length;
     const completed = implants.filter(i => getLifecycleKey(i.lifecycle_status) === 'completed').length;
-    const successRate = total > 0 ? Math.round(((total - failures) / total) * 100) : 0;
+    const finished = completed + failures;
+    const successRate = finished > 0 ? Math.round((completed / finished) * 100) : null;
     const needsControl = implants.filter(i => {
       if (!i.reminder_date) return false;
       const diff = (new Date(i.reminder_date) - today) / 86400000;
@@ -621,7 +622,7 @@ export default function MobileImplants() {
                 Implantlar & Xizmatlar
               </h1>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
-                {stats.total} ta amaliyot · {stats.successRate}% muvaffaqiyat
+                {filtered.length} ta amaliyot · {stats.successRate == null ? '—' : `${stats.successRate}%`} muvaffaqiyat
               </p>
             </div>
             
@@ -663,8 +664,8 @@ export default function MobileImplants() {
                 }`}
               >
                 {tab.label}
-                {tab.key === 'list' && stats.needsControl.length > 0 && (
-                  <span className="ml-1 text-amber-500">({stats.needsControl.length})</span>
+                {tab.key === 'list' && (
+                  <span className="ml-1">({filtered.length})</span>
                 )}
               </button>
             ))}
@@ -673,7 +674,7 @@ export default function MobileImplants() {
 
         {/* ── LIST TAB ── */}
         {activeTab === 'list' && (
-          <div className="px-4 pb-4 space-y-3">
+          <div className="px-4 pb-28 space-y-3">
             {/* Search + Filter Row */}
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -820,7 +821,7 @@ export default function MobileImplants() {
             <div className="grid grid-cols-2 gap-3">
               <StatCard value={stats.total}        label="Jami implant"   icon={ImplantIcon}          color="text-indigo-600" bg="bg-indigo-50"  delay={0.05} />
               <StatCard value={stats.recent}       label="30 kunda"       icon={TrendingUp}   color="text-blue-600"   bg="bg-blue-50"   delay={0.10} />
-              <StatCard value={`${stats.successRate}%`} label="Muvaffaqiyat" icon={CheckCircle2} color="text-emerald-600" bg="bg-emerald-50" delay={0.15} badge={stats.failures > 0 ? ` (${stats.failures} failure)` : ''} />
+              <StatCard value={stats.successRate == null ? '—' : `${stats.successRate}%`} label="Muvaffaqiyat" icon={CheckCircle2} color="text-emerald-600" bg="bg-emerald-50" delay={0.15} badge={stats.failures > 0 ? ` (${stats.failures} rad)` : ''} />
               <StatCard value={stats.needsControl.length} label="Nazorat kerak" icon={Bell} color="text-amber-600"  bg="bg-amber-50"  delay={0.20} />
             </div>
 

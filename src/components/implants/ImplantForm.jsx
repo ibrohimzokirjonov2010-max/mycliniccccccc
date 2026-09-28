@@ -234,7 +234,7 @@ export default function ImplantForm({
     tooth_numbers: [],
     service_name: 'Implant',
     service_custom: '',
-    price: 1500000,
+    price: '',
     implant_type: 'Bone level',
     firma: '',
     firma_custom: '',
@@ -247,7 +247,7 @@ export default function ImplantForm({
     bone_type: 'D2',
     placement_date: today,
     doctor: '',
-    lifecycle_status: 'placed',
+    lifecycle_status: 'planned',
     reminder_months: 1,
     reminder_date: addMonths(today, 1),
     notes: '',
@@ -334,7 +334,7 @@ export default function ImplantForm({
       tooth_numbers: [],
       service_name: 'Implant',
       service_custom: '',
-      price: 1500000,
+      price: '',
       implant_type: 'Bone level',
       firma: '',
       firma_custom: '',
@@ -347,7 +347,7 @@ export default function ImplantForm({
       bone_type: 'D2',
       placement_date: today,
       doctor: '',
-      lifecycle_status: 'placed',
+      lifecycle_status: 'planned',
       reminder_months: 1,
       reminder_date: addMonths(today, 1),
       notes: '',
@@ -606,7 +606,7 @@ export default function ImplantForm({
         ...prev,
         [id]: {
           service_name: snapshot.service_name || 'Implant',
-          price: Number.isFinite(price) ? price : 1500000,
+          price: firma ? (Number.isFinite(price) && price > 0 ? price : 1500000) : '',
           firma,
           firma_custom: snapshot.firma_custom || '',
           brend: snapshot.brend || (firma === 'Boshqa' ? (snapshot.firma_custom || '') : firma),
@@ -632,7 +632,9 @@ export default function ImplantForm({
       if (patch.firma && patch.firma !== 'Boshqa') {
         next.firma_custom = '';
         next.brend = patch.firma;
+        if (next.price === '' || next.price == null) next.price = 1500000;
       }
+      if (patch.firma_custom && (next.price === '' || next.price == null)) next.price = 1500000;
       if (Object.prototype.hasOwnProperty.call(patch, 'firma_custom')) {
         next.brend = patch.firma_custom || '';
       }
@@ -657,6 +659,7 @@ export default function ImplantForm({
           next.firma_custom = '';
           next.brend = patch.firma;
         }
+        if (patch.firma && (next.price === '' || next.price == null)) next.price = 1500000;
       }
       if (patch.firma_custom !== undefined) {
         next.firma_custom = patch.firma_custom;
@@ -720,9 +723,10 @@ export default function ImplantForm({
     setForm((prev) => ({
       ...prev,
       placement_date: value,
+      lifecycle_status: value && value > today ? 'planned' : (prev.lifecycle_status || 'planned'),
       reminder_date: prev.reminder_months === 'custom' ? prev.reminder_date : reminderDate,
     }));
-  }, [form.reminder_months]);
+  }, [form.reminder_months, today]);
 
   const handleXrayUpload = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -985,7 +989,13 @@ export default function ImplantForm({
   const brandLabel = resolvedFirma
     ? (resolvedFirma === 'Boshqa' ? (resolvedCustom || tw('other', 'Boshqa')) : resolvedFirma)
     : '';
-  const implantUnitPrice = primaryTooth.price != null && primaryTooth.price !== '' ? primaryTooth.price : form.price;
+  const brandChosen = Boolean(resolvedFirma && (resolvedFirma !== 'Boshqa' || resolvedCustom));
+  const catalogPrice = 1500000;
+  const implantUnitPrice = !brandChosen
+    ? 0
+    : (primaryTooth.price != null && primaryTooth.price !== ''
+      ? primaryTooth.price
+      : (form.price !== '' && form.price != null ? form.price : catalogPrice));
   const extraTotal = useMemo(() => (form.extra_services || []).reduce((acc, sid) => {
     const preset = (extraServicesList || []).find((s) => s.id === sid);
     const customPrice = extraServicePrices[sid];
@@ -1061,7 +1071,7 @@ export default function ImplantForm({
         if (!next[fdi]) {
           next[fdi] = {
             service_name: form.service_name || 'Implant',
-            price: form.price || 1500000,
+            price: form.firma ? (form.price || 1500000) : '',
             firma: form.firma || '',
             firma_custom: form.firma_custom || '',
             brend: form.brend || '',
@@ -1349,12 +1359,16 @@ export default function ImplantForm({
             <strong>{tf('title', 'Faktura / davolash rejasi')}</strong>
             <span>
               {facturaDoc.patient_name || tw('noPatient', 'Bemor tanlanmagan')}
+              {brandLabel ? ` · ${brandLabel}` : ''}
+              {(primaryTooth.diameter || primaryTooth.length || form.diameter || form.length)
+                ? ` · Ø${primaryTooth.diameter || form.diameter || '—'}×${primaryTooth.length || form.length || '—'} mm`
+                : ''}
               {facturaDoc.date ? ` · ${toDMY(facturaDoc.date)}` : ''}
             </span>
           </span>
           <span className="implant-wizard-factura-teaser-meta">
             <strong>
-              {formatSom(facturaDoc.stage1Total)}
+              {brandChosen ? formatSom(facturaDoc.stage1Total) : '—'}
               <span> so&apos;m</span>
             </strong>
             <em>{tw('getInvoice', 'Faktura olish')}</em>
@@ -1493,7 +1507,7 @@ export default function ImplantForm({
       <div className="implant-wizard-footer-total">
         <span className="implant-wizard-footer-total-label">{tw('total', 'Jami:')}</span>
         <strong className="implant-wizard-footer-total-amount">
-          {formatSom(facturaDoc.stage1Total)}
+          {brandChosen ? formatSom(facturaDoc.stage1Total) : '—'}
           <span className="implant-wizard-footer-currency"> so&apos;m</span>
         </strong>
       </div>

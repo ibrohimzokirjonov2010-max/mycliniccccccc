@@ -306,8 +306,8 @@ export default function ChairsideClinicalTools({
               rows={2}
               value={form.diagnosis}
               onChange={(e) => setForm((f) => ({ ...f, diagnosis: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 resize-none"
-              placeholder="Masalan: chronik pulpitis #26"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium placeholder:text-slate-400 placeholder:italic placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 resize-none"
+              placeholder="masalan: surunkali pulpitis #26"
             />
           </label>
           <label className="space-y-1">
@@ -315,8 +315,8 @@ export default function ChairsideClinicalTools({
             <input
               value={form.code}
               onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
-              placeholder="K04.0"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-mono font-semibold placeholder:text-slate-400 placeholder:italic placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+              placeholder="masalan: K04.0"
             />
           </label>
           <label className="space-y-1">
@@ -324,8 +324,8 @@ export default function ChairsideClinicalTools({
             <input
               value={form.procedure}
               onChange={(e) => setForm((f) => ({ ...f, procedure: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
-              placeholder="Endo / plomba / ekstraksiya"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium placeholder:text-slate-400 placeholder:italic placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+              placeholder="masalan: endo / plomba / ekstraksiya"
             />
           </label>
           <label className="space-y-1">
@@ -333,8 +333,8 @@ export default function ChairsideClinicalTools({
             <input
               value={form.materials}
               onChange={(e) => setForm((f) => ({ ...f, materials: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
-              placeholder="AH Plus, gutta..."
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium placeholder:text-slate-400 placeholder:italic placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+              placeholder="masalan: AH Plus, gutta-percha"
             />
           </label>
           <label className="space-y-1">
@@ -342,7 +342,7 @@ export default function ChairsideClinicalTools({
             <input
               value={form.complications}
               onChange={(e) => setForm((f) => ({ ...f, complications: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium placeholder:text-slate-400 placeholder:italic placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
               placeholder="Yo'q / qon ketishi..."
             />
           </label>

@@ -121,6 +121,19 @@ const DIAGNOSTIC_TRANSLATIONS = {
   'in_progress': { uz: 'Jarayonda', ru: 'В процессе', en: 'In progress' },
 };
 
+function derivedRegistryStatus(patient, plans, appointments) {
+  const cancelled = (value) => /cancel/i.test(String(value || ''));
+  const finished = (value) => /completed|bajaril|yakun|done/i.test(String(value || ''));
+  const activePlans = (plans || []).filter((plan) => !cancelled(plan.status));
+  const hasDebt = Number(patient?.total_debt) > 0;
+  const hasVisit = (appointments || []).some((visit) => finished(visit.status))
+    || activePlans.some((plan) => finished(plan.status) || Number(plan.paid_amount) > 0);
+  const openPlan = activePlans.some((plan) => !finished(plan.status));
+  if (!openPlan && !hasDebt && (hasVisit || activePlans.length > 0)) return 'Yakunlangan';
+  if (openPlan || hasDebt || hasVisit) return 'Faol davolanish';
+  return 'Yangi';
+}
+
 export default function PatientProfile() {
   const { t, language } = useTranslation();
   const { user, isDoctor } = useAuth();
@@ -2862,8 +2875,8 @@ export default function PatientProfile() {
                   Allergiya: {medicalAlerts.map((alert) => alert.labelUz || alert.type).join(', ')}
                 </span>
               )}
-              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/70 rounded-lg text-[10px] font-black uppercase tracking-wider hidden sm:inline">
-                {patient.status === 'New' ? 'Yangi' : (patient.status || 'Faol')}
+              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/70 rounded-lg text-[10px] font-black tracking-wide hidden sm:inline">
+                {derivedRegistryStatus(patient, plans, appointments)}
               </span>
               </div>
               <p data-testid="patient-card-header-meta" className="text-[11px] font-semibold text-slate-500 truncate">

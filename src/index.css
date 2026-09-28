@@ -469,15 +469,48 @@
 @media (max-width: 767px) {
   .odonto-scroll {
     overflow-x: auto;
+    scroll-snap-type: x mandatory;
   }
   .odonto-cross {
     min-width: 640px;
   }
-  /* Tooth card: one quadrant (~8 teeth) fills the phone, the other half is one swipe away. */
+  /* Tooth card: 16 teeth at a 40px hit, two swipeable halves. */
+  .tooth-chart-root .odonto-scroll {
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 8px;
+  }
   .tooth-chart-root .odonto-cross {
-    width: 200%;
-    min-width: 200%;
-    max-width: 200%;
+    width: 720px !important;
+    min-width: 720px !important;
+    max-width: none !important;
+    scroll-snap-align: start;
+  }
+  .tooth-chart-root .compact-hit {
+    min-width: 40px !important;
+    min-height: 44px !important;
+  }
+  .tooth-chart-root .fdi-on-crown {
+    font-size: 12px;
+  }
+  .tooth-chart-root {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+  .new-patient-dialog .odonto-cross {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .new-patient-dialog {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    left: 0 !important;
+    top: 0 !important;
+    transform: none !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
   }
   .odonto-lateral,
   .odonto-fit-frame[data-compact="true"] .odonto-lateral {
@@ -802,23 +835,31 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
 }
 @media (min-width: 1280px) {
   .chairside-plan-row {
-    position: sticky;
-    top: calc(var(--chairside-header-h, 148px) + 8px);
-    z-index: 25;
-    background: #f8fafc;
+    position: relative;
+    z-index: 1;
+    background: transparent;
   }
   [data-tooth-chart="chairside"] {
-    position: sticky;
-    top: calc(var(--chairside-header-h, 148px) + var(--chairside-plan-h, 0px) + 16px);
-    max-height: calc(100svh - var(--chairside-header-h, 148px) - var(--chairside-plan-h, 0px) - 5.5rem);
-    overflow: auto;
-    z-index: 20;
-    scroll-margin-top: calc(var(--chairside-header-h, 148px) + var(--chairside-plan-h, 0px) + 16px);
+    position: relative;
+    top: auto;
+    max-height: none;
+    overflow: visible;
+    z-index: 1;
+  }
+}
+@media (max-width: 1439px) {
+  .implant-registry-scroll th.implant-registry-actions,
+  .implant-registry-scroll td.implant-registry-actions {
+    position: static;
+    box-shadow: none;
   }
 }
 @media (max-width: 767px) {
   [data-tooth-panel="sheet"] {
-    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+  [data-tooth-panel="sheet"] .tooth-sheet-actions {
+    padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
   }
 }
 @container tootharch (max-width: 640px) {

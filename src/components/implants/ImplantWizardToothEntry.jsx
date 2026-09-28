@@ -108,10 +108,10 @@ export default function ImplantWizardToothEntry({
               inputMode="decimal"
               value={data?.diameter ?? ''}
               onChange={(e) => onChange({ diameter: e.target.value })}
-              placeholder="4.0"
+              placeholder="masalan 4.0"
               aria-invalid={diameterInvalid || undefined}
               aria-label={tw('diameterLabel', 'Diametr (Ø)')}
-              className={`h-10 w-full rounded-[10px] border bg-white px-3 pr-10 text-sm text-[#111827] font-medium outline-none focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488]/20 ${diameterInvalid ? 'border-rose-400' : 'border-[#e5e7eb]'}`}
+              className={`h-10 w-full rounded-[10px] border bg-white px-3 pr-10 text-sm text-[#111827] font-medium outline-none placeholder:text-slate-400 placeholder:italic placeholder:font-normal focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488]/20 ${diameterInvalid ? 'border-rose-400' : 'border-[#e5e7eb]'}`}
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#6b7280]">mm</span>
           </div>
@@ -124,10 +124,10 @@ export default function ImplantWizardToothEntry({
               inputMode="decimal"
               value={data?.length ?? ''}
               onChange={(e) => onChange({ length: e.target.value })}
-              placeholder="10"
+              placeholder="masalan 10"
               aria-invalid={lengthInvalid || undefined}
               aria-label={tw('lengthLabel', 'Uzunlik (L)')}
-              className={`h-10 w-full rounded-[10px] border bg-white px-3 pr-10 text-sm text-[#111827] font-medium outline-none focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488]/20 ${lengthInvalid ? 'border-rose-400' : 'border-[#e5e7eb]'}`}
+              className={`h-10 w-full rounded-[10px] border bg-white px-3 pr-10 text-sm text-[#111827] font-medium outline-none placeholder:text-slate-400 placeholder:italic placeholder:font-normal focus:border-[#0d9488] focus:ring-1 focus:ring-[#0d9488]/20 ${lengthInvalid ? 'border-rose-400' : 'border-[#e5e7eb]'}`}
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-[#6b7280]">mm</span>
           </div>

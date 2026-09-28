@@ -940,18 +940,18 @@ function ExcelPaymentsView({
       {/* ══ VIEW 2: PLANS INVOICES & DEBTS ══ */}
       {subTab === 'plans' && (
         <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto no-scrollbar">
-            <table className="w-full min-w-[1100px] border-collapse text-left font-sans text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] border-collapse text-left font-sans text-sm">
               <thead>
                 <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-xs">
                   <th className="py-2 px-3 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
-                  <th className="py-2 px-3 border-r border-slate-200 min-w-[200px]">{language === 'ru' ? 'План / Процедура' : language === 'en' ? 'Plan / Treatment Name' : 'Reja / Muolaja Nomi'}</th>
-                  <th className="py-2 px-3 border-r border-slate-200 font-mono whitespace-nowrap min-w-[108px]">{t('common.date') || 'Sana'}</th>
-                  <th className="py-2 px-3 border-r border-slate-200 min-w-[140px]">{t('patientProfile.doctorCol') || 'Shifokor'}</th>
-                  <th className="py-2 px-3 border-r border-slate-200 text-right font-mono min-w-[140px] whitespace-nowrap">{language === 'ru' ? 'Стоимость плана' : language === 'en' ? 'Plan Price' : 'Reja Narxi'}</th>
-                  <th className="py-2 px-3 border-r border-slate-200 text-right font-mono min-w-[130px] whitespace-nowrap">{t('patientProfile.paidLabel') || 'To\'langan'}</th>
-                  <th className="py-2 px-3 border-r border-slate-200 text-right font-mono min-w-[160px] whitespace-nowrap">{language === 'ru' ? 'Остаток долга' : language === 'en' ? 'Remaining Debt' : 'Qoldiq Qarz'}</th>
-                  <th className="py-2 px-3 text-center min-w-[110px]">{t('patientProfile.invoiceCol') || 'Faktura'}</th>
+                  <th className="py-2 px-3 border-r border-slate-200 min-w-[140px]">{language === 'ru' ? 'План / Процедура' : language === 'en' ? 'Plan / Treatment Name' : 'Reja / Muolaja Nomi'}</th>
+                  <th className="py-2 px-3 border-r border-slate-200 font-mono whitespace-nowrap min-w-[92px]">{t('common.date') || 'Sana'}</th>
+                  <th className="py-2 px-3 border-r border-slate-200 min-w-[100px]">{t('patientProfile.doctorCol') || 'Shifokor'}</th>
+                  <th className="py-2 px-3 border-r border-slate-200 text-right font-mono min-w-[108px] whitespace-nowrap">{language === 'ru' ? 'Стоимость плана' : language === 'en' ? 'Plan Price' : 'Reja narxi'}</th>
+                  <th className="py-2 px-3 border-r border-slate-200 text-right font-mono min-w-[96px] whitespace-nowrap">{t('patientProfile.paidLabel') || "To'langan"}</th>
+                  <th className="py-2 px-3 border-r border-slate-200 text-right font-mono min-w-[96px] whitespace-nowrap">{language === 'ru' ? 'Остаток долга' : language === 'en' ? 'Remaining Debt' : 'Qoldiq'}</th>
+                  <th className="py-2 px-3 text-center min-w-[88px] whitespace-nowrap">{t('patientProfile.invoiceCol') || 'Faktura'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -979,7 +979,7 @@ function ExcelPaymentsView({
                         <td className="border-r border-slate-200 text-center font-mono font-bold text-slate-500 bg-slate-100/40 text-xs py-1.5 px-2.5">
                           {idx + 1}
                         </td>
-                        <td className="border-r border-slate-200 font-bold text-slate-900 text-sm py-2 px-3">
+                        <td className="border-r border-slate-200 font-bold text-slate-900 text-sm py-2 px-3 whitespace-normal break-words max-w-[240px]">
                           {plan.name || `Davolash rejasi #${idx + 1}`}
                         </td>
                         <td className="border-r border-slate-200 font-mono font-semibold text-slate-700 text-xs sm:text-sm py-2 px-3 whitespace-nowrap">

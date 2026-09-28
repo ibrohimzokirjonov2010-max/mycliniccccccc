@@ -669,10 +669,10 @@ export default function Implants() {
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5 leading-tight">
                 {s.label}
               </span>
-              <div className="text-base sm:text-lg font-black font-mono tracking-tight text-slate-900 truncate">
+              <div className="text-sm sm:text-base font-black font-mono tracking-tight text-slate-900 leading-tight break-words">
                 {s.value}
               </div>
-              <p className="text-[10px] font-bold text-slate-400 mt-0.5 truncate">{s.sub}</p>
+              <p className="text-[10px] font-bold text-slate-400 mt-0.5 leading-snug line-clamp-2">{s.sub}</p>
             </div>
 
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-xs shrink-0 ${s.bg}`}>
@@ -895,7 +895,7 @@ export default function Implants() {
             className="implant-registry-scroll min-w-0 w-full max-w-full overflow-x-auto overscroll-x-contain"
             data-implant-registry-scroll="v1"
           >
-            <table className="w-full min-w-[1080px] border-collapse text-left select-text">
+            <table className="w-full min-w-[920px] border-collapse text-left select-text">
               {/* ─── Excel Table Header ────────────────── */}
               <thead>
                 <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 text-[11px] font-black uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
@@ -953,7 +953,7 @@ export default function Implants() {
                   {/* 4. NARXI */}
                   <th 
                     onClick={() => handleSort('price')}
-                    className="w-36 px-3.5 py-3 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap bg-emerald-50/40"
+                    className="min-w-[132px] px-3 py-3 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap bg-emerald-50/40"
                   >
                     <div className="flex items-center justify-end gap-1.5 text-emerald-900">
                       <span>{language === 'ru' ? '4. Цена' : '4. Narxi'}</span>
@@ -1116,7 +1116,7 @@ export default function Implants() {
                                 data-testid="implant-list-status"
                                 data-implant-status={statusCode}
                                 className={cn(
-                                "h-7 px-2 rounded-lg font-bold text-[11px] mx-auto border transition-colors focus:ring-0 min-w-[132px] max-w-[160px] shrink-0",
+                                "h-7 px-2 rounded-lg font-bold text-[11px] mx-auto border transition-colors focus:ring-0 min-w-[112px] max-w-[148px] shrink-0",
                                 statusClass
                               )}>
                                 <SelectValue />

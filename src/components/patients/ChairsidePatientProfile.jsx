@@ -113,6 +113,8 @@ export default function ChairsidePatientProfile({
       });
     });
 
+    let scope = steps.length ? 'today' : 'plan';
+    const toothSet = new Set();
     if (steps.length === 0) {
       (plans || []).forEach((p) => {
         const st = (p.status || '').toLowerCase();
@@ -121,7 +123,6 @@ export default function ChairsidePatientProfile({
           ? p.services
           : [{ service_name: p.name || p.title, status: p.status, tooth_number: p.tooth_number, completed: st === 'completed' }];
         services.forEach((s, idx) => {
-          if (steps.length >= 3) return;
           const sst = (s.status || p.status || '').toLowerCase();
           let state = 'pending';
           if (s.completed || sst === 'completed' || sst === 'bajarildi') state = 'done';
@@ -152,7 +153,23 @@ export default function ChairsidePatientProfile({
       if (firstPending) firstPending.state = 'active';
     }
 
-    return steps.slice(0, 3);
+    steps.forEach((step) => { if (step.tooth) toothSet.add(String(step.tooth)); });
+    if (scope === 'today') {
+      return { steps, scope, toothCount: toothSet.size, title: 'Bugungi reja' };
+    }
+    const planTeeth = new Set();
+    (plans || []).forEach((p) => {
+      const st = (p.status || '').toLowerCase();
+      if (st === 'cancelled' || st === 'canceled') return;
+      const services = Array.isArray(p.services) && p.services.length ? p.services : [{ tooth_number: p.tooth_number }];
+      const rawTeeth = String(p.tooth_number || '').split(/[,·]/);
+      [...rawTeeth, ...services.map((s) => s.tooth_number || s.tooth_id)].forEach((tooth) => {
+        const clean = String(tooth || '').replace(/^#/, '').trim();
+        if (clean && clean !== 'general') planTeeth.add(clean);
+      });
+    });
+    const toothCount = planTeeth.size || toothSet.size;
+    return { steps, scope, toothCount, title: `Davolash rejasi: ${toothCount} ta` };
   }, [appointments, plans, implants, language]);
 
   const [clinicalTab, setClinicalTab] = useState('tashxis');
@@ -179,7 +196,7 @@ export default function ChairsidePatientProfile({
       window.removeEventListener('resize', apply);
       if (scroller) scroller.style.scrollPaddingTop = '';
     };
-  }, [todaySteps.length]);
+  }, [todaySteps.steps.length]);
 
   const planRemainingTotal = useMemo(() => {
     return (plans || []).reduce((sum, p) => {
@@ -191,7 +208,7 @@ export default function ChairsidePatientProfile({
   }, [plans]);
 
   const activeStep = useMemo(
-    () => (todaySteps || []).find((s) => s.state === 'active') || (todaySteps || []).find((s) => s.state === 'pending') || null,
+    () => (todaySteps.steps || []).find((s) => s.state === 'active') || (todaySteps.steps || []).find((s) => s.state === 'pending') || null,
     [todaySteps]
   );
 
@@ -442,7 +459,8 @@ export default function ChairsidePatientProfile({
 
             <div className="chairside-plan-row" data-chairside-plan="true">
             <TodayPlanBar
-              steps={todaySteps}
+              steps={todaySteps.steps}
+              title={todaySteps.title}
               totalDebt={totalDebt}
               planRemaining={planRemainingTotal}
               activeStep={activeStep}
