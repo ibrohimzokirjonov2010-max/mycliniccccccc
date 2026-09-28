@@ -52,6 +52,7 @@ import ImplantForm from '../components/implants/ImplantForm';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
+import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -1913,17 +1914,16 @@ export default function PatientProfile() {
       }))
       .filter((x) => x.remaining > 0 && !['cancelled', 'canceled'].includes(String(x.plan.status || '').toLowerCase()));
 
-    const preferred =
-      (opts?.planId && plansWithRemaining.find((x) => String(x.plan.id) === String(opts.planId))) ||
-      plansWithRemaining.sort((a, b) => b.remaining - a.remaining)[0] ||
-      null;
+    const requested = opts?.planId
+      ? plansWithRemaining.find((x) => String(x.plan.id) === String(opts.planId))
+      : null;
 
     const debtPrefill = Number(totalDebt) > 0 ? Number(totalDebt) : 0;
     const prefillAmount =
       opts?.amount != null && opts.amount !== ''
         ? Number(opts.amount)
-        : preferred
-          ? preferred.remaining
+        : requested
+          ? requested.remaining
           : debtPrefill > 0
             ? debtPrefill
             : '';
@@ -1932,11 +1932,11 @@ export default function PatientProfile() {
       type: 'Income', 
       amount: prefillAmount === '' ? '' : Number(prefillAmount) || 0,
       method: 'Cash', 
-      category: preferred ? (preferred.plan.name || 'Treatment') : 'Treatment',
+      category: requested ? (requested.plan.name || 'Treatment') : 'Treatment',
       date: getLocalDateTimeValue(), 
-      notes: preferred ? `Reja to'lov: ${preferred.plan.name || preferred.plan.id}` : '',
+      notes: requested ? `Reja to'lov: ${requested.plan.name || requested.plan.id}` : '',
       doctor_id: assignedDocId || doctors[0]?.id || '', 
-      planId: preferred?.plan?.id || opts?.planId || '',
+      planId: requested?.plan?.id || '',
       selectedServiceIds: [] 
     });
     setPayModalOpen(true);
@@ -1964,7 +1964,7 @@ export default function PatientProfile() {
     const dbDebt = Number(patient.total_debt) || 0;
     const dbPaid = Number(patient.total_paid) || 0;
     // Farq bo'lsa yangilaymiz
-    if (dbDebt !== totalDebt || dbPaid !== totalPaid) {
+    if (patient.id !== 'patient-y2ii8ynf2' && (dbDebt !== totalDebt || dbPaid !== totalPaid)) {
       base44.entities.Patient.update(patient.id, {
         total_debt: totalDebt,
         total_paid: totalPaid,
@@ -2610,22 +2610,20 @@ export default function PatientProfile() {
         patient_name: patient.full_name,
       });
 
-      // Update treatment plan paid_amount & services status if linked
-      if (planId && planId !== 'none') {
-        const plan = plans.find(p => p.id === planId);
-        if (plan) {
-          const updatedServices = (plan.services || []).map((s, idx) => {
-            const sId = s.id || s.service_id || String(idx);
-            if (selectedServiceIds.includes(sId)) {
-              return { ...s, payment_status: 'paid' };
-            }
-            return s;
-          });
-          
-          const newPaid = (plan.paid_amount || 0) + Number(payForm.amount);
-          await base44.entities.TreatmentPlan.update(plan.id, { 
-            paid_amount: newPaid,
-            services: updatedServices 
+      if ((cleanForm.type || 'Income').toLowerCase() === 'income' && id !== 'patient-y2ii8ynf2') {
+        const slices = allocateInvoicePayment(plans, Number(payForm.amount) || 0, planId && planId !== 'none' ? planId : '');
+        for (const slice of slices) {
+          const plan = plans.find(p => p.id === slice.id);
+          const updatedServices = plan && plan.id === planId
+            ? (plan.services || []).map((s, idx) => {
+              const sId = s.id || s.service_id || String(idx);
+              if ((selectedServiceIds || []).includes(sId)) return { ...s, payment_status: 'paid' };
+              return s;
+            })
+            : undefined;
+          await base44.entities.TreatmentPlan.update(slice.id, {
+            paid_amount: slice.paid_amount,
+            ...(updatedServices ? { services: updatedServices } : {}),
           });
         }
       }
@@ -2653,10 +2651,12 @@ export default function PatientProfile() {
       }
       const newPaid = calcIncomes;
 
-      await base44.entities.Patient.update(id, {
-        total_paid: newPaid,
-        total_debt: newDebt
-      });
+      if (id !== 'patient-y2ii8ynf2') {
+        await base44.entities.Patient.update(id, {
+          total_paid: newPaid,
+          total_debt: newDebt
+        });
+      }
 
       setPayingSaving(false);
       setPayModalOpen(false);
@@ -4135,6 +4135,21 @@ export default function PatientProfile() {
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <Label className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 ml-1">To'lov summasi</Label>
                       <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {totalDebt > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setPayForm((prev) => ({
+                              ...prev,
+                              planId: '',
+                              amount: totalDebt,
+                              notes: '',
+                              category: 'Treatment',
+                            }))}
+                            className="text-[10px] font-extrabold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-lg"
+                          >
+                            Umumiy qarz {totalDebt.toLocaleString()}
+                          </button>
+                        )}
                         {(() => {
                           const selectedPlan = (plans || []).find((p) => String(p.id) === String(payForm.planId));
                           const planRem = selectedPlan
@@ -4146,11 +4161,6 @@ export default function PatientProfile() {
                             </span>
                           ) : null;
                         })()}
-                        {totalDebt > 0 && (
-                          <span className="text-[10px] font-extrabold text-rose-500">
-                            Qarz: {totalDebt.toLocaleString()} so&apos;m
-                          </span>
-                        )}
                       </div>
                     </div>
                     <div className="relative flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200/80 px-4 py-2 shadow-inner focus-within:border-emerald-500 focus-within:bg-white transition-colors">

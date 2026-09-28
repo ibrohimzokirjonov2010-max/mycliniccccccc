@@ -26,6 +26,12 @@ export function isNewPatient(patient, index) {
   return !index.completed.has(String(patient.id));
 }
 
+/** Same rule on the phone and the desktop patients list. */
+export function isActiveTreatmentPatient(patient) {
+  const status = String(patient?.status || '').trim().toLowerCase();
+  return status === 'active' || status === 'faol';
+}
+
 export function lastVisitKey(patient, index) {
   if (!patient) return '';
   return index?.last?.[String(patient.id)] || dateKeyOf(patient.last_visit) || '';

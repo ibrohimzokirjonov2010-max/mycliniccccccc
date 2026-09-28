@@ -25,7 +25,7 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 import { formatDate } from '@/lib/utils';
-import { buildVisitIndex, isNewPatient, lastVisitKey } from '@/lib/patientVisits';
+import { buildVisitIndex, isActiveTreatmentPatient, isNewPatient, lastVisitKey } from '@/lib/patientVisits';
 
 // Clean single-line phone number formatter (e.g. +998 90 123 45 67)
 const formatPhoneSingleLine = (phone) => {
@@ -132,9 +132,7 @@ export default function Patients() {
           const visitIndex = buildVisitIndex(appts, plans);
           const newCount = docPats.filter((p) => isNewPatient(p, visitIndex)).length;
 
-          const activeCount = docPats.filter(
-            p => p.status === 'Active' || p.status === 'Faol' || (p.status && p.status !== 'Inactive')
-          ).length;
+          const activeCount = docPats.filter(isActiveTreatmentPatient).length;
 
           const debtorCount = docPats.filter(p => (Number(p.total_debt) || 0) > 0).length;
           const totalDebt = docPats.reduce((sum, p) => sum + (Number(p.total_debt) || 0), 0);
@@ -159,9 +157,7 @@ export default function Patients() {
         const total = allPats.length || (await base44.entities.Patient.count().catch(() => 0));
         const visitIndex = buildVisitIndex(appts, plans);
         const newCount = allPats.filter((p) => isNewPatient(p, visitIndex)).length;
-        const activeCount = allPats.filter(
-          p => p.status === 'Active' || p.status === 'Faol'
-        ).length;
+        const activeCount = allPats.filter(isActiveTreatmentPatient).length;
         const debtorCount = allPats.filter(p => (Number(p.total_debt) || 0) > 0).length;
         const totalDebt = allPats.reduce((sum, p) => sum + (Number(p.total_debt) || 0), 0);
         const totalPaid = allPats.reduce((sum, p) => sum + (Number(p.total_paid) || 0), 0);
@@ -285,7 +281,7 @@ export default function Patients() {
     } else if (activeFilter === 'new') {
       list = list.filter(p => isNewPatient(p, visits));
     } else if (activeFilter === 'active') {
-      list = list.filter(p => p.status === 'Active' || p.status === 'Faol');
+      list = list.filter(isActiveTreatmentPatient);
     }
 
     // Client-side sorting
@@ -519,7 +515,7 @@ export default function Patients() {
           {/* Quick Filter Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
-              { id: 'all', label: t('patients.allPatients') || "Barchasi", count: allPatients.length },
+              { id: 'all', label: t('patients.allPatients') || "Barchasi", count: stats?.total || allPatients.length },
               { id: 'debtors', label: t('patients.debtorsOnly') || "Qarzdorlar", count: stats?.debtors || 0, badgeColor: 'bg-rose-500 text-white' },
               { id: 'nodebt', label: t('patients.noDebt') || "Qarzsiz" },
               { id: 'new', label: t('patients.newPatients') || "Yangi", count: stats?.new || 0 },

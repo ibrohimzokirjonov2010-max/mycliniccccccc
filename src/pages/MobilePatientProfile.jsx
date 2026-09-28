@@ -12,6 +12,7 @@ import {
   Stethoscope, Receipt, X, Check, Camera, Activity
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
 import { toast } from 'sonner';
 import { cn, resolveDoctorId } from '@/lib/utils';
 import { patientGenderLabel } from '@/lib/patientGender';
@@ -191,6 +192,7 @@ export default function MobilePatientProfile() {
     category: 'Treatment', date: getLocalDT(), notes: '', doctor_id: '',
   });
   const [payingSaving, setPayingSaving] = useState(false);
+  const [payPlanId, setPayPlanId] = useState('');
   const [selectedTooth, setSelectedTooth]       = useState(null);
   const [toothRecords, setToothRecords]         = useState([]);
   const [toothHistoryOpen, setToothHistoryOpen] = useState(false);
@@ -457,9 +459,10 @@ export default function MobilePatientProfile() {
   /* ── open pay modal ── */
   const openPayModal = useCallback((prefillCategory = 'Treatment', prefillNotes = '', prefillAmount = '') => {
     const docId = resolveDoctorId(patient, plans, doctors, user, isDoctor);
+    setPayPlanId('');
     setPayForm({
       type: 'Income',
-      amount: prefillAmount ? String(prefillAmount) : '',
+      amount: prefillAmount ? String(prefillAmount) : (financials.debt > 0 ? String(Math.round(financials.debt)) : ''),
       method: 'Cash',
       category: prefillCategory,
       date: getLocalDT(),
@@ -467,24 +470,33 @@ export default function MobilePatientProfile() {
       doctor_id: docId || doctors[0]?.id || ''
     });
     setPayModalOpen(true);
-  }, [patient, plans, doctors, user, isDoctor]);
+  }, [patient, plans, doctors, user, isDoctor, financials.debt]);
 
   /* ── save payment ── */
   const handleSavePay = async () => {
     if (payingSavingRef.current || !payForm.amount) { toast.error('Summani kiriting'); return; }
+    if (id === 'patient-y2ii8ynf2') { toast.error("Bu test bemor ma'lumoti o'zgartirilmaydi"); return; }
     payingSavingRef.current = true;
     setPayingSaving(true);
     try {
+      const amount = Number(String(payForm.amount).replace(/\D/g, ''));
       const txId = payTxRef.current || (payTxRef.current = `pay_${id}_${Date.now()}`);
       await base44.entities.Payment.create({
         id: txId, patient_id: id, patient_name: patient?.full_name,
-        type: payForm.type, amount: Number(String(payForm.amount).replace(/\D/g, '')),
+        type: payForm.type, amount,
         method: payForm.method, category: payForm.category,
         date: payForm.date || new Date().toISOString(), notes: payForm.notes, doctor_id: payForm.doctor_id,
       });
+      if ((payForm.type || 'Income').toLowerCase() === 'income') {
+        const slices = allocateInvoicePayment(plans, amount, payPlanId);
+        for (const slice of slices) {
+          await base44.entities.TreatmentPlan.update(slice.id, { paid_amount: slice.paid_amount });
+        }
+      }
       payTxRef.current = '';
       toast.success("To'lov saqlandi");
       setPayModalOpen(false);
+      setPayPlanId('');
       setRefreshTick(tick => tick + 1);
     } catch (err) { console.error(err); toast.error('Saqlashda xatolik'); }
     finally { payingSavingRef.current = false; setPayingSaving(false); }
@@ -1151,17 +1163,20 @@ export default function MobilePatientProfile() {
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center justify-between mb-1 gap-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase">
                       {t('patientProfile.installments.paymentAmount', 'Summa')} ({t('dashboard.currency', "so'm")})
                     </label>
                     {financials.debt > 0 && (
                       <button
                         type="button"
-                        onClick={() => setPayForm(p => ({ ...p, amount: String(financials.debt) }))}
-                        className="text-[10px] font-bold text-rose-600 hover:underline"
+                        onClick={() => {
+                          setPayPlanId('');
+                          setPayForm(p => ({ ...p, amount: String(Math.round(financials.debt)), notes: '' }));
+                        }}
+                        className="text-[10px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-lg"
                       >
-                        Qarzni to'ldirish ({fmt(financials.debt)})
+                        Umumiy qarz {fmt(financials.debt)}
                       </button>
                     )}
                   </div>
@@ -1174,6 +1189,38 @@ export default function MobilePatientProfile() {
                     className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xl font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#14b8a6]/30 focus:border-[#14b8a6] transition-all"
                   />
                 </div>
+
+                {plans.some(plan => Math.max(0, (Number(plan.total_price) || 0) - (Number(plan.paid_amount) || 0)) > 0) && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">Hisob-faktura</p>
+                    {plans.map(plan => {
+                      const remaining = Math.max(0, (Number(plan.total_price) || 0) - (Number(plan.paid_amount) || 0));
+                      if (remaining <= 0) return null;
+                      const selected = String(payPlanId) === String(plan.id);
+                      return (
+                        <button
+                          key={plan.id}
+                          type="button"
+                          onClick={() => {
+                            setPayPlanId(plan.id);
+                            setPayForm(p => ({
+                              ...p,
+                              amount: String(Math.round(remaining)),
+                              notes: `Reja to'lov: ${plan.name || ''}`,
+                            }));
+                          }}
+                          className={cn(
+                            'w-full text-left rounded-xl border px-3 py-2',
+                            selected ? 'border-[#14b8a6] bg-teal-50' : 'border-slate-200 bg-slate-50'
+                          )}
+                        >
+                          <p className="text-xs font-black text-slate-800 leading-snug break-words">{plan.name || 'Davolash rejasi'}</p>
+                          <p className="text-[10px] font-bold text-rose-600 mt-0.5">Qoldiq: {fmt(remaining)} so'm</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
                 <div className="flex gap-2">
                   {[

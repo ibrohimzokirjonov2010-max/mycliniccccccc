@@ -4,7 +4,7 @@ function paymentSortKey(payment) {
   return String(payment?.created_at || payment?.created_date || (payment?.date ? `${payment.date}T00:00:00Z` : ''));
 }
 
-function isLinkedPlanInternal(payment, type) {
+export function isLinkedPlanInternal(payment, type) {
   if (type !== 'debt' && type !== 'discount') return false;
   const notes = String(payment?.notes || '').toLowerCase();
   return Boolean(
@@ -14,6 +14,13 @@ function isLinkedPlanInternal(payment, type) {
     || notes.includes('avtomatik chegirma')
     || notes.includes('reja yangilandi')
   );
+}
+
+/** Rows that belong on the payments list (not plan bookkeeping). */
+export function isListedPayment(payment) {
+  const type = String(payment?.type || 'Income').toLowerCase();
+  if (isLinkedPlanInternal(payment, type)) return false;
+  return type === 'income' || type === 'expense' || type === 'refund';
 }
 
 /**

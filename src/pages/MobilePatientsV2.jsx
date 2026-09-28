@@ -9,7 +9,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import { formatCurrency, capitalizeName, formatDate, formatPhone } from '@/lib/utils';
-import { buildVisitIndex, isNewPatient, lastVisitKey } from '@/lib/patientVisits';
+import { buildVisitIndex, isActiveTreatmentPatient, isNewPatient, lastVisitKey } from '@/lib/patientVisits';
 import NewPatientFlow from '@/components/patients/NewPatientFlow';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
@@ -95,7 +95,7 @@ export default function MobilePatientsV2() {
                          p.phone?.includes(searchQuery);
     const fresh = isNewPatient(p, visitIndex);
     const matchesStatus = filterStatus === 'all'
-      || (filterStatus === 'New' ? fresh : filterStatus === 'Active' ? !fresh && p.status !== 'Inactive' : p.status === filterStatus);
+      || (filterStatus === 'New' ? fresh : filterStatus === 'Active' ? isActiveTreatmentPatient(p) : p.status === filterStatus);
     return matchesSearch && matchesStatus;
   });
 
@@ -152,7 +152,7 @@ export default function MobilePatientsV2() {
 
   const totalDebt = patients.reduce((sum, p) => sum + (p.total_debt || 0), 0);
   const newCount = patients.filter(p => isNewPatient(p, visitIndex)).length;
-  const activeCount = patients.length - newCount;
+  const activeCount = patients.filter(isActiveTreatmentPatient).length;
 
   return (
     <PullToRefresh onRefresh={loadPatients}>
@@ -179,7 +179,7 @@ export default function MobilePatientsV2() {
             <div className="flex gap-3 mb-5">
               <div className="flex-1 bg-emerald-50 rounded-xl p-3">
                 <p className="text-2xl font-bold text-emerald-700">{activeCount}</p>
-                <p className="text-xs font-medium text-emerald-600/70">{t('patients.active')}</p>
+                <p className="text-xs font-medium text-emerald-600/70">{t('patients.activeTreatment') || 'Faol davolanish'}</p>
               </div>
               <div className="flex-1 bg-blue-50 rounded-xl p-3">
                 <p className="text-2xl font-bold text-blue-700">{newCount}</p>

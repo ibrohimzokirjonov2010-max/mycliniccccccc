@@ -26,7 +26,8 @@ import { useClinic } from '@/lib/ClinicContext';
 import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel, resolveDoctorId, formatPhone, displayDoctorName } from '@/lib/utils';
 import { paymentStamp, tashkentToday, formatClinicDate, formatClinicDateTime, parseDisplayDateTime } from '@/lib/clinicTime';
 import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
-import { computePatientBalances } from '@/lib/paymentDebt';
+import { computePatientBalances, isListedPayment } from '@/lib/paymentDebt';
+import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
 import { toast } from 'sonner';
 import '@/components/payments/paymentAddModal.css';
 
@@ -253,6 +254,7 @@ export default function Payments() {
   const [loadingDebt, setLoadingDebt] = useState(false);
   const [patientBalances, setPatientBalances] = useState({});
   const [patientPlans, setPatientPlans] = useState([]);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
   const [selectedPlanForInvoice, setSelectedPlanForInvoice] = useState(null);
   const [showPlanInvoiceModal, setShowPlanInvoiceModal] = useState(false);
   const [patientPaymentsHistory, setPatientPaymentsHistory] = useState([]);
@@ -476,18 +478,23 @@ export default function Payments() {
   });
 
   const stats = useMemo(() => {
-    if (!statsData) return { totalRevenue: 0, monthRevenue: 0, todayRevenue: 0, totalCount: 0 };
+    if (!statsData) return { totalRevenue: 0, monthRevenue: 0, todayRevenue: 0, totalCount: 0, listedCount: null, todayCount: null, monthCount: null };
     const today = tashkentToday();
     const filteredStats = (statsData || []).filter(p => {
       if (isDoctor && user?.id && String(p.doctor_id) !== String(user.id)) return false;
       return true;
     });
     const incomePays = filteredStats.filter(p => !p.type || p.type?.toLowerCase() === 'income');
+    const listed = filteredStats.filter(isListedPayment);
+    const stampDay = (p) => String(p.date || '').slice(0, 10);
     return {
       totalRevenue: incomePays.reduce((s, p) => s + (Number(p.amount) || 0), 0),
       monthRevenue: incomePays.filter(p => (p.date || '').slice(0, 7) === today.slice(0, 7)).reduce((s, p) => s + (Number(p.amount) || 0), 0),
       todayRevenue: incomePays.filter(p => (p.date || '').slice(0, 10) === today).reduce((s, p) => s + (Number(p.amount) || 0), 0),
       totalCount: filteredStats.length,
+      listedCount: listed.length,
+      todayCount: listed.filter(p => stampDay(p) === today).length,
+      monthCount: listed.filter(p => stampDay(p).slice(0, 7) === today.slice(0, 7)).length,
     };
   }, [statsData, isDoctor, user?.id]);
 
@@ -806,6 +813,7 @@ export default function Payments() {
       });
       setPatientServices([]);
       setSelectedServiceId('');
+      setSelectedInvoiceId('');
       setPatientPlans([]);
     }, 100);
   };
@@ -837,6 +845,7 @@ export default function Payments() {
     const savedAmount = Number(form.amount) || 0;
     const savedServiceId = selectedServiceId;
     const savedServiceObj = patientServices.find(s => s.id === selectedServiceId) || null;
+    const savedInvoiceId = selectedInvoiceId;
 
     let finalDate;
     try {
@@ -896,41 +905,27 @@ export default function Payments() {
       Promise.resolve().then(async () => {
         try {
           // Tanlangan xizmatni yoki rejani "to'langan" deb belgilash va paid_amount ni sinxronlashtirish
-          if (savedType.toLowerCase() === 'income') {
+          if (savedType.toLowerCase() === 'income' && savedPatientId !== 'patient-y2ii8ynf2') {
             try {
-              const plans = await base44.entities.TreatmentPlan.filter({ patient_id: savedPatientId }, '-created_date', 50);
-              if (plans && plans.length > 0) {
-                if (savedServiceObj) {
-                  const targetPlan = plans.find(pl => pl.id === savedServiceObj.plan_id);
-                  if (targetPlan) {
-                    const updatedServices = (targetPlan.services || []).map(svc => {
-                      const svcName = svc.service_name || svc.name || '';
-                      const svcTooth = targetPlan.tooth_number || '';
-                      if (svcName === savedServiceObj.service_name && svcTooth === savedServiceObj.tooth_number) {
-                        return { ...svc, payment_status: 'paid' };
-                      }
-                      return svc;
-                    });
-                    const newPaid = Math.min(
-                      (Number(targetPlan.paid_amount) || 0) + savedAmount,
-                      Number(targetPlan.total_price) || 0
-                    );
-                    await base44.entities.TreatmentPlan.update(targetPlan.id, {
-                      paid_amount: newPaid,
-                      services: updatedServices,
-                    });
-                  }
-                } else if (plans.length === 1) {
-                  // Yagona reja bo'lsa, umumiy to'lov ham unga qo'shiladi
-                  const targetPlan = plans[0];
-                  const newPaid = Math.min(
-                    (Number(targetPlan.paid_amount) || 0) + savedAmount,
-                    Number(targetPlan.total_price) || 0
-                  );
-                  await base44.entities.TreatmentPlan.update(targetPlan.id, {
-                    paid_amount: newPaid,
+              const plans = await base44.entities.TreatmentPlan.filter({ patient_id: savedPatientId }, 'created_date', 50);
+              const slices = allocateInvoicePayment(plans, savedAmount, savedInvoiceId || savedServiceObj?.plan_id || '');
+              for (const slice of slices) {
+                const targetPlan = (plans || []).find(pl => pl.id === slice.id);
+                let services = targetPlan?.services;
+                if (targetPlan && savedServiceObj && targetPlan.id === savedServiceObj.plan_id) {
+                  services = (targetPlan.services || []).map(svc => {
+                    const svcName = svc.service_name || svc.name || '';
+                    const svcTooth = targetPlan.tooth_number || '';
+                    if (svcName === savedServiceObj.service_name && svcTooth === savedServiceObj.tooth_number) {
+                      return { ...svc, payment_status: 'paid' };
+                    }
+                    return svc;
                   });
                 }
+                await base44.entities.TreatmentPlan.update(slice.id, {
+                  paid_amount: slice.paid_amount,
+                  ...(services ? { services } : {}),
+                });
               }
             } catch (planErr) {
               console.error('Plan update error:', planErr);
@@ -938,7 +933,7 @@ export default function Payments() {
           }
 
           // Bemor qarzi yangilash — barcha to'lovlardan qayta hisoblanadi (aniq natija)
-          if (savedPatientId) {
+          if (savedPatientId && savedPatientId !== 'patient-y2ii8ynf2') {
             // Barcha to'lovlarni olib, qarzni qayta hisoblaymiz — PatientProfile bilan bir xil formula
             const allPays = await base44.entities.Payment.filter({ patient_id: savedPatientId }, 'date', 5000);
 
@@ -1772,6 +1767,7 @@ export default function Payments() {
 
   // Bemor tanlanganida uning xizmatlarini avtomatik yuklash
   useEffect(() => {
+    setSelectedInvoiceId('');
     if (form.patient_id) {
       // Xizmatlarni yuklash (to'lanmagan rejalardan)
       const fetchServices = async () => {
@@ -1840,9 +1836,16 @@ export default function Payments() {
           }
 
           setRealPatientDebt(realDebt);
+          setForm(prev => {
+            if (String(prev.patient_id) !== String(form.patient_id)) return prev;
+            if (prev.amount === '' || prev.amount === 0 || prev.amount == null) {
+              return { ...prev, amount: realDebt > 0 ? realDebt : '' };
+            }
+            return prev;
+          });
 
           const pat = patients.find(p => p.id === form.patient_id);
-          if (pat && Number(pat.total_debt) !== realDebt) {
+          if (pat && form.patient_id !== 'patient-y2ii8ynf2' && Number(pat.total_debt) !== realDebt) {
             base44.entities.Patient.update(form.patient_id, { total_debt: realDebt, total_paid: totalIncomes }).catch(() => {});
             setPatients(prev => prev.map(pt => pt.id === form.patient_id ? { ...pt, total_debt: realDebt, total_paid: totalIncomes } : pt));
           }
@@ -1857,6 +1860,7 @@ export default function Payments() {
     } else {
       setPatientServices([]);
       setSelectedServiceId('');
+      setSelectedInvoiceId('');
       setRealPatientDebt(null);
     }
   }, [form.patient_id]);
@@ -1887,7 +1891,7 @@ export default function Payments() {
                 </div>
                 <span className="w-1 h-1 rounded-full bg-slate-200" />
                 <span className="text-[10px] font-bold text-slate-500">
-                  {sortedDisplayPayments.length} {t('common.total')}
+                  {stats.listedCount == null ? '…' : stats.listedCount} {t('common.total')}
                 </span>
               </div>
             </div>
@@ -1969,12 +1973,10 @@ export default function Payments() {
           {/* Quick Filter Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {(() => {
-              const today = tashkentToday();
-              const thisMonth = today.slice(0, 7);
               return [
-                { id: 'all', label: "Barchasi", count: displayPayments.length },
-                { id: 'today', label: "Bugun", count: displayPayments.filter(p => (p.date || p.created_date || p.created_at || '').slice(0, 10) === today).length },
-                { id: 'thisMonth', label: "Shu oy", count: displayPayments.filter(p => (p.date || p.created_date || p.created_at || '').slice(0, 7) === thisMonth).length },
+                { id: 'all', label: "Barchasi", count: stats.listedCount == null ? undefined : stats.listedCount },
+                { id: 'today', label: "Bugun", count: stats.todayCount == null ? undefined : stats.todayCount },
+                { id: 'thisMonth', label: "Shu oy", count: stats.monthCount == null ? undefined : stats.monthCount },
                 { id: 'hasDebt', label: "Qarzdorlar to'lovi", badgeColor: 'bg-rose-500 text-white' },
                 { id: 'cash', label: "Naqd pul" },
                 { id: 'card', label: "Karta" }
@@ -2085,10 +2087,10 @@ export default function Payments() {
                   {/* Remaining Debt */}
                   <th 
                     onClick={() => handleSort('debt')}
-                    className="w-32 px-3 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-rose-50/40 select-none whitespace-nowrap"
+                    className="min-w-[8.5rem] px-3 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-rose-50/40 select-none"
                   >
                     <div className="flex items-center justify-end gap-1.5 text-rose-600">
-                      <span>{t('common.debt') || "Qarz"}</span>
+                      <span className="leading-tight text-right">To‘lovdan keyin qoldiq</span>
                       {sortField === 'debt' ? (
                         sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                       ) : (
@@ -2140,6 +2142,7 @@ export default function Payments() {
                     const debtVal = (patientBalances[p.id]?.debtAtTime !== undefined)
                       ? patientBalances[p.id].debtAtTime
                       : (p.debt_amount !== undefined && p.debt_amount !== null ? Number(p.debt_amount) : (Number(pat?.total_debt) || 0));
+                    const currentDebt = patientCurrentTotals[p.patient_id]?.currentDebt;
                     const isCompact = density === 'compact';
                     const stamp = paymentStamp(p);
 
@@ -2238,16 +2241,21 @@ export default function Payments() {
 
                         {/* Remaining Debt Cell */}
                         <td className={`text-right border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
-                          <span className={`font-mono font-bold text-xs tabular-nums ${debtVal > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
-                            {debtVal > 0 ? (
-                              <>
-                                {debtVal.toLocaleString()}
-                                <span className="text-[9.5px] font-normal text-slate-400 ml-1">UZS</span>
-                              </>
-                            ) : (
-                              <span className="text-emerald-600 font-semibold text-[11px]">✓ To'liq</span>
+                          <div className="flex flex-col items-end leading-tight">
+                            <span className={`font-mono font-bold text-xs tabular-nums ${debtVal > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                              {debtVal > 0 ? (
+                                <>
+                                  {debtVal.toLocaleString()}
+                                  <span className="text-[9.5px] font-normal text-slate-400 ml-1">UZS</span>
+                                </>
+                              ) : (
+                                <span className="text-emerald-600 font-semibold text-[11px]">✓ To'liq</span>
+                              )}
+                            </span>
+                            {currentDebt != null && Number(currentDebt) !== Number(debtVal) && (
+                              <span className="text-[9px] font-bold text-slate-400">Hozirgi qarz {Number(currentDebt).toLocaleString()}</span>
                             )}
-                          </span>
+                          </div>
                         </td>
 
                         {/* Doctor Cell */}
@@ -2332,8 +2340,11 @@ export default function Payments() {
           </div>
         </motion.div>
 
-        {hasMore && (
-          <div className="flex justify-center mt-4 pb-4">
+        <div className="flex flex-col items-center gap-2 mt-4 pb-4">
+          <p className="text-[11px] font-bold text-slate-500">
+            Ko‘rsatilmoqda {sortedDisplayPayments.length} / {stats.listedCount == null ? '…' : stats.listedCount}
+          </p>
+          {hasMore && (
             <Button 
               onClick={() => setPage(p => p + 1)}
               disabled={loadingMore}
@@ -2341,8 +2352,8 @@ export default function Payments() {
             >
               {loadingMore ? 'Yuklanmoqda...' : 'Ko\'proq yuklash'}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </>
       ) : (
         /* Mobile View */
@@ -2431,7 +2442,7 @@ export default function Payments() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-[8px] font-black text-rose-400 uppercase tracking-wide mb-0.5">Qarz</p>
+                  <p className="text-[8px] font-black text-rose-400 uppercase tracking-wide mb-0.5 leading-tight">To‘lovdan keyin qoldiq</p>
                   <p className={`text-[10px] font-black ${debtVal > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
                     {debtVal > 0 ? debtVal.toLocaleString() : '✓ To\'liq'}
                   </p>
@@ -2569,6 +2580,7 @@ export default function Payments() {
                                 key={plan.id} 
                                 onClick={() => {
                                   const planDocId = resolveDoctorId(null, [plan], doctors, user, isDoctor);
+                                  setSelectedInvoiceId(plan.id);
                                   setForm(prev => ({
                                     ...prev,
                                     amount: remaining > 0 ? remaining : prev.amount,
@@ -2577,7 +2589,11 @@ export default function Payments() {
                                   }));
                                   toast.info(`${plan.name} tanlandi (${remaining.toLocaleString()} UZS)`);
                                 }}
-                                className="flex items-center justify-between bg-slate-50/70 hover:bg-emerald-50/60 hover:border-emerald-200 cursor-pointer rounded-lg px-2.5 py-1.5 border border-slate-100 transition-all duration-200 group"
+                                className={`flex items-center justify-between cursor-pointer rounded-lg px-2.5 py-1.5 border transition-all duration-200 group ${
+                                  String(selectedInvoiceId) === String(plan.id)
+                                    ? 'bg-emerald-50 border-emerald-300 ring-1 ring-emerald-200'
+                                    : 'bg-slate-50/70 hover:bg-emerald-50/60 hover:border-emerald-200 border-slate-100'
+                                }`}
                                 title="Ushbu reja summasini to'lovga kiritish"
                               >
                                 <div className="flex-1 min-w-0 mr-2">
@@ -2728,7 +2744,16 @@ export default function Payments() {
                         return (
                           <div className="mt-1 space-y-1.5">
                             <div className="flex items-center justify-between px-2">
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Bemor qarzi:</span>
+                              <button
+                                type="button"
+                                className="text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-rose-600"
+                                onClick={() => {
+                                  setSelectedInvoiceId('');
+                                  if (debt > 0) setForm(prev => ({ ...prev, amount: debt, service_name: '' }));
+                                }}
+                              >
+                                Umumiy qarz
+                              </button>
                               {loadingDebt ? (
                                 <span className="text-[9px] font-black text-slate-300 uppercase">Hisoblanmoqda...</span>
                               ) : (

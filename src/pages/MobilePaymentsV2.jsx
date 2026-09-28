@@ -15,6 +15,7 @@ import { paymentStamp, formatClinicDateTime } from '@/lib/clinicTime';
 import { computePatientBalances } from '@/lib/paymentDebt';
 import { Input } from '@/components/ui/input';
 import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
+import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -515,6 +516,31 @@ export default function MobilePaymentsV2() {
           });
           setPatientServices(unpaidServices);
 
+          const incomes = (patientPays || []).filter(p => p.type?.toLowerCase() === 'income').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+          const debts = (patientPays || []).filter(p => p.type?.toLowerCase() === 'debt').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+          const refunds = (patientPays || []).filter(p => p.type?.toLowerCase() === 'refund').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+          const discounts = (patientPays || []).filter(p => p.type?.toLowerCase() === 'discount').reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
+          const plansPrice = (plans || []).reduce((sum, plan) => sum + (Number(plan.total_price) || 0), 0);
+          let openedDebt = 0;
+          if (debts > 0) {
+            const net = incomes + discounts - debts - refunds;
+            openedDebt = net < 0 ? Math.abs(net) : 0;
+          } else if ((plans || []).length > 0) {
+            const net = incomes + discounts - plansPrice;
+            openedDebt = net < 0 ? Math.abs(net) : 0;
+          } else {
+            const net = incomes - refunds;
+            openedDebt = net < 0 ? Math.abs(net) : 0;
+          }
+          if (openedDebt > 0) {
+            setFormData(prev => {
+              if (String(prev.patient_id) !== String(formData.patient_id)) return prev;
+              if (selectedPlanId) return prev;
+              if (prev.amount !== '' && prev.amount != null && Number(prev.amount) !== 0) return prev;
+              return { ...prev, amount: String(Math.round(openedDebt)) };
+            });
+          }
+
           // Shifokorni avtomatik biriktirish (agar tanlanmagan bo'lsa yoki noto'g'ri bo'lsa)
           const currentPat = patients.find(p => p.id === formData.patient_id);
           const autoDocId = resolveDoctorId(currentPat, plans, doctors, user, isDoctor);
@@ -568,6 +594,12 @@ export default function MobilePaymentsV2() {
       }));
     } else {
       setSelectedPlanServiceIds([]);
+      setFormData(prev => ({
+        ...prev,
+        amount: selectedPatientDebt > 0 ? String(selectedPatientDebt) : '',
+        category: 'Treatment',
+        notes: '',
+      }));
     }
   };
 
@@ -702,52 +734,23 @@ export default function MobilePaymentsV2() {
         debt_amount: formData.patient_id ? newDebt : null
       });
 
-      // Update treatment plan paid_amount
-      if (selectedPlanId) {
-        const plan = patientPlans.find(p => p.id === selectedPlanId);
-        if (plan) {
-          const newServices = JSON.parse(JSON.stringify(plan.services || []));
-          selectedPlanServiceIds.forEach(idx => {
-            if (newServices[idx]) {
-                newServices[idx].payment_status = 'paid';
-            }
-          });
-          const newPaid = (plan.paid_amount || 0) + parsedAmount;
-          await base44.entities.TreatmentPlan.update(plan.id, { paid_amount: newPaid, services: newServices });
-        }
-      } else if (formData.type === 'Income' && formData.patient_id) {
-        // Automatically distribute general payment to active treatment plans (oldest first)
+      if ((formData.type || 'Income').toLowerCase() === 'income' && formData.patient_id && formData.patient_id !== 'patient-y2ii8ynf2') {
         try {
-          const plans = await base44.entities.TreatmentPlan.filter({ patient_id: formData.patient_id }, 'created_date', 50);
-          const activePlans = (plans || []).filter(p => (p.paid_amount || 0) < p.total_price);
-          let remainingPayment = parsedAmount;
-          
-          for (const plan of activePlans) {
-            if (remainingPayment <= 0) break;
-            const planRemaining = plan.total_price - (plan.paid_amount || 0);
-            const applyAmount = Math.min(remainingPayment, planRemaining);
-            
-            const newPaid = (plan.paid_amount || 0) + applyAmount;
-            const newServices = JSON.parse(JSON.stringify(plan.services || []));
-            let tempRemaining = applyAmount;
-            
-            for (let i = 0; i < newServices.length; i++) {
-              if (tempRemaining <= 0) break;
-              const s = newServices[i];
-              if (s.payment_status !== 'paid') {
-                const svcPrice = s.price || 0;
-                if (tempRemaining >= svcPrice) {
-                  newServices[i].payment_status = 'paid';
-                  tempRemaining -= svcPrice;
-                }
-              }
+          const plans = patientAllPlans.length
+            ? patientAllPlans
+            : await base44.entities.TreatmentPlan.filter({ patient_id: formData.patient_id }, 'created_date', 50);
+          const slices = allocateInvoicePayment(plans, parsedAmount, selectedPlanId || '');
+          for (const slice of slices) {
+            const plan = (plans || []).find(p => p.id === slice.id);
+            const patch = { paid_amount: slice.paid_amount };
+            if (plan && plan.id === selectedPlanId && selectedPlanServiceIds.length) {
+              const newServices = JSON.parse(JSON.stringify(plan.services || []));
+              selectedPlanServiceIds.forEach(idx => {
+                if (newServices[idx]) newServices[idx].payment_status = 'paid';
+              });
+              patch.services = newServices;
             }
-            
-            await base44.entities.TreatmentPlan.update(plan.id, { 
-              paid_amount: newPaid, 
-              services: newServices 
-            });
-            remainingPayment -= applyAmount;
+            await base44.entities.TreatmentPlan.update(slice.id, patch);
           }
         } catch (planErr) {
           console.error("Failed to automatically distribute payment to plans:", planErr);
@@ -755,7 +758,7 @@ export default function MobilePaymentsV2() {
       }
 
       // Update patient stats in DB
-      if (formData.patient_id) {
+      if (formData.patient_id && formData.patient_id !== 'patient-y2ii8ynf2') {
         await base44.entities.Patient.update(formData.patient_id, {
           total_paid: newPaid,
           total_debt: newDebt
@@ -844,8 +847,8 @@ export default function MobilePaymentsV2() {
           <div className="flex-1 min-w-0 space-y-0.5">
 
             {/* Row 1: patient name + type badge + Chek badge */}
-            <div className="flex items-center gap-1.5 leading-none">
-              <span className="text-[13px] font-bold text-slate-900 truncate max-w-[150px]">
+            <div className="flex items-start gap-1.5">
+              <span className="flex-1 text-[13px] font-bold text-slate-900 leading-snug line-clamp-2 break-words min-w-0">
                 {payment.patient_name || '—'}
               </span>
               <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-black tracking-wide ${style.bg} ${style.text}`}>
@@ -897,7 +900,7 @@ export default function MobilePaymentsV2() {
                     <p className={cn("text-[10px] font-black mt-1 uppercase tracking-tight",
                       qarz > 0 ? 'text-rose-500' : 'text-emerald-500'
                     )}>
-                      {qarz > 0 ? `Qarz: ${qarz.toLocaleString()} UZS` : '✓ To\'liq'}
+                      {qarz > 0 ? `To‘lovdan keyin qoldiq: ${qarz.toLocaleString()}` : '✓ To\'liq'}
                     </p>
                   )}
                 </>
@@ -1022,7 +1025,7 @@ export default function MobilePaymentsV2() {
         </div>
 
         {/* Payments List */}
-        <div className="p-4">
+        <div className="p-4" style={{ paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))' }}>
           {loading ? (
             <>
               <SkeletonCard />
@@ -1147,8 +1150,17 @@ export default function MobilePaymentsV2() {
                         </div>
 
                         {formData.patient_id && (
-                          <div className={cn(
-                            "rounded-2xl border px-4 py-3 flex items-center justify-between shadow-sm transition-colors relative z-40",
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedPlanId('');
+                              setSelectedPlanServiceIds([]);
+                              if (selectedPatientDebt > 0) {
+                                setFormData(prev => ({ ...prev, amount: String(selectedPatientDebt), category: 'Treatment', notes: '' }));
+                              }
+                            }}
+                            className={cn(
+                            "w-full text-left rounded-2xl border px-4 py-3 flex items-center justify-between shadow-sm transition-colors relative z-40",
                             selectedPatientDebt > 0 ? "border-amber-100 bg-amber-50/50" : "border-emerald-100 bg-emerald-50/50"
                           )}>
                             <div className="flex items-center gap-2">
@@ -1157,7 +1169,7 @@ export default function MobilePaymentsV2() {
                                 selectedPatientDebt > 0 ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
                               )} />
                               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                Bemor qarzi
+                                Umumiy qarz
                               </span>
                             </div>
                             <span className={cn(
@@ -1166,7 +1178,7 @@ export default function MobilePaymentsV2() {
                             )}>
                               {selectedPatientDebt > 0 ? `${selectedPatientDebt.toLocaleString('ru-RU')} so'm` : "Qarz yo'q"}
                             </span>
-                          </div>
+                          </button>
                         )}
                         
                         {isIncomeBlockedForPatient && (
