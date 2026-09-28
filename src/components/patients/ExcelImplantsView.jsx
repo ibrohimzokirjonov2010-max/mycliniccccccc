@@ -63,7 +63,7 @@ function ExcelImplantsView({
         data-testid="profile-implant-status"
         data-implant-status={code}
         className={cn(
-          'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border font-bold text-[11px] whitespace-nowrap',
+          'inline-flex items-center justify-center gap-1 px-1 py-0.5 rounded-full border font-bold text-[10px] leading-tight text-center max-w-full whitespace-normal',
           implantStatusClass(status),
         )}
       >
@@ -174,18 +174,29 @@ function ExcelImplantsView({
       {/* ── DESKTOP TABLE ── */}
       <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] border-collapse text-left text-sm">
+            <table className="w-full table-fixed border-collapse text-left text-sm">
+            <colgroup>
+              <col className="w-8" />
+              <col className="w-[72px]" />
+              <col />
+              <col className="w-[72px]" />
+              <col className="w-[64px]" />
+              <col className="w-[78px]" />
+              <col className="w-[14%]" />
+              <col className="w-[18%]" />
+              <col className="w-[76px]" />
+            </colgroup>
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
-                <th className="py-2.5 px-2 border-r border-slate-100 w-8 min-w-[28px] text-center">№</th>
-                <th className="py-2.5 px-1.5 border-r border-slate-100 w-auto min-w-[72px] text-center">Tish FDI</th>
-                <th className="py-2.5 px-2 border-r border-slate-100 min-w-[105px] max-w-[145px]">{t('patientProfile.brandSystemCol') || "Brend / Tizim"}</th>
-                <th className="py-2.5 px-1.5 border-r border-slate-100 text-center w-24 min-w-[78px]">{t('patientProfile.sizeCol') || "O'lchami"}</th>
-                <th className="py-2.5 px-1.5 border-r border-slate-100 text-center w-20 min-w-[68px]">Lot #</th>
-                <th className="py-2.5 px-1.5 border-r border-slate-100 text-center w-20 min-w-[72px]">{t('patientProfile.installedDateCol') || "Sana"}</th>
-                <th className="py-2.5 px-2 border-r border-slate-100 min-w-[85px] max-w-[120px]">{t('patientProfile.surgeonCol') || "Jarroh"}</th>
-                <th className="py-2.5 px-1.5 border-r border-slate-100 text-center w-24 min-w-[80px]">{t('common.status') || "Holati"}</th>
-                <th className="py-2.5 px-1.5 text-center w-24 min-w-[88px] sticky right-0 bg-slate-50">{t('patientProfile.passportCol') || "Pasport"}</th>
+                <th className="py-2.5 px-1 border-r border-slate-100 text-center">№</th>
+                <th className="py-2.5 px-1 border-r border-slate-100 text-center">Tish</th>
+                <th className="py-2.5 px-1.5 border-r border-slate-100">{t('patientProfile.brandSystemCol') || "Brend / Tizim"}</th>
+                <th className="py-2.5 px-1 border-r border-slate-100 text-center">{t('patientProfile.sizeCol') || "O'lchami"}</th>
+                <th className="py-2.5 px-1 border-r border-slate-100 text-center">Lot</th>
+                <th className="py-2.5 px-1 border-r border-slate-100 text-center">{t('patientProfile.installedDateCol') || "Sana"}</th>
+                <th className="py-2.5 px-1.5 border-r border-slate-100">{t('patientProfile.surgeonCol') || "Jarroh"}</th>
+                <th className="py-2.5 px-1 border-r border-slate-100 text-center">{t('common.status') || "Holati"}</th>
+                <th className="py-2.5 px-1 text-center bg-slate-50">{t('patientProfile.passportCol') || "Pasport"}</th>
               </tr>
             </thead>
             <tbody>
@@ -219,8 +230,8 @@ function ExcelImplantsView({
                         <span className="text-slate-300 font-mono text-xs">—</span>
                       )}
                     </td>
-                    <td className="py-2 px-2 border-r border-slate-100">
-                      <div className="flex items-center gap-1.5 min-w-0 max-w-[145px]" title={brandName}>
+                    <td className="py-2 px-1.5 border-r border-slate-100">
+                      <div className="flex items-center gap-1.5 min-w-0" title={brandName}>
                         <ImplantIcon className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                         <span className="font-bold text-slate-900 text-xs truncate">{brandName}</span>
                       </div>
@@ -234,8 +245,8 @@ function ExcelImplantsView({
                     <td className="py-2 px-1 text-center font-mono text-slate-600 text-xs border-r border-slate-100 whitespace-nowrap">
                       {dateStr}
                     </td>
-                    <td className="py-2 px-2 border-r border-slate-100">
-                      <div className="flex items-center gap-1 min-w-0 max-w-[120px]" title={formatDoctorName(imp.doctor) || 'Jarroh'}>
+                    <td className="py-2 px-1.5 border-r border-slate-100">
+                      <div className="flex items-center gap-1 min-w-0" title={formatDoctorName(imp.doctor) || 'Jarroh'}>
                         <User className="w-3 h-3 text-slate-400 shrink-0" />
                         <span className="text-xs text-slate-700 font-medium truncate">{formatDoctorName(imp.doctor) || 'Jarroh'}</span>
                       </div>
@@ -243,7 +254,7 @@ function ExcelImplantsView({
                     <td className="py-2 px-1 text-center border-r border-slate-100 whitespace-nowrap">
                       {getStatusBadge(imp.lifecycle_status || imp.status)}
                     </td>
-                    <td className="py-2 px-1 text-center whitespace-nowrap sticky right-0 bg-white">
+                    <td className="py-2 px-1 text-center whitespace-nowrap bg-white">
                       {(imp.passport_id || imp.id) ? (
                         <Link
                           to={`/implants/${imp.id || imp.passport_id}`}

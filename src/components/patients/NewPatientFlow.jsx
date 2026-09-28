@@ -1716,7 +1716,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500"><AlertTriangle className="w-4 h-4" /></span>
                       ) : null}
                       <Input value={patientForm.important_info} onChange={e => setPatientForm({ ...patientForm, important_info: e.target.value })}
-                        placeholder={`masalan: ${t('patients.importantInfoPlaceholder')}`}
+                        placeholder={t('patients.importantInfoPlaceholder')}
                         className={cn(
                           'h-9 rounded-lg text-sm border-slate-200 focus:border-slate-400 focus:ring-0 w-full placeholder:text-slate-400 placeholder:italic placeholder:font-normal',
                           patientForm.important_info ? 'pl-10 text-rose-700 font-medium' : 'text-slate-800'

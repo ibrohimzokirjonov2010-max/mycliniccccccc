@@ -669,10 +669,10 @@ export default function Implants() {
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5 leading-tight">
                 {s.label}
               </span>
-              <div className="text-sm sm:text-base font-black font-mono tracking-tight text-slate-900 leading-tight break-words">
+              <div className="text-[13px] sm:text-sm font-black font-mono tracking-tight text-slate-900 leading-tight break-words">
                 {s.value}
               </div>
-              <p className="text-[10px] font-bold text-slate-400 mt-0.5 leading-snug line-clamp-2">{s.sub}</p>
+              <p className="text-[10px] font-bold text-slate-500 mt-0.5 leading-snug break-words">{s.sub}</p>
             </div>
 
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-xs shrink-0 ${s.bg}`}>
@@ -895,7 +895,16 @@ export default function Implants() {
             className="implant-registry-scroll min-w-0 w-full max-w-full overflow-x-auto overscroll-x-contain"
             data-implant-registry-scroll="v1"
           >
-            <table className="w-full min-w-[920px] border-collapse text-left select-text">
+            <table className="w-full table-fixed border-collapse text-left select-text">
+              <colgroup>
+                <col className="w-[36px]" />
+                <col className="w-[18%]" />
+                <col className="w-[13%]" />
+                <col className="w-[15%]" />
+                <col className="w-[13%]" />
+                <col className="w-[12%]" />
+                <col />
+              </colgroup>
               {/* ─── Excel Table Header ────────────────── */}
               <thead>
                 <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 text-[11px] font-black uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
@@ -908,7 +917,7 @@ export default function Implants() {
                   {/* 1. BEMOR (F.I.SH) */}
                   <th 
                     onClick={() => handleSort('patient')}
-                    className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[160px]"
+                    className="px-2 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none"
                   >
                     <div className="flex items-center justify-between gap-1.5">
                       <span>{language === 'ru' ? '1. Пациент (Ф.И.О)' : '1. Bemor (F.I.Sh)'}</span>
@@ -923,7 +932,7 @@ export default function Implants() {
                   {/* 2. TISH RAQAMLARI */}
                   <th 
                     onClick={() => handleSort('tooth')}
-                    className="w-28 px-2.5 py-3 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                    className="px-1.5 py-3 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none"
                   >
                     <div className="flex items-center justify-center gap-1.5">
                       <span>{language === 'ru' ? '2. Номера зубов' : '2. Tish raqamlari'}</span>
@@ -938,7 +947,7 @@ export default function Implants() {
                   {/* 3. FIRMA NOMI */}
                   <th 
                     onClick={() => handleSort('brand')}
-                    className="px-3.5 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[140px]"
+                    className="px-2 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none"
                   >
                     <div className="flex items-center justify-between gap-1.5">
                       <span>{language === 'ru' ? '3. Фирма / Бренд' : '3. Firma nomi'}</span>
@@ -953,7 +962,7 @@ export default function Implants() {
                   {/* 4. NARXI */}
                   <th 
                     onClick={() => handleSort('price')}
-                    className="min-w-[132px] px-3 py-3 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap bg-emerald-50/40"
+                    className="px-2 py-3 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none bg-emerald-50/40"
                   >
                     <div className="flex items-center justify-end gap-1.5 text-emerald-900">
                       <span>{language === 'ru' ? '4. Цена' : '4. Narxi'}</span>
@@ -968,7 +977,7 @@ export default function Implants() {
                   {/* 5. QO'YILGAN SANA */}
                   <th 
                     onClick={() => handleSort('date')}
-                    className="w-36 px-3 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                    className="px-2 py-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none"
                   >
                     <div className="flex items-center justify-between gap-1.5">
                       <span>{language === 'ru' ? '5. Дата установки' : '5. Qo\'yilgan sana'}</span>
@@ -981,7 +990,7 @@ export default function Implants() {
                   </th>
 
                   {/* 6. AMALLAR — sticky so actions stay reachable while scrolling */}
-                  <th className="implant-registry-actions px-3 py-3 text-center text-slate-700 whitespace-nowrap select-none min-w-[180px]">
+                  <th className="implant-registry-actions px-2 py-3 text-center text-slate-700 select-none">
                     <span>{language === 'ru' ? '6. Действия' : '6. Amallar'}</span>
                   </th>
 
@@ -1096,18 +1105,18 @@ export default function Implants() {
                         </td>
 
                         {/* 4. NARXI Cell */}
-                        <td className={`text-right border-r border-slate-200/70 font-mono font-black text-emerald-700 whitespace-nowrap bg-emerald-50/20 text-xs sm:text-sm min-w-[120px] ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                        <td className={`text-right border-r border-slate-200/70 font-mono font-black text-emerald-700 bg-emerald-50/20 text-[11px] leading-tight break-words ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2'}`}>
                           {priceVal.toLocaleString()} <span className="text-[10px] font-bold text-emerald-600/80 uppercase">{language === 'ru' ? 'UZS' : "so'm"}</span>
                         </td>
 
                         {/* 5. QO'YILGAN SANA Cell */}
-                        <td className={`border-r border-slate-200/70 font-mono text-slate-800 font-bold whitespace-nowrap ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                        <td className={`border-r border-slate-200/70 font-mono text-slate-800 font-bold text-[11px] ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2'}`}>
                           {formatDate(i.placement_date)}
                         </td>
 
                         {/* 6. AMALLAR Cell */}
-                        <td className={`implant-registry-actions text-center whitespace-nowrap ${isCompact ? 'py-1 px-2' : 'py-2 px-2.5'}`} onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-1.5">
+                        <td className={`implant-registry-actions text-center ${isCompact ? 'py-1 px-1' : 'py-2 px-1'}`} onClick={(e) => e.stopPropagation()}>
+                          <div className="flex flex-wrap items-center justify-center gap-1">
                             <Select 
                               value={statusCode} 
                               onValueChange={(val) => updateImplantStatus(i.id, val)}
@@ -1116,7 +1125,7 @@ export default function Implants() {
                                 data-testid="implant-list-status"
                                 data-implant-status={statusCode}
                                 className={cn(
-                                "h-7 px-2 rounded-lg font-bold text-[11px] mx-auto border transition-colors focus:ring-0 min-w-[112px] max-w-[148px] shrink-0",
+                                "h-7 px-1.5 rounded-lg font-bold text-[10px] mx-auto border transition-colors focus:ring-0 w-[118px] max-w-full shrink [&>span]:truncate",
                                 statusClass
                               )}>
                                 <SelectValue />
@@ -1133,7 +1142,7 @@ export default function Implants() {
                             {isIncomplete && (
                               <button 
                                 onClick={() => setEditingImplant(i)}
-                                className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-xs transition-all cursor-pointer active:scale-95 shrink-0"
+                                className="px-1.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-black uppercase tracking-wide flex items-center gap-1 shadow-xs transition-all cursor-pointer active:scale-95"
                                 title={language === 'ru' ? 'Заполнить данные' : "Ma'lumotlarni to'ldirish"}
                               >
                                 <Edit2 className="w-3 h-3" />

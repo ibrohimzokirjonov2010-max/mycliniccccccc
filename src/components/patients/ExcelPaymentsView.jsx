@@ -941,17 +941,27 @@ function ExcelPaymentsView({
       {subTab === 'plans' && (
         <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] border-collapse text-left font-sans text-sm">
+            <table className="w-full table-fixed border-collapse text-left font-sans text-[11px]">
+              <colgroup>
+                <col className="w-8" />
+                <col className="w-[24%]" />
+                <col className="w-[88px]" />
+                <col className="w-[14%]" />
+                <col className="w-[13%]" />
+                <col className="w-[13%]" />
+                <col className="w-[14%]" />
+                <col className="w-[72px]" />
+              </colgroup>
               <thead>
-                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-xs">
-                  <th className="py-2 px-3 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
-                  <th className="py-2 px-3 border-r border-slate-200 min-w-[140px]">{language === 'ru' ? 'План / Процедура' : language === 'en' ? 'Plan / Treatment Name' : 'Reja / Muolaja Nomi'}</th>
-                  <th className="py-2 px-3 border-r border-slate-200 font-mono whitespace-nowrap min-w-[92px]">{t('common.date') || 'Sana'}</th>
-                  <th className="py-2 px-3 border-r border-slate-200 min-w-[100px]">{t('patientProfile.doctorCol') || 'Shifokor'}</th>
-                  <th className="py-2 px-3 border-r border-slate-200 text-right font-mono min-w-[108px] whitespace-nowrap">{language === 'ru' ? 'Стоимость плана' : language === 'en' ? 'Plan Price' : 'Reja narxi'}</th>
-                  <th className="py-2 px-3 border-r border-slate-200 text-right font-mono min-w-[96px] whitespace-nowrap">{t('patientProfile.paidLabel') || "To'langan"}</th>
-                  <th className="py-2 px-3 border-r border-slate-200 text-right font-mono min-w-[96px] whitespace-nowrap">{language === 'ru' ? 'Остаток долга' : language === 'en' ? 'Remaining Debt' : 'Qoldiq'}</th>
-                  <th className="py-2 px-3 text-center min-w-[88px] whitespace-nowrap">{t('patientProfile.invoiceCol') || 'Faktura'}</th>
+                <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wide text-[10px]">
+                  <th className="py-2 px-1 border-r border-slate-200 text-center bg-slate-200/60 font-mono">№</th>
+                  <th className="py-2 px-2 border-r border-slate-200">{language === 'ru' ? 'План / Процедура' : language === 'en' ? 'Plan / Treatment Name' : 'Reja / Muolaja'}</th>
+                  <th className="py-2 px-1.5 border-r border-slate-200 font-mono">{t('common.date') || 'Sana'}</th>
+                  <th className="py-2 px-1.5 border-r border-slate-200">{t('patientProfile.doctorCol') || 'Shifokor'}</th>
+                  <th className="py-2 px-1.5 border-r border-slate-200 text-right font-mono">{language === 'ru' ? 'Стоимость' : language === 'en' ? 'Plan Price' : 'Reja narxi'}</th>
+                  <th className="py-2 px-1.5 border-r border-slate-200 text-right font-mono">{t('patientProfile.paidLabel') || "To'langan"}</th>
+                  <th className="py-2 px-1.5 border-r border-slate-200 text-right font-mono">{language === 'ru' ? 'Остаток' : language === 'en' ? 'Remaining' : 'Qoldiq'}</th>
+                  <th className="py-2 px-1 text-center">{t('patientProfile.invoiceCol') || 'Faktura'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -979,47 +989,46 @@ function ExcelPaymentsView({
                         <td className="border-r border-slate-200 text-center font-mono font-bold text-slate-500 bg-slate-100/40 text-xs py-1.5 px-2.5">
                           {idx + 1}
                         </td>
-                        <td className="border-r border-slate-200 font-bold text-slate-900 text-sm py-2 px-3 whitespace-normal break-words max-w-[240px]">
+                        <td className="border-r border-slate-200 font-bold text-slate-900 text-[11px] py-2 px-2 whitespace-normal break-words">
                           {plan.name || `Davolash rejasi #${idx + 1}`}
                         </td>
-                        <td className="border-r border-slate-200 font-mono font-semibold text-slate-700 text-xs sm:text-sm py-2 px-3 whitespace-nowrap">
+                        <td className="border-r border-slate-200 font-mono font-semibold text-slate-700 text-[11px] py-2 px-1.5 whitespace-nowrap">
                           {formatTableDate(plan.created_date)}
                         </td>
-                        <td className="border-r border-slate-200 font-semibold text-slate-800 text-xs sm:text-sm py-2 px-3">
-                          <div className="flex items-center gap-1.5">
-                            <User className="w-4 h-4 text-slate-400 shrink-0" />
-                            <span className="whitespace-nowrap">{formatDoctorName(plan.doctor_name || patient?.doctor_name) || (language === 'ru' ? 'Врач' : language === 'en' ? 'Doctor' : 'Shifokor')}</span>
+                        <td className="border-r border-slate-200 font-semibold text-slate-800 text-[11px] py-2 px-1.5">
+                          <div className="flex items-center gap-1 min-w-0">
+                            <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate">{formatDoctorName(plan.doctor_name || patient?.doctor_name) || (language === 'ru' ? 'Врач' : language === 'en' ? 'Doctor' : 'Shifokor')}</span>
                           </div>
                         </td>
-                        <td className="border-r border-slate-200 text-right font-mono font-black text-slate-950 text-sm sm:text-base tracking-tight py-2 px-3 whitespace-nowrap">
-                          {price.toLocaleString()} UZS
+                        <td className="border-r border-slate-200 text-right font-mono font-black text-slate-950 text-[11px] tracking-tight py-2 px-1.5 break-words">
+                          {price.toLocaleString()}
                         </td>
-                        <td className="border-r border-slate-200 text-right font-mono font-black text-emerald-700 text-sm sm:text-base tracking-tight py-2 px-3 whitespace-nowrap">
-                          {paid.toLocaleString()} UZS
+                        <td className="border-r border-slate-200 text-right font-mono font-black text-emerald-700 text-[11px] tracking-tight py-2 px-1.5 break-words">
+                          {paid.toLocaleString()}
                         </td>
                         <td className={cn(
-                          "border-r border-slate-200 text-right font-mono font-black text-sm sm:text-base tracking-tight py-2 px-3 whitespace-nowrap min-w-[160px]",
+                          "border-r border-slate-200 text-right font-mono font-black text-[11px] tracking-tight py-2 px-1.5 break-words",
                           debt > 0 ? "text-amber-950 bg-amber-50/30" : "text-emerald-700 bg-emerald-50/20"
                         )}>
                           {debt > 0 ? (
-                            <span className="inline-flex items-center justify-end gap-1.5 text-amber-950">
-                              <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                              <span>{debt.toLocaleString()} <span className="text-xs font-bold text-amber-800">UZS</span></span>
+                            <span className="inline-flex items-center justify-end gap-1 text-amber-950">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                              <span>{debt.toLocaleString()}</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center justify-end gap-1 text-emerald-700 font-bold text-xs sm:text-sm">
-                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            <span className="inline-flex items-center justify-end gap-1 text-emerald-700 font-bold text-[10px]">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                               <span>{t('patientProfile.paidLabel') || 'To\'langan'}</span>
                             </span>
                           )}
                         </td>
-                        <td className="text-center py-1.5 px-2.5">
+                        <td className="text-center py-1.5 px-1">
                           <button
                             onClick={() => onOpenPlanInvoice && onOpenPlanInvoice(plan)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                            className="inline-flex items-center justify-center gap-1 px-1.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold transition-all shadow-2xs cursor-pointer max-w-full"
                           >
-                            <span>{t('patientProfile.invoiceBtn') || 'Faktura'}</span>
-                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span className="truncate">{t('patientProfile.invoiceBtn') || 'Faktura'}</span>
                           </button>
                         </td>
                       </tr>
