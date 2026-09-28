@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, fdiLowerImageFlip } from '@/lib/fdiNotation';
+import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight } from '@/lib/fdiNotation';
 import { getToothIllustrationSrc } from '@/utils/toothIllustration';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -250,10 +250,7 @@ export default function PatientXraysOdontogram({ patientId }) {
           alt={`Tish ${fdi}`}
           className="tooth-illus w-full h-[94%] object-contain pointer-events-none"
           draggable={false}
-          style={{
-            objectPosition: crownDown ? 'center bottom' : 'center top',
-            transform: fdiLowerImageFlip(fdi) ? 'scaleX(-1)' : undefined,
-          }}
+          style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
         />
         <span
           className={`fdi-on-crown ${crownDown ? 'is-upper' : 'is-lower'}`}
@@ -361,10 +358,7 @@ export default function PatientXraysOdontogram({ patientId }) {
                 src={getToothIllustrationSrc(activeTooth.fdi, 'healthy') || `/teeth/${activeTooth.src}.png`}
                 alt={`Tish ${activeTooth.fdi}`}
                 className="tooth-illus w-9 h-12 object-contain"
-                style={{
-                  objectPosition: Number(activeTooth.fdi) <= 28 || (Number(activeTooth.fdi) >= 51 && Number(activeTooth.fdi) <= 65) ? 'center bottom' : 'center top',
-                  transform: fdiLowerImageFlip(activeTooth.fdi) ? 'scaleX(-1)' : undefined,
-                }}
+                style={{ objectPosition: Number(activeTooth.fdi) <= 28 || (Number(activeTooth.fdi) >= 51 && Number(activeTooth.fdi) <= 65) ? 'center bottom' : 'center top' }}
               />
               <div>
                 <h4 className="text-sm font-bold text-slate-800">

@@ -47,11 +47,9 @@ const CUSTOM_TOOTH_SRC = {
   '48': '/teeth/kamron/pas_ong_8.png',
 };
 
-/** Lower illustrations face the previous midline. Mirror them after the row swap. */
-function mirrorLower(number) {
-  const n = Number(number);
-  const q = Math.floor(n / 10);
-  return q === 3 || q === 4 || q === 7 || q === 8;
+/** Lower PNGs are pre-mirrored. The canvas atlas is a separate sprite and stays unflipped. */
+function mirrorLower() {
+  return false;
 }
 
 const getToothType = (num) => {

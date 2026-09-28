@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { cn } from '@/lib/utils';
-import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, fdiLowerImageFlip, fdiMesialIsRight, internalIdToFdi } from '@/lib/fdiNotation';
+import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, fdiMesialIsRight, internalIdToFdi } from '@/lib/fdiNotation';
 import { getToothIllustrationSrc, matchIllustrationKind } from '@/utils/toothIllustration';
 
 const ADULT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -1034,10 +1034,7 @@ function ToothCell({ fdi, isUpper, entry, active, picked, dim, onClick }) {
             alt=""
             draggable={false}
             className="h-[94%] w-full max-w-full min-w-0 object-contain"
-            style={{
-              objectPosition: crownDown ? 'center bottom' : 'center top',
-              transform: fdiLowerImageFlip(fdi) ? 'scaleX(-1)' : undefined,
-            }}
+            style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
           />
         )}
         <span
@@ -1077,7 +1074,6 @@ function SidePanel(props) {
             src={getToothIllustrationSrc(active, activeEntry?.illustration || activeEntry?.kind || 'healthy')}
             alt=""
             className="h-16 w-10 object-contain"
-            style={{ transform: fdiLowerImageFlip(active) ? 'scaleX(-1)' : undefined }}
           />
         )}
         <div className="min-w-0 flex-1">

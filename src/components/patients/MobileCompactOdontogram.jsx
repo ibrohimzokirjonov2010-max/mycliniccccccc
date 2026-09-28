@@ -1,6 +1,6 @@
 import { memo, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { fdiGridTemplate, fdiLengthWeight, fdiLowerImageFlip } from '@/lib/fdiNotation';
+import { fdiGridTemplate, fdiLengthWeight } from '@/lib/fdiNotation';
 import { getToothIllustrationSrcFromStatus, resolveToothIllustrationKind } from '@/utils/toothIllustration';
 
 export const FDI_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -60,10 +60,7 @@ const ToothCell = memo(function ToothCell({ fdi, selected, toothStatus, onSelect
             alt=""
             draggable={false}
             className="tooth-illus w-full h-full object-contain pointer-events-none"
-            style={{
-              objectPosition: isUpper ? 'center bottom' : 'center top',
-              transform: fdiLowerImageFlip(fdi) ? 'scaleX(-1)' : undefined,
-            }}
+            style={{ objectPosition: isUpper ? 'center bottom' : 'center top' }}
           />
         )}
         <span

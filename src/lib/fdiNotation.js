@@ -152,9 +152,12 @@ export function fdiMesialIsRight(fdi) {
   return q === 1 || q === 3 || q === 5 || q === 7;
 }
 
-/** Lower illustrations were drawn for 48→41 | 31→38. Mirror them so mesial meets the new midline. */
-export function fdiLowerImageFlip(fdi) {
-  return !fdiCrownDown(fdi);
+/**
+ * Lower PNGs are already mirrored in the file (mesial toward the new midline).
+ * Do not scaleX them again or the contralateral picture snaps back into the old slot.
+ */
+export function fdiLowerImageFlip() {
+  return false;
 }
 
 export function assertUniqueFdis(fdis, expectedCount) {

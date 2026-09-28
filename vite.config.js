@@ -134,7 +134,7 @@ export default defineConfig({
             urlPattern: /\/assets\/.*\.(?:js|css)$/,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'assets-cache-v15-notebook-fluid',
+              cacheName: 'assets-cache-v16-lower-arch',
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 7 },
               cacheableResponse: { statuses: [200] }
@@ -145,7 +145,7 @@ export default defineConfig({
             urlPattern: ({ url }) => url.pathname.startsWith('/teeth/') && /\.png$/i.test(url.pathname),
             handler: 'StaleWhileRevalidate',
             options: {
-              cacheName: 'teeth-png-v3-rev',
+              cacheName: 'teeth-png-v4-lower-mirror',
               expiration: { maxEntries: 450, maxAgeSeconds: 60 * 60 * 24 * 7 },
               cacheableResponse: { statuses: [200] }
             }

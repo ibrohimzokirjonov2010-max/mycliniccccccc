@@ -197,10 +197,10 @@ const ToothColumn = memo(function ToothColumn({
   const occlusalSrc = withToothAssetVersion(`/teeth/cliniccards/${baseName}_crown.png`);
   const showOcclusalView = showOcclusal && !useIllustration;
 
-  // Cliniccards fallbacks still mirror by side. Designer PNGs stay as drawn on
-  // the upper jaw; the lower jaw is mirrored so mesial faces the midline.
+  // Designer PNGs carry their own facing (lower files are pre-mirrored).
+  // Cliniccards fallbacks still mirror by anatomical side.
   const isShared = baseName.includes('_');
-  const hFlip = useIllustration ? !isUpper : (isShared ? (side === 'left') : true);
+  const hFlip = useIllustration ? false : (isShared ? (side === 'left') : true);
   const vFlip = useIllustration ? false : (isShared ? (!isUpper) : false);
 
   const lateralTransform = (() => {

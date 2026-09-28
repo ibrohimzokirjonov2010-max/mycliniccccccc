@@ -2,7 +2,7 @@ import { Fragment } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import './implantWizard.css';
-import { fdiCrownDown, fdiLengthWeight, fdiLowerImageFlip, fdiWidthWeight } from '@/lib/fdiNotation';
+import { fdiCrownDown, fdiLengthWeight, fdiWidthWeight } from '@/lib/fdiNotation';
 import { getToothIllustrationSrc } from '@/utils/toothIllustration';
 
 /** Dentist view, straight rows — not an arch. */
@@ -41,10 +41,7 @@ function WizardTooth({ fdi, selected, active, onClick }) {
           alt=""
           draggable={false}
           className="tooth-illus implant-wizard-tooth-img w-full h-[94%] max-w-full max-h-full object-contain pointer-events-none"
-          style={{
-            objectPosition: crownDown ? 'center bottom' : 'center top',
-            transform: fdiLowerImageFlip(fdi) ? 'scaleX(-1)' : undefined,
-          }}
+          style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
         />
         <span className={cn(
           'fdi-on-crown implant-wizard-tooth-fdi',
