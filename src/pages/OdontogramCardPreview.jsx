@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import ToothChartCard from '@/components/patients/ToothChartCard';
+import ChairsidePatientProfile from '@/components/patients/ChairsidePatientProfile';
 import { supabase } from '@/api/supabaseClient';
 import { internalIdToFdi } from '@/lib/fdiNotation';
 import { matchIllustrationKind } from '@/utils/toothIllustration';
@@ -84,24 +85,55 @@ export default function OdontogramCardPreview() {
     return () => { cancelled = true; };
   }, []);
 
+  const chairside = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('layout') === 'chairside';
+
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f4f6f8] p-3" data-testid="odonto-card-preview">
-      {error && <p className="text-sm font-semibold text-rose-600">{error}</p>}
-      {!payload && !error && <p className="text-sm font-semibold text-slate-500">Yuklanmoqda…</p>}
-      {payload && (
-        <ToothChartCard
-          patient={payload.patient}
-          plans={payload.plans}
-          payments={[]}
-          appointments={payload.appointments}
-          doctors={[]}
-          services={[]}
-          implants={[]}
-          toothRecords={[]}
-          onReload={async () => {}}
-          onBookAppointment={() => {}}
-          sheetOffset={0}
-        />
+    <div className="min-h-screen overflow-x-hidden bg-[#f4f6f8]" data-testid="odonto-card-preview">
+      {error && <p className="p-3 text-sm font-semibold text-rose-600">{error}</p>}
+      {!payload && !error && <p className="p-3 text-sm font-semibold text-slate-500">Yuklanmoqda…</p>}
+      {payload && chairside && (
+        <div className="flex h-screen overflow-hidden bg-[#F8FAFC]">
+          <aside className="hidden w-60 shrink-0 bg-[#0C1222] lg:block" />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex h-14 shrink-0 items-center border-b border-slate-200 bg-white px-4 text-sm font-black text-slate-800">Ibrohim Dent</div>
+            <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+              <ChairsidePatientProfile
+                patient={payload.patient}
+                plans={payload.plans}
+                payments={[]}
+                appointments={payload.appointments}
+                doctors={[]}
+                services={[]}
+                implants={[]}
+                toothRecords={[]}
+                onReload={async () => {}}
+                onBack={() => {}}
+                onPay={() => {}}
+                onAppointment={() => {}}
+                onNewPlan={() => {}}
+                profileViewMode="chairside"
+                setProfileViewMode={() => {}}
+              />
+            </main>
+          </div>
+        </div>
+      )}
+      {payload && !chairside && (
+        <div className="p-3">
+          <ToothChartCard
+            patient={payload.patient}
+            plans={payload.plans}
+            payments={[]}
+            appointments={payload.appointments}
+            doctors={[]}
+            services={[]}
+            implants={[]}
+            toothRecords={[]}
+            onReload={async () => {}}
+            onBookAppointment={() => {}}
+            sheetOffset={0}
+          />
+        </div>
       )}
     </div>
   );

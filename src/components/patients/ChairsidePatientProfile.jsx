@@ -4,10 +4,9 @@ import {
 } from 'lucide-react';
 import { cn, formatPhone } from '@/lib/utils';
 import { patientGenderLabel } from '@/lib/patientGender';
-import ProfessionalOdontogram from './ProfessionalOdontogram';
-import ToothSidePanel from './ToothSidePanel';
+import ToothChartCard from './ToothChartCard';
 import TodayPlanBar from './TodayPlanBar';
-import ChairsideClinicalTools from './ChairsideClinicalTools';
+import ChairsideClinicalTools, { ChairsideClinicalTabBar } from './ChairsideClinicalTools';
 
 const TEAL = '#14b8a6';
 const TEAL_DARK = '#0d9488';
@@ -49,10 +48,13 @@ export default function ChairsidePatientProfile({
   onClearTooth,
   toothStatuses = {},
   plans = [],
+  payments = [],
+  services = [],
   toothRecords = [],
   implants = [],
   doctors = [],
   appointments = [],
+  onReload,
   odontogramSelectedTeeth = [],
   onOdontogramChange,
   handleInfoToothClick,
@@ -176,9 +178,9 @@ export default function ChairsidePatientProfile({
         </div>
       )}
 
-      <div className="bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
-        <div className="max-w-[1680px] mx-auto px-3 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+      <div className="chairside-patient-header bg-white border-b border-slate-200/80 sticky top-0 z-40 overflow-visible shadow-[0_1px_0_rgba(15,23,42,0.06)]" data-chairside-header="true">
+        <div className="max-w-[1680px] mx-auto w-full min-w-0 px-3 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <div className="flex min-w-0 flex-1 basis-full items-center gap-3 sm:basis-[18rem]">
             <button
               type="button"
               onClick={onBack}
@@ -199,7 +201,7 @@ export default function ChairsidePatientProfile({
 
             <div className="min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-lg sm:text-xl font-black text-slate-900 truncate tracking-tight leading-tight">
+                <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-tight break-words">
                   {patient?.full_name}
                 </h1>
                 {debtBadgeText && (
@@ -208,14 +210,14 @@ export default function ChairsidePatientProfile({
                   </span>
                 )}
               </div>
-              <p className="text-[12px] font-semibold text-slate-500 truncate mt-0.5">
+              <p className="text-[12px] font-semibold text-slate-500 mt-0.5 break-words">
                 {patient?.phone ? formatPhone(patient.phone) : '—'}
                 {patient?.birth_date ? `  ·  Tug'ilgan: ${patient.birth_date}${age != null ? ` (${age} yosh)` : ''}` : ''}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
             <button
                 type="button"
                 onClick={() => setProfileViewMode(profileViewMode === 'chairside' ? 'reyestr' : 'chairside')}
@@ -253,12 +255,19 @@ export default function ChairsidePatientProfile({
             </button>
           </div>
         </div>
+        <div className="max-w-[1680px] mx-auto w-full min-w-0 px-3 sm:px-5 pb-2.5">
+          <ChairsideClinicalTabBar
+            activeTab={clinicalTab}
+            onChange={setClinicalTab}
+            language={language}
+          />
+        </div>
       </div>
 
       <div className="max-w-[1680px] mx-auto p-3 sm:p-4 lg:p-5 space-y-3.5">
         <div className="flex flex-col xl:flex-row gap-3.5 items-start">
           <div className="w-full xl:w-[252px] shrink-0">
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 flex flex-col gap-3.5 sticky top-[76px]">
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 flex flex-col gap-3.5 sticky top-[9.5rem]">
               <div className="flex flex-col items-center text-center">
                 <div
                   className="relative group cursor-pointer"
@@ -353,6 +362,7 @@ export default function ChairsidePatientProfile({
               onPatientUpdated={onPatientUpdated}
               language={language}
               tabbed
+              hideTabBar
               activeTab={clinicalTab}
               onTabChange={setClinicalTab}
             />
@@ -373,88 +383,19 @@ export default function ChairsidePatientProfile({
               onOpenPlan={onNewPlan}
             />
 
-            <div className="flex flex-col xl:flex-row gap-3.5 items-start">
-          <div className="flex-1 min-w-0 w-full">
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] overflow-hidden min-w-0">
-              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-900 truncate">
-                    ODONTOGRAMMA (FDI{patientType === 'child' ? ', BOLALAR' : ', KATTA YOSH'})
-                  </h3>
-                  <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" title="FDI tish xaritasi" />
-                </div>
-                {typeof setPatientType === 'function' && (
-                  <div className="inline-flex p-0.5 bg-slate-100 rounded-lg border border-slate-200/70 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setPatientType('adult')}
-                      className={cn(
-                        'px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wide cursor-pointer transition-all',
-                        patientType !== 'child' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                      )}
-                    >
-                      Katta
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPatientType('child')}
-                      className={cn(
-                        'px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wide cursor-pointer transition-all',
-                        patientType === 'child' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                      )}
-                    >
-                      Bolalar
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="p-2 sm:p-4 lg:p-5 overflow-x-clip overflow-y-visible min-w-0 w-full bg-white">
-                <ProfessionalOdontogram
-                  selectedTeeth={odontogramSelectedTeeth}
-                  onChange={onOdontogramChange}
-                  onToothClick={handleInfoToothClick}
-                  multi={false}
-                  toothStatuses={toothStatuses}
-                  patientType={patientType}
-                  onPatientTypeChange={setPatientType}
-                  patientAge={age}
-                  chartView={chartView}
-                  quadrantFilter="all"
-                  showOcclusal={showOcclusal}
-                  psrScores={psrScores}
-                  occlusionNotes={occlusionNotes}
-                  onOcclusionNotesChange={handleOcclusionNotesChange}
-                  occlusionClass={occlusionClass}
-                  onOcclusionClassChange={handleOcclusionClassChange}
-                  hideStats
-                  hideLegend
-                  compact={false}
-                />
-              </div>
-              <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/60 flex flex-wrap items-center gap-x-5 gap-y-2">
-                {MOCKUP_LEGEND.map((item) => (
-                  <div key={item.label} className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-black/5" style={{ backgroundColor: item.color }} />
-                    <span className="text-[10px] font-bold text-slate-600">{item.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {selectedTooth ? (
-            <ToothSidePanel
-              tooth={selectedTooth}
-              plans={plans}
-              toothStatuses={toothStatuses}
-              toothRecords={toothRecords}
-              implants={implants}
-              doctors={doctors}
-              onClose={onClearTooth}
-              onQuickStatus={onQuickStatus}
-              onSaveNote={onSaveToothNote}
-            />
-          ) : null}
+            <div className="min-w-0 w-full" data-tooth-chart="chairside">
+              <ToothChartCard
+                patient={patient}
+                plans={plans}
+                payments={payments}
+                appointments={appointments}
+                doctors={doctors}
+                services={services}
+                implants={implants}
+                toothRecords={toothRecords}
+                onReload={onReload}
+                onBookAppointment={onAppointment}
+              />
             </div>
 
           </div>

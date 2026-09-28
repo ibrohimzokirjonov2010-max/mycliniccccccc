@@ -622,8 +622,9 @@ export default function ToothChartCard({
           <button
             key={n}
             type="button"
+            data-fdi={n}
             onClick={() => onTooth(n)}
-            className={cn('relative flex min-w-0 w-full flex-col items-center gap-0.5 px-px', !toothMatches(n, entry) && 'opacity-30')}
+            className={cn('compact-hit relative flex min-w-0 w-full max-w-full flex-col items-center gap-0.5 px-px', !toothMatches(n, entry) && 'opacity-30')}
           >
             {!isUpper && <Num n={n} entry={entry} />}
             <span className={cn('block w-full min-w-0 rounded-lg p-0.5', active === n && 'ring-2 ring-slate-900', selected.includes(n) && 'bg-slate-900/5')}>
@@ -702,23 +703,42 @@ export default function ToothChartCard({
           </div>
 
           <div className="odonto-fit-frame mt-2" data-compact={phone ? 'true' : 'false'}>
-            <div className="odonto-scroll">
-              <div className="odonto-cross">
-                <span className="odonto-side odonto-side-r">O‘NG</span>
-                <span className="odonto-side odonto-side-l">CHAP</span>
-                <div className="odonto-jaw odonto-jaw-upper">
-                  {renderHalf(upper.slice(0, splitAt(upper)), true)}
-                  <div className="odonto-midline" aria-hidden="true" />
-                  {renderHalf(upper.slice(splitAt(upper)), true)}
-                </div>
+            {phone && mode === 'schema' ? (
+              <div className="odonto-schema-fit" data-arch="schema-fit">
+                <span className="odonto-schema-label">O‘NG</span>
+                {renderHalf(upper.slice(0, splitAt(upper)), true)}
+                <span className="odonto-schema-label">CHAP</span>
+                {renderHalf(upper.slice(splitAt(upper)), true)}
                 <div className="odonto-bite-line" aria-hidden="true" />
-                <div className="odonto-jaw odonto-jaw-lower">
-                  {renderHalf(lower.slice(0, splitAt(lower)), false)}
-                  <div className="odonto-midline" aria-hidden="true" />
-                  {renderHalf(lower.slice(splitAt(lower)), false)}
+                <span className="odonto-schema-label">O‘NG</span>
+                {renderHalf(lower.slice(0, splitAt(lower)), false)}
+                <span className="odonto-schema-label">CHAP</span>
+                {renderHalf(lower.slice(splitAt(lower)), false)}
+              </div>
+            ) : (
+              <div className={cn('odonto-scroll-shell', phone && mode === 'realistic' && 'is-hint')}>
+                {phone && mode === 'realistic' && (
+                  <p className="odonto-scroll-hint">Chap tomondagi tishlar uchun suring →</p>
+                )}
+                <div className="odonto-scroll" data-arch="scroll">
+                  <div className="odonto-cross">
+                    <span className="odonto-side odonto-side-r">O‘NG</span>
+                    <span className="odonto-side odonto-side-l">CHAP</span>
+                    <div className="odonto-jaw odonto-jaw-upper">
+                      {renderHalf(upper.slice(0, splitAt(upper)), true)}
+                      <div className="odonto-midline" aria-hidden="true" />
+                      {renderHalf(upper.slice(splitAt(upper)), true)}
+                    </div>
+                    <div className="odonto-bite-line" aria-hidden="true" />
+                    <div className="odonto-jaw odonto-jaw-lower">
+                      {renderHalf(lower.slice(0, splitAt(lower)), false)}
+                      <div className="odonto-midline" aria-hidden="true" />
+                      {renderHalf(lower.slice(splitAt(lower)), false)}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
           {phone && (summary.planned > 0 || summary.done > 0) && (
             <p className="mt-1 px-1 text-[11px] text-slate-500">
@@ -941,16 +961,16 @@ function ToothCell({ fdi, isUpper, entry, active, picked, dim, onClick }) {
       type="button"
       onClick={onClick}
       data-fdi={fdi}
-      className={cn('flex w-full min-w-0 flex-col', isUpper ? 'justify-end' : 'justify-start', dim && 'opacity-30')}
+      className={cn('compact-hit flex w-full min-w-0 max-w-full flex-col', isUpper ? 'justify-end' : 'justify-start', dim && 'opacity-30')}
       style={{ '--fdi-len': fdiLengthWeight(fdi) }}
     >
       <span
-        className="tooth-face relative flex w-full items-center justify-center overflow-hidden rounded-md"
+        className="tooth-face relative flex w-full max-w-full items-center justify-center overflow-hidden rounded-md"
         style={{
+          boxSizing: 'border-box',
           border: color ? `2px ${entry.done ? 'solid' : 'dashed'} ${color}` : '2px solid transparent',
           opacity: entry?.kind === 'missing' ? 0.45 : 1,
-          outline: active || picked ? '2px solid #0F172A' : 'none',
-          outlineOffset: 1,
+          boxShadow: active || picked ? 'inset 0 0 0 2px #0F172A' : 'none',
           alignItems: crownDown ? 'flex-end' : 'flex-start',
         }}
       >
@@ -959,7 +979,7 @@ function ToothCell({ fdi, isUpper, entry, active, picked, dim, onClick }) {
             src={src}
             alt=""
             draggable={false}
-            className="h-[94%] w-full object-contain"
+            className="h-[94%] w-full max-w-full min-w-0 object-contain"
             style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
           />
         )}

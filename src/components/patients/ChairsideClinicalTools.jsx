@@ -16,6 +16,38 @@ import { cn } from '@/lib/utils';
 
 const TEAL = '#14b8a6';
 
+export function ChairsideClinicalTabBar({ activeTab, onChange, language = 'uz', className }) {
+  const tabs = [
+    { id: 'tashxis', label: language === 'ru' ? 'Диагноз' : 'Tashxis', icon: Activity },
+    { id: 'rvg', label: 'RVG', icon: ImageIcon },
+    { id: 'rozilik', label: language === 'ru' ? 'Согласие' : 'Rozilik', icon: FileText },
+  ];
+  return (
+    <div className={cn('chairside-tool-tabs flex w-full min-w-0 max-w-full flex-wrap gap-1', className)} data-clinical-tabs="true">
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        const isActive = activeTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => onChange?.(tab.id)}
+            className={cn(
+              'inline-flex min-h-9 min-w-0 flex-1 basis-[7.5rem] items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-black uppercase tracking-wide transition-all cursor-pointer',
+              isActive
+                ? 'bg-teal-600 text-white shadow-sm'
+                : 'bg-slate-50 text-slate-600 hover:bg-slate-100',
+            )}
+          >
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+            <span>{tab.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /**
  * Chairside clinical tools: structured diagnosis, RVG/x-ray gallery+lightbox, informed consent.
  * Persists clinical/consent into patient.notes via [CLINICAL_CHART_V1] / [CONSENT_V1] markers.
@@ -27,8 +59,9 @@ export default function ChairsideClinicalTools({
   onPatientUpdated,
   language = 'uz',
   compact = false,
-  /** When true (default), sticky Tashxis/RVG/Rozilik tabs keep clinical tools above-fold during visit. */
+  /** When true, Tashxis/RVG/Rozilik switch the panels below. The bar itself stays in the patient header. */
   tabbed = true,
+  hideTabBar = false,
   activeTab: controlledTab = null,
   onTabChange,
 }) {
@@ -205,12 +238,6 @@ export default function ChairsideClinicalTools({
     given: language === 'ru' ? 'Пациент дал согласие' : 'Bemor rozilik berdi',
   };
 
-  const tabs = [
-    { id: 'tashxis', label: language === 'ru' ? 'Диагноз' : 'Tashxis', icon: Activity },
-    { id: 'rvg', label: 'RVG', icon: ImageIcon },
-    { id: 'rozilik', label: language === 'ru' ? 'Согласие' : 'Rozilik', icon: FileText },
-  ];
-
   const showAll = !tabbed;
   const showTashxis = showAll || activeTab === 'tashxis';
   const showRvg = showAll || activeTab === 'rvg';
@@ -218,29 +245,13 @@ export default function ChairsideClinicalTools({
 
   return (
     <div id="chairside-clinical-tools" className="space-y-2.5 scroll-mt-24">
-      {tabbed && (
-        <div className="relative z-0 bg-white border border-slate-200/80 rounded-2xl shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-1.5 flex flex-wrap gap-1">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  'flex-1 min-w-[96px] inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wide transition-all cursor-pointer',
-                  isActive
-                    ? 'bg-teal-600 text-white shadow-sm'
-                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-transparent'
-                )}
-              >
-                <Icon className="w-3.5 h-3.5 shrink-0" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+      {tabbed && !hideTabBar && (
+        <ChairsideClinicalTabBar
+          activeTab={activeTab}
+          onChange={setActiveTab}
+          language={language}
+          className="relative top-auto z-0 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-[0_1px_3px_rgba(15,23,42,0.06)]"
+        />
       )}
 
     <div className={cn('grid gap-3.5', compact || tabbed ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-3')}>

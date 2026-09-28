@@ -2762,6 +2762,9 @@ export default function PatientProfile() {
           onClearTooth={() => setSelectedTooth(null)}
           toothStatuses={toothStatuses}
           plans={plans}
+          payments={payments}
+          services={services}
+          onReload={load}
           toothRecords={toothRecords}
           implants={implants}
           doctors={doctors}
