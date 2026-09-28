@@ -220,6 +220,8 @@ export default function PatientXraysOdontogram({ patientId }) {
     const isActive  = activeTooth?.id === id;
     const isHovered = hoveredTooth === id;
     const count = xraysForTooth(fdi).length;
+    const n = Number(fdi);
+    const crownDown = n <= 28 || (n >= 51 && n <= 65);
 
     return (
       <div
@@ -239,7 +241,9 @@ export default function PatientXraysOdontogram({ patientId }) {
         <button
           type="button"
           onClick={() => setActiveTooth(isActive ? null : { id, fdi, src })}
-          className={`relative inline-flex items-center justify-center overflow-hidden p-1 sm:p-1.5 transition-all duration-200 rounded-lg sm:rounded-xl border-2 ${
+          className={`relative inline-flex justify-center overflow-hidden w-7 h-10 sm:w-9 sm:h-[52px] p-px transition-all duration-200 rounded-lg sm:rounded-xl border-2 ${
+            crownDown ? 'items-end' : 'items-start'
+          } ${
             isActive
               ? 'border-cyan-500 bg-cyan-50 shadow-lg shadow-cyan-200 scale-110 z-10'
               : count > 0
@@ -253,9 +257,9 @@ export default function PatientXraysOdontogram({ patientId }) {
           <img
             src={getToothIllustrationSrc(fdi, 'healthy') || `/teeth/${src}.png`}
             alt={`Tish ${fdi}`}
-            className="tooth-illus w-6 h-8 sm:w-8 sm:h-10 object-contain pointer-events-none"
+            className="tooth-illus w-full h-[94%] object-contain pointer-events-none"
             draggable={false}
-            style={{ objectPosition: Number(fdi) <= 28 || (Number(fdi) >= 51 && Number(fdi) <= 65) ? 'center bottom' : 'center top' }}
+            style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
           />
 
           {/* Rentgen soni badge */}
@@ -378,7 +382,7 @@ export default function PatientXraysOdontogram({ patientId }) {
               <img
                 src={getToothIllustrationSrc(activeTooth.fdi, 'healthy') || `/teeth/${activeTooth.src}.png`}
                 alt={`Tish ${activeTooth.fdi}`}
-                className="tooth-illus w-8 h-10 object-contain"
+                className="tooth-illus w-9 h-12 object-contain"
                 style={{ objectPosition: Number(activeTooth.fdi) <= 28 || (Number(activeTooth.fdi) >= 51 && Number(activeTooth.fdi) <= 65) ? 'center bottom' : 'center top' }}
               />
               <div>

@@ -358,8 +358,9 @@
   min-height: 0 !important;
   overflow: hidden;
 }
-/* Every FDI illustration is a 512 square with the crown on the occlusal edge.
-   The cell is a fixed box; contain + hidden overflow keeps every kind the same size. */
+/* Each FDI illustration is a tight canvas: the tooth is about 93% of the
+   image height and the crown sits on the occlusal edge. The cell is a fixed
+   box; contain + hidden overflow keeps every kind of that tooth the same size. */
 .odonto-lateral img,
 .odonto-occlusal img {
   display: block;

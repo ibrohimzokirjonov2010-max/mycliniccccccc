@@ -5,7 +5,7 @@
  */
 
 /** Bump when public/teeth PNGs change so CacheFirst cannot keep the old drawing. */
-export const TOOTH_ASSET_VERSION = '20260926c';
+export const TOOTH_ASSET_VERSION = '20260928a';
 
 export function withToothAssetVersion(path) {
   if (!path) return path;
@@ -72,10 +72,15 @@ export function normalizeFdi(raw) {
   if (Number.isNaN(n)) return null;
 
   if (n >= 11 && n <= 48 && ADULT_FDI.has(String(n))) return String(n);
-  if (n >= 51 && n <= 55) return String(10 + (n % 10));
-  if (n >= 61 && n <= 65) return String(20 + (n % 10));
-  if (n >= 71 && n <= 75) return String(30 + (n % 10));
-  if (n >= 81 && n <= 85) return String(40 + (n % 10));
+  // Primary molars (x4, x5) use adult molars, not premolars.
+  if (n >= 51 && n <= 85) {
+    const quad = Math.floor(n / 10);
+    const pos = n % 10;
+    if (quad >= 5 && quad <= 8 && pos >= 1 && pos <= 5) {
+      const adultPos = pos <= 3 ? pos : pos + 2;
+      return String((quad - 4) * 10 + adultPos);
+    }
+  }
   return null;
 }
 

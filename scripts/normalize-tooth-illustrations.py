@@ -1123,6 +1123,306 @@ def write_zoom_grid(root: Path, items: list[tuple[str, str, str]], out_path: Pat
     print(out_path, sheet.size)
 
 
+# Tooth body fills this fraction of a tight per-FDI canvas. The rest is
+# transparent padding on the root side, so object-fit:contain can fill a
+# tall cell without cropping the crown.
+BODY_FRAC = 0.93
+SIDE_PAD = 3
+EDGE_PAD = 1
+CONTENT_ALPHA = 8
+
+
+def dechip(im: Image.Image, upper: bool, window: int = 9, protrude: int = 3) -> Image.Image:
+    """Drop tiny opaque spikes that stick out of the crown silhouette."""
+    arr = np.array(im)
+    alpha = arr[:, :, 3]
+    solid = alpha > SOLID_ALPHA
+    box = _body_box(alpha)
+    if box is None:
+        return im
+    y0, y1, _x0, _x1 = box
+    height = y1 - y0 + 1
+    if upper:
+        y_start, y_end = y0 + int(height * 0.42), y1
+    else:
+        y_start, y_end = y0, y0 + int(height * 0.58)
+    rows, cols = solid.shape
+    left = np.full(rows, np.nan)
+    right = np.full(rows, np.nan)
+    for y in range(y_start, y_end + 1):
+        hits = np.where(solid[y])[0]
+        if hits.size:
+            left[y] = hits.min()
+            right[y] = hits.max()
+
+    def smoothed(edge: np.ndarray) -> np.ndarray:
+        out = edge.copy()
+        half = window // 2
+        for y in range(y_start, y_end + 1):
+            sample = edge[max(y_start, y - half): min(y_end, y + half) + 1]
+            sample = sample[~np.isnan(sample)]
+            if sample.size:
+                out[y] = np.median(sample)
+        return out
+
+    left_edge = smoothed(left)
+    right_edge = smoothed(right)
+    for y in range(y_start, y_end + 1):
+        if np.isnan(left_edge[y]):
+            continue
+        cut_l = int(np.floor(left_edge[y] - protrude))
+        cut_r = int(np.ceil(right_edge[y] + protrude))
+        if cut_l > 0:
+            arr[y, :cut_l, 3] = 0
+            arr[y, :cut_l, :3] = 255
+        if cut_r + 1 < cols:
+            arr[y, cut_r + 1:, 3] = 0
+            arr[y, cut_r + 1:, :3] = 255
+    return Image.fromarray(arr)
+
+
+def shaded_crown(
+    im: Image.Image,
+    upper: bool,
+    tint: tuple[int, int, int],
+    gloss_boost: float,
+    margin: tuple[int, int, int] | None,
+) -> Image.Image:
+    """Recolour the crown on the healthy silhouette. Alpha is unchanged."""
+    arr = np.array(im).astype(np.float32)
+    alpha = arr[:, :, 3]
+    box = _body_box(alpha.astype(np.uint8))
+    if box is None:
+        return im
+    y0, y1, x0, x1 = box
+    height = y1 - y0 + 1
+    width = x1 - x0 + 1
+    rgb = arr[:, :, :3]
+    lum = (0.2126 * rgb[:, :, 0] + 0.7152 * rgb[:, :, 1] + 0.0722 * rgb[:, :, 2]) / 255.0
+    yy = np.arange(arr.shape[0], dtype=np.float32)[:, None]
+    xx = np.arange(arr.shape[1], dtype=np.float32)[None, :]
+    if upper:
+        cervix = y0 + height * 0.56
+        span = max(8.0, height * 0.07)
+        mask = np.clip((yy - cervix) / span, 0.0, 1.0)
+        vert = np.clip((yy - cervix) / max(1.0, y1 - cervix), 0.0, 1.0)
+        gloss_y = y1 - height * 0.10
+    else:
+        cervix = y0 + height * 0.44
+        span = max(8.0, height * 0.07)
+        mask = np.clip((cervix - yy) / span, 0.0, 1.0)
+        vert = np.clip((cervix - yy) / max(1.0, cervix - y0), 0.0, 1.0)
+        gloss_y = y0 + height * 0.10
+    shade = np.clip(0.52 + 0.62 * lum, 0.40, 1.20) * (0.84 + 0.24 * vert)
+    center = (x0 + x1) / 2.0
+    half = max(1.0, width / 2.0)
+    edge = np.clip((np.abs(xx - center) - 0.55 * half) / (0.45 * half), 0.0, 1.0)
+    shade = shade * (1.0 - 0.10 * edge)
+    painted = shade[..., None] * np.array(tint, np.float32)
+    mask = ndimage.gaussian_filter(mask * (alpha > SOLID_ALPHA), sigma=(1.6, 0.4))
+    mask = np.clip(mask, 0.0, 1.0)
+    mask[alpha <= SOLID_ALPHA] = 0.0
+    rx = max(4.0, width * 0.20)
+    ry = max(3.0, height * 0.055)
+    gloss_x = x0 + width * 0.40
+    ellipse = 1.0 - ((xx - gloss_x) / rx) ** 2 - ((yy - gloss_y) / ry) ** 2
+    gloss = np.clip(ellipse, 0.0, 1.0) ** 1.6
+    gloss = ndimage.gaussian_filter(gloss, sigma=1.4) * (alpha > SOLID_ALPHA)
+    out = rgb * (1.0 - mask[..., None]) + painted * mask[..., None]
+    out = out + gloss[..., None] * gloss_boost * mask[..., None]
+    if margin is not None:
+        band = np.exp(-0.5 * ((yy - cervix) / 2.2) ** 2) * (alpha > SOLID_ALPHA)
+        band = np.clip(ndimage.gaussian_filter(band, sigma=0.6), 0.0, 1.0)
+        colour = np.array(margin, np.float32)
+        out = out * (1.0 - 0.72 * band[..., None]) + colour * (0.72 * band[..., None])
+    arr[:, :, :3] = np.clip(out, 0, 255)
+    arr[alpha == 0, :3] = 255
+    return Image.fromarray(arr.astype(np.uint8))
+
+
+def _content_crop(im: Image.Image) -> Image.Image:
+    arr = np.array(im)
+    alpha = arr[:, :, 3]
+    ys, xs = np.where(alpha > CONTENT_ALPHA)
+    if xs.size == 0:
+        return Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+    cropped = arr[int(ys.min()): int(ys.max()) + 1, int(xs.min()): int(xs.max()) + 1].copy()
+    cropped[cropped[:, :, 3] == 0, :3] = 255
+    return Image.fromarray(cropped)
+
+
+def _fit(crop: Image.Image, scale: float) -> Image.Image:
+    if scale >= 0.995:
+        return crop
+    sw = max(1, int(round(crop.width * scale)))
+    sh = max(1, int(round(crop.height * scale)))
+    placed = crop.resize((sw, sh), Image.Resampling.LANCZOS)
+    arr = np.array(placed)
+    arr[arr[:, :, 3] == 0, :3] = 255
+    return Image.fromarray(arr)
+
+
+def tighten_fdi(by_kind: dict[str, Image.Image], fdi: str) -> dict[str, Image.Image]:
+    """One canvas per FDI, sized from the healthy tooth, crown on the occlusal edge."""
+    healthy = _content_crop(by_kind["healthy"])
+    canvas_h = max(healthy.height + EDGE_PAD + 2, int(round(healthy.height / BODY_FRAC)))
+    canvas_w = healthy.width + SIDE_PAD * 2
+    upper = is_upper(fdi)
+    placed: dict[str, Image.Image] = {}
+    for kind, im in by_kind.items():
+        crop = healthy if kind == "healthy" else _content_crop(im)
+        if kind == "missing":
+            scale = min(
+                (healthy.height * 0.70) / max(1, crop.height),
+                (canvas_w - 2) / max(1, crop.width),
+                (canvas_h - 2) / max(1, crop.height),
+                1.0,
+            )
+            anchor = "center"
+        else:
+            scale = min(
+                1.0,
+                canvas_w / max(1, crop.width),
+                (canvas_h - EDGE_PAD) / max(1, crop.height),
+            )
+            anchor = "crown"
+        fitted = _fit(crop, scale)
+        sw, sh = fitted.size
+        if sw > canvas_w or sh > canvas_h:
+            scale *= min(canvas_w / sw, canvas_h / sh)
+            fitted = _fit(crop, scale)
+            sw, sh = fitted.size
+        canvas = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+        x = max(0, (canvas_w - sw) // 2)
+        if anchor == "center":
+            y = max(0, (canvas_h - sh) // 2)
+        elif upper:
+            y = max(0, canvas_h - sh - EDGE_PAD)
+        else:
+            y = EDGE_PAD
+        canvas.paste(fitted, (x, y), fitted)
+        placed[kind] = canvas
+    return placed
+
+
+def _crown_protrusion(im: Image.Image, upper: bool) -> float:
+    alpha = np.array(im)[:, :, 3]
+    solid = alpha > SOLID_ALPHA
+    box = _body_box(alpha)
+    if box is None:
+        return 0.0
+    y0, y1, _x0, _x1 = box
+    height = y1 - y0 + 1
+    if upper:
+        y_start, y_end = y0 + int(height * 0.42), y1
+    else:
+        y_start, y_end = y0, y0 + int(height * 0.58)
+    worst = 0.0
+    edges_l = []
+    edges_r = []
+    ys = []
+    for y in range(y_start, y_end + 1):
+        hits = np.where(solid[y])[0]
+        if hits.size == 0:
+            continue
+        ys.append(y)
+        edges_l.append(int(hits.min()))
+        edges_r.append(int(hits.max()))
+    if len(ys) < 9:
+        return 0.0
+    left = np.array(edges_l, float)
+    right = np.array(edges_r, float)
+    half = 4
+    for i in range(len(ys)):
+        sl = left[max(0, i - half): i + half + 1]
+        sr = right[max(0, i - half): i + half + 1]
+        worst = max(worst, float(np.median(sl) - left[i]), float(right[i] - np.median(sr)))
+    return worst
+
+
+def polish_tree(src: Path, dest: Path) -> None:
+    """Clean premolar chips, shade sirkon and metal-keramika, tighten canvases."""
+    loaded: dict[str, dict[str, Image.Image]] = {kind: {} for kind in KINDS}
+    for kind in KINDS:
+        for fdi in FDIS:
+            loaded[kind][fdi] = load_rgba(src / kind / f"{fdi}.png")
+
+    for fdi in ("14", "15"):
+        loaded["healthy"][fdi] = dechip(loaded["healthy"][fdi], True)
+    loaded["healthy"]["24"] = _flip(loaded["healthy"]["14"])
+    loaded["healthy"]["25"] = _flip(loaded["healthy"]["15"])
+
+    for fdi in ("14", "15", "24", "25"):
+        loaded["plomba"][fdi] = filling_overlay(loaded["healthy"][fdi], is_upper(fdi))
+    for fdi in FDIS:
+        upper = is_upper(fdi)
+        healthy = loaded["healthy"][fdi]
+        loaded["sirkon"][fdi] = shaded_crown(healthy, upper, (250, 250, 252), 42, None)
+        loaded["metal-keramika"][fdi] = shaded_crown(
+            healthy, upper, (236, 214, 190), 28, (150, 128, 104)
+        )
+
+    for fdi in FDIS:
+        placed = tighten_fdi({kind: loaded[kind][fdi] for kind in KINDS}, fdi)
+        for kind, im in placed.items():
+            out_dir = dest / kind
+            out_dir.mkdir(parents=True, exist_ok=True)
+            arr = np.array(im)
+            arr[arr[:, :, 3] == 0, :3] = 255
+            Image.fromarray(arr).save(out_dir / f"{fdi}.png", format="PNG", optimize=True)
+
+    problems = []
+    for fdi in ("14", "15", "24", "25"):
+        spike = _crown_protrusion(load_rgba(dest / "healthy" / f"{fdi}.png"), True)
+        if spike > 3.5:
+            problems.append(f"healthy/{fdi} crown spike {spike:.1f}px")
+    for fdi in FDIS:
+        healthy = load_rgba(dest / "healthy" / f"{fdi}.png")
+        alpha = np.array(healthy)[:, :, 3]
+        box = _body_box(alpha)
+        assert box is not None
+        body_h = box[1] - box[0] + 1
+        fill = body_h / healthy.height
+        if fill < 0.90 or fill > 0.96:
+            problems.append(f"healthy/{fdi} fill {fill:.3f}")
+        if is_upper(fdi):
+            gap = healthy.height - 1 - box[1]
+        else:
+            gap = box[0]
+        if gap > 4:
+            problems.append(f"healthy/{fdi} crown gap {gap}px")
+        for kind in KINDS:
+            other = load_rgba(dest / kind / f"{fdi}.png")
+            if other.size != healthy.size:
+                problems.append(f"{kind}/{fdi} canvas {other.size} != {healthy.size}")
+        sirkon = np.array(load_rgba(dest / "sirkon" / f"{fdi}.png"))
+        healthy_a = np.array(healthy)
+        if not np.array_equal(sirkon[:, :, 3], healthy_a[:, :, 3]):
+            problems.append(f"sirkon/{fdi} silhouette differs from healthy")
+    mirrors = {"22": "12", "23": "13", "24": "14", "25": "15", "31": "41", "32": "42", "33": "43", "34": "45"}
+    for fdi, donor in mirrors.items():
+        got = np.array(load_rgba(dest / "healthy" / f"{fdi}.png"))
+        expect = np.array(_flip(load_rgba(dest / "healthy" / f"{donor}.png")))
+        if not np.array_equal(got, expect):
+            problems.append(f"healthy/{fdi} is not the mirror of {donor}")
+    copy = np.array(load_rgba(dest / "healthy" / "44.png"))
+    donor = np.array(load_rgba(dest / "healthy" / "45.png"))
+    if not np.array_equal(copy, donor):
+        problems.append("healthy/44 is not a copy of 45")
+    if problems:
+        for line in problems:
+            print("POLISH", line)
+        raise SystemExit(f"polish checks failed ({len(problems)})")
+    sample = load_rgba(dest / "healthy" / "11.png")
+    alpha = np.array(sample)[:, :, 3]
+    box = _body_box(alpha)
+    assert box is not None
+    print(
+        f"polished {len(KINDS) * len(FDIS)} images; "
+        f"healthy/11 canvas {sample.size} body {box[1] - box[0] + 1}px"
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--teeth", type=Path, default=Path("public/teeth"))
@@ -1136,6 +1436,11 @@ def main() -> None:
         help="Replace dirty healthy teeth and smeared treatment art in --teeth",
     )
     parser.add_argument(
+        "--polish",
+        action="store_true",
+        help="Dechip premolars, shade sirkon and metal-keramika, tighten canvases",
+    )
+    parser.add_argument(
         "--originals",
         type=Path,
         default=Path("/tmp/teeth-src/teeth"),
@@ -1143,6 +1448,10 @@ def main() -> None:
     )
     args = parser.parse_args()
     root = args.teeth
+    if args.polish:
+        dest = args.dest or root
+        polish_tree(root, dest)
+        return
     if args.repair:
         replaced = apply_replacements(root, args.originals)
         print(f"replaced {len(replaced)}")

@@ -4,11 +4,11 @@ import MobileCompactOdontogram from '@/components/patients/MobileCompactOdontogr
 
 /** Mixed chart so treated, implant, and healthy teeth are visible together. */
 const PREVIEW_STATUSES = {
+  ur1: { status: 'completed', illustrationKind: 'sirkon', treatment: 'Sirkon' },
   ur6: { status: 'in_progress', illustrationKind: 'endo', condition: 'Pulpit', treatment: 'Kanal davolash' },
-  ul1: { status: 'caries', illustrationKind: 'caries', condition: 'Kariyes' },
-  ul6: { status: 'completed', illustrationKind: 'plomba', treatment: 'Plomba' },
+  ul1: { status: 'completed', illustrationKind: 'plomba', treatment: 'Plomba' },
   ll6: { status: 'implant', hasImplant: true, illustrationKind: 'implant', treatment: 'Implant' },
-  lr6: { status: 'extracted', isExtracted: true, illustrationKind: 'missing' },
+  lr6: { status: 'caries', illustrationKind: 'caries', condition: 'Karies' },
 };
 
 function usePhoneChart() {

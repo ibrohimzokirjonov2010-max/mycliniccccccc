@@ -68,6 +68,16 @@ if (live !== 'endo') fail(`live ENDO select => ${live}`);
 if (normalizeFdi('ur6') !== '16') fail('ur6 should be 16');
 if (normalizeFdi(36) !== '36') fail('36');
 if (normalizeFdi(51) !== '11') fail('51 → 11');
+if (normalizeFdi(54) !== '16') fail('54 → 16');
+if (normalizeFdi(55) !== '17') fail('55 → 17');
+if (normalizeFdi(64) !== '26') fail('64 → 26');
+if (normalizeFdi(65) !== '27') fail('65 → 27');
+if (normalizeFdi(74) !== '36') fail('74 → 36');
+if (normalizeFdi(75) !== '37') fail('75 → 37');
+if (normalizeFdi(84) !== '46') fail('84 → 46');
+if (normalizeFdi(85) !== '47') fail('85 → 47');
+if (normalizeFdi('ur4c') !== '16') fail('ur4c → 16');
+if (normalizeFdi('ll5c') !== '37') fail('ll5c → 37');
 
 const src = getToothIllustrationSrc(16, 'endo');
 if (src !== `/teeth/endo/16.png?v=${TOOTH_ASSET_VERSION}`) fail(`src ${src}`);
