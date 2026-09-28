@@ -24,8 +24,8 @@ export const TOOTH_STATUS = {
 // ── FDI Dental Numbering ─────────────────────────────────────────────────────
 // Upper Right: 18,17,16,15,14,13,12,11
 // Upper Left:  21,22,23,24,25,26,27,28
-// Lower Left:  31,32,33,34,35,36,37,38   (reversed display)
-// Lower Right: 41,42,43,44,45,46,47,48   (reversed display)
+// Lower Left:  38→31 on screen-left (31 at the midline)
+// Lower Right: 41→48 on screen-right (41 at the midline)
 
 const UPPER_RIGHT = [18, 17, 16, 15, 14, 13, 12, 11];
 const UPPER_LEFT  = [21, 22, 23, 24, 25, 26, 27, 28];
@@ -445,9 +445,9 @@ export default function DentalChart({ teethData = {}, onStatusChange, readOnly =
             <p className="text-[10px] text-slate-400 font-bold mt-0.5 uppercase tracking-widest">FDI Tizimi</p>
           </div>
           <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
-            <span className="px-2 py-1 bg-slate-100 rounded-lg">O'ng</span>
+            <span className="px-2 py-1 bg-slate-100 rounded-lg">Yuqori: O‘ng | Chap</span>
             <div className="w-px h-4 bg-slate-200" />
-            <span className="px-2 py-1 bg-slate-100 rounded-lg">Chap</span>
+            <span className="px-2 py-1 bg-slate-100 rounded-lg">Pastki: Chap | O‘ng</span>
           </div>
         </div>
 
@@ -489,17 +489,17 @@ export default function DentalChart({ teethData = {}, onStatusChange, readOnly =
           {/* ═══ LOWER JAW ═══ */}
           <div>
             <div className="flex justify-center gap-1">
-              {/* Lower Right (48→41, displayed left to right = reversed) */}
+              {/* Lower left quadrant, mirrored so 31 meets the midline */}
               <div className="flex gap-0.5 items-start">
-                {renderRow(LOWER_RIGHT, false, true)}
+                {renderRow(LOWER_LEFT, false, true)}
               </div>
 
               {/* Midline */}
               <div className="w-px bg-gradient-to-b from-transparent via-blue-200 to-transparent mx-0.5 self-stretch" />
 
-              {/* Lower Left (31→38) */}
+              {/* Lower right quadrant, 41 at the midline */}
               <div className="flex gap-0.5 items-start">
-                {renderRow(LOWER_LEFT, false)}
+                {renderRow(LOWER_RIGHT, false)}
               </div>
             </div>
             <QuadrantLabel label="Pastki jag'" />
@@ -524,7 +524,7 @@ export default function DentalChart({ teethData = {}, onStatusChange, readOnly =
 // ── Compact Mini Chart (for patient cards) ────────────────────────────────────
 export function MiniDentalChart({ teethData = {}, className }) {
   const getStatus = (num) => teethData[num] || 'healthy';
-  const allTeeth = [...UPPER_RIGHT, ...UPPER_LEFT, ...LOWER_LEFT.slice().reverse(), ...LOWER_RIGHT.slice().reverse()];
+  const allTeeth = [...UPPER_RIGHT, ...UPPER_LEFT, ...LOWER_LEFT.slice().reverse(), ...LOWER_RIGHT];
 
   return (
     <div className={cn('flex flex-wrap gap-0.5 max-w-[200px]', className)}>

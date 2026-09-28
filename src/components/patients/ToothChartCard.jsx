@@ -6,13 +6,13 @@ import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { cn } from '@/lib/utils';
-import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, internalIdToFdi } from '@/lib/fdiNotation';
+import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, fdiLowerImageFlip, fdiMesialIsRight, internalIdToFdi } from '@/lib/fdiNotation';
 import { getToothIllustrationSrc, matchIllustrationKind } from '@/utils/toothIllustration';
 
 const ADULT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
-const ADULT_LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+const ADULT_LOWER = [38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
 const CHILD_UPPER = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65];
-const CHILD_LOWER = [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
+const CHILD_LOWER = [75, 74, 73, 72, 71, 81, 82, 83, 84, 85];
 
 const LEGEND = [
   { id: 'caries', label: 'Karies', color: '#E11D48' },
@@ -147,8 +147,7 @@ function toothTitle(fdi) {
 }
 
 function mesialIsRight(fdi) {
-  const q = Math.floor(Number(fdi) / 10);
-  return q === 1 || q === 4 || q === 5 || q === 8;
+  return fdiMesialIsRight(fdi);
 }
 
 function collectEntries(plans, implants, toothRecords) {
@@ -759,9 +758,9 @@ export default function ToothChartCard({
                 <span className="odonto-schema-label">CHAP</span>
                 {renderHalf(upper.slice(splitAt(upper)), true)}
                 <div className="odonto-bite-line" aria-hidden="true" />
-                <span className="odonto-schema-label">O‘NG</span>
-                {renderHalf(lower.slice(0, splitAt(lower)), false)}
                 <span className="odonto-schema-label">CHAP</span>
+                {renderHalf(lower.slice(0, splitAt(lower)), false)}
+                <span className="odonto-schema-label">O‘NG</span>
                 {renderHalf(lower.slice(splitAt(lower)), false)}
               </div>
             ) : (
@@ -771,18 +770,24 @@ export default function ToothChartCard({
                 )}
                 <div className="odonto-scroll" data-arch="scroll">
                   <div className="odonto-cross">
-                    <span className="odonto-side odonto-side-r">O‘NG</span>
-                    <span className="odonto-side odonto-side-l">CHAP</span>
-                    <div className="odonto-jaw odonto-jaw-upper">
-                      {renderHalf(upper.slice(0, splitAt(upper)), true)}
-                      <div className="odonto-midline" aria-hidden="true" />
-                      {renderHalf(upper.slice(splitAt(upper)), true)}
+                    <div className="odonto-jaw-band">
+                      <span className="odonto-side odonto-side-r">O‘NG</span>
+                      <span className="odonto-side odonto-side-l">CHAP</span>
+                      <div className="odonto-jaw odonto-jaw-upper">
+                        {renderHalf(upper.slice(0, splitAt(upper)), true)}
+                        <div className="odonto-midline" aria-hidden="true" />
+                        {renderHalf(upper.slice(splitAt(upper)), true)}
+                      </div>
                     </div>
                     <div className="odonto-bite-line" aria-hidden="true" />
-                    <div className="odonto-jaw odonto-jaw-lower">
-                      {renderHalf(lower.slice(0, splitAt(lower)), false)}
-                      <div className="odonto-midline" aria-hidden="true" />
-                      {renderHalf(lower.slice(splitAt(lower)), false)}
+                    <div className="odonto-jaw-band">
+                      <span className="odonto-side odonto-side-r">CHAP</span>
+                      <span className="odonto-side odonto-side-l">O‘NG</span>
+                      <div className="odonto-jaw odonto-jaw-lower">
+                        {renderHalf(lower.slice(0, splitAt(lower)), false)}
+                        <div className="odonto-midline" aria-hidden="true" />
+                        {renderHalf(lower.slice(splitAt(lower)), false)}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1029,7 +1034,10 @@ function ToothCell({ fdi, isUpper, entry, active, picked, dim, onClick }) {
             alt=""
             draggable={false}
             className="h-[94%] w-full max-w-full min-w-0 object-contain"
-            style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
+            style={{
+              objectPosition: crownDown ? 'center bottom' : 'center top',
+              transform: fdiLowerImageFlip(fdi) ? 'scaleX(-1)' : undefined,
+            }}
           />
         )}
         <span
@@ -1069,6 +1077,7 @@ function SidePanel(props) {
             src={getToothIllustrationSrc(active, activeEntry?.illustration || activeEntry?.kind || 'healthy')}
             alt=""
             className="h-16 w-10 object-contain"
+            style={{ transform: fdiLowerImageFlip(active) ? 'scaleX(-1)' : undefined }}
           />
         )}
         <div className="min-w-0 flex-1">

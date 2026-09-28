@@ -3,6 +3,7 @@ import fdiChart from '@/assets/teeth/fdi-chart.png';
 import { getToothIllustrationSrc } from '@/utils/toothIllustration';
 
 const TOP_ORDER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
+// Fixed sprite columns on fdi-chart.png. Display order lives in the charts, not here.
 const BOTTOM_ORDER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
 const CUSTOM_TOOTH_SRC = {
   // FDI mappings for upper right (11-18)
@@ -46,8 +47,12 @@ const CUSTOM_TOOTH_SRC = {
   '48': '/teeth/kamron/pas_ong_8.png',
 };
 
-/** Chap tomondagi tishlar — bir xil assetni o'ng tomonga aynalatish */
-const CUSTOM_TOOTH_MIRROR = new Set([]);
+/** Lower illustrations face the previous midline. Mirror them after the row swap. */
+function mirrorLower(number) {
+  const n = Number(number);
+  const q = Math.floor(n / 10);
+  return q === 3 || q === 4 || q === 7 || q === 8;
+}
 
 const getToothType = (num) => {
   const d = Number(num) % 10;
@@ -116,6 +121,11 @@ export default function RealisticTooth({
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.clearRect(0, 0, targetW, targetH);
+      ctx.save();
+      if (mirrorLower(number)) {
+        ctx.translate(targetW, 0);
+        ctx.scale(-1, 1);
+      }
       ctx.drawImage(
         atlasImage,
         pos.x,
@@ -127,6 +137,7 @@ export default function RealisticTooth({
         targetW,
         targetH
       );
+      ctx.restore();
     };
 
     if (atlasImage.complete) {
@@ -141,7 +152,7 @@ export default function RealisticTooth({
   }, [isCustomTooth, number, pos.x, pos.y, pos.w, pos.h, targetW, targetH]);
 
   if (isCustomTooth) {
-    const mirror = CUSTOM_TOOTH_MIRROR.has(number);
+    const mirror = mirrorLower(number);
     const n = Number(number);
     const crownUp = (n >= 31 && n <= 48) || (n >= 71 && n <= 85);
     const frameH = Math.round(size * 1.45);

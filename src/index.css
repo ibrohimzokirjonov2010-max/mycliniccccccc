@@ -250,8 +250,8 @@
   line-height: 1.1 !important;
 }
 
-/* FDI arch: patient's right on the viewer's left. One horizontal scroller
-   on narrow screens so 18→28 stays above 48→38. Jaws meet at the bite line. */
+/* FDI arch: upper 18→11 | 21→28, lower 38→31 | 41→48.
+   One horizontal scroller on narrow screens. Jaws meet at the bite line. */
 .odonto-fit-frame {
   container-type: inline-size;
   width: 100%;
@@ -267,13 +267,15 @@
   scrollbar-width: thin;
 }
 .odonto-cross {
+  --odonto-pad: 32px;
+  --odonto-label-inset: 8px;
   position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
   min-width: 0;
   gap: 0;
-  padding: 6px 32px 8px;
+  padding: 6px var(--odonto-pad) 8px;
   border-radius: 16px;
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -306,6 +308,15 @@
 }
 .odonto-side-r { left: 8px; }
 .odonto-side-l { right: 8px; }
+.odonto-jaw-band {
+  position: relative;
+}
+.odonto-jaw-band > .odonto-side-r {
+  left: calc((var(--odonto-pad, 32px) - var(--odonto-label-inset, 8px)) * -1);
+}
+.odonto-jaw-band > .odonto-side-l {
+  right: calc((var(--odonto-pad, 32px) - var(--odonto-label-inset, 8px)) * -1);
+}
 .odonto-jaw {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
@@ -795,6 +806,8 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
 .fdi-on-crown.is-lower { top: 1px; }
 @container (max-width: 560px) {
   .odonto-cross {
+    --odonto-pad: 22px;
+    --odonto-label-inset: 3px;
     padding-left: 22px;
     padding-right: 22px;
   }

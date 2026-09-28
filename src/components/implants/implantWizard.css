@@ -219,13 +219,15 @@
 }
 
 .implant-wizard-arch-rows {
+  --odonto-pad: 36px;
+  --odonto-label-inset: 8px;
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 0;
   width: 100%;
   min-width: 0;
-  padding: 6px 36px 8px;
+  padding: 6px var(--odonto-pad) 8px;
 }
 
 .implant-wizard-arch-rows::before {

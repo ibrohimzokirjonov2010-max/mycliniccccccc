@@ -1741,8 +1741,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         {step === 2 && (() => {
             const UPPER_RIGHT = ['18', '17', '16', '15', '14', '13', '12', '11'];
             const UPPER_LEFT  = ['21', '22', '23', '24', '25', '26', '27', '28'];
-            const LOWER_RIGHT = ['48', '47', '46', '45', '44', '43', '42', '41'];
-            const LOWER_LEFT  = ['31', '32', '33', '34', '35', '36', '37', '38'];
+            const LOWER_LEFT  = ['38', '37', '36', '35', '34', '33', '32', '31'];
+            const LOWER_RIGHT = ['41', '42', '43', '44', '45', '46', '47', '48'];
 
             const upperRight = UPPER_RIGHT;
             const upperLeft  = UPPER_LEFT;
@@ -1799,25 +1799,31 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
               <div className="odonto-fit-frame w-full min-w-0" data-compact="true">
                 <div className="odonto-scroll">
                   <div className="odonto-cross">
-                    <span className="odonto-side odonto-side-r">O‘NG</span>
-                    <span className="odonto-side odonto-side-l">CHAP</span>
-                    <div className="odonto-jaw odonto-jaw-upper">
-                      <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(upperRight) }}>
-                        {upperRight.map((n) => <ToothBtn key={n} fdi={n} />)}
-                      </div>
-                      <div className="odonto-midline" aria-hidden="true" />
-                      <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(upperLeft) }}>
-                        {upperLeft.map((n) => <ToothBtn key={n} fdi={n} />)}
+                    <div className="odonto-jaw-band">
+                      <span className="odonto-side odonto-side-r">O‘NG</span>
+                      <span className="odonto-side odonto-side-l">CHAP</span>
+                      <div className="odonto-jaw odonto-jaw-upper">
+                        <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(upperRight) }}>
+                          {upperRight.map((n) => <ToothBtn key={n} fdi={n} />)}
+                        </div>
+                        <div className="odonto-midline" aria-hidden="true" />
+                        <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(upperLeft) }}>
+                          {upperLeft.map((n) => <ToothBtn key={n} fdi={n} />)}
+                        </div>
                       </div>
                     </div>
                     <div className="odonto-bite-line" aria-hidden="true" />
-                    <div className="odonto-jaw odonto-jaw-lower">
-                      <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(lowerRight) }}>
-                        {lowerRight.map((n) => <ToothBtn key={n} fdi={n} />)}
-                      </div>
-                      <div className="odonto-midline" aria-hidden="true" />
-                      <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(lowerLeft) }}>
-                        {lowerLeft.map((n) => <ToothBtn key={n} fdi={n} />)}
+                    <div className="odonto-jaw-band">
+                      <span className="odonto-side odonto-side-r">CHAP</span>
+                      <span className="odonto-side odonto-side-l">O‘NG</span>
+                      <div className="odonto-jaw odonto-jaw-lower">
+                        <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(lowerLeft) }}>
+                          {lowerLeft.map((n) => <ToothBtn key={n} fdi={n} />)}
+                        </div>
+                        <div className="odonto-midline" aria-hidden="true" />
+                        <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(lowerRight) }}>
+                          {lowerRight.map((n) => <ToothBtn key={n} fdi={n} />)}
+                        </div>
                       </div>
                     </div>
                   </div>

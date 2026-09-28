@@ -2,12 +2,12 @@ import { Fragment } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import './implantWizard.css';
-import { fdiCrownDown, fdiLengthWeight, fdiWidthWeight } from '@/lib/fdiNotation';
+import { fdiCrownDown, fdiLengthWeight, fdiLowerImageFlip, fdiWidthWeight } from '@/lib/fdiNotation';
 import { getToothIllustrationSrc } from '@/utils/toothIllustration';
 
 /** Dentist view, straight rows — not an arch. */
 const UPPER_FDI = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
-const LOWER_FDI = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+const LOWER_FDI = [38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
 
 function WizardTooth({ fdi, selected, active, onClick }) {
   const crownDown = fdiCrownDown(fdi);
@@ -41,7 +41,10 @@ function WizardTooth({ fdi, selected, active, onClick }) {
           alt=""
           draggable={false}
           className="tooth-illus implant-wizard-tooth-img w-full h-[94%] max-w-full max-h-full object-contain pointer-events-none"
-          style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
+          style={{
+            objectPosition: crownDown ? 'center bottom' : 'center top',
+            transform: fdiLowerImageFlip(fdi) ? 'scaleX(-1)' : undefined,
+          }}
         />
         <span className={cn(
           'fdi-on-crown implant-wizard-tooth-fdi',
@@ -86,7 +89,7 @@ function LinearRow({ teeth, selectedSet, activeFdi, onToggle, variant }) {
 
 /**
  * Linear two-row FDI strip for the New Implant wizard.
- * Upper 18→28 and lower 48→38 sit on straight horizontal lines.
+ * Upper 18→28 and lower 38→48 sit on straight horizontal lines.
  * Dizyner PNGs are already oriented (upper roots up, lower roots down).
  */
 export default function ImplantWizardArch({ selectedFdis = [], activeFdi = '', onToggle, scrollHint }) {
@@ -100,11 +103,17 @@ export default function ImplantWizardArch({ selectedFdis = [], activeFdi = '', o
     >
       <div className="implant-wizard-arch-scroll">
         <div className="implant-wizard-arch-rows" style={{ display: 'flex', flexDirection: 'column', transform: 'none' }}>
-          <span className="odonto-side odonto-side-r">O‘NG</span>
-          <span className="odonto-side odonto-side-l">CHAP</span>
-          <LinearRow teeth={UPPER_FDI} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} variant="upper" />
+          <div className="odonto-jaw-band">
+            <span className="odonto-side odonto-side-r">O‘NG</span>
+            <span className="odonto-side odonto-side-l">CHAP</span>
+            <LinearRow teeth={UPPER_FDI} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} variant="upper" />
+          </div>
           <div className="implant-wizard-bite" aria-hidden="true" />
-          <LinearRow teeth={LOWER_FDI} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} variant="lower" />
+          <div className="odonto-jaw-band">
+            <span className="odonto-side odonto-side-r">CHAP</span>
+            <span className="odonto-side odonto-side-l">O‘NG</span>
+            <LinearRow teeth={LOWER_FDI} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} variant="lower" />
+          </div>
         </div>
       </div>
       {scrollHint ? (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, ArrowLeft, Phone } from 'lucide-react';
 import ToothChartCard from '@/components/patients/ToothChartCard';
+import MobileCompactOdontogram from '@/components/patients/MobileCompactOdontogram';
 import ChairsidePatientProfile from '@/components/patients/ChairsidePatientProfile';
 import { fmtMoney } from '@/utils/clinicMetrics';
 import { supabase } from '@/api/supabaseClient';
@@ -91,6 +92,7 @@ export default function OdontogramCardPreview() {
   const chairside = layout === 'chairside';
   const phoneShell = layout === 'phone';
   const reports = layout === 'reports';
+  const mini = layout === 'mini';
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f4f6f8]" data-testid="odonto-card-preview">
@@ -177,7 +179,12 @@ export default function OdontogramCardPreview() {
           </nav>
         </div>
       )}
-      {payload && !chairside && !phoneShell && (
+      {payload && mini && (
+        <div className="mx-auto max-w-[420px] p-3" data-testid="profile-mini-chart">
+          <MobileCompactOdontogram selectedFdi="" toothStatuses={{}} onSelect={() => {}} />
+        </div>
+      )}
+      {payload && !chairside && !phoneShell && !mini && (
         <div className="p-3">
           <ToothChartCard
             patient={payload.patient}
