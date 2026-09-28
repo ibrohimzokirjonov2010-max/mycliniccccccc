@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check, Layers, Plus, Printer, Target, X,
 } from 'lucide-react';
@@ -142,8 +142,41 @@ function toothTitle(fdi) {
   const pos = n % 10;
   const q = Math.floor(n / 10);
   const jaw = q === 1 || q === 2 || q === 5 || q === 6 ? 'yuqori' : 'pastki';
-  const side = q === 1 || q === 4 || q === 5 || q === 8 ? "o'ng" : 'chap';
-  return `${TOOTH_NAME[pos] || 'tish'} · ${jaw} ${side}`;
+  const side = q === 1 || q === 4 || q === 5 || q === 8 ? 'o‘ng' : 'chap';
+  const raw = TOOTH_NAME[pos] || 'tish';
+  const named = raw.charAt(0).toUpperCase() + raw.slice(1);
+  const title = /tish$/i.test(named) ? named : `${named} tish`;
+  return `${title} · ${jaw} ${side}`;
+}
+
+function withSurfaceNote(notes, surfaces) {
+  const base = String(notes || '')
+    .replace(/yuza:\s*[vmodl,\s]*/ig, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\.\s*\./g, '.')
+    .trim()
+    .replace(/[.\s]+$/, '');
+  const tag = surfaces.length ? `Yuza: ${surfaces.join(', ')}` : '';
+  return [base, tag].filter(Boolean).join('. ');
+}
+
+function patchServiceNotes(services, servicePath, nextNotes) {
+  return (services || []).map((svc, index) => {
+    if (Array.isArray(svc?.items)) {
+      return {
+        ...svc,
+        items: svc.items.map((inner, itemIndex) => (
+          servicePath?.parent === index && servicePath?.item === itemIndex
+            ? { ...inner, notes: nextNotes }
+            : inner
+        )),
+      };
+    }
+    if (servicePath?.parent === index && servicePath?.item == null) {
+      return { ...svc, notes: nextNotes };
+    }
+    return svc;
+  });
 }
 
 function mesialIsRight(fdi) {
@@ -202,13 +235,13 @@ function collectEntries(plans, implants, toothRecords) {
 
   (toothRecords || []).forEach((rec) => {
     const blob = `${rec.condition || ''} ${rec.treatment || ''} ${rec.notes || ''}`;
-    const kind = legendOf(matchIllustrationKind(blob));
-    if (!kind) return;
+    const illustration = matchIllustrationKind(blob);
+    const kind = legendOf(illustration);
     add(rec.tooth_number, {
       kind,
-      illustration: matchIllustrationKind(blob) || kind,
+      illustration: illustration || kind,
       done: isDoneStatus(rec.status) || !/reja|plan/i.test(String(rec.status || '')),
-      name: rec.treatment || rec.condition || kind,
+      name: rec.treatment || rec.condition || rec.notes || kind || 'Yozuv',
       price: Number(rec.price || 0),
       doctor: rec.doctor || '',
       date: rec.updated_date || rec.created_date,
@@ -272,7 +305,7 @@ export default function ToothChartCard({
 }) {
   const { user } = useAuth();
   const [phone, setPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
-  const [wideDesktop, setWideDesktop] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1440px)').matches);
+  const [wideDesktop, setWideDesktop] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1280px)').matches);
   const [mode, setMode] = useState('realistic');
   const [dentition, setDentition] = useState('adult');
   const [filter, setFilter] = useState('all');
@@ -289,7 +322,7 @@ export default function ToothChartCard({
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
-    const wide = window.matchMedia('(min-width: 1440px)');
+    const wide = window.matchMedia('(min-width: 1280px)');
     const onChange = () => {
       setPhone(mq.matches);
       setWideDesktop(wide.matches);
@@ -376,7 +409,9 @@ export default function ToothChartCard({
       color: KIND_COLOR[e.kind] || '#64748B',
       title: e.surfaces?.length ? `${e.name} (${e.surfaces.join(', ')})` : e.name,
       price: e.price,
-      meta: [fmtDate(e.date), e.doctor, e.done ? 'bajarildi' : 'reja'].filter(Boolean).join(' · '),
+      doctor: e.doctor || '',
+      status: e.done ? 'bajarildi' : 'reja',
+      dateLabel: fmtDate(e.date),
       date: e.date || '',
     }));
     (payments || []).forEach((p) => {
@@ -391,7 +426,9 @@ export default function ToothChartCard({
         color: '#0F172A',
         title: p.category || p.service_name || p.type || "To'lov",
         price: p.amount,
-        meta: [fmtDate(p.date), p.type].filter(Boolean).join(' · '),
+        doctor: p.doctor_name || '',
+        status: p.type || "to'lov",
+        dateLabel: fmtDate(p.date),
         date: p.date || '',
       });
     });
@@ -410,8 +447,46 @@ export default function ToothChartCard({
     }).filter(Boolean).slice(0, 6);
   }, [byTooth, upper, lower]);
 
+  const surfaceSave = useRef(Promise.resolve());
+
+  const writeSurfaces = async (fdi, next) => {
+    if (!patient?.id || !fdi) return;
+    const entry = primaryEntry(byTooth[String(fdi)], 'all');
+    const note = withSurfaceNote(entry?.notes || '', next);
+    if (entry?.planId && entry.servicePath) {
+      const plan = (plans || []).find((p) => p.id === entry.planId);
+      if (!plan) return;
+      await base44.entities.TreatmentPlan.update(plan.id, {
+        services: patchServiceNotes(plan.services, entry.servicePath, note),
+      });
+    } else {
+      const existing = (toothRecords || []).find((r) => String(r.tooth_number) === String(fdi));
+      const payload = {
+        patient_id: patient.id,
+        clinic_id: patient.clinic_id || user?.clinic_id || 'default_clinic',
+        tooth_number: String(fdi),
+        notes: note,
+        condition: existing?.condition || null,
+        treatment: existing?.treatment || null,
+        status: existing?.status || 'planned',
+      };
+      if (existing?.id) await base44.entities.ToothRecord.update(existing.id, payload);
+      else if (next.length) await base44.entities.ToothRecord.create(payload);
+    }
+    if (onReload) await onReload();
+  };
+
   const toggleSurface = (s) => {
-    setSurfaces((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+    if (!active) return;
+    const next = surfaces.includes(s) ? surfaces.filter((x) => x !== s) : [...surfaces, s];
+    setSurfaces(next);
+    const fdi = active;
+    surfaceSave.current = surfaceSave.current
+      .then(() => writeSurfaces(fdi, next))
+      .catch((err) => {
+        console.error(err);
+        toast.error('Yuza saqlanmadi');
+      });
   };
 
   const onTooth = (fdi) => {
@@ -589,6 +664,33 @@ export default function ToothChartCard({
     }
   };
 
+  const createRecord = async () => {
+    if (!patient?.id || !active) return;
+    const text = noteText.trim() || 'Yangi yozuv';
+    const surfaceNote = surfaces.length ? `Yuza: ${surfaces.join(', ')}` : '';
+    setBusy(true);
+    try {
+      await base44.entities.ToothRecord.create({
+        patient_id: patient.id,
+        clinic_id: patient.clinic_id || user?.clinic_id || 'default_clinic',
+        tooth_number: String(active),
+        treatment: text,
+        notes: [text, surfaceNote].filter(Boolean).join('. '),
+        status: 'planned',
+        doctor: doctorFields().doctor_name,
+      });
+      toast.success('Yozuv qo‘shildi');
+      setNoteOpen(false);
+      setNoteText('');
+      if (onReload) await onReload();
+    } catch (err) {
+      console.error(err);
+      toast.error('Yozuv saqlanmadi');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const activeEntry = active ? primaryEntry(byTooth[String(active)], 'all') : null;
   const showPanel = !phone;
   const showSheet = phone && (active || (multi && selected.length > 0));
@@ -672,7 +774,7 @@ export default function ToothChartCard({
   return (
     <div id="tooth-chart-print" className="tooth-chart-root min-w-0 max-w-full overflow-x-hidden">
       <div className={cn('tooth-chart-grid min-w-0', phone && 'grid gap-3')}>
-        <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:p-3">
+        <div className="tooth-chart-main min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:p-3">
           <div className="flex flex-wrap items-center gap-2">
             {!phone && <h3 className="mr-1 text-sm font-extrabold text-slate-900">Tish kartasi</h3>}
             <Seg
@@ -906,6 +1008,8 @@ export default function ToothChartCard({
             unitPrice={catalogPrice(({ breket: 'Breket tizimi', bridge: 'Sirkon toj', same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
             onUpload={uploadXray}
             onView={setViewer}
+            onAddToPlan={() => createPlan([active], activeEntry?.name || 'Davolash', activeEntry?.kind || '')}
+            onNewRecord={createRecord}
           />
         )}
       </div>
@@ -947,6 +1051,8 @@ export default function ToothChartCard({
             unitPrice={catalogPrice(({ breket: 'Breket tizimi', bridge: 'Sirkon toj', same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
             onUpload={uploadXray}
             onView={setViewer}
+            onAddToPlan={() => createPlan([active], activeEntry?.name || 'Davolash', activeEntry?.kind || '')}
+            onNewRecord={createRecord}
           />
         </div>
       )}
@@ -1063,37 +1169,44 @@ function SidePanel(props) {
     sheet, active, activeEntry, multi, selected, groupAction, setGroupAction,
     surfaces, toggleSurface, history, toothXrays, busy, noteOpen, noteText,
     setNoteText, setNoteOpen, onClose, onQuick, onNote, onGroup, onUpload, onView,
-    doctorName, unitPrice,
+    doctorName, unitPrice, onAddToPlan, onNewRecord,
   } = props;
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  useEffect(() => { setShowAllHistory(false); }, [active]);
   const group = multi && selected.length > 0 && !active;
+  const historyRows = showAllHistory ? history : history.slice(0, 3);
+  const statusLabel = activeEntry
+    ? (LEGEND.find((k) => k.id === activeEntry.kind)?.label || activeEntry.name)
+    : '';
   return (
-    <aside data-tooth-panel={sheet ? undefined : 'true'} className={cn('flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white', sheet ? 'max-h-[68vh] overflow-y-auto rounded-none border-0' : 'max-h-[calc(100dvh-7rem)] overflow-hidden')}>
+    <aside data-tooth-panel={sheet ? 'sheet' : 'side'} className={cn('flex min-w-0 flex-col self-start bg-white', sheet ? 'max-h-[72vh] overflow-hidden rounded-none border-0' : 'max-h-[min(760px,calc(100dvh-8rem))] overflow-hidden rounded-2xl border border-slate-200')}>
       <div className="flex items-start gap-2 border-b border-slate-100 p-3">
         {active && !group && (
           <img
-            src={getToothIllustrationSrc(active, activeEntry?.illustration || activeEntry?.kind || 'healthy')}
+            src={getToothIllustrationSrc(active, activeEntry?.illustration && activeEntry.illustration !== 'missing' ? activeEntry.illustration : (activeEntry?.kind === 'missing' ? 'missing' : (activeEntry?.kind || 'healthy')))}
             alt=""
-            className="h-16 w-10 object-contain"
+            className="h-16 w-11 shrink-0 object-contain"
+            style={{ objectPosition: fdiCrownDown(active) ? 'center bottom' : 'center top' }}
           />
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <h4 className="text-sm font-extrabold text-slate-900">
-              {group ? `Guruh amali · ${selected.length} ta tish` : active ? `${active}-tish` : 'Tish tanlanmagan'}
+              {group ? `Guruh amali · ${selected.length} ta tish` : active ? `${active}-tish` : 'Tish kartasi'}
             </h4>
             {(active || group) && (
-              <button type="button" onClick={onClose} className="grid h-7 w-7 place-items-center rounded-full border border-slate-200" aria-label="Yopish">
+              <button type="button" onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-slate-200" aria-label="Yopish">
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
-          <p className="text-[11px] text-slate-500">
-            {group ? selected.join(' · ') : active ? toothTitle(active) : 'Kartani ochish uchun tishni bosing'}
+          <p className="text-[11px] leading-snug text-slate-500">
+            {group ? selected.join(' · ') : active ? toothTitle(active) : 'Tishni tanlang'}
           </p>
           {activeEntry && !group && (
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <span className="rounded-full px-2 py-0.5 text-[10px] font-extrabold text-white" style={{ background: KIND_COLOR[activeEntry.kind] }}>
-                {LEGEND.find((k) => k.id === activeEntry.kind)?.label} · {activeEntry.done ? 'bajarildi' : 'reja'}
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-extrabold text-white" style={{ background: KIND_COLOR[activeEntry.kind] || '#64748B' }}>
+                {statusLabel} · {activeEntry.done ? 'bajarildi' : 'reja'}
               </span>
             </div>
           )}
@@ -1105,6 +1218,7 @@ function SidePanel(props) {
                   type="button"
                   onClick={() => toggleSurface(s)}
                   className={cn('grid h-7 w-7 place-items-center rounded-md border text-[11px] font-extrabold', surfaces.includes(s) ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-200 text-slate-600')}
+                  aria-pressed={surfaces.includes(s)}
                 >
                   {s}
                 </button>
@@ -1113,7 +1227,7 @@ function SidePanel(props) {
           )}
         </div>
       </div>
-      <div className={cn('space-y-3 p-3', sheet ? '' : 'min-h-0 flex-1 overflow-y-auto')}>
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
         {!active && !group && (
           <p className="rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center text-xs font-semibold text-slate-400">Tishni tanlang</p>
         )}
@@ -1160,12 +1274,12 @@ function SidePanel(props) {
               <div className="mb-1.5 text-[10px] font-extrabold uppercase tracking-wide text-slate-400">Tezkor qo‘shish</div>
               <div className="grid grid-cols-4 gap-1.5">
                 {QUICK.map((item) => (
-                  <button key={item.id} type="button" disabled={busy} onClick={() => onQuick(item)} className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 text-[10px] font-bold text-slate-700 disabled:opacity-50">
+                  <button key={item.id} type="button" disabled={busy} onClick={() => onQuick(item)} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-slate-200 px-0.5 py-1 text-center text-[9px] font-bold leading-tight text-slate-700 disabled:opacity-50">
                     <i className="h-2.5 w-2.5 rounded-sm" style={{ background: KIND_COLOR[item.id] }} />
                     {item.label}
                   </button>
                 ))}
-                <button type="button" onClick={() => setNoteOpen(true)} className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 text-[10px] font-bold text-slate-700">
+                <button type="button" onClick={() => setNoteOpen(true)} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-slate-200 px-0.5 py-1 text-center text-[9px] font-bold leading-tight text-slate-700">
                   <i className="h-2.5 w-2.5 rounded-sm bg-slate-900" />
                   Izoh
                 </button>
@@ -1178,21 +1292,27 @@ function SidePanel(props) {
               )}
             </div>
             <div>
-              <div className="mb-1.5 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wide text-slate-400">
+              <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-extrabold uppercase tracking-wide text-slate-400">
                 <span>Tish tarixi</span>
-                <span>{history.length ? `Hammasi (${history.length})` : ''}</span>
+                {history.length > 0 && (
+                  <button type="button" onClick={() => setShowAllHistory((v) => !v)} className="font-bold normal-case tracking-normal text-sky-600">
+                    Hammasi ({history.length})
+                  </button>
+                )}
               </div>
               {history.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">Bu tishda yozuv yo‘q</p>
               ) : (
                 <div className="space-y-2">
-                  {history.map((row) => (
+                  {historyRows.map((row) => (
                     <div key={row.id} className="border-l-2 pl-2" style={{ borderColor: row.color }}>
                       <div className="flex items-baseline justify-between gap-2">
                         <b className="text-xs font-bold text-slate-900">{row.title}</b>
                         {money(row.price) && <span className="shrink-0 text-[11px] font-bold tabular-nums">{money(row.price)}</span>}
                       </div>
-                      <div className="text-[11px] text-slate-500">{row.meta}</div>
+                      <div className="text-[11px] text-slate-500">
+                        {[row.dateLabel, row.doctor, row.status].filter(Boolean).join(' · ')}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1201,7 +1321,7 @@ function SidePanel(props) {
             <div>
               <div className="mb-1.5 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wide text-slate-400">
                 <span>Rentgen / RVG</span>
-                <label className="cursor-pointer font-bold text-sky-600">
+                <label className="cursor-pointer font-bold normal-case tracking-normal text-sky-600">
                   + Yuklash
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ''; }} />
                 </label>
@@ -1223,10 +1343,20 @@ function SidePanel(props) {
         )}
       </div>
       {group && (
-        <div className="flex gap-2 border-t border-slate-100 p-3">
+        <div className="flex gap-2 border-t border-slate-100 bg-white p-3">
           <button type="button" onClick={onClose} className="h-9 flex-1 rounded-xl border border-slate-200 text-xs font-bold">Bekor qilish</button>
           <button type="button" disabled={busy} onClick={onGroup} className="inline-flex h-9 flex-[1.4] items-center justify-center gap-1 rounded-xl bg-slate-900 text-xs font-bold text-white disabled:opacity-60">
             <Plus className="h-3.5 w-3.5" /> Rejaga qo‘shish ({selected.length})
+          </button>
+        </div>
+      )}
+      {active && !group && (
+        <div className="flex gap-2 border-t border-slate-100 bg-white p-3">
+          <button type="button" disabled={busy} onClick={onAddToPlan} className="h-9 flex-1 rounded-xl bg-slate-900 text-xs font-bold text-white disabled:opacity-60">
+            Rejaga qo‘shish
+          </button>
+          <button type="button" disabled={busy} onClick={onNewRecord} className="inline-flex h-9 flex-1 items-center justify-center gap-1 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 disabled:opacity-60">
+            <Plus className="h-3.5 w-3.5" /> Yangi yozuv
           </button>
         </div>
       )}

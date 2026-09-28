@@ -754,11 +754,37 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
   grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   min-width: 0;
+  align-items: start;
 }
-@media (min-width: 1440px) {
+.tooth-chart-main {
+  container-type: inline-size;
+  container-name: tootharch;
+  min-width: 0;
+}
+@media (min-width: 1280px) {
   .tooth-chart-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 248px);
   }
+}
+@container tootharch (max-width: 640px) {
+  .odonto-cross {
+    --odonto-pad: 16px;
+    --odonto-label-inset: 2px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .tooth-chart-root .schema-box {
+    min-width: 0;
+    min-height: 24px;
+  }
+  .tooth-chart-root .schema-num {
+    font-size: 10px !important;
+    padding: 0 1px !important;
+  }
+  .tooth-chart-root .tooth-face {
+    height: calc(clamp(52px, 18cqw, 100px) * var(--fdi-len, 1));
+  }
+  .fdi-on-crown { font-size: 8px; }
 }
 [data-tooth-panel] {
   scroll-margin-top: 8.5rem;
