@@ -22,7 +22,7 @@ const DEFAULT_INVENTORY_CATEGORIES = [
   'Ortodontiya',
   'Asboblar',
   'Bir martalik (Sarf)',
-  'Dezinseksiya',
+  'Dezinfeksiya',
   'Boshqa'
 ];
 

@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
 
-const formatCurrency = (val) => new Intl.NumberFormat('uz-UZ', { style: 'currency', currency: 'UZS', maximumFractionDigits: 0 }).format(val);
+const formatCurrency = (val) => `${Number(val || 0).toLocaleString('uz-UZ')} UZS`;
 
 export default function NoShow() {
   const { t } = useTranslation();
@@ -127,8 +127,7 @@ export default function NoShow() {
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('noShow.stats.lostRevenue') || 'Yo\'qotilgan'}</p>
             <p className="text-xl font-black text-rose-600 mt-0.5">
-              {formatCurrency(totalLostRevenue).replace(" so'm", "")}
-              <span className="text-[10px] ml-0.5 opacity-60">UZS</span>
+              {formatCurrency(totalLostRevenue)}
             </p>
           </div>
         </div>
@@ -214,7 +213,7 @@ export default function NoShow() {
                         </td>
                         <td className="px-4 py-2.5 w-[15%] min-w-[110px]">
                           <p className="font-bold text-rose-600 text-[13px] tracking-tight whitespace-nowrap">
-                            -{appt.price ? formatCurrency(appt.price).replace(" so'm", "") : '0'}
+                            -{appt.price ? formatCurrency(appt.price) : '0 UZS'}
                             <span className="text-[9px] ml-0.5 text-rose-500 uppercase font-medium">uzs</span>
                           </p>
                         </td>
@@ -286,7 +285,7 @@ export default function NoShow() {
                         <div className="text-right">
                           <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{t('noShow.table.lost') || 'Yo\'qotilgan'}</p>
                           <p className="text-sm font-bold text-rose-600 tracking-tight">
-                            -{appt.price ? formatCurrency(appt.price).replace(" so'm", "") : '0'} <span className="text-[8px] opacity-60">UZS</span>
+                            -{appt.price ? formatCurrency(appt.price) : '0 UZS'}
                           </p>
                         </div>
                       </div>

@@ -30,7 +30,7 @@ const DEFAULT_INVENTORY_CATEGORIES = [
   'Ortodontiya',
   'Asboblar',
   'Bir martalik (Sarf)',
-  'Dezinseksiya',
+  'Dezinfeksiya',
   'Boshqa'
 ];
 
@@ -721,7 +721,7 @@ export default function Inventory() {
                 </th>
 
                 {/* Actions */}
-                <th className="w-28 px-2 py-2.5 text-center text-slate-500 whitespace-nowrap select-none">
+                <th className="sticky right-0 z-20 w-28 min-w-[112px] px-2 py-2.5 text-center text-slate-500 whitespace-nowrap select-none bg-slate-100 shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.18)]">
                   {t('common.actions') || "Amallar"}
                 </th>
 
@@ -838,7 +838,7 @@ export default function Inventory() {
                       </td>
 
                       {/* Actions Cell */}
-                      <td className={`text-center whitespace-nowrap ${isCompact ? 'py-1 px-1.5' : 'py-2 px-2'}`}>
+                      <td className={`sticky right-0 z-10 text-center whitespace-nowrap bg-white group-hover:bg-[#e7f6f8] shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)] ${isCompact ? 'py-1 px-1.5' : 'py-2 px-2'}`}>
                         <div className="flex items-center justify-center gap-1.5" onClick={(ev) => ev.stopPropagation()}>
                           <button 
                             onClick={() => { setEditItem(item); setModalOpen(true); }}

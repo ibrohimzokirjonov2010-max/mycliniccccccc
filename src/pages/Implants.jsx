@@ -612,7 +612,7 @@ export default function Implants() {
       </div>
 
       {/* ─── KPI Cards Grid ─────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {[
           { 
             label: language === 'ru' ? "ВСЕГО ОПЕРАЦИЙ" : language === 'en' ? "TOTAL PROCEDURES" : "JAMI AMALIYOTLAR", 
@@ -666,7 +666,7 @@ export default function Implants() {
             }`}
           >
             <div className="min-w-0 flex-1 mr-2">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5 truncate">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5 leading-tight">
                 {s.label}
               </span>
               <div className="text-base sm:text-lg font-black font-mono tracking-tight text-slate-900 truncate">
@@ -713,7 +713,7 @@ export default function Implants() {
               { id: 'incomplete', label: language === 'ru' ? "Требует ввода" : language === 'en' ? "Needs Entry" : "Kiritish talab", count: incompleteList.length, alert: incompleteList.length > 0, icon: KiritishTalabIcon, activeColor: "text-amber-300", defaultColor: "text-amber-500" },
               { id: 'implant', label: language === 'ru' ? "Имплант" : "Implant", count: serviceStats.implantCount, icon: ImplantIcon, activeColor: "text-teal-300", defaultColor: "text-teal-600" },
               { id: 'formik', label: language === 'ru' ? "Формирователь" : language === 'en' ? "Former" : "Formik", count: serviceStats.formikCount, icon: FormerIcon, activeColor: "text-amber-300", defaultColor: "text-amber-600" },
-              { id: 'extra', label: language === 'ru' ? "Доп. услуги" : language === 'en' ? "Extra Services" : "Qo'shimcha xizmatlar", count: extraServicesCatalog.length > 0 ? extraServicesCatalog.length : (serviceStats.extraCount || 22), icon: Sparkles, activeColor: "text-indigo-300", defaultColor: "text-indigo-600" },
+              { id: 'extra', label: language === 'ru' ? "Доп. услуги" : language === 'en' ? "Extra Services" : "Qo'shimcha xizmatlar", count: serviceStats.extraCount || 0, icon: Sparkles, activeColor: "text-indigo-300", defaultColor: "text-indigo-600" },
               { id: 'control', label: language === 'ru' ? "Требует контроля" : language === 'en' ? "Needs Control" : "Nazorat talab", count: needsControl.length, alert: needsControl.length > 0, icon: ClinicalControlIcon, activeColor: "text-rose-300", defaultColor: "text-rose-500" },
               { id: 'analytics', label: language === 'ru' ? "Бренды и склад" : language === 'en' ? "Brands & Stock" : "Brendlar & Zaxira", count: brands.length, icon: BrandStockIcon, activeColor: "text-purple-300", defaultColor: "text-purple-600" },
             ].map(tab => {
@@ -1096,7 +1096,7 @@ export default function Implants() {
                         </td>
 
                         {/* 4. NARXI Cell */}
-                        <td className={`text-right border-r border-slate-200/70 font-mono font-black text-emerald-700 whitespace-nowrap bg-emerald-50/20 text-xs sm:text-sm ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
+                        <td className={`text-right border-r border-slate-200/70 font-mono font-black text-emerald-700 whitespace-nowrap bg-emerald-50/20 text-xs sm:text-sm min-w-[120px] ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
                           {priceVal.toLocaleString()} <span className="text-[10px] font-bold text-emerald-600/80 uppercase">{language === 'ru' ? 'UZS' : "so'm"}</span>
                         </td>
 

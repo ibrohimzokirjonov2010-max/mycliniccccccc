@@ -202,10 +202,13 @@ export default function MobilePayroll() {
       ]);
 
       const currentClinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
-      const doctorUsers = (users || []).filter(u => 
-        (u.role === 'doctor' || u.role === 'admin' || (u.specialty && u.specialty !== 'receptionist')) &&
-        (u.clinic_id === currentClinicId || !u.clinic_id)
-      );
+      const doctorUsers = (users || []).filter(u => {
+        const role = String(u.role || '').toLowerCase();
+        const name = String(u.name || u.full_name || '').trim().toLowerCase();
+        if (role === 'admin' || name === 'demo admin' || name === 'administrator') return false;
+        return (role === 'doctor' || (u.specialty && u.specialty !== 'receptionist')) &&
+        (u.clinic_id === currentClinicId || !u.clinic_id);
+      });
 
       setDoctors(doctorUsers);
       setPayments(pays || []);

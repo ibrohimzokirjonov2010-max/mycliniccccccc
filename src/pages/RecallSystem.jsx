@@ -215,6 +215,7 @@ export default function RecallSystem() {
     if (lower === 'scheduled' || lower === 'rejalashtirilgan' || lower === 'запланировано') return 'Scheduled';
     if (lower === 'completed' || lower === 'bajarildi' || lower === 'выполнено' || lower === 'yakunlangan') return 'Completed';
     if (lower === 'missed' || lower === "o'tkazib yuborildi" || lower === 'пропущено') return 'Missed';
+    if (lower === 'sent' || lower === 'yuborilgan' || lower === 'отправлено') return 'Sent';
     return 'Pending';
   };
 
@@ -274,7 +275,7 @@ export default function RecallSystem() {
     const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     recalls.forEach(r => {
-      const st = r.status || 'Pending';
+      const st = normalizeRecallStatus(r.status);
       if (st === 'Pending') counts.pending += 1;
       else if (st === 'Contacted') counts.contacted += 1;
       else if (st === 'Completed') counts.completed += 1;
@@ -598,7 +599,10 @@ export default function RecallSystem() {
         return { label: 'Rejalashtirilgan', bg: 'bg-purple-50 text-purple-700 border-purple-200' };
       case 'Missed':
         return { label: "O'tkazib yuborildi", bg: 'bg-rose-50 text-rose-700 border-rose-200' };
+      case 'Sent':
+        return { label: 'Yuborilgan', bg: 'bg-sky-50 text-sky-700 border-sky-200' };
       case 'Pending':
+        return { label: 'Kutilmoqda', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
       default:
         return { label: 'Kutilmoqda', bg: 'bg-amber-50 text-amber-700 border-amber-200' };
     }

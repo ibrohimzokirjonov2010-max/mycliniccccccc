@@ -276,10 +276,13 @@ export default function Payroll() {
       ]);
 
       const currentClinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
-      const doctorUsers = (users || []).filter(u => 
-        (u.role === 'doctor' || u.role === 'admin' || (u.specialty && u.specialty !== 'receptionist')) &&
-        (u.clinic_id === currentClinicId || !u.clinic_id)
-      );
+      const doctorUsers = (users || []).filter(u => {
+        const role = String(u.role || '').toLowerCase();
+        const name = String(u.name || u.full_name || '').trim().toLowerCase();
+        if (role === 'admin' || role === 'receptionist' || name === 'demo admin' || name === 'administrator') return false;
+        const isDoctor = role === 'doctor' || (u.specialty && String(u.specialty).toLowerCase() !== 'receptionist');
+        return isDoctor && (u.clinic_id === currentClinicId || !u.clinic_id);
+      });
 
       const mergedDoctors = [...doctorUsers];
       preserveDoctors.forEach(pd => {
@@ -935,10 +938,10 @@ export default function Payroll() {
 
       {/* ─── Excel Spreadsheet Controls Bar ────────────────────────── */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+        <div className="flex flex-col lg:flex-row lg:flex-wrap lg:items-center justify-between gap-2.5">
           
           {/* Search Box */}
-          <div className="relative flex-1 group">
+          <div className="relative flex-1 min-w-[220px] group">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
             <input 
               type="text" 
@@ -989,7 +992,7 @@ export default function Payroll() {
           {/* Month Selector */}
           <div className="w-full sm:w-auto">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-full sm:w-48 h-9 rounded-xl font-bold text-xs bg-slate-50 border-slate-200">
+              <SelectTrigger className="w-full sm:min-w-[13rem] sm:w-56 h-9 rounded-xl font-bold text-xs bg-slate-50 border-slate-200">
                 <Calendar className="w-3.5 h-3.5 mr-2 text-[#1499AD]" />
                 <SelectValue />
               </SelectTrigger>
