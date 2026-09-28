@@ -5,7 +5,7 @@ import {
   PieChart, Pie, Cell, ComposedChart, Line,
 } from 'recharts';
 import {
-  Calendar, Printer, FileSpreadsheet, Search, X, LayoutGrid, Award, DollarSign, Layers,
+  Calendar, Printer, FileSpreadsheet, Search, X, LayoutGrid, Award, DollarSign, Layers, ChevronDown,
   Receipt, ArrowUpRight, ArrowDownRight, AlertTriangle, Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -85,8 +85,74 @@ export default function ReportsDashboard({
   const margin = stats.totalIncome > 0 ? Math.round((stats.netProfit / stats.totalIncome) * 100) : null;
   const expenseRatio = stats.totalIncome > 0 ? Math.round((stats.totalExpense / stats.totalIncome) * 1000) / 10 : null;
 
+  const phoneTabs = [
+    { id: 'overview', label: tx(language, 'Umumiy', 'Обзор', 'Overview') },
+    { id: 'doctors', label: tx(language, 'Shifokorlar', 'Врачи', 'Doctors'), count: doctorLeaderboard.length },
+    { id: 'finance', label: tx(language, 'Kirim & chiqim', 'Доходы', 'Finance'), count: monthlyFinanceReport.length },
+    { id: 'services', label: tx(language, 'Xizmatlar', 'Услуги', 'Services'), count: servicesReport.length },
+    { id: 'appointments', label: tx(language, 'Qabullar', 'Приёмы', 'Visits'), count: appointmentsStatusReport.length },
+  ];
+
+  const rangePanel = rangeOpen && (
+    <div className={cn('z-30 bg-white border border-slate-200 rounded-xl shadow-lg p-3 space-y-2', phone ? 'mt-2' : 'absolute right-0 mt-1 w-[240px] max-w-[80vw]')}>
+      <label className="block text-[11px] font-semibold text-slate-500">
+        {tx(language, 'Dan', 'С', 'From')}
+        <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="mt-1 w-full h-9 rounded-lg border border-slate-200 px-2 text-sm" />
+      </label>
+      <label className="block text-[11px] font-semibold text-slate-500">
+        {tx(language, 'Gacha', 'По', 'To')}
+        <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="mt-1 w-full h-9 rounded-lg border border-slate-200 px-2 text-sm" />
+      </label>
+      <button
+        type="button"
+        onClick={() => { setPeriod('custom'); setRangeOpen(false); }}
+        className="w-full h-9 rounded-lg bg-[#0C1222] text-white text-xs font-bold"
+      >
+        {tx(language, 'Qo\'llash', 'Применить', 'Apply')}
+      </button>
+    </div>
+  );
+
   return (
-    <div className={cn('reports-print min-w-0 max-w-full pb-6', inMobileShell && 'px-4', phone && 'pb-24')}>
+    <div className={cn('reports-print min-w-0 max-w-full pb-6', inMobileShell && 'px-4', phone && 'pb-4')}>
+      {phone ? (
+        <div className="mb-2 min-w-0">
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-[22px] font-extrabold tracking-tight text-slate-900">{tx(language, 'Hisobotlar', 'Отчёты', 'Reports')}</h1>
+              <p className="text-xs text-slate-500 mt-0.5 truncate">{tx(language, 'Moliya, shifokorlar reytingi va xizmatlar', 'Финансы, рейтинг врачей и услуги', 'Finance, ranking and services')}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRangeOpen((v) => !v)}
+              aria-label={tx(language, 'Davr tanlash', 'Выбрать период', 'Pick range')}
+              className={cn('no-print w-10 h-10 rounded-xl border bg-white grid place-items-center shrink-0', period === 'custom' ? 'border-[#1499AD] text-teal-700' : 'border-slate-200 text-slate-600')}
+            >
+              <Calendar className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="no-print flex gap-1.5 mt-3">
+            {periods.map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                onClick={() => setPeriod(p.key)}
+                className={cn('h-[34px] px-2.5 rounded-full border text-[12.5px] font-semibold whitespace-nowrap shrink-0', period === p.key ? 'bg-[#0C1222] text-white border-[#0C1222]' : 'bg-white text-slate-700 border-slate-200')}
+              >
+                {p.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setRangeOpen((v) => !v)}
+              className={cn('h-[34px] px-2.5 rounded-full border text-[12.5px] font-semibold whitespace-nowrap shrink-0', period === 'custom' ? 'bg-[#0C1222] text-white border-[#0C1222]' : 'bg-white text-slate-700 border-slate-200')}
+            >
+              {tx(language, 'Davr…', 'Период…', 'Range…')}
+            </button>
+          </div>
+          {rangePanel}
+        </div>
+      ) : (
       <div className="flex flex-col gap-3 mb-4 min-w-0">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 flex flex-wrap items-center gap-2">
@@ -117,25 +183,7 @@ export default function ReportsDashboard({
               <Calendar className="w-3.5 h-3.5" />
               {tx(language, 'Davr tanlash', 'Выбрать период', 'Pick range')}
             </button>
-            {rangeOpen && (
-              <div className="absolute right-0 z-30 mt-1 w-[240px] max-w-[80vw] bg-white border border-slate-200 rounded-xl shadow-lg p-3 space-y-2">
-                <label className="block text-[11px] font-semibold text-slate-500">
-                  {tx(language, 'Dan', 'С', 'From')}
-                  <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="mt-1 w-full h-9 rounded-lg border border-slate-200 px-2 text-sm" />
-                </label>
-                <label className="block text-[11px] font-semibold text-slate-500">
-                  {tx(language, 'Gacha', 'По', 'To')}
-                  <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="mt-1 w-full h-9 rounded-lg border border-slate-200 px-2 text-sm" />
-                </label>
-                <button
-                  type="button"
-                  onClick={() => { setPeriod('custom'); setRangeOpen(false); }}
-                  className="w-full h-9 rounded-lg bg-[#0C1222] text-white text-xs font-bold"
-                >
-                  {tx(language, 'Qo\'llash', 'Применить', 'Apply')}
-                </button>
-              </div>
-            )}
+            {rangePanel}
           </div>
           <button type="button" onClick={onPrint} className="h-9 w-9 shrink-0 rounded-xl border border-slate-200 bg-white grid place-items-center text-slate-600" aria-label="Print">
             <Printer className="w-4 h-4" />
@@ -146,59 +194,104 @@ export default function ReportsDashboard({
           </button>
         </div>
       </div>
+      )}
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3 mb-4">
+      <div className={cn('grid grid-cols-2 xl:grid-cols-4 mb-3', phone ? 'gap-2' : 'gap-2.5 sm:gap-3 mb-4')}>
         <KpiCard
+          compact={phone}
           label={tx(language, 'Jami qabullar', 'Всего приёмов', 'Total visits')}
           value={<>{appointmentCount} <small>ta</small></>}
           icon={<Calendar className="w-4 h-4" />}
           iconClass="bg-blue-50 text-blue-600"
           bar={doneBar}
           barClass="bg-blue-500"
-          foot={`${stats.completedAppts} ${tx(language, 'ta yakunlangan', 'завершено', 'completed')} · ${doneBar}%`}
+          foot={phone ? `${stats.completedAppts} ${tx(language, 'yakunlangan', 'завершено', 'completed')}` : `${stats.completedAppts} ${tx(language, 'ta yakunlangan', 'завершено', 'completed')} · ${doneBar}%`}
           trend={trends?.appointments}
           period={period}
           trendNote={trends?.note}
         />
         <KpiCard
+          compact={phone}
           label={tx(language, 'Umumiy daromad', 'Общий доход', 'Total income')}
-          value={<>{fmtMoney(stats.totalIncome)}<small>UZS</small></>}
+          value={phone ? fmtCompact(stats.totalIncome) : <>{fmtMoney(stats.totalIncome)}<small>UZS</small></>}
           icon={<DollarSign className="w-4 h-4" />}
           iconClass="bg-emerald-50 text-emerald-600"
           bar={incomeBar}
           barClass="bg-emerald-500"
-          foot={`${tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')}: ${stats.avgCheck ? fmtMoney(stats.avgCheck) : '—'}`}
+          foot={phone ? (stats.totalIncome ? `${fmtMoney(stats.totalIncome)} UZS` : '—') : `${tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')}: ${stats.avgCheck ? fmtMoney(stats.avgCheck) : '—'}`}
           trend={trends?.income}
           period={period}
           trendNote={trends?.note}
         />
         <KpiCard
-          label={tx(language, 'Chiqimlar / xarajat', 'Расходы', 'Expenses')}
-          value={<>{fmtMoney(stats.totalExpense)}<small>UZS</small></>}
+          compact={phone}
+          label={phone ? tx(language, 'Chiqimlar', 'Расходы', 'Expenses') : tx(language, 'Chiqimlar / xarajat', 'Расходы', 'Expenses')}
+          value={phone ? fmtCompact(stats.totalExpense) : <>{fmtMoney(stats.totalExpense)}<small>UZS</small></>}
           icon={<ArrowDownRight className="w-4 h-4" />}
           iconClass="bg-rose-50 text-rose-600"
           bar={expenseBar}
           barClass="bg-rose-500"
-          foot={expenseRatio != null ? `${tx(language, 'Daromadning', 'От дохода', 'Of income')} ${String(expenseRatio).replace('.', ',')} ${tx(language, 'foizi', '%', '%')}` : tx(language, 'Daromad yo\'q', 'Нет дохода', 'No income')}
+          foot={phone ? (stats.totalExpense ? `${fmtMoney(stats.totalExpense)} UZS` : '—') : (expenseRatio != null ? `${tx(language, 'Daromadning', 'От дохода', 'Of income')} ${String(expenseRatio).replace('.', ',')} ${tx(language, 'foizi', '%', '%')}` : tx(language, 'Daromad yo\'q', 'Нет дохода', 'No income'))}
           trend={trends?.expense}
           period={period}
           trendNote={trends?.note}
           invert
         />
         <KpiCard
+          compact={phone}
           dark
           label={tx(language, 'Sof foyda', 'Чистая прибыль', 'Net profit')}
-          value={<>{fmtMoney(stats.netProfit)}<small>UZS</small></>}
+          value={phone ? fmtCompact(stats.netProfit) : <>{fmtMoney(stats.netProfit)}<small>UZS</small></>}
           icon={<ArrowUpRight className="w-4 h-4" />}
           bar={profitBar}
           barClass="bg-emerald-400"
-          foot={margin != null ? `${tx(language, 'Rentabellik', 'Рентабельность', 'Margin')}: ${margin}%` : tx(language, 'Daromad yo\'q', 'Нет дохода', 'No income')}
+          foot={phone ? (margin != null ? `${tx(language, 'Rentabellik', 'Рентабельность', 'Margin')} ${margin}%` : '—') : (margin != null ? `${tx(language, 'Rentabellik', 'Рентабельность', 'Margin')}: ${margin}%` : tx(language, 'Daromad yo\'q', 'Нет дохода', 'No income'))}
           trend={trends?.profit}
           period={period}
           trendNote={trends?.note}
         />
       </div>
 
+      {phone && (
+        <p className="text-[11.5px] text-slate-500 mb-3">
+          {tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')}: <b className="text-slate-900">{stats.avgCheck ? `${fmtMoney(stats.avgCheck)} UZS` : '—'}</b>
+        </p>
+      )}
+
+      {phone ? (
+        <div className="no-print mb-3 min-w-0">
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+            {phoneTabs.map((tab) => {
+              const on = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn('h-[34px] px-3.5 rounded-full border text-[12.5px] font-semibold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0', on ? 'bg-[#0C1222] text-white border-[#0C1222]' : 'bg-white text-slate-700 border-slate-200')}
+                >
+                  {tab.label}
+                  {tab.count != null && <b className={cn('text-[11px] font-bold', on ? 'text-emerald-200' : 'text-slate-400')}>{tab.count}</b>}
+                </button>
+              );
+            })}
+          </div>
+          {(activeTab === 'doctors' || activeTab === 'services') && (
+            <div className="relative mt-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={activeTab === 'services' ? tx(language, 'Xizmat nomi…', 'Услуга…', 'Service…') : tx(language, 'Shifokor nomi…', 'Имя врача…', 'Doctor…')}
+                className="w-full h-10 pl-9 pr-8 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-[#1499AD]"
+              />
+              {searchQuery && (
+                <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"><X className="w-3.5 h-3.5" /></button>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="no-print flex items-center gap-1.5 mb-3.5 overflow-x-auto no-scrollbar min-w-0">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -231,6 +324,7 @@ export default function ReportsDashboard({
           </div>
         )}
       </div>
+      )}
 
       {loading && <div className="h-1 rounded bg-slate-100 overflow-hidden mb-3"><div className="h-full w-1/3 bg-[#1499AD] animate-pulse" /></div>}
 
@@ -238,10 +332,10 @@ export default function ReportsDashboard({
         <div className={cn('grid gap-3.5 mb-3.5', activeTab === 'overview' ? 'grid-cols-1 xl:grid-cols-[1.7fr_1fr]' : 'grid-cols-1')}>
           {activeTab === 'overview' || activeTab === 'finance' ? (
             <section className="bg-white border border-slate-200/80 rounded-2xl p-4 min-w-0 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+              <div className={cn('flex flex-wrap items-start justify-between gap-2 mb-2', phone && 'flex-col')}>
                 <div>
-                  <h3 className="text-sm font-bold">{tx(language, 'Kirim va chiqim dinamikasi', 'Динамика доходов и расходов', 'Income and expense')}</h3>
-                  <p className="text-[11.5px] text-slate-400">{tx(language, 'Oylar kesimida · chiziq — sof foyda', 'По месяцам · линия — прибыль', 'By month · line is net profit')}</p>
+                  <h3 className="text-sm font-bold">{phone ? tx(language, 'Kirim va chiqim', 'Доходы и расходы', 'Income and expense') : tx(language, 'Kirim va chiqim dinamikasi', 'Динамика доходов и расходов', 'Income and expense')}</h3>
+                  <p className="text-[11.5px] text-slate-400">{phone ? tx(language, 'mln UZS · chiziq — sof foyda', 'млн · линия — прибыль', 'line is net profit') : tx(language, 'Oylar kesimida · chiziq — sof foyda', 'По месяцам · линия — прибыль', 'By month · line is net profit')}</p>
                 </div>
                 <div className="flex gap-3 text-[11px] font-semibold text-slate-500">
                   <span className="inline-flex items-center gap-1"><i className="w-2 h-2 rounded-sm bg-emerald-600" />{tx(language, 'Kirim', 'Доход', 'Income')}</span>
@@ -252,12 +346,12 @@ export default function ReportsDashboard({
               {financeChartData.length === 0 ? (
                 <Empty text={tx(language, 'Tanlangan davrda moliyaviy yozuv yo\'q.', 'Нет финансовых записей за период.', 'No finance records in this period.')} />
               ) : (
-                <div className="w-full min-w-0 h-[220px] sm:h-[250px]">
+                <div className={cn('w-full min-w-0', phone ? 'h-[190px]' : 'h-[220px] sm:h-[250px]')}>
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={financeChartData} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EEF1F5" />
                       <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                      <YAxis tickFormatter={formatChartYAxis} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={46} />
+                      <YAxis tickFormatter={(v) => (phone ? String(formatChartYAxis(v)).replace(/\s+/g, '') : formatChartYAxis(v))} tick={{ fontSize: phone ? 10 : 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={phone ? 36 : 46} />
                       <Tooltip content={<MoneyTip />} />
                       <Bar dataKey="income" name={tx(language, 'Kirim', 'Доход', 'Income')} fill="#059669" radius={[4, 4, 0, 0]} maxBarSize={26} />
                       <Bar dataKey="expense" name={tx(language, 'Chiqim', 'Расход', 'Expense')} fill="#F43F5E" radius={[4, 4, 0, 0]} maxBarSize={26} />
@@ -269,14 +363,14 @@ export default function ReportsDashboard({
             </section>
           ) : null}
           {activeTab === 'overview' && (
-            <DonutCard language={language} rows={appointmentsStatusReport} total={appointmentCount} />
+            <DonutCard language={language} rows={appointmentsStatusReport} total={appointmentCount} compact={phone} />
           )}
         </div>
       )}
 
       {activeTab === 'appointments' && (
         <div className="mb-3.5">
-          <DonutCard language={language} rows={appointmentsStatusReport} total={appointmentCount} wide />
+          <DonutCard language={language} rows={appointmentsStatusReport} total={appointmentCount} wide compact={phone} />
         </div>
       )}
 
@@ -285,9 +379,24 @@ export default function ReportsDashboard({
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 pb-2">
             <div>
               <h3 className="text-sm font-bold">{tx(language, 'Shifokorlar reytingi', 'Рейтинг врачей', 'Doctor ranking')}</h3>
-              <p className="text-[11.5px] text-slate-400">{tx(language, 'Umumiy tushum bo\'yicha', 'По общей выручке', 'By revenue')} · {doctorLeaderboard.length}</p>
+              <p className="text-[11.5px] text-slate-400">{tx(language, 'Umumiy tushum bo\'yicha', 'По общей выручке', 'By revenue')}{!phone && <> · {doctorLeaderboard.length}</>}</p>
             </div>
-            <label className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-slate-200 text-xs font-semibold">
+            {phone ? (
+              <label className="relative inline-flex items-center gap-0.5 h-8 text-[12px] font-semibold text-teal-700 shrink-0 cursor-pointer">
+                {tx(language, 'Saralash', 'Сортировка', 'Sort')}
+                <ChevronDown className="w-3 h-3" />
+                <select aria-label={tx(language, 'Saralash', 'Сортировка', 'Sort')} value={docSortField} onChange={(e) => onDocSort(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer">
+                  <option value="revenue">{tx(language, 'Umumiy tushum', 'Выручка', 'Revenue')}</option>
+                  <option value="appointments">{tx(language, 'Qabullar', 'Приёмы', 'Visits')}</option>
+                  <option value="completed">{tx(language, 'Bajarilgan', 'Выполнено', 'Completed')}</option>
+                  <option value="patients">{tx(language, 'Bemorlar', 'Пациенты', 'Patients')}</option>
+                  <option value="avg_check">{tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')}</option>
+                  <option value="share">{tx(language, 'Ulush', 'Доля', 'Share')}</option>
+                  <option value="name">{tx(language, 'Ism', 'Имя', 'Name')}</option>
+                </select>
+              </label>
+            ) : (
+            <label className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-slate-200 text-xs font-semibold">
               <span className="text-slate-400">{tx(language, 'Saralash', 'Сортировка', 'Sort')}:</span>
               <select value={docSortField} onChange={(e) => onDocSort(e.target.value)} className="bg-transparent outline-none">
                 <option value="revenue">{tx(language, 'Umumiy tushum', 'Выручка', 'Revenue')}</option>
@@ -299,16 +408,23 @@ export default function ReportsDashboard({
                 <option value="name">{tx(language, 'Ism', 'Имя', 'Name')}</option>
               </select>
             </label>
+            )}
           </div>
 
-          <div className="sm:hidden px-3 pb-3 space-y-2">
+          {phone ? <div className="px-4 pb-2">
             {doctorLeaderboard.length === 0 && <Empty text={tx(language, 'Shifokorlar topilmadi.', 'Врачи не найдены.', 'No doctors found.')} />}
             {doctorLeaderboard.map((d) => (
               <DoctorCard key={d.id} doc={d} maxRevenue={maxRevenue} />
             ))}
-          </div>
+            {doctorLeaderboard.length > 0 && (
+              <div className="flex items-center justify-between gap-3 py-2.5 border-t border-dashed border-slate-200 text-[12.5px] font-bold">
+                <span>{tx(language, 'Jami', 'Итого', 'Total')} · {boardAppts} {tx(language, 'qabul', 'приём', 'visits')}</span>
+                <span className="text-emerald-700 tabular-nums">{fmtMoney(boardRevenue)} UZS</span>
+              </div>
+            )}
+          </div> : null}
 
-          <div className="hidden sm:block overflow-x-auto max-w-full">
+          {!phone && <div className="overflow-x-auto max-w-full">
             <table className="w-full min-w-[760px] text-left border-collapse">
               <thead>
                 <tr className="text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
@@ -376,7 +492,7 @@ export default function ReportsDashboard({
               )}
             </table>
             {doctorLeaderboard.length === 0 && <Empty text={tx(language, 'Shifokorlar topilmadi.', 'Врачи не найдены.', 'No doctors found.')} />}
-          </div>
+          </div>}
         </section>
       )}
 
@@ -399,7 +515,7 @@ export default function ReportsDashboard({
                   <div key={s.name}>
                     <div className="flex justify-between gap-3 text-[12.5px] mb-1.5 min-w-0">
                       <span className="font-semibold text-slate-700 truncate">{s.name} <em className="not-italic text-slate-400 font-medium">{s.count} ta</em></span>
-                      <span className="shrink-0"><b className="tabular-nums">{fmtMoney(s.revenue)}</b> <em className="not-italic text-slate-400">{s.share}%</em></span>
+                      <span className="shrink-0"><b className="tabular-nums">{phone ? fmtCompact(s.revenue) : fmtMoney(s.revenue)}</b> {!phone && <em className="not-italic text-slate-400">{s.share}%</em>}</span>
                     </div>
                     <div className="h-2 rounded bg-slate-100 overflow-hidden">
                       <i className="block h-full rounded" style={{ width: `${(s.share / maxServiceShare) * 100}%`, background: SERVICE_COLORS[i % SERVICE_COLORS.length] }} />
@@ -438,7 +554,7 @@ export default function ReportsDashboard({
               <div key={s.name}>
                 <div className="flex justify-between gap-3 text-[12.5px] mb-1.5">
                   <span className="font-semibold truncate">{s.name} <em className="not-italic text-slate-400">{s.count} ta</em></span>
-                  <span className="shrink-0 tabular-nums"><b>{fmtMoney(s.revenue)}</b> <em className="not-italic text-slate-400">{s.share}%</em></span>
+                  <span className="shrink-0 tabular-nums"><b>{phone ? fmtCompact(s.revenue) : fmtMoney(s.revenue)}</b> {!phone && <em className="not-italic text-slate-400">{s.share}%</em>}</span>
                 </div>
                 <div className="h-2 rounded bg-slate-100 overflow-hidden"><i className="block h-full" style={{ width: `${(s.share / maxServiceShare) * 100}%`, background: SERVICE_COLORS[i % SERVICE_COLORS.length] }} /></div>
               </div>
@@ -447,7 +563,29 @@ export default function ReportsDashboard({
         </section>
       )}
 
-      {activeTab === 'finance' && (
+      {activeTab === 'finance' && (phone ? (
+        <div className="space-y-2 mt-1">
+          {monthlyFinanceReport.length === 0 && <Empty text={tx(language, 'Oylar bo\'yicha yozuv yo\'q.', 'Нет помесячных записей.', 'No monthly records.')} />}
+          {monthlyFinanceReport.map((m) => (
+            <article key={m.rawMonth} className="bg-white border border-slate-200/80 rounded-2xl p-3 shadow-sm">
+              <div className="flex items-center justify-between gap-2">
+                <b className="text-sm">{m.monthLabel}</b>
+                <span className="text-xs font-bold text-slate-500">{m.margin}%</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2 text-[12px]">
+                <span className="text-slate-400">{tx(language, 'Qabullar', 'Приёмы', 'Visits')}</span>
+                <b className="text-right tabular-nums">{m.appointments}</b>
+                <span className="text-slate-400">{tx(language, 'Kirim', 'Доход', 'Income')}</span>
+                <b className="text-right tabular-nums text-emerald-700">{fmtCompact(m.income)}</b>
+                <span className="text-slate-400">{tx(language, 'Chiqim', 'Расход', 'Expense')}</span>
+                <b className="text-right tabular-nums text-rose-600">{fmtCompact(m.expense)}</b>
+                <span className="text-slate-400">{tx(language, 'Sof foyda', 'Прибыль', 'Profit')}</span>
+                <b className="text-right tabular-nums">{fmtCompact(m.net)}</b>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
         <section className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-x-auto mt-3.5">
           <table className="w-full min-w-[640px] text-sm">
             <thead>
@@ -475,31 +613,44 @@ export default function ReportsDashboard({
           </table>
           {monthlyFinanceReport.length === 0 && <Empty text={tx(language, 'Oylar bo\'yicha yozuv yo\'q.', 'Нет помесячных записей.', 'No monthly records.')} />}
         </section>
+      ))}
+
+      {phone && (
+        <div className="no-print grid grid-cols-2 gap-2 mt-3">
+          <button type="button" onClick={onPrint} className="h-[46px] rounded-[13px] border border-slate-200 bg-white text-sm font-semibold inline-flex items-center justify-center gap-2 text-slate-800">
+            <Printer className="w-4 h-4" />
+            {tx(language, 'Chop etish', 'Печать', 'Print')}
+          </button>
+          <button type="button" onClick={onExport} className="h-[46px] rounded-[13px] bg-emerald-600 text-white text-sm font-bold inline-flex items-center justify-center gap-2">
+            <FileSpreadsheet className="w-4 h-4" />
+            {tx(language, 'Excel yuklash', 'Скачать Excel', 'Download Excel')}
+          </button>
+        </div>
       )}
     </div>
   );
 }
 
-function KpiCard({ label, value, icon, iconClass, bar, barClass, foot, trend, trendNote, dark, invert, period }) {
+function KpiCard({ label, value, icon, iconClass, bar, barClass, foot, trend, trendNote, dark, invert, period, compact }) {
   return (
-    <article className={cn('rounded-2xl border p-3.5 min-w-0 shadow-sm flex flex-col gap-1.5', dark ? 'bg-gradient-to-br from-[#0C1222] to-[#13233a] border-[#0C1222] text-white' : 'bg-white border-slate-200/80')}>
+    <article className={cn('border min-w-0 shadow-sm flex flex-col', compact ? 'rounded-[15px] p-3 gap-[5px]' : 'rounded-2xl p-3.5 gap-1.5', dark ? 'bg-gradient-to-br from-[#0C1222] to-[#13233a] border-[#0C1222] text-white' : 'bg-white border-slate-200/80')}>
       <div className="flex items-center justify-between gap-2">
-        <span className={cn('text-[10.5px] font-bold uppercase tracking-wide truncate', dark ? 'text-teal-200' : 'text-slate-400')}>{label}</span>
-        <span className={cn('w-8 h-8 rounded-lg grid place-items-center shrink-0', dark ? 'bg-white/10 text-emerald-300' : iconClass)}>{icon}</span>
+        <span className={cn('font-bold uppercase tracking-wide truncate', compact ? 'text-[10px]' : 'text-[10.5px]', dark ? 'text-teal-200' : 'text-slate-400')}>{label}</span>
+        {!compact && <span className={cn('w-8 h-8 rounded-lg grid place-items-center shrink-0', dark ? 'bg-white/10 text-emerald-300' : iconClass)}>{icon}</span>}
       </div>
-      <div className={cn('text-[18px] sm:text-[22px] font-extrabold tracking-tight leading-none truncate [&_small]:text-[11px] [&_small]:font-bold [&_small]:ml-1', dark ? '[&_small]:text-slate-400' : '[&_small]:text-slate-400')}>{value}</div>
+      <div className={cn('font-extrabold tracking-tight leading-none truncate [&_small]:font-bold [&_small]:ml-0.5', compact ? 'text-[19px] [&_small]:text-[12px]' : 'text-[18px] sm:text-[22px] [&_small]:text-[11px]', dark ? '[&_small]:text-slate-400' : '[&_small]:text-slate-400')}>{value}</div>
       <div className={cn('h-1.5 rounded overflow-hidden', dark ? 'bg-[#23324b]' : 'bg-slate-100')}>
         <i className={cn('block h-full rounded', barClass)} style={{ width: `${bar}%` }} />
       </div>
-      <div className={cn('flex items-center justify-between gap-2 text-[11px]', dark ? 'text-slate-300' : 'text-slate-500')}>
+      <div className={cn('flex items-center justify-between gap-1', compact ? 'text-[10.5px]' : 'text-[11px]', dark ? 'text-slate-300' : 'text-slate-500')}>
         <span className="truncate">{foot}</span>
-        {trend && <TrendChip trend={trend} note={trendNote} invert={invert} dark={dark} showScope={period === 'all'} />}
+        {trend && <TrendChip trend={trend} note={trendNote} invert={invert} dark={dark} compact={compact} showScope={!compact && period === 'all'} />}
       </div>
     </article>
   );
 }
 
-function TrendChip({ trend, note, invert, dark, showScope }) {
+function TrendChip({ trend, note, invert, dark, showScope, compact }) {
   if (!trend) return null;
   const up = trend.dir === 'up';
   const down = trend.dir === 'down';
@@ -507,7 +658,7 @@ function TrendChip({ trend, note, invert, dark, showScope }) {
   const bad = invert ? up : down;
   const scope = showScope ? (note?.includes('Этот') ? 'мес.' : note?.toLowerCase().includes('this month') ? 'mo' : 'bu oy') : '';
   return (
-    <span title={note || ''} className={cn('inline-flex items-center gap-0.5 font-bold shrink-0 rounded-md px-1.5 py-0.5', dark && good && 'bg-emerald-400/15 text-emerald-300', dark && bad && 'bg-rose-400/15 text-rose-300', !dark && good && 'bg-emerald-50 text-emerald-700', !dark && bad && 'bg-rose-50 text-rose-600', !up && !down && 'bg-slate-100 text-slate-500')}>
+    <span title={note || ''} className={cn('inline-flex items-center gap-0.5 font-bold shrink-0 rounded-md', compact ? 'px-1 py-px text-[10px]' : 'px-1.5 py-0.5', dark && good && 'bg-emerald-400/15 text-emerald-300', dark && bad && 'bg-rose-400/15 text-rose-300', !dark && good && 'bg-emerald-50 text-emerald-700', !dark && bad && 'bg-rose-50 text-rose-600', !up && !down && 'bg-slate-100 text-slate-500')}>
       {scope && <span className="font-semibold opacity-70">{scope}</span>}
       {up ? <ArrowUpRight className="w-3 h-3" /> : down ? <ArrowDownRight className="w-3 h-3" /> : null}
       {trend.text}
@@ -515,7 +666,7 @@ function TrendChip({ trend, note, invert, dark, showScope }) {
   );
 }
 
-function DonutCard({ language, rows, total, wide }) {
+function DonutCard({ language, rows, total, wide, compact }) {
   const navigate = useNavigate();
   const noShow = rows.find((r) => /kelmagan|неявк|no-show/i.test(r.status));
   return (
@@ -524,10 +675,10 @@ function DonutCard({ language, rows, total, wide }) {
       <p className="text-[11.5px] text-slate-400 mb-2">{tx(language, 'Holat bo\'yicha', 'По статусу', 'By status')} · {total} {tx(language, 'ta qabul', 'приёмов', 'visits')}</p>
       {total === 0 ? <Empty text={tx(language, 'Tanlangan davrda qabul yo\'q.', 'Нет приёмов за период.', 'No visits in this period.')} /> : (
         <div className={cn('flex items-center gap-4 min-w-0', wide && 'flex-col sm:flex-row')}>
-          <div className="relative w-[150px] h-[150px] shrink-0">
+          <div className={cn('relative shrink-0', compact ? 'w-[120px] h-[120px]' : 'w-[150px] h-[150px]')}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={rows} dataKey="count" nameKey="status" innerRadius={48} outerRadius={68} paddingAngle={2} stroke="none">
+                <Pie data={rows} dataKey="count" nameKey="status" innerRadius={compact ? 40 : 48} outerRadius={compact ? 56 : 68} paddingAngle={2} stroke="none">
                   {rows.map((r) => <Cell key={r.status} fill={r.color} />)}
                 </Pie>
               </PieChart>
@@ -559,29 +710,28 @@ function DonutCard({ language, rows, total, wide }) {
 
 function DoctorCard({ doc, maxRevenue }) {
   return (
-    <div className="border border-slate-100 rounded-xl p-3">
-      <div className="flex items-center gap-2 min-w-0">
-        <Rank n={doc.rank} />
-        <PersonFace name={doc.name} photo={doc.avatar} />
-        <div className="min-w-0 flex-1">
-          <b className="block text-sm truncate">{doc.name}</b>
-          <span className="text-[11px] text-slate-400">{doc.specialty || '—'}</span>
+    <div className="flex gap-2.5 items-center py-2.5 border-b border-slate-100 last:border-0 min-w-0">
+      <Rank n={doc.rank} />
+      <PersonFace name={doc.name} photo={doc.avatar} large />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <b className="text-[13.5px] font-bold truncate">{doc.name}</b>
+          {doc.appointmentCount === 0 && <span className="shrink-0 text-[10px] font-bold text-rose-700 bg-rose-50 rounded px-1 py-0.5">Qabul yo&apos;q</span>}
         </div>
-        <span className={cn('text-xs font-bold px-1.5 py-0.5 rounded', doc.rank <= 3 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600')}>{doc.revenueShare}%</span>
+        <div className="text-[11px] text-slate-400 mt-0.5 truncate">{doc.appointmentCount} qabul · {doc.completionRate || 0}% bajarildi · {doc.uniquePatients || 0} bemor</div>
+        <div className="h-[5px] rounded-sm bg-slate-100 overflow-hidden mt-1.5"><i className="block h-full bg-emerald-600 rounded-sm" style={{ width: `${Math.max(0, Math.min(100, (doc.revenue / maxRevenue) * 100))}%` }} /></div>
       </div>
-      <div className="grid grid-cols-3 gap-2 mt-2 text-[11px]">
-        <div><span className="text-slate-400 block">Qabul</span><b>{doc.appointmentCount}</b></div>
-        <div><span className="text-slate-400 block">Bajarilgan</span><b>{doc.completed} · {doc.completionRate}%</b></div>
-        <div><span className="text-slate-400 block">Tushum</span><b>{fmtCompact(doc.revenue)}</b></div>
+      <div className="text-right shrink-0">
+        <b className="block text-[13px] font-bold text-emerald-700 tabular-nums">{fmtCompact(doc.revenue)}</b>
+        <span className="text-[11px] text-slate-400 font-semibold">{doc.revenueShare}% ulush</span>
       </div>
-      <div className="h-1 rounded bg-slate-100 mt-2 overflow-hidden"><i className="block h-full bg-emerald-500" style={{ width: `${(doc.revenue / maxRevenue) * 100}%` }} /></div>
     </div>
   );
 }
 
-function PersonFace({ name, photo }) {
+function PersonFace({ name, photo, large }) {
   return (
-    <div className={cn('w-8 h-8 rounded-xl overflow-hidden grid place-items-center text-[11px] font-extrabold shrink-0', avatarTone(name))}>
+    <div className={cn('rounded-xl overflow-hidden grid place-items-center font-extrabold shrink-0', large ? 'w-[38px] h-[38px] text-[12px]' : 'w-8 h-8 text-[11px]', avatarTone(name))}>
       {photo ? <img src={photo} alt="" className="w-full h-full object-cover" /> : initials(name)}
     </div>
   );
