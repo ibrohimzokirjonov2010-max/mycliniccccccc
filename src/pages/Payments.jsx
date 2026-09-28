@@ -23,10 +23,10 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
-import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel, resolveDoctorId } from '@/lib/utils';
+import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel, resolveDoctorId, formatPhone, displayDoctorName } from '@/lib/utils';
+import { paymentStamp, tashkentToday, formatClinicDate, formatClinicDateTime, parseDisplayDateTime } from '@/lib/clinicTime';
+import { computePatientBalances } from '@/lib/paymentDebt';
 import { toast } from 'sonner';
-import { formatPhone } from '@/lib/utils';
-import { format } from 'date-fns';
 import '@/components/payments/paymentAddModal.css';
 
 const PAYMENT_ADD_MARKER = 'payment-add-teal-v5-single-center';
@@ -217,11 +217,7 @@ export default function Payments() {
     toast.success(t('patients.copied') || "Raqam nusxalandi");
     setTimeout(() => setCopiedPhoneId(null), 2000);
   };
-  const getInitialTime = () => {
-    const now = new Date();
-    const tzOffset = now.getTimezoneOffset() * 60000;
-    return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
-  };
+  const getInitialTime = () => formatClinicDateTime(new Date());
 
   const [form, setForm] = useState({
     patient_id: '', 
@@ -296,9 +292,15 @@ export default function Payments() {
   });
   const { data: allTreatmentPlans = [] } = useQuery({
     queryKey: ['allTreatmentPlansForPayments'],
-    queryFn: () => base44.entities.TreatmentPlan.list('-created_date', 300),
+    queryFn: () => base44.entities.TreatmentPlan.list('-created_date', 500),
     enabled: !!user,
     staleTime: 3 * 60 * 1000,
+  });
+  const { data: balancePayments = [] } = useQuery({
+    queryKey: ['payment-balance-source'],
+    queryFn: () => base44.entities.Payment.list('-created_date', 1000),
+    enabled: !!user,
+    staleTime: 60 * 1000,
   });
 
   // Seed / merge patients from query cache as soon as available
@@ -343,10 +345,8 @@ export default function Payments() {
       const pNotes = location.state.prefillNotes || '';
       const pCat = location.state.prefillCategory || '';
 
-      const now = new Date();
-      const tzOffset = now.getTimezoneOffset() * 60000;
-      const localISOTime = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
-      const localDate = new Date(now.getTime() - tzOffset).toISOString().split('T')[0];
+      const localISOTime = formatClinicDateTime(new Date());
+      const localDate = tashkentToday();
 
       const pat = patients.find(p => p.id === pId);
       const plansForPat = (allTreatmentPlans || []).filter(p => p.patient_id === pId);
@@ -476,7 +476,7 @@ export default function Payments() {
 
   const stats = useMemo(() => {
     if (!statsData) return { totalRevenue: 0, monthRevenue: 0, todayRevenue: 0, totalCount: 0 };
-    const today = new Date().toISOString().split('T')[0];
+    const today = tashkentToday();
     const filteredStats = (statsData || []).filter(p => {
       if (isDoctor && user?.id && String(p.doctor_id) !== String(user.id)) return false;
       return true;
@@ -733,9 +733,8 @@ export default function Payments() {
         const debtVal = (patientBalances[p.id]?.debtAtTime !== undefined)
           ? patientBalances[p.id].debtAtTime
           : (p.debt_amount !== undefined && p.debt_amount !== null ? Number(p.debt_amount) : (Number(pat?.total_debt) || 0));
-        const docName = doctors.find(d => d.id === p.doctor_id)?.name || 'Biriktirilmagan';
-        const dtRaw = p.created_date || p.created_at || p.date;
-        const dtStr = dtRaw ? new Date(dtRaw).toLocaleString('uz-UZ') : '';
+        const docName = displayDoctorName(doctors.find(d => d.id === p.doctor_id)?.name || p.doctor_name) || 'Biriktirilmagan';
+        const dtStr = paymentStamp(p).dateTime;
 
         const row = [
           idx + 1,
@@ -770,80 +769,12 @@ export default function Payments() {
     }
   };
 
-  // Calculate patient balances from already-loaded payments and plans (accounting for discounts)
   useEffect(() => {
-    if (!payments.length) {
-      setPatientBalances({});
-      setPatientCurrentTotals({});
-      return;
-    }
-
-    // Group payments by patient ID
-    const byPatient = {};
-    for (const p of payments) {
-      if (!p.patient_id) continue;
-      if (!byPatient[p.patient_id]) byPatient[p.patient_id] = [];
-      byPatient[p.patient_id].push(p);
-    }
-
-    const balancesMap = {};
-    const totalsMap = {};
-
-    for (const [patientId, patPays] of Object.entries(byPatient)) {
-      const sorted = [...patPays].sort((a, b) => {
-        const ta = a.created_date || a.created_at || (a.date ? a.date + 'T00:00:00' : '') || '';
-        const tb = b.created_date || b.created_at || (b.date ? b.date + 'T00:00:00' : '') || '';
-        return ta.localeCompare(tb);
-      });
-
-      const plansForPatient = (allTreatmentPlans || []).filter(pl => pl.patient_id === patientId);
-      const totalPlansPrice = plansForPatient.reduce((sum, pl) => sum + (Number(pl.total_price) || 0), 0);
-
-      let runningDebt = totalPlansPrice > 0 ? totalPlansPrice : 0;
-      let runningPaid = 0;
-      let runningDiscount = 0;
-
-      for (const payment of sorted) {
-        const type = String(payment.type || 'Income').toLowerCase();
-        const rawAmount = Number(payment.amount) || 0;
-        const amount = Math.abs(rawAmount);
-        const notesLower = (payment.notes || '').toLowerCase();
-        const isLinkedPlanInternal = (type === 'debt' || type === 'discount') && 
-          (payment.plan_id || notesLower.includes('linked to plan') || notesLower.includes('reja:') || notesLower.includes('avtomatik chegirma') || notesLower.includes('reja yangilandi'));
-
-        if (type === 'income') {
-          runningPaid += amount;
-          runningDebt = Math.max(0, runningDebt - amount);
-        } else if (type === 'debt') {
-          if (totalPlansPrice === 0 || !isLinkedPlanInternal) {
-            runningDebt += amount;
-          }
-        } else if (type === 'discount') {
-          if (totalPlansPrice === 0 || !isLinkedPlanInternal) {
-            runningDiscount += amount;
-            runningDebt = Math.max(0, runningDebt - amount);
-          }
-        } else if (type === 'refund') {
-          runningDebt += amount;
-          runningPaid = Math.max(0, runningPaid - amount);
-        }
-
-        balancesMap[payment.id] = {
-          debtAtTime: Math.max(0, runningDebt),
-          totalToPayAtTime: Math.max(0, runningDebt) + runningPaid,
-        };
-      }
-
-      totalsMap[patientId] = {
-        currentDebt: Math.max(0, runningDebt),
-        totalPaid: runningPaid,
-        totalDiscount: runningDiscount
-      };
-    }
-
-    setPatientBalances(balancesMap);
-    setPatientCurrentTotals(totalsMap);
-  }, [payments, allTreatmentPlans]);
+    const source = balancePayments.length ? balancePayments : payments;
+    const { balances, totals } = computePatientBalances(source, allTreatmentPlans);
+    setPatientBalances(balances);
+    setPatientCurrentTotals(totals);
+  }, [payments, balancePayments, allTreatmentPlans]);
 
 
   const resetModal = () => {
@@ -856,10 +787,8 @@ export default function Payments() {
 
     // Forma va boshqa state larni async tozalash (UI block qilmasin)
     setTimeout(() => {
-      const now = new Date();
-      const tzOffset = now.getTimezoneOffset() * 60000;
-      const localISOTime = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
-      const localDate = new Date(now.getTime() - tzOffset).toISOString().split('T')[0];
+      const localISOTime = formatClinicDateTime(new Date());
+      const localDate = tashkentToday();
 
       setForm({ 
         patient_id: '', 
@@ -910,9 +839,13 @@ export default function Payments() {
 
     let finalDate;
     try {
-      finalDate = form.created_at
-        ? form.created_at.split('T')[0]
-        : (form.date || new Date().toISOString().split('T')[0]);
+      const parsed = parseDisplayDateTime(form.created_at);
+      if (parsed) {
+        const [dd, mm, yyyy] = formatClinicDate(parsed).split('.');
+        finalDate = `${yyyy}-${mm}-${dd}`;
+      } else {
+        finalDate = form.date || tashkentToday();
+      }
     } catch (e) {
       finalDate = new Date().toISOString().split('T')[0];
     }
@@ -1953,7 +1886,7 @@ export default function Payments() {
                 </div>
                 <span className="w-1 h-1 rounded-full bg-slate-200" />
                 <span className="text-[10px] font-bold text-slate-500">
-                  {stats.totalCount} {t('common.total')}
+                  {sortedDisplayPayments.length} {t('common.total')}
                 </span>
               </div>
             </div>
@@ -2035,7 +1968,7 @@ export default function Payments() {
           {/* Quick Filter Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {(() => {
-              const today = new Date().toISOString().split('T')[0];
+              const today = tashkentToday();
               const thisMonth = today.slice(0, 7);
               return [
                 { id: 'all', label: "Barchasi", count: displayPayments.length },
@@ -2207,9 +2140,7 @@ export default function Payments() {
                       ? patientBalances[p.id].debtAtTime
                       : (p.debt_amount !== undefined && p.debt_amount !== null ? Number(p.debt_amount) : (Number(pat?.total_debt) || 0));
                     const isCompact = density === 'compact';
-                    const dtRaw = p.created_date || p.created_at || p.date;
-                    const dt = dtRaw ? new Date(dtRaw) : null;
-                    const hasValidDate = dt && !isNaN(dt);
+                    const stamp = paymentStamp(p);
 
                     return (
                       <tr 
@@ -2320,32 +2251,34 @@ export default function Payments() {
 
                         {/* Doctor Cell */}
                         <td className={`border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
-                          {p.doctor_id ? (
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-2 h-2 rounded-full bg-blue-500 shadow-xs" />
-                              <span className="text-slate-700 font-bold text-xs whitespace-nowrap truncate max-w-[130px]">
-                                {doctors.find(d => d.id === p.doctor_id)?.name || 'Shifokor'}
-                              </span>
-                            </div>
-                          ) : (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setEditPayment(p); }}
-                              className="flex items-center gap-1 text-slate-400 hover:text-[#1499AD] text-[11px] font-bold transition-colors"
-                              title="Shifokor biriktirish"
-                            >
-                              <PlusCircle className="w-3.5 h-3.5" />
-                              <span>Biriktirish</span>
-                            </button>
-                          )}
+                          {(() => {
+                            const named = displayDoctorName(doctors.find(d => d.id === p.doctor_id)?.name || p.doctor_name);
+                            if (named) {
+                              return (
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-2 h-2 rounded-full bg-blue-500 shadow-xs" />
+                                  <span className="text-slate-700 font-bold text-xs whitespace-nowrap truncate max-w-[140px]">
+                                    {named}
+                                  </span>
+                                </div>
+                              );
+                            }
+                            return (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setEditPayment(p); }}
+                                className="flex items-center gap-1 text-slate-400 hover:text-[#1499AD] text-[11px] font-bold transition-colors"
+                                title="Shifokor biriktirish"
+                              >
+                                <PlusCircle className="w-3.5 h-3.5" />
+                                <span>Biriktirilmagan</span>
+                              </button>
+                            );
+                          })()}
                         </td>
 
                         {/* Date & Time Cell (Single line) */}
                         <td className={`text-center font-mono text-[11px] text-slate-600 font-medium border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
-                          {hasValidDate ? (
-                            <span>{format(dt, 'dd.MM.yyyy HH:mm')}</span>
-                          ) : (
-                            <span>{p.date || '—'}</span>
-                          )}
+                          <span>{stamp.dateTime}</span>
                         </td>
 
                         {/* Actions Cell */}
@@ -2442,17 +2375,15 @@ export default function Payments() {
                         </span>
                       )}
                     {(() => {
-                      const dtRaw = p.created_date || p.created_at || p.date;
-                      const dt = dtRaw ? new Date(dtRaw) : null;
-                      const hasValid = dt && !isNaN(dt);
+                      const stamp = paymentStamp(p);
                       return (
                         <>
                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                            {hasValid ? format(dt, 'dd.MM.yyyy') : (p.date ? format(new Date(p.date), 'dd.MM.yyyy') : '—')}
+                            {stamp.date}
                           </p>
-                          {hasValid && (
+                          {stamp.time && (
                             <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-0.5">
-                              {format(dt, 'HH:mm')}
+                              {stamp.time}
                             </p>
                           )}
                         </>
@@ -2726,8 +2657,10 @@ export default function Payments() {
                     <div className="space-y-1.5 pt-2.5 border-t border-slate-100/85">
                       <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">{t('common.date') || "Sana"}</Label>
                       <input 
-                        type="datetime-local" 
-                        value={form.created_at} 
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="kk.oo.yyyy ss:mm"
+                        value={form.created_at}
                         onChange={e => setForm({ ...form, created_at: e.target.value })}
                         className="w-full h-11 rounded-xl border-none bg-slate-50 px-4 font-black text-slate-900 text-sm focus:ring-0 outline-none"
                       />
@@ -3102,9 +3035,7 @@ export default function Payments() {
           const debtAtPaymentTime = selectedPaymentDebt != null
             ? Number(selectedPaymentDebt)
             : Number(patientBalances[sp.id]?.debtAtTime ?? pat?.total_debt) || 0;
-          const dtRaw = sp.created_date || sp.created_at || sp.date;
-          const dt = dtRaw ? new Date(dtRaw) : null;
-          const hasValidDate = dt && !isNaN(dt);
+          const stamp = paymentStamp(sp);
 
           const origPrice = selectedPaymentPatientData?.originalPrice ?? (Number(pat?.total_debt) + Number(pat?.total_paid) || paymentAmount);
           const discAmt = selectedPaymentPatientData?.totalDiscount ?? 0;
@@ -3163,11 +3094,9 @@ export default function Payments() {
                       <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
                       Bemor va to'lov parametrlari
                     </span>
-                    {hasValidDate && (
-                      <span className="text-[9.5px] font-mono font-bold text-slate-500">
-                        {format(dt, 'dd.MM.yyyy HH:mm')}
-                      </span>
-                    )}
+                    <span className="text-[9.5px] font-mono font-bold text-slate-500">
+                      {stamp.dateTime}
+                    </span>
                   </div>
 
                   <table className="w-full border-collapse text-xs">

@@ -10,7 +10,9 @@ import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import { base44 } from '@/api/base44Client';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
-import { cn, resolveDoctorId } from '@/lib/utils';
+import { cn, resolveDoctorId, getTreatmentTypeLabel } from '@/lib/utils';
+import { paymentStamp, formatClinicDateTime } from '@/lib/clinicTime';
+import { computePatientBalances } from '@/lib/paymentDebt';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -72,7 +74,7 @@ const formatCategory = (category) => {
   const parts = baseName.split(',').map(p => {
     const trimmed = p.trim();
     const cleanWord = trimmed.toLowerCase();
-    return CATEGORY_TRANSLATIONS[cleanWord] || trimmed;
+    return CATEGORY_TRANSLATIONS[cleanWord] || getTreatmentTypeLabel(trimmed, 'uz');
   }).filter(Boolean);
   
   let translatedBase = '';
@@ -176,75 +178,24 @@ export default function MobilePaymentsV2() {
     }
   }, [isDoctor, user]);
 
-  // Calculate running balances for all displayed patients' payments
   useEffect(() => {
     if (!payments.length) return;
-    const uniquePatientIds = [...new Set(payments.map(p => p.patient_id).filter(Boolean))];
     let active = true;
-
-    const fetchAllPatientPayments = async () => {
+    (async () => {
       try {
-        const byPatient = {};
-        for (const p of payments) {
-          if (!p.patient_id) continue;
-          if (!byPatient[p.patient_id]) byPatient[p.patient_id] = [];
-          byPatient[p.patient_id].push(p);
-        }
-
-        const balancesMap = {};
-        const totalsMap = {};
-
-        await Promise.all(Object.entries(byPatient).map(async ([patientId, patPays]) => {
-          const sorted = [...patPays].sort((a, b) => {
-            const ta = a.created_date || a.created_at || a.date || '';
-            const tb = b.created_date || b.created_at || b.date || '';
-            return ta.localeCompare(tb);
-          });
-
-          let runningDebt = 0;
-          let runningPaid = 0;
-          let runningDiscount = 0;
-
-          for (const p of sorted) {
-            const type = (p.type || 'Income').toLowerCase();
-            const amt = Math.abs(Number(p.amount) || 0);
-
-            if (type === 'income') {
-              runningPaid += amt;
-              runningDebt -= amt;
-            } else if (type === 'debt') {
-              runningDebt += amt;
-            } else if (type === 'discount') {
-              runningDiscount += amt;
-              runningDebt -= amt;
-            } else if (type === 'refund') {
-              runningDebt += amt;
-              runningPaid = Math.max(0, runningPaid - amt);
-            }
-
-            balancesMap[p.id] = {
-              debtAtTime: Math.max(0, runningDebt),
-              totalToPayAtTime: Math.max(0, runningDebt) + runningPaid
-            };
-          }
-
-          totalsMap[patientId] = {
-            currentDebt: Math.max(0, runningDebt),
-            totalPaid: runningPaid,
-            totalDiscount: runningDiscount
-          };
-        }));
-
+        const [allPays, allPlans] = await Promise.all([
+          base44.entities.Payment.list('-created_date', 1000).catch(() => payments),
+          base44.entities.TreatmentPlan.list('-created_date', 500).catch(() => []),
+        ]);
+        const { balances, totals } = computePatientBalances(allPays?.length ? allPays : payments, allPlans || []);
         if (active) {
-          setPatientBalances(balancesMap);
-          setPatientCurrentTotals(totalsMap);
+          setPatientBalances(balances);
+          setPatientCurrentTotals(totals);
         }
       } catch (err) {
         console.error("Error calculating patient running balances:", err);
       }
-    };
-
-    fetchAllPatientPayments();
+    })();
     return () => { active = false; };
   }, [payments]);
 
@@ -528,21 +479,8 @@ export default function MobilePaymentsV2() {
 
   const formatDateTime = (dateStr) => {
     if (!dateStr) return '';
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-
-      const day = String(d.getDate()).padStart(2, '0');
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const year = d.getFullYear();
-      const hours = String(d.getHours()).padStart(2, '0');
-      const minutes = String(d.getMinutes()).padStart(2, '0');
-      const datePart = `${day}.${month}.${year}`;
-      const timePart = `${hours}:${minutes}`;
-      return `${datePart} • ${timePart}`;
-    } catch {
-      return dateStr;
-    }
+    const text = formatClinicDateTime(dateStr);
+    return text === '—' ? '' : text.replace(' ', ' • ');
   };
 
   // Fetch patient plans, payments and services when patient changes
@@ -862,17 +800,9 @@ export default function MobilePaymentsV2() {
 
     // Date + time formatted as "25.05 14:30"
     const dateTime = (() => {
-      const d = payment.date || payment.created_date;
-      if (!d) return '';
-      try {
-        const dt = new Date(d);
-        if (isNaN(dt)) return d.split('T')[0];
-        const day   = String(dt.getDate()).padStart(2, '0');
-        const mon   = String(dt.getMonth() + 1).padStart(2, '0');
-        const hh    = String(dt.getHours()).padStart(2, '0');
-        const mm    = String(dt.getMinutes()).padStart(2, '0');
-        return `${day}.${mon}  ${hh}:${mm}`;
-      } catch { return d.split('T')[0]; }
+      const stamp = paymentStamp(payment);
+      if (!stamp.date || stamp.date === '—') return '';
+      return stamp.time ? `${stamp.date} ${stamp.time}` : stamp.date;
     })();
 
     // Resolve the best display label for this payment's service/category
