@@ -10,6 +10,31 @@ import {
 } from '@/utils/password';
 import { patientGenderForDb } from '@/lib/patientGender';
 
+const absentColumns = new Map();
+const TABLES_WITHOUT_CREATED_AT = new Set([
+  'patients', 'treatment_plans', 'payments', 'appointments', 'services',
+  'inventory', 'expenses', 'recalls', 'implants', 'leads',
+]);
+
+function absentColumnSet(tableName) {
+  if (!absentColumns.has(tableName)) {
+    const seed = new Set();
+    if (TABLES_WITHOUT_CREATED_AT.has(tableName)) seed.add('created_at');
+    if (tableName === 'treatment_plans') {
+      seed.add('doctor_id');
+      seed.add('doctor_name');
+    }
+    absentColumns.set(tableName, seed);
+  }
+  return absentColumns.get(tableName);
+}
+
+function rememberAbsentColumn(tableName, error) {
+  const column = missingColumnFromError(error);
+  if (column) absentColumnSet(tableName).add(column);
+  return column;
+}
+
 // Plan configurations
 export const PLAN_FEATURES = {
   basic: [
@@ -454,6 +479,9 @@ class HybridEntityLoader {
   }
 
   async _doList(orderBy = '-created_date', limit = 100, offset = 0) {
+    if (this.entityName === 'ImplantBrand') {
+      return this._localStorageList(orderBy, limit);
+    }
     try {
       const clinicId = this._getClinicId();
       
@@ -468,9 +496,13 @@ class HybridEntityLoader {
 
       const rawOrder = orderBy.startsWith('-') ? orderBy.substring(1) : orderBy;
       const preferCreatedAt = this.entityName === 'User' || this.entityName === 'Clinic';
-      const actualOrder = preferCreatedAt
+      const tableForOrder = this._getTableName();
+      let actualOrder = preferCreatedAt
         ? 'created_at'
-        : (TECH_DATA_FIELDS.has(rawOrder) ? 'created_date' : rawOrder);
+        : (TECH_DATA_FIELDS.has(rawOrder) || absentColumnSet(tableForOrder).has(rawOrder) ? 'created_date' : rawOrder);
+      if (absentColumnSet(tableForOrder).has(actualOrder)) {
+        actualOrder = preferCreatedAt ? 'created_at' : 'created_date';
+      }
       const ascending = preferCreatedAt ? false : !orderBy.startsWith('-');
       const tableName = this._getTableName();
       const isMultiplexed = this.entityName === 'Note';
@@ -501,8 +533,14 @@ class HybridEntityLoader {
 
       // Align to the real schema: implants (and similar tables) use created_date, not created_at.
       if (isMissingColumnError(error)) {
-        const altOrder = actualOrder === 'created_at' ? 'created_date' : 'created_at';
-        console.warn(`[${this.entityName}] Column '${actualOrder}' not found, retrying with ${altOrder}`);
+        rememberAbsentColumn(tableName, error);
+        const altOrder = actualOrder === 'created_at' ? 'created_date' : (absentColumnSet(tableName).has('created_at') ? null : 'created_date');
+        console.warn(`[${this.entityName}] Column '${actualOrder}' not found, retrying with ${altOrder || 'no order'}`);
+        if (!altOrder) {
+          const fallbackRes2 = await buildBaseQuery().range(offset, offset + limit - 1);
+          data = fallbackRes2.data;
+          error = fallbackRes2.error;
+        } else {
         const fallbackRes = await buildBaseQuery()
           .order(altOrder, { ascending: false })
           .range(offset, offset + limit - 1);
@@ -515,6 +553,7 @@ class HybridEntityLoader {
         } else {
           data = fallbackRes.data;
           error = fallbackRes.error;
+        }
         }
       }
       
@@ -682,30 +721,35 @@ class HybridEntityLoader {
         query = query.eq('clinic_id', clinicId);
       }
       
+      const tableName = this._getTableName();
+      const absent = absentColumnSet(tableName);
+      const localConditions = {};
       Object.entries(conditions).forEach(([key, value]) => {
-        if (key !== 'clinic_id') {
-          query = query.eq(key, value);
-        }
+        if (key === 'clinic_id') return;
+        if (absent.has(key)) localConditions[key] = value;
+        else query = query.eq(key, value);
       });
       
-      if (orderBy) {
-        query = query.order(orderBy.startsWith('-') ? orderBy.substring(1) : orderBy, { 
-          ascending: !orderBy.startsWith('-') 
-        });
+      const rawOrder = orderBy ? (orderBy.startsWith('-') ? orderBy.substring(1) : orderBy) : '';
+      const safeOrder = !rawOrder || absent.has(rawOrder) ? 'created_date' : rawOrder;
+      if (orderBy && !absent.has(safeOrder)) {
+        query = query.order(safeOrder, { ascending: !String(orderBy).startsWith('-') });
+      } else if (orderBy) {
+        query = query.order('created_date', { ascending: false });
       }
       
       let { data, error } = await query.range(offset, offset + limit - 1);
       if (error && (error.code === '42703' || error.code === 'PGRST204' || error.message?.includes('column') || error.message?.includes('does not exist'))) {
-        const rawOrder = orderBy ? (orderBy.startsWith('-') ? orderBy.substring(1) : orderBy) : '';
-        const altOrder = rawOrder === 'created_at' ? 'created_date' : (rawOrder === 'created_date' ? 'created_at' : 'created_date');
-        let retry = supabase.from(this._getTableName()).select('*');
+        const missing = rememberAbsentColumn(tableName, error);
+        if (missing) localConditions[missing] = conditions[missing];
+        let retry = supabase.from(tableName).select('*');
         if (this.entityName !== 'BotConfig' || conditions.clinic_id) {
           retry = retry.eq('clinic_id', clinicId);
         }
         Object.entries(conditions).forEach(([key, value]) => {
-          if (key !== 'clinic_id') retry = retry.eq(key, value);
+          if (key !== 'clinic_id' && !absent.has(key)) retry = retry.eq(key, value);
         });
-        const fallback = await retry.order(altOrder, { ascending: false }).range(offset, offset + limit - 1);
+        const fallback = await retry.order('created_date', { ascending: false }).range(offset, offset + limit - 1);
         if (fallback.error) {
           const unordered = await retry.range(offset, offset + limit - 1);
           data = unordered.data;
@@ -718,7 +762,11 @@ class HybridEntityLoader {
       if (error) throw error;
       
       // Enrich with decoding and local cache
-      const enriched = this._enrich(data || []);
+      let enriched = this._enrich(data || []);
+      const localKeys = Object.keys(localConditions);
+      if (localKeys.length) {
+        enriched = enriched.filter((row) => localKeys.every((key) => String(row?.[key] ?? '') === String(localConditions[key] ?? '')));
+      }
 
       // BotConfig: Supabase’dan bo‘sh kelsa ham localStorage bilan merge qilish
       if (this.entityName === 'BotConfig') {
@@ -780,6 +828,13 @@ class HybridEntityLoader {
 
   async create(payload) {
     this._checkAccess();
+    if (this.entityName === 'ImplantBrand') {
+      const row = { id: payload?.id || `brand_${Date.now()}`, ...payload, clinic_id: this._getClinicId(), is_active: true };
+      const data = this._getData();
+      data.push(row);
+      this._setData(data);
+      return row;
+    }
     RequestCache.invalidate(this.entityName);
     let incoming = { ...payload };
     if (this.entityName === 'User') {

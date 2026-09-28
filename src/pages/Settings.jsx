@@ -18,6 +18,7 @@ import WebsiteIntegrationSettings from '@/components/settings/WebsiteIntegration
 import { useAuth } from '@/lib/AuthContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { compressImage, validateImage } from '@/utils/imageUpload';
+import { applyPhoneMask, formatPhone } from '@/lib/utils';
 
 const defaultSchedule = {
   1: { active: true, start: '09:00', end: '18:00' }, // Dushanba
@@ -76,7 +77,7 @@ export default function Settings() {
           setCurrentUser(foundUser);
           setMyProfileForm({
             name: foundUser.name || foundUser.full_name || '',
-            phone: foundUser.phone || '',
+            phone: foundUser.phone ? applyPhoneMask(foundUser.phone) : '',
             password: '',
             confirmPassword: ''
           });
@@ -552,9 +553,9 @@ export default function Settings() {
                     </div>
                     <div className="col-span-7 p-2">
                       <Input 
-                        value={clinic?.phone || ''} 
-                        onChange={e => setClinic({...clinic, phone: e.target.value})}
-                        placeholder="+998..." 
+                        value={clinic?.phone ? formatPhone(clinic.phone) : ''} 
+                        onChange={e => setClinic({...clinic, phone: applyPhoneMask(e.target.value)})}
+                        placeholder="+998 90 123 45 67" 
                         className="h-9 text-xs font-bold border-slate-200 rounded-lg focus:border-indigo-500 font-mono" 
                       />
                     </div>
@@ -1016,9 +1017,9 @@ export default function Settings() {
                   </div>
                   <div className="col-span-7 p-2">
                     <Input 
-                      value={myProfileForm.phone} 
-                      onChange={e => setMyProfileForm({ ...myProfileForm, phone: e.target.value })}
-                      placeholder="+998..."
+                      value={myProfileForm.phone || ''} 
+                      onChange={e => setMyProfileForm({ ...myProfileForm, phone: applyPhoneMask(e.target.value) })}
+                      placeholder="+998 90 123 45 67"
                       className="h-9 text-xs font-mono font-bold border-slate-200 rounded-lg focus:border-indigo-500" 
                     />
                   </div>

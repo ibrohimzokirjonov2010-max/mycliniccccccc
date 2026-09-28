@@ -122,7 +122,7 @@ function WeekChips({ flags, todayJs }) {
           key={d.js}
           className={cn(
             'flex-1 text-center text-[10.5px] font-bold py-1 rounded-md bg-slate-100 text-slate-400',
-            flags[d.js] && 'bg-teal-50 text-teal-800',
+            flags[d.js] && 'bg-teal-600 text-white',
             d.js === todayJs && 'outline outline-1 outline-[#1499AD] -outline-offset-1'
           )}
         >
@@ -212,7 +212,11 @@ export default function Staff() {
 
   const cards = useMemo(() => {
     const byId = new Map();
-    users.forEach((u) => {
+    users.forEach((raw) => {
+      const u = { ...raw };
+      if (typeof u.workingHours === 'string') {
+        try { u.workingHours = JSON.parse(u.workingHours); } catch { u.workingHours = null; }
+      }
       const name = personName(u);
       byId.set(String(u.id), {
         user: u,
@@ -1086,7 +1090,7 @@ function StaffCard({ card, phone, compact, lead, selected, language, presenceLab
         </div>
       )}
 
-      {!phone && <WeekChips flags={card.dayFlags} todayJs={todayJs} />}
+      <WeekChips flags={card.dayFlags} todayJs={todayJs} />
 
       {phone ? (
         <div className="grid grid-cols-4 gap-1.5">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo } from 'react';
+import { useState, useEffect, useMemo, useRef, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -64,6 +64,13 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
   const { t } = useTranslation();
   const { user, isAdmin, isDoctor, logout } = useAuth();
   const [currentClinic, setCurrentClinic] = useState({ name: 'Klinika', logo: null });
+  const navRef = useRef(null);
+  const [navCanScroll, setNavCanScroll] = useState(false);
+  const updateNavScroll = () => {
+    const el = navRef.current;
+    if (!el) return;
+    setNavCanScroll(el.scrollHeight - el.scrollTop - el.clientHeight > 12);
+  };
   const hasImplantsAccess = useFeature('implants');
   const hasTechniciansAccess = useFeature('technicians');
   const hasExpensesAccess = useFeature('expenses');
@@ -156,6 +163,15 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
     hasCasesAccess, hasStaffAccess
   ]);
 
+  useEffect(() => {
+    updateNavScroll();
+    const el = navRef.current;
+    if (!el) return undefined;
+    const observer = new ResizeObserver(updateNavScroll);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [collapsed, filteredMenuItems.length]);
+
   const isActive = (path) => {
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
@@ -178,7 +194,7 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
       </div>
 
       {/* Enhanced Navigation Menu - Excel Spreadsheet Grid Style */}
-      <nav className="flex-1 overflow-y-auto px-2.5 py-2 no-scrollbar">
+      <nav ref={navRef} onScroll={updateNavScroll} className="flex-1 overflow-y-auto px-2.5 py-2">
         {!collapsed ? (
           <div className="border border-slate-200 lg:border-slate-700/80 rounded-xl overflow-hidden bg-slate-50 lg:bg-[#091122]/90 shadow-sm divide-y divide-slate-200 lg:divide-slate-700/70">
             {filteredMenuItems.map((item, index) => {
@@ -262,6 +278,11 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
           </div>
         )}
       </nav>
+      {navCanScroll && !collapsed && (
+        <div className="pointer-events-none absolute bottom-16 left-0 right-0 h-10 bg-gradient-to-t from-white lg:from-[#0C1222] to-transparent flex items-end justify-center pb-1">
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Pastga</span>
+        </div>
+      )}
 
        {/* Premium User Profile Card */}
       <div className={cn("border-t border-slate-200 lg:border-slate-800/80 flex-shrink-0 transition-all duration-300", collapsed ? "p-2" : "p-3")}>

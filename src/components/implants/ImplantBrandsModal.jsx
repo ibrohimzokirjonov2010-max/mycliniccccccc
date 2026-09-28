@@ -32,24 +32,8 @@ export async function getOrSeedImplantBrands() {
       return defaults();
     }
 
-    let brands = await brandApi.list('name', 100);
-    if (!brands || brands.length === 0) {
-      // Auto seed default brands if completely empty
-      const created = [];
-      for (const d of DEFAULT_IMPLANT_BRANDS) {
-        try {
-          const res = await brandApi.create({
-            ...d,
-            created_date: new Date().toISOString(),
-            is_active: true
-          });
-          created.push(res);
-        } catch (e) {
-          created.push({ id: `temp_${d.name}`, ...d });
-        }
-      }
-      return created;
-    }
+    const brands = await brandApi.list('name', 100);
+    if (!brands || brands.length === 0) return defaults();
     return brands;
   } catch (err) {
     console.error('Error fetching implant brands:', err);

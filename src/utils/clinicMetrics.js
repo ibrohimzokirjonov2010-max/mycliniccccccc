@@ -150,6 +150,7 @@ export function isScheduledOn(workingHours, jsDay) {
   if (!day) return null;
   if ('active' in day) return !!day.active;
   if ('isOpen' in day) return !!day.isOpen;
+  if (day.start || day.end) return true;
   return null;
 }
 
