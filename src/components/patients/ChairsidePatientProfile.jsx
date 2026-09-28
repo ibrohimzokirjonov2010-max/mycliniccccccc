@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft, Phone, Calendar, Plus, Info, Camera, Copy, Mail, Wallet, AlertTriangle
+  ArrowLeft, Phone, Calendar, Plus, Info, Camera, Copy, Mail, Wallet, AlertTriangle, Pencil
 } from 'lucide-react';
 import { cn, formatPhone } from '@/lib/utils';
 import { patientGenderLabel } from '@/lib/patientGender';
+import { displayServiceName, formatBirthDate } from '@/lib/displayText';
+import { implantStepStatusLabel } from '@/lib/implantStatus';
 import ToothChartCard from './ToothChartCard';
 import TodayPlanBar from './TodayPlanBar';
 import ChairsideClinicalTools, { ChairsideClinicalTabBar } from './ChairsideClinicalTools';
@@ -100,11 +102,14 @@ export default function ChairsidePatientProfile({
       if (st === 'completed' || st === 'bajarildi' || st === 'done') state = 'done';
       else if (st === 'in_progress' || st === 'inprogress' || st === 'jarayonda' || st === 'waiting' || st === 'confirmed') state = 'active';
       else if (st === 'scheduled' || st === 'pending') state = 'pending';
+      const title = displayServiceName(a.service_name || a.notes || a.title || 'Uchrashuv');
+      const tooth = a.tooth_number || null;
       steps.push({
         id: `appt-${a.id}`,
-        title: a.service_name || a.notes || a.title || 'Uchrashuv',
-        tooth: a.tooth_number || null,
+        title,
+        tooth,
         state,
+        statusLabel: implantStepStatusLabel({ name: title, tooth, implants, language }),
       });
     });
 
@@ -124,11 +129,19 @@ export default function ChairsidePatientProfile({
           else if (st === 'completed') state = 'done';
           else if (st.includes('progress') || st === 'jarayonda' || st === 'active') state = idx === 0 ? 'active' : 'pending';
           const tooth = String(s.tooth_number || s.tooth_id || p.tooth_number || '').replace(/^#/, '') || null;
+          const title = displayServiceName(s.service_name || s.name || p.name || 'Muolaja');
+          const toothLabel = tooth && tooth !== 'general' ? tooth : null;
           steps.push({
             id: `plan-${p.id}-${idx}`,
-            title: s.service_name || s.name || p.name || 'Muolaja',
-            tooth: tooth && tooth !== 'general' ? tooth : null,
+            title,
+            tooth: toothLabel,
             state,
+            statusLabel: implantStepStatusLabel({
+              name: `${title} ${p.name || ''} ${s.category || ''}`,
+              tooth: toothLabel,
+              implants,
+              language,
+            }),
           });
         });
       });
@@ -140,29 +153,33 @@ export default function ChairsidePatientProfile({
     }
 
     return steps.slice(0, 3);
-  }, [appointments, plans]);
+  }, [appointments, plans, implants, language]);
 
   const [clinicalTab, setClinicalTab] = useState('tashxis');
 
   useEffect(() => {
     const header = document.querySelector('[data-chairside-header]');
+    const plan = document.querySelector('[data-chairside-plan]');
     if (!header) return undefined;
     const scroller = header.closest('main');
     const apply = () => {
       const height = Math.ceil(header.getBoundingClientRect().height);
       document.documentElement.style.setProperty('--chairside-header-h', `${height}px`);
-      if (scroller) scroller.style.scrollPaddingTop = `${height + 12}px`;
+      const planHeight = plan ? Math.ceil(plan.getBoundingClientRect().height) : 0;
+      document.documentElement.style.setProperty('--chairside-plan-h', `${planHeight}px`);
+      if (scroller) scroller.style.scrollPaddingTop = `${height + planHeight + 16}px`;
     };
     apply();
     const observer = new ResizeObserver(apply);
     observer.observe(header);
+    if (plan) observer.observe(plan);
     window.addEventListener('resize', apply);
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', apply);
       if (scroller) scroller.style.scrollPaddingTop = '';
     };
-  }, []);
+  }, [todaySteps.length]);
 
   const planRemainingTotal = useMemo(() => {
     return (plans || []).reduce((sum, p) => {
@@ -180,9 +197,14 @@ export default function ChairsidePatientProfile({
 
   const genderLabel = patientGenderLabel(patient?.gender, language);
 
+  const debtAmount = `${Number(totalDebt || 0).toLocaleString('uz-UZ')} ${language === 'en' ? 'UZS' : language === 'ru' ? 'сум' : "so'm"}`;
   const debtBadgeText = totalDebt > 0
-    ? (language === 'ru' ? 'Есть долг' : language === 'en' ? 'Has debt' : 'ONE qarz bor')
+    ? (language === 'ru' ? `Есть долг · ${debtAmount}` : language === 'en' ? `Has debt · ${debtAmount}` : `Qarz bor · ${debtAmount}`)
     : null;
+  const birthLabel = formatBirthDate(patient?.birth_date);
+  const allergyText = (medicalAlerts || []).map((alert) => alertLabel(alert, language)).filter(Boolean).join(', ')
+    || String(patient?.important_info || '').trim();
+  const addressLabel = String(patient?.address || '').trim();
 
   return (
     <div className="min-h-0 font-sans">
@@ -225,14 +247,38 @@ export default function ChairsidePatientProfile({
                   {patient?.full_name}
                 </h1>
                 {debtBadgeText && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black uppercase tracking-wide shrink-0 shadow-sm">
+                  <span data-testid="debt-badge" className="px-2.5 py-0.5 rounded-full bg-rose-500 text-white text-[11px] font-bold shrink-0 shadow-sm">
                     {debtBadgeText}
                   </span>
+                )}
+                {typeof onEditPatient === 'function' && (
+                  <button
+                    type="button"
+                    onClick={onEditPatient}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-50"
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Tahrirlash
+                  </button>
                 )}
               </div>
               <p className="text-[12px] font-semibold text-slate-500 mt-0.5 break-words">
                 {patient?.phone ? formatPhone(patient.phone) : '—'}
-                {patient?.birth_date ? `  ·  Tug'ilgan: ${patient.birth_date}${age != null ? ` (${age} yosh)` : ''}` : ''}
+              </p>
+              <p data-testid="patient-card-header-meta" className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold text-slate-600">
+                <span className={allergyText ? 'font-black text-rose-600' : 'text-slate-400'}>
+                  {allergyText ? `Allergiya: ${allergyText}` : 'Allergiya yo‘q'}
+                </span>
+                <span aria-hidden className="text-slate-300">·</span>
+                <span>
+                  {birthLabel
+                    ? `Tug‘ilgan: ${birthLabel}${age != null ? ` (${age} yosh)` : ''}`
+                    : (age != null ? `${age} yosh` : 'Tug‘ilgan sana yo‘q')}
+                </span>
+                <span aria-hidden className="text-slate-300">·</span>
+                <span>{genderLabel || 'Jins ko‘rsatilmagan'}</span>
+                <span aria-hidden className="text-slate-300">·</span>
+                <span className="min-w-0 break-words">{addressLabel || 'Manzil yo‘q'}</span>
               </p>
             </div>
           </div>
@@ -387,6 +433,7 @@ export default function ChairsidePatientProfile({
               onTabChange={setClinicalTab}
             />
 
+            <div className="chairside-plan-row" data-chairside-plan="true">
             <TodayPlanBar
               steps={todaySteps}
               totalDebt={totalDebt}
@@ -402,6 +449,7 @@ export default function ChairsidePatientProfile({
               }}
               onOpenPlan={onNewPlan}
             />
+            </div>
 
             <div className="min-w-0 w-full" data-tooth-chart="chairside">
               <ToothChartCard

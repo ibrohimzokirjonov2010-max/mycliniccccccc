@@ -59,9 +59,9 @@ const REMINDER_OPTIONS = [
 
 export const EXTRA_SERVICES = [
   { id: 'surgical_guide', label: 'Jarrohlik shabloni', defaultPrice: 500000, category: 'Diagnostika' },
-  { id: 'zirkon_crown', label: 'Zirkon karonka', defaultPrice: 550000, category: 'Ortopediya' },
-  { id: 'metal_crown', label: 'Metallokeramika karonka', defaultPrice: 500000, category: 'Ortopediya' },
-  { id: 'emax_crown', label: 'E-Max karonka', defaultPrice: 650000, category: 'Ortopediya' },
+  { id: 'zirkon_crown', label: 'Zirkon koronka', defaultPrice: 550000, category: 'Ortopediya' },
+  { id: 'metal_crown', label: 'Metallokeramika koronka', defaultPrice: 500000, category: 'Ortopediya' },
+  { id: 'emax_crown', label: 'E-Max koronka', defaultPrice: 650000, category: 'Ortopediya' },
   { id: 'temp_crown', label: 'Vaqtinchalik toj', defaultPrice: 150000, category: 'Ortopediya' },
   { id: 'abutment', label: 'Standart abutment', defaultPrice: 200000, category: 'Komponentlar' },
   { id: 'standard_abutment', label: 'Standart abutment', defaultPrice: 200000, category: 'Komponent' },
@@ -126,7 +126,7 @@ function matchesServiceTab(service, tab) {
   const cat = String(service.category || '').toLowerCase();
   const name = String(service.label || service.name || '').toLowerCase();
   const blob = `${id} ${cat} ${name}`;
-  if (tab === 'crowns') return /orto|crown|karonka|toj|veneer|vinir/.test(blob);
+  if (tab === 'crowns') return /orto|crown|koronka|karonka|toj|veneer|vinir/.test(blob);
   if (tab === 'abutment') return /komponent|abutment|abatment|formik|healing|cover_screw|zaglushka/.test(blob);
   if (tab === 'sinus') return /sinus/.test(blob);
   if (tab === 'bone') return /graft|regen|prf|suyak|bone|membrane|nkr|sst/.test(blob);
@@ -241,7 +241,7 @@ export default function ImplantForm({
     service_custom: '',
     price: 1500000,
     implant_type: 'Bone level',
-    firma: 'Osstem',
+    firma: '',
     firma_custom: '',
     brend: '',
     diameter: '',
@@ -341,7 +341,7 @@ export default function ImplantForm({
       service_custom: '',
       price: 1500000,
       implant_type: 'Bone level',
-      firma: 'Osstem',
+      firma: '',
       firma_custom: '',
       brend: '',
       diameter: '',
@@ -605,7 +605,7 @@ export default function ImplantForm({
     });
     setToothDataMap((prev) => {
       if (prev[id]) return prev;
-      const firma = snapshot.firma || 'Osstem';
+      const firma = snapshot.firma || '';
       const price = Number(snapshot.price);
       return {
         ...prev,
@@ -985,9 +985,11 @@ export default function ImplantForm({
 
   const selectedFdis = useMemo(() => uniqueFdis(form.tooth_numbers), [form.tooth_numbers]);
   const primaryTooth = (selectedFdis[0] && toothDataMap[selectedFdis[0]]) || {};
-  const resolvedFirma = primaryTooth.firma || form.firma || 'Osstem';
+  const resolvedFirma = primaryTooth.firma || form.firma || '';
   const resolvedCustom = primaryTooth.firma_custom || form.firma_custom || '';
-  const brandLabel = resolvedFirma === 'Boshqa' ? (resolvedCustom || tw('other', 'Boshqa')) : resolvedFirma;
+  const brandLabel = resolvedFirma
+    ? (resolvedFirma === 'Boshqa' ? (resolvedCustom || tw('other', 'Boshqa')) : resolvedFirma)
+    : '';
   const implantUnitPrice = primaryTooth.price != null && primaryTooth.price !== '' ? primaryTooth.price : form.price;
   const extraTotal = useMemo(() => (form.extra_services || []).reduce((acc, sid) => {
     const preset = (extraServicesList || []).find((s) => s.id === sid);
@@ -1065,7 +1067,7 @@ export default function ImplantForm({
           next[fdi] = {
             service_name: form.service_name || 'Implant',
             price: form.price || 1500000,
-            firma: form.firma || 'Osstem',
+            firma: form.firma || '',
             firma_custom: form.firma_custom || '',
             brend: form.brend || '',
             diameter: form.diameter || '',
@@ -1475,10 +1477,9 @@ export default function ImplantForm({
   const footerSummary = () => {
     if (step === 1) {
       return (
-        <p className="implant-wizard-footer-line">
+        <p className="implant-wizard-footer-line" data-testid="implant-wizard-footer">
           <strong>{selectedFdis.length} {tw('toothShort', 'tish')}</strong>
-          {' · '}
-          {brandLabel}
+          {brandLabel ? ` · ${brandLabel}` : ''}
         </p>
       );
     }

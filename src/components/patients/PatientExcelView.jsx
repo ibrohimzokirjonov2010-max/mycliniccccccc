@@ -9,6 +9,7 @@ import { cn, formatPhone } from '@/lib/utils';
 import { toast } from 'sonner';
 import { exportPatientToExcel } from '@/lib/patientExcelExport';
 import { patientGenderLabel } from '@/lib/patientGender';
+import { displayServiceName, formatDoctorName, formatTableDate } from '@/lib/displayText';
 
 /**
  * PatientExcelView Component
@@ -504,7 +505,7 @@ export default function PatientExcelView({
                 ) : (
                   filteredTreatments.map((p, idx) => {
                     const doc = doctors.find(d => d.id === p.doctor_id || d.id === p.doctor);
-                    const docName = doc?.name || p.doctor_name || '—';
+                    const docName = formatDoctorName(doc?.name || p.doctor_name || '') || '—';
                     const sCount = Array.isArray(p.services) ? p.services.length : (p.services_count || 0);
                     const toothBadge = p.tooth_number ? `#${p.tooth_number}` : (p.tooth_numbers ? p.tooth_numbers.join(', ') : null);
 
@@ -522,7 +523,7 @@ export default function PatientExcelView({
                       <tr key={p.id || idx} className="hover:bg-slate-50/80 transition-colors font-medium text-slate-700">
                         <td className={cn(tablePadding, "text-center font-bold text-slate-400 font-mono")}>{idx + 1}</td>
                         <td className={cn(tablePadding, "font-bold text-slate-900")}>
-                          <div className="truncate max-w-xs">{p.name || 'Davolash rejasi'}</div>
+                          <div className="truncate max-w-xs">{displayServiceName(p.name || 'Davolash rejasi')}</div>
                         </td>
                         <td className={tablePadding}>
                           {toothBadge ? (
@@ -547,8 +548,8 @@ export default function PatientExcelView({
                             {statusLabel}
                           </span>
                         </td>
-                        <td className={cn(tablePadding, "text-right font-mono text-[11px] text-slate-500")}>
-                          {p.created_date ? new Date(p.created_date).toLocaleDateString('uz-UZ') : (p.date || '—')}
+                        <td className={cn(tablePadding, "text-right font-mono text-[11px] text-slate-500 whitespace-nowrap min-w-[108px]")}>
+                          {formatTableDate(p.created_date || p.date)}
                         </td>
                         <td className={cn(tablePadding, "text-center")}>
                           {onOpenPlanInvoice && (

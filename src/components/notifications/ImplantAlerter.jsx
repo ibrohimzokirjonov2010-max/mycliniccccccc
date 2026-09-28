@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { isAppointmentCalendarPath } from '@/lib/alertRoutes';
 
-const REMINDER_INTERVAL_MS = 20 * 60 * 1000; // 20 daqiqa
+const SESSION_KEY = 'implant-incomplete-toast-shown';
 
 const isBlockingModalOpen = () => {
   if (typeof document === 'undefined') return false;
@@ -23,7 +23,6 @@ export default function ImplantAlerter() {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const timerRef = useRef(null);
   const initialTimerRef = useRef(null);
 
   const checkIncompleteImplants = async () => {
@@ -42,6 +41,12 @@ export default function ImplantAlerter() {
       if (incompleteList.length > 0) {
         const path = typeof window !== 'undefined' ? window.location.pathname : '';
         if (isBlockingModalOpen() || path.startsWith('/implants') || isAppointmentCalendarPath(path)) return;
+        try {
+          if (sessionStorage.getItem(SESSION_KEY)) return;
+          sessionStorage.setItem(SESSION_KEY, '1');
+        } catch {
+          /* private mode still shows the toast once for this mount */
+        }
 
         const top = incompleteList[0];
         const toothNum = top.tooth_number || (top.tooth_numbers && top.tooth_numbers[0]) || '';
@@ -71,43 +76,10 @@ export default function ImplantAlerter() {
   }, [location.pathname]);
 
   useEffect(() => {
-    let observer;
-    const place = () => {
-      const header = document.querySelector('[data-patient-header]');
-      if (!header) {
-        document.documentElement.style.removeProperty('--toast-below-header');
-        return;
-      }
-      if (!observer) {
-        observer = new ResizeObserver(place);
-        observer.observe(header);
-      }
-      const bottom = header.getBoundingClientRect().bottom;
-      document.documentElement.style.setProperty('--toast-below-header', `${Math.ceil(bottom + 8)}px`);
-    };
-    place();
-    const later = setTimeout(place, 400);
-    window.addEventListener('resize', place);
-    return () => {
-      clearTimeout(later);
-      observer?.disconnect();
-      window.removeEventListener('resize', place);
-      document.documentElement.style.removeProperty('--toast-below-header');
-    };
-  }, [location.pathname]);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    // Dastlabki tekshiruv 10 soniyadan so'ng
-    initialTimerRef.current = setTimeout(checkIncompleteImplants, 10000);
-
-    // Har 20 daqiqada eslatma berish
-    timerRef.current = setInterval(checkIncompleteImplants, REMINDER_INTERVAL_MS);
-
+    if (!isAuthenticated) return undefined;
+    initialTimerRef.current = setTimeout(checkIncompleteImplants, 2500);
     return () => {
       if (initialTimerRef.current) clearTimeout(initialTimerRef.current);
-      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [isAuthenticated, user]);
 

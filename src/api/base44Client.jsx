@@ -1444,8 +1444,8 @@ export const DEFAULT_SERVICES_DATA = [
   { name: 'Tish anatomiyasini tiklash', category: 'RESTAVRATSIYA', price: 500000, duration: 60, is_active: true },
 
   // ORTOPEDIYA
-  { name: 'Metallokeramika karonka', category: 'ORTOPEDIYA', price: 800000, duration: 60, is_active: true },
-  { name: 'Sirkoniy karonka', category: 'ORTOPEDIYA', price: 1800000, duration: 60, is_active: true },
+  { name: 'Metallokeramika koronka', category: 'ORTOPEDIYA', price: 800000, duration: 60, is_active: true },
+  { name: 'Sirkoniy koronka', category: 'ORTOPEDIYA', price: 1800000, duration: 60, is_active: true },
   { name: 'Vinir (keramika)', category: 'ORTOPEDIYA', price: 2500000, duration: 90, is_active: true },
   { name: 'olinadigan protez', category: 'ORTOPEDIYA', price: 1200000, duration: 45, is_active: true },
 

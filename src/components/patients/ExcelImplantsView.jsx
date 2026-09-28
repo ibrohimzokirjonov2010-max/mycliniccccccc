@@ -9,6 +9,8 @@ import { Link } from 'react-router-dom';
 import { ImplantIcon } from '@/components/ui/Icons';
 import EmptyState from '../ui/EmptyState';
 import { implantRecordFdis } from '@/lib/fdiNotation';
+import { implantStatusClass, implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
+import { formatDoctorName } from '@/lib/displayText';
 
 function ExcelImplantsView({
   patient: _patient,
@@ -22,10 +24,7 @@ function ExcelImplantsView({
     let list = [...implants];
 
     if (statusFilter !== 'all') {
-      list = list.filter(imp => {
-        const s = imp.lifecycle_status || imp.status || 'Rejalashtirilgan';
-        return s.toLowerCase().includes(statusFilter.toLowerCase());
-      });
+      list = list.filter((imp) => normalizeImplantStatus(imp.lifecycle_status || imp.status) === statusFilter);
     }
 
     if (search) {
@@ -43,27 +42,20 @@ function ExcelImplantsView({
   }, [implants, search, statusFilter]);
 
   const getStatusBadge = (status) => {
-    const s = (status || '').toLowerCase();
-    if (s.includes('tugallangan') || s.includes('done') || s.includes('complete')) {
-      return (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[8.5px] uppercase tracking-wide whitespace-nowrap">
-          <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
-          {language === 'ru' ? 'Завершено' : language === 'en' ? 'Completed' : 'Tugallangan'}
-        </span>
-      );
-    }
-    if (s.includes('fail') || s.includes('rad')) {
-      return (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[8.5px] uppercase tracking-wide whitespace-nowrap">
-          <XCircle className="w-2.5 h-2.5 shrink-0" />
-          {language === 'ru' ? 'Отклонено' : language === 'en' ? 'Failed' : 'Rad etildi'}
-        </span>
-      );
-    }
+    const code = normalizeImplantStatus(status);
+    const label = implantStatusLabel(status, language);
+    const Icon = code === 'completed' ? CheckCircle2 : code === 'failure' ? XCircle : Clock;
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-bold text-[8.5px] uppercase tracking-wide whitespace-nowrap">
-        <Clock className="w-2.5 h-2.5 shrink-0" />
-        {language === 'ru' ? 'В интеграции' : language === 'en' ? 'In Integration' : 'Integratsiyada'}
+      <span
+        data-testid="profile-implant-status"
+        data-implant-status={code}
+        className={cn(
+          'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border font-bold text-[11px] whitespace-nowrap',
+          implantStatusClass(status),
+        )}
+      >
+        <Icon className="w-2.5 h-2.5 shrink-0" />
+        {label}
       </span>
     );
   };
@@ -148,7 +140,7 @@ function ExcelImplantsView({
                 <div className="px-3.5 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span className="text-[11px] font-bold text-slate-600 truncate">{imp.doctor || 'Jarroh'}</span>
+                    <span className="text-[11px] font-bold text-slate-600 truncate">{formatDoctorName(imp.doctor) || 'Jarroh'}</span>
                   </div>
                   {(imp.passport_id || imp.id) ? (
                     <Link
@@ -234,9 +226,9 @@ function ExcelImplantsView({
                       {dateStr}
                     </td>
                     <td className="py-2 px-2 border-r border-slate-100">
-                      <div className="flex items-center gap-1 min-w-0 max-w-[120px]" title={imp.doctor || 'Jarroh'}>
+                      <div className="flex items-center gap-1 min-w-0 max-w-[120px]" title={formatDoctorName(imp.doctor) || 'Jarroh'}>
                         <User className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span className="text-xs text-slate-700 font-medium truncate">{imp.doctor || 'Jarroh'}</span>
+                        <span className="text-xs text-slate-700 font-medium truncate">{formatDoctorName(imp.doctor) || 'Jarroh'}</span>
                       </div>
                     </td>
                     <td className="py-2 px-1 text-center border-r border-slate-100 whitespace-nowrap">

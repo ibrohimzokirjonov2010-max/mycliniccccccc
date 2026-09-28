@@ -20,6 +20,7 @@ import Paywall from '@/components/layout/Paywall';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
+import { implantStatusClass, implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
 import { 
   ImplantIcon, CrownIcon, FormerIcon, AbutmentIcon, 
   BoneGraftIcon, SinusLiftIcon, DentalSurgicalIcon, 
@@ -55,8 +56,7 @@ const BRAND_COLORS = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const getLifecycleKey = (status) =>
-  LIFECYCLE_MAPPING[status] || status?.toLowerCase() || 'placed';
+const getLifecycleKey = (status) => normalizeImplantStatus(status);
 
 const getLifecycleCfg = (status) =>
   LIFECYCLE_CONFIG[getLifecycleKey(status)] || LIFECYCLE_CONFIG.placed;
@@ -105,11 +105,11 @@ const SkeletonCard = () => (
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 const StatusPill = ({ status }) => {
-  const cfg = getLifecycleCfg(status);
+  const code = normalizeImplantStatus(status);
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-      {cfg.label}
+    <span data-testid="implant-list-status" data-implant-status={code} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-bold border ${implantStatusClass(code)}`}>
+      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
+      {implantStatusLabel(code)}
     </span>
   );
 };
@@ -119,7 +119,7 @@ const resolveService = (implant) => {
   if (implant.service_name && implant.service_name.trim()) return implant.service_name.trim();
   if (implant.hizmat_turi && implant.hizmat_turi.trim()) return implant.hizmat_turi.trim();
   const status = (implant.lifecycle_status || '').toLowerCase();
-  if (status.includes('crown') || status.includes('karonka')) return 'Karonka';
+  if (status.includes('crown') || status.includes('karonka') || status.includes('koronka')) return 'Koronka';
   if (status.includes('abutment')) return 'Abutment';
   if (status.includes('healing') || status.includes('formik')) return 'Formik';
   return 'Implant';
@@ -343,19 +343,18 @@ const FilterSheet = ({ open, onClose, filterStatus, setFilterStatus, filterFirma
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">Holat</p>
               <div className="flex flex-wrap gap-2">
                 {[null, ...Object.keys(LIFECYCLE_CONFIG)].map(s => {
-                  const cfg = s ? LIFECYCLE_CONFIG[s] : null;
                   const isActive = filterStatus === s;
                   return (
                     <button
                       key={s || 'all'}
                       onClick={() => setFilterStatus(s)}
-                      className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all ${
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
                         isActive
                           ? 'bg-slate-900 text-white border-slate-900'
                           : 'bg-slate-50 text-slate-600 border-slate-100'
                       }`}
                     >
-                      {s ? `${cfg.emoji} ${cfg.label}` : 'Barchasi'}
+                      {s ? implantStatusLabel(s) : 'Barchasi'}
                     </button>
                   );
                 })}

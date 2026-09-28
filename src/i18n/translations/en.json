@@ -1349,7 +1349,7 @@
     "status": {
       "planned": "Planned",
       "placed": "Placed",
-      "healing": "Healing process",
+      "healing": "Integrating",
       "formik": "Healing abutment placed",
       "abutment": "Abutment placed",
       "crown": "Crown ready",

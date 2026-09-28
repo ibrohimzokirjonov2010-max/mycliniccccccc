@@ -5,6 +5,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { base44 } from '@/api/base44Client';
 import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
+import { displayServiceName, formatDoctorName, formatTableDate } from '@/lib/displayText';
 
 export default function TreatmentPlanInvoice({ open, onClose, plan }) {
   const { t, language } = useTranslation();
@@ -77,12 +78,12 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
 
   // Patient & Doctor metadata
   const patientName = plan.patient_name || plan.patient?.full_name || plan.patient?.name || (typeof plan.patient === 'string' ? plan.patient : 'Abdullayev Jasur');
-  const doctorName = plan.doctor_name || plan.doctor?.name || plan.doctor?.full_name || (typeof plan.doctor === 'string' ? plan.doctor : (plan.doctor_id ? 'Dr. Navbatchi' : 'Aliyev Kamol'));
+  const doctorName = formatDoctorName(plan.doctor_name || plan.doctor?.name || plan.doctor?.full_name || (typeof plan.doctor === 'string' ? plan.doctor : (plan.doctor_id ? 'Dr. Navbatchi' : 'Aliyev Kamol')));
   const planName = getTreatmentTypeLabel(plan.name || plan.service_name || plan.category, language);
 
   // Dates
   const planDateRaw = plan.created_date || plan.created_at || plan.date || new Date().toISOString();
-  const dateFormatted = new Date(planDateRaw).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const dateFormatted = formatTableDate(planDateRaw);
   const timeFormatted = new Date(planDateRaw).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) || '09:00';
   const dateTimeFormatted = `${dateFormatted} ${timeFormatted}`;
   
@@ -395,7 +396,7 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
                 <tbody className="divide-y divide-slate-100">
                   {flatServices.map((s, idx) => (
                     <tr key={idx}>
-                      <td className="py-2.5 px-3 font-bold text-slate-900">{s.service_name}</td>
+                      <td className="py-2.5 px-3 font-bold text-slate-900">{displayServiceName(s.service_name)}</td>
                       <td className="py-2.5 px-3 text-slate-500">{getServiceCategoryLabel(s.category, language)}</td>
                       <td className="py-2.5 px-3 text-center font-bold text-slate-700">{s.tooth_id ? s.tooth_id : '—'}</td>
                       <td className="py-2.5 px-3 text-center">

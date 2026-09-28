@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { formatDoctorName } from '@/lib/displayText';
 import { toast } from 'sonner';
 
 /**
@@ -977,7 +978,7 @@ export default function TreatmentTracking() {
                           <>
                             <span className="text-slate-300">•</span>
                             <span className="text-[11px] font-bold text-slate-400">
-                              {language === 'ru' ? 'Врач: ' : 'Dr. '}{activeDetailPlan.doctor_name}
+                              {language === 'ru' ? 'Врач: ' : ''}{formatDoctorName(activeDetailPlan.doctor_name)}
                             </span>
                           </>
                         )}

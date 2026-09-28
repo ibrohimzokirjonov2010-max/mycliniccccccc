@@ -18,6 +18,7 @@ import { motion } from 'framer-motion';
 import { fetchDashboardStats, toDateOnly } from '../utils/dashboardUtils';
 import { getTashkentDate, getTashkentNow } from '@/lib/telegramReminderService';
 import { formatCurrency } from '@/lib/utils';
+import { formatDoctorName } from '@/lib/displayText';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -494,7 +495,7 @@ export default function Dashboard() {
                           <>
                             <span className="w-0.5 h-0.5 rounded-full bg-slate-300 flex-shrink-0" />
                             <span className="text-[10px] font-bold text-[#1499AD] truncate max-w-[100px]">
-                              Dr. {item.doctor_name}
+                              {formatDoctorName(item.doctor_name)}
                             </span>
                           </>
                         )}

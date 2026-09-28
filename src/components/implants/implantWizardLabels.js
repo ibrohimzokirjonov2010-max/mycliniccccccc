@@ -4,10 +4,10 @@ export const IMPLANT_WIZARD_STEP2_MARKER = 'implant-step2-services-scroll-pad-v3
 
 export const SERVICE_FALLBACKS = {
   surgical_guide: 'Jarrohlik shabloni',
-  zirkon_crown: 'Zirkon karonka',
-  zircon_crown: 'Zirkon karonka',
-  metal_crown: 'Metallokeramika karonka',
-  emax_crown: 'E-Max karonka',
+  zirkon_crown: 'Zirkon koronka',
+  zircon_crown: 'Zirkon koronka',
+  metal_crown: 'Metallokeramika koronka',
+  emax_crown: 'E-Max koronka',
   temp_crown: 'Vaqtinchalik toj',
   veneer: 'Vinir',
   abutment: 'Standart abutment',

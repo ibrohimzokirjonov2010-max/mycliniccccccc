@@ -23,6 +23,7 @@ import ExtraServicesSection from '../components/implants/ExtraServicesSection';
 import ImplantBrandsModal, { getOrSeedImplantBrands, calculateBrandStockStats } from '@/components/implants/ImplantBrandsModal';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
+import { IMPLANT_STATUS_ORDER, implantStatusClass, implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
 import { cn } from '@/lib/utils';
 import { implantRecordFdis } from '@/lib/fdiNotation';
 import { toast } from 'sonner';
@@ -53,7 +54,7 @@ export const resolveService = (implant) => {
   if (implant.service_name && implant.service_name.trim()) return implant.service_name.trim();
   if (implant.hizmat_turi && implant.hizmat_turi.trim()) return implant.hizmat_turi.trim();
   const status = (implant.lifecycle_status || '').toLowerCase();
-  if (status.includes('crown') || status.includes('karonka')) return 'Karonka';
+  if (status.includes('crown') || status.includes('karonka') || status.includes('koronka')) return 'Koronka';
   if (status.includes('abutment')) return 'Abutment';
   if (status.includes('healing') || status.includes('formik')) return 'Formik';
   return 'Implant';
@@ -859,13 +860,12 @@ export default function Implants() {
             <div className="space-y-2.5">
               {Object.keys(LIFECYCLE_COLORS).map(statusKey => {
                 const cnt = implants.filter(i => {
-                  const s = LIFECYCLE_MAPPING[i.lifecycle_status] || i.lifecycle_status?.toLowerCase();
-                  return statusKey === (s || '').toLowerCase();
+                  return normalizeImplantStatus(i.lifecycle_status || i.status) === statusKey;
                 }).length;
                 if (cnt === 0) return null;
                 return (
                   <div key={statusKey} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200/70 text-xs">
-                    <span className="font-bold text-slate-800 uppercase tracking-wider">{t(`implants.status.${statusKey}`) || statusKey}</span>
+                    <span className="font-bold text-slate-800">{implantStatusLabel(statusKey, language)}</span>
                     <span className="font-mono font-black text-slate-900 bg-white px-2.5 py-0.5 rounded-md border border-slate-200 shadow-xs">{cnt} ta</span>
                   </div>
                 );
@@ -998,8 +998,8 @@ export default function Implants() {
                     const serviceCfg = SERVICE_CONFIG[serviceName] || { label: serviceName, emoji: '⚡', badge: 'bg-slate-100 text-slate-700 border-slate-200' };
                     const priceVal = resolvePrice(i);
                     const firmaName = i.firma === 'Boshqa' ? (i.firma_custom || 'Boshqa') : (i.firma || 'Dentium');
-                    const statusCode = LIFECYCLE_MAPPING[i.lifecycle_status] || i.lifecycle_status?.toLowerCase() || 'placed';
-                    const statusClass = LIFECYCLE_COLORS[statusCode] || 'bg-slate-50 text-slate-700 border-slate-200';
+                    const statusCode = normalizeImplantStatus(i.lifecycle_status || i.status);
+                    const statusClass = implantStatusClass(statusCode);
 
                     const isIncomplete = i.incomplete_data === true || i.needs_fill === true || (!i.firma && !i.brend && !i.firma_custom);
 
@@ -1112,16 +1112,19 @@ export default function Implants() {
                               value={statusCode} 
                               onValueChange={(val) => updateImplantStatus(i.id, val)}
                             >
-                              <SelectTrigger className={cn(
-                                "h-7 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider mx-auto border transition-colors focus:ring-0 min-w-[120px] max-w-[130px] shrink-0",
+                              <SelectTrigger
+                                data-testid="implant-list-status"
+                                data-implant-status={statusCode}
+                                className={cn(
+                                "h-7 px-2 rounded-lg font-bold text-[11px] mx-auto border transition-colors focus:ring-0 min-w-[132px] max-w-[160px] shrink-0",
                                 statusClass
                               )}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="rounded-xl font-bold text-xs">
-                                {Object.keys(LIFECYCLE_COLORS).map(s => (
-                                  <SelectItem key={s} value={s} className="text-xs font-bold uppercase tracking-wider">
-                                    {t(`implants.status.${s}`) || s}
+                                {IMPLANT_STATUS_ORDER.map((s) => (
+                                  <SelectItem key={s} value={s} className="text-xs font-bold">
+                                    {implantStatusLabel(s, language)}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

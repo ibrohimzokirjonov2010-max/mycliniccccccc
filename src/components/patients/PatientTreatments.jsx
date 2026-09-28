@@ -11,6 +11,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
+import { displayServiceName } from '@/lib/displayText';
+import { implantStatusClass, implantStepStatusLabel } from '@/lib/implantStatus';
 
 const REMOVED_TOOTH_STATUS = 'Olib tashlangan';
 const EXTRACTION_SERVICE_REGEX = /(aqil\s*tish|tish).*(olish|sug'?urish)|olib\s*tashlash|ekstraks|extraction|удалени/i;
@@ -126,6 +128,7 @@ const formatMoney = (value) => `${Number(value || 0).toLocaleString('ru-RU')} so
  */
 function PatientTreatments({
   plans = [],
+  implants = [],
   discountAmount = 0,
   discountPercent = 0,
   showRemainingAsPrimary = false,
@@ -425,7 +428,7 @@ function PatientTreatments({
                     {/* Row 2: Services names */}
                     {plan.services?.length > 0 ? (
                       <p className="text-[10px] font-semibold text-slate-500 mt-1 leading-snug line-clamp-2">
-                        {plan.services.map(s => s.service_name || s.name).filter(Boolean).join(' • ')}
+                        {plan.services.map(s => displayServiceName(s.service_name || s.name)).filter(Boolean).join(' • ')}
                       </p>
                     ) : (
                       <p className="text-[10px] text-slate-300 italic mt-1">{t('patientTreatments.noServices')}</p>
@@ -532,7 +535,7 @@ function PatientTreatments({
                     {/* Row 2: Services list */}
                     {plan.services?.length > 0 ? (
                       <p className="text-[10px] font-semibold text-slate-600 leading-snug mb-1.5 line-clamp-2">
-                        {plan.services.map(s => s.service_name || s.name).filter(Boolean).join(' • ')}
+                        {plan.services.map(s => displayServiceName(s.service_name || s.name)).filter(Boolean).join(' • ')}
                       </p>
                     ) : (
                       <p className="text-[10px] font-bold text-slate-300 italic mb-1.5">{t('patientTreatments.noServices')}</p>
@@ -919,7 +922,7 @@ function PatientTreatments({
                                        )}
                                        <div>
                                          <p className={`text-xs font-black leading-tight ${isCompleted ? 'line-through text-slate-400' : 'text-slate-800'}`}>
-                                           {service.service_name}
+                                           {displayServiceName(service.service_name)}
                                          </p>
                                          {(service.tooth_number || service.tooth_id) && (
                                            <span className="text-[8px] font-black text-emerald-700 bg-emerald-100/60 px-1.5 py-0.5 rounded uppercase mt-0.5 inline-block">
@@ -938,13 +941,30 @@ function PatientTreatments({
                                    </td>
                                    {/* Holat */}
                                    <td className="px-4 py-3 text-center">
-                                     <span className={`inline-block text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-wider whitespace-nowrap ${
-                                       isCompleted
-                                         ? 'bg-emerald-100 text-emerald-700'
-                                         : 'bg-amber-50 text-amber-600'
-                                     }`}>
-                                       {isCompleted ? t('patientTreatments.details.completedSvc') : t('patientTreatments.details.pendingSvc')}
-                                     </span>
+                                     {(() => {
+                                       const implantLabel = implantStepStatusLabel({
+                                         name: `${service.service_name || ''} ${service.name || ''} ${service.category || ''}`,
+                                         tooth: service.tooth_number || service.tooth_id,
+                                         implants,
+                                         language,
+                                       });
+                                       if (implantLabel) {
+                                         return (
+                                           <span data-testid="plan-step-status" className={`inline-block text-[11px] font-bold px-2 py-1 rounded-full border whitespace-nowrap ${implantStatusClass(implantLabel)}`}>
+                                             {implantLabel}
+                                           </span>
+                                         );
+                                       }
+                                       return (
+                                         <span className={`inline-block text-[11px] font-bold px-2 py-1 rounded-full whitespace-nowrap ${
+                                           isCompleted
+                                             ? 'bg-emerald-100 text-emerald-700'
+                                             : 'bg-amber-50 text-amber-700'
+                                         }`}>
+                                           {isCompleted ? t('patientTreatments.details.completedSvc') : t('patientTreatments.details.pendingSvc')}
+                                         </span>
+                                       );
+                                     })()}
                                    </td>
                                  </tr>
                                );

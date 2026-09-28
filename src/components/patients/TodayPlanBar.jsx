@@ -116,7 +116,7 @@ export default function TodayPlanBar({
                         )}
                         style={isActive ? { color: TEAL } : undefined}
                       >
-                        {isDone ? 'Bajarildi' : isActive ? 'Jarayonda' : 'Kutilmoqda'}
+                        <span data-testid="plan-step-status">{step.statusLabel || (isDone ? 'Bajarildi' : isActive ? 'Jarayonda' : 'Kutilmoqda')}</span>
                       </p>
                     </div>
                     {!isLast && (

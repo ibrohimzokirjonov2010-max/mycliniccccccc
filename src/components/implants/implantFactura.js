@@ -173,9 +173,9 @@ function zirconPlaceholders(t) {
     return fallback;
   };
   return [
-    { id: 'zircon_std', label: label('zirconStd', 'Sirkoniy karonka (standart)'), defaultPrice: 1200000 },
-    { id: 'zircon_est', label: label('zirconEst', 'Sirkoniy karonka (estetik)'), defaultPrice: 1500000 },
-    { id: 'zircon_pre', label: label('zirconPre', 'Sirkoniy karonka (premium)'), defaultPrice: 2200000 },
+    { id: 'zircon_std', label: label('zirconStd', 'Sirkoniy koronka (standart)'), defaultPrice: 1200000 },
+    { id: 'zircon_est', label: label('zirconEst', 'Sirkoniy koronka (estetik)'), defaultPrice: 1500000 },
+    { id: 'zircon_pre', label: label('zirconPre', 'Sirkoniy koronka (premium)'), defaultPrice: 2200000 },
   ];
 }
 

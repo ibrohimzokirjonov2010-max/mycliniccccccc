@@ -1,18 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Activity, CheckCircle2, FileText, Image as ImageIcon,
-  Loader2, Plus, Save, Trash2, Upload, X, ZoomIn
+  Activity, FileText, Image as ImageIcon,
+  Loader2, Save, Trash2, Upload, X, ZoomIn
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 import {
   buildNotesWithClinical,
+  consentTemplateText,
+  consentTemplateTitle,
   createClinicalEntry,
   parseClinicalChart,
   parseConsent,
+  toDisplayDate,
+  toIsoDate,
 } from '@/utils/clinicalChart';
 import { cn } from '@/lib/utils';
+import ConsentForm from './ConsentForm';
 
 const TEAL = '#14b8a6';
 
@@ -166,16 +171,32 @@ export default function ChairsideClinicalTools({
   };
 
   const handleSaveConsent = async () => {
+    const dateDisplay = consent.date_display || toDisplayDate(consent.date);
+    const iso = toIsoDate(dateDisplay);
+    if (!iso) {
+      toast.error(language === 'ru' ? 'Дата в формате дд.мм.гггг' : 'Sana kk.oo.yyyy ko\'rinishida bo\'lsin');
+      return;
+    }
+    if (!consent.patient_signature || !consent.doctor_signature) {
+      toast.error(language === 'ru' ? 'Нужны подписи пациента и врача' : 'Bemor va shifokor imzosi kerak');
+      return;
+    }
+    const templateId = consent.template_id || 'general';
     setSavingConsent(true);
     try {
       const nextConsent = {
         ...consent,
+        given: true,
+        date: iso,
+        date_display: dateDisplay,
+        template_id: templateId,
+        template_title: consent.template_title || consentTemplateTitle(templateId, language),
+        text: consent.text || consentTemplateText(templateId, language),
         updated_at: new Date().toISOString(),
-        date: consent.given ? (consent.date || new Date().toISOString().slice(0, 10)) : consent.date,
       };
       await persistNotes(clinical, nextConsent);
       setConsent(nextConsent);
-      toast.success(language === 'ru' ? 'Согласие сохранено' : 'Rozilik saqlandi');
+      toast.success(language === 'ru' ? 'Согласие сохранено' : 'Rozilik bemor kartasiga saqlandi');
     } catch (err) {
       console.error(err);
       toast.error(language === 'ru' ? 'Не удалось сохранить согласие' : 'Rozilikni saqlashda xatolik');
@@ -403,9 +424,10 @@ export default function ChairsideClinicalTools({
             {[1, 2, 3].map((i) => <div key={i} className="aspect-square rounded-xl bg-slate-100 animate-pulse" />)}
           </div>
         ) : filteredXrays.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 py-8 text-center">
+          <div className="rounded-xl border border-dashed border-slate-200 py-8 text-center px-4" data-testid="xray-empty">
             <ImageIcon className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-            <p className="text-[11px] font-semibold text-slate-400">Rentgen yo'q — yuklang</p>
+            <p className="text-xs font-bold text-slate-600">Hali rentgen yoki RVG yo‘q</p>
+            <p className="mt-1 text-[11px] font-medium text-slate-400">Rasm qo‘shish uchun yuqoridagi Yuklash tugmasidan foydalaning.</p>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-2 max-h-56 overflow-y-auto">
@@ -444,57 +466,15 @@ export default function ChairsideClinicalTools({
           <h3 className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-900">{label.consent}</h3>
         </div>
 
-        <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={!!consent.given}
-            onChange={(e) => setConsent((c) => ({
-              ...c,
-              given: e.target.checked,
-              date: e.target.checked ? (c.date || new Date().toISOString().slice(0, 10)) : c.date,
-            }))}
-            className="mt-0.5 w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-          />
-          <span className="text-xs font-bold text-slate-800 leading-snug">{label.given}</span>
-        </label>
-
-        <label className="space-y-1 block">
-          <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">Sana</span>
-          <input
-            type="date"
-            value={consent.date || ''}
-            onChange={(e) => setConsent((c) => ({ ...c, date: e.target.value || null }))}
-            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
-          />
-        </label>
-
-        <label className="space-y-1 block">
-          <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">{label.consentNote}</span>
-          <textarea
-            rows={3}
-            value={consent.note || ''}
-            onChange={(e) => setConsent((c) => ({ ...c, note: e.target.value }))}
-            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 resize-none"
-            placeholder="Davolash, anesteziya, risklar tushuntirildi..."
-          />
-        </label>
-
-        <button
-          type="button"
-          onClick={handleSaveConsent}
-          disabled={savingConsent}
-          className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-wider hover:bg-slate-800 disabled:opacity-60"
-        >
-          {savingConsent ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : consent.given ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" /> : <Plus className="w-3.5 h-3.5" />}
-          {label.save}
-        </button>
-
-        {consent.given && (
-          <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-            Rozilik belgilangan{consent.date ? ` · ${consent.date}` : ''}
-          </div>
-        )}
+        <ConsentForm
+          patient={patient}
+          consent={consent}
+          onChange={setConsent}
+          onSave={handleSaveConsent}
+          saving={savingConsent}
+          language={language}
+          doctorName={patient?.doctor_name || patient?.main_treatment_provider || ''}
+        />
       </section>
 
       {/* Lightbox */}

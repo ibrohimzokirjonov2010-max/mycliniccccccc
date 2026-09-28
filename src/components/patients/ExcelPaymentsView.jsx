@@ -8,6 +8,7 @@ import {
   Table as TableIcon, Copy, Check, Clock, Receipt
 } from 'lucide-react';
 import { cn, formatPhone, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
+import { formatDoctorName, formatTableDate } from '@/lib/displayText';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import EmptyState from '../ui/EmptyState';
@@ -829,9 +830,9 @@ function ExcelPaymentsView({
             <table className="w-full border-collapse text-left font-sans text-sm">
               <thead>
                 <tr className="bg-slate-100/95 border-b border-slate-300 text-slate-800 font-extrabold uppercase tracking-wider text-xs">
-                  <th className="py-1.5 px-2.5.5 border-r border-slate-200 text-center w-12 bg-slate-200/70 font-mono">№</th>
+                  <th className="py-1.5 px-3 border-r border-slate-200 text-center w-12 bg-slate-200/70 font-mono">№</th>
                   <th 
-                    className="py-1.5 px-2.5.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors font-mono select-none"
+                    className="py-1.5 px-3 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors font-mono select-none"
                     onClick={() => toggleSort('date')}
                   >
                     <div className="flex items-center justify-between gap-1.5">
@@ -839,10 +840,10 @@ function ExcelPaymentsView({
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-600" />
                     </div>
                   </th>
-                  <th className="py-1.5 px-2.5.5 border-r border-slate-200">{t('patientProfile.paymentTypeCol') || "To'lov Turi"}</th>
-                  <th className="py-1.5 px-2.5.5 border-r border-slate-200">{t('patientProfile.doctorCol') || "Shifokor"}</th>
+                  <th className="py-1.5 px-3 border-r border-slate-200">{t('patientProfile.paymentTypeCol') || "To'lov Turi"}</th>
+                  <th className="py-1.5 px-3 border-r border-slate-200">{t('patientProfile.doctorCol') || "Shifokor"}</th>
                   <th 
-                    className="py-1.5 px-2.5.5 border-r border-slate-200 text-right cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[130px]"
+                    className="py-1.5 px-3 border-r border-slate-200 text-right cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[130px]"
                     onClick={() => toggleSort('amount')}
                   >
                     <div className="flex items-center justify-end gap-1.5 font-mono">
@@ -850,7 +851,7 @@ function ExcelPaymentsView({
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-600" />
                     </div>
                   </th>
-                  <th className="py-1.5 px-2.5.5 min-w-[140px]">{t('common.notes') || "Izoh"}</th>
+                  <th className="py-1.5 px-3 min-w-[140px]">{t('common.notes') || "Izoh"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -899,30 +900,30 @@ function ExcelPaymentsView({
                         </td>
 
                         {/* Date */}
-                        <td className={cn("border-r border-slate-200 font-mono font-semibold text-slate-700 whitespace-nowrap text-xs sm:text-sm", density === 'compact' ? 'py-1.5 px-2.5.5' : 'py-2.5 px-3.5')}>
+                        <td className={cn("border-r border-slate-200 font-mono font-semibold text-slate-700 whitespace-nowrap text-xs sm:text-sm", density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-3.5')}>
                           {dateStr}
                         </td>
 
                         {/* Payment Method */}
-                        <td className={cn("border-r border-slate-200 text-xs sm:text-sm", density === 'compact' ? 'py-1.5 px-2.5.5' : 'py-2.5 px-3.5')}>
+                        <td className={cn("border-r border-slate-200 text-xs sm:text-sm", density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-3.5')}>
                           {getMethodBadge(p.payment_method || p.method)}
                         </td>
 
                         {/* Doctor */}
-                        <td className={cn("border-r border-slate-200 font-semibold text-slate-800 text-xs sm:text-sm", density === 'compact' ? 'py-1.5 px-2.5.5' : 'py-2.5 px-3.5')}>
+                        <td className={cn("border-r border-slate-200 font-semibold text-slate-800 text-xs sm:text-sm", density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-3.5')}>
                           <div className="flex items-center gap-1.5">
                             <User className="w-4 h-4 text-slate-400 shrink-0" />
-                            <span>{p.doctor_name || patient?.doctor_name || (language === 'ru' ? 'Врач' : language === 'en' ? 'Doctor' : 'Shifokor')}</span>
+                            <span className="whitespace-nowrap">{formatDoctorName(p.doctor_name || patient?.doctor_name) || (language === 'ru' ? 'Врач' : language === 'en' ? 'Doctor' : 'Shifokor')}</span>
                           </div>
                         </td>
 
                         {/* Amount */}
-                        <td className={cn("border-r border-slate-200 text-right font-mono font-black text-emerald-700 bg-emerald-50/40 text-sm sm:text-base tracking-tight", density === 'compact' ? 'py-1.5 px-2.5.5' : 'py-2.5 px-3.5')}>
+                        <td className={cn("border-r border-slate-200 text-right font-mono font-black text-emerald-700 bg-emerald-50/40 text-sm sm:text-base tracking-tight", density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-3.5')}>
                           +{Number(p.amount || 0).toLocaleString()} UZS
                         </td>
 
                         {/* Notes */}
-                        <td className={cn("text-slate-600 italic text-xs sm:text-sm", density === 'compact' ? 'py-1.5 px-2.5.5' : 'py-2.5 px-3.5')}>
+                        <td className={cn("text-slate-600 italic text-xs sm:text-sm", density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-3.5')}>
                           {p.notes || '—'}
                         </td>
                       </tr>
@@ -940,17 +941,17 @@ function ExcelPaymentsView({
       {subTab === 'plans' && (
         <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
           <div className="overflow-x-auto no-scrollbar">
-            <table className="w-full border-collapse text-left font-sans text-sm">
+            <table className="w-full min-w-[1100px] border-collapse text-left font-sans text-sm">
               <thead>
                 <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider text-xs">
-                  <th className="py-1.5 px-2.5.5 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
-                  <th className="py-1.5 px-2.5.5 border-r border-slate-200 min-w-[200px]">{language === 'ru' ? 'План / Процедура' : language === 'en' ? 'Plan / Treatment Name' : 'Reja / Muolaja Nomi'}</th>
-                  <th className="py-1.5 px-2.5.5 border-r border-slate-200 font-mono">{t('common.date') || 'Sana'}</th>
-                  <th className="py-1.5 px-2.5.5 border-r border-slate-200">{t('patientProfile.doctorCol') || 'Shifokor'}</th>
-                  <th className="py-1.5 px-2.5.5 border-r border-slate-200 text-right font-mono min-w-[130px]">{language === 'ru' ? 'Стоимость плана' : language === 'en' ? 'Plan Price' : 'Reja Narxi'}</th>
-                  <th className="py-1.5 px-2.5.5 border-r border-slate-200 text-right font-mono min-w-[130px]">{t('patientProfile.paidLabel') || 'To\'langan'}</th>
-                  <th className="py-1.5 px-2.5.5 border-r border-slate-200 text-right font-mono min-w-[130px]">{language === 'ru' ? 'Остаток долга' : language === 'en' ? 'Remaining Debt' : 'Qoldiq Qarz'}</th>
-                  <th className="py-1.5 px-2.5.5 text-center min-w-[100px]">{t('patientProfile.invoiceCol') || 'Faktura'}</th>
+                  <th className="py-2 px-3 border-r border-slate-200 text-center w-12 bg-slate-200/60 font-mono">№</th>
+                  <th className="py-2 px-3 border-r border-slate-200 min-w-[200px]">{language === 'ru' ? 'План / Процедура' : language === 'en' ? 'Plan / Treatment Name' : 'Reja / Muolaja Nomi'}</th>
+                  <th className="py-2 px-3 border-r border-slate-200 font-mono whitespace-nowrap min-w-[108px]">{t('common.date') || 'Sana'}</th>
+                  <th className="py-2 px-3 border-r border-slate-200 min-w-[140px]">{t('patientProfile.doctorCol') || 'Shifokor'}</th>
+                  <th className="py-2 px-3 border-r border-slate-200 text-right font-mono min-w-[140px] whitespace-nowrap">{language === 'ru' ? 'Стоимость плана' : language === 'en' ? 'Plan Price' : 'Reja Narxi'}</th>
+                  <th className="py-2 px-3 border-r border-slate-200 text-right font-mono min-w-[130px] whitespace-nowrap">{t('patientProfile.paidLabel') || 'To\'langan'}</th>
+                  <th className="py-2 px-3 border-r border-slate-200 text-right font-mono min-w-[160px] whitespace-nowrap">{language === 'ru' ? 'Остаток долга' : language === 'en' ? 'Remaining Debt' : 'Qoldiq Qarz'}</th>
+                  <th className="py-2 px-3 text-center min-w-[110px]">{t('patientProfile.invoiceCol') || 'Faktura'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -978,26 +979,26 @@ function ExcelPaymentsView({
                         <td className="border-r border-slate-200 text-center font-mono font-bold text-slate-500 bg-slate-100/40 text-xs py-1.5 px-2.5">
                           {idx + 1}
                         </td>
-                        <td className="border-r border-slate-200 font-bold text-slate-900 text-sm py-1.5 px-2.5.5">
+                        <td className="border-r border-slate-200 font-bold text-slate-900 text-sm py-2 px-3">
                           {plan.name || `Davolash rejasi #${idx + 1}`}
                         </td>
-                        <td className="border-r border-slate-200 font-mono font-semibold text-slate-700 text-xs sm:text-sm py-1.5 px-2.5.5">
-                          {plan.created_date ? new Date(plan.created_date).toLocaleDateString('uz-UZ') : '—'}
+                        <td className="border-r border-slate-200 font-mono font-semibold text-slate-700 text-xs sm:text-sm py-2 px-3 whitespace-nowrap">
+                          {formatTableDate(plan.created_date)}
                         </td>
-                        <td className="border-r border-slate-200 font-semibold text-slate-800 text-xs sm:text-sm py-1.5 px-2.5.5">
+                        <td className="border-r border-slate-200 font-semibold text-slate-800 text-xs sm:text-sm py-2 px-3">
                           <div className="flex items-center gap-1.5">
                             <User className="w-4 h-4 text-slate-400 shrink-0" />
-                            <span>{plan.doctor_name || patient?.doctor_name || (language === 'ru' ? 'Врач' : language === 'en' ? 'Doctor' : 'Shifokor')}</span>
+                            <span className="whitespace-nowrap">{formatDoctorName(plan.doctor_name || patient?.doctor_name) || (language === 'ru' ? 'Врач' : language === 'en' ? 'Doctor' : 'Shifokor')}</span>
                           </div>
                         </td>
-                        <td className="border-r border-slate-200 text-right font-mono font-black text-slate-950 text-sm sm:text-base tracking-tight py-1.5 px-2.5.5">
+                        <td className="border-r border-slate-200 text-right font-mono font-black text-slate-950 text-sm sm:text-base tracking-tight py-2 px-3 whitespace-nowrap">
                           {price.toLocaleString()} UZS
                         </td>
-                        <td className="border-r border-slate-200 text-right font-mono font-black text-emerald-700 text-sm sm:text-base tracking-tight py-1.5 px-2.5.5">
+                        <td className="border-r border-slate-200 text-right font-mono font-black text-emerald-700 text-sm sm:text-base tracking-tight py-2 px-3 whitespace-nowrap">
                           {paid.toLocaleString()} UZS
                         </td>
                         <td className={cn(
-                          "border-r border-slate-200 text-right font-mono font-black text-sm sm:text-base tracking-tight py-1.5 px-2.5.5",
+                          "border-r border-slate-200 text-right font-mono font-black text-sm sm:text-base tracking-tight py-2 px-3 whitespace-nowrap min-w-[160px]",
                           debt > 0 ? "text-amber-950 bg-amber-50/30" : "text-emerald-700 bg-emerald-50/20"
                         )}>
                           {debt > 0 ? (

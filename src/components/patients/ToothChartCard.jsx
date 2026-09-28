@@ -8,6 +8,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { cn } from '@/lib/utils';
 import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, fdiMesialIsRight, internalIdToFdi } from '@/lib/fdiNotation';
 import { getToothIllustrationSrc, matchIllustrationKind } from '@/utils/toothIllustration';
+import { displayServiceName, formatDoctorName } from '@/lib/displayText';
+import { implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
 
 const ADULT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
 const ADULT_LOWER = [38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
@@ -203,9 +205,9 @@ function collectEntries(plans, implants, toothRecords) {
         kind,
         illustration: illustration || kind,
         done: serviceIsDone(svc, plan),
-        name: svc.service_name || svc.name || plan.name || kind || 'Yozuv',
+        name: displayServiceName(svc.service_name || svc.name || plan.name || kind || 'Yozuv'),
         price: Number(svc.price || svc.cost || 0),
-        doctor: plan.doctor_name || '',
+        doctor: formatDoctorName(plan.doctor_name || ''),
         date: svc.completion_date || plan.updated_date || plan.updated_at || plan.created_date || plan.date,
         planId: plan.id,
         servicePath: svc.path,
@@ -219,13 +221,16 @@ function collectEntries(plans, implants, toothRecords) {
     const nums = Array.isArray(imp.tooth_numbers)
       ? imp.tooth_numbers
       : String(imp.tooth_numbers || imp.tooth_number || '').split(',');
+    const statusCode = normalizeImplantStatus(imp.lifecycle_status || imp.status);
     nums.forEach((num) => add(num, {
       kind: 'implant',
       illustration: 'implant',
-      done: true,
+      done: statusCode === 'completed',
+      statusCode,
+      statusLabel: implantStatusLabel(statusCode),
       name: 'Implant',
       price: 0,
-      doctor: imp.doctor_name || '',
+      doctor: formatDoctorName(imp.doctor || imp.doctor_name || ''),
       date: imp.placement_date || imp.created_date,
       planId: null,
       surfaces: [],
@@ -241,9 +246,9 @@ function collectEntries(plans, implants, toothRecords) {
       kind,
       illustration: illustration || kind,
       done: isDoneStatus(rec.status) || !/reja|plan/i.test(String(rec.status || '')),
-      name: rec.treatment || rec.condition || rec.notes || kind || 'Yozuv',
+      name: displayServiceName(rec.treatment || rec.condition || rec.notes || kind || 'Yozuv'),
       price: Number(rec.price || 0),
-      doctor: rec.doctor || '',
+      doctor: formatDoctorName(rec.doctor || ''),
       date: rec.updated_date || rec.created_date,
       planId: null,
       surfaces: parseSurfaces(rec.notes),
@@ -409,8 +414,8 @@ export default function ToothChartCard({
       color: KIND_COLOR[e.kind] || '#64748B',
       title: e.surfaces?.length ? `${e.name} (${e.surfaces.join(', ')})` : e.name,
       price: e.price,
-      doctor: e.doctor || '',
-      status: e.done ? 'bajarildi' : 'reja',
+      doctor: formatDoctorName(e.doctor || ''),
+      status: e.statusLabel || (e.done ? 'bajarildi' : 'reja'),
       dateLabel: fmtDate(e.date),
       date: e.date || '',
     }));
@@ -426,7 +431,7 @@ export default function ToothChartCard({
         color: '#0F172A',
         title: p.category || p.service_name || p.type || "To'lov",
         price: p.amount,
-        doctor: p.doctor_name || '',
+        doctor: formatDoctorName(p.doctor_name || ''),
         status: p.type || "to'lov",
         dateLabel: fmtDate(p.date),
         date: p.date || '',
@@ -1205,8 +1210,10 @@ function SidePanel(props) {
           </p>
           {activeEntry && !group && (
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <span className="rounded-full px-2 py-0.5 text-[10px] font-extrabold text-white" style={{ background: KIND_COLOR[activeEntry.kind] || '#64748B' }}>
-                {statusLabel} · {activeEntry.done ? 'bajarildi' : 'reja'}
+              <span data-testid="tooth-status-label" className="rounded-full px-2 py-0.5 text-[10px] font-extrabold text-white" style={{ background: KIND_COLOR[activeEntry.kind] || '#64748B' }}>
+                {activeEntry.kind === 'implant'
+                  ? (activeEntry.statusLabel || 'Rejalashtirilgan')
+                  : `${statusLabel} · ${activeEntry.done ? 'bajarildi' : 'reja'}`}
               </span>
             </div>
           )}
@@ -1327,7 +1334,10 @@ function SidePanel(props) {
                 </label>
               </div>
               {toothXrays.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">Rentgen yo‘q</p>
+                <div data-testid="xray-empty" className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center">
+                  <p className="text-xs font-bold text-slate-600">Hali rentgen yoki RVG yo‘q</p>
+                  <p className="mt-1 text-[11px] text-slate-400">Rasm qo‘shish uchun Yuklash tugmasidan foydalaning.</p>
+                </div>
               ) : (
                 <div className="flex gap-2 overflow-x-auto">
                   {toothXrays.map((x) => (

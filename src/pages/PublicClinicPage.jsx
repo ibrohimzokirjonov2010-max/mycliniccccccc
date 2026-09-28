@@ -332,7 +332,7 @@ export default function PublicClinicPage() {
 
   const services = [
     { name: 'Terapiya', desc: "Og'riqsiz davolash", icon: Star, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-100' },
-    { name: 'Ortopediya', desc: 'Vinir va karonkalar', icon: Sparkles, color: 'text-indigo-500', bg: 'bg-indigo-50', border: 'border-indigo-100' },
+    { name: 'Ortopediya', desc: 'Vinir va koronkalar', icon: Sparkles, color: 'text-indigo-500', bg: 'bg-indigo-50', border: 'border-indigo-100' },
     { name: 'Xirurgiya', desc: 'Implantatsiya', icon: ShieldCheck, color: 'text-rose-500', bg: 'bg-rose-50', border: 'border-rose-100' },
     { name: 'Gigiyena', desc: 'Tishlarni oqartirish', icon: Sparkles, color: 'text-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100' },
   ];

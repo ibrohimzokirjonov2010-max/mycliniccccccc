@@ -16,8 +16,8 @@ export default function ImplantWizardToothEntry({
   promptSizes = false,
   tw,
 }) {
-  const firma = data?.firma || 'Osstem';
-  const brandOptions = (brands || []).includes(firma) ? brands : [firma, ...(brands || [])];
+  const firma = data?.firma || '';
+  const brandOptions = !firma || (brands || []).includes(firma) ? (brands || []) : [firma, ...(brands || [])];
   const price = data?.price ?? 1500000;
 
   const title = tw('toothEntryTitle', "Tish #{n} — ma'lumot kiriting").replace('{n}', fdi);
@@ -52,7 +52,7 @@ export default function ImplantWizardToothEntry({
         <div>
           <span className="implant-wizard-field-label">{tw('brand', 'Brend')}</span>
           <Select
-            value={firma}
+            value={firma || undefined}
             onValueChange={(value) => onChange({
               firma: value,
               firma_custom: value === 'Boshqa' ? (data?.firma_custom || '') : '',
@@ -60,7 +60,7 @@ export default function ImplantWizardToothEntry({
             })}
           >
             <SelectTrigger className={fieldInput}>
-              <SelectValue placeholder={tw('brand', 'Brend')} />
+              <SelectValue placeholder={tw('chooseBrand', 'Brendni tanlang')} />
             </SelectTrigger>
             <SelectContent className="z-[220] rounded-xl">
               {brandOptions.map((brand) => (

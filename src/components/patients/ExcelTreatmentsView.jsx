@@ -7,6 +7,7 @@ import {
   Calculator
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { displayServiceName, formatDoctorName } from '@/lib/displayText';
 
 /**
  * ExcelTreatmentsView – Responsive Treatment Plans View
@@ -44,7 +45,7 @@ function ExcelTreatmentsView({
           planName: plan.name || `Davolash rejasi #${pIdx + 1}`,
           serviceName: plan.name || 'Davolash muolajasi',
           toothNumber: plan.tooth_number || '—',
-          doctorName: plan.doctor_name || patient?.doctor_name || 'Shifokor',
+          doctorName: formatDoctorName(plan.doctor_name || patient?.doctor_name) || 'Shifokor',
           price: planPrice,
           status: plan.status || 'planned',
           date: plan.created_date || plan.date || '',
@@ -56,9 +57,9 @@ function ExcelTreatmentsView({
             id: `srv-${plan.id || pIdx}-${sIdx}`,
             planId: plan.id,
             planName: plan.name || `Davolash rejasi #${pIdx + 1}`,
-            serviceName: srv.name || srv.service_name || 'Muolaja',
+            serviceName: displayServiceName(srv.name || srv.service_name || 'Muolaja'),
             toothNumber: srv.tooth_number || plan.tooth_number || '—',
-            doctorName: srv.doctor || plan.doctor_name || patient?.doctor_name || 'Shifokor',
+            doctorName: formatDoctorName(srv.doctor || plan.doctor_name || patient?.doctor_name) || 'Shifokor',
             price: Number(srv.price || srv.cost || 0),
             status: srv.status || plan.status || 'planned',
             date: srv.date || plan.created_date || '',

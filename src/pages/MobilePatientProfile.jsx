@@ -15,6 +15,8 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { cn, resolveDoctorId } from '@/lib/utils';
 import { patientGenderLabel } from '@/lib/patientGender';
+import { formatBirthDate } from '@/lib/displayText';
+import ChairsideClinicalTools from '../components/patients/ChairsideClinicalTools';
 import { countImplantTeeth, implantRecordFdis } from '@/lib/fdiNotation';
 import { formatPhone, capitalizeName } from '@/lib/utils';
 import AppointmentModal from '../components/appointments/AppointmentModal';
@@ -556,7 +558,7 @@ export default function MobilePatientProfile() {
         <div className="bg-rose-50 border-b border-rose-100 px-4 py-2 flex flex-wrap gap-2 items-center" style={{ paddingTop: 'max(8px, env(safe-area-inset-top, 8px))' }}>
           <AlertTriangle className="w-3.5 h-3.5 text-rose-500 animate-pulse shrink-0" />
           {medicalAlerts.map((a, i) => (
-            <span key={i} className="text-[10px] font-black text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full uppercase tracking-wide">
+            <span key={i} className="text-[11px] font-black text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full">
               {a}
             </span>
           ))}
@@ -665,40 +667,23 @@ export default function MobilePatientProfile() {
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{age} yosh</span>
               )}
             </div>
+            <p data-testid="patient-card-header-meta" className="mt-1 text-[11px] font-semibold leading-snug text-slate-600">
+              <span className={medicalAlerts.length || patient.important_info ? 'font-black text-rose-600' : 'text-slate-400'}>
+                {medicalAlerts.length
+                  ? `Allergiya: ${medicalAlerts.join(', ')}`
+                  : (patient.important_info ? `Allergiya: ${patient.important_info}` : 'Allergiya yo‘q')}
+              </span>
+              {' · '}
+              {formatBirthDate(patient.birth_date) || (age != null ? `${age} yosh` : 'Tug‘ilgan sana yo‘q')}
+              {' · '}
+              {patient.address || 'Manzil yo‘q'}
+            </p>
           </div>
           <button type="button" onClick={() => setPatientModalOpen(true)} className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center active:scale-95">
             <FileText className="w-4 h-4 text-slate-500" />
           </button>
         </div>
       </div>
-
-      {financials.debt > 0 && (
-        <div className="px-3 pt-2">
-          <div className="w-full rounded-[16px] bg-rose-50/95 border border-rose-200/80 px-3.5 py-2.5 flex items-center justify-between gap-3 shadow-xs">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-rose-100/90 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-4 h-4 text-rose-600" />
-              </div>
-              <div className="min-w-0 text-left">
-                <p className="text-[9px] font-black uppercase tracking-wider text-rose-500 leading-tight">
-                  {t('patientProfile.mobile.debt', 'Qarzdorlik')}
-                </p>
-                <p className="text-[15px] font-black tabular-nums text-rose-700 leading-tight mt-0.5">
-                  {fmt(financials.debt)} <span className="text-[11px] font-bold text-rose-600">{t('dashboard.currency', "so'm")}</span>
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => openPayModal('Treatment', '', financials.debt)}
-              className="shrink-0 px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-[11px] font-black transition-all shadow-xs flex items-center gap-1.5"
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              <span>{t('patientProfile.mobile.payAction', "To'lov")}</span>
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ACTION CARDS */}
       <div className="px-3 mt-2.5 grid grid-cols-3 gap-2 relative z-10">
@@ -745,9 +730,17 @@ export default function MobilePatientProfile() {
                   toothRecords={toothRecords}
                   onReload={load}
                   onBookAppointment={() => { setSelectedAppt(null); setApptModalOpen(true); }}
-                  sheetOffset={58}
+                  sheetOffset={84}
                 />
-              
+                <ChairsideClinicalTools
+                  patient={patient}
+                  onPatientUpdated={(updated) => {
+                    if (updated) setPatient((prev) => ({ ...(prev || {}), ...updated }));
+                  }}
+                  language={language}
+                  compact
+                  tabbed
+                />
       </div>
 
       {/* PILL TABS */}

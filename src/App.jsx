@@ -274,10 +274,10 @@ function App() {
             <Toaster
               richColors
               closeButton
-              position="top-right"
+              position="bottom-right"
               visibleToasts={2}
-              offset={{ top: 16, right: 16 }}
-              mobileOffset={{ top: 72, right: 12 }}
+              offset={{ bottom: 16, right: 16 }}
+              mobileOffset={{ bottom: 88, right: 12 }}
               duration={4000}
               expand={false}
               style={{ zIndex: 90, '--width': '280px' }}

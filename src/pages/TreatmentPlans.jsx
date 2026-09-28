@@ -10,6 +10,7 @@ import {
   Check, Layers, ExternalLink, Printer
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { formatDoctorName } from '@/lib/displayText';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
@@ -912,7 +913,7 @@ export default function TreatmentPlans() {
                           <>
                             <span className="text-slate-300">•</span>
                             <span className="text-[11px] font-bold text-slate-400">
-                              Dr. {activeDetailPlan.doctor_name}
+                              {formatDoctorName(activeDetailPlan.doctor_name)}
                             </span>
                           </>
                         )}
