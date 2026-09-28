@@ -102,7 +102,8 @@ CREATE TABLE IF NOT EXISTS payments (
   payment_method TEXT CHECK (payment_method IN ('cash', 'card', 'transfer', 'other')),
   description TEXT,
   notes TEXT,
-  created_date TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_date TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_payments_clinic_id ON payments(clinic_id);
@@ -341,7 +342,9 @@ CREATE INDEX IF NOT EXISTS idx_ads_enabled ON advertisements(enabled);
 CREATE OR REPLACE FUNCTION update_updated_date_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_date = NOW();
+    IF to_jsonb(NEW) ? 'updated_date' THEN
+        NEW.updated_date = NOW();
+    END IF;
     RETURN NEW;
 END;
 $$ language 'plpgsql';
