@@ -8,7 +8,7 @@ import {
   Calendar, Printer, FileSpreadsheet, Search, X, LayoutGrid, Award, DollarSign, Layers, ChevronDown,
   Receipt, ArrowUpRight, ArrowDownRight, AlertTriangle, Info,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getTreatmentTypeLabel } from '@/lib/utils';
 import { fmtMoney, fmtCompact, initials, avatarTone } from '@/utils/clinicMetrics';
 
 function tx(language, uz, ru, en) {
@@ -519,7 +519,7 @@ export default function ReportsDashboard({
                 {(activeTab === 'overview' ? servicesReport.slice(0, 5) : servicesReport).map((s, i) => (
                   <div key={s.name}>
                     <div className="flex justify-between gap-3 text-[12.5px] mb-1.5 min-w-0">
-                      <span className="font-semibold text-slate-700 truncate">{s.name} <em className="not-italic text-slate-400 font-medium">{s.count} ta</em></span>
+                      <span className="font-semibold text-slate-700 truncate">{getTreatmentTypeLabel(s.name, language)} <em className="not-italic text-slate-400 font-medium">{s.count} ta</em></span>
                       <span className="shrink-0"><b className="tabular-nums">{phone ? fmtCompact(s.revenue) : fmtMoney(s.revenue)}</b> {!phone && <em className="not-italic text-slate-400">{s.share}%</em>}</span>
                     </div>
                     <div className="h-2 rounded bg-slate-100 overflow-hidden">
@@ -558,7 +558,7 @@ export default function ReportsDashboard({
             {servicesReport.map((s, i) => (
               <div key={s.name}>
                 <div className="flex justify-between gap-3 text-[12.5px] mb-1.5">
-                  <span className="font-semibold truncate">{s.name} <em className="not-italic text-slate-400">{s.count} ta</em></span>
+                  <span className="font-semibold truncate">{getTreatmentTypeLabel(s.name, language)} <em className="not-italic text-slate-400">{s.count} ta</em></span>
                   <span className="shrink-0 tabular-nums"><b>{phone ? fmtCompact(s.revenue) : fmtMoney(s.revenue)}</b> {!phone && <em className="not-italic text-slate-400">{s.share}%</em>}</span>
                 </div>
                 <div className="h-2 rounded bg-slate-100 overflow-hidden"><i className="block h-full" style={{ width: `${(s.share / maxServiceShare) * 100}%`, background: SERVICE_COLORS[i % SERVICE_COLORS.length] }} /></div>
@@ -649,7 +649,7 @@ function KpiCard({ label, value, icon, iconClass, bar, barClass, foot, trend, tr
       </div>
       <div className={cn(compact ? 'flex items-center justify-between gap-1 text-[10.5px]' : 'flex flex-col items-start gap-1 text-[11px]', dark ? 'text-slate-300' : 'text-slate-500')}>
         <span className={compact ? 'min-w-0 truncate' : 'leading-snug'}>{foot}</span>
-        {trend && <TrendChip trend={trend} note={trendNote} invert={invert} dark={dark} compact={compact} showScope={!compact && period === 'all'} />}
+        {trend && period !== 'all' && <TrendChip trend={trend} note={trendNote} invert={invert} dark={dark} compact={compact} showScope={false} />}
       </div>
     </article>
   );

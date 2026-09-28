@@ -263,7 +263,7 @@ export default function Expenses() {
   const [loading, setLoading] = useState(true);
   
   // Filter states
-  const [selectedMonth, setSelectedMonth] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
+  const [selectedMonth, setSelectedMonth] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -303,13 +303,8 @@ export default function Expenses() {
 
   // Filter by month
   const getMonthData = useCallback((items, monthStr) => {
-    const [year, month] = monthStr.split('-').map(Number);
-    return items.filter(item => {
-      if (!item.date) return false;
-      const itemDate = new Date(item.date);
-      if (isNaN(itemDate.getTime())) return false;
-      return itemDate.getFullYear() === year && itemDate.getMonth() === month - 1;
-    });
+    if (!monthStr || monthStr === 'all') return items;
+    return items.filter(item => String(item.date || item.created_date || '').slice(0, 7) === monthStr);
   }, []);
 
   // Monthly data
@@ -363,7 +358,8 @@ export default function Expenses() {
   const totals = useMemo(() => {
     const totalExpense = monthlyExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
     const totalIncome = monthlyIncome.reduce((sum, p) => sum + (p.amount || 0), 0);
-    const profit = totalIncome - totalExpense;
+    const rawProfit = totalIncome - totalExpense;
+    const profit = rawProfit === 0 ? 0 : rawProfit;
     
     // Category totals
     const byCategory = {};
@@ -499,7 +495,7 @@ export default function Expenses() {
 
   // Standard Month options generator (harmonized with DD.MM.YYYY format)
   const monthOptions = useMemo(() => {
-    const options = [];
+    const options = [{ value: 'all', label: "Barchasi" }];
     const today = new Date();
     for (let i = 0; i < 18; i++) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
@@ -521,12 +517,12 @@ export default function Expenses() {
   // Standard date formatter (DD.MM.YYYY)
   const formatStandardDate = (dateVal) => {
     if (!dateVal) return '—';
-    const dt = new Date(dateVal);
-    if (isNaN(dt.getTime())) return dateVal;
-    const d = String(dt.getDate()).padStart(2, '0');
-    const m = String(dt.getMonth() + 1).padStart(2, '0');
-    const y = dt.getFullYear();
-    return `${d}.${m}.${y}`;
+    const key = String(dateVal).slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+      const [y, m, d] = key.split('-');
+      return `${d}.${m}.${y}`;
+    }
+    return key;
   };
 
   return (
@@ -536,10 +532,12 @@ export default function Expenses() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('expenses.title') || "Harajatlar hisobi"}</h1>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('expenses.title') || "Xarajatlar hisobi"}</h1>
+            {sortedDisplayExpenses.length > 0 && (
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200">
-              • Moliya {expenses.length} Jami
+              • Moliya {sortedDisplayExpenses.length} jami
             </span>
+            )}
           </div>
           <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
             {t('expenses.subtitle') || "Klinika xarajatlari, chiqimlar va foyda/zarar hisob-kitobi"}
@@ -565,7 +563,7 @@ export default function Expenses() {
             className="bg-[#1499AD] hover:bg-[#0E7A8A] text-white gap-1.5 border-none rounded-xl h-9.5 px-4 font-black text-xs shadow-md shadow-[#1499AD]/20"
           >
             <Plus className="w-4 h-4" />
-            <span>{t('expenses.add') || "Harajat qo'shish"}</span>
+            <span>{t('expenses.add') || "Xarajat qo'shish"}</span>
           </Button>
         </div>
       </div>
@@ -594,7 +592,7 @@ export default function Expenses() {
             <div className={`text-xl font-black font-mono tracking-tight mt-1 tabular-nums ${
               totals.profit >= 0 ? 'text-emerald-700' : 'text-rose-700'
             }`}>
-              {totals.profit < 0 ? '-' : '+'}{formatCurrency(Math.abs(totals.profit))}
+              {totals.profit < 0 ? '-' : totals.profit > 0 ? '+' : ''}{formatCurrency(Math.abs(totals.profit) || 0)}
             </div>
             <p className="text-[10px] font-medium text-slate-400 mt-0.5">
               {t('expenses.totalIncome')} − {t('expenses.totalExpense')}
@@ -842,7 +840,7 @@ export default function Expenses() {
           {/* Month Selector (Standard Uzbek format, e.g. "Avgust 2026") */}
           <div className="w-full sm:w-auto">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-full sm:w-48 h-9 rounded-xl font-bold text-xs bg-slate-50 border-slate-200">
+              <SelectTrigger className="w-full sm:w-56 h-9 rounded-xl font-bold text-xs bg-slate-50 border-slate-200">
                 <Calendar className="w-3.5 h-3.5 mr-2 text-[#1499AD]" />
                 <SelectValue />
               </SelectTrigger>

@@ -4,6 +4,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { dateKey, fmtMoney, isIncomePayment, roleLabel } from '@/utils/clinicMetrics';
+import { displayDoctorName, getTreatmentTypeLabel } from '@/lib/utils';
 import ReportsDashboard from '@/pages/reports/ReportsDashboard';
 
 // Standard Uzbek Months
@@ -149,8 +150,15 @@ export default function Reports() {
   const doctorLeaderboard = useMemo(() => {
     const docMap = {};
 
+    const doctorsByPatient = {};
+    filteredAppointments.forEach((a) => {
+      if (!a.patient_id || !a.doctor_id) return;
+      if (!doctorsByPatient[a.patient_id]) doctorsByPatient[a.patient_id] = new Set();
+      doctorsByPatient[a.patient_id].add(String(a.doctor_id));
+    });
+
     doctors.forEach(doc => {
-      const name = doc.name || doc.full_name || 'Shifokor';
+      const name = displayDoctorName(doc.name || doc.full_name) || 'Shifokor';
       docMap[String(doc.id)] = {
         id: doc.id,
         name,
@@ -172,12 +180,15 @@ export default function Reports() {
         const found = doctors.find(d => (d.name && p.doctor_name.includes(d.name)) || (d.full_name && p.doctor_name.includes(d.full_name)));
         if (found) matchedDocId = String(found.id);
       }
+      if (!matchedDocId && p.patient_id && doctorsByPatient[p.patient_id]?.size === 1) {
+        matchedDocId = [...doctorsByPatient[p.patient_id]][0];
+      }
       
-      const key = matchedDocId || (p.doctor_name ? `name_${p.doctor_name}` : 'unknown');
+      const key = matchedDocId || 'unassigned';
       if (!docMap[key]) {
         docMap[key] = {
           id: matchedDocId || key,
-          name: p.doctor_name || 'Shifokor',
+          name: 'Biriktirilmagan',
           specialty: '',
           role: '',
           roleLabel: '',
@@ -200,11 +211,11 @@ export default function Reports() {
         if (found) matchedDocId = String(found.id);
       }
       
-      const key = matchedDocId || (a.doctor_name ? `name_${a.doctor_name}` : 'unknown');
+      const key = matchedDocId || 'unassigned';
       if (!docMap[key]) {
         docMap[key] = {
           id: matchedDocId || key,
-          name: a.doctor_name || 'Shifokor',
+          name: 'Biriktirilmagan',
           specialty: '',
           role: '',
           roleLabel: '',
@@ -245,8 +256,11 @@ export default function Reports() {
 
     let result = list.map(doc => ({
       ...doc,
+      name: /^shifokor$/i.test(String(doc.name || '').trim()) && doc.revenue > 0 && doc.appointmentCount === 0
+        ? 'Biriktirilmagan'
+        : doc.name,
       revenueShare: Math.round((doc.revenue / totalRev) * 100)
-    }));
+    })).filter((doc) => !(doc.revenue === 0 && doc.appointmentCount === 0 && /^shifokor$/i.test(String(doc.name || '').trim())));
 
     if (searchQuery) {
       result = result.filter(d => 
@@ -396,7 +410,7 @@ export default function Reports() {
     const map = {};
 
     filteredPayments.filter(isIncomePayment).forEach(p => {
-      const name = p.service_name || p.category || 'Boshqa xizmatlar';
+      const name = getTreatmentTypeLabel(p.service_name || p.category || 'Boshqa xizmatlar', language);
       if (!map[name]) {
         map[name] = { name, count: 0, revenue: 0 };
       }
@@ -444,7 +458,7 @@ export default function Reports() {
     });
 
     return list;
-  }, [filteredPayments, searchQuery, srvSortField, srvSortOrder]);
+  }, [filteredPayments, searchQuery, srvSortField, srvSortOrder, language]);
 
   // ═════════════════════════════════════════════════════════════════════════
   // 4. APPOINTMENTS BREAKDOWN DATA

@@ -94,7 +94,7 @@ export default function MobileExpenses() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
+  const [selectedMonth, setSelectedMonth] = useState('all');
 
   // Category state with localStorage persistence
   const [categories, setCategories] = useState(loadSavedCategories);
@@ -247,24 +247,19 @@ export default function MobileExpenses() {
   }, []);
 
   const monthlyExpenses = useMemo(() => {
-    const [year, month] = selectedMonth.split('-').map(Number);
-    return expenses.filter(item => {
-      const d = new Date(item.date);
-      return d.getFullYear() === year && d.getMonth() === month - 1;
-    });
+    if (selectedMonth === 'all') return expenses;
+    return expenses.filter(item => String(item.date || '').slice(0, 7) === selectedMonth);
   }, [expenses, selectedMonth]);
 
   const monthlyIncome = useMemo(() => {
-    const [year, month] = selectedMonth.split('-').map(Number);
-    return payments.filter(item => {
-      const d = new Date(item.date);
-      return d.getFullYear() === year && d.getMonth() === month - 1;
-    });
+    if (selectedMonth === 'all') return payments;
+    return payments.filter(item => String(item.date || '').slice(0, 7) === selectedMonth);
   }, [payments, selectedMonth]);
 
   const totalExpense = monthlyExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
   const totalIncome = monthlyIncome.reduce((sum, p) => sum + (p.amount || 0), 0);
-  const profit = totalIncome - totalExpense;
+  const rawProfit = totalIncome - totalExpense;
+  const profit = rawProfit === 0 ? 0 : rawProfit;
   const balancePercent = totalIncome > 0 ? Math.min(100, (totalExpense / totalIncome) * 100) : 0;
 
   const categoryTotals = useMemo(() => {
@@ -328,7 +323,10 @@ export default function MobileExpenses() {
   };
 
   const changeMonth = (offset) => {
-    const [y, m] = selectedMonth.split('-').map(Number);
+    const base = selectedMonth === 'all'
+      ? `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+      : selectedMonth;
+    const [y, m] = base.split('-').map(Number);
     const date = new Date(y, m - 1 + offset, 1);
     setSelectedMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
   };
@@ -345,7 +343,13 @@ export default function MobileExpenses() {
     return result;
   }, [monthlyExpenses, search]);
 
-  const monthName = new Date(selectedMonth + '-01').toLocaleDateString('uz-UZ', { month: 'long', year: 'numeric' });
+  const monthName = selectedMonth === 'all'
+    ? 'Barchasi'
+    : (() => {
+        const [y, m] = selectedMonth.split('-');
+        const names = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
+        return `${names[Number(m) - 1] || ''} ${y}`;
+      })();
 
   return (
     <PullToRefresh onRefresh={loadData}>
