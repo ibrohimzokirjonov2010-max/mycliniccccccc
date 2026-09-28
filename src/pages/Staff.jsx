@@ -162,6 +162,7 @@ export default function Staff() {
     full_name: '', username: '', password: '', phone: '', specialty: 'Stomatolog', role: 'doctor', commission: 30,
   });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [focusRole, setFocusRole] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -183,6 +184,12 @@ export default function Staff() {
   }, [t]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    if (!isEditModalOpen || !focusRole) return undefined;
+    const timer = setTimeout(() => document.getElementById('staff-role-select')?.focus(), 220);
+    return () => clearTimeout(timer);
+  }, [isEditModalOpen, focusRole]);
 
   useEffect(() => {
     if (!detailId) return undefined;
@@ -415,7 +422,7 @@ export default function Staff() {
     }
   };
 
-  const handleOpenEditStaff = (user) => {
+  const handleOpenEditStaff = (user, opts = {}) => {
     setEditingStaff(user);
     setEditStaffForm({
       full_name: user.full_name || user.name || '',
@@ -426,7 +433,24 @@ export default function Staff() {
       role: user.role || 'doctor',
       commission: user.commission_rate ?? user.commission ?? 30,
     });
+    setFocusRole(!!opts.focusRole);
     setIsEditModalOpen(true);
+  };
+
+  const openSchedule = (card) => {
+    navigate('/appointments', { state: { doctorId: card.id, doctorName: card.name } });
+  };
+
+  const followLink = (url) => {
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    if (/^https?:/i.test(url)) {
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+    }
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
   };
 
   const handleUpdateStaff = async (e) => {
@@ -492,22 +516,23 @@ export default function Staff() {
   };
 
   const callUser = (user) => {
-    if (!user.phone) {
+    const phone = String(user.phone || '').trim();
+    if (!phone) {
       toast.error(tx(language, 'Telefon raqami kiritilmagan', 'Телефон не указан', 'No phone number'));
       return;
     }
-    window.location.href = `tel:${user.phone}`;
+    followLink(`tel:${phone}`);
   };
 
   const messageUser = (user) => {
-    const handle = user.telegram_username || user.telegram;
+    const handle = String(user.telegram_username || user.telegram || '').replace(/^@/, '').trim();
     if (handle) {
-      window.open(`https://t.me/${String(handle).replace(/^@/, '')}`, '_blank', 'noopener,noreferrer');
+      followLink(`https://t.me/${handle}`);
       return;
     }
-    const digits = String(user.phone || '').replace(/[^\d]/g, '');
-    if (digits) {
-      window.open(`https://t.me/+${digits}`, '_blank', 'noopener,noreferrer');
+    const phone = String(user.phone || '').trim();
+    if (phone) {
+      followLink(`sms:${phone}`);
       return;
     }
     toast.error(tx(language, 'Telegram yoki telefon topilmadi', 'Нет Telegram или телефона', 'No Telegram or phone'));
@@ -750,8 +775,8 @@ export default function Staff() {
               onEdit={() => handleOpenEditStaff(c.user)}
               onCall={() => callUser(c.user)}
               onMessage={() => messageUser(c.user)}
-              onSchedule={() => navigate('/appointments')}
-              onPerms={() => openDetail(c.id, 'access')}
+              onSchedule={() => openSchedule(c)}
+              onPerms={() => handleOpenEditStaff(c.user, { focusRole: true })}
             />
           ))}
         </div>
@@ -795,7 +820,8 @@ export default function Staff() {
           onDelete={() => handleDeleteStaff(detail.id, detail.name)}
           onCall={() => callUser(detail.user)}
           onMessage={() => messageUser(detail.user)}
-          onSchedule={() => navigate('/appointments')}
+          onSchedule={() => openSchedule(detail)}
+          onPerms={() => handleOpenEditStaff(detail.user, { focusRole: true })}
         />
       )}
     </div>
@@ -916,7 +942,7 @@ export default function Staff() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-600">{t('staff.role')}</Label>
-                <select className="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" value={editStaffForm.role} onChange={(e) => setEditStaffForm({ ...editStaffForm, role: e.target.value })}>
+                <select id="staff-role-select" autoFocus={focusRole} aria-label={t('staff.role')} className="flex h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" value={editStaffForm.role} onChange={(e) => setEditStaffForm({ ...editStaffForm, role: e.target.value })}>
                   <option value="doctor">{t('staff.roles.doctor')}</option>
                   <option value="admin">{t('staff.roles.admin')}</option>
                   <option value="receptionist">{t('staff.roles.receptionist')}</option>
@@ -1063,14 +1089,14 @@ function StaffCard({ card, phone, compact, lead, selected, language, presenceLab
       {phone ? (
         <div className="grid grid-cols-4 gap-1.5">
           <IconAction label={tx(language, "Qo'ng'iroq", 'Звонок', 'Call')} onClick={onCall}><Phone className="w-4 h-4" /></IconAction>
-          <IconAction label="Telegram" onClick={onMessage}><Send className="w-4 h-4" /></IconAction>
+          <IconAction label={tx(language, 'Xabar', 'Сообщение', 'Message')} onClick={onMessage}><Send className="w-4 h-4" /></IconAction>
           <IconAction label={tx(language, 'Jadval', 'График', 'Schedule')} onClick={onSchedule}><Calendar className="w-4 h-4" /></IconAction>
           <IconAction label={tx(language, 'Batafsil', 'Подробнее', 'Details')} onClick={onOpen}><ChevronRight className="w-4 h-4" /></IconAction>
         </div>
       ) : (
         <div className={cn('flex items-center gap-1.5 border-t border-slate-100 pt-3', compact && 'pt-1 border-0')}>
           <RoundIcon title={tx(language, "Qo'ng'iroq", 'Звонок', 'Call')} onClick={onCall}><Phone className="w-3.5 h-3.5" /></RoundIcon>
-          <RoundIcon title="Telegram" onClick={onMessage}><Send className="w-3.5 h-3.5" /></RoundIcon>
+          <RoundIcon title={tx(language, 'Xabar', 'Сообщение', 'Message')} onClick={onMessage}><Send className="w-3.5 h-3.5" /></RoundIcon>
           <RoundIcon title={tx(language, 'Jadval', 'График', 'Schedule')} onClick={onSchedule}><Calendar className="w-3.5 h-3.5" /></RoundIcon>
           <RoundIcon title={tx(language, 'Huquqlar', 'Права', 'Access')} onClick={onPerms}><Shield className="w-3.5 h-3.5" /></RoundIcon>
           <RoundIcon title={tx(language, 'Tahrirlash', 'Изменить', 'Edit')} onClick={onEdit}><Pencil className="w-3.5 h-3.5" /></RoundIcon>
@@ -1118,7 +1144,7 @@ function IconAction({ onClick, children, label }) {
   );
 }
 
-function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, weekStart, presenceLabel, onClose, onEdit, onDelete, onCall, onMessage, onSchedule }) {
+function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, weekStart, presenceLabel, onClose, onEdit, onDelete, onCall, onMessage, onSchedule, onPerms }) {
   const clinicAmount = Math.max(0, card.revenue - card.share);
   const clinicPct = card.revenue > 0 ? Math.round((clinicAmount / card.revenue) * 100) : null;
   const doctorPct = card.revenue > 0 ? Math.max(0, 100 - clinicPct) : 0;
@@ -1162,7 +1188,7 @@ function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, 
           </div>
           <div className="grid grid-cols-4 gap-2 mt-4">
             <QaButton onClick={onCall} icon={<Phone className="w-4 h-4" />} label={tx(language, "Qo'ng'iroq", 'Звонок', 'Call')} />
-            <QaButton onClick={onMessage} icon={<Send className="w-4 h-4" />} label="Telegram" />
+            <QaButton onClick={onMessage} icon={<Send className="w-4 h-4" />} label={tx(language, 'Xabar', 'Сообщение', 'Message')} />
             <QaButton onClick={onSchedule} icon={<Calendar className="w-4 h-4" />} label={tx(language, 'Jadval', 'График', 'Schedule')} />
             <QaButton onClick={onEdit} icon={<Pencil className="w-4 h-4" />} label={tx(language, 'Tahrirlash', 'Изменить', 'Edit')} primary />
           </div>
@@ -1266,6 +1292,9 @@ function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, 
                 ))}
               </div>
               <p className="text-[11px] text-slate-400 mt-1">{tx(language, 'Huquqlar lavozimga bog\'langan va alohida saqlanmaydi.', 'Права следуют за ролью и отдельно не хранятся.', 'Access follows the role and is not stored separately.')}</p>
+              <button type="button" onClick={onPerms} className="mt-2 h-9 px-3 rounded-xl bg-[#0C1222] text-white text-xs font-bold">
+                {tx(language, 'Lavozimni o\'zgartirish', 'Изменить роль', 'Change role')}
+              </button>
             </div>
           )}
 

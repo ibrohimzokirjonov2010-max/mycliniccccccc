@@ -118,6 +118,26 @@ export default function Appointments() {
   // ── Derived data (same logic as before, now from query cache) ───────────────
   const appointments = rawAppointments;
 
+  useEffect(() => {
+    const incomingId = location.state?.doctorId;
+    if (incomingId == null || incomingId === '') return;
+    setSelectedDoctorId(incomingId);
+    setActiveTab('list');
+    if (!appointments.length) return;
+    const name = String(location.state?.doctorName || '').trim().toLowerCase();
+    const dates = appointments
+      .filter((a) => {
+        if (String(a.doctor_id) === String(incomingId)) return true;
+        const doctorName = String(a.doctor_name || '').trim().toLowerCase();
+        return name.length > 1 && doctorName && (doctorName.includes(name) || name.includes(doctorName));
+      })
+      .map((a) => String(a.date || '').split('T')[0])
+      .filter(Boolean)
+      .sort();
+    if (dates.length) setViewDate(dates[dates.length - 1]);
+    navigate('/appointments', { replace: true, state: {} });
+  }, [location.state, appointments, navigate]);
+
   // Services with localStorage sort order
   const services = useMemo(() => {
     try {

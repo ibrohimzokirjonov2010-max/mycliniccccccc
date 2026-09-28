@@ -566,3 +566,47 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
 .implant-registry-scroll tbody tr:hover td.implant-registry-actions {
   background: rgb(20 153 173 / 0.08);
 }
+
+@media print {
+  @page {
+    margin: 12mm;
+    size: A4;
+  }
+
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  header,
+  nav,
+  aside,
+  .no-print,
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+
+  .h-screen,
+  .overflow-hidden,
+  .overflow-y-auto,
+  main,
+  .fixed.inset-0 {
+    position: static !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .reports-print,
+  .reports-print * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .reports-print .recharts-responsive-container {
+    min-height: 240px !important;
+  }
+}

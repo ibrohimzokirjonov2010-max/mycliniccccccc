@@ -86,7 +86,7 @@ export default function ReportsDashboard({
   const expenseRatio = stats.totalIncome > 0 ? Math.round((stats.totalExpense / stats.totalIncome) * 1000) / 10 : null;
 
   return (
-    <div className={cn('min-w-0 max-w-full pb-6', inMobileShell && 'px-4', phone && 'pb-24')}>
+    <div className={cn('reports-print min-w-0 max-w-full pb-6', inMobileShell && 'px-4', phone && 'pb-24')}>
       <div className="flex flex-col gap-3 mb-4 min-w-0">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 flex flex-wrap items-center gap-2">
@@ -99,7 +99,7 @@ export default function ReportsDashboard({
             {tx(language, 'Klinika umumiy moliyaviy hisoboti, shifokorlar reytingi va xizmatlar tahlili', 'Финансовый отчёт клиники, рейтинг врачей и анализ услуг', 'Clinic finance, doctor ranking and service mix')}
           </p>
         </div>
-        <div className="flex items-center gap-2 min-w-0 overflow-x-auto no-scrollbar">
+        <div className="no-print flex items-center gap-2 min-w-0 overflow-x-auto no-scrollbar">
           <div className="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200/70 shrink-0">
             {periods.map((p) => (
               <button
@@ -199,7 +199,7 @@ export default function ReportsDashboard({
         />
       </div>
 
-      <div className="flex items-center gap-1.5 mb-3.5 overflow-x-auto no-scrollbar min-w-0">
+      <div className="no-print flex items-center gap-1.5 mb-3.5 overflow-x-auto no-scrollbar min-w-0">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const on = activeTab === tab.id;

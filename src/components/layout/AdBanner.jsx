@@ -88,7 +88,7 @@ export default function AdBanner() {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
         transition={{ type: 'spring', damping: 20 }}
-        className="fixed bottom-0 left-0 right-0 z-50 safe-area-pb"
+        className="no-print fixed bottom-0 left-0 right-0 z-50 safe-area-pb"
       >
         {/* Ad Container */}
         <div className="relative bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-t border-white/10 shadow-2xl">

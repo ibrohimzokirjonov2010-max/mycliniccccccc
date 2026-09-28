@@ -63,13 +63,36 @@ export default function MobileAppointmentsV2() {
     setShowAddModal(true);
   }, [selectedDate]);
 
-  // Check for navigation state to open modal
+  // Check for navigation state to open modal or filter a doctor
   useEffect(() => {
+    const incomingId = location.state?.doctorId;
+    if (incomingId != null && incomingId !== '') {
+      setSelectedDoctorId(incomingId);
+      if (appointments.length) {
+        const name = String(location.state?.doctorName || '').trim().toLowerCase();
+        const dates = appointments
+          .filter((a) => {
+            if (String(a.doctor_id) === String(incomingId)) return true;
+            const doctorName = String(a.doctor_name || '').trim().toLowerCase();
+            return name.length > 1 && doctorName && (doctorName.includes(name) || name.includes(doctorName));
+          })
+          .map((a) => String(a.date || '').split('T')[0].split(' ')[0])
+          .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+          .sort();
+        if (dates.length) {
+          const [y, m, d] = dates[dates.length - 1].split('-').map(Number);
+          const next = new Date(y, m - 1, d);
+          setSelectedDate(next);
+          setViewDate(next);
+        }
+        navigate(location.pathname, { replace: true, state: {} });
+      }
+    }
     if (location.state?.openAddModal) {
       openAddAppointmentModal();
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, openAddAppointmentModal]);
+  }, [location.state, location.pathname, openAddAppointmentModal, appointments, navigate]);
 
   const loadData = useCallback(async () => {
     try {
@@ -253,10 +276,17 @@ export default function MobileAppointmentsV2() {
       if (!app.date) return false;
       const sameDate = normalize(app.date) === getFormatDate(selectedDate);
       if (!sameDate) return false;
-      if (selectedDoctorId && app.doctor_id !== selectedDoctorId) return false;
+      if (selectedDoctorId) {
+        const idMatch = String(app.doctor_id) === String(selectedDoctorId);
+        const selectedDoc = doctors.find((d) => String(d.id) === String(selectedDoctorId));
+        const selectedName = String(selectedDoc?.name || selectedDoc?.full_name || '').trim().toLowerCase();
+        const doctorName = String(app.doctor_name || '').trim().toLowerCase();
+        const nameMatch = selectedName.length > 1 && doctorName && (doctorName.includes(selectedName) || selectedName.includes(doctorName));
+        if (!idMatch && !nameMatch) return false;
+      }
       return true;
     }).sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
-  }, [appointments, selectedDate, selectedDoctorId, searchQuery]);
+  }, [appointments, selectedDate, selectedDoctorId, searchQuery, doctors]);
 
   // Fixed working hours: 09:00 – 23:00, hourly only
   const WORKING_HOURS = useMemo(() => {
@@ -574,7 +604,7 @@ export default function MobileAppointmentsV2() {
                     type="button"
                     onClick={() => setSelectedDoctorId(doc.id)}
                     className={`flex items-center gap-2 px-4 min-h-[44px] py-2.5 rounded-2xl whitespace-nowrap transition-all border shrink-0 max-w-full ${
-                      selectedDoctorId === doc.id
+                      String(selectedDoctorId) === String(doc.id)
                         ? 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-200 z-10'
                         : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50 shadow-sm'
                     }`}
