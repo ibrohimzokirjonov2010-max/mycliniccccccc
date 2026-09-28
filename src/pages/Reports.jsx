@@ -674,12 +674,14 @@ export default function Reports() {
     }
     const weak = [...doctorLeaderboard].filter((d) => d.appointmentCount >= 5 && d.completionRate < 25).sort((a, b) => a.completionRate - b.completionRate)[0];
     if (weak) {
+      const completed = Number(weak.completedCount ?? weak.completed);
+      const completedCount = Number.isFinite(completed) ? completed : 0;
       items.push({
         tone: 'info',
         title: `${weak.name}: ${weak.appointmentCount} ${language === 'ru' ? 'приёмов' : 'qabul'}, ${weak.completionRate}%`,
         body: language === 'ru'
-          ? `Завершено ${weak.completed}. Средний чек ${fmtMoney(weak.avgCheck)} UZS.`
-          : `Bajarilgani ${weak.completed} ta. O'rtacha chek ${fmtMoney(weak.avgCheck)} UZS.`,
+          ? `Завершено ${completedCount}. Средний чек ${fmtMoney(weak.avgCheck)} UZS.`
+          : `Bajarilgani ${completedCount} ta. O'rtacha chek ${fmtMoney(weak.avgCheck)} UZS.`,
       });
     }
     const noShow = appointmentsStatusReport.find((s) => /kelmagan|неявк|no-show/i.test(s.status));

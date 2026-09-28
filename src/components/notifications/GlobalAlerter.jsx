@@ -123,18 +123,9 @@ export default function GlobalAlerter() {
     notificationStore.add({ type, title, message });
 
     // In-app Toast
-    toast(message, {
-      icon: type === 'appointment' ? '⏰' : type === 'recall' ? '📞' : '🦷',
-      duration: 8000,
-      position: 'top-center',
-      style: {
-        background: '#0f172a',
-        color: '#fff',
-        borderRadius: '1rem',
-        padding: '1rem',
-        fontWeight: 'bold',
-        fontSize: '14px'
-      }
+    toast(title, {
+      description: message,
+      duration: 4000,
     });
 
     // Voice (optional)

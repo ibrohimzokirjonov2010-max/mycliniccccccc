@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, UserPlus, Trash2, Shield, Search, Pencil, Phone, Send,
@@ -572,7 +573,7 @@ export default function Staff() {
   };
 
   return (
-    <div className={cn('min-w-0 max-w-full', inMobileShell && 'px-4', phone && 'pb-28')}>
+    <div className={cn('min-w-0 max-w-full', inMobileShell && 'px-4', phone && 'pb-4')}>
       <div className="flex items-end justify-between gap-3 mb-4 min-w-0">
         <div className="min-w-0">
           <h1 className="text-[22px] sm:text-2xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
@@ -630,7 +631,7 @@ export default function Staff() {
                 <FilterSelect label={tx(language, 'Saralash', 'Сортировка', 'Sort')} value={sortKey} onChange={setSortKey} options={sortOptions(language)} />
               </div>
             )}
-            <div className="flex gap-1.5 mt-2.5 overflow-x-auto no-scrollbar -mx-4 px-4">
+            <div className="flex flex-wrap gap-1.5 mt-2.5">
               {roleTabs.map((tab) => (
                 <button
                   key={tab.id}
@@ -647,7 +648,7 @@ export default function Staff() {
               ))}
             </div>
           </div>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar py-2 -mx-4 px-4">
+          <div className="grid grid-cols-3 gap-2 py-2">
             <MiniStat label={tx(language, 'Bugun ishda', 'Сегодня на смене', 'On duty')} value={<><span>{workingToday.length}</span> <small className="text-xs text-slate-400 font-bold">/ {cards.length}</small></>} hint={busyCount ? `${busyCount} ${tx(language, 'tasi qabulda', 'на приёме', 'in a visit')}` : workingHint} />
             <MiniStat label={tx(language, 'Bugungi qabul', 'Приёмы сегодня', 'Visits today')} value={todayAppointments.length} hint={`${todayDone} ${tx(language, 'yakunlandi', 'завершено', 'done')}`} />
             <MiniStat label={tx(language, 'Komissiya', 'Комиссия', 'Commission')} value={<>{fmtCompact(totalShare)}</>} hint={tx(language, 'shifokorlar ulushi', 'доля врачей', 'doctors\' share')} />
@@ -702,7 +703,7 @@ export default function Staff() {
                 <span className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 grid place-items-center"><Percent className="w-4 h-4" /></span>
               </div>
               <div className="text-[22px] font-extrabold tracking-tight mt-2 leading-none truncate">{fmtMoney(totalShare)} <small className="text-xs text-slate-400 font-bold">UZS</small></div>
-              <p className="text-[11.5px] text-slate-500 mt-2 truncate">{fmtMoney(totalIncome)} UZS {tx(language, 'tushumdan hisoblangan', 'от выручки', 'of revenue')}</p>
+              <p className="text-[11.5px] text-slate-500 mt-2 leading-snug">{fmtMoney(totalIncome)} UZS {tx(language, 'tushumdan hisoblangan', 'от выручки', 'of revenue')}</p>
             </article>
           </div>
 
@@ -758,7 +759,7 @@ export default function Staff() {
       )}
 
       {!loading && filtered.length > 0 && (
-        <div className={cn(phone || view === 'list' ? 'flex flex-col gap-2.5' : 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5')}>
+        <div className={cn(phone || view === 'list' ? 'flex flex-col gap-2.5' : 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5', phone && 'pb-32')}>
           {filtered.map((c) => (
             <StaffCard
               key={c.id}
@@ -782,16 +783,17 @@ export default function Staff() {
         </div>
       )}
 
-      {phone && (
+      {phone && createPortal(
         <button
           type="button"
           onClick={() => { if (openCreate()) setIsModalOpen(true); }}
-          className="fixed right-4 z-30 h-[52px] pl-4 pr-5 rounded-2xl bg-emerald-600 text-white font-bold text-sm inline-flex items-center gap-2 shadow-[0_12px_28px_-10px_rgba(5,150,105,0.9)]"
-          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)' }}
+          className="fixed right-4 z-[45] h-[52px] pl-4 pr-5 rounded-2xl bg-emerald-600 text-white font-bold text-sm inline-flex items-center gap-2 shadow-[0_12px_28px_-10px_rgba(5,150,105,0.9)]"
+          style={{ bottom: 'calc(50px + env(safe-area-inset-bottom, 0px) + 16px)' }}
         >
           <UserPlus className="w-[18px] h-[18px]" />
           {tx(language, 'Yangi xodim', 'Новый сотрудник', 'New staff')}
-        </button>
+        </button>,
+        document.body
       )}
 
       {phone && (
@@ -986,10 +988,10 @@ function FilterSelect({ label, value, onChange, options }) {
 
 function MiniStat({ label, value, hint }) {
   return (
-    <div className="shrink-0 w-[148px] bg-white border border-slate-200/80 rounded-2xl p-3">
-      <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</span>
-      <b className="block text-lg font-extrabold tracking-tight mt-1">{value}</b>
-      <span className="text-[10.5px] text-slate-500">{hint}</span>
+    <div className="min-w-0 bg-white border border-slate-200/80 rounded-2xl p-2.5">
+      <span className="block text-[10px] font-bold uppercase text-slate-400 leading-tight">{label}</span>
+      <b className="block text-[17px] font-extrabold tracking-tight mt-1 leading-none">{value}</b>
+      <span className="block text-[10.5px] text-slate-500 leading-snug mt-1">{hint}</span>
     </div>
   );
 }

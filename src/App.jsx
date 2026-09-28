@@ -274,15 +274,16 @@ function App() {
             <Toaster
               richColors
               closeButton
-              position="bottom-center"
+              position="top-right"
               visibleToasts={2}
-              offset={{ bottom: 16 }}
-              mobileOffset={{ bottom: 76 }}
-              duration={3000}
+              offset={{ top: 16, right: 16 }}
+              mobileOffset={{ top: 72, right: 12 }}
+              duration={4000}
               expand={false}
-              style={{ zIndex: 90 }}
+              style={{ zIndex: 90, '--width': '280px' }}
               toastOptions={{
                 className: 'payment-toast-behind-modal',
+                duration: 4000,
               }}
             />
           </QueryClientProvider>

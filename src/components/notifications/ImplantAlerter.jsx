@@ -49,14 +49,14 @@ export default function ImplantAlerter() {
         const patientName = top.patient_name || 'Bemor';
         const moreCount = incompleteList.length > 1 ? ` va yana ${incompleteList.length - 1} ta` : '';
 
-        toast.warning(`⚠️ Implant ma'lumotlarini kiritish kerak!`, {
+        toast.warning('Implant ma\'lumotlari to\'liq emas', {
           id: 'implant-incomplete-notification',
-          description: `${patientName}${toothText}${moreCount} implant ma'lumotlari kiritilmagan. Iltimos, implant bo'limiga o'tib jarayonni yakunlang.`,
+          description: `${patientName}${toothText}${moreCount}`,
           action: {
-            label: "Implantga o'tish",
+            label: 'Ochish',
             onClick: () => navigate('/implants')
           },
-          duration: 15000,
+          duration: 4500,
         });
       }
     } catch (err) {

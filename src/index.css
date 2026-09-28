@@ -542,6 +542,36 @@ img.tooth-illus {
    Marker: payment-add-teal-v1-0d9488 */
 [data-sonner-toaster] {
   z-index: 90 !important;
+  width: min(280px, calc(100vw - 24px)) !important;
+}
+
+@media (max-width: 640px) {
+  [data-sonner-toaster] {
+    left: auto !important;
+    right: 12px !important;
+    width: min(240px, calc(100vw - 24px)) !important;
+  }
+
+  [data-sonner-toaster] [data-sonner-toast] {
+    left: auto !important;
+    right: 0 !important;
+    width: 100% !important;
+  }
+}
+
+[data-sonner-toast] {
+  font-size: 13px !important;
+  padding: 10px 12px !important;
+}
+
+[data-sonner-toast] [data-title] {
+  font-size: 13px !important;
+  line-height: 1.3 !important;
+}
+
+[data-sonner-toast] [data-description] {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
 }
 
 body:has([data-radix-dialog-content]),
