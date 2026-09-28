@@ -3,12 +3,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Plus,
-  User, Calendar, Clock, Phone, ChevronRight
+  User, Calendar, Phone, ChevronRight
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
-import { formatCurrency, capitalizeName, formatDate } from '@/lib/utils';
+import { formatCurrency, capitalizeName, formatDate, formatPhone } from '@/lib/utils';
 import { buildVisitIndex, isNewPatient, lastVisitKey } from '@/lib/patientVisits';
 import NewPatientFlow from '@/components/patients/NewPatientFlow';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -274,7 +274,7 @@ export default function MobilePatientsV2() {
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className={`w-1 h-1 rounded-full ${status.dot}`} />
-                        <p className="text-[10px] font-medium text-slate-500 truncate">{patient.phone || "Noma'lum"}</p>
+                        <p className="text-[10px] font-medium text-slate-500 truncate">{patient.phone ? formatPhone(patient.phone) : "Noma'lum"}</p>
                         <span className={`text-[10px] font-bold uppercase tracking-tight ${status.text} opacity-80`}>
                           {status.label}
                         </span>
@@ -285,12 +285,6 @@ export default function MobilePatientsV2() {
                             <Calendar className="w-2.5 h-2.5 text-slate-400" />
                             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
                               {lastVisit ? formatDate(lastVisit) : 'Tashrif yo\'q'}
-                            </span>
-                         </div>
-                         <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-50 rounded border border-slate-100">
-                            <Clock className="w-2.5 h-2.5 text-slate-400" />
-                            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">
-                              {new Date(patient.created_at || patient.created_date).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                          </div>
                       </div>

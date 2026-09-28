@@ -23,6 +23,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { formatDateTime, cn } from '@/lib/utils';
+import { formatClinicDate } from '@/lib/clinicTime';
 import { toast } from 'sonner';
 
 /**
@@ -1116,7 +1117,7 @@ export default function RecallSystem() {
                         {/* ESLATMA SANASI Cell */}
                         <td className={`border-r border-slate-200/70 font-mono ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
                           <div className="font-bold text-slate-900">
-                            {recall.recall_date || '—'}
+                            {formatClinicDate(recall.recall_date)}
                           </div>
                           {recall.recall_time && (
                             <div className="text-[10px] text-slate-400 font-semibold">

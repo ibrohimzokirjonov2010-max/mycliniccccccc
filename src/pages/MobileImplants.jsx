@@ -18,6 +18,7 @@ import { useFeature } from '@/hooks/useFeature';
 import { Package } from 'lucide-react';
 import Paywall from '@/components/layout/Paywall';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { formatClinicDate } from '@/lib/clinicTime';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 import { implantStatusClass, implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
@@ -231,7 +232,7 @@ const ImplantCard = ({ implant, onStatusChange, onNavigate, today }) => {
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Amaliyot Sanasi</p>
             <div className="flex items-center gap-1">
               <Calendar className="w-3 h-3 text-slate-400" />
-              <p className="text-[11px] font-bold text-slate-700 font-mono">{safeRender(implant.placement_date)}</p>
+              <p className="text-[11px] font-bold text-slate-700 font-mono">{formatClinicDate(implant.placement_date)}</p>
             </div>
           </div>
 

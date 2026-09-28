@@ -18,6 +18,7 @@ import { supabase, db } from '@/api/supabaseClient';
 import LeadQuickView from '@/components/marketing/LeadQuickView';
 import LeadSourceIcon from '@/components/ui/LeadSourceIcon';
 import { cn, formatPhone } from '@/lib/utils';
+import { formatClinicDateTime } from '@/lib/clinicTime';
 import { toast } from 'sonner';
 
 /**
@@ -975,7 +976,7 @@ export default function Marketing() {
 
                         {/* TUSHGAN SANA */}
                         <td className={`border-r border-slate-200/70 font-mono text-slate-700 font-semibold text-[11px] whitespace-nowrap ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
-                          {l.created_date || l.created_at ? new Date(l.created_date || l.created_at).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                          {formatClinicDateTime(l.created_date || l.created_at)}
                         </td>
 
                         {/* HOLAT */}

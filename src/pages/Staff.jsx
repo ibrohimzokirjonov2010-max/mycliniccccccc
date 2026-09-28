@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { useFeature } from '@/hooks/useFeature';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
+import { formatDoctorName } from '@/lib/displayText';
 import {
   dateKey, todayISO, timeToMinutes, minutesToLabel, fmtMoney, fmtCompact,
   personName, initials, avatarTone, userPhoto, isIncomePayment, isCompletedStatus,
@@ -1026,7 +1027,7 @@ function StaffCard({ card, phone, compact, lead, selected, language, presenceLab
       <div className="flex gap-3 items-start min-w-0">
         <Avatar user={card.user} size={phone ? 46 : 48} />
         <div className="min-w-0 flex-1">
-          <div className="font-bold text-[15px] text-slate-900 truncate leading-tight">{card.name}</div>
+          <div className="font-bold text-[15px] text-slate-900 truncate leading-tight">{formatDoctorName(card.name)}</div>
           <div className="text-[11.5px] text-slate-400 font-mono truncate">@{card.username || '—'}</div>
           {!phone && (
             <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -1183,7 +1184,7 @@ function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, 
           <div className="flex gap-3 items-center pr-8">
             <Avatar user={card.user} size={phone ? 56 : 64} />
             <div className="min-w-0">
-              <div className="text-lg font-extrabold tracking-tight truncate">{card.name}</div>
+              <div className="text-lg font-extrabold tracking-tight truncate">{formatDoctorName(card.name)}</div>
               <div className="text-xs text-slate-500 font-mono truncate">@{card.username || '—'}{card.phone ? ` · ${card.phone}` : ''}</div>
               <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                 <RoleBadge role={card.role} language={language} />

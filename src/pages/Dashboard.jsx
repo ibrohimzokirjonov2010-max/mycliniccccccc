@@ -15,11 +15,10 @@ import {
   AreaChart, Area
 } from 'recharts';
 import { motion } from 'framer-motion';
-import { fetchDashboardStats, toDateOnly } from '../utils/dashboardUtils';
-import { getTashkentDate, getTashkentNow } from '@/lib/telegramReminderService';
+import { fetchDashboardStats } from '../utils/dashboardUtils';
+import { getTashkentDate } from '@/lib/telegramReminderService';
 import { formatCurrency, getTreatmentTypeLabel } from '@/lib/utils';
-import { addDaysKey, formatAxisAmount, formatClinicDateTime } from '@/lib/clinicTime';
-import { startOfWeek } from '@/utils/clinicMetrics';
+import { addDaysKey, dateKeyOf, formatAxisAmount, formatClinicDate, formatClinicDateTime, tashkentToday, weekdayName } from '@/lib/clinicTime';
 import { formatDoctorName } from '@/lib/displayText';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
@@ -73,13 +72,16 @@ export default function Dashboard() {
       en: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     };
     const labels = short[currentLang] || short.uz;
-    const monday = startOfWeek(getTashkentNow());
-    const mondayKey = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+    const todayKey = tashkentToday();
+    const englishDay = weekdayName(todayKey, 'en');
+    const mondayOffset = { Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4, Saturday: 5, Sunday: 6 }[englishDay] ?? 0;
+    const mondayKey = addDaysKey(todayKey, -mondayOffset);
     return Array.from({ length: 7 }, (_, i) => {
       const dateStr = addDaysKey(mondayKey, i);
       const dayRevenue = payments
         .filter(p => {
-          const pDate = toDateOnly(p.date || p.created_date || p.created_at);
+          const timed = [p.created_at, p.created_date].find((v) => v && /[T ]\d{2}:\d{2}/.test(String(v)));
+          const pDate = dateKeyOf(timed || p.date || p.created_date || p.created_at);
           const pType = String(p.type || 'Income').toLowerCase();
           return pDate === dateStr && pType === 'income';
         })
@@ -148,7 +150,7 @@ export default function Dashboard() {
                 {t('dashboard.title')}
               </h1>
               <p className="text-xs font-black text-[#1499AD] uppercase tracking-[0.3em] mt-2 opacity-70">
-                {t('navigation.dashboard')} • Bugungi klinika kuni • {today}
+                {t('navigation.dashboard')} • Bugungi klinika kuni • {formatClinicDate(today)}
               </p>
             </div>
           </motion.div>
@@ -232,7 +234,6 @@ export default function Dashboard() {
           </div>
           
           <div className="h-[220px] w-full">
-            {weeklyRevenueData.some(d => d.revenue > 0) ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={weeklyRevenueData}>
                   <defs>
@@ -256,6 +257,8 @@ export default function Dashboard() {
                     tickFormatter={(v) => formatAxisAmount(v)}
                     width={56}
                     dx={-10}
+                    domain={[0, (max) => (max > 0 ? max : 1000000)]}
+                    allowDecimals={false}
                   />
                   <Tooltip 
                     contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.1)', padding: '16px' }}
@@ -274,11 +277,6 @@ export default function Dashboard() {
                   />
                 </AreaChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center">
-                <EmptyState icon={TrendingUp} title={t('common.noData')} />
-              </div>
-            )}
           </div>
         </motion.div>
 
@@ -534,7 +532,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-1">
               <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-[#1499AD]">Bugungi qabullar</h4>
               <span className="text-[10px] font-black text-slate-300 uppercase tracking-wider bg-slate-50 px-2 py-1 rounded-lg">
-                {today}
+                {formatClinicDate(today)}
               </span>
             </div>
             <p className="text-[9.5px] text-slate-400 font-bold uppercase tracking-wider mb-3">

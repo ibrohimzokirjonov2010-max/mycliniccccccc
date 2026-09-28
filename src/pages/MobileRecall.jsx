@@ -39,6 +39,9 @@ export default function MobileRecall() {
   const { user, isDoctor } = useAuth();
   const [recalls, setRecalls] = useState([]);
   const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [search, setSearch] = useState('');
   const getTodayStr = () => new Date().toISOString().split('T')[0];
   const calcDate = (months, baseDate = getTodayStr()) => {
     const d = new Date(baseDate || new Date());
@@ -161,7 +164,7 @@ export default function MobileRecall() {
     r.type_label?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const pendingCount = recalls.filter(r => r.status === 'pending').length;
+  const pendingCount = recalls.filter(r => String(r.status || 'pending').toLowerCase() === 'pending').length;
   const todayCount = recalls.filter(r => {
     const today = new Date().toISOString().split('T')[0];
     if (!r || !r.recall_date) return false;
@@ -365,7 +368,7 @@ export default function MobileRecall() {
                    ) : (
                       filteredRecalls.map((recall, index) => {
                          const typeConfig = RECALL_TYPES.find(t => t.value === recall.type) || RECALL_TYPES[0];
-                         const status = STATUS_CONFIG[recall.status] || STATUS_CONFIG['pending'];
+                         const status = STATUS_CONFIG[String(recall.status || 'pending').toLowerCase()] || STATUS_CONFIG.pending;
                          
                          return (
                             <motion.div

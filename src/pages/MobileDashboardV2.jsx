@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import PullToRefresh from '@/components/ui/PullToRefresh';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getTreatmentTypeLabel } from '@/lib/utils';
+import { formatClinicDate, paymentStamp } from '@/lib/clinicTime';
 import { useAuth } from '@/lib/AuthContext';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { fetchDashboardStats } from '../utils/dashboardUtils';
@@ -46,7 +47,7 @@ export default function MobileDashboardV2() {
         todayRevenue: data.stats.todayRevenue,
         // Real day-over-day revenue trend (never demo +12%)
         growthLabel: data.stats?.todayRevenueTrend || '—',
-        clinicDay: data.clinicDayLabel || null,
+        clinicDay: data.clinicDayLabel ? formatClinicDate(data.clinicDayLabel) : null,
       });
       
       setTodayAppointments(data.todayApptsList);
@@ -97,23 +98,12 @@ export default function MobileDashboardV2() {
     return `${hours}:${minutes}`;
   };
 
-  // Format activity date timezone-invariant
-  const formatActivityDate = (dateStr) => {
-    if (!dateStr) return '';
-    if (dateStr.includes('T')) {
-      const [datePart, timePart] = dateStr.split('T');
-      const [y, m, d] = datePart.split('-');
-      const timeClean = timePart.slice(0, 5);
-      return `${d}.${m}.${y} ${timeClean}`;
-    }
-    if (dateStr.includes('-')) {
-      const parts = dateStr.split('-');
-      if (parts.length === 3) {
-        const [y, m, d] = parts;
-        return `${d}.${m}.${y}`;
-      }
-    }
-    return dateStr;
+  const formatActivityWhen = (item) => {
+    if (item?.type === 'payment') return paymentStamp(item).dateTime;
+    const date = formatClinicDate(item?.date || item?.created_date);
+    const time = item?.time ? String(item.time).slice(0, 5) : '';
+    if (date && date !== '—' && time) return `${date} ${time}`;
+    return date && date !== '—' ? date : time;
   };
 
   // Stat Card Component
@@ -353,13 +343,13 @@ export default function MobileDashboardV2() {
                             {isPayment ? (item.patient_name || "To'lov") : item.patient_name}
                           </p>
                           <span className="text-[9px] font-bold text-slate-400 whitespace-nowrap uppercase tracking-widest">
-                            {item.time || formatActivityDate(item.date)}
+                            {formatActivityWhen(item)}
                           </span>
                         </div>
                         <p className={`text-[10px] font-bold mt-0.5 tracking-wide ${
                           isPayment ? 'text-emerald-600' : 'text-slate-500'
                         }`}>
-                          {isPayment ? formatCurrency(item.amount) : (item.service_name || 'Navbat')}
+                          {isPayment ? formatCurrency(item.amount) : (getTreatmentTypeLabel(item.service_name, 'uz') || 'Navbat')}
                         </p>
                       </div>
                     </motion.div>

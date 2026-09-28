@@ -453,7 +453,7 @@ export default function ReportsDashboard({
                         <div className="min-w-0">
                           <b className="block text-[13px] font-bold truncate">
                             {d.name}
-                            {d.appointmentCount === 0 && <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-bold text-rose-700 bg-rose-50 rounded px-1 py-0.5">{tx(language, "Qabul yo'q", 'Нет приёма', 'No visits')}</span>}
+                            {d.appointmentCount === 0 && d.id !== 'unassigned' && <span className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-bold text-rose-700 bg-rose-50 rounded px-1 py-0.5">{tx(language, "Qabul yo'q", 'Нет приёма', 'No visits')}</span>}
                           </b>
                           <span className="text-[11px] text-slate-400">{d.specialty || d.roleLabel || '—'}</span>
                         </div>
@@ -721,7 +721,7 @@ function DoctorCard({ doc, maxRevenue }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 min-w-0">
           <b className="text-[13.5px] font-bold truncate">{doc.name}</b>
-          {doc.appointmentCount === 0 && <span className="shrink-0 text-[10px] font-bold text-rose-700 bg-rose-50 rounded px-1 py-0.5">Qabul yo&apos;q</span>}
+          {doc.appointmentCount === 0 && doc.id !== 'unassigned' && <span className="shrink-0 text-[10px] font-bold text-rose-700 bg-rose-50 rounded px-1 py-0.5">Qabul yo&apos;q</span>}
         </div>
         <div className="text-[11px] text-slate-400 mt-0.5 truncate">{doc.appointmentCount} qabul · {doc.completionRate || 0}% bajarildi · {doc.uniquePatients || 0} bemor</div>
         <div className="h-[5px] rounded-sm bg-slate-100 overflow-hidden mt-1.5"><i className="block h-full bg-emerald-600 rounded-sm" style={{ width: `${Math.max(0, Math.min(100, (doc.revenue / maxRevenue) * 100))}%` }} /></div>
