@@ -14,6 +14,7 @@ import AppointmentConfirmationBadge from '@/components/appointments/AppointmentC
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { cn } from '@/lib/utils';
+import { addDaysKey, dateKeyOf, formatClinicDateWithWeekday, tashkentToday } from '@/lib/clinicTime';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -50,8 +51,9 @@ export default function Appointments() {
   const [isMobile, setIsMobile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [viewDate, setViewDate] = useState(new Date().toISOString().split('T')[0]);
+  const [viewDate, setViewDate] = useState(tashkentToday());
   const [activeTab, setActiveTab] = useState('grid');
+  const [listPeriod, setListPeriod] = useState('all');
 
   useEffect(() => {
     if (isDoctor && user?.id) {
@@ -289,6 +291,18 @@ export default function Appointments() {
     });
   }, [filteredAppointments, patients]);
 
+  const todayKey = tashkentToday();
+
+  const listedAppointments = useMemo(() => {
+    const withDate = (a) => dateKeyOf(a.date || a.created_date) || String(a.date || '').split('T')[0];
+    if (activeTab !== 'list') {
+      return filteredAppointments.filter((a) => withDate(a) === viewDate);
+    }
+    if (listPeriod === 'day') return filteredAppointments.filter((a) => withDate(a) === viewDate);
+    if (listPeriod === 'upcoming') return filteredAppointments.filter((a) => withDate(a) >= todayKey);
+    return filteredAppointments;
+  }, [activeTab, filteredAppointments, listPeriod, viewDate, todayKey]);
+
   const otherDayMatchesCount = useMemo(() => {
     if (!debouncedSearch.trim()) return 0;
     return filteredAppointments.filter(a => {
@@ -313,7 +327,7 @@ export default function Appointments() {
                 {t('appointments.title')}
             </h1>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                {t('appointments.queueCount', { count: filteredAppointments.length }) || `${filteredAppointments.length} ta navbat mavjud`}
+                {t('appointments.queueCount', { count: listedAppointments.length }) || `${listedAppointments.length} ta navbat mavjud`}
             </p>
           </div>
         </motion.div>
@@ -336,7 +350,7 @@ export default function Appointments() {
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-2xl border border-slate-100">
                <button 
-                onClick={() => { const d = new Date(viewDate); d.setDate(d.getDate()-1); setViewDate(d.toISOString().split('T')[0]); }}
+                onClick={() => setViewDate(addDaysKey(viewDate, -1))}
                 className="p-2 hover:bg-white hover:shadow-sm rounded-xl text-slate-400 transition-all active:scale-90"
                >
                  <ChevronLeft className="w-4 h-4" />
@@ -344,27 +358,27 @@ export default function Appointments() {
                
                <div className="flex items-center gap-1">
                  <button 
-                  onClick={() => setViewDate(new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0])}
-                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all", viewDate === new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0] ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
+                  onClick={() => setViewDate(addDaysKey(todayKey, -1))}
+                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all", viewDate === addDaysKey(todayKey, -1) ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
                  >
                    {t('appointments.yesterday') || 'Kecha'}
                  </button>
                  <button 
-                  onClick={() => setViewDate(new Date().toISOString().split('T')[0])}
-                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all", viewDate === new Date().toISOString().split('T')[0] ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
+                  onClick={() => setViewDate(todayKey)}
+                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all", viewDate === todayKey ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
                  >
                    {t('appointments.today') || 'Bugun'}
                  </button>
                  <button 
-                  onClick={() => setViewDate(new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0])}
-                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all", viewDate === new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0] ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
+                  onClick={() => setViewDate(addDaysKey(todayKey, 1))}
+                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all", viewDate === addDaysKey(todayKey, 1) ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
                  >
                    {t('appointments.tomorrow') || 'Ertaga'}
                  </button>
                </div>
 
                <button 
-                onClick={() => { const d = new Date(viewDate); d.setDate(d.getDate()+1); setViewDate(d.toISOString().split('T')[0]); }}
+                onClick={() => setViewDate(addDaysKey(viewDate, 1))}
                 className="p-2 hover:bg-white hover:shadow-sm rounded-xl text-slate-400 transition-all active:scale-90"
                >
                  <ChevronLeft className="w-4 h-4 rotate-180" />
@@ -378,6 +392,7 @@ export default function Appointments() {
                 onChange={e => setViewDate(e.target.value)} 
                 className="h-10 px-4 rounded-2xl border border-slate-100 text-[11px] font-black text-slate-600 outline-none focus:border-[#1499AD] bg-white shadow-sm"
               />
+              <span className="text-[11px] font-black text-slate-500 whitespace-nowrap">{formatClinicDateWithWeekday(viewDate, 'uz')}</span>
             </div>
           </div>
 
@@ -502,7 +517,10 @@ export default function Appointments() {
                 {loading ? <div className="h-[600px] bg-slate-50 animate-pulse" /> : (
                   <CalendarView 
                     currentDate={new Date(viewDate)}
-                    onDateChange={(d) => setViewDate(d.toISOString().split('T')[0])}
+                    onDateChange={(d) => {
+                      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                      setViewDate(key);
+                    }}
                     appointments={enrichedAppointments} 
                     onSlotClick={openNewAppt} 
                     onEditClick={openEditAppt} 
@@ -514,16 +532,10 @@ export default function Appointments() {
             <TabsContent value="list" key="list" className="mt-0 outline-none focus-visible:ring-0">
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 {(() => {
-                  const todayStr = new Date().toISOString().split('T')[0];
-                  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-                  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-                  const isToday = viewDate === todayStr;
+                  const isToday = viewDate === todayKey;
+                  const periodLabel = listPeriod === 'all' ? 'Barcha navbatlar' : listPeriod === 'upcoming' ? 'Kelgusi navbatlar' : (isToday ? 'Bugungi navbat' : 'Tanlangan kun');
 
-                  const dayAppts = filteredAppointments.filter(a => {
-                    if (debouncedSearch.trim()) return true; // Show all dates when searching
-                    const d = String(a.date || '').split('T')[0];
-                    return d === viewDate;
-                  }).sort((a, b) => {
+                  const dayAppts = [...listedAppointments].sort((a, b) => {
                     // Sorting: first by date if searching, then by time
                     const dCompare = String(a.date || '').localeCompare(String(b.date || ''));
                     if (dCompare !== 0 && debouncedSearch.trim()) return dCompare;
@@ -535,10 +547,27 @@ export default function Appointments() {
                       {/* Unified header now handles date switching */}
 
                       <div className="p-3.5 sm:p-5">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                          {[
+                            { id: 'day', label: 'Bugun' },
+                            { id: 'upcoming', label: 'Kelgusi' },
+                            { id: 'all', label: 'Barchasi' },
+                          ].map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => setListPeriod(item.id)}
+                              className={cn('px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest', listPeriod === item.id ? 'bg-[#1499AD] text-white' : 'bg-slate-100 text-slate-500')}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                          <span className="text-[10px] font-bold text-slate-400 ml-1">{periodLabel}: {dayAppts.length} ta</span>
+                        </div>
                         {dayAppts.length === 0 ? (
                           <div className="py-20 text-center">
                             <div className="w-16 h-16 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-slate-100 text-slate-200"><CalendarDays className="w-8 h-8" /></div>
-                            <p className="text-slate-400 font-bold text-sm tracking-tight">{isToday ? 'Bugun navbat yo\'q' : 'Ushbu kunda navbat yo\'q'}</p>
+                            <p className="text-slate-400 font-bold text-sm tracking-tight">{listPeriod === 'all' ? 'Navbat yo\'q' : listPeriod === 'upcoming' ? 'Kelgusi navbat yo\'q' : (isToday ? 'Bugun navbat yo\'q' : 'Ushbu kunda navbat yo\'q')}</p>
                             <Button onClick={() => openNewAppt(viewDate, '', selectedDoctorId)} className="mt-4 bg-[#1499AD] text-white rounded-xl uppercase text-[10px] font-black tracking-widest px-8 shadow-lg shadow-[#1499AD]/20">+ Yangi Qabul</Button>
                           </div>
                         ) : (

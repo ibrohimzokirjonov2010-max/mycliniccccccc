@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { getTashkentDate } from '@/lib/telegramReminderService';
 import { formatCurrency, cn } from '@/lib/utils';
+import { formatClinicDateWithWeekday } from '@/lib/clinicTime';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import StatusBadge from '@/components/ui/StatusBadge';
 import EmptyState from '@/components/ui/EmptyState';
@@ -140,14 +141,7 @@ export default function ChairsideToday() {
 
   const formatTodayLabel = () => {
     try {
-      const [y, m, d] = today.split('-').map(Number);
-      const date = new Date(y, m - 1, d);
-      return date.toLocaleDateString('uz-UZ', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
+      return formatClinicDateWithWeekday(today, 'uz');
     } catch {
       return today;
     }
