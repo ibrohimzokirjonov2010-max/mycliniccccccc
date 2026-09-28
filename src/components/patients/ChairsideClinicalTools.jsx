@@ -17,6 +17,7 @@ import {
   toIsoDate,
 } from '@/utils/clinicalChart';
 import { cn } from '@/lib/utils';
+import { resolveDoctorLabel } from '@/lib/displayText';
 import ConsentForm from './ConsentForm';
 
 const TEAL = '#14b8a6';
@@ -69,6 +70,8 @@ export default function ChairsideClinicalTools({
   hideTabBar = false,
   activeTab: controlledTab = null,
   onTabChange,
+  doctorName = '',
+  doctors = [],
 }) {
   const patientId = patient?.id;
   const [internalTab, setInternalTab] = useState('tashxis');
@@ -473,7 +476,7 @@ export default function ChairsideClinicalTools({
           onSave={handleSaveConsent}
           saving={savingConsent}
           language={language}
-          doctorName={patient?.doctor_name || patient?.main_treatment_provider || ''}
+          doctorName={doctorName || resolveDoctorLabel(patient?.doctor_name || patient?.main_treatment_provider, doctors)}
         />
       </section>
 
