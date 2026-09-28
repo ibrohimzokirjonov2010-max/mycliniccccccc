@@ -528,7 +528,7 @@
     "confirmDeleteAction": "Ha, o'chirilsin",
     "addressError": "Iltimos, manzilni to'g'ri kiriting (masalan: Toshkent sh., Chilonzor tumani)",
     "patientInfo": "Bemor ma'lumotlari",
-    "importantInfoPlaceholder": "Masalan: Lidokain allergiyasi, qandli diabet, gipertoniya",
+    "importantInfoPlaceholder": "masalan: Lidokain allergiyasi, qandli diabet, gipertoniya",
     "sources": {
       "Telegram": "Telegram",
       "Instagram": "Instagram",
