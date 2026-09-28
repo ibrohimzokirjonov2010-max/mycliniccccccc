@@ -17,7 +17,9 @@ import {
 import { motion } from 'framer-motion';
 import { fetchDashboardStats, toDateOnly } from '../utils/dashboardUtils';
 import { getTashkentDate, getTashkentNow } from '@/lib/telegramReminderService';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getTreatmentTypeLabel } from '@/lib/utils';
+import { addDaysKey, formatAxisAmount, formatClinicDateTime } from '@/lib/clinicTime';
+import { startOfWeek } from '@/utils/clinicMetrics';
 import { formatDoctorName } from '@/lib/displayText';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
@@ -29,22 +31,13 @@ import { useAuth } from '@/lib/AuthContext';
  * Premium healthcare CRM overview with advanced analytics
  */
 // Format activity date timezone-invariant
-const formatActivityDate = (dateStr) => {
-  if (!dateStr) return '';
-  if (dateStr.includes('T')) {
-    const [datePart, timePart] = dateStr.split('T');
-    const [y, m, d] = datePart.split('-');
-    const timeClean = timePart.slice(0, 5);
-    return `${d}.${m}.${y} ${timeClean}`;
-  }
-  if (dateStr.includes('-')) {
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-      const [y, m, d] = parts;
-      return `${d}.${m}.${y}`;
-    }
-  }
-  return dateStr;
+const formatActivityDate = (item) => {
+  const timed = item?.created_at || item?.created_date;
+  const day = item?.date;
+  const clock = item?.time;
+  if (timed && /[T ]\d{2}:\d{2}/.test(String(timed))) return formatClinicDateTime(timed);
+  if (day && clock) return `${formatClinicDateTime(day)} ${String(clock).slice(0, 5)}`;
+  return formatClinicDateTime(day || timed);
 };
 
 export default function Dashboard() {
@@ -73,25 +66,17 @@ export default function Dashboard() {
 
   // Chart Data
   const weeklyRevenueData = useMemo(() => {
-    const getWeekdayLabel = (date) => {
-      const dayIdx = date.getDay();
-      const currentLang = localStorage.getItem('app_language') || 'uz';
-      if (currentLang === 'uz') {
-        const uzDays = ["Yak", "Du", "Se", "Ch", "Pa", "Ju", "Sha"];
-        return uzDays[dayIdx];
-      } else if (currentLang === 'ru') {
-        const ruDays = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
-        return ruDays[dayIdx];
-      } else {
-        const enDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        return enDays[dayIdx];
-      }
+    const currentLang = localStorage.getItem('app_language') || 'uz';
+    const short = {
+      uz: ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'],
+      ru: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+      en: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     };
-
+    const labels = short[currentLang] || short.uz;
+    const monday = startOfWeek(getTashkentNow());
+    const mondayKey = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
     return Array.from({ length: 7 }, (_, i) => {
-      const d = getTashkentNow();
-      d.setDate(d.getDate() - (6 - i));
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const dateStr = addDaysKey(mondayKey, i);
       const dayRevenue = payments
         .filter(p => {
           const pDate = toDateOnly(p.date || p.created_date || p.created_at);
@@ -99,23 +84,22 @@ export default function Dashboard() {
           return pDate === dateStr && pType === 'income';
         })
         .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-      return {
-        name: getWeekdayLabel(d),
-        revenue: dayRevenue
-      };
+      return { name: labels[i], revenue: dayRevenue };
     });
   }, [payments]);
 
   const appointmentDistribution = useMemo(() => {
-    const statuses = ['Completed', 'Scheduled', 'Cancelled', 'No-Show'];
-    const colors = ['#10b981', '#3b82f6', '#ef4444', '#f59e0b'];
+    const statuses = ['Completed', 'Scheduled', 'In Progress', 'Cancelled', 'No-Show'];
+    const colors = ['#10b981', '#3b82f6', '#1499AD', '#ef4444', '#f59e0b'];
     return statuses.map((status, i) => ({
       name: status === 'Completed' ? t('appointments.completed') : 
             status === 'Scheduled' ? t('appointments.scheduled') : 
+            status === 'In Progress' ? (t('appointments.inProgress') || 'Qabulda') :
             status === 'Cancelled' ? t('appointments.cancelled') : t('appointments.noShow'),
       value: appointments.filter(a => {
         const lower = a.status?.toLowerCase() || '';
         if (status === 'No-Show') return lower === 'no-show' || lower === 'noshow' || lower === 'no_show';
+        if (status === 'In Progress') return lower === 'in progress' || lower === 'in_progress' || lower === 'qabulda' || lower === 'jarayonda';
         if (status === 'Scheduled') return lower === 'scheduled' || lower === 'planned';
         return lower === status.toLowerCase();
       }).length,
@@ -269,7 +253,8 @@ export default function Dashboard() {
                     axisLine={false} 
                     tickLine={false} 
                     tick={{ fontSize: 10, fontWeight: 900, fill: '#64748B' }}
-                    tickFormatter={(v) => `${(v/1000000).toFixed(1)}M`}
+                    tickFormatter={(v) => formatAxisAmount(v)}
+                    width={56}
                     dx={-10}
                   />
                   <Tooltip 
@@ -335,7 +320,7 @@ export default function Dashboard() {
                 </ResponsiveContainer>
                 
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-4xl font-[900] text-slate-900">{appointments.length}</span>
+                  <span className="text-4xl font-[900] text-slate-900">{appointmentDistribution.reduce((sum, item) => sum + item.value, 0)}</span>
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('appointments.title')}</span>
                 </div>
               </>
@@ -452,7 +437,7 @@ export default function Dashboard() {
                           {patientName}
                         </p>
                         <span className="text-[10px] font-black text-slate-400 whitespace-nowrap uppercase tracking-widest bg-slate-100 px-2.5 py-1 rounded-lg flex-shrink-0">
-                          {item.time || formatActivityDate(item.date)}
+                          {formatActivityDate(item)}
                         </span>
                       </div>
 
@@ -475,7 +460,7 @@ export default function Dashboard() {
                           <>
                             <span className="w-0.5 h-0.5 rounded-full bg-slate-300 flex-shrink-0" />
                             <span className="text-[10px] font-bold text-slate-500 truncate max-w-[120px]">
-                              {item.category}
+                              {getTreatmentTypeLabel(item.category, 'uz')}
                             </span>
                           </>
                         )}
@@ -485,7 +470,7 @@ export default function Dashboard() {
                           <>
                             <span className="w-0.5 h-0.5 rounded-full bg-slate-300 flex-shrink-0" />
                             <span className="text-[10px] font-bold text-slate-500 truncate max-w-[120px]">
-                              {item.service_name}
+                              {getTreatmentTypeLabel(item.service_name, 'uz')}
                             </span>
                           </>
                         )}
