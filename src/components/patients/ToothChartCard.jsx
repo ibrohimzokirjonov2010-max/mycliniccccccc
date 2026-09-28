@@ -273,6 +273,7 @@ export default function ToothChartCard({
 }) {
   const { user } = useAuth();
   const [phone, setPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
+  const [wideDesktop, setWideDesktop] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1440px)').matches);
   const [mode, setMode] = useState('realistic');
   const [dentition, setDentition] = useState('adult');
   const [filter, setFilter] = useState('all');
@@ -289,10 +290,28 @@ export default function ToothChartCard({
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
-    const onChange = () => setPhone(mq.matches);
+    const wide = window.matchMedia('(min-width: 1440px)');
+    const onChange = () => {
+      setPhone(mq.matches);
+      setWideDesktop(wide.matches);
+    };
     mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+    wide.addEventListener('change', onChange);
+    return () => {
+      mq.removeEventListener('change', onChange);
+      wide.removeEventListener('change', onChange);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!active || phone || wideDesktop) return;
+    const panel = document.querySelector('[data-tooth-panel]');
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    const fullyIn = rect.top >= 72 && rect.bottom <= window.innerHeight - 12;
+    if (fullyIn) return;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [active, phone, wideDesktop]);
 
   const loadXrays = useCallback(async () => {
     if (!patient?.id) return;
@@ -600,7 +619,14 @@ export default function ToothChartCard({
   };
 
   const renderHalf = (fdis, isUpper) => (
-    <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(fdis) }}>
+    <div
+      className="odonto-quad"
+      style={{
+        gridTemplateColumns: phone && mode === 'schema'
+          ? `repeat(${fdis.length}, minmax(32px, 1fr))`
+          : fdiGridTemplate(fdis),
+      }}
+    >
       {fdis.map((n) => {
         const entry = entryFor(n);
         if (mode === 'realistic') {
@@ -627,8 +653,8 @@ export default function ToothChartCard({
             className={cn('compact-hit relative flex min-w-0 w-full max-w-full flex-col items-center gap-0.5 px-px', !toothMatches(n, entry) && 'opacity-30')}
           >
             {!isUpper && <Num n={n} entry={entry} />}
-            <span className={cn('block w-full min-w-0 rounded-lg p-0.5', active === n && 'ring-2 ring-slate-900', selected.includes(n) && 'bg-slate-900/5')}>
-              <SurfaceGlyph fdi={n} surfaces={entry?.surfaces || []} color={entry ? color : '#CBD5E1'} size={phone ? 32 : 40} />
+            <span className={cn('schema-box block w-full min-h-8 min-w-8 rounded-lg p-0.5', active === n && 'ring-2 ring-slate-900', selected.includes(n) && 'bg-slate-900/5')}>
+              <SurfaceGlyph fdi={n} surfaces={entry?.surfaces || []} color={entry ? color : '#CBD5E1'} size={phone ? 36 : 40} />
             </span>
             {isUpper && <Num n={n} entry={entry} />}
             {selected.includes(n) && (
@@ -670,36 +696,59 @@ export default function ToothChartCard({
               type="button"
               onClick={() => { setMulti((v) => !v); setSelected([]); }}
               className={cn(
-                'inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold',
+                'compact-hit inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold',
                 multi ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700',
               )}
             >
               <Layers className="h-3.5 w-3.5" />
               Ko‘p tanlash{selected.length ? ` · ${selected.length}` : ''}
             </button>
-            <div className="ml-auto flex items-center gap-2">
-              <Seg
-                value={filter}
-                onChange={setFilter}
-                options={[
-                  { id: 'all', label: 'Hammasi' },
-                  { id: 'plan', label: 'Reja' },
-                  { id: 'done', label: 'Bajarilgan' },
-                ]}
-              />
-              <button type="button" onClick={printChart} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-600" aria-label="Chop etish">
-                <Printer className="h-3.5 w-3.5" />
-              </button>
-            </div>
+            {!phone && (
+              <div className="ml-auto flex items-center gap-2">
+                <Seg
+                  value={filter}
+                  onChange={setFilter}
+                  options={[
+                    { id: 'all', label: 'Hammasi' },
+                    { id: 'plan', label: 'Reja' },
+                    { id: 'done', label: 'Bajarilgan' },
+                  ]}
+                />
+                <button type="button" onClick={printChart} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-600" aria-label="Chop etish">
+                  <Printer className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
           </div>
 
-          <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
-            {LEGEND.map((k) => (
-              <span key={k.id} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600">
-                <i className="h-2 w-2 rounded-sm" style={{ background: k.color }} />
-                {k.label}
-              </span>
-            ))}
+          {phone && (
+            <div className="mt-2 min-w-0 max-w-full overflow-x-auto">
+              <div className="flex w-max items-center gap-2">
+                <Seg
+                  value={filter}
+                  onChange={setFilter}
+                  options={[
+                    { id: 'all', label: 'Hammasi' },
+                    { id: 'plan', label: 'Reja' },
+                    { id: 'done', label: 'Bajarilgan' },
+                  ]}
+                />
+                <button type="button" onClick={printChart} className="compact-hit grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-600" aria-label="Chop etish">
+                  <Printer className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className={cn('mt-2', phone && 'chip-rail')}>
+            <div className={cn(phone ? 'chip-rail-scroll' : 'flex flex-wrap gap-1.5')}>
+              {LEGEND.map((k) => (
+                <span key={k.id} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600">
+                  <i className="h-2 w-2 rounded-sm" style={{ background: k.color }} />
+                  {k.label}
+                </span>
+              ))}
+            </div>
           </div>
 
           <div className="odonto-fit-frame mt-2" data-compact={phone ? 'true' : 'false'}>
@@ -718,7 +767,7 @@ export default function ToothChartCard({
             ) : (
               <div className={cn('odonto-scroll-shell', phone && mode === 'realistic' && 'is-hint')}>
                 {phone && mode === 'realistic' && (
-                  <p className="odonto-scroll-hint">Chap tomondagi tishlar uchun suring →</p>
+                  <p className="odonto-scroll-hint">Boshqa tishlarni ko‘rish uchun suring →</p>
                 )}
                 <div className="odonto-scroll" data-arch="scroll">
                   <div className="odonto-cross">
@@ -908,13 +957,13 @@ export default function ToothChartCard({
 
 function Seg({ value, onChange, options }) {
   return (
-    <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+    <div className="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
       {options.map((o) => (
         <button
           key={o.id}
           type="button"
           onClick={() => onChange(o.id)}
-          className={cn('h-7 rounded-md px-2 text-[11px] font-bold', value === o.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500')}
+          className={cn('compact-hit h-7 shrink-0 rounded-md px-2 text-[11px] font-bold whitespace-nowrap', value === o.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500')}
         >
           {o.id === 'schema' ? <Target className="mr-1 inline h-3 w-3" /> : null}
           {o.label}
@@ -939,7 +988,7 @@ function Num({ n, entry }) {
   const color = entry ? KIND_COLOR[entry.kind] : null;
   return (
     <span
-      className="max-w-full truncate rounded px-0.5 text-[9px] font-extrabold leading-4 tabular-nums sm:text-[10px]"
+      className="schema-num inline-block rounded px-1 text-[12px] font-extrabold tabular-nums"
       style={{
         color: color ? '#fff' : '#334155',
         background: color || '#fff',
@@ -1013,7 +1062,7 @@ function SidePanel(props) {
   } = props;
   const group = multi && selected.length > 0 && !active;
   return (
-    <aside className={cn('flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white', sheet ? 'max-h-[68vh] overflow-y-auto rounded-none border-0' : 'max-h-[calc(100dvh-7rem)] overflow-hidden')}>
+    <aside data-tooth-panel={sheet ? undefined : 'true'} className={cn('flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white', sheet ? 'max-h-[68vh] overflow-y-auto rounded-none border-0' : 'max-h-[calc(100dvh-7rem)] overflow-hidden')}>
       <div className="flex items-start gap-2 border-b border-slate-100 p-3">
         {active && !group && (
           <img

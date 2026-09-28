@@ -337,7 +337,7 @@
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
   box-sizing: border-box;
   padding: 6px 8px 8px;
   border-radius: 16px;
@@ -355,6 +355,42 @@
 }
 .odonto-schema-fit .odonto-quad {
   width: 100%;
+}
+.tooth-chart-root .schema-num {
+  max-width: none;
+  overflow: visible;
+  white-space: nowrap;
+  font-size: 12px !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0;
+}
+.tooth-chart-root .schema-box {
+  min-width: 32px;
+  min-height: 32px;
+}
+.chip-rail {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+}
+.chip-rail-scroll {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.chip-rail::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 6px;
+  width: 28px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(255,255,255,0), #fff 78%);
 }
 .odonto-scroll-shell {
   position: relative;
@@ -425,6 +461,12 @@
   }
   .odonto-cross {
     min-width: 640px;
+  }
+  /* Tooth card: one quadrant (~8 teeth) fills the phone, the other half is one swipe away. */
+  .tooth-chart-root .odonto-cross {
+    width: 200%;
+    min-width: 200%;
+    max-width: 200%;
   }
   .odonto-lateral,
   .odonto-fit-frame[data-compact="true"] .odonto-lateral {
@@ -604,14 +646,18 @@ img.tooth-illus {
    Marker: payment-add-teal-v1-0d9488 */
 [data-sonner-toaster] {
   z-index: 90 !important;
-  width: min(280px, calc(100vw - 24px)) !important;
+  top: var(--toast-below-header, 16px) !important;
+  right: 12px !important;
+  left: auto !important;
+  width: min(220px, calc(100vw - 24px)) !important;
+  max-width: min(220px, calc(100vw - 24px)) !important;
 }
 
 @media (max-width: 640px) {
   [data-sonner-toaster] {
     left: auto !important;
     right: 12px !important;
-    width: min(240px, calc(100vw - 24px)) !important;
+    width: min(210px, calc(100vw - 24px)) !important;
   }
 
   [data-sonner-toaster] [data-sonner-toast] {
@@ -698,10 +744,13 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
   gap: 12px;
   min-width: 0;
 }
-@container toothchart (min-width: 720px) {
+@media (min-width: 1440px) {
   .tooth-chart-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(210px, 248px);
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
   }
+}
+[data-tooth-panel] {
+  scroll-margin-top: 8.5rem;
 }
 .tooth-chart-root .tooth-face {
   box-sizing: border-box;

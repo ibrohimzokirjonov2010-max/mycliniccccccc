@@ -218,7 +218,7 @@ export default function ReportsDashboard({
         <KpiCard
           compact={phone}
           label={tx(language, 'Umumiy daromad', 'Общий доход', 'Total income')}
-          value={phone ? fmtCompact(stats.totalIncome) : <>{fmtMoney(stats.totalIncome)}<small>UZS</small></>}
+          value={phone ? fmtCompact(stats.totalIncome) : <>{fmtMoney(stats.totalIncome)} <small>UZS</small></>}
           icon={<DollarSign className="w-4 h-4" />}
           iconClass="bg-emerald-50 text-emerald-600"
           bar={incomeBar}
@@ -231,7 +231,7 @@ export default function ReportsDashboard({
         <KpiCard
           compact={phone}
           label={phone ? tx(language, 'Chiqimlar', 'Расходы', 'Expenses') : tx(language, 'Chiqimlar / xarajat', 'Расходы', 'Expenses')}
-          value={phone ? fmtCompact(stats.totalExpense) : <>{fmtMoney(stats.totalExpense)}<small>UZS</small></>}
+          value={phone ? fmtCompact(stats.totalExpense) : <>{fmtMoney(stats.totalExpense)} <small>UZS</small></>}
           icon={<ArrowDownRight className="w-4 h-4" />}
           iconClass="bg-rose-50 text-rose-600"
           bar={expenseBar}
@@ -246,7 +246,7 @@ export default function ReportsDashboard({
           compact={phone}
           dark
           label={tx(language, 'Sof foyda', 'Чистая прибыль', 'Net profit')}
-          value={phone ? fmtCompact(stats.netProfit) : <>{fmtMoney(stats.netProfit)}<small>UZS</small></>}
+          value={phone ? fmtCompact(stats.netProfit) : <>{fmtMoney(stats.netProfit)} <small>UZS</small></>}
           icon={<ArrowUpRight className="w-4 h-4" />}
           bar={profitBar}
           barClass="bg-emerald-400"
@@ -643,7 +643,7 @@ function KpiCard({ label, value, icon, iconClass, bar, barClass, foot, trend, tr
         <span className={cn('font-bold uppercase tracking-wide truncate', compact ? 'text-[10px]' : 'text-[10.5px]', dark ? 'text-teal-200' : 'text-slate-400')}>{label}</span>
         {!compact && <span className={cn('w-8 h-8 rounded-lg grid place-items-center shrink-0', dark ? 'bg-white/10 text-emerald-300' : iconClass)}>{icon}</span>}
       </div>
-      <div className={cn('font-extrabold tracking-tight leading-none truncate [&_small]:font-bold [&_small]:ml-0.5', compact ? 'text-[19px] [&_small]:text-[12px]' : 'text-[18px] sm:text-[22px] [&_small]:text-[11px]', dark ? '[&_small]:text-slate-400' : '[&_small]:text-slate-400')}>{value}</div>
+      <div className={cn('font-extrabold tracking-tight leading-tight break-words [&_small]:font-bold [&_small]:ml-1', compact ? 'text-[19px] [&_small]:text-[12px]' : 'text-[18px] sm:text-[22px] [&_small]:text-[11px]', dark ? '[&_small]:text-slate-400' : '[&_small]:text-slate-400')}>{value}</div>
       <div className={cn('h-1.5 rounded overflow-hidden', dark ? 'bg-[#23324b]' : 'bg-slate-100')}>
         <i className={cn('block h-full rounded', barClass)} style={{ width: `${bar}%` }} />
       </div>

@@ -565,13 +565,14 @@ export default function MobilePatientProfile() {
 
       {/* TEAL GRADIENT HEADER */}
       <div
+        data-patient-header="true"
         className="sticky top-0 z-30 relative text-white"
         style={{
           background: 'linear-gradient(165deg, #0f766e 0%, #14b8a6 55%, #0d9488 100%)',
           paddingTop: medicalAlerts.length > 0 ? 8 : 'max(12px, env(safe-area-inset-top, 12px))',
         }}
       >
-        <div className="flex items-center px-3 pt-1 pb-3 gap-2">
+        <div className="flex items-start px-3 pt-1 pb-2 gap-2">
           <button
             type="button"
             onClick={handleBack}
@@ -581,32 +582,30 @@ export default function MobilePatientProfile() {
             <ArrowLeft className="w-5 h-5 text-white" />
           </button>
 
-          <div className="flex-1 min-w-0 flex items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPatientModalOpen(true)}
-              className="min-w-0 text-center px-0.5"
-            >
-              <h1 className="text-[20px] font-black leading-tight truncate drop-shadow-sm max-w-[200px]">{patient.full_name}</h1>
-              <p className="text-[11px] font-semibold text-white/80 mt-0.5 truncate max-w-[220px]">
-                {[
-                  patientGenderLabel(patient.gender, language),
-                  age != null ? t('patientProfile.mobile.ageClinic', { age, clinic: clinicLabel }) : clinicLabel,
-                ].filter(Boolean).join(' · ')}
-              </p>
-            </button>
-            <button
-              type="button"
-              onClick={() => document.getElementById('mob-avatar-input')?.click()}
-              className="w-9 h-9 rounded-full bg-white/20 border border-white/35 flex items-center justify-center text-[11px] font-black shrink-0 overflow-hidden"
-              title={t('patientProfile.uploadPhoto', 'Rasm yuklash')}
-            >
-              {patient.photo_url
-                ? <img src={patient.photo_url} alt="" className="w-full h-full object-cover" />
-                : (photoUploading ? <Camera className="w-4 h-4" /> : getInitials(patient.full_name))}
-            </button>
-            <input id="mob-avatar-input" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-          </div>
+          <button
+            type="button"
+            onClick={() => setPatientModalOpen(true)}
+            className="min-w-0 flex-1 px-0.5 text-left"
+          >
+            <h1 className="text-[18px] font-black leading-tight break-words drop-shadow-sm">{patient.full_name}</h1>
+            <p className="mt-0.5 text-[11px] font-semibold leading-snug text-white/80 break-words">
+              {[
+                patientGenderLabel(patient.gender, language),
+                age != null ? t('patientProfile.mobile.ageClinic', { age, clinic: clinicLabel }) : clinicLabel,
+              ].filter(Boolean).join(' · ')}
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => document.getElementById('mob-avatar-input')?.click()}
+            className="w-9 h-9 rounded-full bg-white/20 border border-white/35 flex items-center justify-center text-[11px] font-black shrink-0 overflow-hidden"
+            title={t('patientProfile.uploadPhoto', 'Rasm yuklash')}
+          >
+            {patient.photo_url
+              ? <img src={patient.photo_url} alt="" className="w-full h-full object-cover" />
+              : (photoUploading ? <Camera className="w-4 h-4" /> : getInitials(patient.full_name))}
+          </button>
+          <input id="mob-avatar-input" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
 
           {phoneHref ? (
             <a
@@ -624,12 +623,12 @@ export default function MobilePatientProfile() {
         </div>
 
         {financials.debt > 0 && (
-          <div className="mx-3 mb-2 flex items-center justify-between gap-2.5 rounded-xl px-3 py-1.5 bg-black/20 border border-white/10 backdrop-blur-[6px]">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-              <span className="text-[11px] font-bold text-white/90">{t('patientProfile.mobile.debt', 'Qarzdorlik')}</span>
-            </div>
-            <span className="text-[12px] font-black tabular-nums whitespace-nowrap text-amber-200">
+          <div className="mx-3 mb-2 flex flex-col gap-0.5 rounded-xl bg-black/20 border border-white/10 px-3 py-2">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-white/90">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-300" />
+              {t('patientProfile.mobile.debt', 'Qarzdorlik')}
+            </span>
+            <span className="text-[16px] font-black tabular-nums leading-tight text-amber-200">
               {fmt(financials.debt)} {t('dashboard.currency', "so'm")}
             </span>
           </div>
@@ -650,7 +649,7 @@ export default function MobilePatientProfile() {
               : getInitials(patient.full_name)}
           </button>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-black text-[#0f172a] truncate">{patient.full_name}</p>
+            <p className="text-[13px] font-black text-[#0f172a] break-words">{patient.full_name}</p>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               {patient.phone ? (
                 <a href={phoneHref} className="text-[11px] font-bold text-[#0d9488] font-mono truncate">{formatPhone(patient.phone)}</a>
@@ -734,7 +733,7 @@ export default function MobilePatientProfile() {
       </div>
 
       {/* CLINICAL STRIP */}
-      <div className="px-3 pt-3 space-y-3">
+      <div className="px-3 pt-3 pb-24 space-y-3">
                 <ToothChartCard
                   patient={patient}
                   plans={plans}

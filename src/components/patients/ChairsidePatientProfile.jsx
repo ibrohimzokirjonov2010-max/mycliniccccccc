@@ -178,7 +178,7 @@ export default function ChairsidePatientProfile({
         </div>
       )}
 
-      <div className="chairside-patient-header bg-white border-b border-slate-200/80 sticky top-0 z-40 overflow-visible shadow-[0_1px_0_rgba(15,23,42,0.06)]" data-chairside-header="true">
+      <div className="chairside-patient-header bg-white border-b border-slate-200/80 sticky top-0 z-40 overflow-visible shadow-[0_1px_0_rgba(15,23,42,0.06)]" data-chairside-header="true" data-patient-header="true">
         <div className="max-w-[1680px] mx-auto w-full min-w-0 px-3 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div className="flex min-w-0 flex-1 basis-full items-center gap-3 sm:basis-[18rem]">
             <button

@@ -56,7 +56,7 @@ export default function ImplantAlerter() {
             label: 'Ochish',
             onClick: () => navigate('/implants')
           },
-          duration: 4500,
+          duration: 3200,
         });
       }
     } catch (err) {
@@ -68,6 +68,32 @@ export default function ImplantAlerter() {
     if (isAppointmentCalendarPath(location.pathname)) {
       toast.dismiss('implant-incomplete-notification');
     }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    let observer;
+    const place = () => {
+      const header = document.querySelector('[data-patient-header]');
+      if (!header) {
+        document.documentElement.style.removeProperty('--toast-below-header');
+        return;
+      }
+      if (!observer) {
+        observer = new ResizeObserver(place);
+        observer.observe(header);
+      }
+      const bottom = header.getBoundingClientRect().bottom;
+      document.documentElement.style.setProperty('--toast-below-header', `${Math.ceil(bottom + 8)}px`);
+    };
+    place();
+    const later = setTimeout(place, 400);
+    window.addEventListener('resize', place);
+    return () => {
+      clearTimeout(later);
+      observer?.disconnect();
+      window.removeEventListener('resize', place);
+      document.documentElement.style.removeProperty('--toast-below-header');
+    };
   }, [location.pathname]);
 
   useEffect(() => {

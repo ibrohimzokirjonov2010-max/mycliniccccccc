@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { AlertTriangle, ArrowLeft, Phone } from 'lucide-react';
 import ToothChartCard from '@/components/patients/ToothChartCard';
 import ChairsidePatientProfile from '@/components/patients/ChairsidePatientProfile';
+import { fmtMoney } from '@/utils/clinicMetrics';
 import { supabase } from '@/api/supabaseClient';
 import { internalIdToFdi } from '@/lib/fdiNotation';
 import { matchIllustrationKind } from '@/utils/toothIllustration';
@@ -85,7 +87,10 @@ export default function OdontogramCardPreview() {
     return () => { cancelled = true; };
   }, []);
 
-  const chairside = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('layout') === 'chairside';
+  const layout = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('layout') : '';
+  const chairside = layout === 'chairside';
+  const phoneShell = layout === 'phone';
+  const reports = layout === 'reports';
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f4f6f8]" data-testid="odonto-card-preview">
@@ -118,7 +123,61 @@ export default function OdontogramCardPreview() {
           </div>
         </div>
       )}
-      {payload && !chairside && (
+      {reports && (
+        <div className="grid grid-cols-2 gap-3 p-4 xl:grid-cols-4">
+          <article className="flex min-w-0 flex-col gap-1.5 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm">
+            <span className="text-[10.5px] font-bold uppercase tracking-wide text-slate-400">Umumiy daromad</span>
+            <div className="break-words text-[22px] font-extrabold leading-tight tracking-tight [&_small]:ml-1 [&_small]:text-[11px] [&_small]:font-bold [&_small]:text-slate-400">
+              {fmtMoney(68750000)} <small>UZS</small>
+            </div>
+          </article>
+        </div>
+      )}
+      {payload && phoneShell && (
+        <div className="min-h-screen bg-[#F3F6F8] pb-24">
+          <div data-patient-header="true" className="sticky top-0 z-30 text-white" style={{ background: 'linear-gradient(165deg, #0f766e 0%, #14b8a6 55%, #0d9488 100%)' }}>
+            <div className="flex items-start gap-2 px-3 pb-2 pt-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/18">
+                <ArrowLeft className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1 text-left">
+                <h1 className="break-words text-[18px] font-black leading-tight">{payload.patient.full_name || 'Test Bemor Qa'}</h1>
+                <p className="mt-0.5 break-words text-[11px] font-semibold text-white/80">Erkak · 34 yosh · Ibrohim Dent</p>
+              </div>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/35 bg-white/20 text-[11px] font-black">TB</span>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/18">
+                <Phone className="h-5 w-5" />
+              </span>
+            </div>
+            <div className="mx-3 mb-2 flex flex-col gap-0.5 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-white/90">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-300" />
+                Qarzdorlik
+              </span>
+              <span className="text-[16px] font-black tabular-nums leading-tight text-amber-200">6 400 000 so‘m</span>
+            </div>
+          </div>
+          <div className="px-3 pb-24 pt-3">
+            <ToothChartCard
+              patient={payload.patient}
+              plans={payload.plans}
+              payments={[]}
+              appointments={payload.appointments}
+              doctors={[]}
+              services={[]}
+              implants={[]}
+              toothRecords={[]}
+              onReload={async () => {}}
+              onBookAppointment={() => {}}
+              sheetOffset={58}
+            />
+          </div>
+          <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-[54px] items-center justify-around border-t border-slate-200 bg-white text-[11px] font-bold text-slate-500">
+            <span>Navbat</span><span>Bemorlar</span><span>Qabul</span><span>To‘lov</span>
+          </nav>
+        </div>
+      )}
+      {payload && !chairside && !phoneShell && (
         <div className="p-3">
           <ToothChartCard
             patient={payload.patient}
