@@ -501,10 +501,13 @@
     min-width: 0 !important;
     max-width: 100% !important;
   }
-  .new-patient-dialog .wizard-tooth-hit {
-    min-width: 40px !important;
+  .new-patient-dialog .wizard-phone-arch .wizard-tooth-hit {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100%;
     min-height: 44px !important;
     height: 44px;
+    box-sizing: border-box;
   }
   .new-patient-dialog {
     width: 100vw !important;
@@ -838,18 +841,90 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
     grid-template-columns: minmax(0, 1fr) minmax(220px, 248px);
   }
 }
+.wizard-stepper-inline {
+  display: none;
+}
+.wizard-reja-desktop {
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-areas:
+    "head prices"
+    "chart prices"
+    "services prices";
+}
+.wizard-reja-head { grid-area: head; }
+.wizard-reja-chart { grid-area: chart; }
+.wizard-reja-services { grid-area: services; }
+.wizard-reja-prices { grid-area: prices; }
+
 @media (min-width: 1024px) {
   .new-patient-dialog .wizard-arch .odonto-cross {
-    --odonto-pad: 8px;
-    padding-left: 8px;
-    padding-right: 8px;
+    --odonto-pad: 4px;
+    padding: 4px 4px 6px;
+  }
+  .new-patient-dialog .wizard-arch .odonto-bite-line {
+    margin: 4px 0;
   }
   .new-patient-dialog .wizard-arch .wizard-tooth-hit {
-    min-width: 36px !important;
-    min-height: 40px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    min-height: 48px !important;
+    height: 48px !important;
+    font-size: 16px !important;
   }
   .new-patient-dialog .wizard-arch .odonto-jaw {
     overflow: visible;
+  }
+  .new-patient-dialog .wizard-arch .odonto-scroll {
+    overflow: hidden;
+  }
+}
+
+/* Short laptops: one header bar, full-width equal teeth, list keeps 3 rows. */
+@media (min-width: 1024px) and (max-height: 760px) {
+  .new-patient-dialog {
+    width: min(1360px, calc(100vw - 16px)) !important;
+    max-width: calc(100vw - 16px) !important;
+    height: calc(100dvh - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+  }
+  .new-patient-dialog .wizard-header {
+    min-height: 56px;
+    max-height: 56px;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    align-items: center;
+  }
+  .new-patient-dialog .wizard-header-brand {
+    padding-bottom: 0 !important;
+  }
+  .new-patient-dialog .wizard-header .w-10 {
+    width: 32px;
+    height: 32px;
+  }
+  .new-patient-dialog .wizard-subtitle,
+  .new-patient-dialog .wizard-stepper-full {
+    display: none !important;
+  }
+  .new-patient-dialog .wizard-stepper-inline {
+    display: flex !important;
+  }
+  .wizard-reja-desktop {
+    grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.9fr);
+    grid-template-rows: auto auto minmax(168px, 1fr);
+    grid-template-areas:
+      "head head"
+      "chart chart"
+      "services prices";
+  }
+  .new-patient-dialog .wizard-arch .wizard-tooth-hit {
+    min-height: 52px !important;
+    height: 52px !important;
+    font-size: 17px !important;
+  }
+  .new-patient-dialog .wizard-reja-footer {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
   }
 }
 @media (min-width: 1280px) {

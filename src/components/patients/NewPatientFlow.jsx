@@ -24,7 +24,6 @@ import { applyPhoneMask, cn, capitalizeName, validateAddress, capitalizeAsYouTyp
 import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
 import { resolveAssignedDoctorName, isTreatingClinician, clinicianDisplayName } from '@/lib/treatingDoctor';
 import { normalizePatientGender, patientGenderForDb } from '@/lib/patientGender';
-import { fdiLengthWeight, fdiWidthWeight } from '@/lib/fdiNotation';
 
 /**
  * Wizard steps configuration
@@ -208,8 +207,8 @@ const CategoryAccordion = ({ title, services, activeTooth, toothData, toggleServ
                     : "hover:bg-slate-50 text-slate-600"
                 )}
               >
-                <span className="text-xs font-bold uppercase truncate mr-2 flex-1 leading-snug">{svc.name}</span>
-                <span className="text-xs font-black text-emerald-600 shrink-0 tabular-nums">{(svc.price || 0).toLocaleString()} {t('common.currency')}</span>
+                <span className="text-sm font-bold uppercase truncate mr-2 flex-1 leading-snug">{svc.name}</span>
+                <span className="text-sm font-black text-emerald-600 shrink-0 tabular-nums">{(svc.price || 0).toLocaleString()} {t('common.currency')}</span>
               </button>
             );
           })}
@@ -1470,9 +1469,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         }}
       >
 
-         {/* Header */}
-         <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 pb-0 flex items-start justify-between shrink-0 rounded-t-[2rem] sm:rounded-t-[2.5rem] text-white no-print" style={{ paddingTop: 'calc(max(20px, env(safe-area-inset-top, 20px)) + 8px)' }}>
-            <div className="flex items-center gap-3 pb-4">
+         {/* Header. Short laptops fold the stepper into this bar. */}
+         <div className="wizard-header bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-4 pb-0 flex items-center justify-between gap-3 shrink-0 rounded-t-[2rem] sm:rounded-t-[2.5rem] text-white no-print" style={{ paddingTop: 'calc(max(20px, env(safe-area-inset-top, 20px)) + 8px)' }}>
+            <div className="wizard-header-brand flex items-center gap-3 pb-4 min-w-0">
               {step > 1 ? (
                 <button 
                   onClick={() => {
@@ -1480,32 +1479,63 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     else if (step === 4) setStep(2);
                     else handleClose();
                   }}
-                  className="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95 border-none cursor-pointer"
+                  className="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95 border-none cursor-pointer shrink-0"
                 >
                   <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
                 </button>
               ) : (
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm shrink-0">
                   <User className="w-5 h-5 stroke-[2.5]" />
                 </div>
               )}
-              <div>
-                <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
+              <div className="min-w-0">
+                <DialogTitle className="text-base font-black text-white uppercase tracking-tight truncate">
                   {t('patients.addNew')}
                 </DialogTitle>
-                <DialogDescription className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('patients.wizard.registrationTitle')}</DialogDescription>
+                <DialogDescription className="wizard-subtitle text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('patients.wizard.registrationTitle')}</DialogDescription>
               </div>
+            </div>
+            <div className="wizard-stepper-inline items-center justify-center gap-0 shrink-0">
+              {STEPS.map((s, i) => {
+                const Icon = s.icon;
+                const done = step > s.id || (step === 4 && s.id === 3);
+                const active = step === s.id || (step === 4 && s.id === 3);
+                return (
+                  <div key={s.id} className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => goToStep(s.id)}
+                      disabled={s.id === 3 && !createdPatient?.id}
+                      className={cn(
+                        "flex items-center gap-1.5 bg-transparent border-none px-1.5",
+                        s.id === 3 && !createdPatient?.id ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                      )}
+                    >
+                      <span className={cn(
+                        "w-6 h-6 rounded-full flex items-center justify-center border",
+                        done || active ? "bg-white text-emerald-600 border-white" : "bg-white/15 text-white/80 border-white/30"
+                      )}>
+                        {done && !active ? <Check className="w-3 h-3 stroke-[3px]" /> : <Icon className="w-3 h-3" />}
+                      </span>
+                      <span className={cn("text-[10px] font-black uppercase tracking-wide", active || done ? "text-white" : "text-white/70")}>
+                        {t(s.label)}
+                      </span>
+                    </button>
+                    {i < STEPS.length - 1 && <span className={cn("w-4 h-px", step > s.id ? "bg-white" : "bg-white/35")} />}
+                  </div>
+                );
+              })}
             </div>
             <button 
               onClick={handleClose}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95 border-none cursor-pointer mt-1"
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-all active:scale-95 border-none cursor-pointer shrink-0"
             >
               <X className="w-4.5 h-4.5" />
             </button>
          </div>
 
-         {/* Stepper — yashil headerdan pastda oq fonda */}
-         <div className="bg-white border-b border-slate-100 px-4 py-3.5 shrink-0 z-10 shadow-sm no-print">
+         {/* Stepper — full row on taller screens and phones */}
+         <div className="wizard-stepper-full bg-white border-b border-slate-100 px-4 py-3.5 shrink-0 z-10 shadow-sm no-print">
            <div className="flex items-center justify-center gap-0">
              {STEPS.map((s, i) => {
                const Icon = s.icon;
@@ -1845,19 +1875,19 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     setActiveTooth(next.includes(internalId) ? internalId : null);
                   }}
                   className={cn(
-                    "odontogram-tooth wizard-tooth-hit w-full rounded-md flex items-center justify-center font-black transition-colors cursor-pointer leading-none p-0 border touch-manipulation",
+                    "odontogram-tooth wizard-tooth-hit w-full rounded-md flex items-center justify-center font-black transition-colors cursor-pointer leading-none p-0 border touch-manipulation text-[17px]",
                     isActive    ? "bg-[#1499AD] text-white border-[#1499AD] ring-2 ring-[#1499AD]/30" :
                     isSelected  ? "bg-emerald-500 text-white border-emerald-500" :
-                                  "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                                  "bg-white text-slate-800 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                   )}
-                  style={{ minHeight: 40, height: `${Math.max(40, Math.round(44 * fdiLengthWeight(fdi)))}px` }}
                 >
-                  <span className="text-[12px] sm:text-[13px] font-black">{fdi}</span>
+                  <span className="font-black">{fdi}</span>
                 </button>
               );
             };
 
-            const quadTemplate = (fdis) => (fdis || []).map((n) => `minmax(36px, ${fdiWidthWeight(n)}fr)`).join(' ');
+            const quadTemplate = () => 'repeat(8, minmax(0, 1fr))';
+            const draftPatientName = (createdPatient?.full_name || `${patientForm.last_name || ''} ${patientForm.first_name || ''}`).replace(/\s+/g, ' ').trim();
             const WIZARD_QUADS = [
               { id: 'ur', title: "Yuqori · O‘ng", teeth: upperRight },
               { id: 'ul', title: "Yuqori · Chap", teeth: upperLeft },
@@ -1876,11 +1906,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         <span>CHAP</span>
                       </div>
                       <div className="odonto-jaw odonto-jaw-upper">
-                        <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate(upperRight) }}>
+                        <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate() }}>
                           {upperRight.map((n) => <ToothBtn key={n} fdi={n} />)}
                         </div>
                         <div className="odonto-midline" aria-hidden="true" />
-                        <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate(upperLeft) }}>
+                        <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate() }}>
                           {upperLeft.map((n) => <ToothBtn key={n} fdi={n} />)}
                         </div>
                       </div>
@@ -1892,11 +1922,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         <span>O‘NG</span>
                       </div>
                       <div className="odonto-jaw odonto-jaw-lower">
-                        <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate(lowerLeft) }}>
+                        <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate() }}>
                           {lowerLeft.map((n) => <ToothBtn key={n} fdi={n} />)}
                         </div>
                         <div className="odonto-midline" aria-hidden="true" />
-                        <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate(lowerRight) }}>
+                        <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate() }}>
                           {lowerRight.map((n) => <ToothBtn key={n} fdi={n} />)}
                         </div>
                       </div>
@@ -1910,28 +1940,24 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
               <div className="flex flex-col h-full min-h-0 bg-white overflow-hidden" data-reja-layout="notebook-fluid-v1">
                 
                 {/* === DESKTOP / NOTEBOOK (≥ lg): two columns with readable targets === */}
-                <div className="hidden lg:flex flex-row flex-1 min-h-0 bg-white overflow-hidden">
-                  
-                  {/* ═══ LEFT PANEL ═══ */}
-                  <div className="flex-[1_1_58%] min-w-0 max-w-[62%] flex flex-col border-r border-slate-100 overflow-hidden bg-white min-h-0">
-                    <div className="pl-5 pr-4 py-2.5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white gap-2">
+                <div className="wizard-reja-desktop hidden lg:grid flex-1 min-h-0 bg-white overflow-hidden">
+                    <div className="wizard-reja-head pl-4 pr-3 py-1.5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white gap-2 min-w-0">
                       <span className="text-sm font-bold text-slate-700">{t('patients.wizard.treatmentPlan')}</span>
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-xs font-medium text-slate-500 truncate">{t('patients.wizard.patient')}: {createdPatient?.full_name}</span>
-                      </div>
+                      {draftPatientName ? (
+                        <span className="text-xs font-medium text-slate-500 truncate">{t('patients.wizard.patient')}: {draftPatientName}</span>
+                      ) : null}
                     </div>
 
-                    {/* ── FDI tooth chart — fluid, larger hit targets on notebooks ── */}
-                    <div className="shrink-0 bg-[#fef9f7] border-b border-slate-100 py-3 px-2 sm:px-3 lg:px-4">
+                    <div className="wizard-reja-chart shrink-0 bg-white border-b border-slate-100 py-1 px-1.5 min-w-0">
                       {toothArch}
-                      {/* Legend */}
-                      <div className="flex items-center justify-center gap-4 mt-2.5 shrink-0">
+                      <div className="flex items-center justify-center gap-4 mt-1 shrink-0">
                         <span className="flex items-center gap-1.5 text-[11px] text-slate-500"><span className="w-2.5 h-2.5 rounded-full bg-[#f87171] inline-block" />{t('patients.wizard.selected')}</span>
                         <span className="flex items-center gap-1.5 text-[11px] text-slate-500"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />{t('common.active')}</span>
                         <span className="flex items-center gap-1.5 text-[11px] text-slate-500"><span className="w-2.5 h-2.5 rounded-full bg-slate-200 inline-block" />{t('patients.wizard.select')}</span>
                       </div>
                     </div>
 
+                  <div className="wizard-reja-services flex flex-col min-h-0 min-w-0 overflow-hidden bg-white border-r border-slate-100">
                     {/* Services table header */}
                     <div className="pl-5 pr-4 py-2 bg-slate-50 border-b border-slate-100 grid grid-cols-[minmax(0,1fr)_40px_72px_44px_72px_24px] gap-1.5 shrink-0">
                       <span className="text-[11px] font-black text-slate-400 uppercase">{t('patients.wizard.services')}</span>
@@ -1943,7 +1969,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     </div>
 
                     {/* Services list */}
-                    <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain">
+                    <div className="wizard-service-rows flex-1 overflow-y-auto min-h-[120px] overscroll-contain">
                       {allSelectedServices.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full gap-1.5 text-slate-300 py-10">
                           <ClipboardList className="w-8 h-8" />
@@ -2027,7 +2053,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   </div>
 
                   {/* ═══ RIGHT PANEL: Price list ═══ */}
-                  <div className="flex-1 min-w-[280px] flex flex-col overflow-hidden bg-white min-h-0">
+                  <div className="wizard-reja-prices min-w-0 flex flex-col overflow-hidden bg-white min-h-0 border-l border-slate-100">
                     <div className="pl-3 pr-5 py-2.5 border-b border-slate-100 shrink-0 bg-white">
                       <div className="flex items-center justify-between mb-2 gap-2">
                         <span className="text-xs font-bold text-slate-600">{t('patients.wizard.priceList')}</span>
@@ -2041,7 +2067,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         <Search className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                         <input type="text" value={serviceSearch} onChange={e => setServiceSearch(e.target.value)}
                           placeholder={t('patients.wizard.serviceSearch')}
-                          className="flex-1 bg-transparent border-none text-xs text-slate-700 placeholder:text-slate-300 outline-none font-medium" />
+                          className="flex-1 bg-transparent border-none text-sm text-slate-700 placeholder:text-slate-300 outline-none font-medium" />
                         {serviceSearch && (
                           <button onClick={() => setServiceSearch('')} className="text-slate-300 hover:text-slate-500 border-none bg-transparent cursor-pointer"><X className="w-3 h-3" /></button>
                         )}
@@ -2089,15 +2115,15 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                 {/* === PHONE / NARROW (< lg): stacked single column — full-width teeth === */}
                 <div className="flex lg:hidden flex-col h-full min-h-0 w-full overflow-hidden bg-white">
                   {/* Top: 2-row anatomical tooth selector – fully fits phone screen */}
-                  <div className="py-2 px-3 shrink-0 select-none bg-slate-50 border-b border-slate-100">
-                    <div className="flex gap-1 overflow-x-auto pb-1.5 [scrollbar-width:thin]">
+                  <div className="wizard-phone-arch py-2 px-2 shrink-0 select-none bg-slate-50 border-b border-slate-100 min-w-0">
+                    <div className="grid grid-cols-2 gap-1 pb-1.5">
                       {WIZARD_QUADS.map((quad) => (
                         <button
                           key={quad.id}
                           type="button"
                           onClick={() => setWizardQuad(quad.id)}
                           className={cn(
-                            "shrink-0 px-2.5 py-1 rounded-full text-[10px] font-black border cursor-pointer",
+                            "w-full min-w-0 px-2 py-1 rounded-full text-[11px] font-black border cursor-pointer whitespace-nowrap",
                             wizardQuad === quad.id
                               ? "bg-slate-900 text-white border-slate-900"
                               : "bg-white text-slate-600 border-slate-200"
@@ -2108,7 +2134,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       ))}
                     </div>
                     <div
-                      className="grid grid-cols-8 gap-1"
+                      className="grid grid-cols-8 gap-1 w-full min-w-0"
                       onTouchStart={(event) => { event.currentTarget.dataset.x = String(event.changedTouches[0].clientX); }}
                       onTouchEnd={(event) => {
                         const start = Number(event.currentTarget.dataset.x || 0);
@@ -2135,7 +2161,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                               setActiveTooth(next.includes(internalId) ? internalId : null);
                             }}
                             className={cn(
-                              "wizard-tooth-hit rounded-lg font-black text-[13px] leading-none border cursor-pointer touch-manipulation",
+                              "wizard-tooth-hit w-full min-w-0 rounded-lg font-black text-[15px] leading-none border cursor-pointer touch-manipulation",
                               isActive ? "bg-[#1499AD] text-white border-[#1499AD]" :
                               isSelected ? "bg-emerald-500 text-white border-emerald-500" :
                               "bg-white text-slate-800 border-slate-200"
@@ -2441,7 +2467,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                 {/* Bottom Navigation buttons (Desktop / notebook) */}
 
-                <div className="hidden lg:flex flex-shrink-0 flex-col gap-3 p-4 sm:p-5 border-t bg-white z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe-offset-4 w-full rounded-b-[2.5rem]">
+                <div className="wizard-reja-footer hidden lg:flex flex-shrink-0 flex-col gap-2 px-4 py-2.5 border-t bg-white z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] w-full">
                   {savingError && (
                     <div className="bg-rose-50 border border-rose-100 rounded-2xl p-3 text-xs font-bold text-rose-600 w-full flex items-start gap-2 shadow-inner">
                       <span className="shrink-0 text-base">⚠️</span>
