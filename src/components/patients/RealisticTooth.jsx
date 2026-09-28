@@ -47,7 +47,7 @@ const CUSTOM_TOOTH_SRC = {
   '48': '/teeth/kamron/pas_ong_8.png',
 };
 
-/** Lower PNGs are pre-mirrored. The canvas atlas is a separate sprite and stays unflipped. */
+/** Lower PNGs stay unmirrored. The canvas atlas is a separate sprite and stays unflipped. */
 function mirrorLower() {
   return false;
 }

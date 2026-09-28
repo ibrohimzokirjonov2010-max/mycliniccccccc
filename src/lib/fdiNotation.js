@@ -153,8 +153,8 @@ export function fdiMesialIsRight(fdi) {
 }
 
 /**
- * Lower PNGs are already mirrored in the file (mesial toward the new midline).
- * Do not scaleX them again or the contralateral picture snaps back into the old slot.
+ * Lower PNGs are the original unmirrored files. The row order is 38–31 | 41–48.
+ * Do not scaleX them.
  */
 export function fdiLowerImageFlip() {
   return false;

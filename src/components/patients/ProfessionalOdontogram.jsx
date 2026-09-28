@@ -197,7 +197,7 @@ const ToothColumn = memo(function ToothColumn({
   const occlusalSrc = withToothAssetVersion(`/teeth/cliniccards/${baseName}_crown.png`);
   const showOcclusalView = showOcclusal && !useIllustration;
 
-  // Designer PNGs carry their own facing (lower files are pre-mirrored).
+  // Designer PNGs are shown as stored (lower files are the original unmirrored art).
   // Cliniccards fallbacks still mirror by anatomical side.
   const isShared = baseName.includes('_');
   const hFlip = useIllustration ? false : (isShared ? (side === 'left') : true);
