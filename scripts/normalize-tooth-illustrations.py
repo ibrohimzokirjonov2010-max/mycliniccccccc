@@ -1569,6 +1569,129 @@ def apply_endo_breket(root: Path) -> list[tuple[str, str]]:
     return written
 
 
+def caries_overlay(im: Image.Image, upper: bool, pos: int) -> Image.Image:
+    """Dark caries lesion on the crown only. Roots stay the healthy colour."""
+    arr = np.array(im).copy()
+    alpha = arr[:, :, 3]
+    box = _body_box(alpha)
+    if box is None:
+        return im
+    y0, y1, x0, x1 = box
+    height = y1 - y0 + 1
+    width = x1 - x0 + 1
+    if upper:
+        cy = y1 - int(height * (0.08 if pos <= 3 else 0.12))
+    else:
+        cy = y0 + int(height * (0.08 if pos <= 3 else 0.12))
+    cx = x0 + int(width * (0.58 if pos <= 2 else 0.50))
+    rx = max(6, int(width * (0.16 if pos <= 3 else 0.22)))
+    ry = max(5, int(height * (0.045 if pos <= 3 else 0.055)))
+    yy = np.arange(arr.shape[0], dtype=np.float32)[:, None]
+    xx = np.arange(arr.shape[1], dtype=np.float32)[None, :]
+    spot = np.clip(1.0 - ((xx - cx) / rx) ** 2 - ((yy - cy) / ry) ** 2, 0.0, 1.0) ** 1.4
+    pit = np.clip(
+        1.0 - ((xx - (cx + rx * 0.35)) / (rx * 0.45)) ** 2 - ((yy - cy) / (ry * 0.55)) ** 2,
+        0.0,
+        1.0,
+    ) ** 1.2
+    spot = np.maximum(spot, pit * 0.85)
+    spot = ndimage.gaussian_filter(spot, 1.1)
+    if upper:
+        gate = np.clip((yy - (y0 + height * 0.64)) / (height * 0.08), 0.0, 1.0)
+    else:
+        gate = np.clip(((y0 + height * 0.36) - yy) / (height * 0.08), 0.0, 1.0)
+    spot = spot * gate
+    spot[alpha <= 48] = 0.0
+    strength = np.clip(spot, 0.0, 1.0)
+    dark = np.array([48, 28, 22], np.float32)
+    brown = np.array([92, 58, 40], np.float32)
+    colour = brown * (1.0 - strength[..., None]) + dark * strength[..., None]
+    rgb = arr[:, :, :3].astype(np.float32)
+    rgb = rgb * (1.0 - 0.92 * strength[..., None]) + colour * (0.92 * strength[..., None])
+    arr[:, :, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    return Image.fromarray(arr)
+
+
+def pink_socket(im: Image.Image) -> Image.Image:
+    """Pink gum socket on the healthy silhouette, so size and anchor match."""
+    arr = np.array(im).copy()
+    alpha = arr[:, :, 3]
+    mask = alpha > 32
+    distance = ndimage.distance_transform_edt(mask)
+    depth = np.clip(distance / 14.0, 0.0, 1.0)
+    rim = np.array([238, 190, 188], np.float32)
+    hole = np.array([176, 104, 114], np.float32)
+    colour = rim * (1.0 - depth[..., None]) + hole * depth[..., None]
+    edge = np.clip(1.0 - distance / 3.0, 0.0, 1.0)
+    highlight = np.array([250, 220, 216], np.float32)
+    colour = colour * (1.0 - 0.25 * edge[..., None]) + highlight * (0.25 * edge[..., None])
+    rgb = arr[:, :, :3].astype(np.float32)
+    inside = (alpha > 32)[..., None]
+    rgb = np.where(inside, colour, rgb)
+    arr[:, :, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    return Image.fromarray(arr)
+
+
+def _store_png(path: Path, im: Image.Image) -> None:
+    tmp = path.with_suffix(".png.tmp")
+    im.save(tmp, format="PNG", optimize=True)
+    tmp.replace(path)
+
+
+def apply_caries_missing(root: Path) -> None:
+    """Crown-only caries, and missing sockets locked to the healthy silhouette."""
+    mirrors = {"22": "12", "23": "13", "24": "14", "25": "15", "31": "41", "32": "42", "33": "43", "34": "45"}
+    for fdi in FDIS:
+        healthy = load_rgba(root / "healthy" / f"{fdi}.png")
+        painted = caries_overlay(healthy, is_upper(fdi), int(fdi) % 10)
+        if not np.array_equal(np.array(painted)[:, :, 3], np.array(healthy)[:, :, 3]):
+            raise SystemExit(f"caries/{fdi} silhouette changed")
+        _store_png(root / "caries" / f"{fdi}.png", painted)
+        socket = pink_socket(healthy)
+        if not np.array_equal(np.array(socket)[:, :, 3], np.array(healthy)[:, :, 3]):
+            raise SystemExit(f"missing/{fdi} silhouette changed")
+        _store_png(root / "missing" / f"{fdi}.png", socket)
+    for fdi, donor in mirrors.items():
+        _store_png(root / "caries" / f"{fdi}.png", _flip(load_rgba(root / "caries" / f"{donor}.png")))
+        _store_png(root / "missing" / f"{fdi}.png", _flip(load_rgba(root / "missing" / f"{donor}.png")))
+    for kind in ("caries", "missing"):
+        _store_png(root / kind / "44.png", load_rgba(root / kind / "45.png"))
+    for kind in ("caries", "missing"):
+        for fdi in FDIS:
+            got = np.array(load_rgba(root / kind / f"{fdi}.png"))
+            healthy = np.array(load_rgba(root / "healthy" / f"{fdi}.png"))
+            if got.shape != healthy.shape or not np.array_equal(got[:, :, 3], healthy[:, :, 3]):
+                raise SystemExit(f"{kind}/{fdi} does not match healthy")
+        for fdi, donor in mirrors.items():
+            got = np.array(load_rgba(root / kind / f"{fdi}.png"))
+            expect = np.array(_flip(load_rgba(root / kind / f"{donor}.png")))
+            if not np.array_equal(got, expect):
+                raise SystemExit(f"{kind}/{fdi} is not the mirror of {donor}")
+    for fdi in FDIS:
+        caries = np.array(load_rgba(root / "caries" / f"{fdi}.png"))
+        healthy = np.array(load_rgba(root / "healthy" / f"{fdi}.png"))
+        alpha = healthy[:, :, 3]
+        box = _body_box(alpha)
+        assert box is not None
+        y0, y1, _x0, _x1 = box
+        height = y1 - y0 + 1
+        root_band = np.zeros(alpha.shape, bool)
+        crown_band = np.zeros(alpha.shape, bool)
+        if is_upper(fdi):
+            root_band[y0:y0 + int(height * 0.50)] = True
+            crown_band[y0 + int(height * 0.72):y1 + 1] = True
+        else:
+            root_band[y0 + int(height * 0.50):y1 + 1] = True
+            crown_band[y0:y0 + int(height * 0.28)] = True
+        delta = np.abs(caries[:, :, :3].astype(int) - healthy[:, :, :3].astype(int)).sum(axis=2)
+        inside = alpha > 48
+        if int((delta > 40)[root_band & inside].sum()) > 0:
+            raise SystemExit(f"caries/{fdi} changed the root")
+        if int((delta > 40)[crown_band & inside].sum()) < 20:
+            raise SystemExit(f"caries/{fdi} has no crown lesion")
+    print("rebuilt 32 caries and 32 missing images")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--teeth", type=Path, default=Path("public/teeth"))
@@ -1592,6 +1715,11 @@ def main() -> None:
         help="Rebuild endo and breket on the healthy silhouette",
     )
     parser.add_argument(
+        "--caries-missing",
+        action="store_true",
+        help="Crown-only caries lesions and missing sockets matched to healthy",
+    )
+    parser.add_argument(
         "--originals",
         type=Path,
         default=Path("/tmp/teeth-src/teeth"),
@@ -1605,6 +1733,9 @@ def main() -> None:
         return
     if args.endo_breket:
         apply_endo_breket(root)
+        return
+    if args.caries_missing:
+        apply_caries_missing(root)
         return
     if args.repair:
         replaced = apply_replacements(root, args.originals)
