@@ -177,24 +177,24 @@ function ExcelImplantsView({
             <table className="w-full table-fixed border-collapse text-left text-sm">
             <colgroup>
               <col className="w-8" />
-              <col className="w-[72px]" />
+              <col className="w-12" />
               <col />
-              <col className="w-[72px]" />
-              <col className="w-[64px]" />
-              <col className="w-[78px]" />
-              <col className="w-[14%]" />
-              <col className="w-[18%]" />
-              <col className="w-[76px]" />
+              <col className="w-16" />
+              <col className="w-12" />
+              <col className="w-[4.75rem]" />
+              <col className="w-[4.5rem]" />
+              <col className="w-[6.5rem]" />
+              <col className="w-[4.25rem]" />
             </colgroup>
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-black uppercase tracking-wide text-[10px]">
                 <th className="py-2.5 px-1 border-r border-slate-100 text-center">№</th>
                 <th className="py-2.5 px-1 border-r border-slate-100 text-center">Tish</th>
                 <th className="py-2.5 px-1.5 border-r border-slate-100">{t('patientProfile.brandSystemCol') || "Brend / Tizim"}</th>
-                <th className="py-2.5 px-1 border-r border-slate-100 text-center">{t('patientProfile.sizeCol') || "O'lchami"}</th>
+                <th className="py-2.5 px-1 border-r border-slate-100 text-center">Ø×L</th>
                 <th className="py-2.5 px-1 border-r border-slate-100 text-center">Lot</th>
-                <th className="py-2.5 px-1 border-r border-slate-100 text-center">{t('patientProfile.installedDateCol') || "Sana"}</th>
-                <th className="py-2.5 px-1.5 border-r border-slate-100">{t('patientProfile.surgeonCol') || "Jarroh"}</th>
+                <th className="py-2.5 px-1 border-r border-slate-100 text-center">Sana</th>
+                <th className="py-2.5 px-1 border-r border-slate-100">{t('patientProfile.surgeonCol') || "Jarroh"}</th>
                 <th className="py-2.5 px-1 border-r border-slate-100 text-center">{t('common.status') || "Holati"}</th>
                 <th className="py-2.5 px-1 text-center bg-slate-50">{t('patientProfile.passportCol') || "Pasport"}</th>
               </tr>
