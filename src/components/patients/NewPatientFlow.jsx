@@ -24,7 +24,7 @@ import { applyPhoneMask, cn, capitalizeName, validateAddress, capitalizeAsYouTyp
 import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
 import { resolveAssignedDoctorName, isTreatingClinician, clinicianDisplayName } from '@/lib/treatingDoctor';
 import { normalizePatientGender, patientGenderForDb } from '@/lib/patientGender';
-import { fdiGridTemplate, fdiLengthWeight } from '@/lib/fdiNotation';
+import { fdiLengthWeight, fdiWidthWeight } from '@/lib/fdiNotation';
 
 /**
  * Wizard steps configuration
@@ -520,6 +520,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   // Per-tooth data: { [toothNum]: { services: [], expanded: true } }
   const [toothData, setToothData] = useState({});
   const [mobileSubTab, setMobileSubTab] = useState('plan'); // 'plan' or 'services'
+  const [wizardQuad, setWizardQuad] = useState('ur');
 
 
   const normalizedFirstName = capitalizeName((patientForm.first_name || '').trim());
@@ -833,30 +834,35 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     }
   }, []);
 
-  const handleSavePatient = useCallback(async () => {
+  const validatePatientFields = useCallback(() => {
     if (!normalizedLastName) {
       toast.error(t('patients.wizard.errorLastNameRequired') || "Familiyani kiriting");
-      return;
+      return false;
     }
     if (!normalizedFirstName) {
       toast.error(t('patients.errorNameRequired') || "Ismni kiriting");
-      return;
+      return false;
     }
     if (normalizedPatientPhone.length < 9) {
       toast.error(t('patients.errorPhoneRequired') || "Telefon raqamini to'liq kiriting");
-      return;
+      return false;
     }
     const missingDoctor = getPatientDoctorRequiredError(patientForm.main_treatment_provider, t);
     if (missingDoctor) {
       setDoctorError(missingDoctor);
-      return;
+      return false;
     }
+    setDoctorError('');
     if (patientForm.address && !validateAddress(patientForm.address)) {
       toast.error(t('patients.addressError'));
-      return;
+      return false;
     }
-    setSaving(true);
-    setSavingError(null);
+    return true;
+  }, [normalizedLastName, normalizedFirstName, normalizedPatientPhone, patientForm.main_treatment_provider, patientForm.address, t]);
+
+  const persistPatient = useCallback(async () => {
+    if (createdPatient?.id) return createdPatient;
+    if (!validatePatientFields()) return null;
     try {
       const birthDate = (patientForm.birth_year && patientForm.birth_month && patientForm.birth_day)
         ? `${patientForm.birth_year}-${String(patientForm.birth_month).padStart(2, '0')}-${String(patientForm.birth_day).padStart(2, '0')}`
@@ -896,7 +902,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       if (patient?.error) {
         setSavingError(patient.error);
         toast.error("Xatolik: " + patient.error);
-        return;
+        return null;
       }
       
       // Lead yaratish - agar "Qayerdan topdi" (contact) tanlangan bo'lsa
@@ -915,17 +921,28 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       }
       
       setCreatedPatient(patient);
-      onSaved?.(patient);
-      toast.success(t('patients.wizard.saveSuccess'));
-      setStep(2);
+      return patient;
     } catch (error) {
       console.error('Failed to create patient:', error);
       setSavingError(error.message || "Xatolik yuz berdi");
       toast.error(error.message || "Xatolik yuz berdi");
+      return null;
+    }
+  }, [createdPatient, patientForm, validatePatientFields, normalizedFirstName, normalizedLastName, normalizedPatientName, normalizedPatientPhone, t]);
+
+  const handleSavePatient = useCallback(async () => {
+    setSaving(true);
+    setSavingError(null);
+    try {
+      const patient = await persistPatient();
+      if (!patient) return;
+      onSaved?.(patient);
+      toast.success(t('patients.wizard.saveSuccess'));
+      setStep(2);
     } finally {
       setSaving(false);
     }
-  }, [patientForm, canProceedPatientStep, normalizedFirstName, normalizedLastName, normalizedPatientName, normalizedPatientPhone, onSaved, t]);
+  }, [persistPatient, onSaved, t]);
 
   /**
    * Save treatment plan (Step 2)
@@ -938,6 +955,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     }
     setSaving(true);
     setSavingError(null);
+    const patientRecord = createdPatient?.id ? createdPatient : await persistPatient();
+    if (!patientRecord?.id) {
+      setSaving(false);
+      return;
+    }
     let teethList = [...planForm.tooth_numbers];
     if (toothData['general']?.services?.length > 0) {
       teethList.push('general');
@@ -994,8 +1016,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       const selectedDoc = doctors.find(d => d.id === patientForm.main_treatment_provider);
       const plan = await base44.entities.TreatmentPlan.create({
         name: displayCategory,
-        patient_id: createdPatient.id,
-        patient_name: createdPatient.full_name,
+        patient_id: patientRecord.id,
+        patient_name: patientRecord.full_name,
         doctor_id: patientForm.main_treatment_provider || '',
         doctor_name: selectedDoc?.name || selectedDoc?.full_name || '',
         status: 'Planned',
@@ -1031,8 +1053,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       // 2. Create single Payment (Debt) for the combined plan
       if (planFinalPrice > 0) {
         await base44.entities.Payment.create({
-          patient_id: createdPatient.id,
-          patient_name: createdPatient.full_name,
+          patient_id: patientRecord.id,
+          patient_name: patientRecord.full_name,
           doctor_id: patientForm.main_treatment_provider || '',
           type: 'Debt',
           category: displayCategory,
@@ -1047,8 +1069,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       // 3. Create single Payment (Income) for advance payment if set
       if (isInstallment && installmentAdvance > 0) {
         await base44.entities.Payment.create({
-          patient_id: createdPatient.id,
-          patient_name: createdPatient.full_name,
+          patient_id: patientRecord.id,
+          patient_name: patientRecord.full_name,
           doctor_id: patientForm.main_treatment_provider || '',
           type: 'Income',
           category: `${t('patients.wizard.downPayment')}: ${displayCategory}`,
@@ -1062,7 +1084,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       // 3. Bemor statistikasini yangilash
       if (totalDebt > 0 || installmentAdvance > 0) {
         const allPays = await base44.entities.Payment.filter(
-          { patient_id: createdPatient.id }, 
+          { patient_id: patientRecord.id }, 
           '-date', 
           500
         );
@@ -1071,7 +1093,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         const refund = allPays.filter(p => p.type?.toLowerCase() === 'refund').reduce((s, p) => s + (p.amount || 0), 0);
         const discount = allPays.filter(p => p.type?.toLowerCase() === 'discount').reduce((s, p) => s + (p.amount || 0), 0);
         
-        await base44.entities.Patient.update(createdPatient.id, {
+        await base44.entities.Patient.update(patientRecord.id, {
           total_paid: paid, 
           total_debt: Math.max(0, debt - paid + refund - discount),
         });
@@ -1090,8 +1112,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         const toothSvcs = tooth ? (toothData[tooth]?.services || []) : [];
         const fdiNum = tooth ? idToFdi(tooth) : '';
         const planName = tooth && tooth !== 'general'
-          ? `${createdPatient.full_name} — ${t('patients.fdiTooth', { number: tooth })}`
-          : planForm.name || `${createdPatient.full_name} — ${t('patients.wizard.treatmentPlan')}`;
+          ? `${patientRecord.full_name} — ${t('patients.fdiTooth', { number: tooth })}`
+          : planForm.name || `${patientRecord.full_name} — ${t('patients.wizard.treatmentPlan')}`;
         
         allPlans.push({
           name: planName,
@@ -1123,9 +1145,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         for (const entry of implantEntries) {
           try {
             await base44.entities.Implant.create({
-              patient_id: createdPatient.id,
-              patient_name: createdPatient.full_name,
-              patient_phone: createdPatient.phone || '',
+              patient_id: patientRecord.id,
+              patient_name: patientRecord.full_name,
+              patient_phone: patientRecord.phone || '',
               doctor: selectedDoc?.name || selectedDoc?.full_name || '',
               doctor_id: patientForm.main_treatment_provider || '',
               tooth_numbers: entry.toothNumber ? [entry.toothNumber] : [],
@@ -1163,7 +1185,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       if (implantEntries.length > 0) {
         setImplantPrompt({
           open: true,
-          patientName: createdPatient.full_name,
+          patientName: patientRecord.full_name,
           teeth: teethNumbersUsed.join(', ') || '—',
           count: implantEntries.length
         });
@@ -1179,7 +1201,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       setSaving(false);
     }
   }, [
-    planForm, toothData, createdPatient, onSaved,
+    planForm, toothData, createdPatient, persistPatient, onSaved,
     isInstallment, installmentMonths, installmentAdvance, 
     installmentStartDate, installmentDay, installmentServiceKeys, installmentTotal, allSelectedServices,
     discountPercent  // MUHIM: chegirma noto'g'ri saqlanmasligi uchun qo'shildi (stale closure bug fix)
@@ -1418,14 +1440,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
   const goToStep = (target) => {
     if (target === step || (target === 3 && step === 4)) return;
+    if (target === 3 && !createdPatient?.id) return;
     if (target < step) {
       setStep(target);
       return;
     }
-    if (!createdPatient) {
-      handleSavePatient();
-      return;
-    }
+    if (target > 1 && !createdPatient?.id && !validatePatientFields()) return;
     setStep(target);
   };
 
@@ -1437,9 +1457,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
           "new-patient-dialog dialog-shell-fluid !flex !flex-col !p-0 !gap-0 overflow-hidden border-0 shadow-2xl",
           "max-md:!fixed max-md:!inset-0 max-md:!left-0 max-md:!top-0 max-md:!h-[100dvh] max-md:!max-h-[100dvh] max-md:!w-screen max-md:!max-w-none max-md:!translate-x-0 max-md:!translate-y-0 max-md:!rounded-none",
           "md:!left-1/2 md:!top-1/2 md:!-translate-x-1/2 md:!-translate-y-1/2 md:w-[min(1120px,94vw)] md:max-w-[1120px] md:rounded-[2rem]",
-          step === 2
-            ? "md:h-[min(92dvh,900px)] md:max-h-[92dvh]"
-            : "md:h-[min(92dvh,820px)] md:max-h-[92dvh]"
+          "md:!h-[min(900px,calc(100dvh-32px))] md:!max-h-[calc(100dvh-32px)] md:!min-h-0"
         )}
         data-new-patient-shell={step === 2 ? "reja-notebook-fluid-v1" : "default"}
         onPointerDownOutside={(e) => { if (receiptOpen) e.preventDefault(); }}
@@ -1498,7 +1516,13 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                    <button
                      type="button"
                      onClick={() => goToStep(s.id)}
-                     className="flex flex-col items-center gap-1 min-w-[60px] bg-transparent border-none cursor-pointer"
+                     disabled={s.id === 3 && !createdPatient?.id}
+                     aria-disabled={s.id === 3 && !createdPatient?.id}
+                     title={s.id === 3 && !createdPatient?.id ? "Avval Saqlash tugmasini bosing" : undefined}
+                     className={cn(
+                       "flex flex-col items-center gap-1 min-w-[60px] bg-transparent border-none",
+                       s.id === 3 && !createdPatient?.id ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                     )}
                    >
                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300
                        ${done ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100' :
@@ -1519,11 +1543,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
            </div>
          </div>
 
-        <div className="flex-1 overflow-hidden bg-white sm:bg-slate-50/50 flex flex-col">
+        <div className="flex-1 min-h-0 overflow-hidden bg-white sm:bg-slate-50/50 flex flex-col">
 
           {/* STEP 1: Patient */}
           {step === 1 && (
-            <div className="flex flex-col h-full bg-white">
+            <div className="flex flex-col h-full min-h-0 bg-white">
 
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 max-w-5xl mx-auto w-full max-md:overflow-x-hidden">
 
@@ -1821,45 +1845,58 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     setActiveTooth(next.includes(internalId) ? internalId : null);
                   }}
                   className={cn(
-                    "odontogram-tooth compact-hit w-full rounded-md flex items-center justify-center font-black transition-colors cursor-pointer leading-none p-0 border touch-manipulation",
+                    "odontogram-tooth wizard-tooth-hit w-full rounded-md flex items-center justify-center font-black transition-colors cursor-pointer leading-none p-0 border touch-manipulation",
                     isActive    ? "bg-[#1499AD] text-white border-[#1499AD] ring-2 ring-[#1499AD]/30" :
                     isSelected  ? "bg-emerald-500 text-white border-emerald-500" :
                                   "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                   )}
-                  style={{ height: `${Math.round(36 * fdiLengthWeight(fdi))}px` }}
+                  style={{ minHeight: 40, height: `${Math.max(40, Math.round(44 * fdiLengthWeight(fdi)))}px` }}
                 >
-                  <span className="text-[10px] sm:text-[11px] xl:text-xs font-black">{fdi}</span>
+                  <span className="text-[12px] sm:text-[13px] font-black">{fdi}</span>
                 </button>
               );
             };
 
+            const quadTemplate = (fdis) => (fdis || []).map((n) => `minmax(36px, ${fdiWidthWeight(n)}fr)`).join(' ');
+            const WIZARD_QUADS = [
+              { id: 'ur', title: "Yuqori · O‘ng", teeth: upperRight },
+              { id: 'ul', title: "Yuqori · Chap", teeth: upperLeft },
+              { id: 'll', title: "Pastki · Chap", teeth: lowerLeft },
+              { id: 'lr', title: "Pastki · O‘ng", teeth: lowerRight },
+            ];
+            const activeQuad = WIZARD_QUADS.find((quad) => quad.id === wizardQuad) || WIZARD_QUADS[0];
+
             const toothArch = (
-              <div className="odonto-fit-frame w-full min-w-0" data-compact="true">
+              <div className="odonto-fit-frame wizard-arch w-full min-w-0" data-compact="true">
                 <div className="odonto-scroll">
                   <div className="odonto-cross">
                     <div className="odonto-jaw-band">
-                      <span className="odonto-side odonto-side-r">O‘NG</span>
-                      <span className="odonto-side odonto-side-l">CHAP</span>
+                      <div className="flex justify-between px-1 pb-1 text-[10px] font-black tracking-wide text-rose-600">
+                        <span>O‘NG</span>
+                        <span>CHAP</span>
+                      </div>
                       <div className="odonto-jaw odonto-jaw-upper">
-                        <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(upperRight) }}>
+                        <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate(upperRight) }}>
                           {upperRight.map((n) => <ToothBtn key={n} fdi={n} />)}
                         </div>
                         <div className="odonto-midline" aria-hidden="true" />
-                        <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(upperLeft) }}>
+                        <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate(upperLeft) }}>
                           {upperLeft.map((n) => <ToothBtn key={n} fdi={n} />)}
                         </div>
                       </div>
                     </div>
                     <div className="odonto-bite-line" aria-hidden="true" />
                     <div className="odonto-jaw-band">
-                      <span className="odonto-side odonto-side-r">CHAP</span>
-                      <span className="odonto-side odonto-side-l">O‘NG</span>
+                      <div className="flex justify-between px-1 pt-1 text-[10px] font-black tracking-wide text-rose-600">
+                        <span>CHAP</span>
+                        <span>O‘NG</span>
+                      </div>
                       <div className="odonto-jaw odonto-jaw-lower">
-                        <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(lowerLeft) }}>
+                        <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate(lowerLeft) }}>
                           {lowerLeft.map((n) => <ToothBtn key={n} fdi={n} />)}
                         </div>
                         <div className="odonto-midline" aria-hidden="true" />
-                        <div className="odonto-quad" style={{ gridTemplateColumns: fdiGridTemplate(lowerRight) }}>
+                        <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate(lowerRight) }}>
                           {lowerRight.map((n) => <ToothBtn key={n} fdi={n} />)}
                         </div>
                       </div>
@@ -1870,7 +1907,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
             );
 
             return (
-              <div className="flex flex-col h-full bg-white overflow-hidden" data-reja-layout="notebook-fluid-v1">
+              <div className="flex flex-col h-full min-h-0 bg-white overflow-hidden" data-reja-layout="notebook-fluid-v1">
                 
                 {/* === DESKTOP / NOTEBOOK (≥ lg): two columns with readable targets === */}
                 <div className="hidden lg:flex flex-row flex-1 min-h-0 bg-white overflow-hidden">
@@ -2003,7 +2040,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       <div className="flex items-center gap-2 bg-slate-50 rounded-lg px-2.5 h-9 border border-slate-100">
                         <Search className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                         <input type="text" value={serviceSearch} onChange={e => setServiceSearch(e.target.value)}
-                          placeholder={t('patients.searchPlaceholder')}
+                          placeholder={t('patients.wizard.serviceSearch')}
                           className="flex-1 bg-transparent border-none text-xs text-slate-700 placeholder:text-slate-300 outline-none font-medium" />
                         {serviceSearch && (
                           <button onClick={() => setServiceSearch('')} className="text-slate-300 hover:text-slate-500 border-none bg-transparent cursor-pointer"><X className="w-3 h-3" /></button>
@@ -2050,10 +2087,65 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                 </div>
 
                 {/* === PHONE / NARROW (< lg): stacked single column — full-width teeth === */}
-                <div className="flex lg:hidden flex-col h-full w-full overflow-hidden bg-white">
+                <div className="flex lg:hidden flex-col h-full min-h-0 w-full overflow-hidden bg-white">
                   {/* Top: 2-row anatomical tooth selector – fully fits phone screen */}
-                  <div className="py-2 px-2 shrink-0 select-none bg-slate-50 border-b border-slate-100">
-                    {toothArch}
+                  <div className="py-2 px-3 shrink-0 select-none bg-slate-50 border-b border-slate-100">
+                    <div className="flex gap-1 overflow-x-auto pb-1.5 [scrollbar-width:thin]">
+                      {WIZARD_QUADS.map((quad) => (
+                        <button
+                          key={quad.id}
+                          type="button"
+                          onClick={() => setWizardQuad(quad.id)}
+                          className={cn(
+                            "shrink-0 px-2.5 py-1 rounded-full text-[10px] font-black border cursor-pointer",
+                            wizardQuad === quad.id
+                              ? "bg-slate-900 text-white border-slate-900"
+                              : "bg-white text-slate-600 border-slate-200"
+                          )}
+                        >
+                          {quad.title}
+                        </button>
+                      ))}
+                    </div>
+                    <div
+                      className="grid grid-cols-8 gap-1"
+                      onTouchStart={(event) => { event.currentTarget.dataset.x = String(event.changedTouches[0].clientX); }}
+                      onTouchEnd={(event) => {
+                        const start = Number(event.currentTarget.dataset.x || 0);
+                        const delta = event.changedTouches[0].clientX - start;
+                        if (Math.abs(delta) < 40) return;
+                        const index = WIZARD_QUADS.findIndex((quad) => quad.id === activeQuad.id);
+                        const next = delta < 0 ? Math.min(WIZARD_QUADS.length - 1, index + 1) : Math.max(0, index - 1);
+                        setWizardQuad(WIZARD_QUADS[next].id);
+                      }}
+                    >
+                      {activeQuad.teeth.map((fdi) => {
+                        const internalId = fdiToInternal(String(fdi));
+                        const isSelected = planForm.tooth_numbers.includes(internalId);
+                        const isActive = activeTooth === internalId;
+                        return (
+                          <button
+                            key={fdi}
+                            type="button"
+                            onClick={() => {
+                              const next = isActive
+                                ? planForm.tooth_numbers.filter((tooth) => tooth !== internalId)
+                                : (planForm.tooth_numbers.includes(internalId) ? planForm.tooth_numbers : [...planForm.tooth_numbers, internalId]);
+                              handleTeethChange(next);
+                              setActiveTooth(next.includes(internalId) ? internalId : null);
+                            }}
+                            className={cn(
+                              "wizard-tooth-hit rounded-lg font-black text-[13px] leading-none border cursor-pointer touch-manipulation",
+                              isActive ? "bg-[#1499AD] text-white border-[#1499AD]" :
+                              isSelected ? "bg-emerald-500 text-white border-emerald-500" :
+                              "bg-white text-slate-800 border-slate-200"
+                            )}
+                          >
+                            {fdi}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Active Tooth Info Status Bar */}
@@ -2134,7 +2226,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   </div>
 
                   {/* Categories scroll chips */}
-                  <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-2 px-4 bg-white border-b border-slate-100 shrink-0 touch-pan-x">
+                  <div className="flex flex-wrap gap-1.5 py-2 px-4 bg-white border-b border-slate-100 shrink-0">
                     <button
                       type="button"
                       onClick={() => setSelectedCategory("")}
@@ -2390,7 +2482,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
             );
           })()}
         {step === 3 && (
-          <div className="flex flex-col h-full items-center justify-center text-center p-6 sm:p-10">
+          <div className="flex flex-col h-full min-h-0">
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center text-center p-6 sm:p-10">
             <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
               <CheckCircle2 className="w-10 h-10 text-emerald-600" />
             </div>
@@ -2398,9 +2491,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
               <h3 className="text-lg font-bold">{t('common.success')}</h3>
               <p className="text-sm text-muted-foreground mt-1">
                 {t('patients.wizard.patientAdded', { name: createdPatient?.full_name })}
-                {createdPatient && (
+                {createdPlan && (
                   <> {t('common.and')} <span className="font-semibold text-primary">
-                    {createdPlan && (createdPlan._count > 1 ? t('patients.wizard.plansCreatedCount', { count: createdPlan._count }) : `${createdPlan.name} ${t('patients.wizard.planCreatedLog')}`)}
+                    {createdPlan._count > 1 ? t('patients.wizard.plansCreatedCount', { count: createdPlan._count }) : `${createdPlan.name} ${t('patients.wizard.planCreatedLog')}`}
                   </span></>
                 )}
                 {createdPlan?.total_price > 0 && (
@@ -2457,7 +2550,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                 {t('patients.wizard.sendToTelegram')}
               </Button>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3 mt-8 w-full sm:w-auto px-4 sm:px-0">
+          </div>
+            <div className="shrink-0 flex flex-col sm:flex-row gap-3 p-4 border-t bg-white w-full">
               <Button 
                 variant="outline" 
                 onClick={() => setStep(4)} 
