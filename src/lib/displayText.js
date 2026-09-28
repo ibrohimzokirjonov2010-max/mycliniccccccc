@@ -8,6 +8,24 @@ export function formatDoctorName(value) {
   return rest ? `Dr. ${rest}` : 'Dr.';
 }
 
+function isRecordId(value) {
+  return /^(usr|user)[-_]/i.test(String(value || '').trim());
+}
+
+/** Show a person name. Stored user ids are resolved from the doctors list or a fallback name. */
+export function resolveDoctorLabel(raw, doctors = [], fallback = '') {
+  const value = String(raw || '').trim();
+  const match = (doctors || []).find((doctor) => {
+    const id = String(doctor?.id || '');
+    const name = String(doctor?.name || doctor?.full_name || '').trim();
+    return (id && id === value) || (name && name.toLowerCase() === value.toLowerCase());
+  });
+  const named = match?.name || match?.full_name || '';
+  if (named) return formatDoctorName(named);
+  if (isRecordId(value)) return formatDoctorName(fallback);
+  return formatDoctorName(value || fallback);
+}
+
 /** Visible spelling fix. Stored rows can still say "karonka". */
 export function displayServiceName(value) {
   return String(value || '').replace(/karonka/gi, (match) => {

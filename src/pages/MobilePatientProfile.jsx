@@ -734,6 +734,7 @@ export default function MobilePatientProfile() {
                 />
                 <ChairsideClinicalTools
                   patient={patient}
+                  doctors={doctors}
                   onPatientUpdated={(updated) => {
                     if (updated) setPatient((prev) => ({ ...(prev || {}), ...updated }));
                   }}

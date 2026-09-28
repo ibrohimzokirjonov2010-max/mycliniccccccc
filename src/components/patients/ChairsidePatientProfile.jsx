@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { cn, formatPhone } from '@/lib/utils';
 import { patientGenderLabel } from '@/lib/patientGender';
-import { displayServiceName, formatBirthDate } from '@/lib/displayText';
+import { displayServiceName, formatBirthDate, resolveDoctorLabel } from '@/lib/displayText';
 import { implantStepStatusLabel } from '@/lib/implantStatus';
 import ToothChartCard from './ToothChartCard';
 import TodayPlanBar from './TodayPlanBar';
@@ -205,6 +205,11 @@ export default function ChairsidePatientProfile({
   const allergyText = (medicalAlerts || []).map((alert) => alertLabel(alert, language)).filter(Boolean).join(', ')
     || String(patient?.important_info || '').trim();
   const addressLabel = String(patient?.address || '').trim();
+  const doctorLabel = resolveDoctorLabel(
+    patient?.doctor_name || patient?.main_treatment_provider,
+    doctors,
+    (plans || []).map((plan) => plan.doctor_name || plan.doctor).find((name) => name && !/^(usr|user)[-_]/i.test(String(name))) || '',
+  );
 
   return (
     <div className="min-h-0 font-sans">
@@ -431,6 +436,8 @@ export default function ChairsidePatientProfile({
               hideTabBar
               activeTab={clinicalTab}
               onTabChange={setClinicalTab}
+              doctorName={doctorLabel}
+              doctors={doctors}
             />
 
             <div className="chairside-plan-row" data-chairside-plan="true">

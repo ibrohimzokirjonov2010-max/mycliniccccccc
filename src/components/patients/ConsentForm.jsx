@@ -34,7 +34,7 @@ export default function ConsentForm({
   const body = consent?.text || consentTemplateText(templateId, language);
   const title = consent?.template_title || consentTemplateTitle(templateId, language);
   const patientName = patient?.full_name || '';
-  const doctor = formatDoctorName(doctorName || patient?.doctor_name || '');
+  const doctor = formatDoctorName(doctorName);
   const iso = useMemo(() => toIsoDate(dateDisplay), [dateDisplay]);
 
   const setTemplate = (id) => {
