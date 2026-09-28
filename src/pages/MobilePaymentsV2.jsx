@@ -14,6 +14,7 @@ import { cn, resolveDoctorId, getTreatmentTypeLabel } from '@/lib/utils';
 import { paymentStamp, formatClinicDateTime } from '@/lib/clinicTime';
 import { computePatientBalances } from '@/lib/paymentDebt';
 import { Input } from '@/components/ui/input';
+import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -1386,8 +1387,7 @@ export default function MobilePaymentsV2() {
                     {/* Date picker */}
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('payments.date')}</Label>
-                      <Input
-                        type="datetime-local"
+                      <ClinicDateTimeField
                         value={formData.date}
                         onChange={(e) => setFormData({...formData, date: e.target.value})}
                         className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold"

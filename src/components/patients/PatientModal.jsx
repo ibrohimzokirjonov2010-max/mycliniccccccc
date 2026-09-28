@@ -10,6 +10,7 @@ import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
 import { normalizePatientGender, patientGenderLabel } from '@/lib/patientGender';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, X } from 'lucide-react';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import { useAuth } from '@/lib/AuthContext';
 
 /**
@@ -273,9 +274,8 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="birth_date">{t('patients.birthDate')}</Label>
-              <Input
+              <ClinicDateField
                 id="birth_date"
-                type="date"
                 value={form.birth_date}
                 onChange={e => handleChange('birth_date', e.target.value)}
                 disabled={saving}

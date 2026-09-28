@@ -20,6 +20,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { toast } from 'sonner';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 
 // Standard Uzbek Months
 const UZ_MONTHS = [
@@ -1409,8 +1410,7 @@ export default function Payroll() {
                   <div className="flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
                     <div className="flex items-center gap-1">
                       <span className="text-[10px] font-bold text-slate-400">Dan:</span>
-                      <input 
-                        type="date"
+                      <ClinicDateField
                         value={activeDetailDoctor.activeFilter?.startDate || formatDateForInput(activeDetailDoctor.startDate)}
                         onChange={(e) => {
                           const newStart = e.target.value;
@@ -1424,7 +1424,7 @@ export default function Payroll() {
                             }
                           }));
                         }}
-                        className="text-xs font-bold text-slate-800 bg-transparent outline-none cursor-pointer"
+                        className="h-7 w-[7.5rem] min-w-0 border-none bg-transparent px-1 text-xs font-bold text-slate-800 shadow-none"
                       />
                     </div>
                     
@@ -1432,8 +1432,7 @@ export default function Payroll() {
                     
                     <div className="flex items-center gap-1">
                       <span className="text-[10px] font-bold text-slate-400">Gacha:</span>
-                      <input 
-                        type="date"
+                      <ClinicDateField
                         value={activeDetailDoctor.activeFilter?.endDate || formatDateForInput(activeDetailDoctor.endDate)}
                         onChange={(e) => {
                           const newEnd = e.target.value;
@@ -1447,7 +1446,7 @@ export default function Payroll() {
                             }
                           }));
                         }}
-                        className="text-xs font-bold text-slate-800 bg-transparent outline-none cursor-pointer"
+                        className="h-7 w-[7.5rem] min-w-0 border-none bg-transparent px-1 text-xs font-bold text-slate-800 shadow-none"
                       />
                     </div>
                   </div>

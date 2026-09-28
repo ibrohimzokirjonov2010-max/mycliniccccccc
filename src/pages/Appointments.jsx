@@ -14,7 +14,8 @@ import AppointmentConfirmationBadge from '@/components/appointments/AppointmentC
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { cn } from '@/lib/utils';
-import { addDaysKey, dateKeyOf, formatClinicDateWithWeekday, tashkentToday } from '@/lib/clinicTime';
+import { addDaysKey, dateKeyOf, formatClinicDate, formatClinicDateWithWeekday, tashkentToday, weekdayName } from '@/lib/clinicTime';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -385,14 +386,13 @@ export default function Appointments() {
                </button>
             </div>
             
-            <div className="relative">
-              <input 
-                type="date" 
-                value={viewDate} 
-                onChange={e => setViewDate(e.target.value)} 
-                className="h-10 px-4 rounded-2xl border border-slate-100 text-[11px] font-black text-slate-600 outline-none focus:border-[#1499AD] bg-white shadow-sm"
+            <div className="flex items-center gap-2">
+              <ClinicDateField
+                value={viewDate}
+                onChange={(e) => e.target.value && setViewDate(e.target.value)}
+                className="h-10 w-[9.5rem] px-4 rounded-2xl border border-slate-100 text-[11px] font-black text-slate-600 shadow-sm bg-white"
               />
-              <span className="text-[11px] font-black text-slate-500 whitespace-nowrap">{formatClinicDateWithWeekday(viewDate, 'uz')}</span>
+              <span className="text-[11px] font-black text-slate-500 whitespace-nowrap">{weekdayName(viewDate, 'uz')}</span>
             </div>
           </div>
 
@@ -534,13 +534,28 @@ export default function Appointments() {
                 {(() => {
                   const isToday = viewDate === todayKey;
                   const periodLabel = listPeriod === 'all' ? 'Barcha navbatlar' : listPeriod === 'upcoming' ? 'Kelgusi navbatlar' : (isToday ? 'Bugungi navbat' : 'Tanlangan kun');
+                  const showDate = listPeriod === 'all' || listPeriod === 'upcoming';
 
                   const dayAppts = [...listedAppointments].sort((a, b) => {
-                    // Sorting: first by date if searching, then by time
                     const dCompare = String(a.date || '').localeCompare(String(b.date || ''));
-                    if (dCompare !== 0 && debouncedSearch.trim()) return dCompare;
+                    if (dCompare !== 0) return listPeriod === 'all' ? -dCompare : dCompare;
                     return (a.time || '').localeCompare(b.time || '');
                   });
+
+                  const groups = [];
+                  for (const visit of dayAppts) {
+                    const key = dateKeyOf(visit.date) || 'none';
+                    let group = groups[groups.length - 1];
+                    if (!group || group.key !== key) {
+                      group = {
+                        key,
+                        label: key === 'none' ? 'Sana yo‘q' : formatClinicDateWithWeekday(key, 'uz'),
+                        items: [],
+                      };
+                      groups.push(group);
+                    }
+                    group.items.push(visit);
+                  }
 
                   return (
                     <div className="flex flex-col min-h-[600px]">
@@ -582,10 +597,21 @@ export default function Appointments() {
                               )}
                             </div>
 
-                            {/* Compact 2-Column Responsive Card Grid */}
-                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
-                              {dayAppts.map(a => {
+                            <div className="flex flex-col gap-3">
+                              {groups.map((group) => (
+                                <section key={group.key}>
+                                  {showDate && (
+                                    <div className="flex items-center gap-2 px-1 mb-1.5">
+                                      <span className="text-[11px] font-black uppercase tracking-widest text-slate-600">{group.label}</span>
+                                      <span className="text-[10px] font-bold text-slate-400">{group.items.length} ta</span>
+                                      <div className="flex-1 h-px bg-slate-100" />
+                                    </div>
+                                  )}
+                                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
+                              {group.items.map(a => {
                                 const doctorObj = doctors.find(d => String(d.id) === String(a.doctor_id)) || { name: a.doctor_name };
+                                const shortDate = formatClinicDate(a.date).slice(0, 5);
+                                const timeLabel = String(a.time || '').slice(0, 5);
                                 return (
                                   <div 
                                     key={a.id} 
@@ -604,8 +630,8 @@ export default function Appointments() {
                                     className="flex items-center justify-between gap-3 bg-white p-2.5 px-3.5 rounded-xl border border-slate-200/80 hover:border-[#1499AD] hover:bg-slate-50/60 hover:shadow-xs transition-all cursor-pointer group"
                                   >
                                     {/* Left: Time badge */}
-                                    <div className="w-14 py-1 bg-slate-900 text-white rounded-lg flex flex-col items-center justify-center shrink-0 shadow-xs">
-                                      <span className="text-[11px] font-black leading-tight tracking-tight">{a.time}</span>
+                                    <div className={cn('py-1 bg-slate-900 text-white rounded-lg flex flex-col items-center justify-center shrink-0 shadow-xs', showDate ? 'min-w-[92px] px-1.5' : 'w-14')}>
+                                      <span className="text-[11px] font-black leading-tight tracking-tight whitespace-nowrap">{showDate ? (timeLabel ? `${shortDate} · ${timeLabel}` : shortDate) : (timeLabel || '—')}</span>
                                       <span className="text-[8px] font-bold text-slate-400 uppercase leading-none mt-0.5">{a.duration || 30}m</span>
                                     </div>
 
@@ -615,11 +641,6 @@ export default function Appointments() {
                                         <p className="text-xs font-black text-slate-900 truncate group-hover:text-[#1499AD] transition-colors uppercase tracking-tight">
                                           {a.patient_name || 'Bemor'}
                                         </p>
-                                        {debouncedSearch.trim() && (
-                                          <span className="px-1.5 py-0.2 bg-slate-100 rounded text-[8px] font-black text-slate-500 uppercase">
-                                            {String(a.date || '').split('T')[0]}
-                                          </span>
-                                        )}
                                       </div>
 
                                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -645,6 +666,9 @@ export default function Appointments() {
                                   </div>
                                 );
                               })}
+                                  </div>
+                                </section>
+                              ))}
                             </div>
                           </div>
                         )}

@@ -15,6 +15,7 @@ import ImplantWizardToothEntry from './ImplantWizardToothEntry';
 import ImplantWizardStep2 from './ImplantWizardStep2';
 import ImplantWizardFactura from './ImplantWizardFactura';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import { useAuth } from '@/lib/AuthContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { getOrSeedExtraServices, DEFAULT_EXTRA_SERVICES } from './ExtraServicesManagerModal';
@@ -135,17 +136,11 @@ function matchesServiceTab(service, tab) {
 
 function DateField({ value, onChange, className }) {
   return (
-    <div className={cn('relative', className)}>
-      <div className="h-10 px-3 rounded-[10px] border border-[#e5e7eb] bg-white flex items-center text-sm text-[#111827] font-medium">
-        {toDMY(value) || 'DD.MM.YYYY'}
-      </div>
-      <input
-        type="date"
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        className="absolute inset-0 opacity-0 cursor-pointer"
-      />
-    </div>
+    <ClinicDateField
+      value={value || ''}
+      onChange={(e) => onChange(e.target.value)}
+      className={cn('h-10 rounded-[10px] border-[#e5e7eb] bg-white text-sm font-medium text-[#111827]', className)}
+    />
   );
 }
 

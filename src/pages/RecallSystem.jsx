@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { formatDateTime, cn } from '@/lib/utils';
 import { formatClinicDate } from '@/lib/clinicTime';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import { toast } from 'sonner';
 
 /**
@@ -1278,8 +1279,7 @@ export default function RecallSystem() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-bold text-slate-700">Boshlang'ich sana *</Label>
-                <Input 
-                  type="date" 
+                <ClinicDateField
                   value={form.start_date || getTodayDateStr()} 
                   onChange={e => {
                     const newStart = e.target.value;
@@ -1340,8 +1340,7 @@ export default function RecallSystem() {
 
               <div>
                 <Label className="text-xs font-bold text-slate-700">{t('recall.modal.date') || 'Eslatma sanasi *'}</Label>
-                <Input 
-                  type="date" 
+                <ClinicDateField
                   value={form.recall_date} 
                   onChange={e => {
                     setForm({ 

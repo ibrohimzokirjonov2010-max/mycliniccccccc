@@ -51,6 +51,7 @@ import TreatmentPlanInvoice from '../components/treatments/TreatmentPlanInvoice'
 import ImplantForm from '../components/implants/ImplantForm';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -3884,8 +3885,7 @@ export default function PatientProfile() {
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">To'lov sanasi</Label>
-                      <Input
-                        type="datetime-local"
+                      <ClinicDateTimeField
                         value={installmentPaymentModal.date}
                         onChange={e => setInstallmentPaymentModal(prev => ({ ...prev, date: e.target.value }))}
                         className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold"
@@ -4243,7 +4243,7 @@ export default function PatientProfile() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 ml-1">To'lov sanasi</Label>
-                      <Input type="datetime-local" value={payForm.date} onChange={e => setPayForm({ ...payForm, date: e.target.value })} className="h-9 rounded-xl border-slate-200 bg-slate-50 text-xs font-bold focus:bg-white" />
+                      <ClinicDateTimeField value={payForm.date} onChange={e => setPayForm({ ...payForm, date: e.target.value })} className="h-9 rounded-xl border-slate-200 bg-slate-50 text-xs font-bold focus:bg-white" />
                     </div>
                   </div>
 

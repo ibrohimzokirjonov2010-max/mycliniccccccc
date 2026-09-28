@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 
 const QUICK_TEMPLATES = [
   "3 kundan keyin qo'ng'iroq qilish",
@@ -255,8 +256,7 @@ export default function LeadNotesModal({
                 <Label className="text-[10px] font-bold text-slate-500 whitespace-nowrap">
                   Eslatma sanasi (ixtiyoriy):
                 </Label>
-                <Input
-                  type="date"
+                <ClinicDateField
                   value={followUpDate}
                   onChange={e => setFollowUpDate(e.target.value)}
                   className="h-8 w-36 rounded-lg text-xs font-mono font-bold bg-slate-50 border-slate-200"

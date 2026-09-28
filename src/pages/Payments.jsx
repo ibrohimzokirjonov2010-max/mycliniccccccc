@@ -25,6 +25,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel, resolveDoctorId, formatPhone, displayDoctorName } from '@/lib/utils';
 import { paymentStamp, tashkentToday, formatClinicDate, formatClinicDateTime, parseDisplayDateTime } from '@/lib/clinicTime';
+import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
 import { computePatientBalances } from '@/lib/paymentDebt';
 import { toast } from 'sonner';
 import '@/components/payments/paymentAddModal.css';
@@ -2656,10 +2657,8 @@ export default function Payments() {
 
                     <div className="space-y-1.5 pt-2.5 border-t border-slate-100/85">
                       <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">{t('common.date') || "Sana"}</Label>
-                      <input 
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="kk.oo.yyyy ss:mm"
+                      <ClinicDateTimeField
+                        output="display"
                         value={form.created_at}
                         onChange={e => setForm({ ...form, created_at: e.target.value })}
                         className="w-full h-11 rounded-xl border-none bg-slate-50 px-4 font-black text-slate-900 text-sm focus:ring-0 outline-none"

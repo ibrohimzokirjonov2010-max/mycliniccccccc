@@ -9,6 +9,7 @@ import {
   Receipt, ArrowUpRight, ArrowDownRight, AlertTriangle, Info,
 } from 'lucide-react';
 import { cn, getTreatmentTypeLabel } from '@/lib/utils';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import { fmtMoney, fmtCompact, initials, avatarTone } from '@/utils/clinicMetrics';
 
 function tx(language, uz, ru, en) {
@@ -102,11 +103,11 @@ export default function ReportsDashboard({
     <div className={cn('z-30 bg-white border border-slate-200 rounded-xl shadow-lg p-3 space-y-2', phone ? 'mt-2' : 'absolute right-0 mt-1 w-[240px] max-w-[80vw]')}>
       <label className="block text-[11px] font-semibold text-slate-500">
         {tx(language, 'Dan', 'С', 'From')}
-        <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="mt-1 w-full h-9 rounded-lg border border-slate-200 px-2 text-sm" />
+        <ClinicDateField value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="mt-1 w-full h-9 rounded-lg border border-slate-200 px-2 text-sm" />
       </label>
       <label className="block text-[11px] font-semibold text-slate-500">
         {tx(language, 'Gacha', 'По', 'To')}
-        <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="mt-1 w-full h-9 rounded-lg border border-slate-200 px-2 text-sm" />
+        <ClinicDateField value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="mt-1 w-full h-9 rounded-lg border border-slate-200 px-2 text-sm" />
       </label>
       <button
         type="button"

@@ -19,6 +19,7 @@ import PatientModal from '../patients/PatientModal';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 
 // Preset Extra Services with Categories and Default Prices
 export const PRESET_EXTRA_SERVICES = [
@@ -565,8 +566,7 @@ export default function ExtraServiceModal({
                 <Label className="text-[10px] font-black text-slate-600 uppercase tracking-wider block">
                   Bajarilgan sana *
                 </Label>
-                <Input
-                  type="date"
+                <ClinicDateField
                   value={formData.placement_date}
                   onChange={e => setFormData(prev => ({ ...prev, placement_date: e.target.value }))}
                   className="bg-white border-slate-200 h-10 rounded-xl font-bold text-xs"

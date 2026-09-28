@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -1397,8 +1398,7 @@ export default function Expenses() {
             </div>
             <div>
               <Label className="text-xs font-bold text-slate-700">{t('expenses.date')} *</Label>
-              <Input 
-                type="date"
+              <ClinicDateField
                 value={form.date}
                 onChange={e => setForm({ ...form, date: e.target.value })}
                 className="mt-1.5 h-11 rounded-xl font-bold font-mono"

@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
 import PatientSelect from '@/components/patients/PatientSelect';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import ProfessionalOdontogram from '@/components/patients/ProfessionalOdontogram';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -872,7 +873,7 @@ Sizni kutib qolamiz! 🏥`;
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Muddat</Label>
-                        <Input type="date" className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-bold shadow-sm" value={jobForm.deadline} onChange={e => setJobForm({...jobForm, deadline: e.target.value})} />
+                        <ClinicDateField className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-bold shadow-sm" value={jobForm.deadline} onChange={e => setJobForm({...jobForm, deadline: e.target.value})} />
                       </div>
                     </div>
                   </div>

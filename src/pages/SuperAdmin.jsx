@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import { motion } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { 
@@ -2286,13 +2287,13 @@ export default function SuperAdmin() {
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] font-bold text-slate-400 uppercase">Obuna tugash sanasi</Label>
-                <Input type="date" value={form.expires_at || ''} onChange={e => setForm({...form, expires_at: e.target.value})} className={FIELD} />
+                <ClinicDateField value={form.expires_at || ''} onChange={e => setForm({...form, expires_at: e.target.value})} className={FIELD} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-[10px] font-bold text-slate-400 uppercase">Sinov tugashi</Label>
-                <Input type="date" value={form.trial_ends_at || ''} onChange={e => setForm({...form, trial_ends_at: e.target.value})} className={FIELD} />
+                <ClinicDateField value={form.trial_ends_at || ''} onChange={e => setForm({...form, trial_ends_at: e.target.value})} className={FIELD} />
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] font-bold text-slate-400 uppercase">To'lov usuli</Label>

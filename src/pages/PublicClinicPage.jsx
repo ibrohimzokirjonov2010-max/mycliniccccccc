@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 
 // ─── Official Authentic Telegram Vector Icon ────────────────────────────────
 function TelegramOfficialIcon({ className = "w-10 h-10" }) {
@@ -712,8 +713,7 @@ export default function PublicClinicPage() {
                     
                     <div className="space-y-4">
                       <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sana</Label>
-                      <Input 
-                        type="date" 
+                      <ClinicDateField
                         value={selectedDate}
                         min={new Date().toISOString().split('T')[0]}
                         onChange={(e) => setSelectedDate(e.target.value)}

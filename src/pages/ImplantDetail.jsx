@@ -24,6 +24,7 @@ import { useClinic } from '@/lib/ClinicContext';
 import { toast } from 'sonner';
 import { uploadImage } from '@/utils/imageUpload';
 import { cn } from '@/lib/utils';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import ImplantForm from '../components/implants/ImplantForm';
 import ClinicalStepper, {
   LIFECYCLE_COLORS,
@@ -1139,8 +1140,7 @@ export default function ImplantDetail() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs font-bold text-slate-700 mb-1 block">{language === 'ru' ? 'Дата операции' : 'Amaliyot Sanasi'}</Label>
-                  <Input
-                    type="date"
+                  <ClinicDateField
                     value={serviceForm.date}
                     onChange={e => setServiceForm(prev => ({ ...prev, date: e.target.value }))}
                     className="h-10 rounded-xl border-slate-200 font-bold text-xs"
@@ -1298,8 +1298,7 @@ export default function ImplantDetail() {
                 <Label className="text-xs font-bold text-slate-700 mb-1 block">
                   {language === 'ru' ? 'Дата' : 'Sana'}
                 </Label>
-                <Input
-                  type="date"
+                <ClinicDateField
                   value={milestoneForm.date}
                   onChange={(e) => setMilestoneForm(prev => ({ ...prev, date: e.target.value }))}
                   className="h-10 rounded-xl border-slate-200 font-mono text-xs"

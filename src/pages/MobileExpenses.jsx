@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 
 // Available icons dictionary for category selection
 const AVAILABLE_ICONS = [
@@ -664,8 +665,7 @@ export default function MobileExpenses() {
   
                   <div>
                      <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1.5 block">Sana</Label>
-                     <Input 
-                       type="date"
+                     <ClinicDateField
                        value={form.date}
                        onChange={e => setForm({ ...form, date: e.target.value })}
                        className="h-10 rounded-xl bg-slate-50 border-none font-bold text-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/10"

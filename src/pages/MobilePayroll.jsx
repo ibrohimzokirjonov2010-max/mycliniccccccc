@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { useAuth } from '@/lib/AuthContext';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 
 // Standard Uzbek Months
 const UZ_MONTHS = [
@@ -1079,8 +1080,7 @@ export default function MobilePayroll() {
                     )}
                   </div>
                   <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-200">
-                    <input 
-                      type="date"
+                    <ClinicDateField
                       value={activeDetailDoctor.activeFilter?.startDate || formatDateForInput(activeDetailDoctor.startDate)}
                       onChange={(e) => {
                         const newStart = e.target.value;
@@ -1094,11 +1094,10 @@ export default function MobilePayroll() {
                           }
                         }));
                       }}
-                      className="text-[11px] font-bold text-slate-800 bg-transparent outline-none flex-1"
+                      className="h-8 w-auto min-w-0 flex-1 border-none bg-transparent px-1 text-[11px] font-bold text-slate-800 shadow-none"
                     />
                     <span className="text-slate-400 font-bold text-xs">—</span>
-                    <input 
-                      type="date"
+                    <ClinicDateField
                       value={activeDetailDoctor.activeFilter?.endDate || formatDateForInput(activeDetailDoctor.endDate)}
                       onChange={(e) => {
                         const newEnd = e.target.value;
@@ -1112,7 +1111,7 @@ export default function MobilePayroll() {
                           }
                         }));
                       }}
-                      className="text-[11px] font-bold text-slate-800 bg-transparent outline-none flex-1"
+                      className="h-8 w-auto min-w-0 flex-1 border-none bg-transparent px-1 text-[11px] font-bold text-slate-800 shadow-none"
                     />
                   </div>
                 </div>

@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import {
   Package,
   AlertTriangle,
@@ -893,8 +894,7 @@ export default function InventoryEnhanced() {
             </div>
             <div>
               <Label>Muddati</Label>
-              <Input
-                type="date"
+              <ClinicDateField
                 value={newItem.expiryDate}
                 onChange={(e) => handleNewItemChange('expiryDate', e.target.value)}
               />

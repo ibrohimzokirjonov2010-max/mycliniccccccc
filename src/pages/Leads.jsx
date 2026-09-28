@@ -32,6 +32,7 @@ import {
   MessageSquare, Plus
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 
 export default function Leads() {
   const { t, language } = useTranslation();
@@ -1130,8 +1131,7 @@ export default function Leads() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-bold text-slate-700">{t('leads.visitDate') || 'Tashrif sanasi'}</Label>
-                <Input 
-                  type="date" 
+                <ClinicDateField
                   value={form.visit_date} 
                   onChange={e => setForm({ ...form, visit_date: e.target.value })} 
                   className="mt-1 h-9 rounded-lg border-slate-200 focus:border-purple-500 text-xs"

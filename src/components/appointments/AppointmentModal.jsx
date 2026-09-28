@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, X, Loader2 } from 'lucide-react';
@@ -660,8 +661,7 @@ export default function AppointmentModal({
                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
                   {t('appointments.date')} *
                 </Label>
-                <Input 
-                  type="date" 
+                <ClinicDateField
                   value={form.date} 
                   onChange={e => {
                     const nextDate = e.target.value;

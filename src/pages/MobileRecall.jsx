@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import { formatClinicDate } from '@/lib/clinicTime';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import PatientSelect from '@/components/patients/PatientSelect';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -281,8 +282,7 @@ export default function MobileRecall() {
                         {/* Boshlang'ich sana */}
                         <div>
                            <Label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-1">Boshlang'ich sana</Label>
-                           <Input 
-                             type="date"
+                           <ClinicDateField
                              value={newRecall.start_date || getTodayStr()}
                              onChange={e => {
                                const newStart = e.target.value;
@@ -325,8 +325,7 @@ export default function MobileRecall() {
                               <Label className="text-[9px] font-bold text-slate-700 uppercase tracking-wider">Eslatma (Recall) sanasi</Label>
                               <span className="text-[9px] font-bold text-[#1499AD]">Kalendardan o'zgartirish mumkin</span>
                            </div>
-                           <Input 
-                             type="date"
+                           <ClinicDateField
                              value={newRecall.recall_date}
                              onChange={e => setNewRecall({...newRecall, recall_date: e.target.value})}
                              className="h-10 rounded-xl bg-white border border-[#1499AD]/40 focus:border-[#1499AD] font-bold text-[#1499AD] text-sm mt-1"
