@@ -55,6 +55,11 @@ export default function ReportsDashboard({
   const boardAppts = doctorLeaderboard.reduce((s, d) => s + d.appointmentCount, 0);
   const boardDone = doctorLeaderboard.reduce((s, d) => s + (Number(d.completedCount) || 0), 0);
   const boardRevenue = doctorLeaderboard.reduce((s, d) => s + d.revenue, 0);
+  const boardPatientIds = new Set();
+  doctorLeaderboard.forEach((d) => {
+    if (d.patientIds && typeof d.patientIds.forEach === 'function') d.patientIds.forEach((id) => boardPatientIds.add(id));
+  });
+  const boardPatients = boardPatientIds.size;
   const boardRate = boardAppts ? Math.round((boardDone / boardAppts) * 100) : 0;
   const boardAvg = boardDone > 0 ? Math.round(boardRevenue / boardDone) : 0;
 
@@ -483,7 +488,7 @@ export default function ReportsDashboard({
                     <td className="px-3 py-3 font-extrabold text-sm">{tx(language, 'Jami', 'Итого', 'Total')}</td>
                     <td className="px-3 py-3 text-right font-bold tabular-nums">{boardAppts} ta</td>
                     <td className="px-3 py-3 text-right font-bold tabular-nums">{boardDone} · {boardRate}%</td>
-                    <td />
+                    <td className="px-3 py-3 text-right font-bold tabular-nums">{boardPatients > 0 ? `${boardPatients} ta` : '—'}</td>
                     <td className="px-3 py-3 text-right font-extrabold text-emerald-700 tabular-nums">{fmtMoney(boardRevenue)} UZS</td>
                     <td className="px-3 py-3 text-right font-bold tabular-nums">{boardAvg ? fmtMoney(boardAvg) : '—'}</td>
                     <td className="px-3 py-3 text-right"><span className="inline-block min-w-[44px] text-center text-xs font-bold px-2 py-1 rounded-md bg-slate-100">100%</span></td>
@@ -642,8 +647,8 @@ function KpiCard({ label, value, icon, iconClass, bar, barClass, foot, trend, tr
       <div className={cn('h-1.5 rounded overflow-hidden', dark ? 'bg-[#23324b]' : 'bg-slate-100')}>
         <i className={cn('block h-full rounded', barClass)} style={{ width: `${bar}%` }} />
       </div>
-      <div className={cn('flex items-center justify-between gap-1', compact ? 'text-[10.5px]' : 'text-[11px]', dark ? 'text-slate-300' : 'text-slate-500')}>
-        <span className="truncate">{foot}</span>
+      <div className={cn(compact ? 'flex items-center justify-between gap-1 text-[10.5px]' : 'flex flex-col items-start gap-1 text-[11px]', dark ? 'text-slate-300' : 'text-slate-500')}>
+        <span className={compact ? 'min-w-0 truncate' : 'leading-snug'}>{foot}</span>
         {trend && <TrendChip trend={trend} note={trendNote} invert={invert} dark={dark} compact={compact} showScope={!compact && period === 'all'} />}
       </div>
     </article>
