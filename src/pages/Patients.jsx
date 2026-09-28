@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
+import { formatDate } from '@/lib/utils';
+import { buildVisitIndex, isNewPatient, lastVisitKey } from '@/lib/patientVisits';
 
 // Clean single-line phone number formatter (e.g. +998 90 123 45 67)
 const formatPhoneSingleLine = (phone) => {
@@ -123,11 +125,12 @@ export default function Patients() {
             String(p.created_by_id) === String(user.id)
           );
 
-          const monthAgo = new Date();
-          monthAgo.setMonth(monthAgo.getMonth() - 1);
-          const newCount = docPats.filter(
-            p => p.status === 'New' || (!p.status && new Date(p.created_at || p.created_date) > monthAgo) || new Date(p.created_at || p.created_date) > monthAgo
-          ).length;
+          const [appts, plans] = await Promise.all([
+            base44.entities.Appointment.list('-date', 1000).catch(() => []),
+            base44.entities.TreatmentPlan.list('-created_date', 500).catch(() => []),
+          ]);
+          const visitIndex = buildVisitIndex(appts, plans);
+          const newCount = docPats.filter((p) => isNewPatient(p, visitIndex)).length;
 
           const activeCount = docPats.filter(
             p => p.status === 'Active' || p.status === 'Faol' || (p.status && p.status !== 'Inactive')
@@ -147,13 +150,15 @@ export default function Patients() {
           };
         }
 
-        const allPats = await base44.entities.Patient.list('-created_date', 500).catch(() => []);
+        const [allPatsRaw, appts, plans] = await Promise.all([
+          base44.entities.Patient.list('-created_date', 500).catch(() => []),
+          base44.entities.Appointment.list('-date', 1000).catch(() => []),
+          base44.entities.TreatmentPlan.list('-created_date', 500).catch(() => []),
+        ]);
+        const allPats = allPatsRaw || [];
         const total = allPats.length || (await base44.entities.Patient.count().catch(() => 0));
-        const monthAgo = new Date();
-        monthAgo.setMonth(monthAgo.getMonth() - 1);
-        const newCount = allPats.filter(
-          p => p.status === 'New' || (!p.status && new Date(p.created_at || p.created_date) > monthAgo) || new Date(p.created_at || p.created_date) > monthAgo
-        ).length;
+        const visitIndex = buildVisitIndex(appts, plans);
+        const newCount = allPats.filter((p) => isNewPatient(p, visitIndex)).length;
         const activeCount = allPats.filter(
           p => p.status === 'Active' || p.status === 'Faol'
         ).length;
@@ -176,6 +181,25 @@ export default function Patients() {
     },
     staleTime: 60 * 1000,
   });
+
+  const { data: visitIndex } = useQuery({
+    queryKey: ['patient-visit-index'],
+    enabled: !!user,
+    queryFn: async () => {
+      const [appts, plans] = await Promise.all([
+        base44.entities.Appointment.list('-date', 1000).catch(() => []),
+        base44.entities.TreatmentPlan.list('-created_date', 500).catch(() => []),
+      ]);
+      const index = buildVisitIndex(appts, plans);
+      return { completed: [...index.completed], last: index.last };
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const visits = useMemo(() => ({
+    completed: new Set(visitIndex?.completed || []),
+    last: visitIndex?.last || {},
+  }), [visitIndex]);
 
   const hasMore = patientsData && patientsData.length === PAGE_SIZE;
 
@@ -259,7 +283,7 @@ export default function Patients() {
     } else if (activeFilter === 'nodebt') {
       list = list.filter(p => (Number(p.total_debt) || 0) <= 0);
     } else if (activeFilter === 'new') {
-      list = list.filter(p => p.status === 'New' || p.status === 'Yangi');
+      list = list.filter(p => isNewPatient(p, visits));
     } else if (activeFilter === 'active') {
       list = list.filter(p => p.status === 'Active' || p.status === 'Faol');
     }
@@ -665,7 +689,7 @@ export default function Patients() {
                     </th>
 
                     {/* Actions */}
-                    <th className="w-24 px-3 py-2.5 text-center text-slate-500 whitespace-nowrap select-none">
+                    <th className="sticky right-0 z-20 w-28 min-w-[112px] px-3 py-2.5 text-center text-slate-500 whitespace-nowrap select-none bg-slate-100 shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.18)]">
                       {t('common.actions') || "Amallar"}
                     </th>
 
@@ -777,15 +801,15 @@ export default function Patients() {
 
                         {/* Last Visit Cell */}
                         <td className={`text-center text-slate-500 font-medium border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-3 px-2'}`}>
-                          {p.last_visit ? (
-                            <span className="font-mono text-[11px]">{new Date(p.last_visit).toLocaleDateString('uz-UZ')}</span>
+                          {lastVisitKey(p, visits) ? (
+                            <span className="font-mono text-[11px]">{formatDate(lastVisitKey(p, visits))}</span>
                           ) : (
                             <span className="text-slate-300">—</span>
                           )}
                         </td>
 
                         {/* Actions Cell */}
-                        <td className={`text-center whitespace-nowrap ${isCompact ? 'py-1 px-2' : 'py-2 px-2'}`}>
+                        <td className={`sticky right-0 z-10 text-center whitespace-nowrap bg-white group-hover:bg-[#e7f6f8] shadow-[-8px_0_8px_-8px_rgba(15,23,42,0.12)] ${isCompact ? 'py-1 px-2' : 'py-2 px-2'}`}>
                           <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
                             <button 
                               onClick={() => { prefetchPatientProfileChunk(); navigate(`/patients/${p.id}`); }}

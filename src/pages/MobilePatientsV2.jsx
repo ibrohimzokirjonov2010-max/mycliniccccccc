@@ -8,7 +8,8 @@ import {
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
-import { formatCurrency, capitalizeName } from '@/lib/utils';
+import { formatCurrency, capitalizeName, formatDate } from '@/lib/utils';
+import { buildVisitIndex, isNewPatient, lastVisitKey } from '@/lib/patientVisits';
 import NewPatientFlow from '@/components/patients/NewPatientFlow';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
@@ -31,6 +32,7 @@ export default function MobilePatientsV2() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [showFlow, setShowFlow] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
+  const [visitIndex, setVisitIndex] = useState({ completed: new Set(), last: {} });
 
   useEffect(() => {
     if (location.state?.openAddModal) {
@@ -60,8 +62,13 @@ export default function MobilePatientsV2() {
           String(p.created_by_id) === String(user.id)
         );
       } else {
-        data = await base44.entities.Patient.list('-created_date', 100);
+        data = await base44.entities.Patient.list('-created_date', 500);
       }
+      const [appts, plans] = await Promise.all([
+        base44.entities.Appointment.list('-date', 1000).catch(() => []),
+        base44.entities.TreatmentPlan.list('-created_date', 500).catch(() => []),
+      ]);
+      setVisitIndex(buildVisitIndex(appts, plans));
       setPatients(data || []);
       setTotalCount((data || []).length);
       hasLoadedInitial.current = true;
@@ -86,7 +93,9 @@ export default function MobilePatientsV2() {
   const filteredPatients = patients.filter(p => {
     const matchesSearch = p.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          p.phone?.includes(searchQuery);
-    const matchesStatus = filterStatus === 'all' || p.status === filterStatus;
+    const fresh = isNewPatient(p, visitIndex);
+    const matchesStatus = filterStatus === 'all'
+      || (filterStatus === 'New' ? fresh : filterStatus === 'Active' ? !fresh && p.status !== 'Inactive' : p.status === filterStatus);
     return matchesSearch && matchesStatus;
   });
 
@@ -142,8 +151,8 @@ export default function MobilePatientsV2() {
   );
 
   const totalDebt = patients.reduce((sum, p) => sum + (p.total_debt || 0), 0);
-  const activeCount = patients.filter(p => p.status === 'Active').length;
-  const newCount = patients.filter(p => p.status === 'New').length;
+  const newCount = patients.filter(p => isNewPatient(p, visitIndex)).length;
+  const activeCount = patients.length - newCount;
 
   return (
     <PullToRefresh onRefresh={loadPatients}>
@@ -229,7 +238,9 @@ export default function MobilePatientsV2() {
           ) : filteredPatients.length > 0 ? (
             <AnimatePresence mode="popLayout">
               {filteredPatients.map((patient, index) => {
-                const status = getStatusStyle(patient.status);
+                const fresh = isNewPatient(patient, visitIndex);
+                const status = getStatusStyle(fresh ? 'New' : (patient.status === 'New' || !patient.status ? 'Active' : patient.status));
+                const lastVisit = lastVisitKey(patient, visitIndex);
                 const hasDebt = patient.total_debt > 0;
                 return (
                   <motion.div
@@ -273,7 +284,7 @@ export default function MobilePatientsV2() {
                          <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-50 rounded border border-slate-100">
                             <Calendar className="w-2.5 h-2.5 text-slate-400" />
                             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
-                              {new Date(patient.created_at || patient.created_date).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                              {lastVisit ? formatDate(lastVisit) : 'Tashrif yo\'q'}
                             </span>
                          </div>
                          <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-50 rounded border border-slate-100">
