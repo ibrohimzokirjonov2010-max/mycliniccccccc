@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft, Phone, Calendar, Plus, Info, Camera, Copy, Mail, Wallet, AlertTriangle
 } from 'lucide-react';
@@ -144,6 +144,26 @@ export default function ChairsidePatientProfile({
 
   const [clinicalTab, setClinicalTab] = useState('tashxis');
 
+  useEffect(() => {
+    const header = document.querySelector('[data-chairside-header]');
+    if (!header) return undefined;
+    const scroller = header.closest('main');
+    const apply = () => {
+      const height = Math.ceil(header.getBoundingClientRect().height);
+      document.documentElement.style.setProperty('--chairside-header-h', `${height}px`);
+      if (scroller) scroller.style.scrollPaddingTop = `${height + 12}px`;
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(header);
+    window.addEventListener('resize', apply);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', apply);
+      if (scroller) scroller.style.scrollPaddingTop = '';
+    };
+  }, []);
+
   const planRemainingTotal = useMemo(() => {
     return (plans || []).reduce((sum, p) => {
       const st = (p.status || '').toLowerCase();
@@ -264,9 +284,9 @@ export default function ChairsidePatientProfile({
         </div>
       </div>
 
-      <div className="max-w-[1680px] mx-auto p-3 sm:p-4 lg:p-5 space-y-3.5">
+      <div className="chairside-sheet max-w-[1680px] mx-auto p-3 sm:p-4 lg:p-5 space-y-3.5">
         <div className="flex flex-col xl:flex-row gap-3.5 items-start">
-          <div className="w-full xl:w-[252px] shrink-0">
+          <div className="chairside-profile-column w-full xl:w-[252px] shrink-0">
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 flex flex-col gap-3.5 sticky top-[9.5rem]">
               <div className="flex flex-col items-center text-center">
                 <div

@@ -841,8 +841,8 @@ export default function ToothChartCard({
             </div>
           )}
 
-          <div className={cn('mt-2', phone && 'chip-rail')}>
-            <div className={cn(phone ? 'chip-rail-scroll' : 'flex flex-wrap gap-1.5')}>
+          <div className={cn('tooth-legend mt-2', phone && 'chip-rail')}>
+            <div className={cn(phone ? 'chip-rail-scroll' : 'tooth-legend-row flex flex-wrap gap-1.5')}>
               {LEGEND.map((k) => (
                 <span key={k.id} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600">
                   <i className="h-2 w-2 rounded-sm" style={{ background: k.color }} />

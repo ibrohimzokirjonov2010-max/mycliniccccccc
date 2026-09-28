@@ -761,9 +761,51 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
   container-name: tootharch;
   min-width: 0;
 }
-@media (min-width: 1280px) {
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .chairside-profile-column {
+    display: none;
+  }
+  main:has(.chairside-sheet) {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .chairside-sheet {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .tooth-chart-grid {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+  .tooth-chart-root .odonto-cross {
+    --odonto-pad: 12px;
+    --odonto-label-inset: 2px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .tooth-legend-row {
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  .tooth-legend-row > span {
+    padding: 2px 5px;
+    font-size: 10px;
+    gap: 4px;
+    white-space: nowrap;
+  }
+}
+@media (min-width: 1440px) {
   .tooth-chart-grid {
     grid-template-columns: minmax(0, 1fr) minmax(220px, 248px);
+  }
+}
+@media (min-width: 1280px) {
+  [data-tooth-chart="chairside"] {
+    position: sticky;
+    top: calc(var(--chairside-header-h, 148px) + 8px);
+    max-height: calc(100svh - var(--chairside-header-h, 148px) - 4.75rem);
+    overflow: auto;
+    z-index: 20;
+    scroll-margin-top: calc(var(--chairside-header-h, 148px) + 12px);
   }
 }
 @container tootharch (max-width: 640px) {
