@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity, FileText, Image as ImageIcon,
-  Loader2, Save, Trash2, Upload, X, ZoomIn
+  Loader2, Trash2, Upload, X, ZoomIn
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
@@ -10,7 +10,6 @@ import {
   buildNotesWithClinical,
   consentTemplateText,
   consentTemplateTitle,
-  createClinicalEntry,
   parseClinicalChart,
   parseConsent,
   toDisplayDate,
@@ -55,7 +54,8 @@ export function ChairsideClinicalTabBar({ activeTab, onChange, language = 'uz', 
 }
 
 /**
- * Chairside clinical tools: structured diagnosis, RVG/x-ray gallery+lightbox, informed consent.
+ * Chairside clinical tools: RVG/x-ray gallery+lightbox and informed consent.
+ * Stored clinical-chart entries stay in patient.notes and are passed through on consent save.
  * Persists clinical/consent into patient.notes via [CLINICAL_CHART_V1] / [CONSENT_V1] markers.
  * X-rays use existing Xray entity (+ optional tooth filter from odontogram selection).
  */
@@ -82,14 +82,6 @@ export default function ChairsideClinicalTools({
   };
   const [clinical, setClinical] = useState(() => parseClinicalChart(patient?.notes));
   const [consent, setConsent] = useState(() => parseConsent(patient?.notes));
-  const [form, setForm] = useState({
-    diagnosis: '',
-    code: '',
-    procedure: '',
-    materials: '',
-    complications: '',
-  });
-  const [savingClinical, setSavingClinical] = useState(false);
   const [savingConsent, setSavingConsent] = useState(false);
 
   const [xrays, setXrays] = useState([]);
@@ -133,45 +125,6 @@ export default function ChairsideClinicalTools({
     onPatientUpdated?.(updated || { ...patient, notes });
     return notes;
   }, [patientId, patient, onPatientUpdated]);
-
-  const handleSaveEntry = async () => {
-    if (!form.diagnosis.trim() && !form.procedure.trim()) {
-      toast.error(language === 'ru' ? 'Диагноз или процедура обязательны' : 'Tashxis yoki muolaja majburiy');
-      return;
-    }
-    setSavingClinical(true);
-    try {
-      const entry = createClinicalEntry({
-        ...form,
-        tooth: selectedTooth ? String(selectedTooth) : null,
-      });
-      const next = { entries: [entry, ...(clinical.entries || [])] };
-      await persistNotes(next, consent);
-      setClinical(next);
-      setForm({ diagnosis: '', code: '', procedure: '', materials: '', complications: '' });
-      toast.success(language === 'ru' ? 'Клиническая запись сохранена' : 'Klinik yozuv saqlandi');
-    } catch (err) {
-      console.error(err);
-      toast.error(language === 'ru' ? 'Не удалось сохранить' : 'Saqlashda xatolik');
-    } finally {
-      setSavingClinical(false);
-    }
-  };
-
-  const handleDeleteEntry = async (id) => {
-    setSavingClinical(true);
-    try {
-      const next = { entries: (clinical.entries || []).filter((e) => e.id !== id) };
-      await persistNotes(next, consent);
-      setClinical(next);
-      toast.success(language === 'ru' ? 'Удалено' : "O'chirildi");
-    } catch (err) {
-      console.error(err);
-      toast.error(language === 'ru' ? 'Ошибка удаления' : "O'chirishda xatolik");
-    } finally {
-      setSavingClinical(false);
-    }
-  };
 
   const handleSaveConsent = async () => {
     const dateDisplay = consent.date_display || toDisplayDate(consent.date);
@@ -250,26 +203,21 @@ export default function ChairsideClinicalTools({
   };
 
   const label = {
-    clinical: language === 'ru' ? 'Клиническая запись' : language === 'en' ? 'Clinical note' : 'Klinik yozuv / tashxis',
-    diagnosis: language === 'ru' ? 'Диагноз' : 'Tashxis',
-    code: language === 'ru' ? 'Код (опц.)' : 'Kod (ixtiyoriy)',
-    procedure: language === 'ru' ? 'Процедура' : 'Muolaja',
-    materials: language === 'ru' ? 'Материалы' : 'Materiallar',
-    complications: language === 'ru' ? 'Осложнения' : 'Asoratlar',
-    save: language === 'ru' ? 'Сохранить' : 'Saqlash',
     xray: language === 'ru' ? 'Рентген / RVG' : 'Rentgen / RVG',
     consent: language === 'ru' ? 'Информированное согласие' : 'Informed consent / Rozilik',
-    consentNote: language === 'ru' ? 'Примечание' : 'Izoh',
-    given: language === 'ru' ? 'Пациент дал согласие' : 'Bemor rozilik berdi',
   };
 
   const showAll = !tabbed;
-  const showTashxis = showAll || activeTab === 'tashxis';
   const showRvg = showAll || activeTab === 'rvg';
   const showRozilik = showAll || activeTab === 'rozilik';
+  const tashxisOnly = tabbed && activeTab === 'tashxis';
+
+  if (tashxisOnly && hideTabBar) {
+    return <div id="chairside-clinical-tools" className="hidden" />;
+  }
 
   return (
-    <div id="chairside-clinical-tools" className="space-y-2.5 scroll-mt-24">
+    <div id="chairside-clinical-tools" className={cn('scroll-mt-24', !tashxisOnly && 'space-y-2.5')}>
       {tabbed && !hideTabBar && (
         <ChairsideClinicalTabBar
           activeTab={activeTab}
@@ -279,122 +227,8 @@ export default function ChairsideClinicalTools({
         />
       )}
 
-    <div className={cn('grid gap-3.5', compact || tabbed ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-3')}>
-      {/* A) Structured clinical note */}
-      <section
-        id="chairside-clinical-tashxis"
-        className={cn(
-          'bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 space-y-3 scroll-mt-36',
-          !showTashxis && 'hidden'
-        )}
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center">
-            <Activity className="w-4 h-4" style={{ color: TEAL }} />
-          </div>
-          <div>
-            <h3 className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-900">{label.clinical}</h3>
-            {selectedTooth && (
-              <p className="text-[10px] font-bold text-teal-700">Tish #{selectedTooth}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <label className="space-y-1 sm:col-span-2">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">{label.diagnosis}</span>
-            <textarea
-              rows={2}
-              value={form.diagnosis}
-              onChange={(e) => setForm((f) => ({ ...f, diagnosis: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium placeholder:text-slate-400 placeholder:italic placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 resize-none"
-              placeholder="masalan: surunkali pulpitis #26"
-            />
-          </label>
-          <label className="space-y-1">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">{label.code}</span>
-            <input
-              value={form.code}
-              onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-mono font-semibold placeholder:text-slate-400 placeholder:italic placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
-              placeholder="masalan: K04.0"
-            />
-          </label>
-          <label className="space-y-1">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">{label.procedure}</span>
-            <input
-              value={form.procedure}
-              onChange={(e) => setForm((f) => ({ ...f, procedure: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium placeholder:text-slate-400 placeholder:italic placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
-              placeholder="masalan: endo / plomba / ekstraksiya"
-            />
-          </label>
-          <label className="space-y-1">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">{label.materials}</span>
-            <input
-              value={form.materials}
-              onChange={(e) => setForm((f) => ({ ...f, materials: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium placeholder:text-slate-400 placeholder:italic placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
-              placeholder="masalan: AH Plus, gutta-percha"
-            />
-          </label>
-          <label className="space-y-1">
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">{label.complications}</span>
-            <input
-              value={form.complications}
-              onChange={(e) => setForm((f) => ({ ...f, complications: e.target.value }))}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium placeholder:text-slate-400 placeholder:italic placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
-              placeholder="Yo'q / qon ketishi..."
-            />
-          </label>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleSaveEntry}
-          disabled={savingClinical}
-          className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-xs font-black uppercase tracking-wider transition-all hover:opacity-95 disabled:opacity-60"
-          style={{ backgroundColor: TEAL }}
-        >
-          {savingClinical ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-          {label.save}
-        </button>
-
-        <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
-          {(clinical.entries || []).slice(0, 8).map((entry) => (
-            <div key={entry.id} className="rounded-xl border border-slate-100 bg-slate-50/80 p-2.5 relative group">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-xs font-black text-slate-900 truncate">
-                    {entry.diagnosis || entry.procedure || '—'}
-                    {entry.code ? <span className="ml-1 font-mono text-teal-700 font-bold">[{entry.code}]</span> : null}
-                  </p>
-                  <p className="text-[10px] text-slate-500 font-semibold mt-0.5 truncate">
-                    {entry.procedure || '—'}
-                    {entry.tooth ? ` · #${entry.tooth}` : ''}
-                    {entry.materials ? ` · ${entry.materials}` : ''}
-                  </p>
-                  {entry.complications ? (
-                    <p className="text-[10px] text-amber-700 font-bold mt-0.5">⚠ {entry.complications}</p>
-                  ) : null}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteEntry(entry.id)}
-                  className="p-1 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                  title="O'chirish"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-          {(clinical.entries || []).length === 0 && (
-            <p className="text-[11px] text-slate-400 font-semibold text-center py-3">Hali klinik yozuv yo'q</p>
-          )}
-        </div>
-      </section>
-
+    {!tashxisOnly && (
+    <div className={cn('grid gap-3.5', compact || tabbed ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-2')}>
       {/* B) X-ray / RVG gallery */}
       <section
         id="chairside-clinical-rvg"
@@ -510,6 +344,7 @@ export default function ChairsideClinicalTools({
         </div>
       )}
     </div>
+    )}
     </div>
   );
 }
