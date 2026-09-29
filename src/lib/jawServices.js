@@ -97,6 +97,15 @@ export function jawLegendKind(family) {
   return 'protez';
 }
 
+/** Scope comes from the service line. A both-jaws plan name mentions both jaws. */
+export function jawMarkForService(service, plan) {
+  const line = `${service?.service_name || ''} ${service?.name || ''} ${service?.tooth_number || ''}`;
+  const scope = jawScopeFromLabel(line);
+  const family = jawFamily(line);
+  if (!scope || !family) return null;
+  return { scope, family, planId: plan?.id || '' };
+}
+
 export function expandJawToothNumbers(jaw) {
   const side = jaw === 'lower' ? 'lower' : 'upper';
   return [...ADULT_JAW_TEETH[side], ...CHILD_JAW_TEETH[side]];

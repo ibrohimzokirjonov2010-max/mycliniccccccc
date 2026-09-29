@@ -15,13 +15,12 @@ import JawChoice from '@/components/patients/JawChoice';
 import {
   buildJawPlanLines,
   expandJawToothNumbers,
-  jawFamily,
   jawFamilyTitle,
   jawFromFdi,
   jawIllustration,
   jawLegendKind,
+  jawMarkForService,
   jawPlanTotal,
-  jawScopeFromLabel,
   priceForJawService,
 } from '@/lib/jawServices';
 
@@ -244,8 +243,9 @@ function collectEntries(plans, implants, toothRecords) {
   (plans || []).forEach((plan) => {
     flattenPlanServices(plan).forEach((svc) => {
       const blob = `${svc.service_name || ''} ${svc.name || ''} ${plan.name || ''} ${svc.category || ''} ${plan.category || ''} ${svc.tooth_number || ''}`;
-      const jawScope = jawScopeFromLabel(blob);
-      const jawKind = jawScope ? jawFamily(blob) : null;
+      const jawMark = jawMarkForService(svc, plan);
+      const jawScope = jawMark?.scope || null;
+      const jawKind = jawMark?.family || null;
       const illustration = jawKind ? jawIllustration(jawKind) : matchIllustrationKind(blob, svc.category || plan.category);
       const kind = jawKind ? jawLegendKind(jawKind) : legendOf(illustration);
       const entry = {

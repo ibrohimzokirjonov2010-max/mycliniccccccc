@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalizeOncePricedPlan, onceGroupKind, staleEncodedOnceTotal, toothGroupBilling, toothGroupCharge, withOncePricing } from '../src/lib/toothPlanCharge.js';
-import { buildJawPlanLines, expandJawToothNumbers, jawFamily, jawPlanTotal } from '../src/lib/jawServices.js';
+import { buildJawPlanLines, expandJawToothNumbers, jawFamily, jawMarkForService, jawPlanTotal } from '../src/lib/jawServices.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -52,6 +52,11 @@ assert(upperOnly.length === 1 && jawPlanTotal(upperOnly) === 7000000, 'upper jaw
 assert(buildJawPlanLines('babochka', 'upper', []).length === 1, 'babochka still makes one jaw line');
 assert(jawPlanTotal(buildJawPlanLines('babochka', 'both', [])) === 0, 'babochka has no catalog price');
 assert(jawPlanTotal(buildJawPlanLines('protez', 'upper', [{ name: 'olinadigan protez', price: 1200000 }])) === 1200000, 'full denture reuses olinadigan protez');
+const lowerLine = jawMarkForService(
+  { service_name: "Breket — pastki jag'", tooth_number: "Pastki jag'" },
+  { name: "Breket — tepa jag', Breket — pastki jag'" },
+);
+assert(lowerLine && lowerLine.scope === 'lower' && lowerLine.family === 'breket', 'a both-jaws plan name does not hide the lower line');
 
 const multiplied = {
   name: 'Breket tizimi',
