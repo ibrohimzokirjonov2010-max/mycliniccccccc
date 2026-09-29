@@ -11,6 +11,19 @@ import { getToothIllustrationSrc, matchIllustrationKind } from '@/utils/toothIll
 import { displayServiceName, formatDoctorName } from '@/lib/displayText';
 import { implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
 import { toothGroupBilling, toothGroupCharge, withOncePricing } from '@/lib/toothPlanCharge';
+import JawChoice from '@/components/patients/JawChoice';
+import {
+  buildJawPlanLines,
+  expandJawToothNumbers,
+  jawFamily,
+  jawFamilyTitle,
+  jawFromFdi,
+  jawIllustration,
+  jawLegendKind,
+  jawPlanTotal,
+  jawScopeFromLabel,
+  priceForJawService,
+} from '@/lib/jawServices';
 
 const ADULT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
 const ADULT_LOWER = [38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
@@ -25,6 +38,8 @@ const LEGEND = [
   { id: 'implant', label: 'Implant', color: '#64748B' },
   { id: 'missing', label: 'Olib tashlangan', color: '#94A3B8' },
   { id: 'breket', label: 'Breket', color: '#DB2777' },
+  { id: 'protez', label: 'Protez', color: '#0F766E' },
+  { id: 'babochka', label: 'Babochka', color: '#C2410C' },
 ];
 
 const QUICK = [
@@ -34,7 +49,9 @@ const QUICK = [
   { id: 'sirkon', label: 'Toj / sirkon', service: 'Sirkon toj' },
   { id: 'implant', label: 'Implant', service: 'Implant' },
   { id: 'missing', label: 'Olib tashlash', service: 'Tish olish' },
-  { id: 'breket', label: 'Breket', service: 'Breket tizimi' },
+  { id: 'breket', label: 'Breket', service: 'Breket', jaw: 'breket' },
+  { id: 'protez', label: 'Protez', service: 'Protez', jaw: 'protez' },
+  { id: 'babochka', label: 'Babochka', service: 'Babochka protez', jaw: 'babochka' },
 ];
 
 const KIND_COLOR = Object.fromEntries(LEGEND.map((k) => [k.id, k.color]));
@@ -226,10 +243,12 @@ function collectEntries(plans, implants, toothRecords) {
 
   (plans || []).forEach((plan) => {
     flattenPlanServices(plan).forEach((svc) => {
-      const blob = `${svc.service_name || ''} ${svc.name || ''} ${plan.name || ''} ${svc.category || ''} ${plan.category || ''}`;
-      const illustration = matchIllustrationKind(blob, svc.category || plan.category);
-      const kind = legendOf(illustration);
-      add(svc.tooth_number || plan.tooth_number, {
+      const blob = `${svc.service_name || ''} ${svc.name || ''} ${plan.name || ''} ${svc.category || ''} ${plan.category || ''} ${svc.tooth_number || ''}`;
+      const jawScope = jawScopeFromLabel(blob);
+      const jawKind = jawScope ? jawFamily(blob) : null;
+      const illustration = jawKind ? jawIllustration(jawKind) : matchIllustrationKind(blob, svc.category || plan.category);
+      const kind = jawKind ? jawLegendKind(jawKind) : legendOf(illustration);
+      const entry = {
         kind,
         illustration: illustration || kind,
         done: serviceIsDone(svc, plan),
@@ -241,7 +260,15 @@ function collectEntries(plans, implants, toothRecords) {
         servicePath: svc.path,
         surfaces: parseSurfaces(`${svc.notes || ''} ${plan.notes || ''}`),
         notes: svc.notes || '',
-      });
+      };
+      if (jawScope && jawKind) {
+        const chargeKey = `${plan.id || ''}:${entry.name}:${jawScope}`;
+        expandJawToothNumbers(jawScope).forEach((fdi) => {
+          add(fdi, { ...entry, chargeKey });
+        });
+        return;
+      }
+      add(svc.tooth_number || plan.tooth_number, entry);
     });
   });
 
@@ -295,7 +322,7 @@ function primaryEntry(entries, filter) {
     return true;
   });
   if (!list.length) return null;
-  const rank = { implant: 8, missing: 7, breket: 6, sirkon: 5, endo: 4, plomba: 3, caries: 2 };
+  const rank = { implant: 8, missing: 7, breket: 6, babochka: 6, protez: 6, sirkon: 5, endo: 4, plomba: 3, caries: 2 };
   return [...list].sort((a, b) => (rank[b.kind] || 0) - (rank[a.kind] || 0))[0];
 }
 
@@ -332,6 +359,7 @@ export default function ToothChartCard({
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [jawPrompt, setJawPrompt] = useState(null);
   const [xrays, setXrays] = useState([]);
   const [viewer, setViewer] = useState(null);
   const archScrollRef = useRef(null);
@@ -400,13 +428,20 @@ export default function ToothChartCard({
     let done = 0;
     let planned = 0;
     let plannedSum = 0;
+    const seenCharges = new Set();
     teeth.forEach((fdi) => {
       const list = byTooth[fdi] || [];
       if (list.some((e) => e.done)) done += 1;
       const open = list.filter((e) => !e.done);
       if (open.length) {
         planned += 1;
-        plannedSum += open.reduce((s, e) => s + (Number(e.price) || 0), 0);
+        open.forEach((entry) => {
+          if (entry.chargeKey) {
+            if (seenCharges.has(entry.chargeKey)) return;
+            seenCharges.add(entry.chargeKey);
+          }
+          plannedSum += Number(entry.price) || 0;
+        });
       }
     });
     const dateKey = (value) => {
@@ -618,6 +653,65 @@ export default function ToothChartCard({
       toast.success('Rejaga qo‘shildi');
       setNoteOpen(false);
       setNoteText('');
+      if (onReload) await onReload();
+    } catch (err) {
+      console.error(err);
+      toast.error('Rejani saqlab bo‘lmadi');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openJawPrompt = (family, fdi) => {
+    setJawPrompt({
+      family,
+      title: jawFamilyTitle(family),
+      preset: jawFromFdi(fdi),
+    });
+  };
+
+  const createJawPlan = async (family, choice) => {
+    if (!patient?.id || patient.id === 'patient-y2ii8ynf2') return;
+    const doc = doctorFields();
+    if (!doc.doctor_id) {
+      toast.error('Shifokor tanlanmagan');
+      return;
+    }
+    const lines = buildJawPlanLines(family, choice, services);
+    const total = jawPlanTotal(lines);
+    const labels = lines.map((line) => line.tooth_number).join(', ');
+    setBusy(true);
+    try {
+      const created = await base44.entities.TreatmentPlan.create({
+        patient_id: patient.id,
+        patient_name: patient.full_name || '',
+        ...doc,
+        status: 'planned',
+        priority: 'medium',
+        tooth_number: labels,
+        name: lines.map((line) => line.service_name).join(', '),
+        services: lines,
+        total_price: total,
+        discount_percent: 0,
+        discount_amount: 0,
+        notes: `Davolash rejasi: ${labels}`,
+      });
+      if (total > 0 && created?.id) {
+        await base44.entities.Payment.create({
+          patient_id: patient.id,
+          patient_name: patient.full_name || '',
+          doctor_id: doc.doctor_id,
+          type: 'Debt',
+          category: `Reja: ${labels}`,
+          amount: total,
+          method: '—',
+          date: new Date().toISOString().split('T')[0],
+          notes: `Linked to Plan: ${created.id}`,
+        });
+        await syncPatientBalance(patient.id);
+      }
+      toast.success('Rejaga qo‘shildi');
+      setJawPrompt(null);
       if (onReload) await onReload();
     } catch (err) {
       console.error(err);
@@ -987,7 +1081,7 @@ export default function ToothChartCard({
                 <button type="button" onClick={() => setSelected([])} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Bekor qilish</button>
                 <button type="button" disabled={busy} onClick={() => createPlan(selected, 'Bir xil davolash', 'plomba', 'each')} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Bir xil davolash</button>
                 <button type="button" disabled={busy} onClick={() => createPlan(selected, "Ko‘prik (protez)", 'sirkon', 'once')} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Ko‘prik (protez)</button>
-                <button type="button" disabled={busy} onClick={() => createPlan(selected, 'Breket tizimi', 'breket', 'once')} className="h-8 rounded-lg bg-pink-600 px-2 text-xs font-bold">Breket qo‘yish</button>
+                <button type="button" disabled={busy} onClick={() => openJawPrompt('breket', selected[0])} className="h-8 rounded-lg bg-pink-600 px-2 text-xs font-bold">Breket — jag'</button>
               </span>
             </div>
           )}
@@ -1011,11 +1105,14 @@ export default function ToothChartCard({
             setNoteText={setNoteText}
             setNoteOpen={setNoteOpen}
             onClose={() => { setActive(null); setSelected([]); }}
-            onQuick={(item) => createPlan([active], item.service, item.id)}
+            onQuick={(item) => (item.jaw ? openJawPrompt(item.jaw, active) : createPlan([active], item.service, item.id))}
             onNote={() => createPlan([active], noteText.trim() || 'Izoh', '')}
             onGroup={() => {
+              if (groupAction === 'breket') {
+                openJawPrompt('breket', selected[0]);
+                return;
+              }
               const map = {
-                breket: ['Breket tizimi', 'breket', 'once'],
                 bridge: ["Ko‘prik (protez)", 'sirkon', 'once'],
                 same: ['Bir xil davolash', 'plomba', 'each'],
                 implant: ['Implant', 'implant', 'each'],
@@ -1024,7 +1121,12 @@ export default function ToothChartCard({
               createPlan(selected, name, kind, billing);
             }}
             doctorName={doctorLabel}
-            unitPrice={catalogPrice(({ breket: 'Breket tizimi', bridge: "Ko‘prik (protez)", same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
+            unitPrice={groupAction === 'breket'
+              ? priceForJawService(services, 'breket', 'upper')
+              : catalogPrice(({ bridge: "Ko‘prik (protez)", same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
+            jawPrompt={jawPrompt}
+            onJawChoose={(choice) => jawPrompt && createJawPlan(jawPrompt.family, choice)}
+            onJawClose={() => setJawPrompt(null)}
             onUpload={uploadXray}
             onView={setViewer}
             onAddToPlan={() => createPlan([active], activeEntry?.name || 'Davolash', activeEntry?.kind || '')}
@@ -1054,11 +1156,14 @@ export default function ToothChartCard({
             setNoteText={setNoteText}
             setNoteOpen={setNoteOpen}
             onClose={() => { setActive(null); setSelected([]); }}
-            onQuick={(item) => createPlan([active], item.service, item.id)}
+            onQuick={(item) => (item.jaw ? openJawPrompt(item.jaw, active) : createPlan([active], item.service, item.id))}
             onNote={() => createPlan([active], noteText.trim() || 'Izoh', '')}
             onGroup={() => {
+              if (groupAction === 'breket') {
+                openJawPrompt('breket', selected[0]);
+                return;
+              }
               const map = {
-                breket: ['Breket tizimi', 'breket', 'once'],
                 bridge: ["Ko‘prik (protez)", 'sirkon', 'once'],
                 same: ['Bir xil davolash', 'plomba', 'each'],
                 implant: ['Implant', 'implant', 'each'],
@@ -1067,7 +1172,12 @@ export default function ToothChartCard({
               createPlan(selected, name, kind, billing);
             }}
             doctorName={doctorLabel}
-            unitPrice={catalogPrice(({ breket: 'Breket tizimi', bridge: "Ko‘prik (protez)", same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
+            unitPrice={groupAction === 'breket'
+              ? priceForJawService(services, 'breket', 'upper')
+              : catalogPrice(({ bridge: "Ko‘prik (protez)", same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
+            jawPrompt={jawPrompt}
+            onJawChoose={(choice) => jawPrompt && createJawPlan(jawPrompt.family, choice)}
+            onJawClose={() => setJawPrompt(null)}
             onUpload={uploadXray}
             onView={setViewer}
             onAddToPlan={() => createPlan([active], activeEntry?.name || 'Davolash', activeEntry?.kind || '')}
@@ -1172,6 +1282,7 @@ function SidePanel(props) {
     surfaces, toggleSurface, history, toothXrays, busy, noteOpen, noteText,
     setNoteText, setNoteOpen, onClose, onQuick, onNote, onGroup, onUpload, onView,
     doctorName, unitPrice, onAddToPlan, onNewRecord,
+    jawPrompt, onJawChoose, onJawClose,
   } = props;
   const [showAllHistory, setShowAllHistory] = useState(false);
   useEffect(() => { setShowAllHistory(false); }, [active]);
@@ -1233,13 +1344,22 @@ function SidePanel(props) {
         </div>
       </div>
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+        {jawPrompt && (
+          <JawChoice
+            title={jawPrompt.title}
+            preset={jawPrompt.preset}
+            busy={busy}
+            onChoose={onJawChoose}
+            onClose={onJawClose}
+          />
+        )}
         {!active && !group && (
           <p className="rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center text-xs font-semibold text-slate-400">Tishni tanlang</p>
         )}
         {group && (
           <div className="space-y-1.5">
             {[
-              ['breket', '#DB2777', 'Breket tizimi', 'Tanlangan tishlarga breket'],
+              ['breket', '#DB2777', 'Breket', "Butun jag' — bir marta"],
               ['bridge', '#CA8A04', "Ko‘prik (protez)", 'Tayanch va oraliq tishlar'],
               ['same', '#2563EB', 'Bir xil davolash', 'Bitta reja, har bir tishga'],
               ['implant', '#64748B', 'Implantlar seriyasi', 'Har bir tishga implant'],

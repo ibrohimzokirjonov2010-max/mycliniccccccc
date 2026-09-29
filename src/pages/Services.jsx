@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { cn, cn as classNames } from '@/lib/utils';
 import { base44, DEFAULT_SERVICES_DATA } from '@/api/base44Client';
+import { ensureJawCatalog } from '@/lib/jawServices';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -444,6 +445,15 @@ export default function Services() {
             }
           }
         }
+      }
+
+      try {
+        const createdJaws = await ensureJawCatalog(base44.entities.Service, rawList);
+        createdJaws.forEach((row) => {
+          if (row?.name) rawList.push({ ...row, category: row.category });
+        });
+      } catch (err) {
+        console.error('Jaw catalog seed failed:', err);
       }
 
       // De-duplicate services by name only (case-insensitive, trimmed)

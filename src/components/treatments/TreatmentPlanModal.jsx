@@ -18,6 +18,20 @@ import PatientSelect from '../patients/PatientSelect';
 import { cn, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
 import { pickIllustrationKindFromServices } from '@/utils/toothIllustration';
 import { paymentsForPlan } from '@/lib/treatmentDelete';
+import JawChoice from '@/components/patients/JawChoice';
+import {
+  applyJawChoice,
+  collectJawRows,
+  expandJawToothNumbers,
+  isJawStorageKey,
+  jawFamily,
+  jawFamilyTitle,
+  jawFromFdi,
+  jawIllustration,
+  jawScopeFromLabel,
+  jawServiceSelected,
+  toothSlotLabel,
+} from '@/lib/jawServices';
 
 const idToFdi = (idStr) => {
   if (!idStr) return '';
@@ -132,7 +146,9 @@ const CategoryAccordion = ({ title, services, activeTooth, toothData, toggleServ
       {open && (
         <div className="p-1 space-y-1 divide-y divide-slate-50">
           {services.map(svc => {
-            const hasIt = activeTooth !== null && (toothData[activeTooth]?.services || []).some(s => s.service_id === svc.id);
+            const hasIt = jawFamily(svc.name)
+              ? jawServiceSelected(svc, toothData)
+              : activeTooth !== null && (toothData[activeTooth]?.services || []).some(s => s.service_id === svc.id);
             return (
               <button
                 key={svc.id}
@@ -200,6 +216,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   const [selectedTeeth, setSelectedTeeth] = useState([]);
   const [toothData, setToothData] = useState({});
   const [activeTooth, setActiveTooth] = useState(null);
+  const [jawPrompt, setJawPrompt] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [serviceSearch, setServiceSearch] = useState('');
   const [discount, setDiscount] = useState(0); 
@@ -426,6 +443,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
     });
 
     Object.entries(toothData || {}).forEach(([tId, data]) => {
+      if (isJawStorageKey(tId)) return;
       const servicesList = data?.services || [];
       if (!servicesList.length) return;
 
@@ -475,6 +493,23 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       };
     });
 
+    ['upper', 'lower'].forEach((jaw) => {
+      const lines = collectJawRows({ [jaw === 'lower' ? '__jaw_lower' : '__jaw_upper']: toothData[jaw === 'lower' ? '__jaw_lower' : '__jaw_upper'] });
+      if (!lines.length) return;
+      const family = jawFamily(lines[0].service_name || lines[0].name);
+      expandJawToothNumbers(jaw).forEach((fdi) => {
+        const internalId = fdiToInternal(String(fdi));
+        if (!internalId || statuses[internalId]?.status === 'extracted') return;
+        statuses[internalId] = {
+          ...(statuses[internalId] || {}),
+          status: statuses[internalId]?.status || 'planned',
+          illustrationKind: family ? jawIllustration(family) : statuses[internalId]?.illustrationKind,
+          preferLastIllustration: true,
+          serviceName: lines.map((line) => line.service_name).join(', '),
+        };
+      });
+    });
+
     return statuses;
   }, [toothData, removedToothFdis]);
 
@@ -506,6 +541,26 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   }, [services, selectedCategory, serviceSearch]);
 
   const toggleService = (toothNum, svc) => {
+    if (isJawStorageKey(toothNum)) {
+      setToothData(prev => ({
+        ...prev,
+        [toothNum]: {
+          ...(prev[toothNum] || {}),
+          services: (prev[toothNum]?.services || []).filter(s => s.service_id !== svc.id),
+        },
+      }));
+      return;
+    }
+    const family = jawFamily(svc?.name || svc?.service_name);
+    if (family) {
+      const namedScope = jawScopeFromLabel(svc?.name || svc?.service_name);
+      setJawPrompt({
+        family,
+        title: jawFamilyTitle(family),
+        preset: namedScope || jawFromFdi(idToFdi(toothNum || activeTooth)),
+      });
+      return;
+    }
     const targets = isBulkMode ? selectedTeeth : [toothNum].filter(Boolean);
     if (targets.length === 0) return;
     const blockedTargets = targets.filter(isRemovedTooth);
@@ -541,6 +596,12 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       });
       return next;
     });
+  };
+
+  const confirmJawChoice = (choice) => {
+    if (!jawPrompt?.family) return;
+    setToothData(prev => applyJawChoice(prev, jawPrompt.family, choice, services));
+    setJawPrompt(null);
   };
 
   const removeService = (toothNum, svcId) => {
@@ -605,9 +666,16 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
     }
     setSaving(true);
     try {
-      const allSvcs = Object.entries(toothData).flatMap(([tId, td]) => 
-        td.services.map(s => ({ ...s, tooth: tId === '' ? 'general' : tId }))
-      );
+      const jawRows = collectJawRows(toothData);
+      const allSvcs = [
+        ...Object.entries(toothData).flatMap(([tId, td]) => {
+          if (isJawStorageKey(tId)) return [];
+          return (td.services || []).map(s => ({ ...s, tooth: tId === '' ? 'general' : tId }));
+        }),
+        ...jawRows.map(s => ({ ...s, tooth: s.tooth_number })),
+      ];
+      const jawLabels = jawRows.map(row => row.tooth_number).filter(Boolean);
+      const scopeLabel = [...selectedTeeth.map(idToFdi), ...jawLabels].filter(Boolean).join(', ');
       const effectiveInstallmentServiceKeys = isInstallment && installmentServiceKeys.length === 0
         ? allSelectedServices.map(s => s.key)
         : installmentServiceKeys;
@@ -620,12 +688,12 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
         doctor_name: selectedDoc?.name || selectedDoc?.full_name || '',
         status: 'planned',
         priority: 'medium',
-        tooth_number: selectedTeeth.map(idToFdi).join(', '),
+        tooth_number: scopeLabel,
         services: allSvcs,
         total_price: Math.floor(rawTotal * (1 - discount / 100)),
         discount_percent: discount,
         discount_amount: Math.floor(rawTotal * discount / 100),
-        notes: `Davolash rejasi: ${selectedTeeth.map(idToFdi).join(', ')} tishlar`,
+        notes: `Davolash rejasi: ${scopeLabel}`,
         installment_plan: isInstallment ? {
           months: installmentMonths,
           advance_payment: installmentAdvance,
@@ -637,7 +705,10 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
         } : null
       };
 
-      const compactName = formatDepartmentPlanName(allSvcs, selectedTeeth);
+      const jawOnly = jawRows.length > 0 && jawRows.length === allSvcs.length;
+      const compactName = jawOnly
+        ? jawRows.map(row => row.service_name).join(', ')
+        : formatDepartmentPlanName(allSvcs, selectedTeeth);
       const proposedName = (compactName || 'Davolash rejasi').trim();
 
       // Duplicate plan check: if creating a new plan, ensure no active plan with the same name exists
@@ -686,7 +757,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
           await base44.entities.Payment.update(debtPayment.id, {
             amount: finalTotal,
             doctor_id: doctorId,
-            category: `Reja yangilandi: ${selectedTeeth.map(idToFdi).join(', ')}${discount > 0 ? ` (-${discount}% chegirma)` : ''}`,
+            category: `Reja yangilandi: ${scopeLabel}${discount > 0 ? ` (-${discount}% chegirma)` : ''}`,
             date: new Date().toISOString().split('T')[0]
           });
         } else {
@@ -696,7 +767,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
             patient_name: patientName,
             doctor_id: doctorId,
             type: 'Debt',
-            category: `Reja: ${selectedTeeth.map(idToFdi).join(', ')}${discount > 0 ? ` (-${discount}% chegirma)` : ''}`,
+            category: `Reja: ${scopeLabel}${discount > 0 ? ` (-${discount}% chegirma)` : ''}`,
             amount: finalTotal,
             method: '—',
             date: new Date().toISOString().split('T')[0],
@@ -1100,6 +1171,15 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                 </div>
                             </div>
                             <div className="flex-1 overflow-y-auto pl-2 pr-3 pt-1 pb-2 space-y-0.5 min-h-0">
+                                {jawPrompt && (
+                                  <JawChoice
+                                    title={jawPrompt.title}
+                                    preset={jawPrompt.preset}
+                                    busy={saving}
+                                    onChoose={confirmJawChoice}
+                                    onClose={() => setJawPrompt(null)}
+                                  />
+                                )}
                                 {(() => {
                                     const allSvcs = (services || []).filter(s => {
                                         const qMatch = !serviceSearch.trim() || (s.name || '').toLowerCase().includes(serviceSearch.trim().toLowerCase());
@@ -1283,7 +1363,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                 {allSelectedServices.map((s, idx) => (
                                   <div key={idx} className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-100 shadow-sm text-left gap-2">
                                     <div className="min-w-0 flex-1">
-                                      <span className="text-[9px] font-black text-blue-500 uppercase mr-1.5">Tish #{idToFdi(s.toothId)}</span>
+                                      <span className="text-[9px] font-black text-blue-500 uppercase mr-1.5">{toothSlotLabel(s.toothId) || `Tish #${idToFdi(s.toothId)}`}</span>
                                       <span className="text-[10px] font-bold text-slate-700 uppercase tracking-tight truncate block sm:inline">{s.service_name}</span>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">

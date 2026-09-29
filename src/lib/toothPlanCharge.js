@@ -1,7 +1,10 @@
+import { jawFamily, jawScopeFromLabel } from './jawServices.js';
+
 /**
  * Group treatments on the tooth chart.
  * A braces system or one bridge is a single fee. Fillings, implants and
  * "the same treatment" are priced per selected tooth.
+ * A jaw service is one fee for that jaw, so two jaws stay two fees.
  */
 export function toothGroupBilling(kind) {
   if (kind === 'breket' || kind === 'bridge') return 'once';
@@ -32,6 +35,8 @@ function serviceLabel(row) {
 /** Braces and a bridge are one fee. Crowns and fillings are not. */
 export function onceGroupKind(label) {
   const blob = String(label || '').toLowerCase();
+  const scope = jawScopeFromLabel(blob);
+  if (scope) return `jaw:${scope}:${jawFamily(blob) || 'jaw'}`;
   if (/karonka|koronka|корон/.test(blob)) return null;
   if (/breket|braces|bracket|брекет/.test(blob)) return 'breket';
   if (/ko['’ʻ`‘]?prik|koprik|\bbridge\b|мост/.test(blob)) return 'bridge';

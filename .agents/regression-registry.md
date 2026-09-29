@@ -13,6 +13,23 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Breket va protez bitta tishga yoziladi
+- **Sana:** 2026-09-29
+- **Tuzatilgan Fayllar:**
+  - [`src/lib/jawServices.js`](src/lib/jawServices.js)
+  - [`src/lib/toothPlanCharge.js`](src/lib/toothPlanCharge.js)
+  - [`src/components/patients/JawChoice.jsx`](src/components/patients/JawChoice.jsx)
+  - [`src/components/patients/ToothChartCard.jsx`](src/components/patients/ToothChartCard.jsx)
+  - [`src/components/patients/NewPatientFlow.jsx`](src/components/patients/NewPatientFlow.jsx)
+  - [`src/components/treatments/TreatmentPlanModal.jsx`](src/components/treatments/TreatmentPlanModal.jsx)
+  - [`src/pages/MobileTreatmentPlansV2.jsx`](src/pages/MobileTreatmentPlansV2.jsx)
+  - [`src/pages/Services.jsx`](src/pages/Services.jsx)
+  - [`scripts/assert-tooth-group-charge.mjs`](scripts/assert-tooth-group-charge.mjs)
+- **Muammo Tavsifi:** Breketni tanlash bitta tishga yozilardi (11 ni bosish faqat 11 ga breket). Breket va olinadigan protez butun jag' uchun.
+- **Sababi:** Tezkor tugma `createPlan([active])` chaqirardi. Protez katalogi ham bitta tishning `toothData` siga narx qo'shardi.
+- **Qanday tuzatildi:** Tepa jag' / Pastki jag' / Ikkalasi tanlovi chiqadi. Har bir jag' bitta qator va bitta narx. Ikkalasi — ikkita qator. Ko'prik tanlangan tishlarda qoladi. Eski «Breket tizimi» yozuvi (Zohid, 7 000 000) o'zgartirilmaydi. `patient-y2ii8ynf2` ga yozilmaydi.
+- **Qaytalamaslik choralari:** Breket, protez va babochka protezni yana bitta tishga yozmang va narxni tishlar soniga ko'paytirmang. Ikki jag' qatorini `normalizeOncePricedPlan` bitta 7 000 000 ga yutib yubormasin. Ko'prikni jag' xizmatiga aylantirmang. `node scripts/assert-tooth-group-charge.mjs` o'tsin.
+
 ### 🦷 Breket qatori qayta 16 × 7 000 000 bo‘lib qoldi
 - **Sana:** 2026-09-29
 - **Tuzatilgan Fayllar:**

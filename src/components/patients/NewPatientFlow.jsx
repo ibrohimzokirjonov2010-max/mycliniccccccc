@@ -24,6 +24,18 @@ import { applyPhoneMask, cn, capitalizeName, validateAddress, capitalizeAsYouTyp
 import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
 import { resolveAssignedDoctorName, isTreatingClinician, clinicianDisplayName } from '@/lib/treatingDoctor';
 import { normalizePatientGender, patientGenderForDb } from '@/lib/patientGender';
+import JawChoice from '@/components/patients/JawChoice';
+import {
+  applyJawChoice,
+  collectJawRows,
+  jawFamily,
+  jawFamilyTitle,
+  jawFromFdi,
+  jawScopeFromLabel,
+  jawServiceSelected,
+  jawsCoveringFdi,
+  toothSlotLabel,
+} from '@/lib/jawServices';
 
 /**
  * Wizard steps configuration
@@ -191,9 +203,11 @@ const CategoryAccordion = ({ title, services, activeTooth, toothData, toggleServ
         <div className="p-1 space-y-0.5 divide-y divide-slate-50">
           {services.map(svc => {
             const targets = isBulkMode ? selectedTeeth : [activeTooth].filter(Boolean);
-            const hasIt = targets.length > 0 && targets.every(tId => 
-              (toothData[tId]?.services || []).some(s => s.service_id === svc.id)
-            );
+            const hasIt = jawFamily(svc.name)
+              ? jawServiceSelected(svc, toothData)
+              : targets.length > 0 && targets.every(tId =>
+                (toothData[tId]?.services || []).some(s => s.service_id === svc.id)
+              );
 
             return (
               <button
@@ -486,6 +500,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
   // Focused tooth state for Step 2
   const [activeTooth, setActiveTooth] = useState(null);
+  const [jawPrompt, setJawPrompt] = useState(null);
   const [activeCategory, setActiveCategory] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [serviceSearch, setServiceSearch] = useState('');
@@ -656,7 +671,32 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   /**
    * Toggle service for one or many teeth
    */
-  const toggleToothService = useCallback((service) => {
+  const toggleToothService = useCallback((service, toothIdHint) => {
+    if (toothIdHint === '__jaw_upper' || toothIdHint === '__jaw_lower') {
+      setToothData(prev => {
+        const td = prev[toothIdHint];
+        if (!td) return prev;
+        return {
+          ...prev,
+          [toothIdHint]: {
+            ...td,
+            services: (td.services || []).filter(s => s.service_id !== service.id),
+          },
+        };
+      });
+      return;
+    }
+    const family = jawFamily(service?.name || service?.service_name);
+    if (family) {
+      const namedScope = jawScopeFromLabel(service?.name || service?.service_name);
+      setJawPrompt({
+        service,
+        family,
+        title: jawFamilyTitle(family),
+        preset: namedScope || jawFromFdi(idToFdi(activeTooth)),
+      });
+      return;
+    }
     const targets = isBulkMode ? planForm.tooth_numbers : [activeTooth].filter(Boolean);
     if (targets.length === 0 && !isBulkMode) return;
     
@@ -695,6 +735,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     });
   }, [isBulkMode, planForm.tooth_numbers, activeTooth]);
 
+  const confirmJawChoice = useCallback((choice) => {
+    if (!jawPrompt?.family) return;
+    setToothData(prev => applyJawChoice(prev, jawPrompt.family, choice, services));
+    setJawPrompt(null);
+  }, [jawPrompt, services]);
+
   /**
    * Toggle tooth section expansion
    */
@@ -717,8 +763,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
    */
   const grandTotal = useMemo(() => {
     const teethSum = planForm.tooth_numbers.reduce((s, toothId) => s + toothTotal(toothId), 0);
-    return teethSum + toothTotal('general');
-  }, [planForm.tooth_numbers, toothTotal]);
+    const jawSum = collectJawRows(toothData).reduce((s, row) => s + (Number(row.price) || 0), 0);
+    return teethSum + toothTotal('general') + jawSum;
+  }, [planForm.tooth_numbers, toothTotal, toothData]);
 
   // receiptServicesTotal = asl xizmat narxlari yig'indisi (chegirmasiz)
   // Bu qiymat chekda "Xizmatlar" qatorida ko'rsatiladi
@@ -996,6 +1043,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         }
       });
 
+      const jawRows = collectJawRows(toothData);
+      jawRows.forEach((row) => {
+        consolidatedServices.push(row);
+        teethNumbersUsed.push(row.tooth_number);
+      });
+
       const price = consolidatedServices.reduce((s, sv) => s + (sv.price || 0), 0);
       const teethSuffix = teethNumbersUsed.length > 0 ? ` (#${teethNumbersUsed.join(', ')})` : '';
 
@@ -1136,6 +1189,14 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
               service: s
             });
           }
+        });
+      });
+
+      jawRows.forEach((row) => {
+        allServices.push({
+          service_name: row.service_name,
+          price: row.price,
+          tooth: row.tooth_number,
         });
       });
 
@@ -1858,6 +1919,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
               const internalId = fdiToInternal(String(fdi));
               const isSelected = planForm.tooth_numbers.includes(internalId);
               const isActive   = activeTooth === internalId;
+              const jawMarked = jawsCoveringFdi(toothData, fdi).length > 0;
               return (
                 <button
                   type="button"
@@ -1877,6 +1939,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   className={cn(
                     "odontogram-tooth wizard-tooth-hit w-full rounded-md flex items-center justify-center font-black transition-colors cursor-pointer leading-none p-0 border touch-manipulation text-[17px]",
                     isActive    ? "bg-[#1499AD] text-white border-[#1499AD] ring-2 ring-[#1499AD]/30" :
+                    jawMarked   ? "bg-pink-50 text-pink-700 border-pink-400" :
                     isSelected  ? "bg-emerald-500 text-white border-emerald-500" :
                                   "bg-white text-slate-800 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                   )}
@@ -1993,12 +2056,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                                 <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
                                 <span className="text-xs font-medium text-slate-700 truncate">{s.service_name}</span>
                               </div>
-                              <span className="text-xs text-slate-500 text-center font-bold">{idToFdi(s.toothId)}</span>
+                              <span className="text-xs text-slate-500 text-center font-bold">{toothSlotLabel(s.toothId) || idToFdi(s.toothId)}</span>
                               <span className="text-xs text-slate-600 text-right tabular-nums">{formatCurrency(s.price || 0)}</span>
                               <span className="text-xs text-slate-400 text-center">{discountPercent > 0 ? `${discountPercent}%` : '—'}</span>
                               <span className="text-xs font-bold text-slate-900 text-right tabular-nums">{formatCurrency(discPrice)}</span>
                               <button type="button"
-                                onClick={e => { e.stopPropagation(); toggleToothService({ id: s.service_id, name: s.service_name, price: s.price }); }}
+                                onClick={e => { e.stopPropagation(); toggleToothService({ id: s.service_id, name: s.service_name, price: s.price }, s.toothId); }}
                                 className="w-6 h-6 rounded-full hover:bg-red-50 flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors border-none bg-transparent cursor-pointer p-0">
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -2073,6 +2136,14 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       </div>
                     </div>
                     <div className="flex-1 overflow-y-auto pl-2 pr-4 pt-2 pb-6 space-y-1.5 min-h-0 bg-white overscroll-contain">
+                      {jawPrompt && (
+                        <JawChoice
+                          title={jawPrompt.title}
+                          preset={jawPrompt.preset}
+                          onChoose={confirmJawChoice}
+                          onClose={() => setJawPrompt(null)}
+                        />
+                      )}
                       {(() => {
                         const allSvcs = (services || []).filter(s => {
                           const qMatch = !serviceSearch.trim() || (s.name || '').toLowerCase().includes(serviceSearch.trim().toLowerCase());
@@ -2148,6 +2219,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         const internalId = fdiToInternal(String(fdi));
                         const isSelected = planForm.tooth_numbers.includes(internalId);
                         const isActive = activeTooth === internalId;
+                        const jawMarked = jawsCoveringFdi(toothData, fdi).length > 0;
                         return (
                           <button
                             key={fdi}
@@ -2162,6 +2234,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                             className={cn(
                               "wizard-tooth-hit w-full min-w-0 rounded-lg font-black text-[15px] leading-none border cursor-pointer touch-manipulation",
                               isActive ? "bg-[#1499AD] text-white border-[#1499AD]" :
+                              jawMarked ? "bg-pink-50 text-pink-700 border-pink-400" :
                               isSelected ? "bg-emerald-500 text-white border-emerald-500" :
                               "bg-white text-slate-800 border-slate-200"
                             )}
@@ -2207,14 +2280,14 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                           {allSelectedServices.map((s, idx) => (
                             <div key={idx} className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-100 shadow-sm text-left gap-2">
                               <div className="min-w-0 flex-1">
-                                <span className="text-[9px] font-black text-blue-500 uppercase mr-1.5">Tish #{idToFdi(s.toothId)}</span>
+                                <span className="text-[9px] font-black text-blue-500 uppercase mr-1.5">{toothSlotLabel(s.toothId) || `Tish #${idToFdi(s.toothId)}`}</span>
                                 <span className="text-[10px] font-bold text-slate-700 uppercase tracking-tight truncate block sm:inline">{s.service_name}</span>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 <span className="text-[10px] font-black text-emerald-600">{formatCurrency(s.price || 0)}</span>
                                 <button 
                                   type="button"
-                                  onClick={() => toggleToothService({ id: s.service_id, name: s.service_name, price: s.price })}
+                                  onClick={() => toggleToothService({ id: s.service_id, name: s.service_name, price: s.price }, s.toothId)}
                                   className="w-6 h-6 rounded-lg bg-red-50 text-red-500 flex items-center justify-center border-none cursor-pointer active:bg-red-100 transition-all shrink-0 p-0"
                                 >
                                   <X className="w-3.5 h-3.5" />
@@ -2287,6 +2360,14 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                   {/* Middle: Service cards list */}
                   <div className="flex-1 overflow-y-auto px-4 py-3 bg-[#f8fafc] space-y-2.5 min-h-0">
+                    {jawPrompt && (
+                      <JawChoice
+                        title={jawPrompt.title}
+                        preset={jawPrompt.preset}
+                        onChoose={confirmJawChoice}
+                        onClose={() => setJawPrompt(null)}
+                      />
+                    )}
                     {(() => {
                       const filtered = (services || []).filter(s => {
                         const q = serviceSearch.trim().toLowerCase();

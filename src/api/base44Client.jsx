@@ -1567,6 +1567,10 @@ export const DEFAULT_SERVICES_DATA = [
   { name: 'Sirkoniy koronka', category: 'ORTOPEDIYA', price: 1800000, duration: 60, is_active: true },
   { name: 'Vinir (keramika)', category: 'ORTOPEDIYA', price: 2500000, duration: 90, is_active: true },
   { name: 'olinadigan protez', category: 'ORTOPEDIYA', price: 1200000, duration: 45, is_active: true },
+  { name: "Protez — tepa jag'", category: 'ORTOPEDIYA', price: 1200000, duration: 60, is_active: true, requires_tooth: false },
+  { name: "Protez — pastki jag'", category: 'ORTOPEDIYA', price: 1200000, duration: 60, is_active: true, requires_tooth: false },
+  { name: "Babochka protez — tepa jag'", category: 'ORTOPEDIYA', price: 0, duration: 60, is_active: true, requires_tooth: false },
+  { name: "Babochka protez — pastki jag'", category: 'ORTOPEDIYA', price: 0, duration: 60, is_active: true, requires_tooth: false },
 
   // XIRURGIYA
   { name: 'Tish olish (oddiy)', category: 'XIRURGIYA', price: 150000, duration: 20, is_active: true },
@@ -1577,6 +1581,8 @@ export const DEFAULT_SERVICES_DATA = [
   // ORTODONTIYA
   { name: 'Metall breket tizimi', category: 'ORTODONTIYA', price: 5000000, duration: 60, is_active: true },
   { name: 'Keramik breket tizimi', category: 'ORTODONTIYA', price: 7000000, duration: 60, is_active: true },
+  { name: "Breket — tepa jag'", category: 'ORTODONTIYA', price: 7000000, duration: 60, is_active: true, requires_tooth: false },
+  { name: "Breket — pastki jag'", category: 'ORTODONTIYA', price: 7000000, duration: 60, is_active: true, requires_tooth: false },
   { name: 'Reteyner o\'rnatish', category: 'ORTODONTIYA', price: 400000, duration: 30, is_active: true },
 
   // GIGIENA VA PROFILAKTIKA

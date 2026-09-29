@@ -20,6 +20,18 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import PatientSelect from '@/components/patients/PatientSelect';
 import { useAuth } from '@/lib/AuthContext';
+import JawChoice from '@/components/patients/JawChoice';
+import {
+  buildJawPlanLines,
+  isJawStorageKey,
+  jawFamily,
+  jawFamilyTitle,
+  jawFromFdi,
+  jawLabel,
+  jawPlanTotal,
+  jawScopeFromLabel,
+  jawStorageKey,
+} from '@/lib/jawServices';
 
 // Internal tish ID ('ur6') ni FDI raqamga ('16') aylantirish
 const idToFdi = (idStr) => {
@@ -105,6 +117,7 @@ export default function MobileTreatmentPlansV2() {
   const [step, setStep] = useState(1);
   const [selectedTeeth, setSelectedTeeth] = useState([]);
   const [toothServices, setToothServices] = useState({});
+  const [jawPrompt, setJawPrompt] = useState(null);
   const [focusedTooth, setFocusedTooth] = useState(null);
   const [activeCategory, setActiveCategory] = useState('all');
   const [formData, setFormData] = useState({ patient_id: '', name: '', status: 'Planned', total_price: '' });
@@ -198,10 +211,16 @@ export default function MobileTreatmentPlansV2() {
           doctor_name: isDoctor ? (user.name || '') : '',
           total_price: Number(formData.total_price) || 0,
           services: Object.entries(toothServices).map(([tId, svcs]) => ({
-              tooth_id: tId,
+              tooth_id: isJawStorageKey(tId) ? (svcs[0]?.tooth_number || jawLabel(tId === '__jaw_lower' ? 'lower' : 'upper')) : tId,
+              tooth_number: isJawStorageKey(tId) ? (svcs[0]?.tooth_number || jawLabel(tId === '__jaw_lower' ? 'lower' : 'upper')) : idToFdi(tId),
               items: svcs.map(s => {
                   const svc = services.find(x => x.id === s.service_id);
-                  return { ...s, service_name: svc?.name, price: svc?.price };
+                  return {
+                    ...s,
+                    service_name: s.service_name || svc?.name,
+                    price: s.price ?? svc?.price,
+                    tooth_number: s.tooth_number || (isJawStorageKey(tId) ? jawLabel(tId === '__jaw_lower' ? 'lower' : 'upper') : idToFdi(tId)),
+                  };
               })
           }))
       };
@@ -249,13 +268,59 @@ export default function MobileTreatmentPlansV2() {
     }
   };
 
+  const serviceTotal = (map) => Object.values(map).flat().reduce((sum, it) => {
+    const catalog = services.find(s => s.id === it.service_id);
+    return sum + (Number(it.price ?? catalog?.price) || 0);
+  }, 0);
+
   const toggleServiceForTooth = (tId, svcId) => {
+    const catalog = services.find(s => s.id === svcId);
+    const family = jawFamily(catalog?.name);
+    if (family && !isJawStorageKey(tId)) {
+      const namedScope = jawScopeFromLabel(catalog?.name);
+      setJawPrompt({
+        family,
+        serviceId: svcId,
+        title: jawFamilyTitle(family),
+        preset: namedScope || jawFromFdi(idToFdi(tId || focusedTooth || selectedTeeth[0])),
+      });
+      return;
+    }
     const nt = { ...toothServices }; const cur = nt[tId] || [];
     if (!cur.some(i => i.service_id === svcId)) nt[tId] = [...cur, { service_id: svcId, status: 'planned' }];
     else { nt[tId] = cur.filter(i => i.service_id !== svcId); if (nt[tId].length === 0) delete nt[tId]; }
     setToothServices(nt);
-    const total = Object.values(nt).flat().reduce((sum, it) => sum + (services.find(s => s.id === it.service_id)?.price || 0), 0);
-    setFormData(prev => ({ ...prev, total_price: total.toString() }));
+    setFormData(prev => ({ ...prev, total_price: serviceTotal(nt).toString() }));
+  };
+
+  const confirmJawChoice = (choice) => {
+    if (!jawPrompt?.family) return;
+    const lines = buildJawPlanLines(jawPrompt.family, choice, services);
+    const nt = { ...toothServices };
+    ['upper', 'lower'].forEach((jaw) => {
+      const key = jawStorageKey(jaw);
+      if (!nt[key]) return;
+      nt[key] = nt[key].filter(item => jawFamily(item.service_name) !== jawPrompt.family);
+      if (nt[key].length === 0) delete nt[key];
+    });
+    lines.forEach((line) => {
+      const key = jawStorageKey(line.jaw);
+      nt[key] = [...(nt[key] || []), {
+        service_id: line.service_id,
+        service_name: line.service_name,
+        price: line.price,
+        tooth_number: line.tooth_number,
+        status: 'planned',
+      }];
+    });
+    setToothServices(nt);
+    const jawTotal = jawPlanTotal(lines);
+    setFormData(prev => ({
+      ...prev,
+      name: prev.name || lines.map(line => line.service_name).join(', '),
+      total_price: serviceTotal(nt).toString() || String(jawTotal),
+    }));
+    setJawPrompt(null);
   };
 
   const filteredPlans = useMemo(() => {
@@ -629,6 +694,14 @@ export default function MobileTreatmentPlansV2() {
 
                              {/* Available Services List */}
                              <div className="space-y-2 max-h-[35vh] overflow-y-auto no-scrollbar pb-6">
+                                {jawPrompt && (
+                                  <JawChoice
+                                    title={jawPrompt.title}
+                                    preset={jawPrompt.preset}
+                                    onChoose={confirmJawChoice}
+                                    onClose={() => setJawPrompt(null)}
+                                  />
+                                )}
                                 {services.filter(s => {
                                    const categoryMatch = activeCategory === 'all' || s.category === activeCategory;
                                    if (!categoryMatch) return false;
@@ -639,7 +712,14 @@ export default function MobileTreatmentPlansV2() {
                                    const currentFdi = idToFdi(currentTooth) || String(currentTooth);
                                    return svcTeeth.some(t => String(t) === String(currentFdi));
                                 }).map(svc => {
-                                   const has = toothServices[focusedTooth || selectedTeeth[0]]?.some(i => i.service_id === svc.id);
+                                   const family = jawFamily(svc.name);
+                                   const scope = jawScopeFromLabel(svc.name);
+                                   const has = family
+                                     ? ['upper', 'lower'].some((jaw) => (
+                                       (!scope || scope === jaw)
+                                       && (toothServices[jawStorageKey(jaw)] || []).some((item) => jawFamily(item.service_name) === family)
+                                     ))
+                                     : toothServices[focusedTooth || selectedTeeth[0]]?.some(i => i.service_id === svc.id);
                                    const catStyle = getCategoryStyle(svc.category);
                                    return (
                                       <button 

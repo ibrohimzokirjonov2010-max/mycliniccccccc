@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizeOncePricedPlan, staleEncodedOnceTotal, toothGroupBilling, toothGroupCharge, withOncePricing } from '../src/lib/toothPlanCharge.js';
+import { normalizeOncePricedPlan, onceGroupKind, staleEncodedOnceTotal, toothGroupBilling, toothGroupCharge, withOncePricing } from '../src/lib/toothPlanCharge.js';
+import { buildJawPlanLines, expandJawToothNumbers, jawFamily, jawPlanTotal } from '../src/lib/jawServices.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -19,9 +20,38 @@ const filling = toothGroupCharge(200000, 2, toothGroupBilling('same'));
 assert(filling.total === 400000, 'per-tooth treatment still multiplies');
 
 const chart = readFileSync(join(root, 'src/components/patients/ToothChartCard.jsx'), 'utf8');
-assert(chart.includes("createPlan(selected, 'Breket tizimi', 'breket', 'once')"), 'braces button bills once');
+assert(chart.includes('createJawPlan'), 'braces open a jaw plan');
+assert(chart.includes('data-jaw-choice') || chart.includes('JawChoice'), 'jaw choice is shown on the chart');
+assert(!chart.includes("createPlan(selected, 'Breket tizimi'"), 'braces are not applied to the selected teeth');
+assert(chart.includes("Ko‘prik (protez)"), 'a bridge stays a selected-teeth action');
 assert(chart.includes('patient.id === \'patient-y2ii8ynf2\''), 'test patient is not written from the chart');
 assert(!chart.includes('const total = price * fdis.length'), 'unchecked multiplication removed');
+
+const jawLines = buildJawPlanLines('breket', 'both', [{ name: 'Keramik breket tizimi', price: 7000000 }]);
+assert(jawLines.length === 2, 'both jaws are two lines');
+assert(jawLines[0].service_name === "Breket — tepa jag'", jawLines[0].service_name);
+assert(jawLines[1].service_name === "Breket — pastki jag'", jawLines[1].service_name);
+assert(jawPlanTotal(jawLines) === 14000000, 'two jaws are 7M + 7M');
+assert(jawPlanTotal(jawLines) !== 7000000 * 32, 'jaw fee is not multiplied by tooth count');
+assert(expandJawToothNumbers('upper').includes(18) && expandJawToothNumbers('upper').includes(28), 'upper jaw marks 18–28');
+assert(expandJawToothNumbers('lower').includes(31) && expandJawToothNumbers('lower').includes(48), 'lower jaw marks 31–48');
+assert(jawFamily("Ko‘prik (protez)") === null, 'a fixed bridge is not a jaw service');
+assert(jawFamily('Babochka protez') === 'babochka', 'butterfly denture is a jaw service');
+assert(onceGroupKind("Breket — tepa jag'") !== onceGroupKind("Breket — pastki jag'"), 'each jaw is its own fee');
+
+const bothJaws = normalizeOncePricedPlan({
+  name: "Breket — tepa jag', Breket — pastki jag'",
+  total_price: 14000000,
+  services: jawLines,
+});
+assert(bothJaws.total_price === 14000000, 'two jaw lines stay two fees');
+assert(bothJaws.services[1].price === 7000000, 'the lower jaw keeps its fee');
+
+const upperOnly = buildJawPlanLines('breket', 'upper', [{ name: 'Keramik breket tizimi', price: 7000000 }]);
+assert(upperOnly.length === 1 && jawPlanTotal(upperOnly) === 7000000, 'upper jaw is one fee');
+assert(buildJawPlanLines('babochka', 'upper', []).length === 1, 'babochka still makes one jaw line');
+assert(jawPlanTotal(buildJawPlanLines('babochka', 'both', [])) === 0, 'babochka has no catalog price');
+assert(jawPlanTotal(buildJawPlanLines('protez', 'upper', [{ name: 'olinadigan protez', price: 1200000 }])) === 1200000, 'full denture reuses olinadigan protez');
 
 const multiplied = {
   name: 'Breket tizimi',
