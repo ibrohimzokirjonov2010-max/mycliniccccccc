@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { toothGroupBilling, toothGroupCharge } from '../src/lib/toothPlanCharge.js';
+import { normalizeOncePricedPlan, toothGroupBilling, toothGroupCharge, withOncePricing } from '../src/lib/toothPlanCharge.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -22,5 +22,54 @@ const chart = readFileSync(join(root, 'src/components/patients/ToothChartCard.js
 assert(chart.includes("createPlan(selected, 'Breket tizimi', 'breket', 'once')"), 'braces button bills once');
 assert(chart.includes('patient.id === \'patient-y2ii8ynf2\''), 'test patient is not written from the chart');
 assert(!chart.includes('const total = price * fdis.length'), 'unchecked multiplication removed');
+
+const multiplied = {
+  name: 'Breket tizimi',
+  total_price: 7000000 * 16,
+  services: Array.from({ length: 16 }, (_, index) => ({
+    service_name: 'Breket tizimi',
+    tooth_number: String(11 + index),
+    price: 7000000,
+    category: 'breket',
+  })),
+};
+const collapsed = normalizeOncePricedPlan(multiplied);
+assert(collapsed.total_price === 7000000, `stored 112M collapses to ${collapsed.total_price}`);
+assert(collapsed.services.filter((row) => row.price === 7000000).length === 1, 'one braces line keeps the fee');
+assert(collapsed.services.filter((row) => row.price === 0).length === 15, 'other braces lines are zero');
+
+const alreadyPricedOnce = normalizeOncePricedPlan({ ...multiplied, total_price: 7000000 });
+assert(alreadyPricedOnce.total_price === 7000000, 'column 7M stays 7M');
+assert(alreadyPricedOnce.services.filter((row) => row.price === 7000000).length === 1, 'repeated 7M lines still collapse');
+
+const mixed = normalizeOncePricedPlan({
+  name: 'Davolash rejasi',
+  total_price: 2915000,
+  services: [
+    { service_name: 'E-Max Vinir', price: 2200000 },
+    { service_name: 'Metallokeramika karonka', price: 800000 },
+    { service_name: 'Karies', price: 200000 },
+  ],
+});
+assert(mixed.total_price === 2915000, 'mixed plan total stays');
+assert(mixed.services[1].price === 800000, 'crown line is not zeroed');
+
+const plans = withOncePricing([
+  collapsed,
+  { total_price: 2915000, services: [{ service_name: 'Karies', price: 200000 }] },
+  { total_price: 200000, services: [{ service_name: 'Karies', price: 200000 }] },
+  { total_price: 200000, services: [{ service_name: 'Karies', price: 200000 }] },
+]);
+const planTotal = plans.reduce((sum, plan) => sum + Number(plan.total_price), 0);
+assert(planTotal - 1500180 === 8814820, `Zohid debt ${planTotal - 1500180}`);
+
+const profile = readFileSync(join(root, 'src/pages/PatientProfile.jsx'), 'utf8');
+assert(profile.includes('isOncePricingDirty'), 'profile rewrites a multiplied braces plan');
+assert(profile.includes("id !== 'patient-y2ii8ynf2'"), 'locked test patient is not rewritten');
+const chair = readFileSync(join(root, 'src/components/patients/ChairsidePatientProfile.jsx'), 'utf8');
+const chartAt = chair.indexOf('data-tooth-chart="chairside"');
+const toolsAt = chair.indexOf('<ChairsideClinicalTools');
+const planAt = chair.indexOf('data-chairside-plan="true"');
+assert(chartAt !== -1 && chartAt < toolsAt && toolsAt < planAt, 'tooth chart is above RVG and the plan bar');
 
 console.log('tooth group charge ok');

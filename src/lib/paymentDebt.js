@@ -1,3 +1,5 @@
+import { withOncePricing } from './toothPlanCharge';
+
 /** One running balance for desktop and mobile payments. */
 
 function paymentSortKey(payment) {
@@ -53,7 +55,7 @@ export function computePatientBalances(payments, treatmentPlans = []) {
   }
 
   const plansByPatient = {};
-  for (const plan of treatmentPlans || []) {
+  for (const plan of withOncePricing(treatmentPlans || [])) {
     if (!plan?.patient_id) continue;
     plansByPatient[plan.patient_id] = (plansByPatient[plan.patient_id] || 0) + (Number(plan.total_price) || 0);
   }

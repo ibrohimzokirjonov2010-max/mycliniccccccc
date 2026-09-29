@@ -10,7 +10,7 @@ import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, fdiWidthWeight, interna
 import { getToothIllustrationSrc, matchIllustrationKind } from '@/utils/toothIllustration';
 import { displayServiceName, formatDoctorName } from '@/lib/displayText';
 import { implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
-import { toothGroupBilling, toothGroupCharge } from '@/lib/toothPlanCharge';
+import { toothGroupBilling, toothGroupCharge, withOncePricing } from '@/lib/toothPlanCharge';
 
 const ADULT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
 const ADULT_LOWER = [38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
@@ -384,9 +384,10 @@ export default function ToothChartCard({
     setDentition(dentitionForAge(ageYears));
   }, [patient?.id, patient?.birth_date, patient?.age, ageYears]);
 
+  const pricedPlans = useMemo(() => withOncePricing(plans), [plans]);
   const byTooth = useMemo(
-    () => collectEntries(plans, implants, toothRecords),
-    [plans, implants, toothRecords],
+    () => collectEntries(pricedPlans, implants, toothRecords),
+    [pricedPlans, implants, toothRecords],
   );
 
   const upper = dentition === 'child' ? CHILD_UPPER : ADULT_UPPER;

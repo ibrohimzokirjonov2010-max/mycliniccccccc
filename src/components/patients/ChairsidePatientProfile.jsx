@@ -9,6 +9,7 @@ import ToothChartCard from './ToothChartCard';
 import TodayPlanBar from './TodayPlanBar';
 import { buildPlanStepperGroups } from './planStepperModel';
 import ChairsideClinicalTools, { ChairsideClinicalTabBar } from './ChairsideClinicalTools';
+import { withOncePricing } from '@/lib/toothPlanCharge';
 
 const TEAL = '#14b8a6';
 const TEAL_DARK = '#0d9488';
@@ -116,14 +117,15 @@ export default function ChairsidePatientProfile({
     };
   }, [todaySteps.groups.length, todaySteps.groups.reduce((sum, group) => sum + (group.steps?.length || 0), 0)]);
 
+  const pricedPlans = useMemo(() => withOncePricing(plans), [plans]);
   const planRemainingTotal = useMemo(() => {
-    return (plans || []).reduce((sum, p) => {
+    return pricedPlans.reduce((sum, p) => {
       const st = (p.status || '').toLowerCase();
       if (st === 'cancelled' || st === 'canceled') return sum;
       const rem = Math.max(0, (Number(p.total_price) || 0) - (Number(p.paid_amount) || 0));
       return sum + rem;
     }, 0);
-  }, [plans]);
+  }, [pricedPlans]);
 
   const activeStep = useMemo(() => {
     const steps = (todaySteps.groups || []).flatMap((group) => group.steps || []);
@@ -362,6 +364,21 @@ export default function ChairsidePatientProfile({
           </div>
 
           <div className="flex-1 min-w-0 w-full flex flex-col gap-3.5">
+            <div className="min-w-0 w-full" data-tooth-chart="chairside">
+              <ToothChartCard
+                patient={patient}
+                plans={plans}
+                payments={payments}
+                appointments={appointments}
+                doctors={doctors}
+                services={services}
+                implants={implants}
+                toothRecords={toothRecords}
+                onReload={onReload}
+                onBookAppointment={onAppointment}
+              />
+            </div>
+
             <ChairsideClinicalTools
               patient={patient}
               selectedTooth={selectedTooth?.fdi || selectedTooth?.id || selectedTooth}
@@ -392,21 +409,6 @@ export default function ChairsidePatientProfile({
               }}
               onOpenPlan={onNewPlan}
             />
-            </div>
-
-            <div className="min-w-0 w-full" data-tooth-chart="chairside">
-              <ToothChartCard
-                patient={patient}
-                plans={plans}
-                payments={payments}
-                appointments={appointments}
-                doctors={doctors}
-                services={services}
-                implants={implants}
-                toothRecords={toothRecords}
-                onReload={onReload}
-                onBookAppointment={onAppointment}
-              />
             </div>
 
           </div>

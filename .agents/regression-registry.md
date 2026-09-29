@@ -13,6 +13,21 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Breket qatori qayta 16 × 7 000 000 bo‘lib qoldi
+- **Sana:** 2026-09-29
+- **Tuzatilgan Fayllar:**
+  - [`src/lib/toothPlanCharge.js`](src/lib/toothPlanCharge.js)
+  - [`src/api/base44Client.jsx`](src/api/base44Client.jsx)
+  - [`src/lib/paymentDebt.js`](src/lib/paymentDebt.js)
+  - [`src/pages/PatientProfile.jsx`](src/pages/PatientProfile.jsx)
+  - [`src/pages/MobilePatientProfile.jsx`](src/pages/MobilePatientProfile.jsx)
+  - [`src/components/patients/ToothChartCard.jsx`](src/components/patients/ToothChartCard.jsx)
+  - [`scripts/assert-tooth-group-charge.mjs`](scripts/assert-tooth-group-charge.mjs)
+- **Muammo Tavsifi:** Zokirjonov Zohid qarzi yana 113 814 820 ko‘rindi. To‘g‘ri qarz 8 814 820 (2 915 000 + 7 000 000 + 200 000 + 200 000 − 1 500 180).
+- **Sababi:** Ustun `total_price` 7 000 000 ga tuzatilgan, lekin notes ichidagi 16 ta qatorning har biri 7 000 000 va notes `total_price` 112 000 000 bo‘lib qolgan. Qarz va Tez to‘lov shu yig‘indidan qayta hisoblanadi.
+- **Qanday tuzatildi:** Breket va ko‘prik o‘qilganda bir marta hisoblanadi: birinchi qator narxni saqlaydi, qolganlari 0. Profil yozuvi shu tuzatilgan xizmatlar va `total_price` ni saqlaydi. 180 so‘mlik to‘lov o‘chirilmaydi. `patient-y2ii8ynf2` ga yozilmaydi.
+- **Qaytalamaslik choralari:** Breket/ko‘prik `total_price` ni qatorlar yig‘indisiga tenglamang. `normalizeOncePricedPlan` ni TreatmentPlan o‘qishidan olib tashlamang. `node scripts/assert-tooth-group-charge.mjs` o‘tsin.
+
 ### 🦷 Tish kartasi — breket narxi har tishga ko‘paytiriladi
 - **Sana:** 2026-09-29
 - **Tuzatilgan Fayllar:**

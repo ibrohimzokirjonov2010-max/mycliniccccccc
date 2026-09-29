@@ -33,6 +33,7 @@ import {
 import ToothChartCard from '../components/patients/ToothChartCard';
 import TodayPlanBar from '../components/patients/TodayPlanBar';
 import { buildPlanStepperGroups } from '../components/patients/planStepperModel';
+import { isOncePricingDirty, withOncePricing } from '@/lib/toothPlanCharge';
 import { matchIllustrationKind } from '@/utils/toothIllustration';
 
 const TEAL = '#14b8a6';
@@ -230,7 +231,17 @@ export default function MobilePatientProfile() {
       const raw = patRes[0] || null;
       if (raw && raw.full_name) raw.full_name = capitalizeName(raw.full_name);
       setPatient(raw);
-      setPlans(plansRes || []);
+      const loadedPlans = plansRes || [];
+      setPlans(loadedPlans);
+      if (id && id !== 'patient-y2ii8ynf2') {
+        loadedPlans.forEach((plan) => {
+          if (!plan?.id || !isOncePricingDirty(plan)) return;
+          base44.entities.TreatmentPlan.update(plan.id, {
+            services: plan.services,
+            total_price: plan.total_price,
+          }).catch((err) => console.error('[once-pricing]', err));
+        });
+      }
       setPayments((paysRes || []).filter(p => {
         const tp = (p.type || '').toLowerCase();
         const n = (p.notes || '').toLowerCase();
@@ -260,7 +271,8 @@ export default function MobilePatientProfile() {
   const financials = useMemo(() => {
     const incomes    = payments.filter(p => (p.type || '').toLowerCase() === 'income').reduce((s, p) => s + (Number(p.amount) || 0), 0);
     const refunds    = payments.filter(p => (p.type || '').toLowerCase() === 'refund').reduce((s, p) => s + (Number(p.amount) || 0), 0);
-    const plansTotal = plans.reduce((s, p) => s + (Number(p.total_price) || 0), 0);
+    const pricedPlans = withOncePricing(plans);
+    const plansTotal = pricedPlans.reduce((s, p) => s + (Number(p.total_price) || 0), 0);
     const rawDebt    = payments.filter(p => (p.type || '').toLowerCase() === 'debt').reduce((s, p) => s + (Number(p.amount) || 0), 0);
     let debt = 0, prepay = 0;
     if (plansTotal > 0) {
@@ -283,7 +295,7 @@ export default function MobilePatientProfile() {
     () => buildPlanStepperGroups({ appointments, plans, implants, language }),
     [appointments, plans, implants, language],
   );
-  const planRemainingTotal = useMemo(() => (plans || []).reduce((sum, plan) => {
+  const planRemainingTotal = useMemo(() => withOncePricing(plans).reduce((sum, plan) => {
     const status = String(plan.status || '').toLowerCase();
     if (status === 'cancelled' || status === 'canceled') return sum;
     return sum + Math.max(0, (Number(plan.total_price) || 0) - (Number(plan.paid_amount) || 0));
@@ -751,21 +763,7 @@ export default function MobilePatientProfile() {
         </button>
       </div>
 
-      <div className="px-3 pt-3">
-        <TodayPlanBar
-          groups={planStepper.groups}
-          title={planStepper.title}
-          totalDebt={financials.debt}
-          planRemaining={planRemainingTotal}
-          onPay={() => openPayModal()}
-          onNextClinical={() => {
-            document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }}
-          onOpenPlan={() => setTreatModalOpen(true)}
-        />
-      </div>
-
-      {/* CLINICAL STRIP */}
+      {/* Tooth chart first, then RVG/Rozilik, then today's plan. */}
       <div className="px-3 pt-3 pb-24 space-y-3">
                 <ToothChartCard
                   patient={patient}
@@ -790,6 +788,17 @@ export default function MobilePatientProfile() {
                   compact
                   tabbed
                 />
+        <TodayPlanBar
+          groups={planStepper.groups}
+          title={planStepper.title}
+          totalDebt={financials.debt}
+          planRemaining={planRemainingTotal}
+          onPay={() => openPayModal()}
+          onNextClinical={() => {
+            document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+          onOpenPlan={() => setTreatModalOpen(true)}
+        />
       </div>
 
       {/* PILL TABS */}

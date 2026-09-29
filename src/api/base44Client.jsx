@@ -10,6 +10,7 @@ import {
   preparePasswordForWrite,
 } from '@/utils/password';
 import { patientGenderForDb } from '@/lib/patientGender';
+import { markOncePricingDirty, normalizeOncePricedPlan, oncePricingChanged } from '@/lib/toothPlanCharge';
 import {
   PLAN_FEATURES,
   applyClinicSession,
@@ -379,6 +380,15 @@ class HybridEntityLoader {
       const local = this._getDeepLocal(enriched.id);
       if (local) {
         enriched = { ...local, ...enriched };
+      }
+
+      // Braces/bridge stored as catalog price × tooth count bill once.
+      // Server columns win over a stale local copy, then this collapses the lines.
+      if (this.entityName === 'TreatmentPlan') {
+        const oncePriced = normalizeOncePricedPlan(enriched);
+        if (oncePricingChanged(enriched, oncePriced)) {
+          enriched = markOncePricingDirty(oncePriced);
+        }
       }
 
       // 3. Entity-specific field normalization

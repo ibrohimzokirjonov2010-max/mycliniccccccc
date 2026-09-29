@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { Tooth, ImplantIcon, XrayIcon } from '@/components/ui/Icons';
 import { cn, resolveDoctorId } from '@/lib/utils';
 import { computePatientBalances } from '@/lib/paymentDebt';
+import { isOncePricingDirty, withOncePricing } from '@/lib/toothPlanCharge';
 import { patientGenderLabel } from '@/lib/patientGender';
 import { formatBirthDate, formatDoctorName } from '@/lib/displayText';
 import { implantStatusClass, implantStatusLabel } from '@/lib/implantStatus';
@@ -1189,14 +1190,23 @@ export default function PatientProfile() {
       }
       setPatient(rawPatient);
 
-      const rawPlans = plansRes || [];
-      setPlans(rawPlans.map(tp => {
+      const rawPlans = (plansRes || []).map(tp => {
         if (tp) {
           if (tp.patient_name) tp.patient_name = capitalizeName(tp.patient_name);
           if (tp.name) tp.name = capitalizeName(tp.name);
         }
         return tp;
-      }));
+      });
+      setPlans(rawPlans);
+      if (id && id !== 'patient-y2ii8ynf2') {
+        rawPlans.forEach((plan) => {
+          if (!plan?.id || !isOncePricingDirty(plan)) return;
+          base44.entities.TreatmentPlan.update(plan.id, {
+            services: plan.services,
+            total_price: plan.total_price,
+          }).catch((err) => console.error('[once-pricing]', err));
+        });
+      }
 
       // Auto-sanitize legacy linked plan payments (remove old dummy discount payments & fix undiscounted debt payments in DB)
       const rawPays = paymentsRes || [];
@@ -1823,7 +1833,7 @@ export default function PatientProfile() {
 
   const financialData = useMemo(() => {
     const paymentsList = payments || [];
-    const plansList = plans || [];
+    const plansList = withOncePricing(plans || []);
 
     const totalIncomes = paymentsList
       .filter(p => p.type?.toLowerCase() === 'income')
