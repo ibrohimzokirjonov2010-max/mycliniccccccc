@@ -13,8 +13,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { CLINIC_SESSION_EVENT, planAllows } from '@/lib/clinicPlan';
 import { useClinicPlan } from '@/hooks/useFeature';
 import AdBanner from './AdBanner';
-import SubscriptionBanner from './SubscriptionBanner';
-import SubscriptionBlockedView from './SubscriptionBlockedView';
 import NotificationPanel from '../notifications/NotificationPanel';
 import { notificationStore } from '@/lib/notificationStore';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -121,7 +119,6 @@ export default function NativeMobileLayout({ children }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [isExpired, setIsExpired] = useState(false);
   const contentRef = useRef(null);
   const handleLogout = () => {
     logout();
@@ -146,23 +143,7 @@ export default function NativeMobileLayout({ children }) {
         const currentClinicId = (localStorage.getItem('current_clinic_id') || '').toLowerCase();
         const clinic = clinics.find(c => (c.id || '').toLowerCase() === currentClinicId);
 
-        if (clinic) {
-          setCurrentClinic(clinic);
-          
-          if (clinic.status === 'Inactive' || clinic.status === 'Blocked') {
-            setIsExpired(true);
-            return;
-          }
-
-          if (clinic.expires_at) {
-            const expiryDate = new Date(clinic.expires_at);
-            expiryDate.setHours(23, 59, 59, 999);
-            
-            if (new Date() > expiryDate) {
-              setIsExpired(true);
-            }
-          }
-        }
+        if (clinic) setCurrentClinic(clinic);
       } catch (err) {
         console.error('Failed to fetch clinic in mobile layout:', err);
       }
@@ -340,11 +321,6 @@ export default function NativeMobileLayout({ children }) {
           paddingBottom: 'calc(54px + env(safe-area-inset-bottom, 0px))'
         }}
       >
-        {!isPatientProfile && (
-        <div className="px-5 mt-4">
-          <SubscriptionBanner />
-        </div>
-        )}
         {/*
           Page shell must stay opacity:1. Animating opacity:0→1 races with Suspense
           remounts on heavy lazy routes (/implants, /treatment-plans) and can leave
@@ -363,7 +339,7 @@ export default function NativeMobileLayout({ children }) {
           >
             <ErrorBoundary>
               <Suspense fallback={<InlineLoader />}>
-                {isExpired ? <SubscriptionBlockedView /> : children}
+                {children}
               </Suspense>
             </ErrorBoundary>
           </motion.div>

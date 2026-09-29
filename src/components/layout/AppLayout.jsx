@@ -4,10 +4,10 @@ import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import NativeMobileLayout from './NativeMobileLayout';
 import AdBanner from './AdBanner';
-import SubscriptionBanner from './SubscriptionBanner';
 import SubscriptionBlockedView from './SubscriptionBlockedView';
+import TariffReminder from './TariffReminder';
 import ErrorBoundary from './ErrorBoundary';
-import { base44 } from '@/api/base44Client';
+import { clinicAccessClosed, invalidateClinicExpiry, loadClinicAccess } from '@/lib/clinicExpiry';
 import { Suspense, memo } from 'react';
 
 // Specialized skeleton loader for premium page-to-page transitions
@@ -75,39 +75,75 @@ export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1024);
-  const [isExpired, setIsExpired] = useState(false);
+  const [gate, setGate] = useState('loading');
+  const [clinic, setClinic] = useState(null);
+  const [seenPath, setSeenPath] = useState(location.pathname);
+  const [hold, setHold] = useState(true);
 
-  // Check Subscription Expiry
+  if (seenPath !== location.pathname) {
+    setSeenPath(location.pathname);
+    setHold(true);
+  }
+
   useEffect(() => {
+    let cancelled = false;
     const checkExpiry = async () => {
-      try {
-        const clinics = await base44.clinic.getAll();
-        const currentClinicId = (localStorage.getItem('current_clinic_id') || '').toLowerCase();
-        const currentClinic = clinics.find(c => (c.id || '').toLowerCase() === currentClinicId);
-        
-        if (currentClinic) {
-          // If deactivated by superadmin
-          if (currentClinic.status === 'Inactive' || currentClinic.status === 'Blocked') {
-            setIsExpired(true);
-            return;
-          }
-
-          if (currentClinic.expires_at) {
-            const expiryDate = new Date(currentClinic.expires_at);
-            // End of the day expiry support (set to 23:59:59)
-            expiryDate.setHours(23, 59, 59, 999);
-            
-            if (new Date() > expiryDate) {
-              setIsExpired(true);
-            }
-          }
+      const id = localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id') || '';
+      if (!id) {
+        if (!cancelled) {
+          setGate('ok');
+          setHold(false);
         }
+        return;
+      }
+      invalidateClinicExpiry(id);
+      try {
+        const { clinic: row, error } = await loadClinicAccess(id);
+        if (cancelled) return;
+        if (error) {
+          setGate((current) => (current === 'loading' ? 'ok' : current));
+          setHold(false);
+          return;
+        }
+        if (row) setClinic(row);
+        setGate(row && clinicAccessClosed(row) ? 'expired' : 'ok');
+        setHold(false);
       } catch (err) {
         console.error('Failed to check expiry in AppLayout:', err);
+        if (!cancelled) {
+          setGate((current) => (current === 'loading' ? 'ok' : current));
+          setHold(false);
+        }
       }
     };
     checkExpiry();
-  }, []);
+    const onExpired = (event) => {
+      if (event?.detail?.clinic) setClinic(event.detail.clinic);
+      setGate('expired');
+      setHold(false);
+    };
+    window.addEventListener('shifo:tariff-expired', onExpired);
+    window.addEventListener('focus', checkExpiry);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('shifo:tariff-expired', onExpired);
+      window.removeEventListener('focus', checkExpiry);
+    };
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (gate !== 'expired') return undefined;
+    const id = localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id') || '';
+    const timer = window.setInterval(async () => {
+      if (!id) return;
+      invalidateClinicExpiry(id);
+      const { clinic: row, error } = await loadClinicAccess(id);
+      if (error || !row) return;
+      setClinic(row);
+      if (!clinicAccessClosed(row)) setGate('ok');
+    }, 12000);
+    return () => window.clearInterval(timer);
+  }, [gate]);
 
   // Detect mobile screen with performance optimization
   useEffect(() => {
@@ -131,11 +167,24 @@ export default function AppLayout() {
     setMobileOpen(true);
   }, []);
 
+  if (gate === 'loading') {
+    return (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#F8FAFC]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-slate-800" />
+      </div>
+    );
+  }
+
+  if (gate === 'expired') {
+    return <SubscriptionBlockedView clinic={clinic} />;
+  }
+
   // Professional native mobile layout with motion
   if (isMobile) {
     return (
       <NativeMobileLayout>
-        <Outlet />
+        <TariffReminder clinic={clinic} />
+        {hold ? null : <Outlet />}
       </NativeMobileLayout>
     );
   }
@@ -161,10 +210,10 @@ export default function AppLayout() {
         {/* Page Content with Framer Motion Transitions */}
         <main className="flex-1 overflow-y-auto px-5 py-3 pb-6 relative no-scrollbar">
           <div className="max-w-[1600px] mx-auto w-full">
-            <SubscriptionBanner />
+            <TariffReminder clinic={clinic} />
             <ErrorBoundary>
               <Suspense fallback={<InlineLoader />}>
-                {isExpired ? <SubscriptionBlockedView /> : <Outlet />}
+                {hold ? null : <Outlet />}
               </Suspense>
             </ErrorBoundary>
           </div>

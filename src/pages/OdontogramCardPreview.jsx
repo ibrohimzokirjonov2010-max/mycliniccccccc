@@ -5,6 +5,7 @@ import MobileCompactOdontogram from '@/components/patients/MobileCompactOdontogr
 import ChairsidePatientProfile from '@/components/patients/ChairsidePatientProfile';
 import { fmtMoney } from '@/utils/clinicMetrics';
 import { supabase } from '@/api/supabaseClient';
+import { assertClinicNotExpired } from '@/lib/clinicExpiry';
 import { internalIdToFdi } from '@/lib/fdiNotation';
 import { matchIllustrationKind } from '@/utils/toothIllustration';
 
@@ -45,6 +46,7 @@ export default function OdontogramCardPreview() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      await assertClinicNotExpired();
       const { data: plans, error: planError } = await supabase
         .from('treatment_plans')
         .select('id,patient_id,patient_name,name,status,tooth_number,services,total_price,notes,created_date,updated_date')

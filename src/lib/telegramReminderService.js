@@ -10,6 +10,8 @@
  *  - Test xabari yuborish
  */
 
+import { assertClinicNotExpired } from '@/lib/clinicExpiry';
+
 const BOT_TOKEN = '8878208387:AAEdKJKfUkevXREmWGi41B-0IBYzL6sB1Zk';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zvyggjldzkxwufpnaatr.supabase.co';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -168,6 +170,12 @@ export function getPatientTelegramChatId(patient) {
  * Supabase'dan bugungi va kelajakdagi qabullarni olish
  */
 export async function fetchUpcomingAppointments() {
+  try {
+    await assertClinicNotExpired();
+  } catch (error) {
+    if (error?.code === 402) return [];
+    throw error;
+  }
   const today = getTashkentDate();
   const key = SERVICE_KEY || SUPABASE_KEY;
   if (!key) return [];
@@ -194,6 +202,12 @@ export async function fetchUpcomingAppointments() {
  */
 export async function fetchPatientById(patientId) {
   if (!patientId) return null;
+  try {
+    await assertClinicNotExpired();
+  } catch (error) {
+    if (error?.code === 402) return null;
+    throw error;
+  }
   const key = SERVICE_KEY || SUPABASE_KEY;
   if (!key) return null;
 

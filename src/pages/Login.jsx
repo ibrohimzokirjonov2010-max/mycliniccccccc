@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
 import { applyClinicSession, resolveClinicPlan } from '@/lib/clinicPlan';
+import { clinicAccessClosed } from '@/lib/clinicExpiry';
 import { useAuth } from '@/lib/AuthContext';
 
 /**
@@ -93,6 +94,11 @@ export default function Login() {
         localStorage.setItem('clinic_id', user.clinic_id);
         localStorage.setItem('current_clinic_id', user.clinic_id);
         const clinic = await base44.clinic.getById(user.clinic_id);
+        if (clinic && clinicAccessClosed(clinic)) {
+          ['auth_token', 'is_authenticated', 'user_id', 'user_name', 'user_role', 'clinic_id', 'current_clinic_id', 'clinic_plan', 'user_data'].forEach((key) => localStorage.removeItem(key));
+          if (!cancelled) setError('Klinika uchun to\'lov muddati tugagan. Iltimos, to\'lovni amalga oshiring!');
+          return;
+        }
         const clinicPlan = clinic
           ? applyClinicSession(clinic)
           : resolveClinicPlan({ id: user.clinic_id, plan: user.plan });

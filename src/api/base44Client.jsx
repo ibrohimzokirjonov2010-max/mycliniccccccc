@@ -17,6 +17,7 @@ import {
   planAllows,
   resolveClinicPlan,
 } from '@/lib/clinicPlan';
+import { assertClinicNotExpired, isClinicExpired } from '@/lib/clinicExpiry';
 
 export { PLAN_FEATURES };
 
@@ -175,6 +176,7 @@ class HybridEntityLoader {
   }
 
   async _checkAccess() {
+    await assertClinicNotExpired();
     const featureMap = {
       'Patient': 'patients',
       'Appointment': 'appointments',
@@ -467,6 +469,7 @@ class HybridEntityLoader {
       if (error) throw error;
       return count || 0;
     } catch (error) {
+      if (error?.code === 402) throw error;
       console.error(`Error counting ${this.entityName}:`, error);
       return (await this._localStorageFilter(conditions)).length;
     }
@@ -650,6 +653,7 @@ class HybridEntityLoader {
 
       return enriched;
     } catch (error) {
+      if (error?.code === 402) throw error;
       // implant_brands may be absent on older Supabase schemas — local fallback is expected
       if (this.entityName === 'ImplantBrand') {
         console.warn(`[ImplantBrand] using local store (${error?.message || error})`);
@@ -700,6 +704,7 @@ class HybridEntityLoader {
       }
       return this._enrich(data || []);
     } catch (e) {
+      if (e?.code === 402) throw e;
       console.error('Search error:', e);
       return [];
     }
@@ -820,6 +825,7 @@ class HybridEntityLoader {
 
       return enriched;
     } catch (error) {
+      if (error?.code === 402) throw error;
       console.error(`Error filtering ${this.entityName}:`, error);
       return this._localStorageFilter(conditions, orderBy, limit);
     }
@@ -1024,6 +1030,7 @@ class HybridEntityLoader {
 
         return this._enrich([enrichedRecord])[0] || enrichedRecord;
       } catch (error) {
+        if (error?.code === 402) throw error;
         console.error(`Error creating ${this.entityName}:`, error);
 
         const badCol = missingColumnFromError(error);
@@ -1237,7 +1244,7 @@ class HybridEntityLoader {
       }
       throw new Error(`All retries failed for ${this.entityName} update`);
     } catch (error) {
-      if (this.entityName === 'Implant') throw error;
+      if (error?.code === 402 || this.entityName === 'Implant') throw error;
       const fallbackRes = this._localStorageUpdate(id, incoming);
       if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('crm-data-updated'));
       return this.entityName === 'User' ? sanitizeUser(fallbackRes) : fallbackRes;
@@ -1285,6 +1292,7 @@ class HybridEntityLoader {
       if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('crm-data-updated'));
       return result;
     } catch (error) {
+      if (error?.code === 402) throw error;
       console.error(`Error deleting ${this.entityName}:`, error);
       if (error.code === '23503' || (error.message && error.message.includes('Bog\'langan'))) {
         throw error;
@@ -2649,15 +2657,8 @@ export const base44 = {
         return { success: false, error: 'Klinika faol emas. Admin bilan bog\'laning!' };
       }
 
-      // Check Expiry Date
-      if (clinic.expires_at) {
-        const expiryDate = new Date(clinic.expires_at);
-        expiryDate.setHours(23, 59, 59, 999);
-        
-        const today = new Date();
-        if (today > expiryDate) {
-          return { success: false, error: 'Klinika uchun to\'lov muddati tugagan. Iltimos, to\'lovni amalga oshiring!' };
-        }
+      if (isClinicExpired(clinic.expires_at)) {
+        return { success: false, error: 'Klinika uchun to\'lov muddati tugagan. Iltimos, to\'lovni amalga oshiring!' };
       }
       
       console.log('✅ Login successful:', user.name, '| Role:', user.role);

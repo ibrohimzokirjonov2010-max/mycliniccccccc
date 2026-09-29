@@ -1,4 +1,5 @@
 import { supabase } from '@/api/supabaseClient';
+import { assertClinicNotExpired } from '@/lib/clinicExpiry';
 
 /** Hand-created clinics with no plan stay BASIC. These two already-live clinics stay PRO without a database write. */
 export const PROTECTED_PRO_CLINIC_IDS = new Set(['default_clinic', 'ava-dent']);
@@ -128,6 +129,7 @@ export async function fetchServerPlan(clinicId) {
 }
 
 export async function assertServerFeature(feature) {
+  await assertClinicNotExpired();
   const plan = await fetchServerPlan();
   if (!planAllows(plan, feature)) {
     const error = new Error("Bu moduldan foydalanish uchun PRO ta'rifiga o'ting!");
