@@ -851,7 +851,7 @@ export default function ToothChartCard({
           <div className={cn('tooth-legend mt-2', phone && 'chip-rail')}>
             <div className={cn(phone ? 'chip-rail-scroll' : 'tooth-legend-row flex flex-wrap gap-1.5')}>
               {LEGEND.map((k) => (
-                <span key={k.id} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600">
+                <span key={k.id} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-solid border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600">
                   <i className="h-2 w-2 rounded-sm" style={{ background: k.color }} />
                   {k.label}
                 </span>
@@ -1127,7 +1127,7 @@ function ToothCell({ fdi, isUpper, entry, active, picked, dim, onClick }) {
         className="tooth-face relative flex w-full max-w-full items-center justify-center overflow-hidden rounded-md"
         style={{
           boxSizing: 'border-box',
-          border: color ? `2px ${entry.done ? 'solid' : 'dashed'} ${color}` : '2px solid transparent',
+          border: '2px solid transparent',
           opacity: entry?.kind === 'missing' ? 0.45 : 1,
           boxShadow: active || picked ? 'inset 0 0 0 2px #0F172A' : 'none',
           alignItems: crownDown ? 'flex-end' : 'flex-start',
@@ -1149,8 +1149,8 @@ function ToothCell({ fdi, isUpper, entry, active, picked, dim, onClick }) {
             background: color,
             textShadow: 'none',
             borderRadius: 3,
-            padding: '1px 2px',
-            border: `1.5px ${entry.done ? 'solid' : 'dashed'} ${color}`,
+            padding: '1px 3px',
+            border: 'none',
           } : undefined}
         >
           {fdi}
