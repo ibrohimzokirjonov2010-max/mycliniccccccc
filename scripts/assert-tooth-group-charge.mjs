@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizeOncePricedPlan, toothGroupBilling, toothGroupCharge, withOncePricing } from '../src/lib/toothPlanCharge.js';
+import { normalizeOncePricedPlan, staleEncodedOnceTotal, toothGroupBilling, toothGroupCharge, withOncePricing } from '../src/lib/toothPlanCharge.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -62,6 +62,10 @@ const plans = withOncePricing([
 ]);
 const planTotal = plans.reduce((sum, plan) => sum + Number(plan.total_price), 0);
 assert(planTotal - 1500180 === 8814820, `Zohid debt ${planTotal - 1500180}`);
+
+const staleNotes = `[TECH_DATA]${JSON.stringify({ name: 'Breket tizimi', total_price: 112000000, services: multiplied.services })}[END_TECH]`;
+assert(staleEncodedOnceTotal(staleNotes, { name: 'Breket tizimi', total_price: 7000000, services: collapsed.services }), 'notes 112M is stale');
+assert(!staleEncodedOnceTotal(staleNotes, mixed), 'a mixed plan is not rewritten from braces notes');
 
 const profile = readFileSync(join(root, 'src/pages/PatientProfile.jsx'), 'utf8');
 assert(profile.includes('isOncePricingDirty'), 'profile rewrites a multiplied braces plan');

@@ -92,6 +92,28 @@ export function withOncePricing(plans) {
   return (plans || []).map((plan) => normalizeOncePricedPlan(plan));
 }
 
+/** Notes can keep catalogPrice × toothCount after the table column was corrected. */
+export function staleEncodedOnceTotal(rawNotes, plan) {
+  if (!plan || typeof rawNotes !== 'string' || !rawNotes.startsWith('[TECH_DATA]')) return false;
+  const kind = onceGroupKind(`${plan.name || ''} ${plan.category || ''}`);
+  if (!kind) return false;
+  const end = rawNotes.indexOf('[END_TECH]');
+  if (end < 0) return false;
+  try {
+    const tech = JSON.parse(rawNotes.slice('[TECH_DATA]'.length, end));
+    const encoded = Number(tech.total_price) || 0;
+    const current = Number(plan.total_price) || 0;
+    if (encoded > current && current > 0) return true;
+    const rows = [];
+    eachServiceRow(tech.services, (row) => rows.push(row));
+    const unit = Math.max(0, ...rows.map((row) => Number(row.price) || 0));
+    const repeated = rows.filter((row) => unit > 0 && Number(row.price) === unit).length;
+    return repeated > 1 && unit >= current;
+  } catch {
+    return false;
+  }
+}
+
 export function oncePricingChanged(before, after) {
   if (!before || !after || before === after) return false;
   if (Number(before.total_price) !== Number(after.total_price)) return true;
