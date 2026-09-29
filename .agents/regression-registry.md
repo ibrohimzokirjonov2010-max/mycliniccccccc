@@ -13,6 +13,17 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Tish kartasi — breket narxi har tishga ko‘paytiriladi
+- **Sana:** 2026-09-29
+- **Tuzatilgan Fayllar:**
+  - [`src/lib/toothPlanCharge.js`](src/lib/toothPlanCharge.js)
+  - [`src/components/patients/ToothChartCard.jsx`](src/components/patients/ToothChartCard.jsx)
+  - [`scripts/assert-tooth-group-charge.mjs`](scripts/assert-tooth-group-charge.mjs)
+- **Muammo Tavsifi:** Zokirjonov Zohid profilida qarz 1 414 820 dan 113 814 820 ga chiqdi. 16 ta tishga «Breket tizimi» 7 000 000 × 16 = 112 000 000 qilib yozildi.
+- **Sababi:** `createPlan` katalog narxini tanlangan tishlar soniga ko‘paytirardi. Breket katalog narxi butun tizim uchun (keramik 7 000 000), bitta tish uchun emas.
+- **Qanday tuzatildi:** Breket va ko‘prik bir marta hisoblanadi; plomba, implant va «bir xil davolash» har tishga qoladi. Zohidning reja `total_price` va bog‘langan Debt qatori 7 000 000 ga tuzatildi. To‘lovlar o‘chirilmadi. `patient-y2ii8ynf2` ga yozilmaydi.
+- **Qaytalamaslik choralari:** `price * fdis.length` ni breket/ko‘prik uchun qaytarmang. `toothGroupBilling('breket')` `once` bo‘lib qolsin. `node scripts/assert-tooth-group-charge.mjs` o‘tsin.
+
 ### 💳 To'lovlar — Hozirgi qarz keshda qoladi
 - **Sana:** 2026-09-29
 - **Tuzatilgan Fayllar:**

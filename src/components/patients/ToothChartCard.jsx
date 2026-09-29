@@ -10,6 +10,7 @@ import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, fdiWidthWeight, interna
 import { getToothIllustrationSrc, matchIllustrationKind } from '@/utils/toothIllustration';
 import { displayServiceName, formatDoctorName } from '@/lib/displayText';
 import { implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
+import { toothGroupBilling, toothGroupCharge } from '@/lib/toothPlanCharge';
 
 const ADULT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
 const ADULT_LOWER = [38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
@@ -564,24 +565,25 @@ export default function ToothChartCard({
     });
   };
 
-  const createPlan = async (fdis, serviceName, kindHint) => {
-    if (!patient?.id) return;
+  const createPlan = async (fdis, serviceName, kindHint, billing = 'each') => {
+    if (!patient?.id || patient.id === 'patient-y2ii8ynf2') return;
     const doc = doctorFields();
     if (!doc.doctor_id) {
       toast.error('Shifokor tanlanmagan');
       return;
     }
     const price = catalogPrice(serviceName);
+    const charge = toothGroupCharge(price, fdis.length, billing);
     const surfaceNote = surfaces.length ? `Yuza: ${surfaces.join(', ')}` : '';
-    const list = fdis.map((fdi) => ({
+    const list = fdis.map((fdi, index) => ({
       service_name: serviceName,
       tooth_number: String(fdi),
-      price,
+      price: charge.linePrices[index] || 0,
       status: 'planned',
       category: kindHint || '',
       notes: surfaceNote,
     }));
-    const total = price * fdis.length;
+    const total = charge.total;
     setBusy(true);
     try {
       const created = await base44.entities.TreatmentPlan.create({
@@ -982,9 +984,9 @@ export default function ToothChartCard({
               </div>
               <span className="ml-auto flex flex-wrap gap-1.5">
                 <button type="button" onClick={() => setSelected([])} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Bekor qilish</button>
-                <button type="button" disabled={busy} onClick={() => createPlan(selected, 'Bir xil davolash', 'plomba')} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Bir xil davolash</button>
-                <button type="button" disabled={busy} onClick={() => createPlan(selected, "Ko‘prik (protez)", 'sirkon')} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Ko‘prik (protez)</button>
-                <button type="button" disabled={busy} onClick={() => createPlan(selected, 'Breket tizimi', 'breket')} className="h-8 rounded-lg bg-pink-600 px-2 text-xs font-bold">Breket qo‘yish</button>
+                <button type="button" disabled={busy} onClick={() => createPlan(selected, 'Bir xil davolash', 'plomba', 'each')} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Bir xil davolash</button>
+                <button type="button" disabled={busy} onClick={() => createPlan(selected, "Ko‘prik (protez)", 'sirkon', 'once')} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Ko‘prik (protez)</button>
+                <button type="button" disabled={busy} onClick={() => createPlan(selected, 'Breket tizimi', 'breket', 'once')} className="h-8 rounded-lg bg-pink-600 px-2 text-xs font-bold">Breket qo‘yish</button>
               </span>
             </div>
           )}
@@ -1012,16 +1014,16 @@ export default function ToothChartCard({
             onNote={() => createPlan([active], noteText.trim() || 'Izoh', '')}
             onGroup={() => {
               const map = {
-                breket: ['Breket tizimi', 'breket'],
-                bridge: ["Ko‘prik (protez)", 'sirkon'],
-                same: ['Bir xil davolash', 'plomba'],
-                implant: ['Implant', 'implant'],
+                breket: ['Breket tizimi', 'breket', 'once'],
+                bridge: ["Ko‘prik (protez)", 'sirkon', 'once'],
+                same: ['Bir xil davolash', 'plomba', 'each'],
+                implant: ['Implant', 'implant', 'each'],
               };
-              const [name, kind] = map[groupAction];
-              createPlan(selected, name, kind);
+              const [name, kind, billing] = map[groupAction];
+              createPlan(selected, name, kind, billing);
             }}
             doctorName={doctorLabel}
-            unitPrice={catalogPrice(({ breket: 'Breket tizimi', bridge: 'Sirkon toj', same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
+            unitPrice={catalogPrice(({ breket: 'Breket tizimi', bridge: "Ko‘prik (protez)", same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
             onUpload={uploadXray}
             onView={setViewer}
             onAddToPlan={() => createPlan([active], activeEntry?.name || 'Davolash', activeEntry?.kind || '')}
@@ -1055,16 +1057,16 @@ export default function ToothChartCard({
             onNote={() => createPlan([active], noteText.trim() || 'Izoh', '')}
             onGroup={() => {
               const map = {
-                breket: ['Breket tizimi', 'breket'],
-                bridge: ["Ko‘prik (protez)", 'sirkon'],
-                same: ['Bir xil davolash', 'plomba'],
-                implant: ['Implant', 'implant'],
+                breket: ['Breket tizimi', 'breket', 'once'],
+                bridge: ["Ko‘prik (protez)", 'sirkon', 'once'],
+                same: ['Bir xil davolash', 'plomba', 'each'],
+                implant: ['Implant', 'implant', 'each'],
               };
-              const [name, kind] = map[groupAction];
-              createPlan(selected, name, kind);
+              const [name, kind, billing] = map[groupAction];
+              createPlan(selected, name, kind, billing);
             }}
             doctorName={doctorLabel}
-            unitPrice={catalogPrice(({ breket: 'Breket tizimi', bridge: 'Sirkon toj', same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
+            unitPrice={catalogPrice(({ breket: 'Breket tizimi', bridge: "Ko‘prik (protez)", same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
             onUpload={uploadXray}
             onView={setViewer}
             onAddToPlan={() => createPlan([active], activeEntry?.name || 'Davolash', activeEntry?.kind || '')}
@@ -1173,6 +1175,7 @@ function SidePanel(props) {
   const [showAllHistory, setShowAllHistory] = useState(false);
   useEffect(() => { setShowAllHistory(false); }, [active]);
   const group = multi && selected.length > 0 && !active;
+  const groupCharge = toothGroupCharge(unitPrice, selected.length, toothGroupBilling(groupAction));
   const historyRows = showAllHistory ? history : history.slice(0, 3);
   const statusLabel = activeEntry
     ? (LEGEND.find((k) => k.id === activeEntry.kind)?.label || activeEntry.name)
@@ -1260,11 +1263,11 @@ function SidePanel(props) {
               </div>
               <div className="rounded-lg border border-slate-100 px-2 py-1.5">
                 <div className="text-[10px] font-bold uppercase text-slate-400">Narx</div>
-                <div className="text-xs font-bold">{unitPrice > 0 ? `${selected.length} × ${unitPrice.toLocaleString('uz-UZ')}` : '—'}</div>
+                <div className="text-xs font-bold">{groupCharge.total > 0 ? (groupCharge.billing === 'once' ? money(unitPrice) : `${selected.length} × ${unitPrice.toLocaleString('uz-UZ')}`) : '—'}</div>
               </div>
               <div className="rounded-lg border border-slate-100 px-2 py-1.5">
                 <div className="text-[10px] font-bold uppercase text-slate-400">Jami</div>
-                <div className="text-xs font-bold">{unitPrice > 0 ? money(unitPrice * selected.length) : '—'}</div>
+                <div className="text-xs font-bold">{groupCharge.total > 0 ? money(groupCharge.total) : '—'}</div>
               </div>
             </div>
           </div>
