@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, X, Trash2, Clock, AlertCircle } from 'lucide-react';
 import { notificationStore } from '@/lib/notificationStore';
+import { formatClinicDate } from '@/lib/clinicTime';
 
 export default function NotificationPanel({ isOpen, onClose }) {
   const [notifications, setNotifications] = useState([]);
@@ -35,7 +36,7 @@ export default function NotificationPanel({ isOpen, onClose }) {
     if (diff < 60) return `${diff} daqiqa oldin`;
     const hours = Math.round(diff / 60);
     if (hours < 24) return `${hours} soat oldin`;
-    return date.toLocaleDateString();
+    return formatClinicDate(date);
   };
 
   return (

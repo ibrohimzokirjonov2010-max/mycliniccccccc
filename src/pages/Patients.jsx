@@ -197,7 +197,16 @@ export default function Patients() {
     last: visitIndex?.last || {},
   }), [visitIndex]);
 
-  const hasMore = patientsData && patientsData.length === PAGE_SIZE;
+  const [listExhausted, setListExhausted] = useState(false);
+
+  useEffect(() => {
+    setListExhausted(false);
+  }, [debouncedSearch]);
+
+  const hasMore = !listExhausted
+    && !!patientsData
+    && patientsData.length === PAGE_SIZE
+    && (stats?.total == null || allPatients.length < Number(stats.total));
 
   // ─── Mutations ──────────────────────────────────────────────────────────
   const deleteMutation = useMutation({
@@ -229,18 +238,21 @@ export default function Patients() {
     return () => window.removeEventListener('crm-data-updated', handlePatientsRefresh);
   }, [queryClient]);
 
-  // Accumulate patient list pages
+  // Accumulate patient list pages. Ignore the previous page while the next one is still loading,
+  // otherwise a repeated page keeps "Ko'proq bemorlar yuklanmoqda..." on screen forever.
   useEffect(() => {
+    if (!patientsData || isFetching) return;
     if (page === 0) {
-      setAllPatients(patientsData || []);
-    } else if (patientsData) {
-      setAllPatients(prev => {
-        const existingIds = new Set(prev.map(p => p.id));
-        const newItems = patientsData.filter(p => !existingIds.has(p.id));
-        return [...prev, ...newItems];
-      });
+      setAllPatients(patientsData);
+      return;
     }
-  }, [patientsData, page]);
+    setAllPatients(prev => {
+      const existingIds = new Set(prev.map(p => p.id));
+      const newItems = patientsData.filter(p => !existingIds.has(p.id));
+      if (newItems.length === 0) queueMicrotask(() => setListExhausted(true));
+      return newItems.length ? [...prev, ...newItems] : prev;
+    });
+  }, [patientsData, page, isFetching]);
 
   // Prevent double-increment while a fetch is in progress
   const fetchingRef = useRef(false);

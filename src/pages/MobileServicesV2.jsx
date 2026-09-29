@@ -158,7 +158,7 @@ export default function MobileServicesV2() {
     const cats = new Set();
     ALLOWED_CATEGORIES.forEach(c => cats.add(c));
     services.forEach(s => {
-      const cat = s.category || autoCategorize(s.name);
+      const cat = normalizeCategory(s.category || autoCategorize(s.name));
       cats.add(cat);
     });
     const allCats = Array.from(cats);

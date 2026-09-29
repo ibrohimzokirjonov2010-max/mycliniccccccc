@@ -13,6 +13,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { supabase } from '@/api/supabaseClient';
+import { formatClinicDate } from '@/lib/clinicTime';
 
 export default function MobileMarketing() {
   const { t } = useTranslation();
@@ -303,7 +304,7 @@ export default function MobileMarketing() {
                            <div className="flex items-center gap-2">
                               <span className="text-[8px] font-black text-indigo-600 uppercase tracking-widest px-2 py-1 bg-indigo-50 rounded-lg">{l.source || 'Ads'}</span>
                               <span className="text-[8px] font-bold text-slate-300 uppercase">
-                                 {l.created_date || l.created_at ? new Date(l.created_date || l.created_at).toLocaleDateString() : 'Yaqinda'}
+                                 {l.created_date || l.created_at ? formatClinicDate(l.created_date || l.created_at) : 'Yaqinda'}
                               </span>
                            </div>
                            <div className="flex gap-2">

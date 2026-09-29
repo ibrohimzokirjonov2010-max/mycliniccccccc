@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import ProfessionalOdontogram from '@/components/patients/ProfessionalOdontogram';
 import { formatCurrency } from '@/lib/utils';
+import { formatClinicDate } from '@/lib/clinicTime';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
@@ -696,7 +697,7 @@ export default function MobileTreatmentPlansV2() {
                                    </div>
                                    <div className="text-right">
                                       <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest block">Sana</span>
-                                      <span className="text-[9px] font-bold text-slate-600 leading-none block mt-1">{new Date().toLocaleDateString()}</span>
+                                      <span className="text-[9px] font-bold text-slate-600 leading-none block mt-1">{formatClinicDate(new Date())}</span>
                                    </div>
                                 </div>
 

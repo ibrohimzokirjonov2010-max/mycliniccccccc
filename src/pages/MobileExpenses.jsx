@@ -11,6 +11,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { tashkentToday } from '@/lib/clinicTime';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter } from '@/components/ui/dialog';
@@ -209,7 +210,7 @@ export default function MobileExpenses() {
     custom_category: '',
     amount: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    date: tashkentToday(),
     receipt_url: ''
   });
 
@@ -238,7 +239,7 @@ export default function MobileExpenses() {
         category: 'other',
         amount: '',
         description: '',
-        date: new Date().toISOString().split('T')[0],
+        date: tashkentToday(),
         receipt_url: ''
       });
       setModalOpen(true);
@@ -299,7 +300,7 @@ export default function MobileExpenses() {
         custom_category: '',
         amount: '',
         description: '',
-        date: new Date().toISOString().split('T')[0],
+        date: tashkentToday(),
         receipt_url: ''
       });
       await loadData();

@@ -23,6 +23,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { formatDateTime, cn } from '@/lib/utils';
+import { tashkentToday } from '@/lib/clinicTime';
 import { formatClinicDate } from '@/lib/clinicTime';
 import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import { toast } from 'sonner';
@@ -38,7 +39,7 @@ const RECALL_RULES = [
   { value: 'custom', label: 'Boshqa (Kalendar orqali)', days: 0, icon: '🗓️' },
 ];
 
-const getTodayDateStr = () => new Date().toISOString().split('T')[0];
+const getTodayDateStr = () => tashkentToday();
 
 /**
  * RecallSystem Page - Professional Excel Spreadsheet View

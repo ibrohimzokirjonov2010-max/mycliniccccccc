@@ -11,7 +11,7 @@ import { base44 } from '@/api/base44Client';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
 import { cn, resolveDoctorId, getTreatmentTypeLabel } from '@/lib/utils';
-import { paymentStamp, formatClinicDateTime } from '@/lib/clinicTime';
+import { paymentStamp, formatClinicDateTime, tashkentToday } from '@/lib/clinicTime';
 import { computePatientBalances } from '@/lib/paymentDebt';
 import { Input } from '@/components/ui/input';
 import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
@@ -156,7 +156,7 @@ export default function MobilePaymentsV2() {
 
   const loadStats = useCallback(async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = tashkentToday();
       const allPays = isDoctor && user?.id
         ? await base44.entities.Payment.filter({ doctor_id: user.id }, '-date', 500, 0).catch(() => [])
         : await base44.entities.Payment.list('-date', 500, 0);

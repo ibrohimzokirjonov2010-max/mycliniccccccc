@@ -84,6 +84,7 @@ export default function PatientSelect({
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
 
     searchTimerRef.current = setTimeout(async () => {
+      const slow = setTimeout(() => setIsSearchingRemote(false), 8000);
       try {
         setIsSearchingRemote(true);
         const results = await base44.entities.Patient.search(q, 20);
@@ -93,6 +94,7 @@ export default function PatientSelect({
       } catch (err) {
         console.debug('Patient remote search skipped:', err);
       } finally {
+        clearTimeout(slow);
         setIsSearchingRemote(false);
       }
     }, 250);

@@ -642,7 +642,7 @@ export default function Payments() {
   const sortedDisplayPayments = useMemo(() => {
     let list = [...displayPayments];
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = tashkentToday();
     const thisMonth = today.slice(0, 7);
 
     if (activeFilter === 'today') {
@@ -857,7 +857,7 @@ export default function Payments() {
         finalDate = form.date || tashkentToday();
       }
     } catch (e) {
-      finalDate = new Date().toISOString().split('T')[0];
+      finalDate = tashkentToday();
     }
 
     const validCategories = ['Treatment', 'Consultation', 'Implant', 'Crown', 'Bridge', 'Whitening', 'Orthodontics', 'Surgery', 'X-Ray', 'Lab Fee', 'Material', 'Equipment', 'Salary', 'Rent', 'Utilities', 'Marketing', 'Other'];

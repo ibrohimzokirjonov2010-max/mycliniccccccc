@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
+import { tashkentToday } from '@/lib/clinicTime';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
 
@@ -278,7 +279,7 @@ export default function Expenses() {
     custom_category: '',
     amount: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    date: tashkentToday(),
     receipt_url: ''
   });
   const [saving, setSaving] = useState(false);
@@ -407,7 +408,7 @@ export default function Expenses() {
         custom_category: '',
         amount: '',
         description: '',
-        date: new Date().toISOString().split('T')[0],
+        date: tashkentToday(),
         receipt_url: ''
       });
       await loadData();
@@ -556,7 +557,7 @@ export default function Expenses() {
                 custom_category: '',
                 amount: '',
                 description: '',
-                date: new Date().toISOString().split('T')[0],
+                date: tashkentToday(),
                 receipt_url: ''
               });
               setModalOpen(true);

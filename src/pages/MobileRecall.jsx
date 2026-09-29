@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import PullToRefresh from '@/components/ui/PullToRefresh';
-import { formatClinicDate } from '@/lib/clinicTime';
+import { formatClinicDate, tashkentToday } from '@/lib/clinicTime';
 import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import PatientSelect from '@/components/patients/PatientSelect';
 import { toast } from 'sonner';
@@ -42,7 +42,7 @@ export default function MobileRecall() {
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [search, setSearch] = useState('');
-  const getTodayStr = () => new Date().toISOString().split('T')[0];
+  const getTodayStr = () => tashkentToday();
   const calcDate = (months, baseDate = getTodayStr()) => {
     const d = new Date(baseDate || new Date());
     if (isNaN(d.getTime())) return getTodayStr();
@@ -166,7 +166,7 @@ export default function MobileRecall() {
 
   const pendingCount = recalls.filter(r => String(r.status || 'pending').toLowerCase() === 'pending').length;
   const todayCount = recalls.filter(r => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = tashkentToday();
     if (!r || !r.recall_date) return false;
     const cleanDate = r.recall_date.includes('T') ? r.recall_date.split('T')[0] : r.recall_date.split(' ')[0];
     return cleanDate === today;
