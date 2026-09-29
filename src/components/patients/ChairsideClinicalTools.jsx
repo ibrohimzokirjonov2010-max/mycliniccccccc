@@ -223,7 +223,8 @@ export default function ChairsideClinicalTools({
       await base44.entities.Xray.create({
         patient_id: patientId,
         image_url,
-        description: selectedTooth ? `Tish #${selectedTooth}` : 'RVG / Rentgen',
+        description: selectedTooth ? `Rentgen #${selectedTooth}` : 'Rentgen',
+        xray_type: 'xray',
         tooth_number: selectedTooth ? String(selectedTooth) : null,
         date: new Date().toISOString().slice(0, 10),
       });
@@ -418,7 +419,7 @@ export default function ChairsideClinicalTools({
             style={{ backgroundColor: TEAL }}>
             {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
             Yuklash
-            <input type="file" accept="image/*" className="hidden" onChange={handleUploadXray} disabled={uploading} />
+            <input data-testid="rvg-file-input" type="file" accept="image/*" className="hidden" onChange={handleUploadXray} disabled={uploading} />
           </label>
         </div>
 

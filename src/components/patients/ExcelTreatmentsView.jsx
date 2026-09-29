@@ -4,9 +4,10 @@ import {
   Plus, Search, FileSpreadsheet, 
   ArrowUpDown, ExternalLink, User,
   CheckCircle2, Clock, ClipboardList, FileText, ChevronRight,
-  Calculator
+  Calculator, Trash2
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
+import TreatmentDeleteDialog from './TreatmentDeleteDialog';
 import { displayServiceName, formatDoctorName } from '@/lib/displayText';
 
 /**
@@ -20,11 +21,14 @@ function ExcelTreatmentsView({
   totalDebt = 0,
   onOpenTreatmentModal,
   onOpenPlanInvoice,
+  onDeleteTreatment,
 }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState('date');
   const [sortAsc, setSortAsc] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Flatten all services across all plans
   const allServicesRows = useMemo(() => {
@@ -42,6 +46,7 @@ function ExcelTreatmentsView({
         rows.push({
           id: `plan-${plan.id || pIdx}`,
           planId: plan.id,
+          serviceIndex: 0,
           planName: plan.name || `Davolash rejasi #${pIdx + 1}`,
           serviceName: plan.name || 'Davolash muolajasi',
           toothNumber: plan.tooth_number || '—',
@@ -54,17 +59,18 @@ function ExcelTreatmentsView({
       } else {
         planServices.forEach((srv, sIdx) => {
           rows.push({
-            id: `srv-${plan.id || pIdx}-${sIdx}`,
-            planId: plan.id,
-            planName: plan.name || `Davolash rejasi #${pIdx + 1}`,
-            serviceName: displayServiceName(srv.name || srv.service_name || 'Muolaja'),
-            toothNumber: srv.tooth_number || plan.tooth_number || '—',
-            doctorName: formatDoctorName(srv.doctor || plan.doctor_name || patient?.doctor_name) || 'Shifokor',
-            price: Number(srv.price || srv.cost || 0),
-            status: srv.status || plan.status || 'planned',
-            date: srv.date || plan.created_date || '',
-            planObj: { ...plan, paid_amount: planPaid },
-          });
+          id: `srv-${plan.id || pIdx}-${sIdx}`,
+          planId: plan.id,
+          serviceIndex: sIdx,
+          planName: plan.name || `Davolash rejasi #${pIdx + 1}`,
+          serviceName: displayServiceName(srv.name || srv.service_name || 'Muolaja'),
+          toothNumber: srv.tooth_number || plan.tooth_number || '—',
+          doctorName: formatDoctorName(srv.doctor || plan.doctor_name || patient?.doctor_name) || 'Shifokor',
+          price: Number(srv.price || srv.cost || 0),
+          status: srv.status || plan.status || 'planned',
+          date: srv.date || plan.created_date || '',
+          planObj: { ...plan, paid_amount: planPaid },
+        });
         });
       }
     });
@@ -139,6 +145,12 @@ function ExcelTreatmentsView({
     );
   };
 
+  const doneCount = allServicesRows.filter((row) => {
+    const status = String(row.status || '').toLowerCase();
+    return status === 'completed' || status === 'bajarildi' || status === 'bajarilgan';
+  }).length;
+  const progressLabel = `${doneCount}/${allServicesRows.length || 0}`;
+
   return (
     <div className="space-y-3">
 
@@ -157,6 +169,9 @@ function ExcelTreatmentsView({
             <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 w-5 h-5 flex items-center justify-center rounded-full hover:bg-slate-100 transition-all text-xs">✕</button>
           )}
         </div>
+        <span data-testid="treatment-progress" className="inline-flex items-center justify-center rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-700 shrink-0">
+          Jarayon {progressLabel}
+        </span>
         {onOpenTreatmentModal && (
           <button
             onClick={onOpenTreatmentModal}
@@ -214,8 +229,7 @@ function ExcelTreatmentsView({
                     <div className="bg-white px-3 py-2.5">
                       <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Narxi</p>
                       <p className="text-sm font-black text-slate-900 mt-0.5 leading-none">
-                        {row.price.toLocaleString()}
-                        <span className="text-[8px] font-bold text-slate-400 ml-0.5">so'm</span>
+                        {formatCurrency(row.price)}
                       </p>
                     </div>
                     <div className="bg-white px-3 py-2.5">
@@ -229,17 +243,28 @@ function ExcelTreatmentsView({
                   </div>
 
                   {/* Card footer */}
-                  {onOpenPlanInvoice && (
-                    <div className="px-3.5 py-2.5 bg-slate-50 border-t border-slate-100">
+                  <div className="px-3.5 py-2.5 bg-slate-50 border-t border-slate-100 flex gap-2">
+                    {onOpenPlanInvoice && (
                       <button
                         onClick={() => onOpenPlanInvoice(row.planObj)}
-                        className="w-full flex items-center justify-center gap-2 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-xl text-[11px] font-black transition-all active:scale-95"
+                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-xl text-[11px] font-black transition-all active:scale-95"
                       >
                         <FileText className="w-3.5 h-3.5" />
                         {t('patientProfile.invoiceBtn') || "Faktura ko'rish"}
                       </button>
-                    </div>
-                  )}
+                    )}
+                    {onDeleteTreatment && (
+                      <button
+                        type="button"
+                        data-testid="treatment-delete"
+                        onClick={() => setPendingDelete(row)}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-[11px] font-black"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        O‘chirish
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -252,18 +277,15 @@ function ExcelTreatmentsView({
               <div className="grid grid-cols-3 gap-3">
                 <div className="text-center bg-white/10 rounded-xl py-2 px-1">
                   <p className="text-[8px] font-bold text-white/70 uppercase tracking-wider">Asosiy</p>
-                  <p className="text-sm font-black text-white mt-0.5 leading-none">{totalOriginal.toLocaleString()}</p>
-                  <p className="text-[7px] text-white/50 mt-0.5">so'm</p>
+                  <p className="text-sm font-black text-white mt-0.5 leading-none">{formatCurrency(totalOriginal)}</p>
                 </div>
                 <div className="text-center bg-white/10 rounded-xl py-2 px-1">
                   <p className="text-[8px] font-bold text-white/70 uppercase tracking-wider">Chegirma</p>
-                  <p className="text-sm font-black text-white mt-0.5 leading-none">-{totalDiscount.toLocaleString()}</p>
-                  <p className="text-[7px] text-white/50 mt-0.5">so'm</p>
+                  <p className="text-sm font-black text-white mt-0.5 leading-none">-{formatCurrency(totalDiscount)}</p>
                 </div>
                 <div className="text-center bg-white/20 rounded-xl py-2 px-1 border border-white/20">
                   <p className="text-[8px] font-black text-white/90 uppercase tracking-wider">Jami</p>
-                  <p className="text-sm font-black text-white mt-0.5 leading-none">{totalFinal.toLocaleString()}</p>
-                  <p className="text-[7px] text-white/70 mt-0.5">so'm</p>
+                  <p className="text-sm font-black text-white mt-0.5 leading-none">{formatCurrency(totalFinal)}</p>
                 </div>
               </div>
             </div>
@@ -356,9 +378,8 @@ function ExcelTreatmentsView({
                     </td>
                     <td className="py-2 px-2 text-right border-r border-slate-100 whitespace-nowrap">
                       <span className="font-mono font-black text-slate-900 text-xs">
-                        {row.price.toLocaleString()}
+                        {formatCurrency(row.price)}
                       </span>
-                      <span className="text-[9px] font-bold text-slate-400 ml-1">UZS</span>
                     </td>
                     <td className="py-2 px-2 text-center text-xs text-slate-600 font-mono border-r border-slate-100 whitespace-nowrap">
                       {dateStr}
@@ -373,6 +394,17 @@ function ExcelTreatmentsView({
                         <span>{t('patientProfile.invoiceBtn') || "Faktura"}</span>
                         <ExternalLink className="w-2.5 h-2.5 opacity-70" />
                       </button>
+                      {onDeleteTreatment && (
+                        <button
+                          type="button"
+                          data-testid="treatment-delete"
+                          onClick={() => setPendingDelete(row)}
+                          className="ml-1 inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-[10.5px] font-bold"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          O‘chirish
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -409,7 +441,7 @@ function ExcelTreatmentsView({
                       {t('patientProfile.totalWithoutDiscount') || "Asosiy"}
                     </span>
                     <span className="font-mono font-bold text-xs text-slate-400 line-through mt-0.5 leading-tight">
-                      {totalOriginal.toLocaleString()} <span className="text-[9px]">UZS</span>
+                      {formatCurrency(totalOriginal)}
                     </span>
                   </div>
 
@@ -419,7 +451,7 @@ function ExcelTreatmentsView({
                       {t('patientProfile.discount') || "Chegirma"}
                     </span>
                     <span className="font-mono font-black text-amber-800 text-xs mt-0.5 leading-tight">
-                      -{totalDiscount.toLocaleString()} <span className="text-[8px]">UZS</span>
+                      -{formatCurrency(totalDiscount)}
                     </span>
                   </div>
 
@@ -430,7 +462,7 @@ function ExcelTreatmentsView({
                         {t('patientProfile.totalWithDiscount') || "Jami Summa"}
                       </span>
                       <span className="font-mono font-black text-[#0d7a8a] text-sm sm:text-[15px] mt-0.5 leading-tight">
-                        {totalFinal.toLocaleString()} <span className="text-[9.5px] font-bold">UZS</span>
+                        {formatCurrency(totalFinal)}
                       </span>
                     </div>
                   </div>
@@ -443,7 +475,7 @@ function ExcelTreatmentsView({
                       {t('patientProfile.totalWithDiscount') || "Jami Summa"}
                     </span>
                     <span className="font-mono font-black text-[#0d7a8a] text-sm sm:text-[15px] mt-0.5 leading-tight">
-                      {totalFinal.toLocaleString()} <span className="text-[9.5px] font-bold">UZS</span>
+                      {formatCurrency(totalFinal)}
                     </span>
                   </div>
                 </div>
@@ -452,6 +484,26 @@ function ExcelTreatmentsView({
           </div>
         )}
       </div>
+      <TreatmentDeleteDialog
+        row={pendingDelete ? {
+          serviceName: pendingDelete.serviceName,
+          toothNumber: pendingDelete.toothNumber,
+          price: pendingDelete.price,
+          paidAmount: pendingDelete.planObj?.paid_amount,
+        } : null}
+        busy={deleting}
+        onCancel={() => { if (!deleting) setPendingDelete(null); }}
+        onConfirm={async () => {
+          if (!pendingDelete || !onDeleteTreatment) return;
+          setDeleting(true);
+          try {
+            await onDeleteTreatment(pendingDelete);
+            setPendingDelete(null);
+          } finally {
+            setDeleting(false);
+          }
+        }}
+      />
     </div>
   );
 }

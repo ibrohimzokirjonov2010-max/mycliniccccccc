@@ -56,7 +56,9 @@ import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { formatPhone, capitalizeName } from '@/lib/utils';
+import { formatPhone, capitalizeName, formatCurrency } from '@/lib/utils';
+import { compressImage } from '@/utils/imageUpload';
+import { deleteTreatmentRow } from '@/lib/treatmentDelete';
 const formatPlanName = (name) => {
   if (!name) return 'Davolash rejasi';
   const toothMatch = name.match(/\s*\(#\d+\)$/);
@@ -631,43 +633,29 @@ export default function PatientProfile() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState(null); // currently viewing photo
 
-  const handlePhotoUpload = async (e) => {
+  const handlePhotoUpload = async (e, meta = {}) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
+    const tooth = String(meta.tooth || '').replace(/\D/g, '').slice(0, 2);
     setPhotoUploading(true);
     try {
       for (const file of files) {
-        const reader = new FileReader();
-        await new Promise((resolve, reject) => {
-          reader.onload = async (ev) => {
-            try {
-              const dataUrl = ev.target.result;
-              const fname = (file.name || '').toLowerCase();
-              let imgType = 'photo';
-              if (fname.includes('xray') || fname.includes('rentgen') || fname.includes('r-')) imgType = 'xray';
-              else if (fname.includes('ct') || fname.includes('kt')) imgType = 'ct';
-              else if (fname.includes('optg') || fname.includes('pano')) imgType = 'panoramic';
-
-              const newRecord = await base44.entities.Xray.create({
-                patient_id: id,
-                image_url: dataUrl,
-                date: new Date().toISOString().split('T')[0],
-                created_date: new Date().toISOString(),
-                type: imgType,
-                notes: file.name,
-                description: file.name,
-              });
-              if (newRecord) {
-                setXrays(prev => [newRecord, ...prev]);
-              }
-              resolve();
-            } catch (err) {
-              reject(err);
-            }
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
+        const dataUrl = await compressImage(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.75 });
+        const newRecord = await base44.entities.Xray.create({
+          patient_id: id,
+          patient_name: patient?.full_name || '',
+          image_url: dataUrl,
+          file_name: file.name,
+          date: new Date().toISOString().split('T')[0],
+          created_date: new Date().toISOString(),
+          xray_type: 'xray',
+          tooth_number: tooth || null,
+          notes: file.name,
+          description: tooth ? `Rentgen #${tooth}` : 'Rentgen',
         });
+        if (newRecord) {
+          setXrays(prev => [newRecord, ...prev]);
+        }
       }
       toast.success(`${files.length} ta tasvir muvaffaqiyatli yuklandi`);
       await load();
@@ -1058,7 +1046,7 @@ export default function PatientProfile() {
 
     // 4. Treatment plans (Invoices)
     (plans || []).forEach(plan => {
-      newLogs.push(`Davolash rejasi (Hisob-faktura): ${plan.name} — Narxi: ${plan.total_price?.toLocaleString()} so'm — Status: ${plan.status}`);
+      newLogs.push(`Davolash rejasi (Hisob-faktura): ${plan.name} — Narxi: ${formatCurrency(plan.total_price)} — Status: ${plan.status}`);
     });
 
     if (newLogs.length === 0) {
@@ -2108,7 +2096,7 @@ export default function PatientProfile() {
     }
 
     if (amountToPay > remainingAmount) {
-      toast.error(`Kiritilgan summa qolgan qarzdan katta. Qolgan summa: ${remainingAmount.toLocaleString()} so'm`);
+      toast.error(`Kiritilgan summa qolgan qarzdan katta. Qolgan summa: ${formatCurrency(remainingAmount)}`);
       return;
     }
 
@@ -2261,7 +2249,7 @@ export default function PatientProfile() {
       insightsList.push({ icon: AlertTriangle, text: 'No-show ehtimoli yuqori', type: 'danger' });
     }
     if (totalDebt > 0) {
-      insightsList.push({ icon: DollarSign, text: `Qarzdorlik: ${totalDebt.toLocaleString()} so'm`, type: 'warn' });
+      insightsList.push({ icon: DollarSign, text: `Qarzdorlik: ${formatCurrency(totalDebt)}`, type: 'warn' });
     }
     if (completedAppts >= 3 && noShows === 0) {
       insightsList.push({ icon: CheckCircle2, text: 'Doimiy va ishonchli bemor', type: 'success' });
@@ -2681,6 +2669,26 @@ export default function PatientProfile() {
     }
   };
 
+  const handleDeleteTreatment = async (row) => {
+    if (id === 'patient-y2ii8ynf2') {
+      toast.error("Bu test bemor ma'lumoti o'zgartirilmaydi");
+      return;
+    }
+    const plan = (plans || []).find((item) => item.id === row.planId);
+    if (!plan) {
+      toast.error('Reja topilmadi');
+      return;
+    }
+    const result = await deleteTreatmentRow({
+      patientId: id,
+      plan,
+      serviceIndex: row.serviceIndex,
+    });
+    const progress = result.remaining > 0 ? `${result.done}/${result.remaining}` : '0';
+    toast.success(`Muolaja o‘chirildi. Qolgan reja: ${formatCurrency(result.total)}. Jarayon: ${progress}`);
+    await load();
+  };
+
   const handleDeletePayment = async (paymentId) => {
     if (!window.confirm("Haqiqatan ham ushbu to'lov yozuvini o'chirmoqchimisiz?")) return;
     try {
@@ -2737,7 +2745,7 @@ export default function PatientProfile() {
     doc.text("Davolash rejalari:", 20, y); y += 8;
     doc.setFontSize(10);
     plans.forEach((p) => {
-      doc.text(`• ${p.name} — ${p.status} — ${p.total_price?.toLocaleString()} so'm`, 22, y);
+      doc.text(`• ${p.name} — ${p.status} — ${formatCurrency(p.total_price)}`, 22, y);
       y += 7;
     });
     if (plans.length === 0) { doc.text("Davolash rejalari yo'q", 22, y); y += 7; }
@@ -2747,14 +2755,14 @@ export default function PatientProfile() {
     doc.text("To'lovlar:", 20, y); y += 8;
     doc.setFontSize(10);
     payments.slice(0, 10).forEach((p) => {
-      doc.text(`• ${p.date} — ${p.type} — ${p.amount?.toLocaleString()} so'm — ${p.method}`, 22, y);
+      doc.text(`• ${p.date} — ${p.type} — ${formatCurrency(p.amount)} — ${p.method}`, 22, y);
       y += 7;
     });
 
     y += 5;
     doc.setFontSize(11);
-    doc.text(`Jami to'langan: ${totalPaid.toLocaleString()} so'm`, 20, y); y += 7;
-    doc.text(`Qarzdorlik: ${totalDebt.toLocaleString()} so'm`, 20, y);
+    doc.text(`Jami to'langan: ${formatCurrency(totalPaid)}`, 20, y); y += 7;
+    doc.text(`Qarzdorlik: ${formatCurrency(totalDebt)}`, 20, y);
 
     doc.save(`bemor-${patient.full_name}.pdf`);
   };
@@ -2979,7 +2987,7 @@ export default function PatientProfile() {
                   <Camera className="w-3.5 h-3.5" />
                 </div>
               </div>
-              <input id="avatar-upload-input" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+              <input id="avatar-upload-input" data-testid="profile-photo-input" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
 
               <h2 className="text-sm sm:text-[15px] font-black text-slate-900 leading-snug mt-2 truncate max-w-full">{patient.full_name}</h2>
 
@@ -3006,7 +3014,7 @@ export default function PatientProfile() {
                   </button>
                 </div>
                 <p className="text-lg font-black text-rose-600 font-mono mt-0.5 leading-tight">
-                  {totalDebt.toLocaleString()} <span className="text-[11px] font-black">so'm</span>
+                  {formatCurrency(totalDebt)}
                 </p>
               </div>
             ) : totalPrepayment > 0 ? (
@@ -3018,7 +3026,7 @@ export default function PatientProfile() {
                   </span>
                 </div>
                 <p className="text-lg font-black text-emerald-700 font-mono mt-0.5 leading-tight">
-                  +{totalPrepayment.toLocaleString()} <span className="text-[11px] font-black">so'm</span>
+                  +{formatCurrency(totalPrepayment)}
                 </p>
               </div>
             ) : (
@@ -3027,7 +3035,7 @@ export default function PatientProfile() {
                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">BALANS</span>
                 </div>
                 <p className="text-lg font-black text-slate-700 font-mono mt-0.5 leading-tight">
-                  0 <span className="text-[11px] font-black">so'm</span>
+                  {formatCurrency(0)}
                 </p>
               </div>
             )}
@@ -3142,7 +3150,7 @@ export default function PatientProfile() {
           {/* Paid amount card */}
           <div className="bg-white rounded-xl border border-slate-200/90 p-2.5 sm:p-3 shadow-2xs flex items-center justify-between">
             <span className="text-[10.5px] font-black text-slate-600">Jami to'langan:</span>
-            <span className="text-xs font-black text-emerald-700 font-mono">{totalPaid.toLocaleString()} so'm</span>
+            <span className="text-xs font-black text-emerald-700 font-mono">{formatCurrency(totalPaid)}</span>
           </div>
 
         </div>
@@ -3262,6 +3270,7 @@ export default function PatientProfile() {
               onOpenPayModal={openPayModal}
               onOpenPlanInvoice={(plan) => setInvoiceModalPlan(plan)}
               onPayInstallment={handlePayInstallment}
+              onDeleteTreatment={handleDeleteTreatment}
             />
           )}
         </TabsContent>
@@ -3458,7 +3467,7 @@ export default function PatientProfile() {
                           )}
                           {svc.price && (
                             <div className="text-[10px] font-black text-slate-400">
-                              💰 {svc.price.toLocaleString()} so'm
+                              💰 {formatCurrency(svc.price)}
                             </div>
                           )}
                         </div>
@@ -3577,7 +3586,7 @@ export default function PatientProfile() {
                 <div className="bg-rose-50 border border-rose-100 p-6 rounded-[2rem] flex items-center justify-between">
                    <div>
                      <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Jami qarzdorlik</p>
-                     <p className="text-3xl font-[1000] text-rose-600">{totalDebt.toLocaleString()} <span className="text-sm font-bold opacity-60">so'm</span></p>
+                     <p className="text-3xl font-[1000] text-rose-600">{formatCurrency(totalDebt)}</p>
                    </div>
                    <div className="w-14 h-14 rounded-2xl bg-rose-100 flex items-center justify-center">
                       <AlertTriangle className="w-8 h-8 text-rose-500" />
@@ -3589,7 +3598,7 @@ export default function PatientProfile() {
                   {/* To'langan */}
                   <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
                     <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Jami to'langan</p>
-                    <p className="text-lg font-black text-emerald-700">{totalPaid.toLocaleString()} <span className="text-[10px] font-bold text-emerald-400">so'm</span></p>
+                    <p className="text-lg font-black text-emerald-700">{formatCurrency(totalPaid)}</p>
                   </div>
 
                   {/* Boshlang'ich to'lov (advance) */}
@@ -3603,7 +3612,7 @@ export default function PatientProfile() {
                     return (
                       <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
                         <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1">Boshlang'ich to'lov</p>
-                        <p className="text-lg font-black text-blue-700">{advanceTotal.toLocaleString()} <span className="text-[10px] font-bold text-blue-400">so'm</span></p>
+                        <p className="text-lg font-black text-blue-700">{formatCurrency(advanceTotal)}</p>
                       </div>
                     );
                   })()}
@@ -3612,7 +3621,7 @@ export default function PatientProfile() {
                   {totalDiscount > 0 && (
                     <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4">
                       <p className="text-[9px] font-black text-purple-500 uppercase tracking-widest mb-1">Chegirma</p>
-                      <p className="text-lg font-black text-purple-700">{totalDiscount.toLocaleString()} <span className="text-[10px] font-bold text-purple-400">so'm</span></p>
+                      <p className="text-lg font-black text-purple-700">{formatCurrency(totalDiscount)}</p>
                       {discountPercent > 0 && (
                         <p className="text-[9px] font-black text-purple-400 uppercase mt-0.5">-{discountPercent}% chegirma</p>
                       )}
@@ -3690,18 +3699,18 @@ export default function PatientProfile() {
                                </div>
                                <div>
                                   <h4 className="text-sm font-black text-slate-800 tracking-tight uppercase leading-snug">{formatPlanName(plan.name)}</h4>
-                                  <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mt-1">Jami: {plan.total_price?.toLocaleString()} so'm | {inst.months} oy</p>
+                                  <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mt-1">Jami: {formatCurrency(plan.total_price)} | {inst.months} oy</p>
                                </div>
                             </div>
                             <div className="flex items-center gap-6 bg-slate-50 px-6 py-4 rounded-3xl border border-slate-100">
                                <div className="text-center">
                                   <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Boshlang'ich</p>
-                                  <p className="text-sm font-black text-slate-700">{inst.advance_payment?.toLocaleString()} so'm</p>
+                                  <p className="text-sm font-black text-slate-700">{formatCurrency(inst.advance_payment)}</p>
                                </div>
                                <div className="w-px h-8 bg-slate-200" />
                                <div className="text-center">
                                   <p className="text-[10px] font-black text-pink-400 uppercase tracking-widest mb-1">Oylik summa</p>
-                                  <p className="text-sm font-black text-pink-600">{inst.monthly_amount?.toLocaleString()} so'm</p>
+                                  <p className="text-sm font-black text-pink-600">{formatCurrency(inst.monthly_amount)}</p>
                                </div>
                             </div>
                          </div>
@@ -3748,15 +3757,15 @@ export default function PatientProfile() {
                                     <div className="space-y-2 mt-4">
                                        <div className="flex items-center justify-between text-[11px] font-bold">
                                          <span className="text-slate-400">Oy summasi</span>
-                                         <span className={isPaid ? 'text-emerald-600' : 'text-slate-800'}>{targetAmount.toLocaleString()} so'm</span>
+                                         <span className={isPaid ? 'text-emerald-600' : 'text-slate-800'}>{formatCurrency(targetAmount)}</span>
                                        </div>
                                        <div className="flex items-center justify-between text-[11px] font-bold">
                                          <span className="text-slate-400">To'langan</span>
-                                         <span className={paidAmount > 0 ? 'text-emerald-600' : 'text-slate-500'}>{paidAmount.toLocaleString()} so'm</span>
+                                         <span className={paidAmount > 0 ? 'text-emerald-600' : 'text-slate-500'}>{formatCurrency(paidAmount)}</span>
                                        </div>
                                        <div className="flex items-center justify-between text-[11px] font-bold">
                                          <span className="text-slate-400">Qolgan</span>
-                                         <span className={remainingAmount > 0 ? 'text-rose-500' : 'text-emerald-600'}>{remainingAmount.toLocaleString()} so'm</span>
+                                         <span className={remainingAmount > 0 ? 'text-rose-500' : 'text-emerald-600'}>{formatCurrency(remainingAmount)}</span>
                                        </div>
                                     </div>
 
@@ -3829,15 +3838,15 @@ export default function PatientProfile() {
                   <div className="grid grid-cols-3 gap-3">
                     <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
                       <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Oy summasi</p>
-                      <p className="mt-2 text-sm font-black text-slate-900">{targetAmount.toLocaleString()} so'm</p>
+                      <p className="mt-2 text-sm font-black text-slate-900">{formatCurrency(targetAmount)}</p>
                     </div>
                     <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
                       <p className="text-[9px] font-black uppercase tracking-widest text-emerald-500">To'langan</p>
-                      <p className="mt-2 text-sm font-black text-emerald-700">{paidAmount.toLocaleString()} so'm</p>
+                      <p className="mt-2 text-sm font-black text-emerald-700">{formatCurrency(paidAmount)}</p>
                     </div>
                     <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
                       <p className="text-[9px] font-black uppercase tracking-widest text-rose-400">Qolgan</p>
-                      <p className="mt-2 text-sm font-black text-rose-600">{remainingAmount.toLocaleString()} so'm</p>
+                      <p className="mt-2 text-sm font-black text-rose-600">{formatCurrency(remainingAmount)}</p>
                     </div>
                   </div>
 
@@ -3995,15 +4004,15 @@ export default function PatientProfile() {
                   <div className="grid grid-cols-3 gap-3">
                     <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
                       <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Oy summasi</p>
-                      <p className="mt-2 text-sm font-black text-slate-900">{targetAmount.toLocaleString()} so'm</p>
+                      <p className="mt-2 text-sm font-black text-slate-900">{formatCurrency(targetAmount)}</p>
                     </div>
                     <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
                       <p className="text-[9px] font-black uppercase tracking-widest text-emerald-500">To'langan</p>
-                      <p className="mt-2 text-sm font-black text-emerald-700">{paidAmount.toLocaleString()} so'm</p>
+                      <p className="mt-2 text-sm font-black text-emerald-700">{formatCurrency(paidAmount)}</p>
                     </div>
                     <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
                       <p className="text-[9px] font-black uppercase tracking-widest text-rose-400">Qolgan</p>
-                      <p className="mt-2 text-sm font-black text-rose-600">{remainingAmount.toLocaleString()} so'm</p>
+                      <p className="mt-2 text-sm font-black text-rose-600">{formatCurrency(remainingAmount)}</p>
                     </div>
                   </div>
 
@@ -4048,7 +4057,7 @@ export default function PatientProfile() {
                               <div className="flex items-start justify-between gap-4">
                                 <div className="min-w-0">
                                   <p className="text-[11px] font-black text-slate-900">
-                                    {Number(p.amount || 0).toLocaleString()} so'm
+                                    {formatCurrency(Number(p.amount || 0))}
                                   </p>
                                   <p className="text-[10px] font-bold text-slate-500 mt-1">
                                     {formatDateTimeUz(p.date)}

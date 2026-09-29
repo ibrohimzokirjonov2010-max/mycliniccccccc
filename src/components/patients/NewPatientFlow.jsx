@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle2, User, ClipboardList, ArrowLeft, Printer, X, Check, MessageCircle, Copy, Share2, Calendar, QrCode, Phone, AlertTriangle, Search } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
-import { applyPhoneMask, cn, capitalizeName, validateAddress, capitalizeAsYouType } from '@/lib/utils';
+import { applyPhoneMask, cn, capitalizeName, validateAddress, capitalizeAsYouType, formatCurrency, formatMoneyAmount } from '@/lib/utils';
 import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
 import { resolveAssignedDoctorName, isTreatingClinician, clinicianDisplayName } from '@/lib/treatingDoctor';
 import { normalizePatientGender, patientGenderForDb } from '@/lib/patientGender';
@@ -208,7 +208,7 @@ const CategoryAccordion = ({ title, services, activeTooth, toothData, toggleServ
                 )}
               >
                 <span className="text-sm font-bold uppercase truncate mr-2 flex-1 leading-snug">{svc.name}</span>
-                <span className="text-sm font-black text-emerald-600 shrink-0 tabular-nums">{(svc.price || 0).toLocaleString()} {t('common.currency')}</span>
+                <span className="text-sm font-black text-emerald-600 shrink-0 tabular-nums">{formatCurrency(svc.price || 0)}</span>
               </button>
             );
           })}
@@ -1097,7 +1097,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
           total_debt: Math.max(0, debt - paid + refund - discount),
         });
         
-        toast.success(t('patients.wizard.planCreatedWithDebt', { amount: totalDebt.toLocaleString() }));
+        toast.success(t('patients.wizard.planCreatedWithDebt', { amount: formatMoneyAmount(totalDebt) }));
       } else {
         toast.success(t('patients.wizard.planCreated'));
       }
@@ -1959,7 +1959,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                   <div className="wizard-reja-services flex flex-col min-h-0 min-w-0 overflow-hidden bg-white border-r border-slate-100">
                     {/* Services table header */}
-                    <div className="pl-5 pr-4 py-2 bg-slate-50 border-b border-slate-100 grid grid-cols-[minmax(0,1fr)_40px_72px_44px_72px_24px] gap-1.5 shrink-0">
+                    <div className="pl-5 pr-4 py-2 bg-slate-50 border-b border-slate-100 grid grid-cols-[minmax(0,1fr)_36px_minmax(7.5rem,auto)_36px_minmax(7.5rem,auto)_24px] gap-1.5 shrink-0">
                       <span className="text-[11px] font-black text-slate-400 uppercase">{t('patients.wizard.services')}</span>
                       <span className="text-[11px] font-black text-slate-400 uppercase text-center">T#</span>
                       <span className="text-[11px] font-black text-slate-400 uppercase text-right">{t('common.price')}</span>
@@ -1985,7 +1985,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                               key={idx}
                               onClick={() => setActiveTooth(s.toothId)}
                               className={cn(
-                                "pl-5 pr-4 py-2 min-h-[40px] grid grid-cols-[minmax(0,1fr)_40px_72px_44px_72px_24px] gap-1.5 items-center border-b border-slate-50 cursor-pointer transition-colors",
+                                "pl-5 pr-4 py-2 min-h-[40px] grid grid-cols-[minmax(0,1fr)_36px_minmax(7.5rem,auto)_36px_minmax(7.5rem,auto)_24px] gap-1.5 items-center border-b border-slate-50 cursor-pointer transition-colors",
                                 activeTooth === s.toothId ? "bg-blue-50" : "hover:bg-slate-50"
                               )}
                             >
@@ -1994,9 +1994,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                                 <span className="text-xs font-medium text-slate-700 truncate">{s.service_name}</span>
                               </div>
                               <span className="text-xs text-slate-500 text-center font-bold">{idToFdi(s.toothId)}</span>
-                              <span className="text-xs text-slate-600 text-right tabular-nums">{(s.price||0).toLocaleString()}</span>
+                              <span className="text-xs text-slate-600 text-right tabular-nums">{formatCurrency(s.price || 0)}</span>
                               <span className="text-xs text-slate-400 text-center">{discountPercent > 0 ? `${discountPercent}%` : '—'}</span>
-                              <span className="text-xs font-bold text-slate-900 text-right tabular-nums">{discPrice.toLocaleString()}</span>
+                              <span className="text-xs font-bold text-slate-900 text-right tabular-nums">{formatCurrency(discPrice)}</span>
                               <button type="button"
                                 onClick={e => { e.stopPropagation(); toggleToothService({ id: s.service_id, name: s.service_name, price: s.price }); }}
                                 className="w-6 h-6 rounded-full hover:bg-red-50 flex items-center justify-center text-slate-300 hover:text-red-400 transition-colors border-none bg-transparent cursor-pointer p-0">
@@ -2038,13 +2038,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-0.5 text-left">
                           <div>
-                            <span className="font-black text-slate-900 text-base tabular-nums">{Math.floor(grandTotal * (1 - discountPercent/100)).toLocaleString()}</span>
-                            <span className="ml-1 text-xs text-slate-400">{t('common.currency')}</span>
-                            {discountPercent > 0 && <span className="ml-2 text-[11px] text-slate-400 line-through tabular-nums">{grandTotal.toLocaleString()}</span>}
+                            <span className="font-black text-slate-900 text-base tabular-nums">{formatCurrency(Math.floor(grandTotal * (1 - discountPercent/100)))}</span>
+                            {discountPercent > 0 && <span className="ml-2 text-[11px] text-slate-400 line-through tabular-nums">{formatMoneyAmount(grandTotal)}</span>}
                           </div>
                           {discountPercent > 0 && (
                             <span className="text-[11px] font-bold text-rose-500">
-                              {t('patients.wizard.discountAmountSummary', { amount: Math.floor(grandTotal * (discountPercent/100)).toLocaleString(), percent: discountPercent })}
+                              {t('patients.wizard.discountAmountSummary', { amount: formatMoneyAmount(Math.floor(grandTotal * (discountPercent/100))), percent: discountPercent })}
                             </span>
                           )}
                         </div>
@@ -2212,7 +2211,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                                 <span className="text-[10px] font-bold text-slate-700 uppercase tracking-tight truncate block sm:inline">{s.service_name}</span>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-[10px] font-black text-emerald-600">{(s.price || 0).toLocaleString()} {t('common.currency')}</span>
+                                <span className="text-[10px] font-black text-emerald-600">{formatCurrency(s.price || 0)}</span>
                                 <button 
                                   type="button"
                                   onClick={() => toggleToothService({ id: s.service_id, name: s.service_name, price: s.price })}
@@ -2341,7 +2340,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                             
                             <div className="flex items-center gap-2 shrink-0">
                               <span className="text-xs font-extrabold text-slate-900 whitespace-nowrap">
-                                {(svc.price || 0).toLocaleString()} so'm
+                                {formatCurrency(svc.price || 0)}
                               </span>
                               {isAdded && (
                                 <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 animate-in zoom-in-50 duration-150">
@@ -2422,18 +2421,17 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         </p>
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-xl font-black text-slate-900 leading-none tabular-nums">
-                            {Math.floor(grandTotal * (1 - discountPercent / 100)).toLocaleString()}
+                            {formatCurrency(Math.floor(grandTotal * (1 - discountPercent / 100)))}
                           </span>
-                          <span className="text-[11px] text-slate-400 font-bold">so'm</span>
                           {discountPercent > 0 && (
                             <span className="text-[10px] text-slate-400 line-through font-medium tabular-nums">
-                              {grandTotal.toLocaleString()}
+                              {formatMoneyAmount(grandTotal)}
                             </span>
                           )}
                         </div>
                         {discountPercent > 0 && (
                           <span className="text-[10px] font-black text-emerald-600">
-                            {discountPercent}% chegirma — -{Math.floor(grandTotal * discountPercent / 100).toLocaleString()} so'm
+                            {discountPercent}% chegirma — -{formatCurrency(Math.floor(grandTotal * discountPercent / 100))}
                           </span>
                         )}
                       </div>
@@ -2526,7 +2524,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   <>
                     <br />
                     <span className="text-amber-600 font-medium">
-                      {createdPlan.total_price.toLocaleString()} {t('common.currency')}
+                      {formatCurrency(createdPlan.total_price)}
                     </span> {t('patients.wizard.addedToDebt')}
                   </>
                 )}

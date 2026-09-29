@@ -5,7 +5,7 @@ import {
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency, formatMoneyAmount } from '@/lib/utils';
 import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, fdiMesialIsRight, fdiWidthWeight, internalIdToFdi } from '@/lib/fdiNotation';
 import { getToothIllustrationSrc, matchIllustrationKind } from '@/utils/toothIllustration';
 import { displayServiceName, formatDoctorName } from '@/lib/displayText';
@@ -136,7 +136,7 @@ function fmtDate(value) {
 function money(n) {
   const v = Number(n) || 0;
   if (v <= 0) return null;
-  return `${v.toLocaleString('uz-UZ')} UZS`;
+  return formatCurrency(v);
 }
 
 function toothTitle(fdi) {
@@ -324,6 +324,8 @@ export default function ToothChartCard({
   const [busy, setBusy] = useState(false);
   const [xrays, setXrays] = useState([]);
   const [viewer, setViewer] = useState(null);
+  const archScrollRef = useRef(null);
+  const [archHalf, setArchHalf] = useState('right');
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
@@ -884,9 +886,54 @@ export default function ToothChartCard({
             ) : (
               <div className={cn('odonto-scroll-shell', phone && mode === 'realistic' && 'is-hint')}>
                 {phone && mode === 'realistic' && (
-                  <p className="odonto-scroll-hint">Boshqa tishlarni ko‘rish uchun suring →</p>
+                  <>
+                    <div className="mb-2 grid grid-cols-2 gap-1.5" data-testid="arch-half-tabs">
+                      <button
+                        type="button"
+                        data-testid="arch-half-right"
+                        onClick={() => {
+                          setArchHalf('right');
+                          archScrollRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                        }}
+                        className={cn(
+                          'h-9 rounded-xl text-[12px] font-extrabold',
+                          archHalf === 'right' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700',
+                        )}
+                      >
+                        {dentition === 'child' ? 'O‘ng · 55–51' : 'O‘ng · 18–11'}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="arch-half-left"
+                        onClick={() => {
+                          setArchHalf('left');
+                          const node = archScrollRef.current;
+                          if (!node) return;
+                          node.scrollTo({ left: Math.max(0, node.scrollWidth - node.clientWidth), behavior: 'smooth' });
+                        }}
+                        className={cn(
+                          'h-9 rounded-xl text-[12px] font-extrabold',
+                          archHalf === 'left' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700',
+                        )}
+                      >
+                        {dentition === 'child' ? 'Chap · 61–65' : 'Chap · 21–28'}
+                      </button>
+                    </div>
+                    <p className="odonto-scroll-hint">Chap yarmi yashirin. «Chap · 21–28» ni bosing yoki suring →</p>
+                  </>
                 )}
-                <div className="odonto-scroll" data-arch="scroll">
+                <div
+                  ref={archScrollRef}
+                  className="odonto-scroll"
+                  data-arch="scroll"
+                  onScroll={(event) => {
+                    if (!phone) return;
+                    const node = event.currentTarget;
+                    const max = node.scrollWidth - node.clientWidth;
+                    if (max <= 8) return;
+                    setArchHalf(node.scrollLeft > max / 2 ? 'left' : 'right');
+                  }}
+                >
                   <div className="odonto-cross">
                     <div className="odonto-jaw-band">
                       <span className="odonto-side odonto-side-r">O‘NG</span>
@@ -948,7 +995,7 @@ export default function ToothChartCard({
             <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
               <Stat label="Bajarilgan" value={`${summary.done}`} unit="tish" />
               <Stat label="Reja" value={`${summary.planned}`} unit="tish" accent="#E11D48" />
-              <Stat label="Reja summasi" value={summary.plannedSum > 0 ? summary.plannedSum.toLocaleString('uz-UZ') : '0'} unit="UZS" />
+              <Stat label="Reja summasi" value={summary.plannedSum > 0 ? formatMoneyAmount(summary.plannedSum) : '0'} unit="so'm" />
               <Stat label="Oxirgi tashrif" value={summary.lastVisit ? fmtDate(summary.lastVisit) : '—'} />
             </div>
           )}

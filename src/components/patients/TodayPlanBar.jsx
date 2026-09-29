@@ -1,5 +1,5 @@
 import { Check, CalendarDays, Stethoscope, ClipboardList } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 const TEAL = '#14b8a6';
 
@@ -156,7 +156,7 @@ export default function TodayPlanBar({
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black shadow-sm cursor-pointer"
                 >
                   To&apos;lov
-                  {payTarget > 0 ? ` · ${payTarget.toLocaleString('uz-UZ')} UZS` : ''}
+                  {payTarget > 0 ? ` · ${formatCurrency(payTarget)}` : ''}
                   {' →'}
                 </button>
               )}
@@ -172,7 +172,7 @@ export default function TodayPlanBar({
             'text-xl font-black font-mono leading-tight tracking-tight',
             payTarget > 0 ? 'text-slate-900' : 'text-slate-500'
           )}>
-            {Number(payTarget || 0).toLocaleString('uz-UZ')} <span className="text-xs font-black">UZS</span>
+            {formatCurrency(payTarget || 0)}
           </p>
           <p className={cn(
             'text-[11px] font-bold mt-0.5',
@@ -180,7 +180,7 @@ export default function TodayPlanBar({
           )}>
             {remainingLabel}
             {Number(planRemaining) > 0 && Number(totalDebt) > 0 && Number(planRemaining) !== Number(totalDebt)
-              ? ` · Qarz: ${Number(totalDebt).toLocaleString('uz-UZ')}`
+              ? ` · Qarz: ${formatCurrency(totalDebt)}`
               : ''}
           </p>
         </div>

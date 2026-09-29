@@ -694,8 +694,8 @@ export default function Reports() {
         tone: 'info',
         title: `${weak.name}: ${weak.appointmentCount} ${language === 'ru' ? 'приёмов' : 'qabul'}, ${weak.completionRate}%`,
         body: language === 'ru'
-          ? `Завершено ${completedCount}. Средний чек ${fmtMoney(weak.avgCheck)} UZS.`
-          : `Bajarilgani ${completedCount} ta. O'rtacha chek ${fmtMoney(weak.avgCheck)} UZS.`,
+          ? `Завершено ${completedCount}. Средний чек ${fmtMoney(weak.avgCheck)}.`
+          : `Bajarilgani ${completedCount} ta. O'rtacha chek ${fmtMoney(weak.avgCheck)}.`,
       });
     }
     const noShow = appointmentsStatusReport.find((s) => /kelmagan|неявк|no-show/i.test(s.status));
@@ -711,7 +711,7 @@ export default function Reports() {
       items.push({
         tone: 'alert',
         title: language === 'ru' ? `Расходы — ${ratio}% дохода` : `Xarajatlar daromadning ${ratio}% ini tashkil qiladi`,
-        body: `${language === 'ru' ? 'Расход' : 'Chiqim'} ${fmtMoney(stats.totalExpense)} UZS · ${language === 'ru' ? 'доход' : 'daromad'} ${fmtMoney(stats.totalIncome)} UZS.`,
+        body: `${language === 'ru' ? 'Расход' : 'Chiqim'} ${fmtMoney(stats.totalExpense)} · ${language === 'ru' ? 'доход' : 'daromad'} ${fmtMoney(stats.totalIncome)}.`,
       });
     }
     const unmatched = doctorLeaderboard.find((d) => String(d.id) === 'unknown' && d.revenue > 0);
@@ -719,7 +719,7 @@ export default function Reports() {
       items.push({
         tone: 'info',
         title: language === 'ru' ? 'Есть выручка без врача' : 'Shifokorga bog\'lanmagan tushum bor',
-        body: `${fmtMoney(unmatched.revenue)} UZS ${language === 'ru' ? 'не привязаны к сотруднику.' : 'xodimga biriktirilmagan.'}`,
+        body: `${fmtMoney(unmatched.revenue)} ${language === 'ru' ? 'не привязаны к сотруднику.' : 'xodimga biriktirilmagan.'}`,
       });
     }
     if (!items.length) {

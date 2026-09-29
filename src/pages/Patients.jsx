@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
-import { formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { buildVisitIndex, isActiveTreatmentPatient, isNewPatient, lastVisitKey } from '@/lib/patientVisits';
 
 // Clean single-line phone number formatter (e.g. +998 90 123 45 67)
@@ -478,7 +478,7 @@ export default function Patients() {
           { label: t('patients.totalVisits') || 'Jami Bemorlar', value: stats?.total || allPatients.length, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100', icon: Users },
           { label: t('patients.newPatients') || 'Yangi Bemorlar', value: stats?.new || 0, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100', icon: UserPlus },
           { label: t('patients.activeTreatment') || 'Faol Bemorlar', value: stats?.active || 0, color: 'text-[#1499AD]', bg: 'bg-cyan-50 border-cyan-100', icon: Clock },
-          { label: t('patients.totalDebt') || 'Jami Qarz', value: (stats?.debt || 0).toLocaleString(), color: 'text-rose-600', bg: 'bg-rose-50 border-rose-100', icon: TrendingUp, isCurrency: true }
+          { label: t('patients.totalDebt') || 'Jami Qarz', value: formatCurrency(stats?.debt || 0), color: 'text-rose-600', bg: 'bg-rose-50 border-rose-100', icon: TrendingUp }
         ].map((stat, i) => (
           <motion.div 
             key={i} 
@@ -493,7 +493,7 @@ export default function Patients() {
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">{stat.label}</p>
               <div className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight truncate">
-                {stat.value} {stat.isCurrency && <span className="text-[10px] text-slate-400 font-semibold ml-0.5">UZS</span>}
+                {stat.value}
               </div>
             </div>
           </motion.div>
@@ -794,16 +794,14 @@ export default function Patients() {
                         {/* Total Debt Cell */}
                         <td className={`text-right border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-3' : 'py-3 px-3.5'}`}>
                           <span className={`font-mono font-bold tabular-nums ${isDebtor ? 'text-rose-600' : 'text-slate-400'}`}>
-                            {debtAmount.toLocaleString()}
-                            <span className="text-[9.5px] font-normal text-slate-400 ml-1">so'm</span>
+                            {formatCurrency(debtAmount)}
                           </span>
                         </td>
 
                         {/* Total Paid Cell */}
                         <td className={`text-right border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-3' : 'py-3 px-3.5'}`}>
                           <span className={`font-mono font-bold tabular-nums ${paidAmount > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
-                            {paidAmount.toLocaleString()}
-                            <span className="text-[9.5px] font-normal text-slate-400 ml-1">so'm</span>
+                            {formatCurrency(paidAmount)}
                           </span>
                         </td>
 

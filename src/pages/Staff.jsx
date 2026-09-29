@@ -707,8 +707,8 @@ export default function Staff() {
                 <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{tx(language, 'Shifokorlar ulushi (komissiya)', 'Доля врачей', 'Doctors\' share')}</span>
                 <span className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 grid place-items-center"><Percent className="w-4 h-4" /></span>
               </div>
-              <div className="text-[22px] font-extrabold tracking-tight mt-2 leading-none truncate">{fmtMoney(totalShare)} <small className="text-xs text-slate-400 font-bold">UZS</small></div>
-              <p className="text-[11.5px] text-slate-500 mt-2 leading-snug">{fmtMoney(totalIncome)} UZS {tx(language, 'tushumdan hisoblangan', 'от выручки', 'of revenue')}</p>
+              <div className="text-[22px] font-extrabold tracking-tight mt-2 leading-none truncate">{fmtMoney(totalShare)}</div>
+              <p className="text-[11.5px] text-slate-500 mt-2 leading-snug">{fmtMoney(totalIncome)} {tx(language, 'tushumdan hisoblangan', 'от выручки', 'of revenue')}</p>
             </article>
           </div>
 
@@ -1227,7 +1227,7 @@ function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, 
                       <div className="bg-[#1499AD] flex items-center px-2 min-w-0 truncate" style={{ width: `${Math.max(clinicPct, 8)}%` }}>{tx(language, 'Klinika', 'Клиника', 'Clinic')} {fmtCompact(clinicAmount)}</div>
                       {doctorPct > 0 && <div className="bg-emerald-600 flex items-center px-2 min-w-0 truncate" style={{ width: `${Math.max(doctorPct, 8)}%` }}>{tx(language, 'Shifokor', 'Врач', 'Doctor')} {fmtCompact(card.share)}</div>}
                     </div>
-                    <p className="text-[11.5px] text-slate-500 mt-1.5">{tx(language, 'Umumiy tushum', 'Общая выручка', 'Total')}: <b className="text-slate-800">{fmtMoney(card.revenue)} UZS</b>{clinicPct != null && <> · {tx(language, 'klinika ulushi', 'доля клиники', 'clinic share')} {clinicPct}%</>}</p>
+                    <p className="text-[11.5px] text-slate-500 mt-1.5">{tx(language, 'Umumiy tushum', 'Общая выручка', 'Total')}: <b className="text-slate-800">{fmtMoney(card.revenue)}</b>{clinicPct != null && <> · {tx(language, 'klinika ulushi', 'доля клиники', 'clinic share')} {clinicPct}%</>}</p>
                   </>
                 ) : (
                   <p className="text-xs text-slate-400 bg-slate-50 rounded-xl px-3 py-3">{tx(language, 'Bu xodimga bog\'langan tushum yo\'q.', 'Нет выручки, привязанной к сотруднику.', 'No revenue linked to this person.')}</p>

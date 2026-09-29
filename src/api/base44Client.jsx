@@ -1570,19 +1570,14 @@ const initializeSystem = () => {
   try {
     StaticStore.flush(); // Flush memory cache before executing migration
     const capitalizeName = (name) => {
-      if (!name) return "";
-      return name
-        .split(' ')
-        .map(spacePart => {
-          return spacePart
-            .split('-')
-            .map(dashPart => {
-              if (!dashPart) return "";
-              return dashPart.charAt(0).toUpperCase() + dashPart.slice(1).toLowerCase();
-            })
-            .join('-');
-        })
-        .join(' ');
+      const trimmed = String(name || '').replace(/[ \t]+/g, ' ').trim();
+      if (!trimmed) return '';
+      const first = trimmed.charAt(0);
+      const lower = first.toLocaleLowerCase('uz-UZ');
+      if (first === lower && first !== first.toLocaleUpperCase('uz-UZ')) {
+        return first.toLocaleUpperCase('uz-UZ') + trimmed.slice(1);
+      }
+      return trimmed;
     };
 
     for (let i = 0; i < localStorage.length; i++) {

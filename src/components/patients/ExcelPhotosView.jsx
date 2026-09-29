@@ -26,13 +26,14 @@ function ExcelPhotosView({
   const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'photo' | 'xray' | 'ct' | 'panoramic'
   const [viewMode, setViewMode] = useState('grid'); // 'table' | 'grid' — default grid for mobile
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  const [toothDraft, setToothDraft] = useState('');
 
   const filteredPhotos = useMemo(() => {
     let list = [...xrays];
 
     if (typeFilter !== 'all') {
       list = list.filter(p => {
-        const t = (p.type || '').toLowerCase();
+        const t = (p.xray_type || p.type || '').toLowerCase();
         if (typeFilter === 'photo') {
           return !t || t === 'photo' || t === 'image' || t === 'foto';
         }
@@ -152,11 +153,26 @@ function ExcelPhotosView({
             <option value="panoramic">{language === 'ru' ? "Панорамный" : "Panoramik OPTG"}</option>
           </select>
           {/* Upload Button */}
+          <input
+            value={toothDraft}
+            onChange={(e) => setToothDraft(e.target.value.replace(/\D/g, '').slice(0, 2))}
+            inputMode="numeric"
+            placeholder="Tish"
+            aria-label="Tish raqami"
+            data-testid="rentgen-tooth"
+            className="w-16 px-2 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-center"
+          />
           <label className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1499AD] hover:bg-[#117a8c] text-white rounded-xl text-sm font-black shadow-sm shadow-[#1499AD]/20 transition-all cursor-pointer whitespace-nowrap shrink-0">
             <Upload className="w-4 h-4" />
-            <span className="hidden sm:inline">+ {language === 'ru' ? "Загрузить" : language === 'en' ? "Upload" : "Rasm"}</span>
-            <span className="sm:hidden">+</span>
-            <input type="file" accept="image/*" multiple className="hidden" onChange={onPhotoUpload} />
+            <span>Rentgen</span>
+            <input
+              data-testid="rentgen-file-input"
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(event) => onPhotoUpload?.(event, { tooth: toothDraft, kind: 'xray' })}
+            />
           </label>
         </div>
       </div>
@@ -241,7 +257,7 @@ function ExcelPhotosView({
 
                         {/* Type */}
                         <td className="border-r border-slate-200 font-medium text-slate-700 py-2 px-3">
-                          {getTypeLabel(photo.type)}
+                          {getTypeLabel(photo.xray_type || photo.type)}
                         </td>
 
                         {/* Tooth # */}
@@ -302,6 +318,7 @@ function ExcelPhotosView({
             {filteredPhotos.map((photo, idx) => {
               const imgUrl = photo.image_url || photo.url || photo.image;
               const photoTitle = photo.notes || photo.description || photo.title || (language === 'ru' ? `Снимок #${idx + 1}` : `Rasm #${idx + 1}`);
+              const photoDate = photo.date ? String(photo.date).slice(0, 10).split('-').reverse().join('.') : '';
 
               return (
                 <div
@@ -320,6 +337,19 @@ function ExcelPhotosView({
                       <Camera className="w-8 h-8" />
                     </div>
                   )}
+                  <button
+                    type="button"
+                    data-testid="xray-delete"
+                    onClick={(event) => { event.stopPropagation(); handleDelete(photo); }}
+                    className="absolute top-1 right-1 z-10 rounded-lg bg-rose-600/90 p-1 text-white"
+                    title="O‘chirish"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                  <div className="absolute bottom-0 left-0 right-0 z-10 bg-black/60 px-1.5 py-1 text-[9px] font-bold text-white leading-tight">
+                    <span className="block truncate">{photo.tooth_number ? `#${photo.tooth_number}` : 'Rentgen'}</span>
+                    {photoDate ? <span className="block text-white/80">{photoDate}</span> : null}
+                  </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-2 flex flex-col justify-end text-white text-[10px]">
                     <span className="font-bold truncate">{photoTitle}</span>
                     <span className="text-[9px] text-slate-300">{photo.tooth_number ? `#${photo.tooth_number}` : ''}</span>

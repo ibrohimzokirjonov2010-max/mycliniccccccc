@@ -4,7 +4,7 @@ import { Printer, X } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { base44 } from '@/api/base44Client';
-import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
+import { formatCurrency, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
 import { displayServiceName, formatDoctorName, formatTableDate } from '@/lib/displayText';
 
 export default function TreatmentPlanInvoice({ open, onClose, plan }) {
@@ -402,7 +402,7 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
                       <td className="py-2.5 px-3 text-center">
                         <span className="text-[#0284c7] font-semibold">{getServiceStatusLabel(s.status, language)}</span>
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold text-slate-900">{s.price.toLocaleString()} so'm</td>
+                      <td className="py-2.5 px-3 text-right font-bold text-slate-900">{formatCurrency(s.price)}</td>
                     </tr>
                   ))}
                   {/* 1. Davolash rejasining chegirmasiz narxi */}
@@ -411,7 +411,7 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
                       {language === 'ru' ? 'Стоимость плана лечения без скидки' : language === 'en' ? 'Treatment plan price without discount' : 'Davolash rejasining chegirmasiz narxi'}
                     </td>
                     <td className="py-2.5 px-3 text-right text-xs font-bold text-slate-900 font-mono">
-                      {rawTotal.toLocaleString()} so'm
+                      {formatCurrency(rawTotal)}
                     </td>
                   </tr>
 
@@ -422,13 +422,13 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
                         <span>{language === 'ru' ? 'Стоимость со скидкой' : language === 'en' ? 'Discounted price' : 'Chegirmali narxi'}</span>
                         {discountPercent > 0 && (
                           <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100/80 border border-emerald-300 px-1.5 py-0.5 rounded">
-                            -{discountPercent}% ({discountAmount.toLocaleString()} so'm)
+                            -{discountPercent}% ({formatCurrency(discountAmount)})
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="py-2.5 px-3 text-right text-xs font-black text-slate-900 font-mono">
-                      {discountedTotal.toLocaleString()} so'm
+                      {formatCurrency(discountedTotal)}
                     </td>
                   </tr>
 
@@ -438,7 +438,7 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
                       {language === 'ru' ? 'Всего оплачено' : language === 'en' ? 'Total Paid' : "Jami to'langan"}
                     </td>
                     <td className="py-2.5 px-3 text-right text-xs font-black text-[#166534] font-mono">
-                      {totalPaidSum.toLocaleString()} so'm
+                      {formatCurrency(totalPaidSum)}
                     </td>
                   </tr>
 
@@ -448,7 +448,7 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
                       {language === 'ru' ? 'Остаток задолженности' : language === 'en' ? 'Remaining debt' : (finalDebt > 0 ? "Qoldiq qarzdorlik" : "Qarz yo'q (To'liq to'langan)")}
                     </td>
                     <td className={`py-2.5 px-3 text-right text-xs font-black font-mono ${finalDebt > 0 ? 'text-[#9f1239]' : 'text-emerald-800'}`}>
-                      {finalDebt.toLocaleString()} so'm
+                      {formatCurrency(finalDebt)}
                     </td>
                   </tr>
                 </tbody>
@@ -477,7 +477,7 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
                       <td className="py-2.5 px-3 text-center">
                         <span className="text-[#16a34a] font-bold">{p.status}</span>
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold text-slate-900">{Number(p.amount || 0).toLocaleString()} so'm</td>
+                      <td className="py-2.5 px-3 text-right font-bold text-slate-900">{formatCurrency(p.amount || 0)}</td>
                     </tr>
                   ))}
                   <tr className="bg-[#dcfce7] text-[#166534]">
@@ -485,7 +485,7 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
                       {language === 'ru' ? 'Всего оплачено' : language === 'en' ? 'Total Paid' : "To'langan jami"}
                     </td>
                     <td className="py-2.5 px-3 text-right font-black text-sm text-[#166534]">
-                      {totalPaidSum.toLocaleString()} so'm
+                      {formatCurrency(totalPaidSum)}
                     </td>
                   </tr>
                   <tr className={finalDebt > 0 ? "bg-[#ffe4e6] text-[#9f1239]" : "bg-[#f8fafc] text-slate-700"}>
@@ -493,7 +493,7 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
                       {language === 'ru' ? 'Общая задолженность' : language === 'en' ? 'Total Debt' : "Jami qarzdorlik"}
                     </td>
                     <td className={`py-2.5 px-3 text-right font-black text-sm ${finalDebt > 0 ? 'text-[#9f1239]' : 'text-slate-700'}`}>
-                      {finalDebt.toLocaleString()} so'm
+                      {formatCurrency(finalDebt)}
                     </td>
                   </tr>
                 </tbody>
@@ -520,7 +520,7 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
                       return (
                         <tr key={idx}>
                           <td className="py-2 px-3 text-slate-700">{d.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
-                          <td className="py-2 px-3 text-right font-bold text-slate-900">{Math.round(plan.installment_plan.monthly_amount || 0).toLocaleString()} so'm</td>
+                          <td className="py-2 px-3 text-right font-bold text-slate-900">{formatCurrency(Math.round(plan.installment_plan.monthly_amount || 0))}</td>
                         </tr>
                       );
                     })}

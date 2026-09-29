@@ -10,7 +10,7 @@ import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import { base44 } from '@/api/base44Client';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
-import { cn, resolveDoctorId, getTreatmentTypeLabel } from '@/lib/utils';
+import { cn, formatCurrency, resolveDoctorId, getTreatmentTypeLabel } from '@/lib/utils';
 import { paymentStamp, formatClinicDateTime, tashkentToday } from '@/lib/clinicTime';
 import { computePatientBalances } from '@/lib/paymentDebt';
 import { Input } from '@/components/ui/input';
@@ -894,7 +894,7 @@ export default function MobilePaymentsV2() {
               return (
                 <>
                   <p className="text-[14px] font-black leading-none text-emerald-600">
-                    {Number(payment.amount || 0).toLocaleString()} UZS
+                    {formatCurrency(payment.amount || 0)}
                   </p>
                   {pat != null && (
                     <p className={cn("text-[10px] font-black mt-1 uppercase tracking-tight",
@@ -956,7 +956,7 @@ export default function MobilePaymentsV2() {
                   <div>
                     <p className="text-cyan-100/80 text-[10px] font-black uppercase tracking-wider">{t('payments.totalIncome')}</p>
                     <p className="text-2xl font-[900] mt-1 tracking-tight">
-                      {Number(stats.totalRevenue || 0).toLocaleString()} <span className="text-sm font-bold text-cyan-200/80">UZS</span>
+                      {formatCurrency(stats.totalRevenue || 0)}
                     </p>
                   </div>
                   <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
@@ -973,7 +973,7 @@ export default function MobilePaymentsV2() {
                     <Calendar className="w-4 h-4 text-emerald-200" />
                   </div>
                   <p className="text-lg font-[900] tracking-tight">
-                    {Number(stats.monthRevenue || 0).toLocaleString()} <span className="text-[10px] font-bold text-emerald-200">UZS</span>
+                    {formatCurrency(stats.monthRevenue || 0)}
                   </p>
                 </div>
 
@@ -983,7 +983,7 @@ export default function MobilePaymentsV2() {
                     <Clock className="w-4 h-4 text-blue-200" />
                   </div>
                   <p className="text-lg font-[900] tracking-tight">
-                    {Number(stats.todayRevenue || 0).toLocaleString()} <span className="text-[10px] font-bold text-blue-200">UZS</span>
+                    {formatCurrency(stats.todayRevenue || 0)}
                   </p>
                 </div>
               </div>

@@ -23,7 +23,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
-import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel, resolveDoctorId, formatPhone, displayDoctorName } from '@/lib/utils';
+import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel, resolveDoctorId, formatPhone, displayDoctorName, formatCurrency } from '@/lib/utils';
 import { paymentStamp, tashkentToday, formatClinicDate, formatClinicDateTime, parseDisplayDateTime } from '@/lib/clinicTime';
 import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
 import { computePatientBalances, isListedPayment } from '@/lib/paymentDebt';
@@ -1057,10 +1057,6 @@ export default function Payments() {
     }
   };
 
-  const formatCurrency = (val) => {
-    return new Intl.NumberFormat('uz-UZ').format(val || 0) + ' UZS';
-  };
-
   const handleNewPatientSaved = (newPatient) => {
     setPatients(prev => [newPatient, ...prev]);
     const assignedDocId = resolveDoctorId(newPatient, [], doctors, user, isDoctor);
@@ -1674,30 +1670,30 @@ export default function Payments() {
                 <td>${s.category}</td>
                 <td class="text-center">${s.tooth}</td>
                 <td class="text-center"><span style="color:#0284c7; font-weight:600;">${s.status}</span></td>
-                <td class="text-right font-bold">${Number(s.price || 0).toLocaleString()} so'm</td>
+                <td class="text-right font-bold">${formatCurrency(Number(s.price || 0))}</td>
               </tr>
             `).join('')}
             <tr class="raw-total-row">
               <td colspan="4">Davolash rejasining chegirmasiz narxi</td>
-              <td class="text-right font-bold">${rawTotal.toLocaleString()} so'm</td>
+              <td class="text-right font-bold">${formatCurrency(rawTotal)}</td>
             </tr>
             <tr class="discounted-total-row">
               <td colspan="4">
                 Chegirmali narxi
-                ${totalDiscountAmount > 0 ? `<span class="discount-badge">-${totalDiscountAmount.toLocaleString()} so'm</span>` : ''}
+                ${totalDiscountAmount > 0 ? `<span class="discount-badge">-${formatCurrency(totalDiscountAmount)}</span>` : ''}
               </td>
-              <td class="text-right font-black">${discountedTotal.toLocaleString()} so'm</td>
+              <td class="text-right font-black">${formatCurrency(discountedTotal)}</td>
             </tr>
             <tr class="paid-summary-row">
               <td colspan="4">Jami to'langan</td>
-              <td class="text-right font-black">${totalPaidSum.toLocaleString()} so'm</td>
+              <td class="text-right font-black">${formatCurrency(totalPaidSum)}</td>
             </tr>
             <tr class="${finalDebt > 0 ? 'debt-summary-row' : ''}">
               <td colspan="4" style="font-weight:900; ${finalDebt > 0 ? '' : 'color:#166534; background:#f0fdf4;'}">
                 ${finalDebt > 0 ? 'Qoldiq qarzdorlik' : "Qarz yo'q (To'liq to'langan)"}
               </td>
               <td class="text-right font-black" style="${finalDebt > 0 ? '' : 'color:#166534; background:#f0fdf4;'}">
-                ${finalDebt.toLocaleString()} so'm
+                ${formatCurrency(finalDebt)}
               </td>
             </tr>
           </tbody>
@@ -1722,17 +1718,17 @@ export default function Payments() {
                   <td>${pDate}</td>
                   <td class="font-bold">${getPaymentMethodLabel(p.method, t)}</td>
                   <td class="text-center"><span style="color:#16a34a; font-weight:700;">To'langan</span></td>
-                  <td class="text-right font-bold">${Number(p.amount || 0).toLocaleString()} so'm</td>
+                  <td class="text-right font-bold">${formatCurrency(Number(p.amount || 0))}</td>
                 </tr>
               `;
             }).join('')}
             <tr class="paid-total-row">
               <td colspan="3">To'langan jami</td>
-              <td class="text-right font-black">${totalPaidSum.toLocaleString()} so'm</td>
+              <td class="text-right font-black">${formatCurrency(totalPaidSum)}</td>
             </tr>
             <tr class="${finalDebt > 0 ? 'debt-total-row' : ''}">
               <td colspan="3" style="font-weight:900; font-size:13px; padding:10px 10px; ${finalDebt > 0 ? '' : 'color:#334155;'}">Jami qarzdorlik</td>
-              <td class="text-right font-black" style="font-size:13px; padding:10px 10px; ${finalDebt > 0 ? '' : 'color:#334155;'}">${finalDebt.toLocaleString()} so'm</td>
+              <td class="text-right font-black" style="font-size:13px; padding:10px 10px; ${finalDebt > 0 ? '' : 'color:#334155;'}">${formatCurrency(finalDebt)}</td>
             </tr>
           </tbody>
         </table>
@@ -2220,8 +2216,7 @@ export default function Payments() {
                         <td className={`text-right border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
                           <div className="flex items-center justify-end gap-1.5">
                             <span className="font-mono font-black text-emerald-600 text-xs tabular-nums">
-                              {Number(p.amount || 0).toLocaleString()}
-                              <span className="text-[9.5px] font-semibold text-emerald-400 ml-1">UZS</span>
+                              {formatCurrency(p.amount || 0)}
                             </span>
                             {(p.receipt_url || p.receipt_image || p.check_image) && (
                               <button
@@ -2245,15 +2240,14 @@ export default function Payments() {
                             <span className={`font-mono font-bold text-xs tabular-nums ${debtVal > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
                               {debtVal > 0 ? (
                                 <>
-                                  {debtVal.toLocaleString()}
-                                  <span className="text-[9.5px] font-normal text-slate-400 ml-1">UZS</span>
+                                  {formatCurrency(debtVal)}
                                 </>
                               ) : (
                                 <span className="text-emerald-600 font-semibold text-[11px]">✓ To'liq</span>
                               )}
                             </span>
                             {currentDebt != null && Number(currentDebt) !== Number(debtVal) && (
-                              <span className="text-[9px] font-bold text-slate-400">Hozirgi qarz {Number(currentDebt).toLocaleString()}</span>
+                              <span className="text-[9px] font-bold text-slate-400">Hozirgi qarz {formatCurrency(currentDebt)}</span>
                             )}
                           </div>
                         </td>
@@ -2410,9 +2404,8 @@ export default function Payments() {
                     return (
                       <div className="px-2.5 py-1 rounded-lg bg-[#1499AD]/5 border border-[#1499AD]/10">
                         <span className="text-[13px] font-[900] text-[#1499AD]">
-                          {totalToPay.toLocaleString()}
+                          {formatCurrency(totalToPay)}
                         </span>
-                        <span className="text-[8px] font-black ml-0.5 text-[#1499AD]/60 uppercase">UZS</span>
                       </div>
                     );
                   })()}
@@ -2438,13 +2431,13 @@ export default function Payments() {
                 <div>
                   <p className="text-[8px] font-black text-emerald-400 uppercase tracking-wide mb-0.5">Toʻlagan</p>
                   <p className="text-[10px] font-black text-emerald-600">
-                    {Number(p.amount || 0).toLocaleString()} <span className="text-[8px] font-bold text-emerald-400">UZS</span>
+                    {formatCurrency(p.amount || 0)}
                   </p>
                 </div>
                 <div>
                   <p className="text-[8px] font-black text-rose-400 uppercase tracking-wide mb-0.5 leading-tight">To‘lovdan keyin qoldiq</p>
                   <p className={`text-[10px] font-black ${debtVal > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                    {debtVal > 0 ? debtVal.toLocaleString() : '✓ To\'liq'}
+                    {debtVal > 0 ? formatCurrency(debtVal) : '✓ To\'liq'}
                   </p>
                 </div>
               </div>
@@ -2587,7 +2580,7 @@ export default function Payments() {
                                     service_name: `Reja: ${plan.name}`,
                                     doctor_id: planDocId || prev.doctor_id || ''
                                   }));
-                                  toast.info(`${plan.name} tanlandi (${remaining.toLocaleString()} UZS)`);
+                                  toast.info(`${plan.name} tanlandi (${formatCurrency(remaining)})`);
                                 }}
                                 className={`flex items-center justify-between cursor-pointer rounded-lg px-2.5 py-1.5 border transition-all duration-200 group ${
                                   String(selectedInvoiceId) === String(plan.id)
@@ -2759,7 +2752,7 @@ export default function Payments() {
                               ) : (
                                 <div className="flex items-center gap-2">
                                   <span className={`text-xs font-black ${debt > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                    {debt > 0 ? `${debt.toLocaleString()} UZS` : '✓ Qarz yo\'q'}
+                                    {debt > 0 ? `${formatCurrency(debt)}` : '✓ Qarz yo\'q'}
                                   </span>
                                   {debt > 0 && Number(form.amount) !== debt && (
                                     <button
@@ -2964,7 +2957,7 @@ export default function Payments() {
           <div className="bg-gradient-to-br from-[#1499AD] to-[#0e7a8a] px-8 pt-8 pb-6">
             <DialogTitle className="text-white font-[900] text-lg uppercase tracking-widest mb-1">Shifokor Biriktirish</DialogTitle>
             <DialogDescription className="text-white/70 text-xs font-medium">
-              {editPayment?.patient_name} — {editPayment?.amount?.toLocaleString()} UZS
+              {editPayment?.patient_name} — {formatCurrency(editPayment?.amount)}
             </DialogDescription>
           </div>
 
@@ -3486,18 +3479,18 @@ export default function Payments() {
                 <div className="bg-slate-900 rounded-xl p-4 flex flex-col gap-2 mt-2">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Jami to'langan</span>
-                    <span className="text-sm font-[900] text-emerald-400">{invoiceData.totalPaid.toLocaleString()} UZS</span>
+                    <span className="text-sm font-[900] text-emerald-400">{formatCurrency(invoiceData.totalPaid)}</span>
                   </div>
                   {invoiceData.totalDiscount > 0 && (
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chegirma</span>
-                      <span className="text-sm font-[900] text-amber-400">- {invoiceData.totalDiscount.toLocaleString()} UZS</span>
+                      <span className="text-sm font-[900] text-amber-400">- {formatCurrency(invoiceData.totalDiscount)}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center border-t border-white/10 pt-2">
                     <span className="text-[10px] font-black text-white uppercase tracking-widest">Qolgan qarz</span>
                     <span className={`text-base font-[900] ${invoiceData.totalDebt > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                      {invoiceData.totalDebt > 0 ? `${invoiceData.totalDebt.toLocaleString()} UZS` : "✓ To'liq"}
+                      {invoiceData.totalDebt > 0 ? `${formatCurrency(invoiceData.totalDebt)}` : "✓ To'liq"}
                     </span>
                   </div>
                 </div>
@@ -3514,7 +3507,7 @@ export default function Payments() {
                             <span className="text-[9px] text-slate-400 ml-2">{p.method || 'Naqd'}</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-[11px] font-black text-emerald-600">{(p.amount || 0).toLocaleString()} UZS</span>
+                            <span className="text-[11px] font-black text-emerald-600">{formatCurrency((p.amount || 0))}</span>
                             <p className="text-[9px] text-slate-400">{p.date?.slice(0,10) || '—'}</p>
                           </div>
                         </div>

@@ -14,12 +14,14 @@ import {
 import { base44 } from '@/api/base44Client';
 import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
 import { toast } from 'sonner';
-import { cn, resolveDoctorId } from '@/lib/utils';
+import { cn, formatCurrency, formatMoneyAmount, resolveDoctorId } from '@/lib/utils';
 import { patientGenderLabel } from '@/lib/patientGender';
 import { formatBirthDate } from '@/lib/displayText';
 import ChairsideClinicalTools from '../components/patients/ChairsideClinicalTools';
 import { countImplantTeeth, implantRecordFdis } from '@/lib/fdiNotation';
 import { formatPhone, capitalizeName } from '@/lib/utils';
+import { deleteTreatmentRow } from '@/lib/treatmentDelete';
+import TreatmentDeleteDialog from '@/components/patients/TreatmentDeleteDialog';
 import AppointmentModal from '../components/appointments/AppointmentModal';
 import PatientModal from '../components/patients/PatientModal';
 import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
@@ -37,7 +39,7 @@ const NAVY = '#0f172a';
 const getInitials = (name) =>
   name?.split(' ')?.map(n => n[0])?.join('')?.substring(0, 2)?.toUpperCase() || '?';
 
-const fmt = (n) => Number(n || 0).toLocaleString('ru-RU');
+const fmt = (n) => formatMoneyAmount(n);
 
 const getLocalDT = () => {
   const now = new Date();
@@ -185,6 +187,8 @@ export default function MobilePatientProfile() {
   const [allPatients, setAllPatients]           = useState([]);
   const [refreshTick, setRefreshTick]           = useState(0);
   const [expandedPlan, setExpandedPlan]         = useState(null);
+  const [pendingDelete, setPendingDelete]       = useState(null);
+  const [deletingTreatment, setDeletingTreatment] = useState(false);
   const payingSavingRef                         = useRef(false);
   const payTxRef                                = useRef('');
   const tabPanelRef                             = useRef(null);
@@ -620,7 +624,7 @@ export default function MobilePatientProfile() {
               ? <img src={patient.photo_url} alt="" className="w-full h-full object-cover" />
               : (photoUploading ? <Camera className="w-4 h-4" /> : getInitials(patient.full_name))}
           </button>
-          <input id="mob-avatar-input" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+          <input id="mob-avatar-input" data-testid="profile-photo-input" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
 
           {phoneHref ? (
             <a
@@ -644,7 +648,7 @@ export default function MobilePatientProfile() {
               {t('patientProfile.mobile.debt', 'Qarzdorlik')}
             </span>
             <span className="text-[16px] font-black tabular-nums leading-tight text-amber-200">
-              {fmt(financials.debt)} {t('dashboard.currency', "so'm")}
+              {formatCurrency(financials.debt)}
             </span>
           </div>
         )}
@@ -917,7 +921,7 @@ export default function MobilePatientProfile() {
                           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusInfo.cls}`}>{statusInfo.label}</span>
                             {plan.total_price > 0 && (
-                              <span className="text-[10px] font-black text-slate-700 font-mono">{fmt(plan.total_price)} {t('dashboard.currency', "so'm")}</span>
+                              <span className="text-[10px] font-black text-slate-700 font-mono">{formatCurrency(plan.total_price)}</span>
                             )}
                           </div>
                           {services.length > 0 && (
@@ -947,18 +951,33 @@ export default function MobilePatientProfile() {
                                     <p className="text-xs font-bold text-slate-800 truncate">{svc.service_name || svc.name}</p>
                                     {svc.tooth_number && <p className="text-[10px] text-slate-400">#{svc.tooth_number}</p>}
                                   </div>
-                                  {svc.price > 0 && <span className="text-xs font-black text-slate-700 font-mono shrink-0">{fmt(svc.price)}</span>}
+                                  {svc.price > 0 && <span className="text-xs font-black text-slate-700 font-mono shrink-0">{formatCurrency(svc.price)}</span>}
+                                  <button
+                                    type="button"
+                                    data-testid="treatment-delete"
+                                    onClick={() => setPendingDelete({
+                                      planId: plan.id,
+                                      serviceIndex: idx,
+                                      serviceName: svc.service_name || svc.name,
+                                      toothNumber: svc.tooth_number,
+                                      price: svc.price,
+                                      paidAmount: Math.max(Number(plan.paid_amount) || 0, plans.length === 1 ? Number(financials.incomes) || 0 : 0),
+                                    })}
+                                    className="shrink-0 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-black text-rose-700"
+                                  >
+                                    O‘chirish
+                                  </button>
                                 </div>
                               ))}
                               {plan.discount_amount > 0 && (
                                 <div className="flex items-center justify-between py-1.5 border-t border-slate-200 mt-1">
                                   <span className="text-[10px] font-bold text-purple-600">Chegirma</span>
-                                  <span className="text-xs font-black text-purple-600">-{fmt(plan.discount_amount)} {t('dashboard.currency', "so'm")}</span>
+                                  <span className="text-xs font-black text-purple-600">-{formatCurrency(plan.discount_amount)}</span>
                                 </div>
                               )}
                               <div className="flex items-center justify-between py-1.5 border-t border-slate-200">
                                 <span className="text-[10px] font-black text-slate-700 uppercase">Jami</span>
-                                <span className="text-sm font-black text-slate-900 font-mono">{fmt(plan.total_price)} {t('dashboard.currency', "so'm")}</span>
+                                <span className="text-sm font-black text-slate-900 font-mono">{formatCurrency(plan.total_price)}</span>
                               </div>
                               <button onClick={() => openPayModal()} className="w-full py-2.5 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform mt-1" style={{ background: TEAL }}>
                                 <CreditCard className="w-3.5 h-3.5" />{t('patientProfile.mobile.payAction', "To'lov")}
@@ -986,15 +1005,13 @@ export default function MobilePatientProfile() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3.5 text-center">
                     <p className="text-[10px] font-bold text-emerald-600 uppercase">{t('patientProfile.financialCard.totalPaid', "Jami to'langan")}</p>
-                    <p className="text-lg font-black text-emerald-700 font-mono mt-0.5">{fmt(financials.incomes)}</p>
-                    <p className="text-[9px] text-emerald-500 font-bold">{t('dashboard.currency', "so'm")}</p>
+                    <p className="text-lg font-black text-emerald-700 font-mono mt-0.5">{formatCurrency(financials.incomes)}</p>
                   </div>
                   <div className={cn('rounded-xl p-3.5 text-center border', financials.debt > 0 ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-slate-200')}>
                     <p className={`text-[10px] font-bold uppercase ${financials.debt > 0 ? 'text-rose-600' : 'text-slate-500'}`}>
                       {financials.debt > 0 ? t('patientProfile.mobile.debt', 'Qarz') : 'Balans'}
                     </p>
-                    <p className={`text-lg font-black font-mono mt-0.5 ${financials.debt > 0 ? 'text-rose-600' : 'text-slate-400'}`}>{fmt(financials.debt)}</p>
-                    <p className={`text-[9px] font-bold ${financials.debt > 0 ? 'text-rose-400' : 'text-slate-400'}`}>{t('dashboard.currency', "so'm")}</p>
+                    <p className={`text-lg font-black font-mono mt-0.5 ${financials.debt > 0 ? 'text-rose-600' : 'text-slate-400'}`}>{formatCurrency(financials.debt)}</p>
                   </div>
                 </div>
 
@@ -1025,7 +1042,7 @@ export default function MobilePatientProfile() {
                           {pay.method && <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">{pay.method === 'Cash' ? 'Naqd' : pay.method === 'Card' ? 'Karta' : "O'tkazma"}</span>}
                         </div>
                       </div>
-                      <p className={`text-sm font-black font-mono shrink-0 ${amtColor}`}>{amtSign}{fmt(pay.amount)}</p>
+                      <p className={`text-sm font-black font-mono shrink-0 ${amtColor}`}>{amtSign}{formatCurrency(pay.amount)}</p>
                     </div>
                   );
                 })}
@@ -1221,7 +1238,7 @@ export default function MobilePatientProfile() {
                           )}
                         >
                           <p className="text-xs font-black text-slate-800 leading-snug break-words">{plan.name || 'Davolash rejasi'}</p>
-                          <p className="text-[10px] font-bold text-rose-600 mt-0.5">Qoldiq: {fmt(remaining)} so'm</p>
+                          <p className="text-[10px] font-bold text-rose-600 mt-0.5">Qoldiq: {formatCurrency(remaining)}</p>
                         </button>
                       );
                     })}
@@ -1321,6 +1338,28 @@ export default function MobilePatientProfile() {
           }}
         />
       )}
+      <TreatmentDeleteDialog
+        row={pendingDelete}
+        busy={deletingTreatment}
+        onCancel={() => { if (!deletingTreatment) setPendingDelete(null); }}
+        onConfirm={async () => {
+          if (!pendingDelete || id === 'patient-y2ii8ynf2') return;
+          const plan = plans.find((item) => item.id === pendingDelete.planId);
+          if (!plan) return;
+          setDeletingTreatment(true);
+          try {
+            await deleteTreatmentRow({ patientId: id, plan, serviceIndex: pendingDelete.serviceIndex });
+            toast.success('Muolaja o‘chirildi');
+            setPendingDelete(null);
+            setRefreshTick((tick) => tick + 1);
+          } catch (err) {
+            console.error(err);
+            toast.error('O‘chirishda xatolik');
+          } finally {
+            setDeletingTreatment(false);
+          }
+        }}
+      />
       {implantModalOpen && (
         <ImplantForm
           open={implantModalOpen}

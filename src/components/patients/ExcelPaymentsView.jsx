@@ -7,7 +7,7 @@ import {
   Banknote, CheckCircle2, X, Printer, Trash2,
   Table as TableIcon, Copy, Check, Clock, Receipt
 } from 'lucide-react';
-import { cn, formatPhone, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
+import { cn, formatCurrency, formatPhone, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
 import { formatDoctorName, formatTableDate } from '@/lib/displayText';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -599,30 +599,30 @@ function ExcelPaymentsView({
                 <td>${s.category}</td>
                 <td class="text-center">${s.tooth}</td>
                 <td class="text-center"><span style="color:#0284c7; font-weight:600;">${s.status}</span></td>
-                <td class="text-right font-bold">${Number(s.price || 0).toLocaleString()} so'm</td>
+                <td class="text-right font-bold">${formatCurrency(Number(s.price || 0))}</td>
               </tr>
             `).join('')}
             <tr class="raw-total-row">
               <td colspan="4">Davolash rejasining chegirmasiz narxi</td>
-              <td class="text-right font-bold">${rawTotal.toLocaleString()} so'm</td>
+              <td class="text-right font-bold">${formatCurrency(rawTotal)}</td>
             </tr>
             <tr class="discounted-total-row">
               <td colspan="4">
                 Chegirmali narxi
-                ${totalDiscountAmount > 0 ? `<span class="discount-badge">-${totalDiscountAmount.toLocaleString()} so'm</span>` : ''}
+                ${totalDiscountAmount > 0 ? `<span class="discount-badge">-${formatCurrency(totalDiscountAmount)}</span>` : ''}
               </td>
-              <td class="text-right font-black">${discountedTotal.toLocaleString()} so'm</td>
+              <td class="text-right font-black">${formatCurrency(discountedTotal)}</td>
             </tr>
             <tr class="paid-summary-row">
               <td colspan="4">Jami to'langan</td>
-              <td class="text-right font-black">${totalPaidSum.toLocaleString()} so'm</td>
+              <td class="text-right font-black">${formatCurrency(totalPaidSum)}</td>
             </tr>
             <tr class="${finalDebt > 0 ? 'debt-summary-row' : ''}">
               <td colspan="4" style="font-weight:900; ${finalDebt > 0 ? '' : 'color:#166534; background:#f0fdf4;'}">
                 ${finalDebt > 0 ? 'Qoldiq qarzdorlik' : "Qarz yo'q (To'liq to'langan)"}
               </td>
               <td class="text-right font-black" style="${finalDebt > 0 ? '' : 'color:#166534; background:#f0fdf4;'}">
-                ${finalDebt.toLocaleString()} so'm
+                ${formatCurrency(finalDebt)}
               </td>
             </tr>
           </tbody>
@@ -647,17 +647,17 @@ function ExcelPaymentsView({
                   <td>${pDate}</td>
                   <td class="font-bold">${formatPaymentMethod(item.payment_method || item.method)}</td>
                   <td class="text-center"><span style="color:#16a34a; font-weight:700;">To'langan</span></td>
-                  <td class="text-right font-bold">${Number(item.amount || 0).toLocaleString()} so'm</td>
+                  <td class="text-right font-bold">${formatCurrency(Number(item.amount || 0))}</td>
                 </tr>
               `;
             }).join('')}
             <tr class="paid-total-row">
               <td colspan="3">To'langan jami</td>
-              <td class="text-right font-black">${totalPaidSum.toLocaleString()} so'm</td>
+              <td class="text-right font-black">${formatCurrency(totalPaidSum)}</td>
             </tr>
             <tr class="${finalDebt > 0 ? 'debt-total-row' : ''}">
               <td colspan="3" style="font-weight:900; font-size:13px; padding:10px 10px; ${finalDebt > 0 ? '' : 'color:#334155;'}">Jami qarzdorlik</td>
-              <td class="text-right font-black" style="font-size:13px; padding:10px 10px; ${finalDebt > 0 ? '' : 'color:#334155;'}">${finalDebt.toLocaleString()} so'm</td>
+              <td class="text-right font-black" style="font-size:13px; padding:10px 10px; ${finalDebt > 0 ? '' : 'color:#334155;'}">${formatCurrency(finalDebt)}</td>
             </tr>
           </tbody>
         </table>
@@ -803,7 +803,7 @@ function ExcelPaymentsView({
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-black text-emerald-700 leading-tight">
-                        +{amount.toLocaleString()} <span className="text-[10px] font-bold text-emerald-500">UZS</span>
+                        +{formatCurrency(amount)}
                       </p>
                       <p className="text-[10px] font-bold text-slate-400 mt-0.5">{dateStr}</p>
                     </div>
@@ -866,7 +866,7 @@ function ExcelPaymentsView({
                           search
                             ? "Qidiruv bo'yicha to'lovlar topilmadi. Qidiruv so'zini tekshiring."
                             : Number(totalDebt || 0) > 0
-                            ? `Bemorning to'lov kutilayotgan umumiy qarzdorligi mavjud: ${Number(totalDebt).toLocaleString()} UZS`
+                            ? `Bemorning to'lov kutilayotgan umumiy qarzdorligi mavjud: ${formatCurrency(Number(totalDebt))}`
                             : "Bemor bo'yicha kassaga hali to'lov kiritilmagan."
                         }
                         actionText={onOpenPayModal ? "+ To'lov qabul qilish" : undefined}
@@ -919,7 +919,7 @@ function ExcelPaymentsView({
 
                         {/* Amount */}
                         <td className={cn("border-r border-slate-200 text-right font-mono font-black text-emerald-700 bg-emerald-50/40 text-sm sm:text-base tracking-tight", density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-3.5')}>
-                          +{Number(p.amount || 0).toLocaleString()} UZS
+                          +{formatCurrency(Number(p.amount || 0))}
                         </td>
 
                         {/* Notes */}
@@ -1059,12 +1059,12 @@ function ExcelPaymentsView({
                     <div>
                       <h4 className="text-xs font-black uppercase tracking-wide text-slate-800">{plan.name}</h4>
                       <p className="text-[10px] font-mono text-slate-400 mt-0.5">
-                        {language === 'ru' ? 'Итого: ' : 'Jami: '}{Number(plan.total_price || 0).toLocaleString()} UZS | {inst.months} {language === 'ru' ? 'мес. график' : 'oylik jadval'}
+                        {language === 'ru' ? 'Итого: ' : 'Jami: '}{formatCurrency(Number(plan.total_price || 0))} | {inst.months} {language === 'ru' ? 'мес. график' : 'oylik jadval'}
                       </p>
                     </div>
                     <div className="text-right font-mono">
                       <span className="text-[10px] text-slate-400 block font-bold">{language === 'ru' ? 'Ежемесячный платёж' : language === 'en' ? 'Monthly payment' : 'Oylik to\'lov'}</span>
-                      <span className="text-xs font-black text-indigo-700">{Number(inst.monthly_amount || 0).toLocaleString()} UZS</span>
+                      <span className="text-xs font-black text-indigo-700">{formatCurrency(Number(inst.monthly_amount || 0))}</span>
                     </div>
                   </div>
 
@@ -1094,7 +1094,7 @@ function ExcelPaymentsView({
 
                           <div>
                             <span className="text-[10px] text-slate-400 block">{monthDate.toLocaleDateString('uz-UZ', { month: 'short', year: 'numeric' })}</span>
-                            <span className="font-mono font-bold text-slate-800 text-[11px]">{Number(inst.monthly_amount || 0).toLocaleString()} UZS</span>
+                            <span className="font-mono font-bold text-slate-800 text-[11px]">{formatCurrency(Number(inst.monthly_amount || 0))}</span>
                           </div>
 
                           {!isPaid && onPayInstallment && (

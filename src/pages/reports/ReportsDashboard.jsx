@@ -219,12 +219,12 @@ export default function ReportsDashboard({
         <KpiCard
           compact={phone}
           label={tx(language, 'Umumiy daromad', 'Общий доход', 'Total income')}
-          value={phone ? fmtCompact(stats.totalIncome) : <>{fmtMoney(stats.totalIncome)} <small>UZS</small></>}
+          value={phone ? fmtCompact(stats.totalIncome) : <>{fmtMoney(stats.totalIncome)}</>}
           icon={<DollarSign className="w-4 h-4" />}
           iconClass="bg-emerald-50 text-emerald-600"
           bar={incomeBar}
           barClass="bg-emerald-500"
-          foot={phone ? (stats.totalIncome ? `${fmtMoney(stats.totalIncome)} UZS` : '—') : `${tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')}: ${stats.avgCheck ? fmtMoney(stats.avgCheck) : '—'}`}
+          foot={phone ? (stats.totalIncome ? `${fmtMoney(stats.totalIncome)}` : '—') : `${tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')}: ${stats.avgCheck ? fmtMoney(stats.avgCheck) : '—'}`}
           trend={trends?.income}
           period={period}
           trendNote={trends?.note}
@@ -232,12 +232,12 @@ export default function ReportsDashboard({
         <KpiCard
           compact={phone}
           label={phone ? tx(language, 'Chiqimlar', 'Расходы', 'Expenses') : tx(language, 'Chiqimlar / xarajat', 'Расходы', 'Expenses')}
-          value={phone ? fmtCompact(stats.totalExpense) : <>{fmtMoney(stats.totalExpense)} <small>UZS</small></>}
+          value={phone ? fmtCompact(stats.totalExpense) : <>{fmtMoney(stats.totalExpense)}</>}
           icon={<ArrowDownRight className="w-4 h-4" />}
           iconClass="bg-rose-50 text-rose-600"
           bar={expenseBar}
           barClass="bg-rose-500"
-          foot={phone ? (stats.totalExpense ? `${fmtMoney(stats.totalExpense)} UZS` : '—') : (expenseRatio != null ? `${tx(language, 'Daromadning', 'От дохода', 'Of income')} ${String(expenseRatio).replace('.', ',')} ${tx(language, 'foizi', '%', '%')}` : tx(language, 'Daromad yo\'q', 'Нет дохода', 'No income'))}
+          foot={phone ? (stats.totalExpense ? `${fmtMoney(stats.totalExpense)}` : '—') : (expenseRatio != null ? `${tx(language, 'Daromadning', 'От дохода', 'Of income')} ${String(expenseRatio).replace('.', ',')} ${tx(language, 'foizi', '%', '%')}` : tx(language, 'Daromad yo\'q', 'Нет дохода', 'No income'))}
           trend={trends?.expense}
           period={period}
           trendNote={trends?.note}
@@ -247,7 +247,7 @@ export default function ReportsDashboard({
           compact={phone}
           dark
           label={tx(language, 'Sof foyda', 'Чистая прибыль', 'Net profit')}
-          value={phone ? fmtCompact(stats.netProfit) : <>{fmtMoney(stats.netProfit)} <small>UZS</small></>}
+          value={phone ? fmtCompact(stats.netProfit) : <>{fmtMoney(stats.netProfit)}</>}
           icon={<ArrowUpRight className="w-4 h-4" />}
           bar={profitBar}
           barClass="bg-emerald-400"
@@ -260,7 +260,7 @@ export default function ReportsDashboard({
 
       {phone && (
         <p className="text-[11.5px] text-slate-500 mb-3">
-          {tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')}: <b className="text-slate-900">{stats.avgCheck ? `${fmtMoney(stats.avgCheck)} UZS` : '—'}</b>
+          {tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')}: <b className="text-slate-900">{stats.avgCheck ? `${fmtMoney(stats.avgCheck)}` : '—'}</b>
         </p>
       )}
 
@@ -341,7 +341,7 @@ export default function ReportsDashboard({
               <div className={cn('flex flex-wrap items-start justify-between gap-2 mb-2', phone && 'flex-col')}>
                 <div>
                   <h3 className="text-sm font-bold">{phone ? tx(language, 'Kirim va chiqim', 'Доходы и расходы', 'Income and expense') : tx(language, 'Kirim va chiqim dinamikasi', 'Динамика доходов и расходов', 'Income and expense')}</h3>
-                  <p className="text-[11.5px] text-slate-400">{phone ? tx(language, 'mln UZS · chiziq — sof foyda', 'млн · линия — прибыль', 'line is net profit') : tx(language, 'Oylar kesimida · chiziq — sof foyda', 'По месяцам · линия — прибыль', 'By month · line is net profit')}</p>
+                  <p className="text-[11.5px] text-slate-400">{phone ? tx(language, "mln so'm · chiziq — sof foyda", 'млн · линия — прибыль', 'line is net profit') : tx(language, 'Oylar kesimida · chiziq — sof foyda', 'По месяцам · линия — прибыль', 'By month · line is net profit')}</p>
                 </div>
                 <div className="flex gap-3 text-[11px] font-semibold text-slate-500">
                   <span className="inline-flex items-center gap-1"><i className="w-2 h-2 rounded-sm bg-emerald-600" />{tx(language, 'Kirim', 'Доход', 'Income')}</span>
@@ -425,7 +425,7 @@ export default function ReportsDashboard({
             {doctorLeaderboard.length > 0 && (
               <div className="flex items-center justify-between gap-3 py-2.5 border-t border-dashed border-slate-200 text-[12.5px] font-bold">
                 <span>{tx(language, 'Jami', 'Итого', 'Total')} · {boardAppts} {tx(language, 'qabul', 'приём', 'visits')}</span>
-                <span className="text-emerald-700 tabular-nums">{fmtMoney(boardRevenue)} UZS</span>
+                <span className="text-emerald-700 tabular-nums">{fmtMoney(boardRevenue)}</span>
               </div>
             )}
           </div> : null}
@@ -471,7 +471,7 @@ export default function ReportsDashboard({
                     <td className="px-3 py-2.5 text-right tabular-nums text-sm">{d.uniquePatients} <span className="text-slate-400 text-xs">ta</span></td>
                     <td className="px-3 py-2.5">
                       <div className="flex flex-col items-end gap-1">
-                        <b className="text-sm text-emerald-700 tabular-nums">{fmtMoney(d.revenue)} <span className="text-[11px] text-slate-400 font-semibold">UZS</span></b>
+                        <b className="text-sm text-emerald-700 tabular-nums">{fmtMoney(d.revenue)}</b>
                         <div className="w-24 h-1 rounded bg-slate-100 overflow-hidden"><i className="block h-full bg-emerald-500" style={{ width: `${(d.revenue / maxRevenue) * 100}%` }} /></div>
                       </div>
                     </td>
@@ -490,7 +490,7 @@ export default function ReportsDashboard({
                     <td className="px-3 py-3 text-right font-bold tabular-nums">{boardAppts} ta</td>
                     <td className="px-3 py-3 text-right font-bold tabular-nums">{boardDone} · {boardRate}%</td>
                     <td className="px-3 py-3 text-right font-bold tabular-nums">{boardPatients > 0 ? `${boardPatients} ta` : '—'}</td>
-                    <td className="px-3 py-3 text-right font-extrabold text-emerald-700 tabular-nums">{fmtMoney(boardRevenue)} UZS</td>
+                    <td className="px-3 py-3 text-right font-extrabold text-emerald-700 tabular-nums">{fmtMoney(boardRevenue)}</td>
                     <td className="px-3 py-3 text-right font-bold tabular-nums">{boardAvg ? fmtMoney(boardAvg) : '—'}</td>
                     <td className="px-3 py-3 text-right"><span className="inline-block min-w-[44px] text-center text-xs font-bold px-2 py-1 rounded-md bg-slate-100">100%</span></td>
                   </tr>
@@ -782,7 +782,7 @@ function MoneyTip({ active, payload, label }) {
       {payload.map((p) => (
         <div key={p.name} className="flex items-center gap-1.5">
           <i className="w-2 h-2 rounded-full" style={{ background: p.color }} />
-          <span>{p.name}: <b>{fmtMoney(p.value)} UZS</b></span>
+          <span>{p.name}: <b>{fmtMoney(p.value)}</b></span>
         </div>
       ))}
     </div>

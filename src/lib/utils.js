@@ -39,11 +39,23 @@ export const isIframe = typeof window !== 'undefined' && window.self !== window.
  * @example
  * formatCurrency(1500000) // => "1 500 000 so'm"
  */
-export function formatCurrency(amount, currency = "so'm", locale = 'uz-UZ') {
-  if (amount === null || amount === undefined || Number.isNaN(Number(amount))) return "—";
-  const n = Number(amount);
-  const safe = n === 0 ? 0 : n;
-  return `${safe.toLocaleString(locale)} ${currency}`;
+/** Digits grouped with a regular space: 5000000 → "5 000 000". */
+export function formatMoneyAmount(amount) {
+  if (amount === null || amount === undefined || amount === '' || Number.isNaN(Number(amount))) return '—';
+  const n = Math.round(Number(amount));
+  const sign = n < 0 ? '-' : '';
+  const grouped = String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return `${sign}${grouped}`;
+}
+
+/**
+ * One clinic money format, on every screen: "5 000 000 so'm".
+ * The separator is a normal space, and there is a space before so'm.
+ */
+export function formatCurrency(amount, currency = "so'm") {
+  const grouped = formatMoneyAmount(amount);
+  if (grouped === '—') return grouped;
+  return currency ? `${grouped} ${currency}` : grouped;
 }
 
 /**
@@ -255,36 +267,28 @@ export function formatPhone(phone) {
   return phone;
 }
 
+function preserveTypedCase(name) {
+  const trimmed = String(name || '').replace(/[ \t]+/g, ' ').trim();
+  if (!trimmed) return '';
+  const first = trimmed.charAt(0);
+  const lower = first.toLocaleLowerCase('uz-UZ');
+  if (first === lower && first !== first.toLocaleUpperCase('uz-UZ')) {
+    return first.toLocaleUpperCase('uz-UZ') + trimmed.slice(1);
+  }
+  return trimmed;
+}
+
+/** Trim spaces. Capitalize only a lowercase first letter. "QA" stays "QA". */
 export function capitalizeName(name) {
-  if (!name) return "";
-  return name
-    .split(' ')
-    .map(spacePart => {
-      return spacePart
-        .split('-')
-        .map(dashPart => {
-          if (!dashPart) return "";
-          return dashPart.charAt(0).toUpperCase() + dashPart.slice(1).toLowerCase();
-        })
-        .join('-');
-    })
-    .join(' ');
+  return preserveTypedCase(name);
 }
 
 export function capitalizeAsYouType(val) {
-  if (!val) return "";
-  return val
-    .split(' ')
-    .map(spacePart => {
-      return spacePart
-        .split('-')
-        .map(dashPart => {
-          if (!dashPart) return "";
-          return dashPart.charAt(0).toUpperCase() + dashPart.slice(1).toLowerCase();
-        })
-        .join('-');
-    })
-    .join(' ');
+  if (!val) return '';
+  const cleaned = String(val).replace(/[ \t]{2,}/g, ' ');
+  if (!cleaned.trim()) return cleaned;
+  const leading = cleaned.match(/^\s*/)?.[0] || '';
+  return leading + preserveTypedCase(cleaned);
 }
 
 export function validateAddress(address) {

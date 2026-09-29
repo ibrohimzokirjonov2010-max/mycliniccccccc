@@ -264,7 +264,7 @@ export default function Dashboard() {
                     contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.1)', padding: '16px' }}
                     itemStyle={{ fontWeight: 900, fontSize: '12px' }}
                     cursor={{ stroke: '#1499AD', strokeWidth: 2, strokeDasharray: '4 4' }}
-                    formatter={(v) => [`${Number(v).toLocaleString()} so'm`, t('payments.income')]}
+                    formatter={(v) => [formatCurrency(v), t('payments.income')]}
                   />
                   <Area 
                     type="monotone" 

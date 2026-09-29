@@ -1,4 +1,5 @@
 /** Shared formatters and appointment matching for Staff and Reports. */
+import { formatCurrency } from '@/lib/utils';
 
 export function dateKey(value) {
   if (!value) return '';
@@ -44,8 +45,7 @@ export function minutesToLabel(mins) {
 }
 
 export function fmtMoney(n) {
-  const v = Math.round(Number(n) || 0);
-  return v.toLocaleString('ru-RU').replace(/\u00A0/g, ' ');
+  return formatCurrency(n);
 }
 
 export function fmtCompact(n) {

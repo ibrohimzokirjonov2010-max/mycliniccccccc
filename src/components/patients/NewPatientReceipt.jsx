@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Printer, Download, X } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 import './newPatientReceipt.css';
 
 const FALLBACK_MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
@@ -48,7 +49,6 @@ export function NewPatientReceiptTeaser({
   receiptNo,
   rows = [],
   dueTotal = 0,
-  currency,
   invoiceLabel,
   openLabel,
   totalLabel,
@@ -74,8 +74,7 @@ export function NewPatientReceiptTeaser({
           <div className="text-left min-[400px]:text-right">
             <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 leading-tight max-w-[11rem]">{totalLabel}</p>
             <p className="text-base font-black text-slate-900 tabular-nums leading-tight">
-              {Number(dueTotal || 0).toLocaleString()}
-              <span className="text-[11px] font-bold text-slate-500 ml-1">{currency}</span>
+              {formatCurrency(dueTotal || 0)}
             </p>
           </div>
           <span className="inline-flex items-center h-7 px-2.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold whitespace-nowrap">
@@ -91,7 +90,7 @@ export function NewPatientReceiptTeaser({
                 {row.name}
                 {row.tooth ? <span className="text-slate-400 font-normal"> · {row.tooth}</span> : null}
               </span>
-              <span className="shrink-0 font-bold tabular-nums text-slate-900">{Number(row.price || 0).toLocaleString()}</span>
+              <span className="shrink-0 font-bold tabular-nums text-slate-900">{formatCurrency(row.price || 0)}</span>
             </li>
           ))}
           {extra > 0 && (
@@ -123,8 +122,6 @@ function ReceiptPaper({
   installmentStartDate,
   installmentDay,
 }) {
-  const currency = t('common.currency');
-
   return (
     <div id="new-patient-receipt" className="bg-white">
       <div className="px-3 py-3 sm:px-4 flex flex-col sm:flex-row sm:items-start justify-between gap-2 border-b border-slate-100">
@@ -198,7 +195,7 @@ function ReceiptPaper({
               </div>
               <div className="sm:col-span-4 text-left sm:text-right">
                 <p className="text-[13px] font-black text-slate-900 tabular-nums">
-                  {Number(row.price || 0).toLocaleString()} <span className="text-[10px] text-slate-500 font-medium">{currency}</span>
+                  {formatCurrency(row.price || 0)}
                 </p>
               </div>
             </div>
@@ -207,20 +204,20 @@ function ReceiptPaper({
         <div className="mt-2 flex flex-col items-stretch sm:items-end gap-1 pt-1">
           <div className="flex items-center justify-between w-full sm:w-64">
             <span className="text-[12px] text-slate-500 font-medium">{t('patients.wizard.services')}:</span>
-            <span className="text-[13px] font-bold text-slate-800 tabular-nums">{Number(servicesTotal || 0).toLocaleString()} {currency}</span>
+            <span className="text-[13px] font-bold text-slate-800 tabular-nums">{formatCurrency(servicesTotal || 0)}</span>
           </div>
           {discountAmount > 0 && (
             <div className="flex items-center justify-between w-full sm:w-64">
               <span className="text-[12px] text-rose-500 font-bold">
                 {discountPercent > 0 ? `${t('patients.wizard.discount')} (${discountPercent}%):` : `${t('patients.wizard.discount')}:`}
               </span>
-              <span className="text-[13px] font-black text-rose-500 tabular-nums">- {Number(discountAmount).toLocaleString()} {currency}</span>
+              <span className="text-[13px] font-black text-rose-500 tabular-nums">- {formatCurrency(discountAmount)}</span>
             </div>
           )}
           {advanceTotal > 0 && (
             <div className="flex items-center justify-between w-full sm:w-64 border-b border-dashed border-slate-200 pb-1.5">
               <span className="text-[12px] text-emerald-600 font-bold">{t('patients.wizard.downPayment')}:</span>
-              <span className="text-[13px] font-black text-emerald-600 tabular-nums">- {Number(advanceTotal).toLocaleString()} {currency}</span>
+              <span className="text-[13px] font-black text-emerald-600 tabular-nums">- {formatCurrency(advanceTotal)}</span>
             </div>
           )}
         </div>
@@ -234,11 +231,10 @@ function ReceiptPaper({
           </div>
           <div className="text-right">
             {discountAmount > 0 && (
-              <p className="text-[11px] text-slate-400 line-through font-medium tabular-nums">{Number(servicesTotal || 0).toLocaleString()}</p>
+              <p className="text-[11px] text-slate-400 line-through font-medium tabular-nums">{formatCurrency(servicesTotal || 0)}</p>
             )}
             <p className="text-xl font-black text-white tabular-nums leading-none">
-              {Number(dueTotal || 0).toLocaleString()}
-              <span className="text-xs font-medium text-slate-400 ml-1">{currency}</span>
+              {formatCurrency(dueTotal || 0)}
             </p>
           </div>
         </div>
@@ -273,15 +269,15 @@ function ReceiptPaper({
             <div className="bg-blue-50/50 px-3 py-2.5 border-b border-blue-100 grid grid-cols-3 gap-2">
               <div>
                 <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{t('common.total')}</p>
-                <p className="text-[12px] font-black text-slate-800 tabular-nums">{Math.max(0, servicesTotal - discountAmount).toLocaleString()}</p>
+                <p className="text-[12px] font-black text-slate-800 tabular-nums">{formatCurrency(Math.max(0, servicesTotal - discountAmount))}</p>
               </div>
               <div>
                 <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{t('patients.wizard.downPayment')}</p>
-                <p className="text-[12px] font-black text-emerald-600 tabular-nums">{Number(advanceTotal || 0).toLocaleString()}</p>
+                <p className="text-[12px] font-black text-emerald-600 tabular-nums">{formatCurrency(advanceTotal || 0)}</p>
               </div>
               <div>
                 <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{t('patients.wizard.remainingDebt')}</p>
-                <p className="text-[12px] font-black text-rose-600 tabular-nums">{Number(dueTotal || 0).toLocaleString()}</p>
+                <p className="text-[12px] font-black text-rose-600 tabular-nums">{formatCurrency(dueTotal || 0)}</p>
               </div>
             </div>
             <table className="w-full text-left">
@@ -307,7 +303,7 @@ function ReceiptPaper({
                       <tr key={i} className="border-b border-slate-50 last:border-0">
                         <td className="px-3 py-2 text-[11px] font-black text-slate-700">{t('patients.wizard.monthlyPayment', { month: i + 1 })}</td>
                         <td className="px-3 py-2 text-[11px] text-slate-500 font-medium">{d.getDate()}-{monthName(d, t)}, {d.getFullYear()}</td>
-                        <td className="px-3 py-2 text-[11px] font-black text-slate-900 text-right tabular-nums">{monthly.toLocaleString()} {currency}</td>
+                        <td className="px-3 py-2 text-[11px] font-black text-slate-900 text-right tabular-nums">{formatCurrency(monthly)}</td>
                       </tr>
                     );
                   });

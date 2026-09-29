@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft, Phone, Calendar, Plus, Info, Camera, Copy, Mail, Wallet, AlertTriangle, Pencil
 } from 'lucide-react';
-import { cn, formatPhone } from '@/lib/utils';
+import { cn, formatCurrency, formatPhone } from '@/lib/utils';
 import { patientGenderLabel } from '@/lib/patientGender';
 import { displayServiceName, formatBirthDate, resolveDoctorLabel } from '@/lib/displayText';
 import { implantStepStatusLabel } from '@/lib/implantStatus';
@@ -214,7 +214,7 @@ export default function ChairsidePatientProfile({
 
   const genderLabel = patientGenderLabel(patient?.gender, language);
 
-  const debtAmount = `${Number(totalDebt || 0).toLocaleString('uz-UZ')} ${language === 'en' ? 'UZS' : language === 'ru' ? 'сум' : "so'm"}`;
+  const debtAmount = formatCurrency(totalDebt || 0);
   const debtBadgeText = totalDebt > 0
     ? (language === 'ru' ? `Есть долг · ${debtAmount}` : language === 'en' ? `Has debt · ${debtAmount}` : `Qarz bor · ${debtAmount}`)
     : null;
@@ -376,7 +376,7 @@ export default function ChairsidePatientProfile({
                     <Camera className="w-4 h-4" />
                   </div>
                 </div>
-                <input id="avatar-upload-input-chair" type="file" accept="image/*" className="hidden" onChange={onAvatarUpload} />
+                <input id="avatar-upload-input-chair" data-testid="profile-photo-input" type="file" accept="image/*" className="hidden" onChange={onAvatarUpload} />
                 <h2 className="text-[15px] font-black text-slate-900 mt-3 leading-snug">{patient?.full_name}</h2>
                 <p className="text-[11px] font-semibold text-slate-500 mt-0.5">
                   {age != null ? `${age} yosh` : '—'}
@@ -415,19 +415,19 @@ export default function ChairsidePatientProfile({
                 {totalDebt > 0 ? (
                   <>
                     <p className="text-[1.35rem] font-black text-rose-600 font-mono leading-none tracking-tight">
-                      -{Number(totalDebt).toLocaleString('uz-UZ')}
+                      -{formatCurrency(totalDebt)}
                     </p>
-                    <p className="text-[10px] font-bold text-rose-500 mt-1">UZS · Qarz mavjud</p>
+                    <p className="text-[10px] font-bold text-rose-500 mt-1">Qarz mavjud</p>
                   </>
                 ) : totalPrepayment > 0 ? (
                   <>
                     <p className="text-[1.35rem] font-black text-emerald-700 font-mono leading-none tracking-tight">
-                      +{Number(totalPrepayment).toLocaleString('uz-UZ')}
+                      +{formatCurrency(totalPrepayment)}
                     </p>
-                    <p className="text-[10px] font-bold text-emerald-600 mt-1">UZS · Prepayment</p>
+                    <p className="text-[10px] font-bold text-emerald-600 mt-1">Oldindan to‘lov</p>
                   </>
                 ) : (
-                  <p className="text-[1.35rem] font-black text-slate-700 font-mono leading-none">0 UZS</p>
+                  <p className="text-[1.35rem] font-black text-slate-700 font-mono leading-none">{formatCurrency(0)}</p>
                 )}
               </div>
 
