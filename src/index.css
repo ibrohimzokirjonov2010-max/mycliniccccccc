@@ -344,41 +344,6 @@
   min-width: 0;
   max-width: 100%;
 }
-.odonto-schema-fit {
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  overflow: visible;
-  box-sizing: border-box;
-  padding: 6px 8px 8px;
-  border-radius: 16px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-}
-.odonto-schema-label {
-  display: block;
-  margin: 3px 0 1px;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: #e11d48;
-  line-height: 1.1;
-}
-.odonto-schema-fit .odonto-quad {
-  width: 100%;
-}
-.tooth-chart-root .schema-num {
-  max-width: none;
-  overflow: visible;
-  white-space: nowrap;
-  font-size: 12px !important;
-  line-height: 1.15 !important;
-  letter-spacing: 0;
-}
-.tooth-chart-root .schema-box {
-  min-width: 32px;
-  min-height: 32px;
-}
 .chip-rail {
   position: relative;
   min-width: 0;
@@ -962,14 +927,6 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
     --odonto-label-inset: 2px;
     padding-left: 16px;
     padding-right: 16px;
-  }
-  .tooth-chart-root .schema-box {
-    min-width: 0;
-    min-height: 24px;
-  }
-  .tooth-chart-root .schema-num {
-    font-size: 10px !important;
-    padding: 0 1px !important;
   }
   .tooth-chart-root .tooth-face {
     height: calc(clamp(52px, 18cqw, 100px) * var(--fdi-len, 1));

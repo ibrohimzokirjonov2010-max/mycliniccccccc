@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Check, Layers, Plus, Printer, Target, X,
+  Check, Layers, Plus, Printer, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { cn, formatCurrency, formatMoneyAmount } from '@/lib/utils';
-import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, fdiMesialIsRight, fdiWidthWeight, internalIdToFdi } from '@/lib/fdiNotation';
+import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, fdiWidthWeight, internalIdToFdi } from '@/lib/fdiNotation';
 import { getToothIllustrationSrc, matchIllustrationKind } from '@/utils/toothIllustration';
 import { displayServiceName, formatDoctorName } from '@/lib/displayText';
 import { implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
@@ -14,7 +14,7 @@ import { implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus'
 const ADULT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
 const ADULT_LOWER = [38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
 const CHILD_UPPER = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65];
-const CHILD_LOWER = [75, 74, 73, 72, 71, 81, 82, 83, 84, 85];
+const CHILD_LOWER = [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
 
 const LEGEND = [
   { id: 'caries', label: 'Karies', color: '#E11D48' },
@@ -181,8 +181,35 @@ function patchServiceNotes(services, servicePath, nextNotes) {
   });
 }
 
-function mesialIsRight(fdi) {
-  return fdiMesialIsRight(fdi);
+function patientAgeYears(patient, today = new Date()) {
+  const raw = patient?.birth_date;
+  if (raw != null && String(raw).trim()) {
+    const dateStr = String(raw).trim();
+    if (/^\d{4}$/.test(dateStr)) return today.getFullYear() - parseInt(dateStr, 10);
+    const parsed = new Date(dateStr);
+    if (!Number.isNaN(parsed.getTime())) {
+      let age = today.getFullYear() - parsed.getFullYear();
+      const month = today.getMonth() - parsed.getMonth();
+      if (month < 0 || (month === 0 && today.getDate() < parsed.getDate())) age -= 1;
+      return age;
+    }
+    const yearMatch = dateStr.match(/\d{4}/);
+    if (yearMatch) return today.getFullYear() - parseInt(yearMatch[0], 10);
+  }
+  const numeric = Number(patient?.age);
+  if (Number.isFinite(numeric) && numeric >= 0 && numeric < 130) return Math.floor(numeric);
+  return null;
+}
+
+function dentitionForAge(age) {
+  if (age == null) return 'adult';
+  return age < 12 ? 'child' : 'adult';
+}
+
+function dentitionHint(age) {
+  if (age == null) return '';
+  if (age < 12) return `Yoshiga ko‘ra: sut tishlari (${age} yosh)`;
+  return `Yoshiga ko‘ra: doimiy tishlar (${age} yosh)`;
 }
 
 function collectEntries(plans, implants, toothRecords) {
@@ -275,25 +302,6 @@ function mentionsTooth(text, fdi) {
   return new RegExp(`(^|[^\\d])${fdi}([^\\d]|$)`).test(String(text || ''));
 }
 
-function SurfaceGlyph({ fdi, surfaces, color, size = 40 }) {
-  const right = mesialIsRight(fdi);
-  const on = (s) => surfaces.includes(s);
-  const fill = (s) => (on(s) ? color : '#fff');
-  const stroke = color || '#CBD5E1';
-  const mSide = right ? 'M' : 'D';
-  const dSide = right ? 'D' : 'M';
-  return (
-    <svg width="100%" height={size} viewBox="0 0 40 40" preserveAspectRatio="xMidYMid meet" className="block max-w-full" aria-hidden>
-      <polygon points="3,3 37,3 27,15 13,15" fill={fill('V')} stroke={stroke} strokeWidth="1" />
-      <polygon points="3,37 37,37 27,25 13,25" fill={fill('L')} stroke={stroke} strokeWidth="1" />
-      <polygon points="3,3 13,15 13,25 3,37" fill={fill(right ? 'D' : 'M')} stroke={stroke} strokeWidth="1" />
-      <polygon points="37,3 27,15 27,25 37,37" fill={fill(right ? 'M' : 'D')} stroke={stroke} strokeWidth="1" />
-      <rect x="13" y="15" width="14" height="10" fill={fill('O')} stroke={stroke} strokeWidth="1" />
-      <title>{`M ${mSide} D ${dSide}`}</title>
-    </svg>
-  );
-}
-
 export default function ToothChartCard({
   patient,
   plans = [],
@@ -311,8 +319,9 @@ export default function ToothChartCard({
   const { user } = useAuth();
   const [phone, setPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
   const [wideDesktop, setWideDesktop] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1280px)').matches);
-  const [mode, setMode] = useState('realistic');
-  const [dentition, setDentition] = useState('adult');
+  const ageYears = patientAgeYears(patient);
+  const dentitionTouched = useRef(false);
+  const [dentition, setDentition] = useState(() => dentitionForAge(patientAgeYears(patient)));
   const [filter, setFilter] = useState('all');
   const [multi, setMulti] = useState(false);
   const [selected, setSelected] = useState([]);
@@ -363,6 +372,16 @@ export default function ToothChartCard({
   }, [patient?.id]);
 
   useEffect(() => { loadXrays(); }, [loadXrays]);
+
+  useEffect(() => {
+    dentitionTouched.current = false;
+    setDentition(dentitionForAge(patientAgeYears(patient)));
+  }, [patient?.id]);
+
+  useEffect(() => {
+    if (dentitionTouched.current) return;
+    setDentition(dentitionForAge(ageYears));
+  }, [patient?.id, patient?.birth_date, patient?.age, ageYears]);
 
   const byTooth = useMemo(
     () => collectEntries(plans, implants, toothRecords),
@@ -456,14 +475,6 @@ export default function ToothChartCard({
   const toothXrays = useMemo(() => (
     xrays.filter((x) => String(x.tooth_number || '') === String(active))
   ), [xrays, active]);
-
-  const notable = useMemo(() => {
-    const ids = [...upper, ...lower];
-    return ids.map((fdi) => {
-      const e = primaryEntry(byTooth[String(fdi)], 'all');
-      return e ? { fdi, ...e } : null;
-    }).filter(Boolean).slice(0, 6);
-  }, [byTooth, upper, lower]);
 
   const surfaceSave = useRef(Promise.resolve());
 
@@ -748,40 +759,17 @@ export default function ToothChartCard({
     >
       {fdis.map((n) => {
         const entry = entryFor(n);
-        if (mode === 'realistic') {
-          return (
-            <ToothCell
-              key={n}
-              fdi={n}
-              isUpper={isUpper}
-              entry={entry}
-              active={active === n}
-              picked={selected.includes(n)}
-              dim={!toothMatches(n, entry)}
-              onClick={() => onTooth(n)}
-            />
-          );
-        }
-        const color = entry ? KIND_COLOR[entry.kind] : '#CBD5E1';
         return (
-          <button
+          <ToothCell
             key={n}
-            type="button"
-            data-fdi={n}
+            fdi={n}
+            isUpper={isUpper}
+            entry={entry}
+            active={active === n}
+            picked={selected.includes(n)}
+            dim={!toothMatches(n, entry)}
             onClick={() => onTooth(n)}
-            className={cn('compact-hit relative flex min-w-0 w-full max-w-full flex-col items-center gap-0.5 px-px', !toothMatches(n, entry) && 'opacity-30')}
-          >
-            {!isUpper && <Num n={n} entry={entry} />}
-            <span className={cn('schema-box block w-full min-h-8 min-w-8 rounded-lg p-0.5', active === n && 'ring-2 ring-slate-900', selected.includes(n) && 'bg-slate-900/5')}>
-              <SurfaceGlyph fdi={n} surfaces={entry?.surfaces || []} color={entry ? color : '#CBD5E1'} size={phone ? 36 : 40} />
-            </span>
-            {isUpper && <Num n={n} entry={entry} />}
-            {selected.includes(n) && (
-              <span className="absolute -right-0.5 -top-0.5 grid h-4 w-4 place-items-center rounded-full bg-slate-900 text-white">
-                <Check className="h-2.5 w-2.5" strokeWidth={3} />
-              </span>
-            )}
-          </button>
+          />
         );
       })}
     </div>
@@ -796,21 +784,22 @@ export default function ToothChartCard({
           <div className="flex flex-wrap items-center gap-2">
             {!phone && <h3 className="mr-1 text-sm font-extrabold text-slate-900">Tish kartasi</h3>}
             <Seg
-              value={mode}
-              onChange={setMode}
-              options={[
-                { id: 'realistic', label: 'Realistik' },
-                { id: 'schema', label: 'Sxema' },
-              ]}
-            />
-            <Seg
+              testid="dentition-toggle"
               value={dentition}
-              onChange={setDentition}
+              onChange={(id) => {
+                dentitionTouched.current = true;
+                setDentition(id);
+              }}
               options={[
                 { id: 'adult', label: 'Doimiy' },
                 { id: 'child', label: 'Sut tishlari' },
               ]}
             />
+            {dentitionHint(ageYears) && (
+              <p className="basis-full text-[11px] font-semibold text-slate-500" data-testid="dentition-age-hint">
+                {dentitionHint(ageYears)}
+              </p>
+            )}
             <button
               type="button"
               onClick={() => { setMulti((v) => !v); setSelected([]); }}
@@ -871,21 +860,8 @@ export default function ToothChartCard({
           </div>
 
           <div className="odonto-fit-frame mt-2" data-compact={phone ? 'true' : 'false'}>
-            {phone && mode === 'schema' ? (
-              <div className="odonto-schema-fit" data-arch="schema-fit">
-                <span className="odonto-schema-label">O‘NG</span>
-                {renderHalf(upper.slice(0, splitAt(upper)), true)}
-                <span className="odonto-schema-label">CHAP</span>
-                {renderHalf(upper.slice(splitAt(upper)), true)}
-                <div className="odonto-bite-line" aria-hidden="true" />
-                <span className="odonto-schema-label">CHAP</span>
-                {renderHalf(lower.slice(0, splitAt(lower)), false)}
-                <span className="odonto-schema-label">O‘NG</span>
-                {renderHalf(lower.slice(splitAt(lower)), false)}
-              </div>
-            ) : (
-              <div className={cn('odonto-scroll-shell', phone && mode === 'realistic' && 'is-hint')}>
-                {phone && mode === 'realistic' && (
+              <div className={cn('odonto-scroll-shell', phone && 'is-hint')}>
+                {phone && (
                   <>
                     <div className="mb-2 grid grid-cols-2 gap-1.5" data-testid="arch-half-tabs">
                       <button
@@ -919,7 +895,11 @@ export default function ToothChartCard({
                         {dentition === 'child' ? 'Chap · 61–65' : 'Chap · 21–28'}
                       </button>
                     </div>
-                    <p className="odonto-scroll-hint">Chap yarmi yashirin. «Chap · 21–28» ni bosing yoki suring →</p>
+                    <p className="odonto-scroll-hint">
+                      {dentition === 'child'
+                        ? 'Chap yarmi yashirin. «Chap · 61–65» ni bosing yoki suring →'
+                        : 'Chap yarmi yashirin. «Chap · 21–28» ni bosing yoki suring →'}
+                    </p>
                   </>
                 )}
                 <div
@@ -946,8 +926,8 @@ export default function ToothChartCard({
                     </div>
                     <div className="odonto-bite-line" aria-hidden="true" />
                     <div className="odonto-jaw-band">
-                      <span className="odonto-side odonto-side-r">CHAP</span>
-                      <span className="odonto-side odonto-side-l">O‘NG</span>
+                      <span className="odonto-side odonto-side-r">{dentition === 'child' ? 'O‘NG' : 'CHAP'}</span>
+                      <span className="odonto-side odonto-side-l">{dentition === 'child' ? 'CHAP' : 'O‘NG'}</span>
                       <div className="odonto-jaw odonto-jaw-lower">
                         {renderHalf(lower.slice(0, splitAt(lower)), false)}
                         <div className="odonto-midline" aria-hidden="true" />
@@ -957,7 +937,6 @@ export default function ToothChartCard({
                   </div>
                 </div>
               </div>
-            )}
           </div>
           {phone && (summary.planned > 0 || summary.done > 0) && (
             <p className="mt-1 px-1 text-[11px] text-slate-500">
@@ -967,40 +946,14 @@ export default function ToothChartCard({
             </p>
           )}
 
-          {mode === 'schema' && (
-            <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
-              <span><b className="text-slate-800">V</b> — vestibulyar</span>
-              <span><b className="text-slate-800">L</b> — til/tanglay</span>
-              <span><b className="text-slate-800">M</b> — medial</span>
-              <span><b className="text-slate-800">D</b> — distal</span>
-              <span><b className="text-slate-800">O</b> — chaynov</span>
-            </div>
-          )}
-
-          {mode === 'schema' && notable.length > 0 && (
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {notable.map((e) => (
-                <button key={e.fdi} type="button" onClick={() => onTooth(e.fdi)} className="flex items-center gap-2 rounded-xl border p-2 text-left" style={{ borderStyle: e.done ? 'solid' : 'dashed', borderColor: `${KIND_COLOR[e.kind]}55`, background: '#fff' }}>
-                  <SurfaceGlyph fdi={e.fdi} surfaces={e.surfaces} color={KIND_COLOR[e.kind]} size={30} />
-                  <span className="min-w-0">
-                    <b className="block text-xs font-extrabold text-slate-900">{e.fdi} · {LEGEND.find((k) => k.id === e.kind)?.label}</b>
-                    <span className="text-[11px] text-slate-500">Yuza: {e.surfaces.length ? e.surfaces.join(', ') : '—'} · {e.done ? 'Bajarilgan' : 'Reja'}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {mode === 'realistic' && (
-            <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
               <Stat label="Bajarilgan" value={`${summary.done}`} unit="tish" />
               <Stat label="Reja" value={`${summary.planned}`} unit="tish" accent="#E11D48" />
               <Stat label="Reja summasi" value={summary.plannedSum > 0 ? formatMoneyAmount(summary.plannedSum) : '0'} unit="so'm" />
               <Stat label="Oxirgi tashrif" value={summary.lastVisit ? fmtDate(summary.lastVisit) : '—'} />
             </div>
-          )}
 
-          {mode === 'realistic' && plannedItem && (
+          {plannedItem && (
             <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-rose-100 bg-rose-50/70 px-2 py-2">
               <span className="rounded-md bg-rose-600 px-1.5 py-0.5 text-[11px] font-extrabold text-white">{plannedItem.fdi}</span>
               <b className="text-xs font-bold text-slate-900">{plannedItem.name}</b>
@@ -1016,7 +969,7 @@ export default function ToothChartCard({
             </div>
           )}
 
-          {mode === 'realistic' && !plannedItem && (
+          {!plannedItem && (
             <p className="mt-2 rounded-xl border border-dashed border-slate-200 px-3 py-2 text-xs font-semibold text-slate-400">Rejadagi ish yo‘q</p>
           )}
 
@@ -1129,17 +1082,17 @@ export default function ToothChartCard({
   );
 }
 
-function Seg({ value, onChange, options }) {
+function Seg({ value, onChange, options, testid }) {
   return (
-    <div className="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+    <div className="inline-flex shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-0.5" data-testid={testid}>
       {options.map((o) => (
         <button
           key={o.id}
           type="button"
+          data-testid={testid ? `${testid}-${o.id}` : undefined}
           onClick={() => onChange(o.id)}
           className={cn('compact-hit h-7 shrink-0 rounded-md px-2 text-[11px] font-bold whitespace-nowrap', value === o.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500')}
         >
-          {o.id === 'schema' ? <Target className="mr-1 inline h-3 w-3" /> : null}
           {o.label}
         </button>
       ))}
@@ -1155,23 +1108,6 @@ function Stat({ label, value, unit, accent }) {
         {value} {unit && <small className="text-[10px] font-bold text-slate-400">{unit}</small>}
       </div>
     </div>
-  );
-}
-
-function Num({ n, entry }) {
-  const color = entry ? KIND_COLOR[entry.kind] : null;
-  return (
-    <span
-      className="schema-num inline-block rounded px-1 text-[12px] font-extrabold tabular-nums"
-      style={{
-        color: color ? '#fff' : '#334155',
-        background: color || '#fff',
-        border: `1.5px ${entry && !entry.done ? 'dashed' : 'solid'} ${color || '#E2E8F0'}`,
-        opacity: entry?.kind === 'missing' ? 0.7 : 1,
-      }}
-    >
-      {n}
-    </span>
   );
 }
 
