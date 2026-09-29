@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import { useTranslation } from '@/i18n/LanguageContext';
 import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -97,6 +98,7 @@ const getSourceBadgeInfo = (source) => {
 };
 
 export default function MobileLeadsV6() {
+  const { t } = useTranslation();
   const { user, isDoctor } = useAuth();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -527,7 +529,7 @@ export default function MobileLeadsV6() {
                       <h2 className="text-[15px] font-black text-white uppercase leading-none tracking-tight">
                          {editingLead ? 'Leadni tahrirlash' : 'Yangi Lead'}
                       </h2>
-                      <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Dental System</p>
+                      <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">{t('navigation.systemName')}</p>
                    </div>
                 </div>
                 <button 

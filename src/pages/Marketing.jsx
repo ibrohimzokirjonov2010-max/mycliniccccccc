@@ -591,7 +591,7 @@ export default function Marketing() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black text-slate-900 tracking-tight">{language === 'ru' ? 'Маркетинговый Центр' : language === 'en' ? 'Marketing Center' : (t('marketing.title') || "Marketing & Reklama Markazi")}</h1>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200">
-              {language === 'ru' ? `• ТАРГЕТИНГ И ЛИДЫ: ${leads.length} ЗАЯВКИ` : language === 'en' ? `• TARGETING & LEADS: ${leads.length} REQUESTS` : `• Targeting & Lidlar ${leads.length} Arizalar`}
+              {t('marketing.leadsBadge').replace('{count}', String(leads.length))}
             </span>
           </div>
           <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
@@ -738,7 +738,7 @@ export default function Marketing() {
               { id: 'leads', label: language === 'ru' ? "Все Лиды" : language === 'en' ? "All Leads" : "Barcha Lidlar", count: leads.length, icon: Users },
               { id: 'campaigns', label: language === 'ru' ? "Кампании" : language === 'en' ? "Campaigns" : "Kampaniyalar", count: campaignPerformance.length, icon: BarChart3 },
               { id: 'analytics', label: language === 'ru' ? "Динамика и воронка" : language === 'en' ? "Dynamics & Funnel" : "Dinamika & Voronka", icon: TrendingUp },
-              { id: 'targeting', label: language === 'ru' ? "Таргетинг и аудитория" : language === 'en' ? "Targeting & Audience" : "Targeting & Auditoriya", icon: Target },
+              { id: 'targeting', label: t('marketing.tabs.targeting'), icon: Target },
               { id: 'automation', label: "Make / Webhook", icon: Workflow },
             ].map(tab => {
               const isActive = activeTab === tab.id;
@@ -1278,9 +1278,9 @@ export default function Marketing() {
               </div>
               <div className="space-y-3">
                 {[
-                  { label: 'Webhook Endpoint (URL)', value: `${supabaseUrl}/rest/v1/leads`, id: 'url' },
-                  { label: 'API Key (Anon Key)', value: supabaseAnonKey, id: 'key', mask: true },
-                  { label: 'Klinika ID (clinic_id)', value: clinicId, id: 'clinic' }
+                  { label: t('marketing.webhookUrl'), value: `${supabaseUrl}/rest/v1/leads`, id: 'url' },
+                  { label: t('marketing.apiKey'), value: supabaseAnonKey, id: 'key', mask: true },
+                  { label: t('marketing.clinicId'), value: clinicId, id: 'clinic' }
                 ].map((item) => (
                   <div key={item.id}>
                     <div className="flex justify-between items-center mb-1">
@@ -1323,7 +1323,7 @@ export default function Marketing() {
                 rel="noopener noreferrer"
                 className="flex justify-center items-center gap-2 w-full py-3 bg-white text-slate-900 rounded-xl text-xs font-black uppercase hover:bg-slate-100 transition-all"
               >
-                <Facebook className="w-4 h-4 text-[#1877F2]" /> Facebook Ads Testing Tool
+                <Facebook className="w-4 h-4 text-[#1877F2]" /> {t('marketing.testingTool')}
               </a>
             </div>
           </div>

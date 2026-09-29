@@ -192,7 +192,7 @@ export default function MobileMarketing() {
           <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Marketing</h1>
           <div className="flex items-center gap-1.5 mt-0.5">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Real-time Targeting</p>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{t('marketing.realtime')}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -209,10 +209,10 @@ export default function MobileMarketing() {
       {/* Segment Switcher */}
       <div className="flex bg-slate-200/50 p-0.5 rounded-xl">
          {[
-            { id: 'leads', label: 'Lidlar' },
-            { id: 'overview', label: 'Dashboard' },
-            { id: 'insights', label: 'Insights' },
-            { id: 'settings', label: 'Sozlamalar' }
+            { id: 'leads', label: t('marketing.tabs.leads') },
+            { id: 'overview', label: t('marketing.tabs.overview') },
+            { id: 'insights', label: t('marketing.tabs.insights') },
+            { id: 'settings', label: t('marketing.tabs.settings') }
          ].map((seg) => (
             <button 
                key={seg.id}
@@ -234,7 +234,7 @@ export default function MobileMarketing() {
                className="space-y-4"
             >
                <div className="flex items-center justify-between px-2 mb-2">
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Marketing Lidlar Inbox</h3>
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('marketing.leads.inboxTitle')}</h3>
                   <div className="flex items-center gap-2">
                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                      <span className="text-[9px] font-black text-slate-500 uppercase">{leads.filter(l => {
@@ -302,7 +302,7 @@ export default function MobileMarketing() {
 
                         <div className="flex items-center justify-between pt-3 border-t border-slate-50">
                            <div className="flex items-center gap-2">
-                              <span className="text-[8px] font-black text-indigo-600 uppercase tracking-widest px-2 py-1 bg-indigo-50 rounded-lg">{l.source || 'Ads'}</span>
+                              <span className="text-[8px] font-black text-indigo-600 uppercase tracking-widest px-2 py-1 bg-indigo-50 rounded-lg">{l.source || t('marketing.sourceFallback')}</span>
                               <span className="text-[8px] font-bold text-slate-300 uppercase">
                                  {l.created_date || l.created_at ? formatClinicDate(l.created_date || l.created_at) : 'Yaqinda'}
                               </span>
@@ -340,7 +340,7 @@ export default function MobileMarketing() {
                      <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/10 rounded-full border border-white/10 backdrop-blur-md">
                            <Zap className="w-3 h-3 text-amber-400" />
-                           <span className="text-[8px] font-black uppercase tracking-widest">Active Ads</span>
+                           <span className="text-[8px] font-black uppercase tracking-widest">{t('marketing.activeAds')}</span>
                         </div>
                         <div className="flex -space-x-1">
                            <div className="w-6 h-6 rounded-full bg-[#1877F2] border border-slate-800 flex items-center justify-center shadow-lg"><Facebook className="w-3 h-3" /></div>
@@ -435,7 +435,7 @@ export default function MobileMarketing() {
                className="space-y-4"
             >
                <Card className="p-4 rounded-2xl border-none shadow-xl shadow-slate-200/50 bg-white">
-                  <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-4">Auditoriya Yoshida</h3>
+                  <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-4">{t('marketing.audienceByAge')}</h3>
                   <div className="h-40 w-full flex items-center justify-center">
                      <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -497,9 +497,9 @@ export default function MobileMarketing() {
                   </div>
 
                   {[
-                     { label: 'Webhook URL', value: `${supabaseUrl}/rest/v1/leads`, id: 'url' },
-                     { label: 'API Key', value: supabaseAnonKey, id: 'key', mask: true },
-                     { label: 'Klinika ID', value: clinicId, id: 'clinic' }
+                     { label: t('marketing.webhookUrl'), value: `${supabaseUrl}/rest/v1/leads`, id: 'url' },
+                     { label: t('marketing.apiKey'), value: supabaseAnonKey, id: 'key', mask: true },
+                     { label: t('marketing.clinicId'), value: clinicId, id: 'clinic' }
                   ].map((item) => (
                      <div key={item.id} className="space-y-1">
                         <div className="flex justify-between items-center px-1">

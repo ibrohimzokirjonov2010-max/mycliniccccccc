@@ -87,7 +87,7 @@ export default function NoShow() {
         <div>
           <h1 className="text-xl font-black text-slate-900 tracking-tight text-red-600 flex items-center gap-2.5">
             <AlertTriangle className="w-6 h-6 stroke-[2.5px]" />
-            {t('noShow.title') || 'No-Show Nazorat'}
+            {t('noShow.title')}
           </h1>
           <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">
             {t('noShow.subtitle') || "Kelmagan bemorlar va yo'qotilgan daromad tahlili"}
@@ -103,7 +103,7 @@ export default function NoShow() {
             <History className="w-4.5 h-4.5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('noShow.stats.total') || 'Jami No-Show'}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('noShow.stats.total')}</p>
             <p className="text-xl font-black text-slate-900 mt-0.5">{appointments.length}</p>
           </div>
         </div>
@@ -158,8 +158,8 @@ export default function NoShow() {
           <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center shadow-sm">
             <EmptyState 
               icon={AlertTriangle} 
-              title={t('noShow.emptyTitle') || "No-Show yo'q"} 
-              description={searchQuery ? (t('noShow.searchEmpty') || "Qidiruv bo'yicha hech kim topilmadi") : (t('noShow.emptyDescription') || "Hozircha no-show bemorlar ro'yxati bo'sh")} 
+              title={t('noShow.emptyTitle')} 
+              description={searchQuery ? t('noShow.searchEmpty') : t('noShow.emptyDescription')} 
             />
           </div>
         ) : (

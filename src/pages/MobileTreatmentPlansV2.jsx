@@ -259,7 +259,7 @@ export default function MobileTreatmentPlansV2() {
            <div className="flex items-center justify-between mb-4">
               <div>
                 <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-1">Davolash Rejalari</h1>
-                <p className="text-[9px] font-bold text-[#1499AD] uppercase tracking-wider opacity-85">Dental System</p>
+                <p className="text-[9px] font-bold text-[#1499AD] uppercase tracking-wider opacity-85">{t('navigation.systemName')}</p>
               </div>
            </div>
            
@@ -799,7 +799,7 @@ export default function MobileTreatmentPlansV2() {
                         </div>
                         <div>
                            <h2 className="text-[15px] font-black text-white uppercase leading-none tracking-tight">Reja Tafsiloti</h2>
-                           <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Dental System</p>
+                           <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">{t('navigation.systemName')}</p>
                         </div>
                      </div>
                      <button onClick={() => setShowDetailModal(false)} className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center active:scale-90 transition-all">

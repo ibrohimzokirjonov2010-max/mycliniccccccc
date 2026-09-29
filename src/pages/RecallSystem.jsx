@@ -733,7 +733,7 @@ export default function RecallSystem() {
             countText: language === 'ru' ? "Все запланированные напоминания" : language === 'en' ? "All scheduled reminders" : "Barcha rejalashtirilgan eslatmalar" 
           },
           { 
-            label: language === 'ru' ? "В ОЖИДАНИИ" : language === 'en' ? "PENDING" : "KUTILMOQDA (PENDING)", 
+            label: t('recall.pending'), 
             value: statusCounts.pending, 
             icon: Clock, 
             color: "text-amber-600", 

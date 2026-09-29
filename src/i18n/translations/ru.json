@@ -239,19 +239,32 @@
     "telegramBot": "Telegram бот",
     "superAdmin": "Супер Админ",
     "marketing": "Маркетинг",
+    "systemName": "Стоматологическая система",
     "cases": "Мои кейсы",
     "staff": "Сотрудники",
     "chairsideToday": "Очередь на сегодня"
   },
   "marketing": {
     "title": "Маркетинговый Центр",
-    "subtitle": "Централизованная система таргетинга активна",
+    "subtitle": "Централизованная система аудитории активна",
+    "realtime": "Аудитория в реальном времени",
+    "activeAds": "Активная реклама",
+    "sourceFallback": "Реклама",
+    "audienceByAge": "Аудитория по возрасту",
+    "leadsBadge": "Лиды: {count} заявок",
+    "webhookUrl": "Адрес вебхука",
+    "apiKey": "Ключ API",
+    "clinicId": "Идентификатор клиники",
+    "testingTool": "Проверка рекламы Facebook",
     "sync": "Обновить",
     "syncing": "Обновление...",
     "tabs": {
-      "dashboard": "Дашборд",
+      "dashboard": "Обзор",
+      "overview": "Обзор",
+      "insights": "Аналитика",
+      "settings": "Настройки",
       "leads": "Лиды",
-      "targeting": "Таргетинг",
+      "targeting": "Аудитория",
       "integration": "Интеграция"
     },
     "stats": {
@@ -330,7 +343,7 @@
         "step3": "Endpoint & Headers",
         "step3Desc": "Введите URL, Content-Type: application/json и apikey.",
         "step4": "JSON Structure",
-        "step4Desc": "Отправьте параметры name, phone, clinic_id и ad_name в теле запроса (Body)."
+        "step4Desc": "Отправьте имя, телефон, идентификатор клиники и название рекламы в теле запроса."
       }
     }
   },
@@ -354,7 +367,8 @@
     "myWeekRevenue": "Моя выручка за неделю",
     "thanYesterday": "чем вчера",
     "thanLastWeek": "чем на прошлой неделе",
-    "thisMonth": "в этом месяце"
+    "thisMonth": "в этом месяце",
+    "todayMissed": "Не пришёл сегодня"
   },
   "patients": {
     "title": "Пациенты",
@@ -883,7 +897,7 @@
       "linkCopied": "Ссылка скопирована"
     },
     "integration": {
-      "activeSync": "ИНТЕГРАЦИЯ АКТИВНА (REAL-TIME SYNC)",
+      "activeSync": "ИНТЕГРАЦИЯ АКТИВНА (В РЕАЛЬНОМ ВРЕМЕНИ)",
       "title": "Интеграция веб-сайта и шаблона",
       "description": "Шаблон вашего веб-сайта подключен к Shifo CRM по двусторонней связи. Заявки поступают в базу данных CRM, а занятое время автоматически блокируется на сайте.",
       "checkConnection": "Проверить подключение",
@@ -2474,7 +2488,8 @@
     "totalLeads": "Всего лидов",
     "leadsDataTable": "Таблица данных лидов",
     "showingRows": "Показано: {count} строк",
-    "gridExcelMode": "РЕЖИМ: EXCEL ТАБЛИЦА",
+    "gridExcelMode": "РЕЖИМ ТАБЛИЦЫ",
+    "pipeline": "Поток этапов",
     "clientPatientName": "Имя клиента / пациента",
     "contactPhone": "Контакт (Телефон)",
     "visitDateCol": "Дата обращения",

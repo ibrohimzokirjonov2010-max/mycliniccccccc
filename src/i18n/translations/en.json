@@ -240,6 +240,7 @@
     "telegramBot": "Telegram Bot",
     "superAdmin": "Super Admin",
     "marketing": "Marketing",
+    "systemName": "Dental system",
     "cases": "My Cases",
     "staff": "Staff",
     "chairsideToday": "Today's queue"
@@ -264,7 +265,8 @@
     "myWeekRevenue": "My Weekly Revenue",
     "thanYesterday": "than yesterday",
     "thanLastWeek": "than last week",
-    "thisMonth": "this month"
+    "thisMonth": "this month",
+    "todayMissed": "Missed today"
   },
   "patients": {
     "title": "Patients",
@@ -794,7 +796,7 @@
       "linkCopied": "Link copied"
     },
     "integration": {
-      "activeSync": "INTEGRATION ACTIVE (REAL-TIME SYNC)",
+      "activeSync": "INTEGRATION ACTIVE (LIVE)",
       "title": "Website & Template Integration",
       "description": "Your website template is connected to Shifo CRM via two-way sync. Inquiries are sent to the CRM database, and busy time slots are automatically blocked on the site.",
       "checkConnection": "Check Connection",
@@ -1702,7 +1704,8 @@
     "totalLeads": "Total Leads",
     "leadsDataTable": "Leads Data Table",
     "showingRows": "Showing: {count} rows",
-    "gridExcelMode": "GRID: EXCEL MODE",
+    "gridExcelMode": "TABLE MODE",
+    "pipeline": "Stage flow",
     "clientPatientName": "Client / Patient Name",
     "contactPhone": "Contact (Phone)",
     "visitDateCol": "Visit / Lead Date",
@@ -2421,13 +2424,25 @@
   },
   "marketing": {
     "title": "Marketing Center",
-    "subtitle": "Centralized Targeting System Active",
+    "subtitle": "Centralized audience system is active",
+    "realtime": "Live audience",
+    "activeAds": "Active ads",
+    "sourceFallback": "Ad",
+    "audienceByAge": "Audience by age",
+    "leadsBadge": "Leads: {count} requests",
+    "webhookUrl": "Webhook address",
+    "apiKey": "API key",
+    "clinicId": "Clinic identifier",
+    "testingTool": "Facebook ad test",
     "sync": "Sync",
     "syncing": "Syncing...",
     "tabs": {
       "dashboard": "Dashboard",
+      "overview": "Overview",
+      "insights": "Insights",
+      "settings": "Settings",
       "leads": "Leads",
-      "targeting": "Targeting",
+      "targeting": "Audience",
       "integration": "Integration"
     },
     "stats": {
@@ -2460,7 +2475,7 @@
       "activeCampaigns": "Active Campaigns"
     },
     "leads": {
-      "inboxTitle": "Target Leads Inbox",
+      "inboxTitle": "Incoming leads",
       "inboxSubtitle": "All ad-generated leads",
       "totalLeadsCount": "{count} leads",
       "csvImport": "CSV Import",
@@ -2506,7 +2521,7 @@
         "step3": "Endpoint & Headers",
         "step3Desc": "Enter URL, Content-Type: application/json, and apikey.",
         "step4": "JSON Structure",
-        "step4Desc": "Send name, phone, clinic_id, and ad_name parameters in the body."
+        "step4Desc": "Send the name, phone, clinic identifier, and ad name in the request body."
       }
     }
   },

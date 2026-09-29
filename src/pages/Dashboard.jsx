@@ -556,7 +556,7 @@ export default function Dashboard() {
                 },
                 { 
                   label: 'Kelmadi', 
-                  sublabel: 'No-Show bugun', 
+                  sublabel: t('dashboard.todayMissed'), 
                   value: stats.todayNoShow ?? 0, 
                   icon: AlertTriangle, 
                   color: 'rose' 

@@ -266,7 +266,7 @@ export default function NativeMobileLayout({ children }) {
             )}
             <div className="flex flex-col">
               <span className="font-[900] text-lg text-slate-900 tracking-tighter leading-tight">{currentClinic?.name || 'Klinika'}</span>
-              <span className="text-[9px] font-black text-[#1499AD] uppercase tracking-widest opacity-60">Dental System</span>
+              <span className="text-[9px] font-black text-[#1499AD] uppercase tracking-widest opacity-60">{t('navigation.systemName')}</span>
             </div>
           </div>
           

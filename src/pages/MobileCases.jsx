@@ -9,6 +9,7 @@ import { db } from '@/api/supabaseClient';
 import { toast } from 'sonner';
 import { mediaStorage } from '@/utils/mediaStorage';
 import { useAuth } from '@/lib/AuthContext';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 // Reuse mock data for now
 const MOCK_CASES = [
@@ -51,6 +52,7 @@ const MOCK_CASES = [
 ];
 
 export default function MobileCases() {
+  const { t } = useTranslation();
   const { user, isDoctor } = useAuth();
   const [cases, setCases] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -759,7 +761,7 @@ function MobileUploadModal({ isOpen, onClose, onSave, existingTags = [], patient
               </div>
               <div>
                  <h2 className="text-[15px] font-black text-white uppercase leading-none tracking-tight">Yangi Keys Qo'shish</h2>
-                 <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Dental System</p>
+                 <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">{t('navigation.systemName')}</p>
               </div>
            </div>
            <button 
