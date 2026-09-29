@@ -114,6 +114,8 @@ export async function createCaseOnServer(payload, clinicId) {
   const description = payload.description || '';
   const patientname = payload.patientname || payload.patient_name || '';
   const doctor = payload.doctor || '';
+  // Anonymous cases use a local id such as "anon-…". xrays.patient_id is a foreign key.
+  const patientId = String(payload.patient_id || '').startsWith('patient-') ? payload.patient_id : null;
   const date = String(payload.date || new Date().toISOString().slice(0, 10)).slice(0, 10);
   const created = new Date().toISOString();
 
@@ -130,7 +132,7 @@ export async function createCaseOnServer(payload, clinicId) {
       patientname,
       patient_name: patientname,
       doctor,
-      patient_id: payload.patient_id || null,
+      patient_id: patientId,
       date,
       tags: JSON.stringify(tags),
       images: JSON.stringify(images),
@@ -151,7 +153,7 @@ export async function createCaseOnServer(payload, clinicId) {
   const xrayRow = {
     id,
     clinic_id: clinicId,
-    patient_id: payload.patient_id || null,
+    patient_id: patientId,
     patient_name: patientname,
     image_url: images.after,
     thumbnail_url: images.before || images.after,
