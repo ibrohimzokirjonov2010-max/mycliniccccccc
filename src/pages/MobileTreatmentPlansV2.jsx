@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import ProfessionalOdontogram from '@/components/patients/ProfessionalOdontogram';
 import { formatCurrency } from '@/lib/utils';
+import { deleteTreatmentPlan, planAllocatedPaid } from '@/lib/treatmentDelete';
 import { formatClinicDate } from '@/lib/clinicTime';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -218,14 +219,33 @@ export default function MobileTreatmentPlansV2() {
   };
 
   const handleDeletePlan = async (planId) => {
-    if (!window.confirm(t ? t('treatmentPlans.confirmDelete') || "Ushbu davolash rejasini o'chirishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi!" : "Ushbu davolash rejasini o'chirishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi!")) return;
+    const plan = plans.find((item) => item.id === planId) || (selectedPlan?.id === planId ? selectedPlan : null);
+    if (!plan) {
+      toast.error("Reja topilmadi");
+      return;
+    }
+    if (plan.patient_id === 'patient-y2ii8ynf2') {
+      toast.error("Bu test bemor ma'lumoti o'zgartirilmaydi");
+      return;
+    }
+    let paidAmount = 0;
     try {
-      await base44.entities.TreatmentPlan.delete(planId);
+      const info = await planAllocatedPaid(plan);
+      paidAmount = info.paidAmount || 0;
+    } catch { /* warning still optional */ }
+    const warning = paidAmount > 0
+      ? `Bu rejaga ${formatCurrency(paidAmount)} to‘lov biriktirilgan. O‘chirish reja summasini va qarzni yangilaydi. Qabul qilingan to‘lov yozuvi o‘chmaydi.`
+      : "Ushbu davolash rejasini o'chirishni tasdiqlaysizmi? To'lanmagan qarz ham o'chiriladi va bemor qarzi qayta hisoblanadi.";
+    if (!window.confirm(warning)) return;
+    try {
+      await deleteTreatmentPlan(plan);
       toast.success(t ? t('treatmentPlans.deleteSuccess') || "Davolash rejasi o'chirildi" : "Davolash rejasi o'chirildi");
       setShowDetailModal(false);
       loadData();
     } catch (e) {
-      toast.error(t ? t('treatmentPlans.deleteError') || "O'chirishda xatolik yuz berdi" : "O'chirishda xatolik yuz berdi");
+      toast.error(e?.message === 'locked'
+        ? "Bu test bemor ma'lumoti o'zgartirilmaydi"
+        : (t ? t('treatmentPlans.deleteError') || "O'chirishda xatolik yuz berdi" : "O'chirishda xatolik yuz berdi"));
     }
   };
 

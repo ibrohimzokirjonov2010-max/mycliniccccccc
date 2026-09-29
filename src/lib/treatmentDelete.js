@@ -11,6 +11,52 @@ function isDone(service) {
   return status === 'completed' || status === 'bajarildi' || service?.completed === true;
 }
 
+export function paymentsLinkedToPlan(payments, planId) {
+  return (payments || []).filter((payment) => {
+    const notes = String(payment?.notes || '');
+    return notes.includes(planId) || payment?.plan_id === planId;
+  });
+}
+
+export async function paymentsForPlan(patientId, planId) {
+  if (!patientId || !planId) return [];
+  const payments = await base44.entities.Payment.filter({ patient_id: patientId }, '-date', 5000);
+  return paymentsLinkedToPlan(payments, planId);
+}
+
+export async function planAllocatedPaid(plan) {
+  const linked = await paymentsForPlan(plan?.patient_id, plan?.id);
+  const paidAmount = linked
+    .filter((payment) => String(payment.type || '').toLowerCase() === 'income')
+    .reduce((total, payment) => total + Math.abs(Number(payment.amount) || 0), 0);
+  return { linked, paidAmount };
+}
+
+/**
+ * Delete a whole treatment plan.
+ * Unpaid debt and legacy discount rows linked to the plan are removed.
+ * Income that is already allocated stays. The caller warns before that.
+ */
+export async function deleteTreatmentPlan(plan) {
+  if (!plan?.id) throw new Error('missing-plan');
+  const patientId = plan.patient_id;
+  if (!patientId || patientId === LOCKED_PATIENT) throw new Error('locked');
+
+  const linked = await paymentsForPlan(patientId, plan.id);
+  for (const payment of linked) {
+    const type = String(payment.type || '').toLowerCase();
+    if (type === 'debt' || type === 'discount') {
+      await base44.entities.Payment.delete(payment.id);
+    }
+  }
+  await base44.entities.TreatmentPlan.delete(plan.id);
+  const balance = await syncPatientBalance(patientId);
+  const paidAmount = linked
+    .filter((payment) => String(payment.type || '').toLowerCase() === 'income')
+    .reduce((total, payment) => total + Math.abs(Number(payment.amount) || 0), 0);
+  return { balance, paidAmount };
+}
+
 async function syncPatientBalance(patientId) {
   if (!patientId || patientId === LOCKED_PATIENT) return null;
   const [payments, plans] = await Promise.all([

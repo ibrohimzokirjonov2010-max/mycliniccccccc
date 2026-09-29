@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/queryKeys';
@@ -23,7 +23,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { useTranslation } from '@/i18n/LanguageContext';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
+import { deleteTreatmentPlan, planAllocatedPaid } from '@/lib/treatmentDelete';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -116,26 +117,50 @@ export default function TreatmentPlans() {
     queryClient.invalidateQueries({ queryKey: ['treatmentPlans'] });
   }, [queryClient]);
 
+  const [deletePaidAmount, setDeletePaidAmount] = useState(0);
+
+  useEffect(() => {
+    if (!deletePlanId) {
+      setDeletePaidAmount(0);
+      return;
+    }
+    const plan = plans.find((item) => item.id === deletePlanId);
+    if (!plan?.patient_id) return;
+    let cancelled = false;
+    planAllocatedPaid(plan).then((info) => {
+      if (!cancelled) setDeletePaidAmount(info.paidAmount || 0);
+    }).catch(() => {
+      if (!cancelled) setDeletePaidAmount(0);
+    });
+    return () => { cancelled = true; };
+  }, [deletePlanId, plans]);
+
   const handleDelete = async () => {
     if (!deletePlanId) return;
+    const plan = plans.find((item) => item.id === deletePlanId);
     try {
-      const linkedContext = `Linked to Plan: ${deletePlanId}`;
-      const existingPayments = await base44.entities.Payment.filter({
-        notes: linkedContext
-      });
-      
-      await Promise.all(existingPayments.map(pay => base44.entities.Payment.delete(pay.id)));
-      await base44.entities.TreatmentPlan.delete(deletePlanId);
-      
+      if (!plan) {
+        toast.error("Reja topilmadi");
+        return;
+      }
+      if (plan.patient_id === 'patient-y2ii8ynf2') {
+        toast.error("Bu test bemor ma'lumoti o'zgartirilmaydi");
+        return;
+      }
+      await deleteTreatmentPlan(plan);
       toast.success(t('common.success') || "Davolash rejasi o'chirildi!");
       setDeletePlanId(null);
-      if (selectedDetailPlanId === deletePlanId) {
+      if (selectedDetailPlanId === plan.id) {
         setSelectedDetailPlanId(null);
       }
       invalidatePlans();
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.patients });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
     } catch (err) {
       console.error(err);
-      toast.error(t('common.error') || "Xatolik yuz berdi");
+      toast.error(err?.message === 'locked'
+        ? "Bu test bemor ma'lumoti o'zgartirilmaydi"
+        : (t('common.error') || "Xatolik yuz berdi"));
     }
   };
 
@@ -1276,7 +1301,13 @@ export default function TreatmentPlans() {
               O'chirishni tasdiqlaysizmi?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-500 text-center font-medium pt-1.5 text-sm">
-              Ushbu davolash rejasi va unga bog'liq barcha qarzlar butunlay o'chiriladi. Bu amalni ortga qaytarib bo'lmaydi.
+              {deletePaidAmount > 0 ? (
+                <span className="block rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
+                  Bu rejaga {formatCurrency(deletePaidAmount)} to‘lov biriktirilgan. O‘chirish reja summasini va qarzni yangilaydi. Qabul qilingan to‘lov yozuvi o‘chmaydi.
+                </span>
+              ) : (
+                "Ushbu davolash rejasi va unga bog'liq to'lanmagan qarz o'chiriladi. Bemor qarzi qayta hisoblanadi. Bu amalni ortga qaytarib bo'lmaydi."
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6 flex gap-3">

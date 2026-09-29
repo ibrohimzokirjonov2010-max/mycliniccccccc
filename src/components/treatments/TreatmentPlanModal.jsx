@@ -17,6 +17,7 @@ import ProfessionalOdontogram from '../patients/ProfessionalOdontogram';
 import PatientSelect from '../patients/PatientSelect';
 import { cn, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
 import { pickIllustrationKindFromServices } from '@/utils/toothIllustration';
+import { paymentsForPlan } from '@/lib/treatmentDelete';
 
 const idToFdi = (idStr) => {
   if (!idStr) return '';
@@ -671,14 +672,11 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       const planId = currentPlan.id;
       const linkedContext = `Linked to Plan: ${planId}`;
       
-      // Search for existing debt linked to this plan
-      const existingPayments = await base44.entities.Payment.filter({
-        patient_id: patientId,
-        notes: linkedContext
-      });
+      // Notes are stored with encoded tech data, so an exact notes match misses the row.
+      const existingPayments = await paymentsForPlan(patientId, planId);
 
-      const debtPayment = existingPayments.find(p => p.type === 'Debt');
-      const discountPayment = existingPayments.find(p => p.type === 'Discount');
+      const debtPayment = existingPayments.find(p => String(p.type || '').toLowerCase() === 'debt');
+      const discountPayment = existingPayments.find(p => String(p.type || '').toLowerCase() === 'discount');
 
       // 1. Manage Debt — chegirma bilan hisoblab saqlaymiz (finalTotal = chegirmali narx)
       const finalTotal = Math.floor(rawTotal * (1 - discount / 100));
@@ -809,13 +807,9 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       });
 
       // Debt payment ni yangilash
-      const linkedContext = `Linked to Plan: ${planToUpdate.id}`;
-      const existingPayments = await base44.entities.Payment.filter({
-        patient_id: patientId,
-        notes: linkedContext
-      });
-      const debtPayment = existingPayments.find(p => p.type === 'Debt');
-      const discountPayment = existingPayments.find(p => p.type === 'Discount');
+      const existingPayments = await paymentsForPlan(patientId, planToUpdate.id);
+      const debtPayment = existingPayments.find(p => String(p.type || '').toLowerCase() === 'debt');
+      const discountPayment = existingPayments.find(p => String(p.type || '').toLowerCase() === 'discount');
 
       if (newFinalTotal > 0 && debtPayment) {
         await base44.entities.Payment.update(debtPayment.id, {

@@ -1,4 +1,5 @@
 import { supabase, db } from './supabaseClient';
+import { createCaseOnServer, deleteCaseOnServer, isClinicCaseRow, listServerCases } from './caseServerStore';
 import { missingColumnFromError, omitMissingColumn } from './missingColumn';
 import { sendTelegramMessage, formatLeadMessage } from './telegramBot';
 import {
@@ -285,7 +286,9 @@ class HybridEntityLoader {
       return ['full_name', 'phone', 'email', 'birth_date', 'gender', 'address', 'city', 'status', 'notes', 'photo_url', 'source', 'first_name', 'last_name', 'total_paid', 'total_debt', 'telegram_chat_id', 'telegram_username', 'phone_secondary', 'important_info', 'comment', 'payer', 'discount_percent', 'contact', 'main_treatment_provider', 'card_number', 'registration_date'];
     }
     if (this.entityName === 'Case') {
-      return ['doctor', 'patientname', 'patient_id', 'date', 'tags', 'images', 'description'];
+      // Live cases table has these columns directly and has no notes column.
+      // Packing them into notes made the insert fail, then the row was stored only in the browser.
+      return [];
     }
     if (this.entityName === 'CaseCategory') {
       return ['name', 'notes'];
@@ -362,6 +365,7 @@ class HybridEntityLoader {
     for (let i = 0; i < records.length; i++) {
       const r = records[i];
       if (!r.id || seen.has(r.id)) continue;
+      if (this.entityName === 'Xray' && isClinicCaseRow(r)) continue;
       seen.add(r.id);
 
       // 1. Decode notes (Tech fields)
@@ -479,6 +483,9 @@ class HybridEntityLoader {
   }
 
   async _doList(orderBy = '-created_date', limit = 100, offset = 0) {
+    if (this.entityName === 'Case') {
+      return listServerCases(this._getClinicId());
+    }
     if (this.entityName === 'ImplantBrand') {
       return this._localStorageList(orderBy, limit);
     }
@@ -608,8 +615,7 @@ class HybridEntityLoader {
         return merged;
       }
 
-      // For Case: merge with local data so locally saved cases always show up!
-      if (this.entityName === 'Case' || this.entityName === 'CaseCategory') {
+      if (this.entityName === 'CaseCategory') {
         const localData = this._localStorageList(orderBy, limit);
         const merged = [...enriched];
         localData.forEach(lr => {
@@ -708,6 +714,13 @@ class HybridEntityLoader {
   }
 
   async _doFilter(conditions, orderBy = null, limit = 100, offset = 0) {
+    if (this.entityName === 'Case') {
+      const rows = await listServerCases(conditions.clinic_id || this._getClinicId());
+      return rows.filter((row) => Object.entries(conditions).every(([key, value]) => {
+        if (key === 'clinic_id' || value == null) return true;
+        return String(row?.[key] ?? '') === String(value);
+      })).slice(offset, offset + limit);
+    }
     try {
       const clinicId = conditions.clinic_id || this._getClinicId();
       
@@ -841,6 +854,16 @@ class HybridEntityLoader {
       const hashed = await preparePasswordForWrite(incoming.password);
       if (hashed) incoming.password = hashed;
       else delete incoming.password;
+    }
+    if (this.entityName === 'Case') {
+      if (!this.useSupabase) {
+        throw new Error('Keys serverga saqlanmadi. Server ulanmagan.');
+      }
+      const clinicId = incoming.clinic_id || this._getClinicId();
+      const saved = await createCaseOnServer({ ...incoming, clinic_id: clinicId }, clinicId);
+      RequestCache.invalidate('Xray');
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('crm-data-updated'));
+      return saved;
     }
     if (!this.useSupabase) {
       const created = this._localStorageCreate(incoming);
@@ -1018,6 +1041,9 @@ class HybridEntityLoader {
         if (this.entityName === 'Implant') {
           throw new Error(error?.message || "Implant saqlanmadi. Ma'lumotlar bazaga yozilmadi.");
         }
+        if (this.entityName === 'Case') {
+          throw new Error(error?.message || 'Keys serverga saqlanmadi.');
+        }
 
         return this._localStorageCreate(incoming);
       }
@@ -1027,6 +1053,9 @@ class HybridEntityLoader {
     console.error(`❌ [${this.entityName}] All retries failed. Using localStorage.`);
     if (this.entityName === 'Implant') {
       throw new Error("Implant saqlanmadi. Ma'lumotlar bazaga yozilmadi.");
+    }
+    if (this.entityName === 'Case') {
+      throw new Error('Keys serverga saqlanmadi.');
     }
     const fallbackRes = this._localStorageCreate(incoming);
     if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('crm-data-updated'));
@@ -1211,6 +1240,16 @@ class HybridEntityLoader {
 
   async delete(id) {
     RequestCache.invalidate(this.entityName);
+    if (this.entityName === 'Case') {
+      if (!this.useSupabase) {
+        throw new Error("Keys serverdan o'chirilmadi. Server ulanmagan.");
+      }
+      await deleteCaseOnServer(id);
+      RequestCache.invalidate('Xray');
+      this._localStorageDelete(id);
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('crm-data-updated'));
+      return { id };
+    }
     if (!this.useSupabase) return this._localStorageDelete(id);
     
     try {

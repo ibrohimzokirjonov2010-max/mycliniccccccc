@@ -5,51 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { db } from '@/api/supabaseClient';
 import { toast } from 'sonner';
 import { mediaStorage } from '@/utils/mediaStorage';
 import { useAuth } from '@/lib/AuthContext';
 import { useTranslation } from '@/i18n/LanguageContext';
-
-// Reuse mock data for now
-const MOCK_CASES = [
-  {
-    id: 1,
-    doctor: "Dr. Shahobiddin",
-    patientname: "M. Aziza",
-    date: "2026-05-20",
-    tags: ["Implant", "Estetika"],
-    images: {
-      before: "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&q=80&w=400",
-      after: "https://images.unsplash.com/photo-1598256989800-fea5ce5146f2?auto=format&fit=crop&q=80&w=400"
-    },
-    description: "21, 22-tishlarga zirkon qoplamalar va implant o'rnatildi."
-  },
-  {
-    id: 2,
-    doctor: "Dr. Shahobiddin",
-    patientname: "K. Sardor",
-    date: "2026-05-21",
-    tags: ["Breket", "Ortodontiya"],
-    images: {
-      before: "https://images.unsplash.com/photo-1598256989800-fea5ce5146f2?auto=format&fit=crop&q=80&w=400",
-      after: "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&q=80&w=400"
-    },
-    description: "6 oylik natija. Tishlar qatori to'g'irlandi."
-  },
-  {
-    id: 3,
-    doctor: "Dr. Shahobiddin",
-    patientname: "O. Jamila",
-    date: "2026-05-22",
-    tags: ["Restavratsiya", "Karies"],
-    images: {
-      before: "https://images.unsplash.com/photo-1445543949571-ffc3e0e2f55e?auto=format&fit=crop&q=80&w=400",
-      after: "https://images.unsplash.com/photo-1527613426441-4da17471b66d?auto=format&fit=crop&q=80&w=400"
-    },
-    description: "Frontal tishlarni kompozit material bilan tiklash."
-  }
-];
 
 export default function MobileCases() {
   const { t } = useTranslation();
@@ -112,7 +71,8 @@ export default function MobileCases() {
           setCases(merged);
         } catch (e) {
           console.warn("Cases fetch error:", e);
-          setCases(MOCK_CASES);
+          setCases([]);
+          toast.error(e?.message || "Keyslar serverdan yuklanmadi");
         }
 
         // Fetch Categories
@@ -181,7 +141,8 @@ export default function MobileCases() {
   const filteredCases = cases.filter(c => {
     const name = c.patientname || c.patient_name || c.patientName || "";
     const tags = c.tags || [];
-    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          String(c.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           tags.join("").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTag = activeTag === "Barchasi" || tags.includes(activeTag);
     return matchesSearch && matchesTag;
@@ -318,10 +279,7 @@ export default function MobileCases() {
           const loadingToast = toast.loading("Keys saqlanmoqda...");
           try {
              let finalImages = { ...newCase.images };
-             const timestamp = Date.now();
-             const patientSlug = (newCase.patientname || 'case').replace(/\s+/g, '_').toLowerCase();
 
-             // Compress images
              if (finalImages.before && finalImages.before.startsWith('data:')) {
                finalImages.before = await compressImage(finalImages.before, 1200, 0.75);
              }
@@ -329,43 +287,29 @@ export default function MobileCases() {
                finalImages.after = await compressImage(finalImages.after, 1200, 0.75);
              }
 
-             // Try Supabase Storage upload
-             try {
-                if (finalImages.before && finalImages.before.startsWith('data:')) {
-                   const beforeUrl = await db.storage.uploadFile('cases', `${clinicId}/${patientSlug}_${timestamp}_before.jpg`, finalImages.before);
-                   if (beforeUrl) finalImages.before = beforeUrl;
-                }
-                if (finalImages.after && finalImages.after.startsWith('data:')) {
-                   const afterUrl = await db.storage.uploadFile('cases', `${clinicId}/${patientSlug}_${timestamp}_after.jpg`, finalImages.after);
-                   if (afterUrl) finalImages.after = afterUrl;
-                }
-             } catch (storageErr) {
-                console.warn("Storage upload failed, using local persistent storage:", storageErr);
-             }
-
-             // 2. Save record
              const caseToSave = {
                 ...newCase,
                 images: finalImages,
                 clinic_id: clinicId
              };
-             
+
              const saved = await base44.entities.Case.create(caseToSave);
-             if (saved) {
+             if (saved?.id && saved.server) {
                 const enriched = {
                   ...saved,
-                  images: saved.images || finalImages
+                  images: saved.images?.after ? saved.images : finalImages
                 };
-                // Store in IndexedDB for permanent local retention
                 await mediaStorage.saveCaseMedia(enriched.id, enriched.images);
 
                 setCases(prev => [enriched, ...prev.filter(c => c.id !== enriched.id)]);
                 toast.success("Keys muvaffaqiyatli saqlandi!", { id: loadingToast });
                 setIsModalOpen(false);
+             } else {
+                toast.error("Keys serverga saqlanmadi", { id: loadingToast });
              }
           } catch (e) {
              console.error(e);
-             toast.error(e.message || "Xatolik: Ma'lumotni saqlab bo'lmadi", { id: loadingToast });
+             toast.error(e.message || "Keys serverga saqlanmadi", { id: loadingToast });
           }
         }} 
       />
