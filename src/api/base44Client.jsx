@@ -2184,29 +2184,18 @@ export const base44 = {
         }
       }
 
-      const { data: staff, error: staffError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('clinic_id', clinicId);
-      if (staffError) throw new Error(staffError.message);
+      const removedClinic = await supabase.from('clinics').delete().eq('id', clinicId).select('id');
+      if (removedClinic.error || !removedClinic.data?.length) {
+        throw new Error(removedClinic.error?.message || 'Klinika bazadan o\'chirilmadi');
+      }
 
+      const { data: staff } = await supabase.from('users').select('id').eq('clinic_id', clinicId);
       for (const user of staff || []) {
         if (!user?.id) continue;
         const removed = await supabase.from('users').delete().eq('id', user.id).select('id');
         if (removed.error || !removed.data?.length) {
-          const blocked = await supabase.from('users').update({
-            role: 'disabled',
-            password: `disabled-${Date.now()}`,
-          }).eq('id', user.id).select('id');
-          if (blocked.error || !blocked.data?.length) {
-            throw new Error(blocked.error?.message || 'Xodim yozuvini o\'chirib bo\'lmadi');
-          }
+          await supabase.from('users').update({ password: `disabled-${Date.now()}` }).eq('id', user.id);
         }
-      }
-
-      const removedClinic = await supabase.from('clinics').delete().eq('id', clinicId).select('id');
-      if (removedClinic.error || !removedClinic.data?.length) {
-        throw new Error(removedClinic.error?.message || 'Klinika bazadan o\'chirilmadi');
       }
 
       try {
