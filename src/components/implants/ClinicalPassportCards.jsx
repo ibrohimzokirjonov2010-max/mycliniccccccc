@@ -768,7 +768,11 @@ export function LinkedServicesCard({
                   <div className="font-bold text-slate-900 leading-snug">{svc.service_name || EM}</div>
                   {svc.tooth_number ? (
                     <div className="text-[10px] font-mono font-bold text-slate-400 mt-0.5">#{svc.tooth_number}</div>
-                  ) : null}
+                  ) : (
+                    <div className="text-[10px] font-bold text-slate-400 mt-0.5">
+                      {language === 'ru' ? 'Общая' : 'Umumiy'}
+                    </div>
+                  )}
                   {svc.is_primary && onEditPrimary ? (
                     <button type="button" onClick={onEditPrimary} className="text-[10px] font-bold text-[#14b8a6] hover:underline mt-0.5 cursor-pointer">
                       {language === 'ru' ? 'Редактировать' : 'Tahrirlash'}
@@ -780,7 +784,7 @@ export function LinkedServicesCard({
                   <div className="font-mono font-black text-slate-800">
                     {(Number(svc.price) || 0).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">so&apos;m</span>
                   </div>
-                  {!svc.is_primary && onDelete ? (
+                  {!svc.is_primary && svc.deletable !== false && onDelete ? (
                     <button
                       type="button"
                       onClick={() => onDelete(svc.id)}

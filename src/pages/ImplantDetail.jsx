@@ -26,6 +26,12 @@ import { uploadImage } from '@/utils/imageUpload';
 import { cn } from '@/lib/utils';
 import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import ImplantForm from '../components/implants/ImplantForm';
+import {
+  buildLinkedServiceModel,
+  caseServicesGrandTotal,
+  linkedServicesForTooth,
+  toothServicesTotal,
+} from '../components/implants/linkedImplantServices';
 import ClinicalStepper, {
   LIFECYCLE_COLORS,
   normalizeLifecycleStatus,
@@ -217,6 +223,23 @@ export default function ImplantDetail() {
     return [cur];
   }, [relatedTeeth, implant]);
 
+  const linkedModel = useMemo(
+    () => (implant ? buildLinkedServiceModel(implant) : { teeth: [], rows: [], date: '' }),
+    [implant],
+  );
+
+  const linkedCase = useMemo(() => {
+    if (!implant) return { rows: [], total: 0 };
+    const teeth = uniqueImplantToothKeys(
+      implant.tooth_numbers || (implant.tooth_number ? [implant.tooth_number] : []),
+    );
+    if (teeth.length <= 1 && relatedTeeth.length > 1) {
+      const rows = relatedTeeth.flatMap((rec) => buildLinkedServiceModel(rec).rows);
+      return { rows, total: caseServicesGrandTotal(rows) };
+    }
+    return { rows: linkedModel.rows, total: caseServicesGrandTotal(linkedModel) };
+  }, [implant, relatedTeeth, linkedModel]);
+
   // Active tooth selection with resolution of tooth_data_map properties
   const activeTooth = useMemo(() => {
     let raw = null;
@@ -310,8 +333,6 @@ export default function ImplantDetail() {
   const activeToothNumberFdi = teethList.length > 0 ? toothIdToFdi(teethList[0]) : '21';
 
   const firmaNom = (activeTooth?.firma === 'Boshqa' ? (activeTooth?.firma_custom || 'Boshqa') : activeTooth?.firma) || 'Dentium';
-  const priceNum = Number(activeTooth?.price) || Number(activeTooth?.narxi) || 1500000;
-  const primaryServiceName = activeTooth?.service_name || activeTooth?.hizmat_turi || 'Implant o\'rnatish';
 
   // Normalize current status for UI
   const getCurrentStatus = () => {
@@ -321,38 +342,9 @@ export default function ImplantDetail() {
 
   const displayStatus = getCurrentStatus();
 
-  // Build the unified list of services for this tooth/implant
-  const baseServiceRow = {
-    id: 'primary-implant',
-    is_primary: true,
-    service_name: primaryServiceName,
-    date: activeTooth?.placement_date || new Date().toISOString().split('T')[0],
-    tooth_number: activeToothNumberFdi,
-    firma: firmaNom,
-    price: priceNum,
-    notes: activeTooth?.brend ? `${activeTooth.brend} (Asosiy amaliyot)` : 'Asosiy implantatsiya'
-  };
-
-  const customServicesList = Array.isArray(activeTooth?.services_list) ? activeTooth.services_list : [];
-  
-  // Legacy crown fallback if present and not in list
-  const hasCrownInList = customServicesList.some(s => (s.service_name || '').toLowerCase().includes('karonka') || (s.service_name || '').toLowerCase().includes('crown') || (s.service_name || '').toLowerCase().includes('keramika') || (s.service_name || '').toLowerCase().includes('zirkon'));
-  const legacyCrownRows = (!hasCrownInList && activeTooth?.crown_type) ? [{
-    id: 'legacy-crown',
-    service_name: `${activeTooth.crown_type} Karonka`,
-    date: activeTooth?.placement_date || new Date().toISOString().split('T')[0],
-    tooth_number: activeToothNumberFdi,
-    firma: firmaNom,
-    price: Number(activeTooth.crown_price) || (activeTooth.crown_type === 'Metallokeramika' ? 800000 : 1500000),
-    notes: `${activeTooth.crown_quantity || 1} dona karonka`
-  }] : [];
-
-  const allServices = [baseServiceRow, ...customServicesList, ...legacyCrownRows];
-  const totalAllServicesPrice = allServices.reduce((acc, curr) => acc + (Number(curr.price) || 0), 0);
-  const caseServicesTotal = (switcherItems || []).reduce((sum, item) => {
-    const price = Number(item?.price ?? item?.narxi ?? 0);
-    return sum + (Number.isFinite(price) ? price : 0);
-  }, 0);
+  const toothServices = linkedServicesForTooth(linkedModel, activeToothNumberFdi);
+  const toothServicesSum = toothServicesTotal(toothServices);
+  const caseServicesSum = linkedCase.total;
 
   const counts = (() => {
     const list = switcherItems.length > 0 ? switcherItems : (implant ? [implant] : []);
@@ -586,7 +578,7 @@ export default function ImplantDetail() {
       notes: serviceForm.notes || ''
     };
 
-    const updatedServices = [...(activeTooth.services_list || []), newSvc];
+    const updatedServices = [...(Array.isArray(implant?.services_list) ? implant.services_list : []), newSvc];
     const now = new Date().toISOString();
     const timeline = [...(activeTooth.timeline || []), {
       date: now,
@@ -612,13 +604,15 @@ export default function ImplantDetail() {
   };
 
   const handleDeleteService = async (serviceId) => {
-    if (serviceId === 'primary-implant') {
+    const stored = Array.isArray(implant?.services_list) ? implant.services_list : [];
+    const target = stored.find((s) => s.id === serviceId);
+    if (!target || target.deletable === false || target.is_primary || String(serviceId).startsWith('primary-')) {
       toast.warning(language === 'ru' ? "Основную операцию импланта нельзя удалить. Используйте 'Редактировать'." : "Asosiy implant xizmatini o'chirib bo'lmaydi. Uni 'Tahrirlash' tugmasi orqali o'zgartirishingiz mumkin.");
       return;
     }
     if (!window.confirm(language === 'ru' ? "Вы уверены, что хотите удалить эту услугу?" : "Ushbu xizmatni o'chirishni tasdiqlaysizmi?")) return;
 
-    const updatedServices = (activeTooth.services_list || []).filter(s => s.id !== serviceId);
+    const updatedServices = stored.filter(s => s.id !== serviceId);
     try {
       await base44.entities.Implant.update(realImplantId, {
         services_list: updatedServices
@@ -725,7 +719,7 @@ export default function ImplantDetail() {
       ['Mas\'ul shifokor', activeTooth.doctor || '—'],
       ['Tish raqami (FDI)', teethList.map(n => `#${toothIdToFdi(n)}`).join(', ') || '—'],
       ['Firma / Brend', firmaNom],
-      ['Jami Xizmatlar Qiymati', `${totalAllServicesPrice.toLocaleString()} so'm`],
+      ['Jami Xizmatlar Qiymati', `${caseServicesSum.toLocaleString()} so'm`],
       ['O\'rnatilgan sana', activeTooth.placement_date || '—'],
       ['Holati', activeTooth.lifecycle_status || 'O\'rnatildi'],
     ];
@@ -745,9 +739,10 @@ export default function ImplantDetail() {
     doc.text('Xizmatlar & Amaliyotlar Ro\'yxati:', 20, y);
     y += 7;
 
-    allServices.forEach((s, idx) => {
+    linkedCase.rows.forEach((s, idx) => {
       doc.setFont(undefined, 'normal');
-      doc.text(`${idx + 1}. ${s.service_name} (#${s.tooth_number}) — ${s.firma} — ${Number(s.price).toLocaleString()} so'm [${s.date}]`, 25, y);
+      const toothBit = s.tooth_number ? `#${s.tooth_number}` : 'Umumiy';
+      doc.text(`${idx + 1}. ${s.service_name} (${toothBit}) — ${s.firma || firmaNom} — ${Number(s.price).toLocaleString()} so'm [${s.date}]`, 25, y);
       y += 6;
     });
 
@@ -760,17 +755,17 @@ export default function ImplantDetail() {
   const exportExcelCSV = () => {
     try {
       const headers = ["№", "Xizmatlar", "Sana", "Tish raqami", "Firma nomi", "Narxi (so'm)", "Izoh"];
-      const dataRows = allServices.map((s, idx) => [
+      const dataRows = linkedCase.rows.map((s, idx) => [
         idx + 1,
         `"${(s.service_name || '').replace(/"/g, '""')}"`,
         `"${s.date || ''}"`,
-        `"#${s.tooth_number || ''}"`,
+        `"${s.tooth_number ? `#${s.tooth_number}` : 'Umumiy'}"`,
         `"${(s.firma || '').replace(/"/g, '""')}"`,
         Number(s.price) || 0,
         `"${(s.notes || '').replace(/"/g, '""')}"`
       ]);
 
-      const totalRow = ["", "JAMI QIYMAT:", "", "", "", totalAllServicesPrice, ""];
+      const totalRow = ["", "JAMI QIYMAT:", "", "", "", caseServicesSum, ""];
       const allCsvRows = [headers, ...dataRows, totalRow];
 
       const csvContent = "\uFEFF" + allCsvRows.map(r => r.join(",")).join("\r\n");
@@ -831,7 +826,7 @@ export default function ImplantDetail() {
     {
       num: 4,
       key: language === 'ru' ? "Общая стоимость операций" : "Jami Amaliyotlar Narxi",
-      val: `${totalAllServicesPrice.toLocaleString()} ${language === 'ru' ? 'UZS' : "so'm"}`,
+      val: `${caseServicesSum.toLocaleString()} ${language === 'ru' ? 'UZS' : "so'm"}`,
       sub: language === 'ru' ? "Общая сумма всех услуг" : "Barcha xizmatlar umumiy yig'indisi",
       badge: "bg-emerald-50 text-emerald-700 border-emerald-200 font-mono",
       icon: ClinicalRevenueIcon,
@@ -1134,9 +1129,9 @@ export default function ImplantDetail() {
           onAddMilestone={() => setAddMilestoneOpen(true)}
         />
         <LinkedServicesCard
-          services={allServices}
-          total={totalAllServicesPrice}
-          caseTotal={Math.max(caseServicesTotal, totalAllServicesPrice)}
+          services={toothServices}
+          total={toothServicesSum}
+          caseTotal={caseServicesSum}
           language={language}
           onAdd={handleOpenAddService}
           onDelete={handleDeleteService}

@@ -30,6 +30,7 @@ import {
   IMPLANT_WIZARD_FACTURA_MARKER,
   printImplantFactura,
 } from './implantFactura';
+import { buildLinkedServiceModel, persistedServicesList } from './linkedImplantServices';
 import { cn } from '@/lib/utils';
 import {
   clinicianDisplayName,
@@ -926,6 +927,11 @@ export default function ImplantForm({
         timeline,
         tooth_data_map: cleanedToothMap,
       };
+      data.services_list = persistedServicesList(buildLinkedServiceModel({
+        ...data,
+        factura: facturaSnapshot,
+        services_list: Array.isArray(form.services_list) ? form.services_list : [],
+      }));
       const payload = omitEmptySizeFields(data);
 
       if (implant && implant.id) {
