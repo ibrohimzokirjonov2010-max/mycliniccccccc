@@ -689,18 +689,18 @@ export default function ImplantForm({
     });
   }, []);
 
-  const handlePatientSelect = useCallback((patientId) => {
+  const handlePatientSelect = useCallback((patientId, patientRecord) => {
     setFormError('');
     if (!patientId) {
       setForm((prev) => ({ ...prev, patient_id: '', patient_name: '', patient_phone: '' }));
       return;
     }
-    const patient = localPatients.find((p) => p.id === patientId);
+    const patient = localPatients.find((p) => String(p.id) === String(patientId)) || patientRecord || null;
     setForm((prev) => ({
       ...prev,
       patient_id: patientId,
-      patient_name: patient?.full_name || prev.patient_name || '',
-      patient_phone: patient?.phone || '',
+      patient_name: patient?.full_name || patient?.name || prev.patient_name || '',
+      patient_phone: patient?.phone || prev.patient_phone || '',
     }));
   }, [localPatients]);
 
