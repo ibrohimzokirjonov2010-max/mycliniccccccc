@@ -13,6 +13,20 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 💳 To'lovlar — Hozirgi qarz keshda qoladi
+- **Sana:** 2026-09-29
+- **Tuzatilgan Fayllar:**
+  - [`src/lib/paymentDebt.js`](src/lib/paymentDebt.js)
+  - [`src/pages/Payments.jsx`](src/pages/Payments.jsx)
+  - [`src/pages/MobilePaymentsV2.jsx`](src/pages/MobilePaymentsV2.jsx)
+  - [`src/pages/PatientProfile.jsx`](src/pages/PatientProfile.jsx)
+  - [`src/pages/Debts.jsx`](src/pages/Debts.jsx)
+  - [`scripts/assert-payment-debt-union.mjs`](scripts/assert-payment-debt-union.mjs)
+- **Muammo Tavsifi:** Zokirjonov Zohid to'lovlarida «To'lovdan keyin qoldi» 2 914 820 / 2 614 820 / 1 414 820, lekin har qatorda «Hozirgi qarz 2 915 000» turardi. 180 so'mlik yozuv o'chirilmadi.
+- **Sababi:** `payment-balance-source` keshi saqlangach yangilanmasdi va bo'sh bo'lmaganda ekrandagi yangi kirimlarni butunlay tashlab yuborardi. Reja bilan bog'langan Debt qatori qayta qo'shilmaydi, shuning uchun keshdagi qarz reja summasi (2 915 000) bo'lib qolardi.
+- **Qanday tuzatildi:** Balans `unionPayments(balancePayments, payments)` dan hisoblanadi. Saqlash `payment-balance-source` va reja keshini invalidate qiladi hamda `total_debt` ni `computePatientBalances` (reja jami − to'lovlar) bilan yozadi. Profil sinxroni to'lovlar yuklanmaguncha `total_debt` ni qayta yozmaydi. `patient-y2ii8ynf2` ga tegilmaydi.
+- **Qaytalamaslik choralari:** Balans manbasini yana `balancePayments.length ? balancePayments : payments` qilib qo'ymang. `invalidatePayments` dan `payment-balance-source` ni olib tashlamang. `patient-y2ii8ynf2` skipini saqlang. `node scripts/assert-payment-debt-union.mjs` o'tsin.
+
 ### 💳 To'lov modal (390) — footer overlap + 0 summada To'lash
 - **Sana:** 2026-09-22
 - **Tuzatilgan Fayllar:**

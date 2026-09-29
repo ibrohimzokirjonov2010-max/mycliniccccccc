@@ -16,6 +16,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Tooth, ImplantIcon, XrayIcon } from '@/components/ui/Icons';
 import { cn, resolveDoctorId } from '@/lib/utils';
+import { computePatientBalances } from '@/lib/paymentDebt';
 import { patientGenderLabel } from '@/lib/patientGender';
 import { formatBirthDate, formatDoctorName } from '@/lib/displayText';
 import { implantStatusClass, implantStatusLabel } from '@/lib/implantStatus';
@@ -463,8 +464,13 @@ export default function PatientProfile() {
       (async () => {
         try {
           setPaymentsLoading(true);
-          const list = await base44.entities.Payment.filter({ patient_id: id }, '-date', 50);
-          setPayments(list || []);
+          const list = await base44.entities.Payment.filter({ patient_id: id }, '-date', 5000);
+          setPayments((prev) => {
+            const map = new Map();
+            for (const row of prev || []) if (row?.id) map.set(row.id, row);
+            for (const row of list || []) if (row?.id) map.set(row.id, { ...(map.get(row.id) || {}), ...row });
+            return map.size ? [...map.values()] : (list || []);
+          });
         } catch (e) {
           console.error("Failed to load payments", e);
         } finally {
@@ -1951,18 +1957,21 @@ export default function PatientProfile() {
   };
 
   // ✅ DB dagi total_debt ni real hisoblangan qiymat bilan sinxronlash
+  // debt-sync-after-payments-loaded: bo'sh ro'yxat reja summasini qarz qilib yozmasin
   useEffect(() => {
-    if (!patient?.id || !payments) return;
+    if (loading || paymentsLoading) return;
+    if (!patient?.id || patient.id === 'patient-y2ii8ynf2') return;
+    if (!Array.isArray(payments)) return;
     const dbDebt = Number(patient.total_debt) || 0;
     const dbPaid = Number(patient.total_paid) || 0;
-    // Farq bo'lsa yangilaymiz
-    if (patient.id !== 'patient-y2ii8ynf2' && (dbDebt !== totalDebt || dbPaid !== totalPaid)) {
+    if (payments.length === 0 && (dbDebt > 0 || dbPaid > 0)) return;
+    if (dbDebt !== totalDebt || dbPaid !== totalPaid) {
       base44.entities.Patient.update(patient.id, {
         total_debt: totalDebt,
         total_paid: totalPaid,
       }).catch(() => {});
     }
-  }, [totalDebt, totalPaid, patient?.id]);
+  }, [loading, paymentsLoading, totalDebt, totalPaid, patient?.id, patient?.total_debt, patient?.total_paid, payments]);
 
   const apptStats = useMemo(() => {
     const completedAppts = (appointments || []).filter(a => a.status === 'Completed').length;
@@ -2058,30 +2067,18 @@ export default function PatientProfile() {
   };
 
   const recalculatePatientFinancials = async (patientId) => {
+    if (!patientId || patientId === 'patient-y2ii8ynf2') return;
     // NOTE: limit must be high, otherwise old payments get ignored and total_debt "jumps"
-    const allPays = await base44.entities.Payment.filter({ patient_id: patientId }, '-date', 5000);
-
-    const paidSum = allPays
-      .filter(p => p.type?.toLowerCase() === 'income')
-      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-
-    const debtSum = allPays
-      .filter(p => p.type?.toLowerCase() === 'debt')
-      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-
-    const refundSum = allPays
-      .filter(p => p.type?.toLowerCase() === 'refund')
-      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-
-    const discountSum = allPays
-      .filter(p => p.type?.toLowerCase() === 'discount')
-      .reduce((sum, p) => sum + Math.abs(Number(p.amount) || 0), 0);
-
-    const finalCalculatedDebt = Math.max(0, (debtSum + refundSum) - (paidSum + discountSum));
-
+    const [allPays, allPlans] = await Promise.all([
+      base44.entities.Payment.filter({ patient_id: patientId }, '-date', 5000),
+      base44.entities.TreatmentPlan.filter({ patient_id: patientId }, '-created_date', 100).catch(() => []),
+    ]);
+    const { totals } = computePatientBalances(allPays || [], allPlans || []);
+    const planTotal = (allPlans || []).reduce((sum, plan) => sum + (Number(plan.total_price) || 0), 0);
+    const row = totals[patientId];
     await base44.entities.Patient.update(patientId, {
-      total_paid: paidSum,
-      total_debt: finalCalculatedDebt
+      total_paid: row ? row.totalPaid : 0,
+      total_debt: row ? row.currentDebt : Math.max(0, planTotal),
     });
   };
 
@@ -2624,24 +2621,11 @@ export default function PatientProfile() {
       const allPays = await base44.entities.Payment.filter({ patient_id: id }, '-date', 5000);
       const allPatPlans = await base44.entities.TreatmentPlan.filter({ patient_id: id }, '-created_date', 50);
       
-      const calcIncomes = allPays.filter(p => p.type?.toLowerCase() === 'income').reduce((s, p) => s + (Number(p.amount) || 0), 0);
-      const calcDebts = allPays.filter(p => p.type?.toLowerCase() === 'debt').reduce((s, p) => s + (Number(p.amount) || 0), 0);
-      const calcRefunds = allPays.filter(p => p.type?.toLowerCase() === 'refund').reduce((s, p) => s + (Number(p.amount) || 0), 0);
-      const calcDiscounts = allPays.filter(p => p.type?.toLowerCase() === 'discount').reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
-      const calcPlansPrice = allPatPlans.reduce((sum, pl) => sum + (Number(pl.total_price) || 0), 0);
-      
-      let newDebt = 0;
-      if (calcDebts > 0) {
-        const net = calcIncomes + calcDiscounts - calcDebts - calcRefunds;
-        newDebt = net < 0 ? Math.abs(net) : 0;
-      } else if (calcPlansPrice > 0) {
-        const net = calcIncomes + calcDiscounts - calcPlansPrice;
-        newDebt = net < 0 ? Math.abs(net) : 0;
-      } else {
-        const net = calcIncomes - calcRefunds;
-        newDebt = net < 0 ? Math.abs(net) : 0;
-      }
-      const newPaid = calcIncomes;
+      const { totals: payTotals } = computePatientBalances(allPays || [], allPatPlans || []);
+      const payRow = payTotals[id];
+      const calcPlansPrice = (allPatPlans || []).reduce((sum, pl) => sum + (Number(pl.total_price) || 0), 0);
+      const newDebt = payRow ? payRow.currentDebt : Math.max(0, calcPlansPrice);
+      const newPaid = payRow ? payRow.totalPaid : 0;
 
       if (id !== 'patient-y2ii8ynf2') {
         await base44.entities.Patient.update(id, {

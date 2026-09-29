@@ -26,7 +26,7 @@ import { useClinic } from '@/lib/ClinicContext';
 import { getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel, resolveDoctorId, formatPhone, displayDoctorName, formatCurrency } from '@/lib/utils';
 import { paymentStamp, tashkentToday, formatClinicDate, formatClinicDateTime, parseDisplayDateTime } from '@/lib/clinicTime';
 import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
-import { computePatientBalances, isListedPayment } from '@/lib/paymentDebt';
+import { computePatientBalances, isListedPayment, unionPayments } from '@/lib/paymentDebt';
 import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
 import { toast } from 'sonner';
 import '@/components/payments/paymentAddModal.css';
@@ -604,6 +604,8 @@ export default function Payments() {
   // onSaved: to'lov saqlangandan keyin keshni yangilash
   const invalidatePayments = () => {
     queryClient.invalidateQueries({ queryKey: ['payments'] });
+    queryClient.invalidateQueries({ queryKey: ['payment-balance-source'] });
+    queryClient.invalidateQueries({ queryKey: ['allTreatmentPlansForPayments'] });
     queryClient.invalidateQueries({ queryKey: ['paymentStats'] });
     queryClient.invalidateQueries({ queryKey: ['payment-stats'] });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.paymentStats });
@@ -778,7 +780,8 @@ export default function Payments() {
   };
 
   useEffect(() => {
-    const source = balancePayments.length ? balancePayments : payments;
+    // On-screen rows (including a payment just saved) must win over the 60s balance cache.
+    const source = unionPayments(balancePayments, payments);
     const { balances, totals } = computePatientBalances(source, allTreatmentPlans);
     setPatientBalances(balances);
     setPatientCurrentTotals(totals);
@@ -890,8 +893,12 @@ export default function Payments() {
       // Optimistik update: ro'yxat TEPASIGA qo'y
       const newPayment = {
         ...payload,
+        ...(savedPayment || {}),
         id: savedPayment?.id || `temp_${Date.now()}`,
         created_date: savedPayment?.created_date || nowISO,
+        amount: savedAmount,
+        type: savedType,
+        patient_id: savedPatientId,
       };
       setPayments(prev => {
         const without = prev.filter(p => p.id !== newPayment.id);
@@ -932,26 +939,20 @@ export default function Payments() {
             }
           }
 
-          // Bemor qarzi yangilash — barcha to'lovlardan qayta hisoblanadi (aniq natija)
+          // Bemor qarzi = reja jami − barcha to'lovlar (bog'langan qarz qatori ikkinchi marta qo'shilmaydi)
           if (savedPatientId && savedPatientId !== 'patient-y2ii8ynf2') {
-            // Barcha to'lovlarni olib, qarzni qayta hisoblaymiz — PatientProfile bilan bir xil formula
-            const allPays = await base44.entities.Payment.filter({ patient_id: savedPatientId }, 'date', 5000);
-
-            const totalIncomes = (allPays || [])
-              .filter(p => p.type?.toLowerCase() === 'income')
-              .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-            const totalDebts = (allPays || [])
-              .filter(p => p.type?.toLowerCase() === 'debt')
-              .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-            const totalRefunds = (allPays || [])
-              .filter(p => p.type?.toLowerCase() === 'refund')
-              .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-            const totalDiscounts = (allPays || [])
-              .filter(p => p.type?.toLowerCase() === 'discount')
-              .reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
-
-            const finalDebt = Math.max(0, (totalDebts + totalRefunds) - (totalIncomes + totalDiscounts));
-            const finalPaid = totalIncomes;
+            const [allPays, allPlans] = await Promise.all([
+              base44.entities.Payment.filter({ patient_id: savedPatientId }, 'date', 5000),
+              base44.entities.TreatmentPlan.filter({ patient_id: savedPatientId }, '-created_date', 100).catch(() => []),
+            ]);
+            const { totals } = computePatientBalances(
+              unionPayments(allPays, [newPayment]),
+              allPlans || [],
+            );
+            const planTotal = (allPlans || []).reduce((sum, plan) => sum + (Number(plan.total_price) || 0), 0);
+            const row = totals[savedPatientId];
+            const finalDebt = row ? row.currentDebt : Math.max(0, planTotal);
+            const finalPaid = row ? row.totalPaid : 0;
 
             await base44.entities.Patient.update(savedPatientId, {
               total_paid: finalPaid,

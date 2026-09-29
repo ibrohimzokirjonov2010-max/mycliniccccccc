@@ -18,6 +18,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import { motion } from 'framer-motion';
 import { formatPhone, cn } from '@/lib/utils';
+import { computePatientBalances } from '@/lib/paymentDebt';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
@@ -315,18 +316,13 @@ export default function Debts() {
       }
 
       const totalIncomes = paysList.filter(pay => pay.type?.toLowerCase() === 'income').reduce((s, pay) => s + (Number(pay.amount) || 0), 0);
-      const totalRefunds = paysList.filter(pay => pay.type?.toLowerCase() === 'refund').reduce((s, pay) => s + (Number(pay.amount) || 0), 0);
       const totalPlansPrice = plansList.reduce((sum, pl) => sum + (Number(pl.total_price) || 0), 0);
-
-      let currentDebt = 0;
-      if (totalPlansPrice > 0) {
-        const net = totalIncomes - totalPlansPrice - totalRefunds;
-        currentDebt = net < 0 ? Math.abs(net) : 0;
-      } else {
-        const totalDebts = paysList.filter(pay => pay.type?.toLowerCase() === 'debt').reduce((s, pay) => s + (Number(pay.amount) || 0), 0);
-        const net = totalIncomes + discountAmount - totalDebts - totalRefunds;
-        currentDebt = net < 0 ? Math.abs(net) : (patient.real_debt || patient.total_debt || 0);
-      }
+      const { totals } = computePatientBalances(paysList, plansList);
+      const canon = totals[patient.id];
+      const currentDebt = canon
+        ? canon.currentDebt
+        : (totalPlansPrice > 0 ? totalPlansPrice : (Number(patient.real_debt ?? patient.total_debt) || 0));
+      const canonPaid = canon ? canon.totalPaid : totalIncomes;
 
       const actualHistory = (paysList || []).filter(pay => {
         const notesLower = (pay.notes || '').toLowerCase();
@@ -376,8 +372,8 @@ export default function Debts() {
         finalPlanTotal,
         totalDiscount: discountAmount,
         discountPercent,
-        totalPaid: totalIncomes,
-        currentDebt: currentDebt > 0 ? currentDebt : (patient.real_debt || patient.total_debt || 0),
+        totalPaid: canonPaid,
+        currentDebt,
       });
     } catch (err) {
       console.error('Error fetching patient debt details:', err);

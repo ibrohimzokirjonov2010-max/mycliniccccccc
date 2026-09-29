@@ -16,6 +16,23 @@ export function isLinkedPlanInternal(payment, type) {
   );
 }
 
+/**
+ * Merge payment lists by id. Later groups win, so the rows just saved on screen
+ * override a stale balance-cache snapshot that has not been refetched yet.
+ */
+export function unionPayments(...groups) {
+  const byId = new Map();
+  for (const group of groups) {
+    for (const row of group || []) {
+      if (!row) continue;
+      const key = row.id || `${row.patient_id}|${row.created_date || row.date}|${row.amount}|${row.type}`;
+      const prev = byId.get(key);
+      byId.set(key, prev ? { ...prev, ...row } : row);
+    }
+  }
+  return [...byId.values()];
+}
+
 /** Rows that belong on the payments list (not plan bookkeeping). */
 export function isListedPayment(payment) {
   const type = String(payment?.type || 'Income').toLowerCase();

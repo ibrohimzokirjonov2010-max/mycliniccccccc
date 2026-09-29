@@ -12,7 +12,7 @@ import { compressImage, validateImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
 import { cn, formatCurrency, resolveDoctorId, getTreatmentTypeLabel } from '@/lib/utils';
 import { paymentStamp, formatClinicDateTime, tashkentToday } from '@/lib/clinicTime';
-import { computePatientBalances } from '@/lib/paymentDebt';
+import { computePatientBalances, unionPayments } from '@/lib/paymentDebt';
 import { Input } from '@/components/ui/input';
 import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
 import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
@@ -189,7 +189,7 @@ export default function MobilePaymentsV2() {
           base44.entities.Payment.list('-created_date', 1000).catch(() => payments),
           base44.entities.TreatmentPlan.list('-created_date', 500).catch(() => []),
         ]);
-        const { balances, totals } = computePatientBalances(allPays?.length ? allPays : payments, allPlans || []);
+        const { balances, totals } = computePatientBalances(unionPayments(allPays, payments), allPlans || []);
         if (active) {
           setPatientBalances(balances);
           setPatientCurrentTotals(totals);
