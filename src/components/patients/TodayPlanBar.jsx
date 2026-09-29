@@ -1,25 +1,104 @@
-import { Check, CalendarDays, Stethoscope, ClipboardList } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Check, CalendarDays, Stethoscope, ClipboardList, ChevronDown } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
+import { groupProgress } from './planStepperModel';
 
 const TEAL = '#14b8a6';
 
+function stepCaption(step) {
+  const tooth = step.tooth ? ` (#${step.tooth})` : '';
+  return `${step.title || ''}${tooth}`;
+}
+
+function StepTrack({ steps }) {
+  const visible = (steps || []).filter((step) => step.state !== 'done');
+  if (visible.length === 0) {
+    return (
+      <p className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+        Barcha bosqichlar bajarilgan
+      </p>
+    );
+  }
+  return (
+    <div className="overflow-x-auto pb-1" data-testid="plan-stepper-scroll">
+      <div className="flex items-start w-max">
+        {visible.map((step, idx) => {
+          const isActive = step.state === 'active';
+          const isLast = idx === visible.length - 1;
+          return (
+            <div key={step.id || idx} className="flex items-start shrink-0">
+              <div className="w-[108px] sm:w-[124px] px-1 flex flex-col items-center text-center">
+                <div
+                  className={cn(
+                    'w-8 h-8 rounded-full flex items-center justify-center shrink-0',
+                    isActive && 'text-white shadow-md ring-4 ring-teal-100',
+                    !isActive && 'bg-white border-2 border-slate-300 text-slate-500'
+                  )}
+                  style={isActive ? { backgroundColor: TEAL } : undefined}
+                >
+                  <span className="text-[12px] font-black leading-none">{step.number || idx + 1}</span>
+                </div>
+                <p className="mt-2 w-full text-[11px] font-black text-slate-900 leading-tight line-clamp-2 break-words">
+                  {stepCaption(step)}
+                </p>
+                <p
+                  className={cn('mt-0.5 w-full truncate text-[10px] font-bold', !isActive && 'text-slate-400')}
+                  style={isActive ? { color: TEAL } : undefined}
+                >
+                  <span data-testid="plan-step-status">{step.statusLabel || (isActive ? 'Jarayonda' : 'Kutilmoqda')}</span>
+                </p>
+              </div>
+              {!isLast && (
+                <div className="w-4 shrink-0 pt-4" aria-hidden>
+                  <div className="h-0.5 w-full rounded-full bg-slate-200" />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /**
- * Bottom bar: Bugungi reja horizontal stepper + Tez to'lov card.
- * Clear CTAs: next clinical step + payment with visible remaining.
+ * Plan stepper. Each treatment plan is its own section. Finished steps stay
+ * behind a "Bajarilgan" toggle so the row only shows what is still ahead.
  */
 export default function TodayPlanBar({
   steps = [],
+  groups = null,
   title = 'Bugungi reja',
   totalDebt = 0,
   planRemaining = 0,
-  activeStep = null,
   onPay,
   onNextClinical,
   onOpenPlan,
 }) {
-  const completed = steps.filter((s) => s.state === 'done').length;
-  const total = steps.length || 0;
-  const badge = total > 0 ? `${completed}/${total}` : "Reja yo'q";
+  const planGroups = useMemo(() => {
+    if (Array.isArray(groups) && groups.length) return groups;
+    if (Array.isArray(groups)) return [];
+    if (!steps.length) return [];
+    return [{ id: 'all', title, steps }];
+  }, [groups, steps, title]);
+
+  const [selectedId, setSelectedId] = useState(planGroups[0]?.id || null);
+  const [doneOpen, setDoneOpen] = useState(false);
+
+  useEffect(() => {
+    if (!planGroups.some((group) => group.id === selectedId)) {
+      setSelectedId(planGroups[0]?.id || null);
+      setDoneOpen(false);
+    }
+  }, [planGroups, selectedId]);
+
+  const selected = planGroups.find((group) => group.id === selectedId) || planGroups[0] || null;
+  const progress = groupProgress(selected);
+  const doneSteps = (selected?.steps || []).filter((step) => step.state === 'done');
+  const activeStep = (selected?.steps || []).find((step) => step.state === 'active')
+    || (selected?.steps || []).find((step) => step.state === 'pending')
+    || null;
+
   const payTarget = Number(planRemaining) > 0
     ? Number(planRemaining)
     : Number(totalDebt) > 0
@@ -30,28 +109,29 @@ export default function TodayPlanBar({
     : Number(totalDebt) > 0
       ? 'Qarz'
       : "Qarz yo'q";
+  const badge = progress.total > 0 ? `${progress.done}/${progress.total}` : "Reja yo'q";
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-3">
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] px-4 sm:px-5 py-3.5">
-        <div className="flex items-center justify-between gap-3 mb-3.5">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] px-4 sm:px-5 py-3.5 min-w-0">
+        <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-2 min-w-0">
             <CalendarDays className="w-4 h-4 shrink-0" style={{ color: TEAL }} />
             <h3 className="text-sm font-black text-slate-900 truncate">{title}</h3>
           </div>
           <span className={cn(
             'px-2.5 py-1 rounded-full text-[10px] font-black border shrink-0',
-            total > 0 && completed === total
+            progress.total > 0 && progress.done === progress.total
               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-              : total > 0
+              : progress.total > 0
                 ? 'bg-teal-50 text-teal-800 border-teal-200'
                 : 'bg-slate-100 text-slate-600 border-slate-200'
           )}>
-            {total > 0 ? `${badge} bajarilgan` : badge}
+            {progress.total > 0 ? `${badge} bajarilgan` : badge}
           </span>
         </div>
 
-        {steps.length === 0 ? (
+        {planGroups.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-4 text-center space-y-3">
             <div>
               <p className="text-xs font-semibold text-slate-400">Bugun uchun reja topilmadi</p>
@@ -71,7 +151,7 @@ export default function TodayPlanBar({
               {typeof onNextClinical === 'function' && (
                 <button
                   type="button"
-                  onClick={onNextClinical}
+                  onClick={() => onNextClinical(null)}
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 border-teal-500/70 text-teal-800 bg-teal-50 text-[10px] font-black uppercase tracking-wide cursor-pointer hover:bg-teal-100"
                 >
                   <Stethoscope className="w-3.5 h-3.5" />
@@ -82,71 +162,78 @@ export default function TodayPlanBar({
           </div>
         ) : (
           <>
-            <div className="flex items-start w-full overflow-x-auto no-scrollbar pb-0.5">
-              {steps.map((step, idx) => {
-                const isDone = step.state === 'done';
-                const isActive = step.state === 'active';
-                const isLast = idx === steps.length - 1;
-                return (
-                  <div key={step.id || idx} className={cn('flex items-start min-w-0', !isLast ? 'flex-1' : 'shrink-0')}>
-                    <div className="flex flex-col items-center text-center px-1 sm:px-2 min-w-[96px] max-w-[160px]">
-                      <div
-                        className={cn(
-                          'w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all',
-                          isDone && 'bg-emerald-500 text-white shadow-sm',
-                          isActive && 'text-white shadow-md ring-4 ring-teal-100',
-                          !isDone && !isActive && 'bg-white border-2 border-slate-300 text-slate-400'
-                        )}
-                        style={isActive ? { backgroundColor: TEAL } : undefined}
+            {planGroups.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-2 mb-1" data-testid="plan-stepper-tabs">
+                {planGroups.map((group) => {
+                  const item = groupProgress(group);
+                  const on = group.id === selected?.id;
+                  return (
+                    <button
+                      key={group.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => { setSelectedId(group.id); setDoneOpen(false); }}
+                      className={cn(
+                        'shrink-0 max-w-[180px] rounded-xl border px-3 py-1.5 text-left cursor-pointer',
+                        on ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-white hover:bg-slate-50'
+                      )}
+                    >
+                      <span className="block truncate text-xs font-black text-slate-900">{group.title}</span>
+                      <span className={cn('text-[10px] font-bold', on ? 'text-teal-800' : 'text-slate-500')}>
+                        {item.done}/{item.total}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {planGroups.length === 1 && selected?.title && selected.title !== title && (
+              <p className="mb-2 text-xs font-black text-slate-700 truncate">{selected.title}</p>
+            )}
+
+            <StepTrack steps={selected?.steps || []} />
+
+            {doneSteps.length > 0 && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  data-testid="plan-done-toggle"
+                  aria-expanded={doneOpen}
+                  onClick={() => setDoneOpen((open) => !open)}
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-black text-emerald-700 hover:bg-emerald-50 cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                  Bajarilgan: {doneSteps.length}
+                  <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', doneOpen && 'rotate-180')} />
+                </button>
+                {doneOpen && (
+                  <ul className="mt-1.5 flex flex-wrap gap-1.5" data-testid="plan-done-list">
+                    {doneSteps.map((step) => (
+                      <li
+                        key={step.id}
+                        className="max-w-full truncate rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-800"
                       >
-                        {isDone ? (
-                          <Check className="w-4 h-4" strokeWidth={3} />
-                        ) : (
-                          <span className="text-[12px] font-black leading-none">{idx + 1}</span>
-                        )}
-                      </div>
-                      <p className="mt-2 text-[11px] sm:text-xs font-black text-slate-900 leading-snug line-clamp-2">
-                        {step.title}
-                        {step.tooth ? ` (#${step.tooth})` : ''}
-                      </p>
-                      <p
-                        className={cn(
-                          'text-[10px] font-bold mt-0.5',
-                          isDone && 'text-emerald-600',
-                          !isDone && !isActive && 'text-slate-400'
-                        )}
-                        style={isActive ? { color: TEAL } : undefined}
-                      >
-                        <span data-testid="plan-step-status">{step.statusLabel || (isDone ? 'Bajarildi' : isActive ? 'Jarayonda' : 'Kutilmoqda')}</span>
-                      </p>
-                    </div>
-                    {!isLast && (
-                      <div className="flex-1 min-w-[20px] max-w-[64px] pt-4 px-0.5">
-                        <div
-                          className={cn(
-                            'h-0.5 w-full rounded-full',
-                            isDone ? 'bg-emerald-400' : 'bg-slate-200'
-                          )}
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                        {step.number}. {stepCaption(step)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
             <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
               {typeof onNextClinical === 'function' && (
                 <button
                   type="button"
-                  onClick={onNextClinical}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-[11px] font-black shadow-sm cursor-pointer hover:opacity-95"
+                  onClick={() => onNextClinical(activeStep)}
+                  className="inline-flex max-w-full items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-[11px] font-black shadow-sm cursor-pointer hover:opacity-95"
                   style={{ backgroundColor: TEAL }}
                 >
-                  <Stethoscope className="w-3.5 h-3.5" />
-                  {activeStep
-                    ? `Keyingi: ${activeStep.title}${activeStep.tooth ? ` (#${activeStep.tooth})` : ''}`
-                    : 'Tashxis / muolaja'}
+                  <Stethoscope className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">
+                    {activeStep ? `Keyingi: ${stepCaption(activeStep)}` : 'Tashxis / muolaja'}
+                  </span>
                 </button>
               )}
               {typeof onPay === 'function' && (

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft, Phone, Calendar, Plus, Info, Camera, Copy, Mail, Wallet, AlertTriangle, Pencil
+  ArrowLeft, Phone, Calendar, Plus, Camera, Copy, Mail, Wallet, AlertTriangle, Pencil
 } from 'lucide-react';
 import { cn, formatCurrency, formatPhone } from '@/lib/utils';
 import { patientGenderLabel } from '@/lib/patientGender';
-import { displayServiceName, formatBirthDate, resolveDoctorLabel } from '@/lib/displayText';
-import { implantStepStatusLabel } from '@/lib/implantStatus';
+import { formatBirthDate, resolveDoctorLabel } from '@/lib/displayText';
 import ToothChartCard from './ToothChartCard';
 import TodayPlanBar from './TodayPlanBar';
+import { buildPlanStepperGroups } from './planStepperModel';
 import ChairsideClinicalTools, { ChairsideClinicalTabBar } from './ChairsideClinicalTools';
 
 const TEAL = '#14b8a6';
@@ -85,92 +85,10 @@ export default function ChairsidePatientProfile({
   language = 'uz',
   onPatientUpdated,
 }) {
-  const todaySteps = useMemo(() => {
-    const steps = [];
-    const today = new Date();
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
-    (appointments || []).forEach((a) => {
-      const raw = a.appointment_date || a.date || a.start_time || a.created_date;
-      if (!raw) return;
-      const d = new Date(raw);
-      if (isNaN(d.getTime())) return;
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      if (key !== todayKey) return;
-      const st = (a.status || '').toLowerCase();
-      let state = 'pending';
-      if (st === 'completed' || st === 'bajarildi' || st === 'done') state = 'done';
-      else if (st === 'in_progress' || st === 'inprogress' || st === 'jarayonda' || st === 'waiting' || st === 'confirmed') state = 'active';
-      else if (st === 'scheduled' || st === 'pending') state = 'pending';
-      const title = displayServiceName(a.service_name || a.notes || a.title || 'Uchrashuv');
-      const tooth = a.tooth_number || null;
-      steps.push({
-        id: `appt-${a.id}`,
-        title,
-        tooth,
-        state,
-        statusLabel: implantStepStatusLabel({ name: title, tooth, implants, language }),
-      });
-    });
-
-    let scope = steps.length ? 'today' : 'plan';
-    const toothSet = new Set();
-    if (steps.length === 0) {
-      (plans || []).forEach((p) => {
-        const st = (p.status || '').toLowerCase();
-        if (st === 'cancelled' || st === 'canceled') return;
-        const services = Array.isArray(p.services) && p.services.length
-          ? p.services
-          : [{ service_name: p.name || p.title, status: p.status, tooth_number: p.tooth_number, completed: st === 'completed' }];
-        services.forEach((s, idx) => {
-          const sst = (s.status || p.status || '').toLowerCase();
-          let state = 'pending';
-          if (s.completed || sst === 'completed' || sst === 'bajarildi') state = 'done';
-          else if (sst.includes('progress') || sst === 'jarayonda' || sst === 'active') state = 'active';
-          else if (st === 'completed') state = 'done';
-          else if (st.includes('progress') || st === 'jarayonda' || st === 'active') state = idx === 0 ? 'active' : 'pending';
-          const tooth = String(s.tooth_number || s.tooth_id || p.tooth_number || '').replace(/^#/, '') || null;
-          const title = displayServiceName(s.service_name || s.name || p.name || 'Muolaja');
-          const toothLabel = tooth && tooth !== 'general' ? tooth : null;
-          steps.push({
-            id: `plan-${p.id}-${idx}`,
-            title,
-            tooth: toothLabel,
-            state,
-            statusLabel: implantStepStatusLabel({
-              name: `${title} ${p.name || ''} ${s.category || ''}`,
-              tooth: toothLabel,
-              implants,
-              language,
-            }),
-          });
-        });
-      });
-    }
-
-    if (steps.length && !steps.some((s) => s.state === 'active') && steps.some((s) => s.state === 'pending')) {
-      const firstPending = steps.find((s) => s.state === 'pending');
-      if (firstPending) firstPending.state = 'active';
-    }
-
-    steps.forEach((step) => { if (step.tooth) toothSet.add(String(step.tooth)); });
-    if (scope === 'today') {
-      return { steps, scope, toothCount: toothSet.size, title: 'Bugungi reja' };
-    }
-    const planTeeth = new Set();
-    (plans || []).forEach((p) => {
-      const st = (p.status || '').toLowerCase();
-      if (st === 'cancelled' || st === 'canceled') return;
-      const services = Array.isArray(p.services) && p.services.length ? p.services : [{ tooth_number: p.tooth_number }];
-      const rawTeeth = String(p.tooth_number || '').split(/[,·]/);
-      [...rawTeeth, ...services.map((s) => s.tooth_number || s.tooth_id)].forEach((tooth) => {
-        const clean = String(tooth || '').replace(/^#/, '').trim();
-        if (clean && clean !== 'general') planTeeth.add(clean);
-      });
-    });
-    const toothCount = planTeeth.size || toothSet.size;
-    return { steps, scope, toothCount, title: `Davolash rejasi: ${toothCount} ta` };
-  }, [appointments, plans, implants, language]);
+  const todaySteps = useMemo(
+    () => buildPlanStepperGroups({ appointments, plans, implants, language }),
+    [appointments, plans, implants, language],
+  );
 
   const [clinicalTab, setClinicalTab] = useState('tashxis');
 
@@ -196,7 +114,7 @@ export default function ChairsidePatientProfile({
       window.removeEventListener('resize', apply);
       if (scroller) scroller.style.scrollPaddingTop = '';
     };
-  }, [todaySteps.steps.length]);
+  }, [todaySteps.groups.length, todaySteps.groups.reduce((sum, group) => sum + (group.steps?.length || 0), 0)]);
 
   const planRemainingTotal = useMemo(() => {
     return (plans || []).reduce((sum, p) => {
@@ -207,10 +125,10 @@ export default function ChairsidePatientProfile({
     }, 0);
   }, [plans]);
 
-  const activeStep = useMemo(
-    () => (todaySteps.steps || []).find((s) => s.state === 'active') || (todaySteps.steps || []).find((s) => s.state === 'pending') || null,
-    [todaySteps]
-  );
+  const activeStep = useMemo(() => {
+    const steps = (todaySteps.groups || []).flatMap((group) => group.steps || []);
+    return steps.find((step) => step.state === 'active') || steps.find((step) => step.state === 'pending') || null;
+  }, [todaySteps]);
 
   const genderLabel = patientGenderLabel(patient?.gender, language);
 
@@ -459,17 +377,17 @@ export default function ChairsidePatientProfile({
 
             <div className="chairside-plan-row" data-chairside-plan="true">
             <TodayPlanBar
-              steps={todaySteps.steps}
+              groups={todaySteps.groups}
               title={todaySteps.title}
               totalDebt={totalDebt}
               planRemaining={planRemainingTotal}
-              activeStep={activeStep}
               onPay={onPay}
-              onNextClinical={() => {
+              onNextClinical={(step) => {
+                const target = step || activeStep;
                 setClinicalTab('tashxis');
                 document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                if (activeStep?.tooth && typeof onSelectTooth === 'function') {
-                  onSelectTooth({ fdi: String(activeStep.tooth), id: String(activeStep.tooth) });
+                if (target?.tooth && typeof onSelectTooth === 'function') {
+                  onSelectTooth({ fdi: String(target.tooth), id: String(target.tooth) });
                 }
               }}
               onOpenPlan={onNewPlan}

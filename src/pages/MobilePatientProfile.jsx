@@ -8,7 +8,7 @@ import { useClinic } from '@/lib/ClinicContext';
 import { useFeature } from '@/hooks/useFeature';
 import {
   ArrowLeft, Phone, Calendar, CreditCard, ClipboardList, Plus,
-  Copy, AlertTriangle, FileText,
+  AlertTriangle, FileText,
   CheckCircle2, Clock, XCircle, ChevronRight,
   Stethoscope, Receipt, X, Check, Camera, Activity
 } from 'lucide-react';
@@ -31,6 +31,8 @@ import {
   fdiToInternalId,
 } from '../components/patients/MobileCompactOdontogram';
 import ToothChartCard from '../components/patients/ToothChartCard';
+import TodayPlanBar from '../components/patients/TodayPlanBar';
+import { buildPlanStepperGroups } from '../components/patients/planStepperModel';
 import { matchIllustrationKind } from '@/utils/toothIllustration';
 
 const TEAL = '#14b8a6';
@@ -276,6 +278,16 @@ export default function MobilePatientProfile() {
     }
     return { incomes, debt, prepay, plansTotal };
   }, [payments, plans]);
+
+  const planStepper = useMemo(
+    () => buildPlanStepperGroups({ appointments, plans, implants, language }),
+    [appointments, plans, implants, language],
+  );
+  const planRemainingTotal = useMemo(() => (plans || []).reduce((sum, plan) => {
+    const status = String(plan.status || '').toLowerCase();
+    if (status === 'cancelled' || status === 'canceled') return sum;
+    return sum + Math.max(0, (Number(plan.total_price) || 0) - (Number(plan.paid_amount) || 0));
+  }, 0), [plans]);
 
   /* ── medical alerts ── */
   const medicalAlerts = useMemo(() => {
@@ -737,6 +749,20 @@ export default function MobilePatientProfile() {
           </div>
           <span className="text-[11px] font-black text-slate-800">{t('patientProfile.mobile.newPlanAction', 'Yangi reja')}</span>
         </button>
+      </div>
+
+      <div className="px-3 pt-3">
+        <TodayPlanBar
+          groups={planStepper.groups}
+          title={planStepper.title}
+          totalDebt={financials.debt}
+          planRemaining={planRemainingTotal}
+          onPay={() => openPayModal()}
+          onNextClinical={() => {
+            document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+          onOpenPlan={() => setTreatModalOpen(true)}
+        />
       </div>
 
       {/* CLINICAL STRIP */}
