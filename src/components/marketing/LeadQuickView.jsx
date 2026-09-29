@@ -10,6 +10,7 @@ import {
   Zap, User, Globe, MessageCircle, Loader2, ClipboardList
 } from 'lucide-react';
 import { supabase } from '@/api/supabaseClient';
+import { assertServerFeature } from '@/lib/clinicPlan';
 
 export default function LeadQuickView({ lead, isOpen, onClose }) {
   const { t, language } = useTranslation();
@@ -19,6 +20,7 @@ export default function LeadQuickView({ lead, isOpen, onClose }) {
   const handleConvertToPatient = async () => {
     setIsConverting(true);
     try {
+       await assertServerFeature('marketing');
        const userClinic = lead.clinic_id || localStorage.getItem('clinicId') || 'ava-dent';
        
        // 1. Insert to patients table
@@ -255,6 +257,7 @@ export default function LeadQuickView({ lead, isOpen, onClose }) {
                 <button 
                   onClick={async () => {
                     try {
+                       await assertServerFeature('marketing');
                        await supabase.from('leads').update({ status: 'converted' }).eq('id', lead.id);
                     } catch(e) { console.error(e); }
                     onClose();

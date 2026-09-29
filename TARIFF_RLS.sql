@@ -1,0 +1,62 @@
+-- Tariff enforcement that Postgres can actually apply.
+--
+-- The live app signs every request with the shared anon key. Postgres therefore
+-- cannot tell a BASIC clinic from a PRO clinic, or one clinic from another.
+-- Turning on the policies below against that anon role would lock PRO clinics
+-- out of Implantlar / Marketing / Keyslar as well.
+--
+-- Apply this only after each staff login receives a Supabase JWT that carries
+-- clinic_id and clinic_plan claims (service role is required to set that up).
+-- Until then, the app enforces the plan in src/lib/clinicPlan.js
+-- (assertServerFeature) before implants, cases, and marketing reads/writes.
+-- A request that bypasses the app and uses the anon key directly is still open.
+
+-- Example, NOT applied by the app:
+-- alter table public.implants enable row level security;
+-- alter table public.cases enable row level security;
+-- alter table public.xrays enable row level security;
+-- alter table public.leads enable row level security;
+--
+-- create policy implants_plan on public.implants
+--   for all
+--   using (
+--     clinic_id = coalesce(auth.jwt() ->> 'clinic_id', '')
+--     and coalesce(auth.jwt() ->> 'clinic_plan', 'basic') = 'pro'
+--   )
+--   with check (
+--     clinic_id = coalesce(auth.jwt() ->> 'clinic_id', '')
+--     and coalesce(auth.jwt() ->> 'clinic_plan', 'basic') = 'pro'
+--   );
+--
+-- create policy cases_plan on public.cases
+--   for all
+--   using (
+--     clinic_id = coalesce(auth.jwt() ->> 'clinic_id', '')
+--     and coalesce(auth.jwt() ->> 'clinic_plan', 'basic') = 'pro'
+--   )
+--   with check (
+--     clinic_id = coalesce(auth.jwt() ->> 'clinic_id', '')
+--     and coalesce(auth.jwt() ->> 'clinic_plan', 'basic') = 'pro'
+--   );
+--
+-- Clinic cases are also stored in public.xrays with xray_type = 'clinic_case'.
+-- create policy xray_cases_plan on public.xrays
+--   for all
+--   using (
+--     clinic_id = coalesce(auth.jwt() ->> 'clinic_id', '')
+--     and (
+--       coalesce(xray_type, '') <> 'clinic_case'
+--       or coalesce(auth.jwt() ->> 'clinic_plan', 'basic') = 'pro'
+--     )
+--   )
+--   with check (
+--     clinic_id = coalesce(auth.jwt() ->> 'clinic_id', '')
+--     and (
+--       coalesce(xray_type, '') <> 'clinic_case'
+--       or coalesce(auth.jwt() ->> 'clinic_plan', 'basic') = 'pro'
+--     )
+--   );
+--
+-- Marketing reads and writes public.leads. Lidlar (BASIC) uses the same table,
+-- so a plan policy on leads would also hide Lidlar. Split marketing rows onto
+-- their own table before adding a marketing-only policy.

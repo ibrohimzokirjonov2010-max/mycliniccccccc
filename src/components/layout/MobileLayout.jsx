@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
+import { planAllows } from '@/lib/clinicPlan';
+import { useClinicPlan } from '@/hooks/useFeature';
 import AdBanner from './AdBanner';
 
 /**
@@ -57,6 +59,7 @@ export default function MobileLayout({ children }) {
   const navigate = useNavigate();
   const { t, changeLanguage, language, availableLanguages } = useTranslation();
   const { clinicName } = useClinic();
+  const plan = useClinicPlan();
   const [isInstalled, setIsInstalled] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -99,7 +102,10 @@ export default function MobileLayout({ children }) {
   const isActive = (path) => location.pathname === path;
   
   const MOBILE_NAV_ITEMS = getMobileNavItems(t);
-  const MORE_NAV_ITEMS = getMoreNavItems(t);
+  const MORE_NAV_ITEMS = getMoreNavItems(t).filter((item) => {
+    if (item.path === '/implants') return planAllows(plan, 'implants');
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
@@ -169,7 +175,7 @@ export default function MobileLayout({ children }) {
                     </div>
                   </div>
                   <nav className="flex-1 p-2">
-                    {[...getMobileNavItems(t), ...getMoreNavItems(t)].map((item) => (
+                    {[...getMobileNavItems(t), ...MORE_NAV_ITEMS].map((item) => (
                       <button
                         key={item.path}
                         onClick={() => navigate(item.path)}

@@ -2,8 +2,11 @@ import React from 'react';
 import { ShieldAlert, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
+import { FEATURE_LABELS, PRO_EXTRA_LABELS } from '@/lib/clinicPlan';
 
 export default function Paywall({ featureName }) {
+  const label = FEATURE_LABELS[featureName] || featureName;
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center">
       <motion.div 
@@ -21,29 +24,23 @@ export default function Paywall({ featureName }) {
           PRO Ta'rifiga O'ting
         </h2>
         <p className="text-sm text-slate-500 font-medium mb-8">
-          Siz qidirayotgan <span className="font-bold text-slate-700">{featureName}</span> orqali qo'shimcha imkoniyatlarni faqat PRO ta'rifida ochish mumkin.
+          <span className="font-bold text-slate-700">{label}</span> BASIC tarifda yopiq. Bu bo'lim PRO tarifda ochiladi.
         </p>
 
         <div className="mb-8 space-y-3 text-left">
-          <div className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-            Cheksiz Shifokorlar Qo'shish
-          </div>
-          <div className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-            Implantlar Moduli To'liq Ochiq
-          </div>
-          <div className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-            24/7 Premium Yordam
-          </div>
+          {PRO_EXTRA_LABELS.map((item) => (
+            <div key={item} className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              {item}
+            </div>
+          ))}
         </div>
 
         <div className="bg-slate-50 p-4 rounded-xl mb-6">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">PRO Ta'rif Narxi</p>
           <div className="flex items-end justify-center gap-1">
-            <span className="text-3xl font-black text-blue-600">189.000</span>
-            <span className="text-sm font-bold text-slate-500 mb-1">UZS / oy</span>
+            <span className="text-3xl font-black text-blue-600">189 000</span>
+            <span className="text-sm font-bold text-slate-500 mb-1">so'm / oy</span>
           </div>
         </div>
 

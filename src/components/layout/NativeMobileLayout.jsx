@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import { CLINIC_SESSION_EVENT, planAllows } from '@/lib/clinicPlan';
+import { useClinicPlan } from '@/hooks/useFeature';
 import AdBanner from './AdBanner';
 import SubscriptionBanner from './SubscriptionBanner';
 import SubscriptionBlockedView from './SubscriptionBlockedView';
@@ -111,6 +113,7 @@ export default function NativeMobileLayout({ children }) {
   const isPatientProfile = /^\/patients\/[^/]+$/.test(location.pathname);
   const navigate = useNavigate();
   const { user, isAdmin, isDoctor, logout } = useAuth();
+  const plan = useClinicPlan();
   const { t } = useTranslation();
   const [currentClinic, setCurrentClinic] = useState({ name: 'Klinika', logo: null });
   const [showMenu, setShowMenu] = useState(false);
@@ -165,6 +168,8 @@ export default function NativeMobileLayout({ children }) {
       }
     };
     fetchClinic();
+    window.addEventListener(CLINIC_SESSION_EVENT, fetchClinic);
+    return () => window.removeEventListener(CLINIC_SESSION_EVENT, fetchClinic);
   }, []);
 
   // Track scroll for header blur effect
@@ -194,6 +199,26 @@ export default function NativeMobileLayout({ children }) {
       ];
       items = items.filter(item => doctorAllowedPaths.includes(item.path));
     }
+
+    const pathFeature = {
+      '/implants': 'implants',
+      '/marketing': 'marketing',
+      '/cases': 'cases',
+      '/technicians': 'technicians',
+      '/expenses': 'expenses',
+      '/payroll': 'payroll',
+      '/services': 'services',
+      '/inventory': 'inventory',
+      '/reports': 'reports',
+      '/treatment-plans': 'treatment_plans',
+      '/no-show': 'no_show',
+      '/treatment-tracking': 'treatment_tracking',
+      '/staff': 'staff',
+    };
+    items = items.filter((item) => {
+      const feature = pathFeature[item.path];
+      return !feature || planAllows(plan, feature);
+    });
     
     // SuperAdmin hiding logic - only show 'System Admin' to user with username 'admin'
     if (user?.username !== 'admin') {
@@ -201,7 +226,7 @@ export default function NativeMobileLayout({ children }) {
     }
     
     return items;
-  }, [isDoctor, user, t]);
+  }, [isDoctor, user, t, plan]);
 
   const tabs = useMemo(() => [
     { path: '/chairside', icon: CalendarClock, label: t('navigation.chairsideToday') || 'Navbat', color: '#1499AD' },

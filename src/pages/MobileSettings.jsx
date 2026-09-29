@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { notificationStore } from '@/lib/notificationStore';
 import { useAuth } from '@/lib/AuthContext';
 import { compressImage, validateImage } from '@/utils/imageUpload';
+import TariffCard from '@/components/settings/TariffCard';
 
 const defaultSchedule = {
   monday: { active: true, start: '09:00', end: '18:00' },
@@ -376,6 +377,7 @@ export default function MobileSettings() {
       </div>
 
       <div className="p-4 space-y-4">
+        <TariffCard />
         {/* User Profile Card */}
         <motion.div 
           initial={{ opacity: 0, y: 10 }}

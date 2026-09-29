@@ -10,6 +10,15 @@ import {
   preparePasswordForWrite,
 } from '@/utils/password';
 import { patientGenderForDb } from '@/lib/patientGender';
+import {
+  PLAN_FEATURES,
+  applyClinicSession,
+  assertServerFeature,
+  planAllows,
+  resolveClinicPlan,
+} from '@/lib/clinicPlan';
+
+export { PLAN_FEATURES };
 
 const absentColumns = new Map();
 const TABLES_WITHOUT_CREATED_AT = new Set([
@@ -37,26 +46,14 @@ function rememberAbsentColumn(tableName, error) {
 }
 
 // Plan configurations
-export const PLAN_FEATURES = {
-  basic: [
-    "patients", "appointments", "payments", "recalls", "leads", "settings",
-    "expenses", "payroll", "services", "inventory", "reports", "treatment_plans", 
-    "no_show", "treatment_tracking", "debts", "technicians", "staff"
-  ],
-  pro: [
-    "patients", "appointments", "payments", "recalls", "leads", "settings",
-    "expenses", "payroll", "services", "inventory", "reports", "treatment_plans", 
-    "no_show", "treatment_tracking", "debts", "technicians", "staff",
-    "implants", "marketing", "cases"
-  ]
-};
+const SERVER_GATED_FEATURES = new Set(['implants', 'marketing', 'cases']);
 
-// Feature validation function (Middleware substitute)
+// Feature validation. Missing plan is BASIC. PRO-only modules are re-checked
+// against the clinic row in assertServerFeature before any read or write.
 const enforceFeature = (feature) => {
-  const clinicPlan = localStorage.getItem('clinic_plan') || 'pro';
-  const features = PLAN_FEATURES[clinicPlan] || [];
-  if (!features.includes(feature)) {
-    throw { code: 403, message: 'Bu moduldan foydalanish uchun PRO ta`rifiga o`ting!' };
+  const clinicPlan = localStorage.getItem('clinic_plan') === 'pro' ? 'pro' : 'basic';
+  if (!planAllows(clinicPlan, feature)) {
+    throw { code: 403, message: "Bu moduldan foydalanish uchun PRO ta'rifiga o'ting!" };
   }
 };
 
@@ -177,7 +174,7 @@ class HybridEntityLoader {
     );
   }
 
-  _checkAccess() {
+  async _checkAccess() {
     const featureMap = {
       'Patient': 'patients',
       'Appointment': 'appointments',
@@ -186,17 +183,22 @@ class HybridEntityLoader {
       'Lead': 'leads',
       'Implant': 'implants',
       'ImplantBrand': 'implants',
+      'Case': 'cases',
+      'CaseCategory': 'cases',
       'Technician': 'technicians',
       'TechnicianJob': 'technicians',
       'Inventory': 'inventory',
       'Expense': 'payroll',
       'Payroll': 'payroll'
     };
-    
+
     const feature = featureMap[this.entityName];
-    if (feature) {
-      enforceFeature(feature);
+    if (!feature) return;
+    if (SERVER_GATED_FEATURES.has(feature)) {
+      await assertServerFeature(feature);
+      return;
     }
+    enforceFeature(feature);
   }
 
   _techFields() {
@@ -453,6 +455,7 @@ class HybridEntityLoader {
 
   // Supabase methods
   async count(conditions = {}) {
+    await this._checkAccess();
     if (!this.useSupabase) return (await this.list()).length;
     try {
       const clinicId = this._getClinicId();
@@ -470,7 +473,7 @@ class HybridEntityLoader {
   }
 
   async list(orderBy = '-created_date', limit = 100, offset = 0) {
-    this._checkAccess();
+    await this._checkAccess();
     if (!this.useSupabase) return this._localStorageList(orderBy, limit);
 
     // Request deduplication cache - bir xil so'rov 5 sek ichida qayta Supabase ga bormaydi
@@ -670,6 +673,7 @@ class HybridEntityLoader {
   }
 
   async search(queryStr, limit = 50, offset = 0) {
+    await this._checkAccess();
     if (!this.useSupabase || !queryStr) return this.list('-created_date', limit, offset);
     try {
       const clinicId = this._getClinicId();
@@ -702,6 +706,7 @@ class HybridEntityLoader {
   }
 
   async filter(conditions, orderBy = null, limit = 100, offset = 0) {
+    await this._checkAccess();
     if (!this.useSupabase) return this._localStorageFilter(conditions, orderBy, limit);
     
     // Request deduplication cache - bir xil filter 5 sek ichida qayta Supabase ga bormaydi
@@ -840,7 +845,7 @@ class HybridEntityLoader {
   }
 
   async create(payload) {
-    this._checkAccess();
+    await this._checkAccess();
     if (this.entityName === 'ImplantBrand') {
       const row = { id: payload?.id || `brand_${Date.now()}`, ...payload, clinic_id: this._getClinicId(), is_active: true };
       const data = this._getData();
@@ -1063,6 +1068,7 @@ class HybridEntityLoader {
   }
 
   async update(id, payload) {
+    await this._checkAccess();
     RequestCache.invalidate(this.entityName);
     let incoming = { ...payload };
     if (this.entityName === 'User') {
@@ -1239,6 +1245,7 @@ class HybridEntityLoader {
   }
 
   async delete(id) {
+    await this._checkAccess();
     RequestCache.invalidate(this.entityName);
     if (this.entityName === 'Case') {
       if (!this.useSupabase) {
@@ -1578,31 +1585,6 @@ const initializeSystem = () => {
   if (!stored) {
     localStorage.setItem('system_users', JSON.stringify(DEFAULT_USERS));
     console.log('✅ System initialized with default users');
-  }
-
-  // Auto-upgrade existing basic sessions to pro
-  if (localStorage.getItem('clinic_plan') === 'basic') {
-    localStorage.setItem('clinic_plan', 'pro');
-    console.log('✅ Auto-upgraded local session from basic to pro');
-  }
-
-  // Auto-upgrade existing mock clinics in local storage to pro
-  const clinicsStored = localStorage.getItem('system_clinics');
-  if (clinicsStored) {
-    try {
-      const clinics = JSON.parse(clinicsStored);
-      let updated = false;
-      clinics.forEach(c => {
-        if (!c.plan || c.plan === 'basic') {
-          c.plan = 'pro';
-          updated = true;
-        }
-      });
-      if (updated) {
-        localStorage.setItem('system_clinics', JSON.stringify(clinics));
-        console.log('✅ Auto-upgraded local clinics to pro');
-      }
-    } catch (e) {}
   }
 
   // Spelling Correction & Data Integrity Migration (UZ/RU/EN typos cleanup in local databases)
@@ -2095,7 +2077,7 @@ export const base44 = {
         ...clinicData,
         status: clinicData.status || 'Active',
         created_at: new Date().toISOString(),
-        plan: clinicData.plan || 'pro'
+        plan: clinicData.plan || 'basic'
       };
 
       // 2. ALWAYS save clinic to localStorage FIRST (instant availability)
@@ -2167,6 +2149,77 @@ export const base44 = {
       return newClinic;
     },
 
+
+    getById: async (id) => {
+      if (!id) return null;
+      try {
+        const row = await db.clinics.getById(id);
+        return base44.clinic._decodeClinicNotes(row);
+      } catch (error) {
+        console.warn('Clinic getById failed:', error?.message || error);
+        return null;
+      }
+    },
+
+    deleteClinic: async (id) => {
+      const clinicId = String(id || '').trim();
+      const key = clinicId.toLowerCase();
+      if (!clinicId || key === 'default_clinic' || key === 'ava-dent') {
+        throw new Error('Bu klinikani o\'chirib bo\'lmaydi');
+      }
+
+      const tables = [
+        'payments', 'appointments', 'leads', 'treatment_plans', 'recalls',
+        'expenses', 'implants', 'implant_brands', 'xrays', 'cases',
+        'services', 'inventory', 'technicians', 'technician_jobs', 'notes',
+        'tooth_records', 'service_categories', 'case_categories', 'patients',
+      ];
+
+      for (const table of tables) {
+        let query = supabase.from(table).delete().eq('clinic_id', clinicId);
+        if (table === 'patients') query = query.neq('id', 'patient-y2ii8ynf2');
+        const { error } = await query;
+        if (error && error.code !== '42P01' && error.code !== 'PGRST205') {
+          console.warn(`Clinic data delete ${table}:`, error.message);
+        }
+      }
+
+      const { data: staff, error: staffError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('clinic_id', clinicId);
+      if (staffError) throw new Error(staffError.message);
+
+      for (const user of staff || []) {
+        if (!user?.id) continue;
+        const removed = await supabase.from('users').delete().eq('id', user.id).select('id');
+        if (removed.error || !removed.data?.length) {
+          const blocked = await supabase.from('users').update({
+            role: 'disabled',
+            password: `disabled-${Date.now()}`,
+          }).eq('id', user.id).select('id');
+          if (blocked.error || !blocked.data?.length) {
+            throw new Error(blocked.error?.message || 'Xodim yozuvini o\'chirib bo\'lmadi');
+          }
+        }
+      }
+
+      const removedClinic = await supabase.from('clinics').delete().eq('id', clinicId).select('id');
+      if (removedClinic.error || !removedClinic.data?.length) {
+        throw new Error(removedClinic.error?.message || 'Klinika bazadan o\'chirilmadi');
+      }
+
+      try {
+        const clinics = JSON.parse(localStorage.getItem('system_clinics') || '[]')
+          .filter((clinic) => String(clinic?.id || '').toLowerCase() !== key);
+        localStorage.setItem('system_clinics', JSON.stringify(clinics));
+        const users = JSON.parse(localStorage.getItem('system_users') || '[]')
+          .filter((user) => String(user?.clinic_id || '').toLowerCase() !== key);
+        localStorage.setItem('system_users', JSON.stringify(users));
+      } catch { /* ignore */ }
+
+      return { id: clinicId };
+    },
 
     getCurrentClinic: async () => {
       const id = localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id') || 'default_clinic';
@@ -2626,7 +2679,8 @@ export const base44 = {
         exp: Date.now() + 86400000 
       }));
 
-      const clinicPlan = (clinic.plan || 'pro').toLowerCase();
+      localStorage.removeItem('clinic_settings');
+      const clinicPlan = applyClinicSession(clinic);
       console.log('📋 Clinic plan:', clinicPlan, '| Clinic:', clinic.id);
 
       const safeUser = sanitizeUser(user);

@@ -13,6 +13,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { supabase } from '@/api/supabaseClient';
+import { assertServerFeature } from '@/lib/clinicPlan';
 import { formatClinicDate } from '@/lib/clinicTime';
 
 export default function MobileMarketing() {
@@ -60,6 +61,7 @@ export default function MobileMarketing() {
   const loadLeads = async () => {
     setLoading(true);
     try {
+      await assertServerFeature('marketing');
       const { data, error } = await supabase
         .from('leads')
         .select('*')

@@ -19,6 +19,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 import { applyPhoneMask, formatPhone } from '@/lib/utils';
+import TariffCard from '@/components/settings/TariffCard';
 
 const defaultSchedule = {
   1: { active: true, start: '09:00', end: '18:00' }, // Dushanba
@@ -366,6 +367,8 @@ export default function Settings() {
           {t('settings.logout') || "Chiqish"}
         </Button>
       </div>
+
+      <TariffCard />
 
       <Tabs defaultValue="profile" className="space-y-5">
         

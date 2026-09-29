@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { supabase, db } from '@/api/supabaseClient';
+import { assertServerFeature } from '@/lib/clinicPlan';
 import LeadQuickView from '@/components/marketing/LeadQuickView';
 import LeadSourceIcon from '@/components/ui/LeadSourceIcon';
 import { cn, formatPhone } from '@/lib/utils';
@@ -70,6 +71,7 @@ export default function Marketing() {
   const loadRealLeads = useCallback(async () => {
     setLoading(true);
     try {
+      await assertServerFeature('marketing');
       let query = supabase
         .from('leads')
         .select('*')
@@ -426,6 +428,7 @@ export default function Marketing() {
 
   const createTestLead = async () => {
     try {
+      await assertServerFeature('marketing');
       setSyncing(true);
       const testLead = {
         name: "Gulzoda Salimova (Instagram Demo)",
@@ -456,6 +459,7 @@ export default function Marketing() {
   };
 
   const updateLeadStatus = async (leadId, newStatus) => {
+    await assertServerFeature('marketing');
     const oldLeads = [...leads];
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStatus } : l));
     try {
@@ -472,6 +476,7 @@ export default function Marketing() {
   const handleDeleteLead = async (leadId) => {
     if (!window.confirm("Ushbu lidni o'chirishni tasdiqlaysizmi?")) return;
     try {
+      await assertServerFeature('marketing');
       const { error } = await supabase.from('leads').delete().eq('id', leadId);
       if (error) throw error;
       toast.success("Lid o'chirildi!");

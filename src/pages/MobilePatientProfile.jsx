@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
 import { useClinic } from '@/lib/ClinicContext';
+import { useFeature } from '@/hooks/useFeature';
 import {
   ArrowLeft, Phone, Calendar, CreditCard, ClipboardList, Plus,
   Copy, AlertTriangle, FileText,
@@ -165,6 +166,7 @@ export default function MobilePatientProfile() {
   const { user, isDoctor } = useAuth();
   const { t, language } = useTranslation();
   const { clinicName } = useClinic();
+  const canImplants = useFeature('implants');
 
   const [patient, setPatient]                   = useState(null);
   const [plans, setPlans]                       = useState([]);
@@ -216,7 +218,10 @@ export default function MobilePatientProfile() {
         base44.entities.Appointment.filter({ patient_id: id }, '-date', 30),
         base44.entities.User.list('name', 100).catch(() => []),
         base44.entities.ToothRecord.filter({ patient_id: id }, '-created_date', 100).catch(() => []),
-        base44.entities.Implant.filter({ patient_id: id }, '-placement_date', 50).catch(() => []),
+        (canImplants
+          ? base44.entities.Implant.filter({ patient_id: id }, '-placement_date', 50)
+          : Promise.resolve([])
+        ).catch(() => []),
         base44.entities.Service.list('name', 200).catch(() => []),
         base44.entities.Patient.list('full_name', 200).catch(() => []),
       ]);
@@ -245,7 +250,7 @@ export default function MobilePatientProfile() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, canImplants]);
 
   useEffect(() => { load(); }, [load, refreshTick]);
 
@@ -438,8 +443,8 @@ export default function MobilePatientProfile() {
     { id: 'tarix',    label: t('patientProfile.tabs.historyShort', 'Tarix') },
     { id: 'plan',     label: t('patientProfile.tabs.planShort', 'Reja') },
     { id: 'payments', label: t('patientProfile.tabs.payShort', "To'lov") },
-    { id: 'implant',  label: t('patientProfile.tabs.implantShort', 'Implant') },
-  ]), [t]);
+    ...(canImplants ? [{ id: 'implant', label: t('patientProfile.tabs.implantShort', 'Implant') }] : []),
+  ]), [t, canImplants]);
 
   /* ── avatar ── */
   const handleAvatarUpload = async (e) => {

@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
+import { applyClinicSession, resolveClinicPlan } from '@/lib/clinicPlan';
 import { useAuth } from '@/lib/AuthContext';
 
 /**
@@ -88,9 +89,14 @@ export default function Login() {
         localStorage.setItem('user_id', user.id);
         localStorage.setItem('user_name', user.name || '');
         localStorage.setItem('user_role', user.role || 'admin');
+        localStorage.removeItem('clinic_settings');
         localStorage.setItem('clinic_id', user.clinic_id);
         localStorage.setItem('current_clinic_id', user.clinic_id);
-        localStorage.setItem('clinic_plan', String(user.plan || 'basic').toLowerCase());
+        const clinic = await base44.clinic.getById(user.clinic_id);
+        const clinicPlan = clinic
+          ? applyClinicSession(clinic)
+          : resolveClinicPlan({ id: user.clinic_id, plan: user.plan });
+        localStorage.setItem('clinic_plan', clinicPlan);
         localStorage.setItem('user_data', JSON.stringify({
           id: user.id,
           username: user.username,

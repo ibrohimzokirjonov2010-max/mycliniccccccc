@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useCallback, use
 import { base44 } from '@/api/base44Client';
 import { safeLocalStorage as localStorage } from '@/utils/safeStorage';
 import { sanitizeUser } from '@/utils/password';
+import { applyClinicSession, clearClinicSessionCache } from '@/lib/clinicPlan';
 
 const AuthContext = createContext(null);
 
@@ -41,9 +42,11 @@ export const AuthProvider = ({ children }) => {
       'clinic_id',
       'current_clinic_id',
       'clinic_plan',
+      'clinic_settings',
       'is_super_admin',
       'user_data'
     ].forEach((key) => localStorage.removeItem(key));
+    clearClinicSessionCache();
 
     window.location.href = '/login';
   }, []);
@@ -54,8 +57,6 @@ export const AuthProvider = ({ children }) => {
       const userId    = localStorage.getItem('user_id');
       const cachedUser = localStorage.getItem('user_data');
 
-      // Optimistic mount: if cached user data exists, mount immediately to bypass the white loading screen!
-      let isInitSync = false;
       if (authToken && userId && cachedUser) {
         try {
           const parsed = JSON.parse(cachedUser);
@@ -65,8 +66,6 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(true);
             setIsAdmin(safeParsed.role === 'admin');
             setIsDoctor(safeParsed.role === 'doctor');
-            setIsLoadingAuth(false);
-            isInitSync = true;
             if (parsed.password) {
               localStorage.setItem('user_data', JSON.stringify(safeParsed));
             }
@@ -87,18 +86,17 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(true);
             setIsAdmin(safeUser.role === 'admin');
             setIsDoctor(safeUser.role === 'doctor');
+            const clinic = await base44.clinic.getById(foundUser.clinic_id);
+            if (clinic) applyClinicSession(clinic);
           } else {
             logout();
           }
         } catch {
           logout();
+        } finally {
+          setIsLoadingAuth(false);
         }
       } else {
-        setIsLoadingAuth(false);
-      }
-
-
-      if (!isInitSync) {
         setIsLoadingAuth(false);
       }
     };

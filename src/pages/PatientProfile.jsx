@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
 import { useClinic } from '@/lib/ClinicContext';
+import { useFeature } from '@/hooks/useFeature';
 import {
   ArrowLeft, Phone, Calendar, DollarSign, ClipboardList,
   Plus, MessageSquare, FileDown, AlertTriangle, Clock, Activity,
@@ -141,6 +142,7 @@ export default function PatientProfile() {
   const { t, language } = useTranslation();
   const { user, isDoctor } = useAuth();
   const { clinicName } = useClinic();
+  const canImplants = useFeature('implants');
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -1222,7 +1224,9 @@ export default function PatientProfile() {
       // ── PHASE 2: Secondary data — load in background, no skeleton ──
       const [svcsRes, implantsRes, toothRes, doctorsRes, xraysRes] = await Promise.all([
         servicesCache ? Promise.resolve(servicesCache) : base44.entities.Service.filter({ is_active: true }, 'name', 500),
-        base44.entities.Implant.filter({ patient_id: id }),
+        canImplants
+          ? base44.entities.Implant.filter({ patient_id: id }).catch(() => [])
+          : Promise.resolve([]),
         base44.entities.ToothRecord.filter({ patient_id: id }, '-created_date', 100),
         doctorsCache ? Promise.resolve(doctorsCache) : base44.entities.User.filter({ role: 'doctor' }, 'name'),
         base44.entities.Xray.filter({ patient_id: id }, '-created_date', 200),
@@ -3185,7 +3189,7 @@ export default function PatientProfile() {
               { id: 'appointments', label: "Uchrashuvlar",       icon: Calendar,        iconColor: "text-blue-600", count: (appointments || []).length },
               { id: 'payments',     label: "To'lovlar",          icon: CreditCard,      iconColor: "text-emerald-600", count: (payments || []).filter(p => { const t = (p.type || 'Income').toLowerCase(); return t !== 'debt' && t !== 'discount' && !(p.notes || '').toLowerCase().includes('linked to plan'); }).length },
               { id: 'notes',        label: "Eslatmalar",         icon: FileText,        iconColor: "text-amber-600" },
-              { id: 'implants',     label: "Implantlar",         icon: ImplantIcon,     iconColor: "text-purple-600", count: countImplantTeeth(implants) },
+              ...(canImplants ? [{ id: 'implants', label: "Implantlar", icon: ImplantIcon, iconColor: "text-purple-600", count: countImplantTeeth(implants) }] : []),
               { id: 'photos',       label: "Rentgen & Rasmlar",  icon: XrayIcon,        iconColor: "text-cyan-600", count: (xrays || []).length },
             ].map(tabItem => {
               const IconComponent = tabItem.icon;

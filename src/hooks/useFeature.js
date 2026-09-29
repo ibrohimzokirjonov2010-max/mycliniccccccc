@@ -1,7 +1,13 @@
-import { PLAN_FEATURES } from '@/api/base44Client';
+import { useEffect, useState } from 'react';
+import { planAllows, readClinicPlan, subscribeClinicPlan } from '@/lib/clinicPlan';
+
+export function useClinicPlan() {
+  const [plan, setPlan] = useState(readClinicPlan);
+  useEffect(() => subscribeClinicPlan(setPlan), []);
+  return plan;
+}
 
 export const useFeature = (feature) => {
-  const clinicPlan = localStorage.getItem('clinic_plan') || 'pro';
-  const features = PLAN_FEATURES[clinicPlan] || [];
-  return features.includes(feature);
+  const plan = useClinicPlan();
+  return planAllows(plan, feature);
 };

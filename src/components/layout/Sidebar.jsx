@@ -110,27 +110,26 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
     }
 
     if (isDoctor) {
-      // Doktor uchun barcha 12 bo'lim ochiq — faqat o'z ma'lumotlari ko'rinadi (sahifalar ichida filtrlangan)
       const doctorAllowedPaths = [
-        '/chairside',           // 1. Bugungi navbat (chairside)
-        '/patients',            // 2. Bemorlar
-        '/appointments',        // 3. Uchrashuvlar
-        '/treatment-plans',     // 4. Davolash rejalari
-        '/implants',            // 5. Implantlar
-        '/payments',            // 6. To'lovlar
-        '/debts',               // 7. Qarzlar
-        '/',                    // 8. Boshqaruv paneli
-        '/leads',               // 9. Lidlar (secondary)
+        '/chairside',
+        '/patients',
+        '/appointments',
+        '/treatment-plans',
+        '/implants',
+        '/payments',
+        '/debts',
+        '/',
+        '/leads',
         '/recall',
         '/no-show',
         '/treatment-tracking',
         '/cases',
         '/settings',
       ];
-      return items.filter(item => doctorAllowedPaths.includes(item.path));
+      items = items.filter(item => doctorAllowedPaths.includes(item.path));
     }
-    
-    // Plan based feature restrictions
+
+    // Plan based feature restrictions (admin and doctor)
     const restrictions = [
       { allowed: hasImplantsAccess, path: '/implants' },
       { allowed: hasTechniciansAccess, path: '/technicians' },

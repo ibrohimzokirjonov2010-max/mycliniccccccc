@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { assertServerFeature } from '@/lib/clinicPlan';
 
 /** Rentgen rows use xray_type "xray". Clinic cases reuse that table because it already accepts server writes. */
 export const CLINIC_CASE_TYPE = 'clinic_case';
@@ -76,6 +77,7 @@ function caseFromCasesTable(row) {
 }
 
 export async function listServerCases(clinicId) {
+  await assertServerFeature('cases');
   const xrayQuery = supabase
     .from('xrays')
     .select('*')
@@ -108,6 +110,7 @@ export async function listServerCases(clinicId) {
 }
 
 export async function createCaseOnServer(payload, clinicId) {
+  await assertServerFeature('cases');
   const id = payload.id || `case-${Math.random().toString(36).substring(2, 11)}`;
   const images = asImagePair(payload.images);
   const tags = asTags(payload.tags);
@@ -173,6 +176,7 @@ export async function createCaseOnServer(payload, clinicId) {
 }
 
 export async function deleteCaseOnServer(id) {
+  await assertServerFeature('cases');
   if (!id) throw new Error("Keys serverdan o'chirilmadi.");
   const xrayDel = await supabase.from('xrays').delete().eq('id', id).select('id');
   const caseDel = await supabase.from('cases').delete().eq('id', id).select('id');

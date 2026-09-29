@@ -9,6 +9,7 @@
  */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { CLINIC_SESSION_EVENT } from '@/lib/clinicPlan';
 
 const ClinicContext = createContext({
   clinicName: 'ShifoCRM',
@@ -34,8 +35,22 @@ export function ClinicProvider({ children }) {
   });
 
   const fetchClinic = useCallback(async () => {
+    const id = localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id');
+    if (!id) {
+      setClinicData({
+        clinicName: 'ShifoCRM',
+        clinicPhone: '',
+        clinicAddress: '',
+        clinicLogo: null,
+        clinicSubtitle: '',
+        isLoading: false,
+      });
+      return;
+    }
     try {
-      const clinic = await base44.clinic.getCurrentClinic();
+      const clinic = await base44.clinic.getById(id);
+      const stillCurrent = localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id');
+      if (stillCurrent && stillCurrent !== id) return;
       if (clinic) {
         // localStorage'ga ham saqlaymiz — TreatmentPlanInvoice kabi
         // render-tashqari joylar uchun (PDF, print).
@@ -83,6 +98,23 @@ export function ClinicProvider({ children }) {
 
   useEffect(() => {
     fetchClinic();
+    const onSession = (event) => {
+      const clinic = event.detail?.clinic;
+      if (clinic?.id) {
+        setClinicData({
+          clinicName: clinic.name || 'ShifoCRM',
+          clinicPhone: clinic.phone || '',
+          clinicAddress: clinic.address || '',
+          clinicLogo: clinic.logo || null,
+          clinicSubtitle: clinic.subtitle || '',
+          isLoading: false,
+        });
+        return;
+      }
+      fetchClinic();
+    };
+    window.addEventListener(CLINIC_SESSION_EVENT, onSession);
+    return () => window.removeEventListener(CLINIC_SESSION_EVENT, onSession);
   }, [fetchClinic]);
 
   return (

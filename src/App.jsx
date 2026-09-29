@@ -237,13 +237,16 @@ const AuthenticatedApp = memo(() => {
                 element={<PlanRoute feature="implants">{M(<Implants />, <MobileImplants />)}</PlanRoute>} />
               <Route path="/implants/:id"
                 element={<PlanRoute feature="implants"><ImplantDetail /></PlanRoute>} />
-              <Route path="/implant-passport/:id" element={<ImplantPassportRedirect />} />
-              <Route path="/marketing"         element={M(<Marketing />, <MobileMarketing />)} />
+              <Route path="/implant-passport/:id"
+                element={<PlanRoute feature="implants"><ImplantPassportRedirect /></PlanRoute>} />
+              <Route path="/marketing"
+                element={<PlanRoute feature="marketing">{M(<Marketing />, <MobileMarketing />)}</PlanRoute>} />
               <Route path="/settings"          element={M(<Settings />, <MobileSettings />)} />
               <Route path="/public-page"       element={<MobilePublicPage />} />
               
               {/* YANGI QO'SHILDI: Klinik Keyslar (Portfolio) */}
-              <Route path="/cases"             element={M(<Cases />, <MobileCases />)} />
+              <Route path="/cases"
+                element={<PlanRoute feature="cases">{M(<Cases />, <MobileCases />)}</PlanRoute>} />
 
               {/* SMS va Xabarlar */}
               <Route path="/sms-settings"      element={<MobileSmsSettings />} />

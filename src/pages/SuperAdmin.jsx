@@ -9,6 +9,7 @@ import {
   AlertTriangle, KeyRound, DollarSign, CalendarCheck
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { applyClinicSession, resolveClinicPlan } from '@/lib/clinicPlan';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -287,7 +288,12 @@ export default function SuperAdmin() {
       let hasChanges = false;
       const fixedData = (data || []).map((c) => {
         const landingTariff = shifoTariffs.tariffs.find((plan) => plan.id === c.tariff);
-        if (landingTariff && c.plan !== landingTariff.crmPlan) {
+        if (
+          landingTariff
+          && c.plan !== landingTariff.crmPlan
+          && c.id !== 'default_clinic'
+          && c.id !== 'ava-dent'
+        ) {
           hasChanges = true;
           return { ...c, plan: landingTariff.crmPlan };
         }
@@ -323,9 +329,8 @@ export default function SuperAdmin() {
     const clinicUsers = users.filter(u => u.clinic_id?.toLowerCase() === clinic.id?.toLowerCase());
     const adminUser = clinicUsers.find(u => u.role === 'admin') || clinicUsers[0];
     
-    localStorage.setItem('current_clinic_id', clinic.id);
-    localStorage.setItem('clinic_id', clinic.id);
-    localStorage.setItem('clinic_plan', (clinic.plan || 'pro').toLowerCase());
+    localStorage.removeItem('clinic_settings');
+    applyClinicSession(clinic);
     
     if (adminUser) {
       localStorage.setItem('user_id', adminUser.id);
@@ -741,11 +746,16 @@ export default function SuperAdmin() {
 
   const confirmDeleteClinic = async () => {
     if (!deleteTarget) return;
-    const newClinics = clinics.filter(c => c.id !== deleteTarget.id);
-    await base44.clinic.saveAll(newClinics);
-    setClinics(newClinics);
-    setDeleteTarget(null);
-    toast.success('Klinika ro\'yxatdan olib tashlandi');
+    try {
+      await base44.clinic.deleteClinic(deleteTarget.id);
+      setClinics((prev) => prev.filter((clinic) => clinic.id !== deleteTarget.id));
+      setUsers((prev) => prev.filter((user) => String(user.clinic_id || '').toLowerCase() !== String(deleteTarget.id).toLowerCase()));
+      setDeleteTarget(null);
+      toast.success('Klinika, xodimlari va ma\'lumotlari o\'chirildi');
+      await loadClinics();
+    } catch (error) {
+      toast.error(error?.message || 'Klinikani o\'chirib bo\'lmadi');
+    }
   };
 
   const markAsPaid = (id) => {
@@ -760,7 +770,7 @@ export default function SuperAdmin() {
       setForm({
         ...clinic,
         password: '',
-        plan: clinic.plan || 'pro',
+        plan: resolveClinicPlan(clinic),
         owner_email: clinic.owner_email || clinic.email || '',
         owner_phone: clinic.owner_phone || clinic.phone || '',
         signup_source: clinic.signup_source || (clinic.tariff || clinic.email ? 'landing' : 'manual'),
@@ -2817,7 +2827,7 @@ export default function SuperAdmin() {
           <DialogHeader className="mb-2">
             <DialogTitle className="text-lg font-semibold">Klinikani olib tashlash</DialogTitle>
             <DialogDescription className="text-xs text-slate-400">
-              {deleteTarget?.name} ro'yxatdan o'chadi. Xodim yozuvlari alohida qoladi. Klinika logini shu ID bilan ishlamaydi.
+              {deleteTarget?.name} bazadan o'chadi. Shu klinikaning xodimlari va ma'lumotlari ham o'chiriladi. Qayta tiklab bo'lmaydi.
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 pt-2">
