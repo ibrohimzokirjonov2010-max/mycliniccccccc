@@ -1439,10 +1439,6 @@
     white-space: nowrap;
   }
 
-  .implant-wizard-patient-chip {
-    display: none;
-  }
-
   .implant-wizard-selected-live {
     grid-column: 1 / -1;
     grid-row: 2;

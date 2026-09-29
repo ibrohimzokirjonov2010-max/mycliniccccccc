@@ -1220,14 +1220,6 @@ export default function ImplantForm({
             inputClassName="bg-white border-[#e5e7eb] h-10 rounded-[10px] text-sm"
           />
         </div>
-        {form.patient_name && (
-          <div className="implant-wizard-patient-chip flex items-center justify-between gap-2 px-3 h-11 rounded-[10px] border border-[#0d9488] bg-white">
-            <span className="text-sm font-semibold text-[#111827] truncate">{form.patient_name}</span>
-            <span className="w-5 h-5 rounded-full bg-[#0d9488] text-white flex items-center justify-center shrink-0">
-              <Check className="w-3 h-3" strokeWidth={3} />
-            </span>
-          </div>
-        )}
         <button
           type="button"
           onClick={() => setNewPatientOpen(true)}
