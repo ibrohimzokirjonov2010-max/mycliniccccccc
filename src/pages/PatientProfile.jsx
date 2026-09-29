@@ -2726,7 +2726,7 @@ export default function PatientProfile() {
 
     doc.text(`Ism: ${patient.full_name}`, 20, 46);
     doc.text(`Telefon: ${patient.phone}`, 20, 54);
-    doc.text(`Tug'ilgan sana: ${patient.birth_date || '—'}`, 20, 62);
+    doc.text(`Tug'ilgan sana: ${formatBirthDate(patient.birth_date) || '—'}`, 20, 62);
     doc.text(`Jinsi: ${patientGenderLabel(patient.gender, language) || '—'}`, 20, 70);
     doc.text(`Manzil: ${patient.address || '—'}`, 20, 78);
     doc.text(`Status: ${patient.status || 'New'}`, 20, 86);
@@ -3066,7 +3066,7 @@ export default function PatientProfile() {
                 <div className="min-w-0 flex-1">
                   <p className="text-[9px] font-black uppercase text-slate-500 leading-none">TUG'ILGAN SANA</p>
                   <p className="text-xs font-black text-slate-900 leading-snug mt-0.5 truncate">
-                    {patient.birth_date || '—'} {age !== null ? `(${age} yosh)` : ''}
+                    {formatBirthDate(patient.birth_date) || '—'} {age !== null ? `(${age} yosh)` : ''}
                   </p>
                 </div>
               </div>

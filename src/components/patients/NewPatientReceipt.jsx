@@ -8,10 +8,10 @@ const FALLBACK_MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iy
 let receiptPrintTimer = 0;
 let receiptPrintCleanup = null;
 
-export function formatReceiptDate(date, t) {
-  const months = t?.('common.months');
-  const list = Array.isArray(months) && months.length >= 12 ? months : FALLBACK_MONTHS;
-  return `${date.getDate()}-${list[date.getMonth()]}, ${date.getFullYear()}`;
+export function formatReceiptDate(date) {
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  return `${dd}.${mm}.${date.getFullYear()}`;
 }
 
 export function monthName(date, t) {

@@ -1,4 +1,5 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, useEffect, useCallback, memo } from 'react';
+import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { 
   FileText, Plus, Search,
@@ -15,44 +16,85 @@ function ExcelNotesView({
   const [search, setSearch] = useState('');
   const [sortAsc, setSortAsc] = useState(false);
 
-  const [notesList, setNotesList] = useState(() => {
-    try {
-      const stored = localStorage.getItem(`shifo_patient_notes_${patientId}`);
-      if (stored) return JSON.parse(stored);
-    } catch {}
-    return [];
-  });
-
+  const [notesList, setNotesList] = useState([]);
   const [newNoteText, setNewNoteText] = useState('');
   const [newNoteCategory, setNewNoteCategory] = useState('clinical');
+  const [savingNote, setSavingNote] = useState(false);
 
-  const saveNotes = (updated) => {
-    setNotesList(updated);
+  const mapNote = useCallback((row) => {
+    const category = ['clinical', 'warning', 'general'].includes(row.type) ? row.type : (row.category || 'general');
+    return {
+      id: row.id,
+      category,
+      text: row.content || row.text || '',
+      author: row.author || (language === 'ru' ? 'Врач' : language === 'en' ? 'Doctor' : 'Shifokor'),
+      date: row.created_date || row.created_at || row.date || '',
+    };
+  }, [language]);
+
+  const loadNotes = useCallback(async () => {
+    if (!patientId) return;
     try {
-      localStorage.setItem(`shifo_patient_notes_${patientId}`, JSON.stringify(updated));
-    } catch {}
-  };
+      const rows = await base44.entities.Note.filter({ patient_id: patientId }, '-created_date', 50);
+      const mapped = (rows || []).map(mapNote).filter((note) => note.text);
+      setNotesList(mapped);
+      const key = `shifo_patient_notes_${patientId}`;
+      const stored = localStorage.getItem(key);
+      if (stored && mapped.length === 0) {
+        const local = JSON.parse(stored);
+        if (Array.isArray(local) && local.length) {
+          for (const note of local) {
+            if (!note?.text) continue;
+            await base44.entities.Note.create({
+              patient_id: patientId,
+              content: note.text,
+              type: note.category || 'general',
+            });
+          }
+          localStorage.removeItem(key);
+          const refreshed = await base44.entities.Note.filter({ patient_id: patientId }, '-created_date', 50);
+          setNotesList((refreshed || []).map(mapNote).filter((note) => note.text));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load notes:', error);
+    }
+  }, [patientId, mapNote]);
 
-  const handleAddNote = () => {
+  useEffect(() => { loadNotes(); }, [loadNotes]);
+
+  const handleAddNote = async () => {
     if (!newNoteText.trim()) {
       toast.error(language === 'ru' ? "Введите текст заметки" : "Iltimos, eslatma matnini kiriting");
       return;
     }
-    const newNote = {
-      id: `note-${Date.now()}`,
-      category: newNoteCategory,
-      text: newNoteText.trim(),
-      author: language === 'ru' ? "Врач" : language === 'en' ? "Doctor" : "Shifokor",
-      date: new Date().toISOString(),
-    };
-    saveNotes([newNote, ...notesList]);
-    setNewNoteText('');
-    toast.success(language === 'ru' ? "Заметка добавлена" : "Eslatma qo'shildi");
+    setSavingNote(true);
+    try {
+      await base44.entities.Note.create({
+        patient_id: patientId,
+        content: newNoteText.trim(),
+        type: newNoteCategory || 'general',
+      });
+      setNewNoteText('');
+      toast.success(language === 'ru' ? "Заметка добавлена" : "Eslatma qo'shildi");
+      await loadNotes();
+    } catch (error) {
+      console.error('Failed to add note:', error);
+      toast.error(language === 'ru' ? "Не удалось сохранить" : "Eslatma saqlanmadi");
+    } finally {
+      setSavingNote(false);
+    }
   };
 
-  const handleDeleteNote = (id) => {
-    saveNotes(notesList.filter(n => n.id !== id));
-    toast.success(language === 'ru' ? "Заметка удалена" : "Eslatma o'chirildi");
+  const handleDeleteNote = async (id) => {
+    try {
+      await base44.entities.Note.delete(id);
+      setNotesList((prev) => prev.filter((note) => note.id !== id));
+      toast.success(language === 'ru' ? "Заметка удалена" : "Eslatma o'chirildi");
+    } catch (error) {
+      console.error('Failed to delete note:', error);
+      toast.error(language === 'ru' ? "Не удалось удалить" : "Eslatma o'chmadi");
+    }
   };
 
   const filteredNotes = useMemo(() => {
@@ -133,8 +175,10 @@ function ExcelNotesView({
           className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium resize-none focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1499AD]/30 focus:border-[#1499AD] transition-all"
         />
         <button
+          type="button"
           onClick={handleAddNote}
-          className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-900 hover:bg-slate-700 text-white rounded-xl text-sm font-black transition-all active:scale-95"
+          disabled={savingNote}
+          className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-900 hover:bg-slate-700 text-white rounded-xl text-sm font-black transition-all active:scale-95 disabled:opacity-60"
         >
           <Plus className="w-4 h-4" />
           {language === 'ru' ? 'Добавить' : language === 'en' ? 'Add Note' : 'Kiritish'}

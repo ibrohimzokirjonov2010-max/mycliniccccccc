@@ -187,6 +187,7 @@ export default function MobilePatientProfile() {
   const [expandedPlan, setExpandedPlan]         = useState(null);
   const payingSavingRef                         = useRef(false);
   const payTxRef                                = useRef('');
+  const tabPanelRef                             = useRef(null);
   const [payForm, setPayForm]                   = useState({
     type: 'Income', amount: '', method: 'Cash',
     category: 'Treatment', date: getLocalDT(), notes: '', doctor_id: '',
@@ -765,7 +766,12 @@ export default function MobilePatientProfile() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  requestAnimationFrame(() => {
+                    tabPanelRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                  });
+                }}
                 className={cn(
                   'flex-1 min-w-0 px-1 py-2.5 text-[11px] leading-tight font-black rounded-full transition-colors truncate',
                   isActive ? 'bg-[#ccfbf1] text-[#0d9488]' : 'text-slate-400'
@@ -779,7 +785,7 @@ export default function MobilePatientProfile() {
       </div>
 
       {/* CONTENT */}
-      <div className="flex-1 px-3 pt-3 pb-24">
+      <div ref={tabPanelRef} id="mobile-profile-tabpanel" className="flex-1 px-3 pt-3 pb-24" style={{ scrollMarginTop: 96 }}>
         <AnimatePresence mode="wait">
           <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.16 }}>
 
