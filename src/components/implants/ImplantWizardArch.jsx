@@ -1,53 +1,63 @@
-import { Fragment } from 'react';
-import { Check } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import './implantWizard.css';
-import { fdiCrownDown, fdiLengthWeight, fdiWidthWeight } from '@/lib/fdiNotation';
+import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, fdiWidthWeight } from '@/lib/fdiNotation';
 import { getToothIllustrationSrc } from '@/utils/toothIllustration';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
-/** Dentist view, straight rows — not an arch. */
+/** Same adult FDI order as the profile Tish kartasi. */
 const UPPER_FDI = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
 const LOWER_FDI = [38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
 
+/** Profile implant status color — number badge only, no outline box. */
+const IMPLANT_BADGE = '#64748B';
+
 function WizardTooth({ fdi, selected, active, onClick }) {
   const crownDown = fdiCrownDown(fdi);
+  const picked = selected || active;
   return (
     <button
       type="button"
       onClick={() => onClick(String(fdi))}
-      className="odontogram-tooth compact-hit implant-wizard-tooth-btn flex w-full flex-col items-center gap-0 bg-transparent border-0 p-0 cursor-pointer group"
-      title={`#${fdi}`}
+      data-fdi={fdi}
       aria-pressed={selected}
       aria-current={active ? 'true' : undefined}
       aria-label={`#${fdi}`}
-      data-fdi={fdi}
+      title={`#${fdi}`}
+      className={cn(
+        'compact-hit flex w-full min-w-0 max-w-full flex-col border-0 bg-transparent p-0 cursor-pointer',
+        crownDown ? 'justify-end' : 'justify-start',
+      )}
+      style={{ '--fdi-len': fdiLengthWeight(fdi) }}
     >
       <span
-        className={cn(
-          'implant-wizard-tooth-face relative flex w-full justify-center rounded-[10px] border transition-all duration-150 overflow-hidden',
-          crownDown ? 'items-end' : 'items-start',
-          active && 'is-active',
-          selected
-            ? 'bg-[#0d9488] border-[#0f766e] shadow-sm text-white'
-            : 'bg-[#f4efe6] border-[#e4d9c8] text-[#c4b8a4] group-hover:border-[#0d9488]/50 group-hover:bg-[#f0fdfa]'
-        )}
-        style={{ height: `calc(48px * ${fdiLengthWeight(fdi)})` }}
+        className="tooth-face relative flex w-full max-w-full items-center justify-center overflow-hidden rounded-md"
+        style={{
+          boxSizing: 'border-box',
+          border: '2px solid transparent',
+          background: 'transparent',
+          boxShadow: picked ? 'inset 0 0 0 2px #0F172A' : 'none',
+          alignItems: crownDown ? 'flex-end' : 'flex-start',
+        }}
       >
-        {selected && (
-          <Check className="absolute top-0.5 right-0.5 z-10 w-2.5 h-2.5 text-white drop-shadow" strokeWidth={3} />
-        )}
         <img
-          src={getToothIllustrationSrc(fdi, selected ? 'implant' : 'healthy')}
+          src={getToothIllustrationSrc(fdi, 'healthy')}
           alt=""
           draggable={false}
-          className="tooth-illus implant-wizard-tooth-img w-full h-[94%] max-w-full max-h-full object-contain pointer-events-none"
+          className="h-[94%] w-full max-w-full min-w-0 object-contain pointer-events-none"
           style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
         />
-        <span className={cn(
-          'fdi-on-crown implant-wizard-tooth-fdi',
-          crownDown ? 'is-upper' : 'is-lower',
-          selected ? 'text-white' : 'text-[#111827]'
-        )} style={selected ? { color: '#fff', textShadow: '0 0 2px #0f766e' } : undefined}>
+        <span
+          className={cn('fdi-on-crown', crownDown ? 'is-upper' : 'is-lower')}
+          style={selected ? {
+            color: '#fff',
+            background: IMPLANT_BADGE,
+            textShadow: 'none',
+            borderRadius: 3,
+            padding: '1px 3px',
+            border: 'none',
+          } : undefined}
+        >
           {fdi}
         </span>
       </span>
@@ -55,67 +65,127 @@ function WizardTooth({ fdi, selected, active, onClick }) {
   );
 }
 
-function LinearRow({ teeth, selectedSet, activeFdi, onToggle, variant }) {
-  const isUpper = variant === 'upper';
+function Half({ fdis, phone, selectedSet, activeFdi, onToggle }) {
   return (
     <div
-      className={cn('implant-wizard-arch-row', isUpper ? 'is-upper' : 'is-lower')}
-      role="group"
-      aria-label={isUpper ? 'Upper teeth' : 'Lower teeth'}
-      style={{ display: 'flex', flexWrap: 'nowrap', transform: 'none' }}
+      className="odonto-quad"
+      style={{
+        gridTemplateColumns: phone
+          ? fdis.map((n) => `minmax(40px, ${fdiWidthWeight(n)}fr)`).join(' ')
+          : fdiGridTemplate(fdis),
+      }}
     >
-      {teeth.map((fdi, i) => (
-        <Fragment key={fdi}>
-          {i === 8 && <span className="implant-wizard-arch-midline" aria-hidden />}
-          <div
-            className="implant-wizard-tooth-slot"
-            style={{ '--fdi-w': fdiWidthWeight(fdi), transform: 'none' }}
-          >
-            <WizardTooth
-              fdi={fdi}
-              selected={selectedSet.has(String(fdi))}
-              active={String(activeFdi || '') === String(fdi)}
-              onClick={onToggle}
-            />
-          </div>
-        </Fragment>
+      {fdis.map((n) => (
+        <WizardTooth
+          key={n}
+          fdi={n}
+          selected={selectedSet.has(String(n))}
+          active={String(activeFdi || '') === String(n)}
+          onClick={onToggle}
+        />
       ))}
     </div>
   );
 }
 
+function splitAt(list) {
+  return Math.ceil(list.length / 2);
+}
+
 /**
- * Linear two-row FDI strip for the New Implant wizard.
- * Upper 18→28 and lower 38→48 sit on straight horizontal lines.
- * Dizyner PNGs are already oriented (upper roots up, lower roots down).
+ * Profile-sized realistic tooth chart for the New Implant wizard.
+ * Uses the same FDI order, width weights, illustrations, and tooth-face
+ * metrics as Tish kartasi. Selection is an inset ring plus a number badge.
  */
 export default function ImplantWizardArch({ selectedFdis = [], activeFdi = '', onToggle, scrollHint }) {
+  const phone = useIsMobile(768);
   const selectedSet = new Set((selectedFdis || []).map(String));
+  const scrollRef = useRef(null);
+  const [archHalf, setArchHalf] = useState('right');
 
   return (
     <div
-      className="implant-wizard-arch w-full select-none py-1"
+      className="implant-wizard-arch tooth-chart-root w-full select-none"
       data-testid="implant-wizard-arch"
-      data-layout="linear"
+      data-layout="profile-chart"
     >
-      <div className="implant-wizard-arch-scroll">
-        <div className="implant-wizard-arch-rows" style={{ display: 'flex', flexDirection: 'column', transform: 'none' }}>
-          <div className="odonto-jaw-band">
-            <span className="odonto-side odonto-side-r">O‘NG</span>
-            <span className="odonto-side odonto-side-l">CHAP</span>
-            <LinearRow teeth={UPPER_FDI} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} variant="upper" />
-          </div>
-          <div className="implant-wizard-bite" aria-hidden="true" />
-          <div className="odonto-jaw-band">
-            <span className="odonto-side odonto-side-r">CHAP</span>
-            <span className="odonto-side odonto-side-l">O‘NG</span>
-            <LinearRow teeth={LOWER_FDI} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} variant="lower" />
+      <div className="odonto-fit-frame" data-compact={phone ? 'true' : 'false'}>
+        <div className={cn('odonto-scroll-shell', phone && 'is-hint')}>
+          {phone && (
+            <>
+              <div className="mb-2 grid grid-cols-2 gap-1.5" data-testid="arch-half-tabs">
+                <button
+                  type="button"
+                  data-testid="arch-half-right"
+                  onClick={() => {
+                    setArchHalf('right');
+                    scrollRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                  }}
+                  className={cn(
+                    'h-9 rounded-xl text-[12px] font-extrabold',
+                    archHalf === 'right' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700',
+                  )}
+                >
+                  O‘ng · 18–11
+                </button>
+                <button
+                  type="button"
+                  data-testid="arch-half-left"
+                  onClick={() => {
+                    setArchHalf('left');
+                    const node = scrollRef.current;
+                    if (!node) return;
+                    node.scrollTo({ left: Math.max(0, node.scrollWidth - node.clientWidth), behavior: 'smooth' });
+                  }}
+                  className={cn(
+                    'h-9 rounded-xl text-[12px] font-extrabold',
+                    archHalf === 'left' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700',
+                  )}
+                >
+                  Chap · 21–28
+                </button>
+              </div>
+              <p className="odonto-scroll-hint">
+                {scrollHint || 'Chap yarmi yashirin. «Chap · 21–28» ni bosing yoki suring →'}
+              </p>
+            </>
+          )}
+          <div
+            ref={scrollRef}
+            className="odonto-scroll"
+            data-arch="scroll"
+            onScroll={(event) => {
+              if (!phone) return;
+              const node = event.currentTarget;
+              const max = node.scrollWidth - node.clientWidth;
+              if (max <= 8) return;
+              setArchHalf(node.scrollLeft > max / 2 ? 'left' : 'right');
+            }}
+          >
+            <div className="odonto-cross">
+              <div className="odonto-jaw-band">
+                <span className="odonto-side odonto-side-r">O‘NG</span>
+                <span className="odonto-side odonto-side-l">CHAP</span>
+                <div className="odonto-jaw odonto-jaw-upper">
+                  <Half fdis={UPPER_FDI.slice(0, splitAt(UPPER_FDI))} phone={phone} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} />
+                  <div className="odonto-midline" aria-hidden="true" />
+                  <Half fdis={UPPER_FDI.slice(splitAt(UPPER_FDI))} phone={phone} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} />
+                </div>
+              </div>
+              <div className="odonto-bite-line" aria-hidden="true" />
+              <div className="odonto-jaw-band">
+                <span className="odonto-side odonto-side-r">CHAP</span>
+                <span className="odonto-side odonto-side-l">O‘NG</span>
+                <div className="odonto-jaw odonto-jaw-lower">
+                  <Half fdis={LOWER_FDI.slice(0, splitAt(LOWER_FDI))} phone={phone} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} />
+                  <div className="odonto-midline" aria-hidden="true" />
+                  <Half fdis={LOWER_FDI.slice(splitAt(LOWER_FDI))} phone={phone} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      {scrollHint ? (
-        <p className="implant-wizard-scroll-hint">{scrollHint}</p>
-      ) : null}
     </div>
   );
 }

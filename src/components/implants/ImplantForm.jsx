@@ -198,9 +198,9 @@ const fieldInput =
   'h-10 rounded-[10px] border border-[#e5e7eb] bg-white text-sm text-[#111827] font-medium shadow-none focus-visible:ring-[#0d9488]/20 focus-visible:border-[#0d9488]';
 const cardClass = 'implant-wizard-card bg-white rounded-xl border border-[#e5e7eb] p-4';
 const wizardDialogStyle = {
-  maxWidth: 960,
-  width: 'min(960px, 95vw)',
-  maxHeight: 'min(94dvh, 900px)',
+  maxWidth: 'min(1280px, calc(100vw - 16px))',
+  width: 'min(1280px, calc(100vw - 16px))',
+  maxHeight: 'calc(100dvh - 16px)',
   padding: 0,
   gap: 0,
   borderRadius: 16,
@@ -1522,7 +1522,7 @@ export default function ImplantForm({
     <>
       <Dialog open={open && !newPatientOpen} onOpenChange={onClose}>
         <DialogContent
-          className="implant-wizard-dialog dialog-shell-fluid !flex !flex-col !p-0 !gap-0 w-[95vw] !max-w-[960px] max-h-[min(94dvh,900px)] overflow-hidden !rounded-2xl sm:!rounded-2xl border border-[#e5e7eb] bg-[#f3f4f6] shadow-2xl"
+          className="implant-wizard-dialog dialog-shell-fluid !flex !flex-col !p-0 !gap-0 overflow-hidden !rounded-2xl sm:!rounded-2xl border border-[#e5e7eb] bg-[#f3f4f6] shadow-2xl"
           style={wizardDialogStyle}
           data-implant-wizard={IMPLANT_WIZARD_STEP2_MARKER}
           data-implant-factura={IMPLANT_WIZARD_FACTURA_MARKER}

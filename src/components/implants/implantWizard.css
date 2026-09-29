@@ -5,11 +5,11 @@
 .implant-wizard-dialog {
   display: flex !important;
   flex-direction: column !important;
-  max-width: 960px !important;
-  width: min(960px, 95vw) !important;
+  /* Wide enough for the profile-sized 16-tooth chart at 1280 and 1366. */
+  max-width: min(1280px, calc(100vw - 16px)) !important;
+  width: min(1280px, calc(100vw - 16px)) !important;
   height: auto !important;
-  /* Notebooks (~768h): prefer dvh over a hard 820px ceiling that starves the body. */
-  max-height: min(94dvh, 900px) !important;
+  max-height: calc(100dvh - 16px) !important;
   padding: 0 !important;
   gap: 0 !important;
   border-radius: 16px !important;
@@ -207,6 +207,64 @@
   min-height: 40px;
   padding: 0 12px;
   overflow: hidden;
+}
+
+/* Profile Tish kartasi metrics inside the wizard. No beige boxes, no dashed outlines. */
+.implant-wizard-arch.tooth-chart-root {
+  padding: 0 !important;
+  overflow: visible;
+  background: transparent;
+  max-width: 100%;
+}
+
+.implant-wizard-arch .tooth-face {
+  background: transparent;
+  border-style: solid;
+  border-color: transparent;
+}
+
+@media (min-width: 768px) {
+  .implant-wizard-arch .odonto-scroll {
+    overflow-x: hidden !important;
+  }
+
+  .implant-wizard-arch .odonto-cross {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .implant-wizard-arch.tooth-chart-root {
+    padding-bottom: 0 !important;
+  }
+
+  .implant-wizard-arch .odonto-scroll {
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 8px;
+  }
+
+  .implant-wizard-arch .odonto-cross {
+    width: 720px !important;
+    min-width: 720px !important;
+    max-width: none !important;
+    scroll-snap-align: start;
+  }
+
+  .implant-wizard-arch .tooth-face {
+    height: calc(72px * var(--fdi-len, 1)) !important;
+  }
+
+  .implant-wizard-arch .compact-hit {
+    min-width: 40px !important;
+    min-height: 44px !important;
+  }
+
+  .implant-wizard-arch .fdi-on-crown {
+    font-size: 12px;
+  }
 }
 
 /* Linear two-row strip — no arch curve, lift, or rotation. */
