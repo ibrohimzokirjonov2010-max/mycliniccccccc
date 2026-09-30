@@ -450,6 +450,18 @@ export async function readCrmClinic(id: string, fetchImpl: FetchLike = fetch): P
   };
 }
 
+async function clinicPassword(id: string, fetchImpl: FetchLike) {
+  const config = crmConfig();
+  if (!config) return "";
+  const response = await fetchImpl(
+    `${config.url}/rest/v1/clinics?id=eq.${encodeURIComponent(id)}&select=password`,
+    { headers: { apikey: config.key, Authorization: `Bearer ${config.key}` } },
+  );
+  if (!response.ok) return "";
+  const rows = (await response.json()) as Array<{ password?: string | null }>;
+  return String(rows[0]?.password || "");
+}
+
 export async function writeClinicAccess(
   id: string,
   patch: {
@@ -465,9 +477,14 @@ export async function writeClinicAccess(
   if (!crmConfig()) return { skipped: true as const, missing: false };
   const current = await readCrmClinic(id, fetchImpl);
   if (!current) return { skipped: false as const, missing: true };
+  // Postgres checks NOT NULL on the inserted row before ON CONFLICT, so a
+  // password-less upsert fails even when the clinic already exists.
+  const password = await clinicPassword(id, fetchImpl);
+  if (!password) throw new Error("CRM clinic password missing.");
   await upsertRow("clinics", {
     id,
     name: current.name,
+    password,
     status: patch.status,
     expires_at: patch.expiresAt.slice(0, 10),
     plan: crmPlanColumn(patch.plan),

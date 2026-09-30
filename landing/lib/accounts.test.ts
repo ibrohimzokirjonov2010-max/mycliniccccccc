@@ -6,7 +6,7 @@ import { beforeEach, describe, test } from "node:test";
 import { loginAccount, parseRegistration, redeemHandoff, registerAccount, sessionStatus, startPayment, startTrial } from "./accounts";
 import { isPasswordHash, verifyPassword } from "./password";
 import { resetStoreForTests } from "./store";
-import { buildCrmRows } from "./tenants";
+import { buildCrmRows, writeClinicAccess } from "./tenants";
 
 process.env.LANDING_DATA_DIR = mkdtempSync(path.join(tmpdir(), "shifo-accounts-"));
 process.env.CRM_SUPABASE_DISABLED = "1";
@@ -114,5 +114,41 @@ describe("trial registration", { concurrency: 1 }, () => {
     const started = await startTrial(created.resumeToken || "", request());
     const logged = await loginAccount("dr998877", "sinovparol", request());
     assert.equal(logged.clinicId, started.clinicId);
+  });
+
+  test("clinic access update keeps the existing password", async () => {
+    const previous = process.env.CRM_SUPABASE_DISABLED;
+    delete process.env.CRM_SUPABASE_DISABLED;
+    const bodies: string[] = [];
+    const fetchImpl = async (url: string, init?: RequestInit) => {
+      if (typeof init?.body === "string") bodies.push(init.body);
+      if (url.includes("select=password")) return new Response(JSON.stringify([{ password: "hash-keep" }]));
+      if (url.includes("select=id,name")) {
+        return new Response(JSON.stringify([{
+          id: "t1",
+          name: "QA",
+          status: "Inactive",
+          expires_at: "2026-09-30",
+          plan: "pro",
+          logo: "",
+          monthly_fee: 189000,
+        }]));
+      }
+      return new Response("", { status: 201 });
+    };
+    try {
+      await writeClinicAccess("t1", {
+        status: "Inactive",
+        expiresAt: new Date().toISOString(),
+        plan: "pro",
+        monthlyFee: 189000,
+        logoExtra: { pending_order: { id: "ord", amountUzs: 189000, cycle: "month", planId: "pro", createdAt: "2026-09-30", status: "pending" } },
+      }, fetchImpl as typeof fetch);
+      const saved = JSON.parse(bodies[0] || "{}") as { password?: string; pending_order?: unknown };
+      assert.equal(saved.password, "hash-keep");
+      assert.equal(bodies.some((body) => body.includes("pending_order")), true);
+    } finally {
+      process.env.CRM_SUPABASE_DISABLED = previous;
+    }
   });
 });

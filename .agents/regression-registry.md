@@ -13,6 +13,15 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🔐 Tarif sotib olish — klinika paroli yo'qolmasin
+- **Sana:** 2026-09-30
+- **Tuzatilgan Fayllar:**
+  - [`landing/lib/tenants.ts`](landing/lib/tenants.ts)
+- **Muammo Tavsifi:** «Tarif sotib olish» 500 qaytarardi. Kutilayotgan buyurtma CRM ga yozilmasdi.
+- **Sababi:** `writeClinicAccess` parolsiz upsert qilardi. `clinics.password` NOT NULL, Postgres esa ON CONFLICT dan oldin yangi qatorni tekshiradi.
+- **Qanday tuzatildi:** Yangilash mavjud parolni o'qib, shu qiymat bilan yozadi. Parol o'zgarmaydi.
+- **Qaytalamaslik choralari:** Klinika qatorini parolsiz upsert qilmang. Parolni logga yozmang. `pending_order` ni tashlab yubormang.
+
 ### 🔐 Landing kirish va ro'yxat — CRM ga bog'lanish
 - **Sana:** 2026-09-30
 - **Tuzatilgan Fayllar:**
