@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Check, Layers, Plus, Printer, X,
 } from 'lucide-react';
@@ -348,6 +349,7 @@ export default function ToothChartCard({
   onOpenPlan,
   sheetOffset = 0,
   search = '',
+  sideRailId = '',
 }) {
   const { user } = useAuth();
   const [phone, setPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
@@ -384,6 +386,16 @@ export default function ToothChartCard({
       wide.removeEventListener('change', onChange);
     };
   }, []);
+
+  const useExternalRail = Boolean(sideRailId) && wideDesktop && !phone;
+  const [railNode, setRailNode] = useState(null);
+  useLayoutEffect(() => {
+    if (!useExternalRail) {
+      setRailNode(null);
+      return;
+    }
+    setRailNode(document.getElementById(sideRailId));
+  }, [useExternalRail, sideRailId]);
 
   useEffect(() => {
     if (!active || phone || wideDesktop) return;
@@ -935,8 +947,9 @@ export default function ToothChartCard({
 
   return (
     <div id="tooth-chart-print" className="tooth-chart-root min-w-0 max-w-full overflow-x-hidden">
-      <div className={cn('tooth-chart-grid min-w-0', phone && 'grid gap-3')}>
+      <div className={cn('tooth-chart-grid min-w-0', phone && 'grid gap-3', railNode && 'tooth-chart-grid--solo')}>
         <div className="tooth-chart-main min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:p-3">
+          <div className="tooth-chart-toolbar">
           <div className="flex flex-wrap items-center gap-2">
             {!phone && <h3 className="mr-1 text-sm font-extrabold text-slate-900">Tish kartasi</h3>}
             <Seg
@@ -1013,6 +1026,7 @@ export default function ToothChartCard({
                 </span>
               ))}
             </div>
+          </div>
           </div>
 
           <div className="odonto-fit-frame mt-2" data-compact={phone ? 'true' : 'false'}>
@@ -1146,7 +1160,7 @@ export default function ToothChartCard({
           )}
         </div>
 
-        {showPanel && !phone && (
+        {showPanel && !phone && !railNode && (
           <SidePanel
             active={active}
             activeEntry={activeEntry}
@@ -1193,6 +1207,54 @@ export default function ToothChartCard({
           />
         )}
       </div>
+      {showPanel && !phone && railNode && createPortal(
+        <SidePanel
+          embedded
+          active={active}
+          activeEntry={activeEntry}
+          multi={multi}
+          selected={selected}
+          groupAction={groupAction}
+          setGroupAction={setGroupAction}
+          surfaces={surfaces}
+          toggleSurface={toggleSurface}
+          history={history}
+          toothXrays={toothXrays}
+          busy={busy}
+          noteOpen={noteOpen}
+          noteText={noteText}
+          setNoteText={setNoteText}
+          setNoteOpen={setNoteOpen}
+          onClose={() => { setActive(null); setSelected([]); }}
+          onQuick={(item) => (item.jaw ? openJawPrompt(item.jaw, active, 'finding') : markFindings([active], item.service, item.id))}
+          onNote={() => markFindings([active], noteText.trim() || 'Izoh', 'note')}
+          onGroup={() => {
+            if (groupAction === 'breket') {
+              openJawPrompt('breket', selected[0], 'plan');
+              return;
+            }
+            const map = {
+              bridge: ["Ko‘prik (protez)", 'sirkon', 'once'],
+              same: ['Bir xil davolash', 'plomba', 'each'],
+              implant: ['Implant', 'implant', 'each'],
+            };
+            const [name, kind, billing] = map[groupAction];
+            addToActivePlan(selected, name, kind, billing);
+          }}
+          doctorName={doctorLabel}
+          unitPrice={groupAction === 'breket'
+            ? priceForJawService(services, 'breket', 'upper')
+            : catalogPrice(({ bridge: "Ko‘prik (protez)", same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
+          jawPrompt={jawPrompt}
+          onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
+          onJawClose={() => setJawPrompt(null)}
+          onUpload={uploadXray}
+          onView={setViewer}
+          onAddToPlan={() => addToActivePlan([active], activeEntry?.name || 'Davolash', activeEntry?.kind || '')}
+          onNewRecord={createRecord}
+        />,
+        railNode,
+      )}
 
       {showSheet && (
         <div className="fixed inset-x-0 z-[60] mx-auto flex max-h-[70vh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_-12px_40px_rgba(15,23,42,0.25)]" style={{ bottom: sheetOffset }}>
@@ -1334,7 +1396,7 @@ function ToothCell({ fdi, isUpper, entry, active, picked, dim, onClick }) {
 
 function SidePanel(props) {
   const {
-    sheet, active, activeEntry, multi, selected, groupAction, setGroupAction,
+    sheet, embedded, active, activeEntry, multi, selected, groupAction, setGroupAction,
     surfaces, toggleSurface, history, toothXrays, busy, noteOpen, noteText,
     setNoteText, setNoteOpen, onClose, onQuick, onNote, onGroup, onUpload, onView,
     doctorName, unitPrice, onAddToPlan, onNewRecord,
@@ -1349,7 +1411,7 @@ function SidePanel(props) {
     ? (LEGEND.find((k) => k.id === activeEntry.kind)?.label || activeEntry.name)
     : '';
   return (
-    <aside data-tooth-panel={sheet ? 'sheet' : 'side'} className={cn('flex min-w-0 flex-col self-start bg-white', sheet ? 'max-h-[72vh] overflow-hidden rounded-none border-0' : 'max-h-[min(760px,calc(100dvh-8rem))] overflow-hidden rounded-2xl border border-slate-200')}>
+    <aside data-tooth-panel={sheet ? 'sheet' : 'side'} className={cn('flex min-w-0 flex-col self-start bg-white', sheet ? 'max-h-[72vh] overflow-hidden rounded-none border-0' : embedded ? 'h-full min-h-0 max-h-full overflow-hidden rounded-2xl border border-slate-200' : 'max-h-[min(760px,calc(100dvh-8rem))] overflow-hidden rounded-2xl border border-slate-200')}>
       <div className="flex items-start gap-2 border-b border-slate-100 p-3">
         {active && !group && (
           <img

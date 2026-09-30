@@ -74,6 +74,7 @@ export default function TodayPlanBar({
   onPay,
   onNextClinical,
   onOpenPlan,
+  part = 'all',
 }) {
   const planGroups = useMemo(() => {
     if (Array.isArray(groups) && groups.length) return groups;
@@ -111,9 +112,8 @@ export default function TodayPlanBar({
       : "Qarz yo'q";
   const badge = progress.total > 0 ? `${progress.done}/${progress.total}` : "Reja yo'q";
 
-  return (
-    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-3">
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] px-4 sm:px-5 py-3.5 min-w-0">
+  const stepperCard = (
+      <div data-plan-stepper="true" className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] px-4 sm:px-5 py-3.5 min-w-0">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-2 min-w-0">
             <CalendarDays className="w-4 h-4 shrink-0" style={{ color: TEAL }} />
@@ -251,8 +251,10 @@ export default function TodayPlanBar({
           </>
         )}
       </div>
+  );
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] px-4 py-3.5 flex flex-col justify-between gap-3">
+  const payCard = (
+      <div data-tez-tolov="true" className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] px-4 py-3.5 flex flex-col justify-between gap-3">
         <div>
           <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Tez to&apos;lov</p>
           <p className={cn(
@@ -279,6 +281,14 @@ export default function TodayPlanBar({
           To&apos;lovga o&apos;tish →
         </button>
       </div>
+  );
+
+  if (part === 'stepper') return stepperCard;
+  if (part === 'pay') return payCard;
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_280px] gap-3">
+      {stepperCard}
+      {payCard}
     </div>
   );
 }

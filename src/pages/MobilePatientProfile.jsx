@@ -614,7 +614,7 @@ export default function MobilePatientProfile() {
       {/* TEAL GRADIENT HEADER */}
       <div
         data-patient-header="true"
-        className="sticky top-0 z-30 relative text-white"
+        className="relative z-10 text-white"
         style={{
           background: 'linear-gradient(165deg, #0f766e 0%, #14b8a6 55%, #0d9488 100%)',
           paddingTop: medicalAlerts.length > 0 ? 8 : 'max(12px, env(safe-area-inset-top, 12px))',

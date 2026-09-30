@@ -103,7 +103,7 @@ export default function ChairsidePatientProfile({
       document.documentElement.style.setProperty('--chairside-header-h', `${height}px`);
       const planHeight = plan ? Math.ceil(plan.getBoundingClientRect().height) : 0;
       document.documentElement.style.setProperty('--chairside-plan-h', `${planHeight}px`);
-      if (scroller) scroller.style.scrollPaddingTop = `${height + planHeight + 16}px`;
+      if (scroller) scroller.style.scrollPaddingTop = `${height + 12}px`;
     };
     apply();
     const observer = new ResizeObserver(apply);
@@ -273,9 +273,9 @@ export default function ChairsidePatientProfile({
       </div>
 
       <div className="chairside-sheet max-w-[1680px] mx-auto p-3 sm:p-4 lg:p-5 space-y-3.5">
-        <div className="flex flex-col xl:flex-row gap-3.5 items-start">
-          <div className="chairside-profile-column w-full xl:w-[252px] shrink-0">
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 flex flex-col gap-3.5 sticky top-[9.5rem]">
+        <div className="flex flex-col xl:flex-row gap-3.5 items-stretch">
+          <div className="chairside-profile-column shrink-0 flex flex-col">
+            <div className="chairside-profile-card bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 flex flex-1 flex-col gap-3.5">
               <div className="flex flex-col items-center text-center">
                 <div
                   className="relative group cursor-pointer"
@@ -354,7 +354,7 @@ export default function ChairsidePatientProfile({
               <button
                 type="button"
                 onClick={onOpenFullProfile || onEditPatient}
-                className="w-full py-2.5 px-2.5 rounded-xl border-2 text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 hover:bg-teal-50"
+                className="mt-auto w-full py-2.5 px-2.5 rounded-xl border-2 text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 hover:bg-teal-50"
                 style={{ borderColor: `${TEAL}99`, color: TEAL_DARK }}
               >
                 To&apos;liq profil ko&apos;rish
@@ -363,7 +363,8 @@ export default function ChairsidePatientProfile({
             </div>
           </div>
 
-          <div className="flex-1 min-w-0 w-full flex flex-col gap-3.5">
+          <div className="chairside-stage min-w-0 flex-1">
+            <div className="chairside-center min-w-0 flex flex-col gap-3.5">
             <div className="min-w-0 w-full" data-tooth-chart="chairside">
               <ToothChartCard
                 patient={patient}
@@ -377,6 +378,7 @@ export default function ChairsidePatientProfile({
                 onReload={onReload}
                 onBookAppointment={onAppointment}
                 onOpenPlan={onNewPlan}
+                sideRailId="chairside-side-rail"
               />
             </div>
 
@@ -411,7 +413,20 @@ export default function ChairsidePatientProfile({
               onOpenPlan={onNewPlan}
             />
             </div>
+            </div>
 
+            <div className="chairside-rail">
+              <div id="chairside-side-rail" className="chairside-side-rail" />
+              <TodayPlanBar
+                part="pay"
+                groups={todaySteps.groups}
+                title={todaySteps.title}
+                totalDebt={totalDebt}
+                planRemaining={planRemainingTotal}
+                onPay={onPay}
+                onOpenPlan={onNewPlan}
+              />
+            </div>
           </div>
         </div>
       </div>
