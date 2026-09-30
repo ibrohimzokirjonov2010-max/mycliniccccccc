@@ -946,7 +946,7 @@ export default function ToothChartCard({
   const splitAt = (list) => Math.ceil(list.length / 2);
 
   return (
-    <div id="tooth-chart-print" className="tooth-chart-root min-w-0 max-w-full overflow-x-hidden">
+    <div id="tooth-chart-print" className={cn('tooth-chart-root min-w-0 max-w-full overflow-x-hidden', showSheet && 'is-sheet-open')}>
       <div className={cn('tooth-chart-grid min-w-0', phone && 'grid gap-3', railNode && 'tooth-chart-grid--solo')}>
         <div className="tooth-chart-main min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:p-3">
           <div className="tooth-chart-toolbar">

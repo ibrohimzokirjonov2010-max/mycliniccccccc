@@ -274,8 +274,8 @@ export default function ChairsidePatientProfile({
 
       <div className="chairside-sheet max-w-[1680px] mx-auto p-3 sm:p-4 lg:p-5 space-y-3.5">
         <div className="flex flex-col xl:flex-row gap-3.5 items-stretch">
-          <div className="chairside-profile-column shrink-0 flex flex-col">
-            <div className="chairside-profile-card bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 flex flex-1 flex-col gap-3.5">
+          <div className="chairside-profile-column shrink-0 self-start">
+            <div className="chairside-profile-card sticky top-[calc(var(--chairside-header-h,9rem)+12px)] bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] p-4 flex flex-col gap-3.5">
               <div className="flex flex-col items-center text-center">
                 <div
                   className="relative group cursor-pointer"
@@ -354,7 +354,7 @@ export default function ChairsidePatientProfile({
               <button
                 type="button"
                 onClick={onOpenFullProfile || onEditPatient}
-                className="mt-auto w-full py-2.5 px-2.5 rounded-xl border-2 text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 hover:bg-teal-50"
+                className="w-full py-2.5 px-2.5 rounded-xl border-2 text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 hover:bg-teal-50"
                 style={{ borderColor: `${TEAL}99`, color: TEAL_DARK }}
               >
                 To&apos;liq profil ko&apos;rish

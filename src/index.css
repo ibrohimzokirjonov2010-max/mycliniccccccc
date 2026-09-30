@@ -458,7 +458,7 @@
   .tooth-chart-root .fdi-on-crown {
     font-size: 12px;
   }
-  .tooth-chart-root {
+  .tooth-chart-root.is-sheet-open {
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   }
   .new-patient-dialog .odonto-cross {
