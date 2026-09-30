@@ -20,7 +20,10 @@ const filling = toothGroupCharge(200000, 2, toothGroupBilling('same'));
 assert(filling.total === 400000, 'per-tooth treatment still multiplies');
 
 const chart = readFileSync(join(root, 'src/components/patients/ToothChartCard.jsx'), 'utf8');
-assert(chart.includes('createJawPlan'), 'braces open a jaw plan');
+assert(chart.includes('openJawPrompt'), 'braces open a jaw choice');
+assert(!chart.includes('TreatmentPlan.create'), 'the tooth chart does not create a plan by itself');
+assert(chart.includes('markFindings'), 'quick marks save a finding, not a plan');
+assert(chart.includes('appendLinesToActivePlan'), 'add-to-plan appends to the one open plan');
 assert(chart.includes('data-jaw-choice') || chart.includes('JawChoice'), 'jaw choice is shown on the chart');
 assert(!chart.includes("createPlan(selected, 'Breket tizimi'"), 'braces are not applied to the selected teeth');
 assert(chart.includes("Ko‘prik (protez)"), 'a bridge stays a selected-teeth action');

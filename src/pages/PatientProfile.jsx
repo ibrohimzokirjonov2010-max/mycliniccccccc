@@ -3251,6 +3251,7 @@ export default function PatientProfile() {
               search={toothSearchQuery}
               onReload={load}
               onBookAppointment={() => setApptModalOpen(true)}
+              onOpenPlan={() => setTreatmentModalOpen(true)}
             />
           )}
         </TabsContent>

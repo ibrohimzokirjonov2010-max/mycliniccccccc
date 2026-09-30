@@ -105,6 +105,7 @@ export function matchIllustrationKind(text, category) {
   if (!s.trim() && !cat.trim()) return null;
 
   if (/babochka|butterfly|бабочк/.test(s)) return 'protez-babochka';
+  if (/ko['’ʻ`‘]?prik|koprik|\bbridge\b|мост/.test(s)) return 'sirkon';
 
   const hasImplantWord = /implant|имплант/.test(s) || /implant|имплант/i.test(cat);
   const hasProsthesisWord = /protez|prosthes|karonka|koronka|\bcrown\b|\btoj\b|протез/.test(s);

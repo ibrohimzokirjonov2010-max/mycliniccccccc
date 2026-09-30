@@ -11,6 +11,7 @@ import { getToothIllustrationSrc, matchIllustrationKind } from '@/utils/toothIll
 import { displayServiceName, formatDoctorName } from '@/lib/displayText';
 import { implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
 import { toothGroupBilling, toothGroupCharge, withOncePricing } from '@/lib/toothPlanCharge';
+import { paymentsForPlan } from '@/lib/treatmentDelete';
 import JawChoice from '@/components/patients/JawChoice';
 import {
   buildJawPlanLines,
@@ -21,6 +22,7 @@ import {
   jawLegendKind,
   jawMarkForService,
   jawPlanTotal,
+  jawServiceName,
   priceForJawService,
 } from '@/lib/jawServices';
 
@@ -297,12 +299,14 @@ function collectEntries(plans, implants, toothRecords) {
     const blob = `${rec.condition || ''} ${rec.treatment || ''} ${rec.notes || ''}`;
     const illustration = matchIllustrationKind(blob);
     const kind = legendOf(illustration);
+    const finding = String(rec.status || '').toLowerCase() === 'finding';
     add(rec.tooth_number, {
       kind,
       illustration: illustration || kind,
-      done: isDoneStatus(rec.status) || !/reja|plan/i.test(String(rec.status || '')),
+      finding,
+      done: finding ? false : (isDoneStatus(rec.status) || !/reja|plan/i.test(String(rec.status || ''))),
       name: displayServiceName(rec.treatment || rec.condition || rec.notes || kind || 'Yozuv'),
-      price: Number(rec.price || 0),
+      price: finding ? 0 : Number(rec.price || 0),
       doctor: formatDoctorName(rec.doctor || ''),
       date: rec.updated_date || rec.created_date,
       planId: null,
@@ -317,8 +321,8 @@ function collectEntries(plans, implants, toothRecords) {
 function primaryEntry(entries, filter) {
   const list = (entries || []).filter((e) => {
     if (!e.kind) return false;
-    if (filter === 'plan') return !e.done;
-    if (filter === 'done') return e.done;
+    if (filter === 'plan') return !e.done && !e.finding;
+    if (filter === 'done') return e.done && !e.finding;
     return true;
   });
   if (!list.length) return null;
@@ -341,6 +345,7 @@ export default function ToothChartCard({
   toothRecords = [],
   onReload,
   onBookAppointment,
+  onOpenPlan,
   sheetOffset = 0,
   search = '',
 }) {
@@ -431,8 +436,8 @@ export default function ToothChartCard({
     const seenCharges = new Set();
     teeth.forEach((fdi) => {
       const list = byTooth[fdi] || [];
-      if (list.some((e) => e.done)) done += 1;
-      const open = list.filter((e) => !e.done);
+      if (list.some((e) => e.done && !e.finding)) done += 1;
+      const open = list.filter((e) => !e.done && !e.finding);
       if (open.length) {
         planned += 1;
         open.forEach((entry) => {
@@ -601,124 +606,181 @@ export default function ToothChartCard({
     });
   };
 
-  const createPlan = async (fdis, serviceName, kindHint, billing = 'each') => {
+  const openPlanComposer = () => {
+    if (typeof onOpenPlan === 'function') onOpenPlan();
+    else toast.error('Yangi reja oynasini ochib bo‘lmadi');
+  };
+
+  const pickActivePlan = () => {
+    const open = (plans || []).filter((plan) => {
+      const status = String(plan?.status || '').toLowerCase();
+      return status !== 'completed' && status !== 'cancelled' && status !== 'canceled';
+    });
+    if (open.length !== 1) return null;
+    return open[0];
+  };
+
+  const visibleJawTeeth = (scope) => {
+    const child = dentition === 'child';
+    return expandJawToothNumbers(scope).filter((fdi) => {
+      const quad = Math.floor(Number(fdi) / 10);
+      return child ? quad >= 5 : quad >= 1 && quad <= 4;
+    });
+  };
+
+  const saveFinding = async (fdi, serviceName, kindHint) => {
+    const tooth = String(fdi);
+    const surfaceNote = surfaces.length && tooth === String(active) ? `Yuza: ${surfaces.join(', ')}` : '';
+    const existing = (toothRecords || []).find((row) => (
+      String(row.tooth_number) === tooth
+      && String(row.status || '').toLowerCase() === 'finding'
+      && (row.condition === kindHint || row.treatment === serviceName)
+    ));
+    const payload = {
+      patient_id: patient.id,
+      clinic_id: patient.clinic_id || user?.clinic_id || 'default_clinic',
+      tooth_number: tooth,
+      condition: kindHint || '',
+      treatment: serviceName,
+      notes: surfaceNote,
+      status: 'finding',
+      price: 0,
+      doctor: doctorFields().doctor_name,
+    };
+    if (existing?.id) await base44.entities.ToothRecord.update(existing.id, payload);
+    else await base44.entities.ToothRecord.create(payload);
+  };
+
+  const markFindings = async (fdis, serviceName, kindHint) => {
+    if (!patient?.id || patient.id === 'patient-y2ii8ynf2') return;
+    const teeth = [...new Set((fdis || []).map((fdi) => String(fdi)).filter(Boolean))];
+    if (!teeth.length) return;
+    setBusy(true);
+    try {
+      for (const fdi of teeth) {
+        await saveFinding(fdi, serviceName, kindHint);
+      }
+      toast.success('Tish holati saqlandi');
+      setNoteOpen(false);
+      setNoteText('');
+      setJawPrompt(null);
+      if (onReload) await onReload();
+    } catch (err) {
+      console.error(err);
+      toast.error('Tish holati saqlanmadi');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const appendLinesToActivePlan = async (lines, total) => {
     if (!patient?.id || patient.id === 'patient-y2ii8ynf2') return;
     const doc = doctorFields();
     if (!doc.doctor_id) {
       toast.error('Shifokor tanlanmagan');
       return;
     }
+    const openCount = (plans || []).filter((plan) => {
+      const status = String(plan?.status || '').toLowerCase();
+      return status !== 'completed' && status !== 'cancelled' && status !== 'canceled';
+    }).length;
+    const plan = pickActivePlan();
+    if (!plan) {
+      toast.message(openCount > 1
+        ? 'Bir nechta faol reja bor. Yangi reja oynasida qo‘shing.'
+        : 'Faol reja yo‘q. Yangi reja ochildi.');
+      openPlanComposer();
+      return;
+    }
+    const rows = (lines || []).map((row) => ({
+      ...row,
+      tooth: row.tooth || row.tooth_number,
+      status: row.status || 'planned',
+    }));
+    const prevTeeth = String(plan.tooth_number || '').split(/[,·]/).map((part) => part.trim()).filter(Boolean);
+    const toothLabel = [...prevTeeth];
+    rows.forEach((row) => {
+      const label = String(row.tooth_number || '').trim();
+      if (label && !toothLabel.includes(label)) toothLabel.push(label);
+    });
+    setBusy(true);
+    try {
+      await base44.entities.TreatmentPlan.update(plan.id, {
+        services: [...(plan.services || []), ...rows],
+        total_price: (Number(plan.total_price) || 0) + (Number(total) || 0),
+        tooth_number: toothLabel.join(', '),
+      });
+      if (total > 0) {
+        const linked = await paymentsForPlan(patient.id, plan.id);
+        const debt = linked.find((payment) => String(payment.type || '').toLowerCase() === 'debt');
+        if (debt?.id) {
+          await base44.entities.Payment.update(debt.id, {
+            amount: (Number(debt.amount) || 0) + total,
+          });
+        } else {
+          await base44.entities.Payment.create({
+            patient_id: patient.id,
+            patient_name: patient.full_name || '',
+            doctor_id: doc.doctor_id,
+            type: 'Debt',
+            category: `Reja: ${toothLabel.join(', ')}`,
+            amount: total,
+            method: '—',
+            date: new Date().toISOString().split('T')[0],
+            notes: `Linked to Plan: ${plan.id}`,
+          });
+        }
+        await syncPatientBalance(patient.id);
+      }
+      toast.success(`«${plan.name || 'Reja'}» rejasiga qo‘shildi`);
+      setNoteOpen(false);
+      setNoteText('');
+      setJawPrompt(null);
+      if (onReload) await onReload();
+    } catch (err) {
+      console.error(err);
+      toast.error('Rejaga qo‘shib bo‘lmadi');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const addToActivePlan = async (fdis, serviceName, kindHint, billing = 'each') => {
+    const teeth = (fdis || []).map(String).filter(Boolean);
+    if (!teeth.length) return;
     const price = catalogPrice(serviceName);
-    const charge = toothGroupCharge(price, fdis.length, billing);
+    const charge = toothGroupCharge(price, teeth.length, billing);
     const surfaceNote = surfaces.length ? `Yuza: ${surfaces.join(', ')}` : '';
-    const list = fdis.map((fdi, index) => ({
+    const lines = teeth.map((fdi, index) => ({
       service_name: serviceName,
-      tooth_number: String(fdi),
+      tooth_number: fdi,
       price: charge.linePrices[index] || 0,
       status: 'planned',
       category: kindHint || '',
       notes: surfaceNote,
     }));
-    const total = charge.total;
-    setBusy(true);
-    try {
-      const created = await base44.entities.TreatmentPlan.create({
-        patient_id: patient.id,
-        patient_name: patient.full_name || '',
-        ...doc,
-        status: 'planned',
-        priority: 'medium',
-        tooth_number: fdis.map(String).join(', '),
-        name: serviceName,
-        services: list.map((row) => ({ ...row, tooth: row.tooth_number })),
-        total_price: total,
-        discount_percent: 0,
-        discount_amount: 0,
-        notes: surfaceNote || `Davolash rejasi: ${fdis.join(', ')}`,
-      });
-      if (total > 0 && created?.id) {
-        await base44.entities.Payment.create({
-          patient_id: patient.id,
-          patient_name: patient.full_name || '',
-          doctor_id: doc.doctor_id,
-          type: 'Debt',
-          category: `Reja: ${fdis.join(', ')}`,
-          amount: total,
-          method: '—',
-          date: new Date().toISOString().split('T')[0],
-          notes: `Linked to Plan: ${created.id}`,
-        });
-        await syncPatientBalance(patient.id);
-      }
-      toast.success('Rejaga qo‘shildi');
-      setNoteOpen(false);
-      setNoteText('');
-      if (onReload) await onReload();
-    } catch (err) {
-      console.error(err);
-      toast.error('Rejani saqlab bo‘lmadi');
-    } finally {
-      setBusy(false);
-    }
+    await appendLinesToActivePlan(lines, charge.total);
   };
 
-  const openJawPrompt = (family, fdi) => {
+  const openJawPrompt = (family, fdi, mode = 'finding') => {
     setJawPrompt({
       family,
       title: jawFamilyTitle(family),
       preset: jawFromFdi(fdi),
+      mode,
     });
   };
 
-  const createJawPlan = async (family, choice) => {
-    if (!patient?.id || patient.id === 'patient-y2ii8ynf2') return;
-    const doc = doctorFields();
-    if (!doc.doctor_id) {
-      toast.error('Shifokor tanlanmagan');
+  const applyJawChoice = async (family, choice, mode) => {
+    if (mode === 'plan') {
+      const lines = buildJawPlanLines(family, choice, services);
+      await appendLinesToActivePlan(lines, jawPlanTotal(lines));
       return;
     }
-    const lines = buildJawPlanLines(family, choice, services);
-    const total = jawPlanTotal(lines);
-    const labels = lines.map((line) => line.tooth_number).join(', ');
-    setBusy(true);
-    try {
-      const created = await base44.entities.TreatmentPlan.create({
-        patient_id: patient.id,
-        patient_name: patient.full_name || '',
-        ...doc,
-        status: 'planned',
-        priority: 'medium',
-        tooth_number: labels,
-        name: lines.map((line) => line.service_name).join(', '),
-        services: lines,
-        total_price: total,
-        discount_percent: 0,
-        discount_amount: 0,
-        notes: `Davolash rejasi: ${labels}`,
-      });
-      if (total > 0 && created?.id) {
-        await base44.entities.Payment.create({
-          patient_id: patient.id,
-          patient_name: patient.full_name || '',
-          doctor_id: doc.doctor_id,
-          type: 'Debt',
-          category: `Reja: ${labels}`,
-          amount: total,
-          method: '—',
-          date: new Date().toISOString().split('T')[0],
-          notes: `Linked to Plan: ${created.id}`,
-        });
-        await syncPatientBalance(patient.id);
-      }
-      toast.success('Rejaga qo‘shildi');
-      setJawPrompt(null);
-      if (onReload) await onReload();
-    } catch (err) {
-      console.error(err);
-      toast.error('Rejani saqlab bo‘lmadi');
-    } finally {
-      setBusy(false);
-    }
+    const scopes = choice === 'both' ? ['upper', 'lower'] : [choice === 'lower' ? 'lower' : 'upper'];
+    const teeth = scopes.flatMap((scope) => visibleJawTeeth(scope));
+    const label = scopes.length === 1 ? jawServiceName(family, scopes[0]) : jawFamilyTitle(family);
+    await markFindings(teeth, label, family);
   };
 
   const markDone = async (item) => {
@@ -1079,9 +1141,9 @@ export default function ToothChartCard({
               </div>
               <span className="ml-auto flex flex-wrap gap-1.5">
                 <button type="button" onClick={() => setSelected([])} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Bekor qilish</button>
-                <button type="button" disabled={busy} onClick={() => createPlan(selected, 'Bir xil davolash', 'plomba', 'each')} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Bir xil davolash</button>
-                <button type="button" disabled={busy} onClick={() => createPlan(selected, "Ko‘prik (protez)", 'sirkon', 'once')} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Ko‘prik (protez)</button>
-                <button type="button" disabled={busy} onClick={() => openJawPrompt('breket', selected[0])} className="h-8 rounded-lg bg-pink-600 px-2 text-xs font-bold">Breket — jag'</button>
+                <button type="button" disabled={busy} onClick={() => addToActivePlan(selected, 'Bir xil davolash', 'plomba', 'each')} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Bir xil davolash</button>
+                <button type="button" disabled={busy} onClick={() => addToActivePlan(selected, "Ko‘prik (protez)", 'sirkon', 'once')} className="h-8 rounded-lg bg-white/10 px-2 text-xs font-bold">Ko‘prik (protez)</button>
+                <button type="button" disabled={busy} onClick={() => openJawPrompt('breket', selected[0], 'plan')} className="h-8 rounded-lg bg-pink-600 px-2 text-xs font-bold">Breket — jag'</button>
               </span>
             </div>
           )}
@@ -1105,11 +1167,11 @@ export default function ToothChartCard({
             setNoteText={setNoteText}
             setNoteOpen={setNoteOpen}
             onClose={() => { setActive(null); setSelected([]); }}
-            onQuick={(item) => (item.jaw ? openJawPrompt(item.jaw, active) : createPlan([active], item.service, item.id))}
-            onNote={() => createPlan([active], noteText.trim() || 'Izoh', '')}
+            onQuick={(item) => (item.jaw ? openJawPrompt(item.jaw, active, 'finding') : markFindings([active], item.service, item.id))}
+            onNote={() => markFindings([active], noteText.trim() || 'Izoh', 'note')}
             onGroup={() => {
               if (groupAction === 'breket') {
-                openJawPrompt('breket', selected[0]);
+                openJawPrompt('breket', selected[0], 'plan');
                 return;
               }
               const map = {
@@ -1118,18 +1180,18 @@ export default function ToothChartCard({
                 implant: ['Implant', 'implant', 'each'],
               };
               const [name, kind, billing] = map[groupAction];
-              createPlan(selected, name, kind, billing);
+              addToActivePlan(selected, name, kind, billing);
             }}
             doctorName={doctorLabel}
             unitPrice={groupAction === 'breket'
               ? priceForJawService(services, 'breket', 'upper')
               : catalogPrice(({ bridge: "Ko‘prik (protez)", same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
             jawPrompt={jawPrompt}
-            onJawChoose={(choice) => jawPrompt && createJawPlan(jawPrompt.family, choice)}
+            onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
             onJawClose={() => setJawPrompt(null)}
             onUpload={uploadXray}
             onView={setViewer}
-            onAddToPlan={() => createPlan([active], activeEntry?.name || 'Davolash', activeEntry?.kind || '')}
+            onAddToPlan={() => addToActivePlan([active], activeEntry?.name || 'Davolash', activeEntry?.kind || '')}
             onNewRecord={createRecord}
           />
         )}
@@ -1156,11 +1218,11 @@ export default function ToothChartCard({
             setNoteText={setNoteText}
             setNoteOpen={setNoteOpen}
             onClose={() => { setActive(null); setSelected([]); }}
-            onQuick={(item) => (item.jaw ? openJawPrompt(item.jaw, active) : createPlan([active], item.service, item.id))}
-            onNote={() => createPlan([active], noteText.trim() || 'Izoh', '')}
+            onQuick={(item) => (item.jaw ? openJawPrompt(item.jaw, active, 'finding') : markFindings([active], item.service, item.id))}
+            onNote={() => markFindings([active], noteText.trim() || 'Izoh', 'note')}
             onGroup={() => {
               if (groupAction === 'breket') {
-                openJawPrompt('breket', selected[0]);
+                openJawPrompt('breket', selected[0], 'plan');
                 return;
               }
               const map = {
@@ -1169,18 +1231,18 @@ export default function ToothChartCard({
                 implant: ['Implant', 'implant', 'each'],
               };
               const [name, kind, billing] = map[groupAction];
-              createPlan(selected, name, kind, billing);
+              addToActivePlan(selected, name, kind, billing);
             }}
             doctorName={doctorLabel}
             unitPrice={groupAction === 'breket'
               ? priceForJawService(services, 'breket', 'upper')
               : catalogPrice(({ bridge: "Ko‘prik (protez)", same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
             jawPrompt={jawPrompt}
-            onJawChoose={(choice) => jawPrompt && createJawPlan(jawPrompt.family, choice)}
+            onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
             onJawClose={() => setJawPrompt(null)}
             onUpload={uploadXray}
             onView={setViewer}
-            onAddToPlan={() => createPlan([active], activeEntry?.name || 'Davolash', activeEntry?.kind || '')}
+            onAddToPlan={() => addToActivePlan([active], activeEntry?.name || 'Davolash', activeEntry?.kind || '')}
             onNewRecord={createRecord}
           />
         </div>

@@ -376,6 +376,7 @@ export default function ChairsidePatientProfile({
                 toothRecords={toothRecords}
                 onReload={onReload}
                 onBookAppointment={onAppointment}
+                onOpenPlan={onNewPlan}
               />
             </div>
 

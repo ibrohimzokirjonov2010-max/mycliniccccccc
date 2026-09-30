@@ -776,6 +776,7 @@ export default function MobilePatientProfile() {
                   toothRecords={toothRecords}
                   onReload={load}
                   onBookAppointment={() => { setSelectedAppt(null); setApptModalOpen(true); }}
+                  onOpenPlan={() => setTreatModalOpen(true)}
                   sheetOffset={84}
                 />
                 <ChairsideClinicalTools
