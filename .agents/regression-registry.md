@@ -23,7 +23,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
   - [`src/utils/toothIllustration.js`](src/utils/toothIllustration.js)
 - **Muammo Tavsifi:** Tish kartasidagi Karies, Plomba va boshqa tezkor tugmalar har bir tish uchun alohida TreatmentPlan va Debt to‘lov yaratardi. Zohidda shu sabab 7 ta alohida reja ko‘rindi.
 - **Sababi:** `createPlan` va `createJawPlan` har doim `TreatmentPlan.create` chaqirardi.
-- **Qanday tuzatildi:** Tezkor belgi faqat ToothRecord (`status: finding`) yozadi, qarz ochmaydi. «Rejaga qo‘shish» bitta ochiq rejaga qator qo‘shadi; reja yo‘q yoki bir nechta bo‘lsa Yangi reja oynasini ochadi. Yangi bemor, TreatmentPlanModal va mobil rejalar sahifasi reja yaratishda qoladi. Eski rejalar va to‘lovlar o‘chirilmadi.
+- **Qanday tuzatildi:** Tezkor belgi faqat ToothRecord yozadi (`notes` ichida `[finding]`, `tooth_records` jadvalida `status` ustuni yo‘q), qarz ochmaydi. «Rejaga qo‘shish» bitta ochiq rejaga qator qo‘shadi; reja yo‘q yoki bir nechta bo‘lsa Yangi reja oynasini ochadi. Yangi bemor, TreatmentPlanModal va mobil rejalar sahifasi reja yaratishda qoladi. Eski rejalar va to‘lovlar o‘chirilmadi.
 - **Qaytalamaslik choralari:** Tish kartasidan `TreatmentPlan.create` chaqirmang. Tezkor Karies/Plomba/Breket belgisini qarzli rejaga aylantirmang. `patient-y2ii8ynf2` ga yozmang.
 
 ### 💳 To'lovlar jadvali — Hozirgi qarz qatori

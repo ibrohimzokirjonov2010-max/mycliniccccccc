@@ -299,7 +299,7 @@ function collectEntries(plans, implants, toothRecords) {
     const blob = `${rec.condition || ''} ${rec.treatment || ''} ${rec.notes || ''}`;
     const illustration = matchIllustrationKind(blob);
     const kind = legendOf(illustration);
-    const finding = String(rec.status || '').toLowerCase() === 'finding';
+    const finding = /\[finding\]/i.test(String(rec.notes || ''));
     add(rec.tooth_number, {
       kind,
       illustration: illustration || kind,
@@ -633,7 +633,7 @@ export default function ToothChartCard({
     const surfaceNote = surfaces.length && tooth === String(active) ? `Yuza: ${surfaces.join(', ')}` : '';
     const existing = (toothRecords || []).find((row) => (
       String(row.tooth_number) === tooth
-      && String(row.status || '').toLowerCase() === 'finding'
+      && /\[finding\]/i.test(String(row.notes || ''))
       && (row.condition === kindHint || row.treatment === serviceName)
     ));
     const payload = {
@@ -642,10 +642,7 @@ export default function ToothChartCard({
       tooth_number: tooth,
       condition: kindHint || '',
       treatment: serviceName,
-      notes: surfaceNote,
-      status: 'finding',
-      price: 0,
-      doctor: doctorFields().doctor_name,
+      notes: ['[finding]', surfaceNote].filter(Boolean).join(' '),
     };
     if (existing?.id) await base44.entities.ToothRecord.update(existing.id, payload);
     else await base44.entities.ToothRecord.create(payload);
