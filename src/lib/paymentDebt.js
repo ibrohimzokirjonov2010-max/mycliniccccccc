@@ -1,4 +1,4 @@
-import { withOncePricing } from './toothPlanCharge';
+import { withOncePricing } from './toothPlanCharge.js';
 
 /** One running balance for desktop and mobile payments. */
 
