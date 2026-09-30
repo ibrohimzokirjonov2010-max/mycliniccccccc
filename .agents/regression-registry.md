@@ -34,7 +34,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
   - [`src/pages/MobilePatientProfile.jsx`](src/pages/MobilePatientProfile.jsx)
 - **Muammo Tavsifi:** Tish kartasi va «Davolash rejasi» orasida katta bo'sh joy qolardi. Chap profil kartasi osti ham bo'sh edi. Varaqaytirganda yopishqoq sarlavha legendani yopardi.
 - **Sababi:** Yon panel tish kartasi grid qatorini cho'zardi. Reja shu baland qatordan keyin chiqardi.
-- **Qanday tuzatildi:** O'ng ustun panel va Tez to'lov. Markaziy ustun tish kartasi, so'ng reja. Panel o'z ichida aylanadi va qatorni cho'zmaydi. Chap karta shu balandlikni to'ldiradi. Legenda sarlavha ostida yopishadi. Telefon sarlavhasi endi kontentni yopmaydi.
+- **Qanday tuzatildi:** O'ng ustun panel va Tez to'lov. Markaziy ustun tish kartasi, so'ng reja. Panel o'z ichida aylanadi va qatorni cho'zmaydi. Chap karta o'z balandligida qoladi. Legenda sarlavha ostida yopishadi. Telefon sarlavhasi endi kontentni yopmaydi.
 - **Qaytalamaslik choralari:** Davolash rejasini yon panelning tagiga tushirmang. `data-chairside-plan` tish kartasidan keyin, klinik asboblardan keyin qolsin. Sarlavha `z-index` legendani yopmasin.
 
 ### 💳 Telefon — to'lov oynasi pastki varaq
