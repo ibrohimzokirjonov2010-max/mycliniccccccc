@@ -10,6 +10,10 @@ export function appUrl() {
   return value || "https://app-shahobidin-4.vercel.app";
 }
 
+export function crmLoginUrl() {
+  return `${appUrl().replace(/\/$/, "")}/login`;
+}
+
 export function appLabel() {
   return process.env.NEXT_PUBLIC_APP_LABEL?.trim() || "app.shifo.uz";
 }

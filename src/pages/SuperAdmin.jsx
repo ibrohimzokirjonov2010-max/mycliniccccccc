@@ -62,6 +62,51 @@ const SUPER_ADMIN = { username: 'admin', password: 'admin123' };
 const FIELD = 'h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-teal-400/50';
 const SELECT = 'w-full h-10 bg-[#0c1218] border border-white/10 rounded-xl px-3 text-white text-xs focus:border-teal-400/50 focus:outline-none';
 
+function pendingOrderOf(clinic) {
+  const order = clinic?.pending_order;
+  if (!order || typeof order !== 'object') return null;
+  if (order.status !== 'pending') return null;
+  const id = String(clinic?.id || '');
+  if (id === 'default_clinic' || id === 'ava-dent') return null;
+  return order;
+}
+
+function PendingOrders({ clinics, onActivate, activating }) {
+  const rows = (clinics || []).filter((clinic) => pendingOrderOf(clinic));
+  if (!rows.length) return null;
+  return (
+    <section className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
+      <h3 className="text-sm font-bold text-amber-100">Kutilayotgan to&apos;lovlar</h3>
+      <p className="mt-1 text-xs text-amber-100/80">Merchant kaliti yo&apos;q. Tasdiqlangach klinika shu tarifda ochiladi.</p>
+      <div className="mt-3 space-y-2">
+        {rows.map((clinic) => {
+          const order = pendingOrderOf(clinic);
+          const days = order.cycle === 'year' ? 365 : 30;
+          return (
+            <div key={clinic.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-black/20 px-3 py-2">
+              <div>
+                <p className="text-sm font-semibold text-white">{clinic.name}</p>
+                <p className="text-[11px] text-slate-300">
+                  {String(order.planId || clinic.plan || '').toUpperCase()} · {order.cycle === 'year' ? 'yillik' : 'oylik'} · {formatMoney(order.amountUzs)} so&apos;m · {days} kun
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                disabled={activating}
+                onClick={() => onActivate(clinic)}
+                className="h-8 bg-teal-500 text-[#04221e] hover:bg-teal-400"
+              >
+                Faollashtirish
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function landingTariffLabel(clinic) {
   const tariff = String(clinic?.tariff || '').toLowerCase();
   if (tariff === 'start' || tariff === 'basic') return 'BASIC';
@@ -368,6 +413,55 @@ export default function SuperAdmin() {
     setPayAmount(displayMonthlyFee({ ...clinic, plan: resolveClinicPlan(clinic) }));
     setPayAmountTouched(false);
     setRenewModalOpen(true);
+  };
+
+  const handleActivatePending = async (clinic) => {
+    const order = pendingOrderOf(clinic);
+    if (!order || paySaving) return;
+    if (clinic.id === 'default_clinic' || clinic.id === 'ava-dent') return;
+    const days = order.cycle === 'year' ? 365 : 30;
+    const amount = Number(order.amountUzs);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error('Buyurtma summası yo\'q');
+      return;
+    }
+    setPaySaving(true);
+    try {
+      const expires = extendExpiry(clinic.expires_at, days);
+      const todayStr = new Date().toISOString().split('T')[0];
+      const entry = buildPaymentEntry({
+        clinic,
+        amount,
+        method: 'manual',
+        periodDays: days,
+        note: `Tarif to'lovi · ${String(order.planId || '').toUpperCase()} · ${order.cycle === 'year' ? 'yillik' : 'oylik'}`,
+      });
+      const updatedClinics = clinics.map((row) => row.id === clinic.id ? {
+        ...row,
+        expires_at: expires,
+        last_payment_date: todayStr,
+        status: 'Active',
+        subscription_status: 'active',
+        billing_status: 'paid',
+        access_unlocked: true,
+        period_ends_at: expires,
+        payment_method: 'manual',
+        payment_provider: 'manual',
+        pending_order: { ...order, status: 'paid' },
+        payment_ledger: [entry, ...(Array.isArray(row.payment_ledger) ? row.payment_ledger : [])].slice(0, 40),
+      } : row);
+      await base44.clinic.saveAll(updatedClinics);
+      setClinics(updatedClinics);
+      const mergedLedger = mergeLedgers(updatedClinics, readLedger());
+      writeLedger(mergedLedger);
+      setLedger(mergedLedger);
+      toast.success('Tarif faollashtirildi');
+    } catch (error) {
+      console.error(error);
+      toast.error('Faollashtirib bo\'lmadi');
+    } finally {
+      setPaySaving(false);
+    }
   };
 
   const handleConfirmRenew = async () => {
@@ -1331,6 +1425,7 @@ export default function SuperAdmin() {
         {/* ════════════════════ TAB 1: KLINIKALAR ════════════════════ */}
         {activeTab === 'clinics' && (
           <div className="space-y-4">
+            <PendingOrders clinics={clinics} onActivate={handleActivatePending} activating={paySaving} />
             
             {/* Filter Bar */}
             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white/[0.02] border border-white/[0.06] p-3 rounded-2xl">

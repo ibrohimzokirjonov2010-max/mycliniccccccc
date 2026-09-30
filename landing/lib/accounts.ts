@@ -1,9 +1,12 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
-import { canonicalPlanId, TRIAL_DAYS, type BillingCycle } from "../config/tariffs";
+import { canonicalPlanId, catalogMonthly, chargeAmount, getTariff, TRIAL_DAYS, type BillingCycle } from "../config/tariffs";
 import { clinicNameFor } from "./billing";
 import { hashPassword, isPasswordHash, verifyPassword } from "./password";
-import { readStore, updateStore, type DemoLead, type Subscription } from "./store";
-import { clinicIdForLead, crmConfig, crmPlanColumn, publishStagedTrial, stageTrial, type FetchLike } from "./tenants";
+import { clickConfigured, paymeConfigured, providerLive } from "./payments/config";
+import { clickCheckoutUrl } from "./payments/click";
+import { paymeCheckoutUrl } from "./payments/payme";
+import { readStore, updateStore, type DemoLead, type PendingOrder, type Subscription } from "./store";
+import { crmConfig, crmPlanColumn, publishStagedTrial, readCrmClinic, stagePending, SUPPORT_URL, writeClinicAccess, type FetchLike } from "./tenants";
 import { appUrl, requestOrigin } from "./utils";
 import { normalizeClinic, normalizeEmail, normalizeName, normalizePassword, normalizePhone } from "./validators";
 
@@ -28,6 +31,17 @@ export type AuthResult = {
   trialDays: number;
   handoffUrl: string;
   crmUrl: string;
+  step?: "choose" | "payment" | "crm";
+  resumeToken?: string;
+  plan?: string;
+  cycle?: BillingCycle;
+  amountUzs?: number;
+  paymeLive?: boolean;
+  clickLive?: boolean;
+  orderId?: string;
+  supportUrl?: string;
+  paymentUrl?: string;
+  pending?: boolean;
 };
 
 type Account = {
@@ -99,12 +113,10 @@ export function parseRegistration(input: RegisterInput) {
 
   if (!name) throw new AuthError("Ismingizni to'liq kiriting.", 400);
   if (!password) throw new AuthError("Parol kamida 8 ta belgidan iborat bo'lsin.", 400);
-  if (clinicRaw && !clinic) throw new AuthError("Klinika nomini to'g'ri kiriting.", 400);
+  if (!clinicRaw || !clinic) throw new AuthError("Klinika nomini kiriting.", 400);
   if (doctorRaw && !doctor) throw new AuthError("Shifokor ismini to'g'ri kiriting.", 400);
-  if (!clinic && !doctor) throw new AuthError("Klinika nomi yoki shifokor ismini kiriting.", 400);
-  if (phoneRaw && !phone) throw new AuthError("Telefon raqamini +998 bilan kiriting.", 400);
+  if (!phoneRaw || !phone) throw new AuthError("Telefon raqamini +998 bilan kiriting.", 400);
   if (emailRaw && !email) throw new AuthError("Email manzilini to'g'ri kiriting.", 400);
-  if (!phone && !email) throw new AuthError("Telefon yoki email kiriting — shu orqali kirasiz.", 400);
 
   const doctorName = doctor || name;
   let clinicName = clinic;
@@ -121,9 +133,10 @@ export function parseRegistration(input: RegisterInput) {
 }
 
 function accountFromSubscription(sub: Subscription): Account {
-  const open = sub.accessUnlocked && Date.parse(sub.expiresAt) > Date.now();
-  const lockReason =
-    sub.paymentMethod === "trial" || sub.planId === "trial"
+  const open = sub.accessUnlocked && Date.parse(sub.expiresAt) > Date.now() && sub.subscriptionStatus !== "pending";
+  const lockReason = sub.subscriptionStatus === "pending"
+    ? "Hisob ochilgan. Avval 14 kunlik sinovni boshlang yoki to'lovni tasdiqlang."
+    : sub.paymentMethod === "trial" || sub.planId === "trial"
       ? "14 kunlik sinov muddati tugagan. Tarifni sotib oling."
       : "Kirish muddati tugagan. Tarifni yangilang.";
   return {
@@ -251,6 +264,7 @@ async function findRemote(identifier: string, fetchImpl: FetchLike): Promise<Acc
 }
 
 const HANDOFF_MS = 2 * 60 * 1000;
+const RESUME_MS = 12 * 60 * 60 * 1000;
 
 export type HandoffClaims = {
   clinicId: string;
@@ -300,6 +314,32 @@ export function issueHandoff(account: Pick<Account, "clinicId" | "userId" | "use
   };
 }
 
+type ResumeClaims = HandoffClaims & { kind: "resume"; cycle: BillingCycle };
+
+export function issueResume(account: Pick<Account, "clinicId" | "userId" | "username" | "name" | "role" | "plan" | "clinicName"> & { cycle: BillingCycle }) {
+  const claims: ResumeClaims = {
+    kind: "resume",
+    clinicId: account.clinicId,
+    userId: account.userId,
+    username: account.username,
+    name: account.name,
+    role: "admin",
+    plan: account.plan,
+    cycle: account.cycle,
+    clinicName: account.clinicName,
+    expiresAt: "",
+    exp: Date.now() + RESUME_MS,
+  };
+  const body = Buffer.from(JSON.stringify(claims)).toString("base64url");
+  return `${body}.${signBody(body)}`;
+}
+
+export function redeemResume(token: string): ResumeClaims | null {
+  const row = redeemHandoff(token) as ResumeClaims | null;
+  if (!row || row.kind !== "resume" || (row.cycle !== "year" && row.cycle !== "month")) return null;
+  return row;
+}
+
 export function redeemHandoff(token: string): HandoffClaims | null {
   const clean = token.trim();
   const [body, signature] = clean.split(".");
@@ -334,6 +374,33 @@ function resultFor(account: Account, handoffUrl: string, message: string): AuthR
   };
 }
 
+function chooseResult(account: Account, resumeToken: string, cycle: BillingCycle): AuthResult {
+  const base = resultFor(account, "", "Klinika ochildi. Sinov yoki to'lovni tanlang.");
+  return {
+    ...base,
+    step: "choose",
+    resumeToken,
+    plan: account.plan,
+    cycle,
+    amountUzs: chargeAmount(account.plan, cycle),
+    paymeLive: paymeConfigured(),
+    clickLive: clickConfigured(),
+    supportUrl: SUPPORT_URL,
+  };
+}
+
+async function persistAccess(sub: Subscription | null, fetchImpl: FetchLike) {
+  if (sub) {
+    try {
+      await publishStagedTrial(sub, fetchImpl);
+    } catch (error) {
+      console.error("CRM ingest failed", error);
+      throw new AuthError("Klinika CRM ga yozilmadi. Qayta urinib ko'ring.", 502);
+    }
+    return;
+  }
+}
+
 export async function registerAccount(input: RegisterInput, request: Request, fetchImpl: FetchLike = fetch): Promise<AuthResult> {
   const fields = parseRegistration(input);
   const passwordHash = await hashPassword(fields.password);
@@ -356,18 +423,266 @@ export async function registerAccount(input: RegisterInput, request: Request, fe
       billingCycle: fields.cycle,
       createdAt: new Date().toISOString(),
     };
-    return stageTrial(db, lead, { passwordHash, username, ownerName: fields.name });
+    return stagePending(db, lead, { passwordHash, username, ownerName: fields.name });
   });
 
-  try {
-    await publishStagedTrial(saved, fetchImpl);
-  } catch (error) {
-    console.error("Trial CRM ingest failed", error);
+  await persistAccess(saved, fetchImpl);
+  if (crmConfig() && process.env.CRM_SUPABASE_DISABLED !== "1") {
+    const remote = await readCrmClinic(saved.id, fetchImpl);
+    if (!remote) throw new AuthError("Klinika CRM ga yozilmadi. Qayta urinib ko'ring.", 502);
   }
 
   const account = accountFromSubscription(saved);
+  const resumeToken = issueResume({ ...account, cycle: fields.cycle });
+  return chooseResult(account, resumeToken, fields.cycle);
+}
+
+function openTrial(sub: Subscription) {
+  const started = new Date();
+  const expires = new Date(started.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  sub.status = "trial";
+  sub.subscriptionStatus = "trialing";
+  sub.paymentMethod = "trial";
+  sub.accessUnlocked = true;
+  sub.startedAt = started.toISOString();
+  sub.expiresAt = expires.toISOString();
+  sub.amountUzs = 0;
+  sub.pendingOrder = null;
+  sub.updatedAt = started.toISOString();
+  return sub;
+}
+
+export async function startTrial(token: string, request: Request, fetchImpl: FetchLike = fetch): Promise<AuthResult> {
+  const claims = redeemResume(token);
+  if (!claims) throw new AuthError("Sessiya tugagan. Qayta ro'yxatdan o'ting.", 401);
+  const saved = await updateStore((db) => {
+    const sub = db.subscriptions[claims.clinicId];
+    if (!sub) return null;
+    if (sub.subscriptionStatus === "trialing" && sub.accessUnlocked) return sub;
+    return openTrial(sub);
+  });
+  if (saved) await persistAccess(saved, fetchImpl);
+  else {
+    const expires = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const written = await writeClinicAccess(claims.clinicId, {
+      status: "Active",
+      expiresAt: expires,
+      plan: claims.plan,
+      monthlyFee: catalogMonthly(claims.plan),
+      removeLogoKeys: ["pending_order"],
+      logoExtra: {
+        tariff: claims.plan,
+        billing_cycle: claims.cycle,
+        billing_status: "trial",
+        subscription_status: "trialing",
+        payment_method: "trial",
+        access_unlocked: true,
+        trial_ends_at: expires.slice(0, 10),
+        period_ends_at: expires.slice(0, 10),
+      },
+    }, fetchImpl);
+    if (written.missing) throw new AuthError("Klinika topilmadi.", 404);
+  }
+  const account = saved
+    ? accountFromSubscription(saved)
+    : {
+      ...claims,
+      doctorName: claims.name,
+      phone: "",
+      email: "",
+      passwordHash: "",
+      open: true,
+      expiresAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+      lockReason: "",
+      cycle: claims.cycle,
+    };
   const handoff = issueHandoff(account, requestOrigin(request));
-  return resultFor(account, handoff.url, "14 kunlik bepul sinov ochildi");
+  return { ...resultFor(account, handoff.url, "14 kunlik bepul sinov ochildi"), step: "crm", plan: claims.plan, cycle: claims.cycle };
+}
+
+export async function startPayment(
+  token: string,
+  request: Request,
+  providerInput?: string,
+  fetchImpl: FetchLike = fetch,
+): Promise<AuthResult> {
+  const claims = redeemResume(token);
+  if (!claims) throw new AuthError("Sessiya tugagan. Qayta ro'yxatdan o'ting.", 401);
+  const amount = chargeAmount(claims.plan, claims.cycle);
+  const planName = getTariff(claims.plan)?.name || claims.plan;
+  const orderId = randomBytes(16).toString("hex");
+  const pending: PendingOrder = {
+    id: orderId,
+    amountUzs: amount,
+    cycle: claims.cycle,
+    planId: claims.plan,
+    createdAt: new Date().toISOString(),
+    status: "pending",
+  };
+  const saved = await updateStore((db) => {
+    const sub = db.subscriptions[claims.clinicId];
+    if (!sub) return null;
+    sub.pendingOrder = pending;
+    sub.orderId = orderId;
+    sub.amountUzs = amount;
+    sub.updatedAt = new Date().toISOString();
+    db.orders[orderId] = {
+      id: orderId,
+      planId: claims.plan,
+      planName,
+      amountUzs: amount,
+      name: claims.name,
+      phone: sub.phone,
+      email: sub.email,
+      clinic: claims.clinicName,
+      clinicId: claims.clinicId,
+      billingCycle: claims.cycle,
+      provider: providerInput === "click" ? "click" : "payme",
+      status: "pending",
+      createdAt: pending.createdAt,
+    };
+    return sub;
+  });
+  const written = await writeClinicAccess(claims.clinicId, {
+    status: "Inactive",
+    expiresAt: new Date().toISOString(),
+    plan: claims.plan,
+    monthlyFee: catalogMonthly(claims.plan),
+    logoExtra: {
+      tariff: claims.plan,
+      billing_cycle: claims.cycle,
+      billing_status: "pending",
+      subscription_status: "pending",
+      access_unlocked: false,
+      pending_order: pending,
+    },
+  }, fetchImpl);
+  if (!saved && written.missing) throw new AuthError("Klinika topilmadi.", 404);
+
+  const provider = providerInput === "click" ? "click" : providerInput === "payme" ? "payme" : null;
+  if (provider && providerLive(provider)) {
+    const returnUrl = `${requestOrigin(request)}/royxatdan-otish?resume=${encodeURIComponent(token)}`;
+    const paymentUrl = provider === "payme"
+      ? paymeCheckoutUrl(orderId, amount, returnUrl)
+      : clickCheckoutUrl(orderId, amount, returnUrl);
+    return {
+      ...resultFor({
+        clinicId: claims.clinicId,
+        userId: claims.userId,
+        username: claims.username,
+        name: claims.name,
+        doctorName: claims.name,
+        clinicName: claims.clinicName,
+        phone: "",
+        email: "",
+        role: "admin",
+        plan: claims.plan,
+        passwordHash: "",
+        open: false,
+        expiresAt: "",
+        lockReason: "",
+      }, "", "To'lov oynasi ochildi"),
+      step: "payment",
+      resumeToken: token,
+      plan: claims.plan,
+      cycle: claims.cycle,
+      amountUzs: amount,
+      orderId,
+      paymentUrl,
+      supportUrl: SUPPORT_URL,
+    };
+  }
+
+  return {
+    ...resultFor({
+      clinicId: claims.clinicId,
+      userId: claims.userId,
+      username: claims.username,
+      name: claims.name,
+      doctorName: claims.name,
+      clinicName: claims.clinicName,
+      phone: saved?.phone || "",
+      email: "",
+      role: "admin",
+      plan: claims.plan,
+      passwordHash: "",
+      open: false,
+      expiresAt: "",
+      lockReason: "",
+    }, "", "To'lov kutilmoqda"),
+    step: "payment",
+    pending: true,
+    resumeToken: token,
+    plan: claims.plan,
+    cycle: claims.cycle,
+    amountUzs: amount,
+    orderId,
+    supportUrl: SUPPORT_URL,
+    paymeLive: paymeConfigured(),
+    clickLive: clickConfigured(),
+  };
+}
+
+export async function sessionStatus(token: string, request: Request, fetchImpl: FetchLike = fetch): Promise<AuthResult> {
+  const claims = redeemResume(token);
+  if (!claims) throw new AuthError("Sessiya tugagan. Qayta ro'yxatdan o'ting.", 401);
+  const db = await readStore();
+  const local = db.subscriptions[claims.clinicId];
+  const remote = await readCrmClinic(claims.clinicId, fetchImpl);
+  const remoteExpiry = remote?.expires_at ? Date.parse(`${remote.expires_at.slice(0, 10)}T23:59:59+05:00`) : 0;
+  const remoteOpen = Boolean(
+    remote
+    && remote.status === "Active"
+    && remote.subscription_status !== "pending"
+    && remoteExpiry > Date.now(),
+  );
+  const localOpen = Boolean(local && local.accessUnlocked && local.subscriptionStatus !== "pending" && Date.parse(local.expiresAt) > Date.now());
+  const open = remote ? remoteOpen : localOpen;
+  if (!open) {
+    return {
+      ...resultFor({
+        clinicId: claims.clinicId,
+        userId: claims.userId,
+        username: claims.username,
+        name: claims.name,
+        doctorName: claims.name,
+        clinicName: claims.clinicName,
+        phone: local?.phone || "",
+        email: "",
+        role: "admin",
+        plan: claims.plan,
+        passwordHash: "",
+        open: false,
+        expiresAt: local?.expiresAt || "",
+        lockReason: "",
+      }, "", "To'lov kutilmoqda"),
+      step: "payment",
+      pending: true,
+      plan: claims.plan,
+      cycle: claims.cycle,
+      amountUzs: local?.pendingOrder?.amountUzs || remote?.pending_order?.amountUzs || chargeAmount(claims.plan, claims.cycle),
+      supportUrl: SUPPORT_URL,
+    };
+  }
+  const expiresAt = remoteOpen && remote?.expires_at ? remote.expires_at : (local?.expiresAt || "");
+  const account = {
+    clinicId: claims.clinicId,
+    userId: claims.userId,
+    username: claims.username,
+    name: claims.name,
+    doctorName: claims.name,
+    clinicName: remote?.name || claims.clinicName,
+    phone: local?.phone || "",
+    email: "",
+    role: "admin" as const,
+    plan: remote?.plan || claims.plan,
+    passwordHash: "",
+    open: true,
+    expiresAt,
+    lockReason: "",
+  };
+  const handoff = issueHandoff(account, requestOrigin(request));
+  return { ...resultFor(account, handoff.url, "CRM ochildi"), step: "crm", pending: false, plan: account.plan, cycle: claims.cycle };
 }
 
 export async function loginAccount(identifier: string, password: string, request: Request, fetchImpl: FetchLike = fetch): Promise<AuthResult> {

@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🔐 Landing kirish va ro'yxat — CRM ga bog'lanish
+- **Sana:** 2026-09-30
+- **Tuzatilgan Fayllar:**
+  - [`landing/components/header.tsx`](landing/components/header.tsx)
+  - [`landing/lib/accounts.ts`](landing/lib/accounts.ts)
+  - [`landing/components/auth-forms.tsx`](landing/components/auth-forms.tsx)
+  - [`src/pages/SuperAdmin.jsx`](src/pages/SuperAdmin.jsx)
+- **Muammo Tavsifi:** Landingdagi Kirish CRM loginiga ochilmasdi. Ro'yxat darhol sinov ochardi, to'lov qadami va kutilayotgan buyurtma super-admindа ko'rinmasdi.
+- **Sababi:** Kirish landing dialogini ochardi. `registerAccount` klinikani darhol `trialing` qilardi. Payme/Click kalitlari yo'q.
+- **Qanday tuzatildi:** Kirish CRM `/login` ga boradi. Ro'yxat klinikani tanlangan tarifda yaratadi, so'ng 14 kunlik sinov yoki kutilayotgan buyurtma. Kalit yo'q bo'lsa Telegram `t.me/dentist_shaxin` va super-admin «Faollashtirish». Sinov yoki faollashtirishdan keyin qo'l silkitish bilan CRM ga kiriladi.
+- **Qaytalamaslik choralari:** Kirishni yana landing dialogiga qaytarmang. Ro'yxatdan o'tishni to'lovsiz `Active` qilmang. `pending_order` ni klinikadan tashlab yubormang. `default_clinic` va `ava-dent` ni shu tugma bilan o'zgartirmang. `patient-y2ii8ynf2` ga yozmang.
+
 ### 💳 Tariflar — BASIC da PRO modullar ochiq qolmasin
 - **Sana:** 2026-09-30
 - **Tuzatilgan Fayllar:**

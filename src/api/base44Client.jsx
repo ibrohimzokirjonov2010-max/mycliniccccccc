@@ -1993,7 +1993,7 @@ export const base44 = {
       'owner_email', 'owner_phone', 'signup_source',
       'payme_merchant_id', 'click_service_id', 'click_merchant_id',
       'webhook_status', 'last_webhook_at', 'payment_provider',
-      'payment_ledger', 'billing_cycle'
+      'payment_ledger', 'billing_cycle', 'pending_order'
     ],
 
     _encodeClinicNotes(clinic) {

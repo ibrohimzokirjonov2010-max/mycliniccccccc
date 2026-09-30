@@ -1,5 +1,5 @@
 import { randomBytes } from "crypto";
-import { canonicalPlanId, catalogMonthly, crmPlanForTariff, getTariff, LICENSE_DAYS, TRIAL_DAYS } from "../config/tariffs";
+import { canonicalPlanId, catalogMonthly, chargeAmount, crmPlanForTariff, getTariff, LICENSE_DAYS, TRIAL_DAYS, type BillingCycle } from "../config/tariffs";
 import { clinicNameFor } from "./billing";
 import {
   readStore,
@@ -8,9 +8,12 @@ import {
   type LedgerEntry,
   type License,
   type Order,
+  type PendingOrder,
   type Subscription,
   type SubscriptionStatus,
 } from "./store";
+
+export const SUPPORT_URL = "https://t.me/dentist_shaxin";
 const CRM_FALLBACK_URL = "https://zvyggjldzkxwufpnaatr.supabase.co";
 const CRM_FALLBACK_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2eWdnamxkemt4d3VmcG5hYXRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MTg3NTAsImV4cCI6MjEwMjk5NDc1MH0.v4IyrtyJR8a9bQ7tAapDQxe2VHZHiH_IVuHfeC6MeN4";
@@ -102,9 +105,10 @@ export function buildCrmRows(sub: Subscription) {
       access_unlocked: sub.accessUnlocked,
       license_key: sub.licenseKey,
       payment_ledger: sub.paymentLedger ?? [],
+      pending_order: sub.pendingOrder || undefined,
     }),
     expires_at: sub.expiresAt.slice(0, 10),
-    status: sub.accessUnlocked ? "Active" : "Expired",
+    status: sub.accessUnlocked ? "Active" : sub.subscriptionStatus === "pending" ? "Inactive" : "Expired",
     monthly_fee: catalogMonthly(canonicalPlanId(sub.planId) || "basic"),
     plan: crmPlanColumn(sub.planId),
   };
@@ -190,6 +194,7 @@ function ledgerId(sub: Subscription) {
 
 export function mergeLedger(previous: LedgerEntry[] | undefined, sub: Subscription): LedgerEntry[] {
   const prior = previous ?? [];
+  if (sub.subscriptionStatus === "pending") return prior;
   const id = ledgerId(sub);
   if (prior.some((entry) => entry.id === id)) return prior;
   if (sub.subscriptionStatus === "expired") return prior;
@@ -221,6 +226,53 @@ async function remember(sub: Subscription, password?: string) {
     db.subscriptions[sub.id] = next;
     return next;
   });
+}
+
+function pendingSubscription(lead: DemoLead): Subscription {
+  const now = new Date().toISOString();
+  const planId = canonicalPlanId(lead.planId || "") || "basic";
+  const cycle: BillingCycle = lead.billingCycle === "year" ? "year" : "month";
+  return {
+    id: clinicIdForLead(lead.id),
+    doctorName: lead.name,
+    clinicName: lead.clinic,
+    phone: lead.phone,
+    email: lead.email || "",
+    planId,
+    planName: getTariff(planId)?.name || "Basic",
+    billingCycle: cycle,
+    status: "pending",
+    subscriptionStatus: "pending",
+    amountUzs: chargeAmount(planId, cycle),
+    paymentMethod: "pending",
+    accessUnlocked: false,
+    startedAt: now,
+    expiresAt: now,
+    paidAt: null,
+    licenseKey: "",
+    orderId: null,
+    leadId: lead.id,
+    pendingOrder: null,
+    paymentLedger: [],
+    username: "",
+    temporaryPassword: "",
+    updatedAt: now,
+  };
+}
+
+export function stagePending(
+  db: { demoLeads: DemoLead[]; subscriptions: Record<string, Subscription> },
+  lead: DemoLead,
+  options: { passwordHash: string; username: string; ownerName?: string },
+) {
+  db.demoLeads.push(lead);
+  const sub = pendingSubscription(lead);
+  sub.username = options.username;
+  sub.ownerName = options.ownerName || lead.name;
+  sub.temporaryPassword = options.passwordHash;
+  sub.updatedAt = new Date().toISOString();
+  db.subscriptions[sub.id] = sub;
+  return sub;
 }
 
 export function stageTrial(
@@ -323,6 +375,106 @@ export async function publishTrial(lead: DemoLead, fetchImpl: FetchLike = fetch)
 export async function publishStagedTrial(sub: Subscription, fetchImpl: FetchLike = fetch) {
   await writeCrm(sub, fetchImpl);
   return sub;
+}
+
+function mergeLogo(logo: string, extra: Record<string, unknown>, remove: string[] = []) {
+  let image = logo || "";
+  let current: Record<string, unknown> = {};
+  if (image.startsWith("[EXT]")) {
+    const end = image.indexOf("[/EXT]");
+    if (end > 5) {
+      try {
+        current = JSON.parse(image.slice(5, end)) as Record<string, unknown>;
+      } catch {
+        current = {};
+      }
+      image = image.slice(end + 6);
+    }
+  }
+  for (const key of remove) delete current[key];
+  Object.assign(current, extra);
+  for (const [key, value] of Object.entries(current)) {
+    if (value === undefined || value === null || value === "") delete current[key];
+  }
+  if (!Object.keys(current).length) return image;
+  return `[EXT]${JSON.stringify(current)}[/EXT]${image}`;
+}
+
+export type CrmClinicRow = {
+  id: string;
+  name: string;
+  status: string;
+  expires_at: string;
+  plan: string;
+  logo: string;
+  monthly_fee: number;
+  access_unlocked?: boolean;
+  pending_order?: PendingOrder | null;
+  subscription_status?: string;
+};
+
+export async function readCrmClinic(id: string, fetchImpl: FetchLike = fetch): Promise<CrmClinicRow | null> {
+  const config = crmConfig();
+  if (!config || !id) return null;
+  const response = await fetchImpl(
+    `${config.url}/rest/v1/clinics?id=eq.${encodeURIComponent(id)}&select=id,name,status,expires_at,plan,logo,monthly_fee`,
+    { headers: { apikey: config.key, Authorization: `Bearer ${config.key}` } },
+  );
+  if (!response.ok) return null;
+  const rows = (await response.json()) as Array<Record<string, unknown>>;
+  const row = rows[0];
+  if (!row?.id) return null;
+  const logo = String(row.logo || "");
+  let extra: Record<string, unknown> = {};
+  if (logo.startsWith("[EXT]")) {
+    const end = logo.indexOf("[/EXT]");
+    if (end > 5) {
+      try {
+        extra = JSON.parse(logo.slice(5, end)) as Record<string, unknown>;
+      } catch {
+        extra = {};
+      }
+    }
+  }
+  return {
+    id: String(row.id),
+    name: String(row.name || ""),
+    status: String(row.status || ""),
+    expires_at: String(row.expires_at || ""),
+    plan: String(row.plan || extra.tariff || ""),
+    logo,
+    monthly_fee: Number(row.monthly_fee || 0),
+    access_unlocked: extra.access_unlocked !== false,
+    pending_order: (extra.pending_order as PendingOrder | undefined) ?? null,
+    subscription_status: String(extra.subscription_status || ""),
+  };
+}
+
+export async function writeClinicAccess(
+  id: string,
+  patch: {
+    status: "Active" | "Inactive";
+    expiresAt: string;
+    plan: string;
+    monthlyFee: number;
+    logoExtra: Record<string, unknown>;
+    removeLogoKeys?: string[];
+  },
+  fetchImpl: FetchLike = fetch,
+) {
+  if (!crmConfig()) return { skipped: true as const, missing: false };
+  const current = await readCrmClinic(id, fetchImpl);
+  if (!current) return { skipped: false as const, missing: true };
+  await upsertRow("clinics", {
+    id,
+    name: current.name,
+    status: patch.status,
+    expires_at: patch.expiresAt.slice(0, 10),
+    plan: crmPlanColumn(patch.plan),
+    monthly_fee: patch.monthlyFee,
+    logo: mergeLogo(current.logo, patch.logoExtra, patch.removeLogoKeys || []),
+  }, fetchImpl);
+  return { skipped: false as const, missing: false };
 }
 
 export async function listSubscriptions() {

@@ -1,6 +1,6 @@
 import { Logo } from "@/components/icons";
 import { Separator } from "@/components/ui/separator";
-import { appLabel, appUrl } from "@/lib/utils";
+import { appLabel, appUrl, crmLoginUrl } from "@/lib/utils";
 
 export function Footer() {
   return (
@@ -29,7 +29,7 @@ export function Footer() {
             <li><a className="hover:text-white" href="mailto:hello@shifo.uz">hello@shifo.uz</a></li>
             <li><a className="hover:text-white" href="/maxfiylik">Maxfiylik siyosati</a></li>
             <li><a className="hover:text-white" href="/shartlar">Ommaviy oferta</a></li>
-            <li><a className="hover:text-white" href="/kirish">Kirish</a></li>
+            <li><a className="hover:text-white" href={crmLoginUrl()}>Kirish</a></li>
           </ul>
         </div>
       </div>

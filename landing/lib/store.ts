@@ -13,6 +13,8 @@ export type Order = {
   phone: string;
   email: string;
   clinic?: string;
+  clinicId?: string;
+  billingCycle?: "month" | "year";
   provider: Provider;
   status: OrderStatus;
   createdAt: string;
@@ -63,9 +65,18 @@ export type DemoLead = {
   billingCycle?: "month" | "year";
 };
 
-export type BillingStatus = "trial" | "paid" | "expired";
-export type SubscriptionStatus = "trialing" | "active" | "expired";
-export type PaymentMethod = Provider | "trial";
+export type BillingStatus = "trial" | "paid" | "expired" | "pending";
+export type SubscriptionStatus = "trialing" | "active" | "expired" | "pending";
+export type PaymentMethod = Provider | "trial" | "pending";
+
+export type PendingOrder = {
+  id: string;
+  amountUzs: number;
+  cycle: "month" | "year";
+  planId: string;
+  createdAt: string;
+  status: "pending" | "paid";
+};
 
 export type LedgerEntry = {
   id: string;
@@ -100,6 +111,7 @@ export type Subscription = {
   licenseKey: string;
   orderId: string | null;
   leadId: string | null;
+  pendingOrder?: PendingOrder | null;
   paymentLedger: LedgerEntry[];
   /** Plain temporary password for paid checkouts, or a bcrypt hash for self-serve trials. */
   temporaryPassword: string;

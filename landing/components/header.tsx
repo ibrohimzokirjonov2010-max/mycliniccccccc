@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
-import { AuthDialog } from "@/components/auth-forms";
 import { Logo } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { crmLoginUrl } from "@/lib/utils";
 
 const links = [
   { href: "/#imkoniyatlar", label: "Imkoniyatlar" },
@@ -16,12 +16,7 @@ const links = [
 
 export function Header({ tone = "dark" }: { tone?: "dark" | "light" }) {
   const [open, setOpen] = useState(false);
-  const [auth, setAuth] = useState<null | "login" | "register">(null);
-
-  function show(mode: "login" | "register") {
-    setOpen(false);
-    setAuth(mode);
-  }
+  const loginHref = crmLoginUrl();
 
   return (
     <header className={`sticky top-0 z-40 border-b backdrop-blur-md ${tone === "light" ? "border-slate-200 bg-white/90 text-[#102033]" : "border-white/10 bg-[#07090f]/80"}`}>
@@ -37,7 +32,9 @@ export function Header({ tone = "dark" }: { tone?: "dark" | "light" }) {
           ))}
         </nav>
         <div className="hidden items-center gap-2 md:flex">
-          <Button variant="outline" className={tone === "light" ? "border-slate-300 bg-white text-[#102033] hover:bg-slate-50" : ""} onClick={() => show("login")}>Kirish</Button>
+          <Button variant="outline" asChild className={tone === "light" ? "border-slate-300 bg-white text-[#102033] hover:bg-slate-50" : ""}>
+            <a href={loginHref}>Kirish</a>
+          </Button>
           <Button asChild>
             <a href="/royxatdan-otish?plan=pro&cycle=month">Bepul sinab ko&apos;ring</a>
           </Button>
@@ -60,14 +57,15 @@ export function Header({ tone = "dark" }: { tone?: "dark" | "light" }) {
             </a>
           ))}
           <div className="grid gap-2 pt-2">
-            <Button variant="outline" className={`w-full ${tone === "light" ? "border-slate-300 bg-white text-[#102033]" : ""}`} onClick={() => show("login")}>Kirish</Button>
+            <Button variant="outline" asChild className={`w-full ${tone === "light" ? "border-slate-300 bg-white text-[#102033]" : ""}`}>
+              <a href={loginHref}>Kirish</a>
+            </Button>
             <Button asChild className="w-full">
               <a href="/royxatdan-otish?plan=pro&cycle=month">Bepul sinab ko&apos;ring</a>
             </Button>
           </div>
         </nav>
       ) : null}
-      <AuthDialog key={auth ?? "closed"} open={auth !== null} onOpenChange={(next) => { if (!next) setAuth(null); }} initial={auth ?? "login"} />
     </header>
   );
 }
