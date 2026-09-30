@@ -13,6 +13,16 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 💳 To'lovlar jadvali — Hozirgi qarz qatori
+- **Sana:** 2026-09-30
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/Payments.jsx`](src/pages/Payments.jsx)
+  - [`scripts/assert-payment-remainder-line.mjs`](scripts/assert-payment-remainder-line.mjs)
+- **Muammo Tavsifi:** «To'lovdan keyin qoldiq» ustunida qizil summa ostida kulrang «Hozirgi qarz … so'm» chiqardi.
+- **Sababi:** Qator `currentDebt` hozirgi qarzdan farq qilsa, ikkinchi qatorni chizardi.
+- **Qanday tuzatildi:** Ikkinchi qator olib tashlandi. Asosiy qoldiq va «✓ To'liq» qoldi. Summalar va `unionPayments` o'zgarmadi. Telefon kartasida bu qator yo'q edi.
+- **Qaytalamaslik choralari:** Jadval katagiga «Hozirgi qarz» matnini qaytarmang. `node scripts/assert-payment-remainder-line.mjs` o'tsin.
+
 ### 🦷 Breket va protez bitta tishga yoziladi
 - **Sana:** 2026-09-29
 - **Tuzatilgan Fayllar:**

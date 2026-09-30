@@ -2139,7 +2139,6 @@ export default function Payments() {
                     const debtVal = (patientBalances[p.id]?.debtAtTime !== undefined)
                       ? patientBalances[p.id].debtAtTime
                       : (p.debt_amount !== undefined && p.debt_amount !== null ? Number(p.debt_amount) : (Number(pat?.total_debt) || 0));
-                    const currentDebt = patientCurrentTotals[p.patient_id]?.currentDebt;
                     const isCompact = density === 'compact';
                     const stamp = paymentStamp(p);
 
@@ -2247,9 +2246,6 @@ export default function Payments() {
                                 <span className="text-emerald-600 font-semibold text-[11px]">✓ To'liq</span>
                               )}
                             </span>
-                            {currentDebt != null && Number(currentDebt) !== Number(debtVal) && (
-                              <span className="text-[9px] font-bold text-slate-400">Hozirgi qarz {formatCurrency(currentDebt)}</span>
-                            )}
                           </div>
                         </td>
 
