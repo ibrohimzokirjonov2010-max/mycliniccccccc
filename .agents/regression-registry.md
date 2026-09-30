@@ -13,6 +13,17 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 💳 To'lov tafsiloti — Hozirgi qarz o'rniga sana
+- **Sana:** 2026-09-30
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/MobilePaymentsV2.jsx`](src/pages/MobilePaymentsV2.jsx)
+  - [`src/pages/Payments.jsx`](src/pages/Payments.jsx)
+  - [`scripts/assert-payment-remainder-line.mjs`](scripts/assert-payment-remainder-line.mjs)
+- **Muammo Tavsifi:** To'lov tafsilotida sariq kartochka «Hozirgi qarz» bemorning joriy qarzini ko'rsatardi.
+- **Sababi:** Kartochka `patientCurrentTotals.currentDebt` dan chizilardi, to'lov yozuvining sanasidan emas.
+- **Qanday tuzatildi:** Shu kartochka «To'langan sana va vaqt» bo'ldi. Matn `paymentStamp` (klinika vaqti). Rang va o'lcham saqlangan. Summalar yozilmadi. Desktop tafsilotida ham shu yozuv chiqadi.
+- **Qaytalamaslik choralari:** Tafsilot kartasiga «Hozirgi qarz» ni qaytarmang. Sanani `toLocaleTimeString` bilan qayta hisoblamang. `node scripts/assert-payment-remainder-line.mjs` o'tsin.
+
 ### 📐 Bemor profilida tish kartasi va reja orasida bo'sh joy
 - **Sana:** 2026-09-30
 - **Tuzatilgan Fayllar:**

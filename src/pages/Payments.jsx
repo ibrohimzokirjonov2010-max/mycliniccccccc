@@ -3050,6 +3050,7 @@ export default function Payments() {
             ? Number(selectedPaymentDebt)
             : Number(patientBalances[sp.id]?.debtAtTime ?? pat?.total_debt) || 0;
           const stamp = paymentStamp(sp);
+          const paidWhen = stamp.time ? `${stamp.date}, ${stamp.time}` : stamp.date;
 
           const origPrice = selectedPaymentPatientData?.originalPrice ?? (Number(pat?.total_debt) + Number(pat?.total_paid) || paymentAmount);
           const discAmt = selectedPaymentPatientData?.totalDiscount ?? 0;
@@ -3108,8 +3109,9 @@ export default function Payments() {
                       <TableIcon className="w-3.5 h-3.5 text-[#1499AD]" />
                       Bemor va to'lov parametrlari
                     </span>
-                    <span className="text-[9.5px] font-mono font-bold text-slate-500">
-                      {stamp.dateTime}
+                    <span className="text-right">
+                      <span className="block text-[8px] font-black uppercase tracking-widest text-amber-600">To'langan sana va vaqt</span>
+                      <span className="text-[11px] font-mono font-black text-amber-700">{paidWhen}</span>
                     </span>
                   </div>
 

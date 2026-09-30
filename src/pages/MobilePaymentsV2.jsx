@@ -1582,11 +1582,8 @@ onClose={() => { setShowPlanInvoiceModal(false); setSelectedPlanForInvoice(null)
               const TypeIcon = typeStyle.icon;
               const rawAmt = Number(sp.amount || 0);
 
-              const dtRaw = sp.created_date || sp.created_at || sp.date;
-              const dt = dtRaw ? new Date(dtRaw) : null;
-              const hasDate = dt && !isNaN(dt);
-              const dateStr = hasDate ? dt.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
-              const timeStr = hasDate ? dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+              const paidStamp = paymentStamp(sp);
+              const paidWhen = paidStamp.time ? `${paidStamp.date}, ${paidStamp.time}` : paidStamp.date;
 
               const gradientMap = {
                 Income:   'from-emerald-500 to-teal-600',
@@ -1693,11 +1690,10 @@ onClose={() => { setShowPlanInvoiceModal(false); setSelectedPlanForInvoice(null)
 
                     {/* Xizmat */}
 
-                    {/* Jami to'langan + Hozirgi qarz */}
-                    {pat && (() => {
-                      const patTotals = patientCurrentTotals[sp.patient_id];
-                      const displayPaid = patTotals?.totalPaid ?? (Number(pat.total_paid) || 0);
-                      const displayDebt = patTotals?.currentDebt ?? (Number(pat.total_debt) || 0);
+                    {/* Jami to'langan + To'langan sana va vaqt */}
+                    {(() => {
+                      const patTotals = pat ? patientCurrentTotals[sp.patient_id] : null;
+                      const displayPaid = patTotals?.totalPaid ?? (Number(pat?.total_paid) || 0);
 
                       return (
                         <div className="grid grid-cols-2 gap-2">
@@ -1705,11 +1701,9 @@ onClose={() => { setShowPlanInvoiceModal(false); setSelectedPlanForInvoice(null)
                             <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">Jami to'langan</p>
                             <p className="text-[12px] font-[900] text-emerald-700">{displayPaid.toLocaleString()} UZS</p>
                           </div>
-                          <div className={`rounded-2xl border p-3 ${displayDebt > 0 ? 'bg-amber-50 border-amber-100' : 'bg-emerald-50 border-emerald-100'}`}>
-                            <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${displayDebt > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>Hozirgi qarz</p>
-                            <p className={`text-[12px] font-[900] ${displayDebt > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
-                              {displayDebt > 0 ? `${displayDebt.toLocaleString()} UZS` : "Qarz yo'q"}
-                            </p>
+                          <div className="rounded-2xl border p-3 bg-amber-50 border-amber-100">
+                            <p className="text-[8px] font-black uppercase tracking-widest mb-1 text-amber-500">To'langan sana va vaqt</p>
+                            <p className="text-[12px] font-[900] text-amber-700">{paidWhen}</p>
                           </div>
                         </div>
                       );
