@@ -1,8 +1,9 @@
-/* PAYMENT_ADD_TEAL_V5 — one desktop centering channel (transform only)
+/* PAYMENT_ADD_TEAL_V5 — one centering channel (transform only)
    Marker: payment-add-teal-v5-single-center
-   Desktop: left/top 50% + transform:translate(-50%,-50%). Independent CSS
-   `translate` MUST stay none or the sheet double-offsets off-screen.
-   Mobile (≤767): inset-pin, no matrix, in-flow footer above scroll body. */
+   Phone and desktop: left/top 50% + transform:translate(-50%,-50%).
+   Independent CSS `translate` MUST stay none or the card double-offsets.
+   Phone is a centered card with side margins, not a bottom sheet.
+   Footer stays in-flow so the body scrolls above the button. */
 
 [data-radix-dialog-content].payment-add-dialog,
 .payment-add-dialog {
@@ -367,22 +368,22 @@
 @media (max-width: 767px) {
   [data-radix-dialog-content].payment-add-dialog,
   .payment-add-dialog {
-    /* Fill the visual viewport. Do NOT center with transform — that breaks
-       sticky and lets min-content grow the sheet past the screen. */
-    inset: max(8px, env(safe-area-inset-top, 0px)) 6px max(8px, env(safe-area-inset-bottom, 0px)) 6px !important;
-    top: max(8px, env(safe-area-inset-top, 0px)) !important;
-    right: 6px !important;
-    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
-    left: 6px !important;
-    width: auto !important;
-    max-width: none !important;
+    /* Centered card, same idea as the phone appointment dialog.
+       Footer is in-flow, so this transform does not cover the actions. */
+    inset: auto !important;
+    left: 50% !important;
+    top: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: min(32rem, calc(100vw - 2rem)) !important;
+    max-width: calc(100vw - 2rem) !important;
     height: auto !important;
-    max-height: none !important;
+    max-height: min(90dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 4.5rem)) !important;
     min-height: 0 !important;
     margin: 0 !important;
-    transform: none !important;
+    transform: translate(-50%, -50%) !important;
     translate: none !important;
-    border-radius: 18px;
+    border-radius: 2.5rem;
   }
 
   .payment-add-header-title {

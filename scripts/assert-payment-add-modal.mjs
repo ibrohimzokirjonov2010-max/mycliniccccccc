@@ -27,8 +27,9 @@ assert(css.includes('#0d9488'), 'teal accent');
 assert(!css.includes('indigo') && !css.includes('purple'), 'no purple in payment css');
 assert(css.includes('.payment-add-footer'), 'sticky footer class');
 assert(css.includes('position: relative !important'), 'mobile footer in-flow relative');
-assert(css.includes('transform: none !important'), 'mobile kills centering transform');
-assert(css.includes('height: auto !important'), 'mobile inset / desktop auto height');
+assert(css.includes('transform: translate(-50%, -50%) !important'), 'centered card uses one transform channel');
+assert(!css.includes('transform: none !important'), 'phone card stays centered');
+assert(css.includes('height: auto !important'), 'card height follows content up to max-height');
 assert(css.includes('flex: 1 1 0%'), 'body flex basis 0');
 assert(css.includes('min-height: 0 !important'), 'dialog/body can shrink');
 assert(css.includes('.payment-add-chips'), 'chips class');
@@ -39,7 +40,10 @@ assert(css.includes('container-type: inline-size'), 'container query for equal f
 assert(css.includes('@container payment-add'), 'named container footer');
 
 const [cssBeforeMobile, cssMobile = ''] = css.split('@media (max-width: 767px)');
-assert(cssMobile.includes('transform: none !important'), 'transform none is mobile-only');
+assert(cssMobile.includes('transform: translate(-50%, -50%) !important'), 'phone card is centered');
+assert(cssMobile.includes('calc(100vw - 2rem)'), 'phone card keeps side margins');
+assert(cssMobile.includes('border-radius: 2.5rem'), 'phone card is rounded');
+assert(!cssMobile.includes('bottom: 0') && !cssMobile.includes('bottom:0'), 'phone card is not a bottom sheet');
 assert(cssMobile.includes('translate: none !important'), 'mobile also clears independent translate');
 assert(cssMobile.includes('position: relative !important'), 'in-flow footer is mobile-only');
 assert(!cssMobile.includes('position: absolute !important'), 'mobile must not overlay footer on body');
@@ -73,6 +77,18 @@ assert(desktop.includes('payment-add-footer'), 'desktop sticky footer');
 assert(desktop.includes('data-payment-quick-chips'), 'desktop chips');
 assert(desktop.includes("data-payment-cta-guard=\"amount-gt-zero\""), 'desktop CTA amount guard');
 assert(desktop.includes('setFormError(t(\'payments.formErrorFill\'))'), 'desktop inline fill error');
+
+const profile = read('src/pages/MobilePatientProfile.jsx');
+const payStart = profile.indexOf('PAYMENT MODAL');
+const payEnd = profile.indexOf('{/* MODALS */}');
+const pay = profile.slice(payStart, payEnd);
+assert(payStart > 0 && payEnd > payStart, 'profile payment modal markup');
+assert(!pay.includes('bottom-0') && !pay.includes("y: '100%'"), 'profile payment modal is not a bottom sheet');
+assert(pay.includes('items-center') && pay.includes('justify-center'), 'profile payment modal is centered');
+assert(pay.includes('rounded-[2.5rem]'), 'profile payment modal is a rounded card');
+assert(pay.includes('overflow-y-auto'), 'profile payment form scrolls');
+assert(pay.includes('payment-accept-footer'), 'save button stays in the footer');
+assert(pay.includes('handleSavePay'), 'save handler stays');
 
 assert(alerter.includes('isBlockingModalOpen'), 'alerter skips open modals');
 assert(app.includes('zIndex: 90'), 'toaster z-index 90');

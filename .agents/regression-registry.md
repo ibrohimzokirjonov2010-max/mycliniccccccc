@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 💳 Telefon — to'lov oynasi pastki varaq
+- **Sana:** 2026-09-30
+- **Tuzatilgan Fayllar:**
+  - [`src/pages/MobilePatientProfile.jsx`](src/pages/MobilePatientProfile.jsx)
+  - [`src/components/payments/paymentAddModal.css`](src/components/payments/paymentAddModal.css)
+  - [`scripts/assert-payment-add-modal.mjs`](scripts/assert-payment-add-modal.mjs)
+  - [`scripts/assert-payment-add-footer.mjs`](scripts/assert-payment-add-footer.mjs)
+- **Muammo Tavsifi:** «To'lov qabul qilish» telefonda pastdan chiqadigan varaq edi. Uchrashuv qo'shish oynasi esa ekran o'rtasida kartochka.
+- **Sababi:** Profil varaqi `fixed bottom-0` va `y: 100%`. To'lovlar/Qarzlar dialogi ≤767 da butun ekranga yopishib turardi.
+- **Qanday tuzatildi:** Profil, To'lovlar va Qarzlar (shu dialog) o'rtada, yon chetlari, yumaloq burchak, xira fon. Forma ichi skrollanadi, saqlash tugmasi pastda qoladi. Hisob-kitob o'zgarmadi. Footer `position: relative`.
+- **Qaytalamaslik choralari:** Telefon to'lov oynasini yana `bottom-0` varaq qilmang. Footerni `position: absolute` qilmang. `translate` ni `-50%` qilmang. `node scripts/assert-payment-add-modal.mjs` va `assert-payment-add-footer.mjs` o'tsin.
+
 ### 🦷 Tish kartasidagi tezkor belgi har bosishda yangi reja ochadi
 - **Sana:** 2026-09-30
 - **Tuzatilgan Fayllar:**

@@ -185,7 +185,15 @@ assert(
   mobile.after.footer.position === 'relative' || mobile.after.footer.position === 'static',
   `mobile footer must be in-flow (not absolute overlay) ${mobile.after.footer.position}`
 );
-assert(mobile.after.dialog.transform === 'none', `mobile dialog still transformed ${mobile.after.dialog.transform}`);
+assert(mobile.after.dialog.transform !== 'none', `phone card lost centering transform ${mobile.after.dialog.transform}`);
+assert(mobile.before.dialog.cssTranslate === 'none', `phone card has a second translate ${mobile.before.dialog.cssTranslate}`);
+assert(mobile.before.dialog.left >= 6, `phone card has no side margin ${mobile.before.dialog.left}`);
+assert(mobile.before.dialog.right <= mobile.before.innerWidth - 6, `phone card has no side margin ${mobile.before.dialog.right}`);
+assert(mobile.before.dialog.width <= mobile.before.innerWidth - 24, `phone card is full-bleed ${mobile.before.dialog.width}`);
+assert(
+  Math.abs(mobile.before.dialog.centerX - mobile.before.innerWidth / 2) < 24,
+  `phone card not centered ${mobile.before.dialog.centerX}`
+);
 // Footer sits below body — after long-form scroll, body moves but footer stays pinned in flex layout
 assert(
   mobile.after.footer.bottom <= mobile.after.innerHeight + 1,

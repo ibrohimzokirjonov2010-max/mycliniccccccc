@@ -1195,22 +1195,31 @@ export default function MobilePatientProfile() {
       <AnimatePresence>
         {payModalOpen && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-[100] backdrop-blur-sm" onClick={() => setPayModalOpen(false)} />
             <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 26, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-[100] bg-white rounded-t-3xl shadow-2xl px-5 pt-4 max-h-[85dvh] overflow-y-auto"
-              style={{ paddingBottom: 'calc(54px + env(safe-area-inset-bottom, 0px) + 1rem)' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+              onClick={() => setPayModalOpen(false)}
             >
-              <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
-              <div className="flex items-center justify-between mb-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.18 }}
+              data-payment-accept="centered"
+              onClick={(e) => e.stopPropagation()}
+              className="pointer-events-auto flex w-full max-w-md flex-col overflow-hidden rounded-[2.5rem] bg-white shadow-2xl"
+              style={{ maxHeight: 'min(90dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 4.5rem))' }}
+            >
+              <div className="flex shrink-0 items-center justify-between px-5 pb-2 pt-4">
                 <h3 className="text-base font-black text-slate-900">{t('patientProfile.personalCard.acceptPayment', "To'lov qabul qilish")}</h3>
                 <button onClick={() => setPayModalOpen(false)} className="p-2 rounded-xl bg-slate-100 active:scale-95 transition-transform">
                   <X className="w-4 h-4 text-slate-600" />
                 </button>
               </div>
 
-              <div className="space-y-3">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-3">
                 <div className="flex gap-2">
                   {[
                     { v: 'Income', l: t('patientProfile.mobile.payAction', "To'lov") },
@@ -1325,12 +1334,15 @@ export default function MobilePatientProfile() {
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#14b8a6]/30 focus:border-[#14b8a6] transition-all" />
                 </div>
 
+              </div>
+              <div className="payment-accept-footer shrink-0 border-t border-slate-100 bg-white px-5 pt-3" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}>
                 <button onClick={handleSavePay} disabled={payingSaving || !payForm.amount}
                   className="w-full py-4 disabled:opacity-50 text-white rounded-2xl text-sm font-black flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
                   style={{ background: TEAL }}>
                   {payingSaving ? <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <><CreditCard className="w-4 h-4" />{t('patientProfile.installments.savePayment', "To'lovni saqlash")}</>}
                 </button>
               </div>
+            </motion.div>
             </motion.div>
           </>
         )}
