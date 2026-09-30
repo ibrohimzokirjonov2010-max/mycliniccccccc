@@ -2,15 +2,17 @@
   "currency": "UZS",
   "licenseDays": 30,
   "trialDays": 14,
+  "yearlyMonthsCharged": 10,
   "legacyPortalMonthlyFee": {
     "basic": 99000,
-    "pro": 189000
+    "pro": 189000,
+    "premium": 349000
   },
   "tariffs": [
     {
-      "id": "start",
-      "name": "Start",
-      "priceUzs": 990000,
+      "id": "basic",
+      "name": "Basic",
+      "priceUzs": 99000,
       "crmPlan": "basic",
       "recommended": false,
       "period": "oy",
@@ -19,17 +21,17 @@
     {
       "id": "pro",
       "name": "Pro",
-      "priceUzs": 1990000,
+      "priceUzs": 189000,
       "crmPlan": "pro",
       "recommended": true,
       "period": "oy",
       "subscriptionStatus": "active"
     },
     {
-      "id": "klinika",
-      "name": "Klinika",
-      "priceUzs": 3490000,
-      "crmPlan": "pro",
+      "id": "premium",
+      "name": "Premium",
+      "priceUzs": 349000,
+      "crmPlan": "premium",
       "recommended": false,
       "period": "oy",
       "subscriptionStatus": "active"

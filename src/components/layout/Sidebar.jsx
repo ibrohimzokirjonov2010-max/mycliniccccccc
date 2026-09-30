@@ -5,13 +5,14 @@ import {
   LayoutDashboard, Users, CalendarDays, CalendarClock, UserPlus, CreditCard,
   Stethoscope, Package, BarChart3, ClipboardList, Bell, AlertTriangle,
   Activity, Wallet, Settings, ChevronLeft, ChevronRight, Zap, TrendingDown,
-  LogOut, Heart, Target, Camera
+  LogOut, Heart, Target, Camera, Lock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
-import { useFeature } from '@/hooks/useFeature';
+import { useClinicPlan } from '@/hooks/useFeature';
+import { isPathLocked } from '@/lib/clinicPlan';
 import { prefetchModuleData } from '@/utils/prefetcher';
 import { ImplantIcon } from '@/components/ui/Icons';
 import ShifoCrmLogo from '@/components/ui/ShifoCrmLogo';
@@ -71,20 +72,7 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
     if (!el) return;
     setNavCanScroll(el.scrollHeight - el.scrollTop - el.clientHeight > 12);
   };
-  const hasImplantsAccess = useFeature('implants');
-  const hasTechniciansAccess = useFeature('technicians');
-  const hasExpensesAccess = useFeature('expenses');
-  const hasPayrollAccess = useFeature('payroll');
-  const hasServicesAccess = useFeature('services');
-  const hasInventoryAccess = useFeature('inventory');
-  const hasReportsAccess = useFeature('reports');
-  const hasTreatmentPlansAccess = useFeature('treatment_plans');
-  const hasNoShowAccess = useFeature('no_show');
-  const hasTreatmentTrackingAccess = useFeature('treatment_tracking');
-  const hasDebtsAccess = useFeature('debts');
-  const hasMarketingAccess = useFeature('marketing');
-  const hasCasesAccess = useFeature('cases');
-  const hasStaffAccess = useFeature('staff');
+  const plan = useClinicPlan();
 
   useEffect(() => {
     const fetchClinic = async () => {
@@ -129,38 +117,8 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
       items = items.filter(item => doctorAllowedPaths.includes(item.path));
     }
 
-    // Plan based feature restrictions (admin and doctor)
-    const restrictions = [
-      { allowed: hasImplantsAccess, path: '/implants' },
-      { allowed: hasTechniciansAccess, path: '/technicians' },
-      { allowed: hasExpensesAccess, path: '/expenses' },
-      { allowed: hasPayrollAccess, path: '/payroll' },
-      { allowed: hasServicesAccess, path: '/services' },
-      { allowed: hasInventoryAccess, path: '/inventory' },
-      { allowed: hasReportsAccess, path: '/reports' },
-      { allowed: hasTreatmentPlansAccess, path: '/treatment-plans' },
-      { allowed: hasNoShowAccess, path: '/no-show' },
-      { allowed: hasTreatmentTrackingAccess, path: '/treatment-tracking' },
-      { allowed: hasDebtsAccess, path: '/debts' },
-      { allowed: hasMarketingAccess, path: '/marketing' },
-      { allowed: hasCasesAccess, path: '/cases' },
-      { allowed: hasStaffAccess, path: '/staff' },
-    ];
-
-    for (const res of restrictions) {
-      if (!res.allowed) {
-        items = items.filter(item => item.path !== res.path);
-      }
-    }
-    
-    return items;
-  }, [
-    t, isDoctor, user, 
-    hasImplantsAccess, hasTechniciansAccess, hasExpensesAccess, hasPayrollAccess, 
-    hasServicesAccess, hasInventoryAccess, hasReportsAccess, hasTreatmentPlansAccess, 
-    hasNoShowAccess, hasTreatmentTrackingAccess, hasDebtsAccess, hasMarketingAccess, 
-    hasCasesAccess, hasStaffAccess
-  ]);
+    return items.map((item) => ({ ...item, locked: isPathLocked(plan, item.path) }));
+  }, [t, isDoctor, user, plan]);
 
   useEffect(() => {
     updateNavScroll();
@@ -231,9 +189,11 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
                       <span className="truncate">{item.label}</span>
                     </div>
 
-                    {active && (
+                    {item.locked ? (
+                      <Lock className={cn('w-3.5 h-3.5 shrink-0', active ? 'text-white' : 'text-slate-400')} aria-label="Yopiq" />
+                    ) : active ? (
                       <div className="w-2 h-2 rounded-full bg-white shrink-0 shadow-xs ml-1 ring-2 ring-cyan-200" />
-                    )}
+                    ) : null}
                   </Link>
                 </div>
               );
@@ -270,6 +230,7 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
                       'w-4 h-4 transition-transform',
                       active ? 'text-white scale-110' : 'group-hover:scale-110'
                     )} />
+                    {item.locked ? <Lock className="absolute right-1 top-1 w-2.5 h-2.5 text-slate-400" aria-label="Yopiq" /> : null}
                   </Link>
                 </div>
               );

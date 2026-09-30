@@ -16,6 +16,7 @@ import {
   applyClinicSession,
   assertServerFeature,
   planAllows,
+  readClinicPlan,
   resolveClinicPlan,
 } from '@/lib/clinicPlan';
 import { assertClinicNotExpired, isClinicExpired } from '@/lib/clinicExpiry';
@@ -48,14 +49,14 @@ function rememberAbsentColumn(tableName, error) {
 }
 
 // Plan configurations
-const SERVER_GATED_FEATURES = new Set(['implants', 'marketing', 'cases']);
+const SERVER_GATED_FEATURES = new Set([
+  'implants', 'marketing', 'cases', 'leads', 'inventory', 'expenses', 'payroll', 'technicians',
+]);
 
-// Feature validation. Missing plan is BASIC. PRO-only modules are re-checked
-// against the clinic row in assertServerFeature before any read or write.
 const enforceFeature = (feature) => {
-  const clinicPlan = localStorage.getItem('clinic_plan') === 'pro' ? 'pro' : 'basic';
+  const clinicPlan = readClinicPlan();
   if (!planAllows(clinicPlan, feature)) {
-    throw { code: 403, message: "Bu moduldan foydalanish uchun PRO ta'rifiga o'ting!" };
+    throw { code: 403, message: "Bu moduldan foydalanish uchun yuqoriroq ta'rifga o'ting!" };
   }
 };
 
@@ -191,7 +192,7 @@ class HybridEntityLoader {
       'Technician': 'technicians',
       'TechnicianJob': 'technicians',
       'Inventory': 'inventory',
-      'Expense': 'payroll',
+      'Expense': 'expenses',
       'Payroll': 'payroll'
     };
 
@@ -1992,7 +1993,7 @@ export const base44 = {
       'owner_email', 'owner_phone', 'signup_source',
       'payme_merchant_id', 'click_service_id', 'click_merchant_id',
       'webhook_status', 'last_webhook_at', 'payment_provider',
-      'payment_ledger'
+      'payment_ledger', 'billing_cycle'
     ],
 
     _encodeClinicNotes(clinic) {

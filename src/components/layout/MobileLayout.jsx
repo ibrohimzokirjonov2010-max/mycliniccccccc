@@ -5,14 +5,14 @@ import {
   Package, Phone, ClipboardList, Bell, Settings,
   Menu, Plus, Stethoscope,
   Wallet, CreditCard, AlertTriangle, Activity, 
-  FileText, BarChart3, Briefcase, Globe, Wrench
+  FileText, BarChart3, Briefcase, Globe, Wrench, Lock
 } from 'lucide-react';
 import { Tooth, ImplantIcon } from '@/components/ui/Icons';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
-import { planAllows } from '@/lib/clinicPlan';
+import { isPathLocked } from '@/lib/clinicPlan';
 import { useClinicPlan } from '@/hooks/useFeature';
 import AdBanner from './AdBanner';
 
@@ -102,10 +102,10 @@ export default function MobileLayout({ children }) {
   const isActive = (path) => location.pathname === path;
   
   const MOBILE_NAV_ITEMS = getMobileNavItems(t);
-  const MORE_NAV_ITEMS = getMoreNavItems(t).filter((item) => {
-    if (item.path === '/implants') return planAllows(plan, 'implants');
-    return true;
-  });
+  const MORE_NAV_ITEMS = getMoreNavItems(t).map((item) => ({
+    ...item,
+    locked: isPathLocked(plan, item.path),
+  }));
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
@@ -258,7 +258,10 @@ export default function MobileLayout({ children }) {
                             : 'bg-muted hover:bg-muted/80'
                         }`}
                       >
-                        <item.icon className="h-5 w-5" />
+                        <span className="relative">
+                          <item.icon className="h-5 w-5" />
+                          {item.locked ? <Lock className="absolute -right-2 -top-1 h-3 w-3 text-slate-400" aria-label="Yopiq" /> : null}
+                        </span>
                         <span className="text-[10px] font-medium text-center">{item.label}</span>
                       </button>
                     ))}
@@ -279,7 +282,10 @@ export default function MobileLayout({ children }) {
                             : 'bg-muted hover:bg-muted/80'
                         }`}
                       >
-                        <item.icon className="h-5 w-5" />
+                        <span className="relative">
+                          <item.icon className="h-5 w-5" />
+                          {item.locked ? <Lock className="absolute -right-2 -top-1 h-3 w-3 text-slate-400" aria-label="Yopiq" /> : null}
+                        </span>
                         <span className="text-[10px] font-medium text-center">{item.label}</span>
                       </button>
                     ))}

@@ -6,11 +6,11 @@ import {
   ChevronLeft, ChevronRight, Bell, Plus, X, LogOut,
   Stethoscope, Package, BarChart3, ClipboardList,
   AlertTriangle, Activity, Settings, Zap, UserPlus,
-  TrendingDown, Wrench, Target, Camera
+  TrendingDown, Wrench, Target, Camera, Lock
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { CLINIC_SESSION_EVENT, planAllows } from '@/lib/clinicPlan';
+import { CLINIC_SESSION_EVENT, isPathLocked } from '@/lib/clinicPlan';
 import { useClinicPlan } from '@/hooks/useFeature';
 import AdBanner from './AdBanner';
 import NotificationPanel from '../notifications/NotificationPanel';
@@ -181,25 +181,7 @@ export default function NativeMobileLayout({ children }) {
       items = items.filter(item => doctorAllowedPaths.includes(item.path));
     }
 
-    const pathFeature = {
-      '/implants': 'implants',
-      '/marketing': 'marketing',
-      '/cases': 'cases',
-      '/technicians': 'technicians',
-      '/expenses': 'expenses',
-      '/payroll': 'payroll',
-      '/services': 'services',
-      '/inventory': 'inventory',
-      '/reports': 'reports',
-      '/treatment-plans': 'treatment_plans',
-      '/no-show': 'no_show',
-      '/treatment-tracking': 'treatment_tracking',
-      '/staff': 'staff',
-    };
-    items = items.filter((item) => {
-      const feature = pathFeature[item.path];
-      return !feature || planAllows(plan, feature);
-    });
+    items = items.map((item) => ({ ...item, locked: isPathLocked(plan, item.path) }));
     
     // SuperAdmin hiding logic - only show 'System Admin' to user with username 'admin'
     if (user?.username !== 'admin') {
@@ -575,11 +557,13 @@ export default function NativeMobileLayout({ children }) {
                           {item.label}
                         </span>
                       </div>
-                      {!isActive && (
+                      {item.locked ? (
+                        <Lock className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} aria-label="Yopiq" />
+                      ) : !isActive ? (
                         <div className="w-5 h-5 rounded-full bg-slate-50 flex items-center justify-center shrink-0">
                           <ChevronLeft className="w-3 h-3 text-slate-300 rotate-180" />
                         </div>
-                      )}
+                      ) : null}
                     </button>
                     </div>
                   );

@@ -66,7 +66,8 @@ describe("trial registration", { concurrency: 1 }, () => {
     assert.equal(user.password, saved.temporaryPassword);
     assert.equal(user.username, "dilnoza");
     assert.equal(user.name, "Dilnoza Rahimova");
-    assert.equal(clinic.monthly_fee, 0);
+    assert.equal(clinic.monthly_fee, 189_000);
+    assert.equal(clinic.plan, "pro");
     assert.equal(clinic.status, "Active");
 
     const logged = await loginAccount("dilnoza@smile.uz", "parol1234", request());

@@ -1,5 +1,5 @@
 import { randomBytes } from "crypto";
-import { crmPlanForTariff, LICENSE_DAYS, TRIAL_DAYS } from "../config/tariffs";
+import { canonicalPlanId, catalogMonthly, crmPlanForTariff, getTariff, LICENSE_DAYS, TRIAL_DAYS } from "../config/tariffs";
 import { clinicNameFor } from "./billing";
 import {
   readStore,
@@ -27,8 +27,25 @@ export function crmConfig(): CrmConfig | null {
   return { url, key };
 }
 
-export function crmPlanColumn(planId: string): "basic" | "pro" {
+export function crmPlanColumn(planId: string): "basic" | "pro" | "premium" {
   return crmPlanForTariff(planId);
+}
+
+function stampLogoTariff(logo: unknown, tariff: string) {
+  const raw = typeof logo === "string" ? logo : "";
+  if (raw.startsWith("[EXT]")) {
+    const end = raw.indexOf("[/EXT]");
+    if (end > 5) {
+      try {
+        const extra = JSON.parse(raw.slice(5, end)) as Record<string, unknown>;
+        extra.tariff = tariff;
+        return `[EXT]${JSON.stringify(extra)}[/EXT]${raw.slice(end + 6)}`;
+      } catch {
+        /* replace below */
+      }
+    }
+  }
+  return `[EXT]${JSON.stringify({ tariff })}[/EXT]${raw}`;
 }
 
 export function subscriptionStatusFor(kind: "trial" | "paid", expired: boolean): SubscriptionStatus {
@@ -76,10 +93,11 @@ export function buildCrmRows(sub: Subscription) {
       email: sub.email,
       doctor_name: sub.doctorName,
       payment_method: sub.paymentMethod,
-      tariff: sub.planId,
+      tariff: canonicalPlanId(sub.planId) || (sub.planId === "trial" ? "basic" : sub.planId),
+      billing_cycle: sub.billingCycle || "month",
       billing_status: sub.status,
       subscription_status: sub.subscriptionStatus,
-      trial_ends_at: sub.planId === "trial" ? sub.expiresAt.slice(0, 10) : "",
+      trial_ends_at: sub.paymentMethod === "trial" || sub.subscriptionStatus === "trialing" || sub.planId === "trial" ? sub.expiresAt.slice(0, 10) : "",
       period_ends_at: sub.expiresAt.slice(0, 10),
       access_unlocked: sub.accessUnlocked,
       license_key: sub.licenseKey,
@@ -87,7 +105,7 @@ export function buildCrmRows(sub: Subscription) {
     }),
     expires_at: sub.expiresAt.slice(0, 10),
     status: sub.accessUnlocked ? "Active" : "Expired",
-    monthly_fee: Math.round(sub.amountUzs),
+    monthly_fee: catalogMonthly(canonicalPlanId(sub.planId) || "basic"),
     plan: crmPlanColumn(sub.planId),
   };
   if (sub.paidAt) clinic.last_payment_date = sub.paidAt.slice(0, 10);
@@ -143,8 +161,9 @@ function trialSubscription(lead: DemoLead): Subscription {
     clinicName: lead.clinic,
     phone: lead.phone,
     email: lead.email || "",
-    planId: "trial",
-    planName: "Sinov",
+    planId: canonicalPlanId(lead.planId || "") || "basic",
+    planName: getTariff(canonicalPlanId(lead.planId || "") || "basic")?.name || "Basic",
+    billingCycle: lead.billingCycle === "year" ? "year" : "month",
     status: expired ? "expired" : "trial",
     subscriptionStatus: subscriptionStatusFor("trial", expired),
     amountUzs: 0,
@@ -255,6 +274,7 @@ export async function upsertRow(table: "clinics" | "users", row: Record<string, 
     if (response.ok) return { skipped: false as const, ok: true as const };
     lastDetail = await response.text();
     if ((lastDetail.includes("23514") || lastDetail.includes("check constraint")) && payload.plan && payload.plan !== "pro") {
+      if (payload.plan === "premium") payload.logo = stampLogoTariff(payload.logo, "premium");
       payload.plan = "pro";
       continue;
     }

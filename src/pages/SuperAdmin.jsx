@@ -42,6 +42,7 @@ import {
   WEBHOOK_LABELS,
   SOURCE_LABELS,
   catalogAmount,
+  displayMonthlyFee,
   isCustomMonthly,
   resolveLifecycle,
   getTimeRemaining,
@@ -62,11 +63,19 @@ const FIELD = 'h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-x
 const SELECT = 'w-full h-10 bg-[#0c1218] border border-white/10 rounded-xl px-3 text-white text-xs focus:border-teal-400/50 focus:outline-none';
 
 function landingTariffLabel(clinic) {
-  if (clinic?.tariff === 'start') return 'START';
-  if (clinic?.tariff === 'pro') return 'PRO';
-  if (clinic?.tariff === 'klinika') return 'KLINIKA';
-  if (clinic?.tariff === 'trial') return 'SINOV';
+  const tariff = String(clinic?.tariff || '').toLowerCase();
+  if (tariff === 'start' || tariff === 'basic') return 'BASIC';
+  if (tariff === 'pro') return 'PRO';
+  if (tariff === 'klinika' || tariff === 'premium') return 'PREMIUM';
+  if (tariff === 'trial') return 'SINOV';
   return '';
+}
+
+function planBadge(clinic) {
+  const plan = resolveClinicPlan(clinic);
+  if (plan === 'basic') return { label: 'BASIC', premium: false, basic: true };
+  if (plan === 'premium') return { label: 'PREMIUM', premium: true, basic: false };
+  return { label: 'PRO', premium: false, basic: false };
 }
 
 function landingPayLabel(method) {
@@ -225,7 +234,7 @@ export default function SuperAdmin() {
 
   useEffect(() => {
     if (!renewingClinic || payAmountTouched) return;
-    setPayAmount(Number(renewingClinic.monthly_fee || 0) * Number(renewMonths || 1));
+    setPayAmount(displayMonthlyFee({ ...renewingClinic, plan: resolveClinicPlan(renewingClinic) }) * Number(renewMonths || 1));
   }, [renewMonths, renewingClinic, payAmountTouched]);
 
   useEffect(() => {
@@ -356,7 +365,7 @@ export default function SuperAdmin() {
     const incoming = clinic.payment_provider || clinic.payment_method;
     const provider = ['manual', 'payme', 'click', 'mock'].includes(incoming) ? incoming : 'manual';
     setPayMethod(provider);
-    setPayAmount(Number(clinic.monthly_fee || 0));
+    setPayAmount(displayMonthlyFee({ ...clinic, plan: resolveClinicPlan(clinic) }));
     setPayAmountTouched(false);
     setRenewModalOpen(true);
   };
@@ -523,6 +532,7 @@ export default function SuperAdmin() {
     let atRisk = 0;
     let basicCount = 0;
     let proCount = 0;
+    let premiumCount = 0;
     let customCount = 0;
     let trialCount = 0;
     let pastDueCount = 0;
@@ -544,7 +554,9 @@ export default function SuperAdmin() {
 
       if (life.key === 'active' || life.key === 'expiring') totalRevenue += fee;
       if (life.days !== null && life.days >= 0 && life.days <= 15 && life.key !== 'expired') watchCount++;
-      if (c.plan === 'basic') basicCount++;
+      const resolvedPlan = resolveClinicPlan(c);
+      if (resolvedPlan === 'basic') basicCount++;
+      else if (resolvedPlan === 'premium') premiumCount++;
       else proCount++;
       if (isCustomMonthly(c)) customCount++;
     });
@@ -586,6 +598,7 @@ export default function SuperAdmin() {
       mrr: totalRevenue,
       basicCount,
       proCount,
+      premiumCount,
       totalUsers: users.length,
       doctorsCount,
       adminUsersCount,
@@ -611,8 +624,10 @@ export default function SuperAdmin() {
       if (clinicStatusFilter === 'expired') matchesStatus = life.key === 'expired';
 
       let matchesPlan = true;
-      if (clinicPlanFilter === 'basic') matchesPlan = c.plan === 'basic';
-      if (clinicPlanFilter === 'pro') matchesPlan = c.plan !== 'basic';
+      const resolvedPlan = resolveClinicPlan(c);
+      if (clinicPlanFilter === 'basic') matchesPlan = resolvedPlan === 'basic';
+      if (clinicPlanFilter === 'pro') matchesPlan = resolvedPlan === 'pro';
+      if (clinicPlanFilter === 'premium') matchesPlan = resolvedPlan === 'premium';
 
       return matchesSearch && matchesStatus && matchesPlan;
     });
@@ -641,8 +656,10 @@ export default function SuperAdmin() {
       const life = resolveLifecycle(c);
       const haystack = [c.name, c.id, c.owner_email, c.email, c.doctor_name, c.phone, c.payme_merchant_id, c.click_service_id].join(' ').toLowerCase();
       if (billingSearch && !haystack.includes(billingSearch.toLowerCase())) return false;
-      if (billingPlan === 'basic' && c.plan !== 'basic') return false;
-      if (billingPlan === 'pro' && c.plan === 'basic') return false;
+      const resolvedPlan = resolveClinicPlan(c);
+      if (billingPlan === 'basic' && resolvedPlan !== 'basic') return false;
+      if (billingPlan === 'pro' && resolvedPlan !== 'pro') return false;
+      if (billingPlan === 'premium' && resolvedPlan !== 'premium') return false;
       if (billingLife !== 'all' && life.key !== billingLife) return false;
       return true;
     });
@@ -656,8 +673,10 @@ export default function SuperAdmin() {
       if (ledgerStatus !== 'all' && row.status !== ledgerStatus) return false;
       if (billingPlan !== 'all') {
         const clinic = clinics.find((c) => c.id === row.clinic_id);
-        if (billingPlan === 'basic' && clinic?.plan !== 'basic') return false;
-        if (billingPlan === 'pro' && clinic?.plan === 'basic') return false;
+        const resolvedPlan = clinic ? resolveClinicPlan(clinic) : '';
+        if (billingPlan === 'basic' && resolvedPlan !== 'basic') return false;
+        if (billingPlan === 'pro' && resolvedPlan !== 'pro') return false;
+        if (billingPlan === 'premium' && resolvedPlan !== 'premium') return false;
       }
       return true;
     });
@@ -1088,9 +1107,9 @@ export default function SuperAdmin() {
             </div>
             <div className="text-3xl font-semibold text-white tabular-nums tracking-tight">{stats.total}</div>
             <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/[0.05]">
+              <span>PREMIUM {stats.premiumCount}</span>
               <span>PRO {stats.proCount}</span>
               <span>BASIC {stats.basicCount}</span>
-              <span>Maxsus {stats.customCount}</span>
             </div>
           </div>
 
@@ -1388,6 +1407,12 @@ export default function SuperAdmin() {
                   >
                     PRO
                   </button>
+                  <button
+                    onClick={() => setClinicPlanFilter('premium')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${clinicPlanFilter === 'premium' ? 'bg-teal-500/20 text-teal-100' : 'text-slate-400'}`}
+                  >
+                    PREMIUM
+                  </button>
                   <button 
                     onClick={() => setClinicPlanFilter('basic')}
                     className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${clinicPlanFilter === 'basic' ? 'bg-slate-700 text-slate-200' : 'text-slate-400'}`}
@@ -1476,22 +1501,18 @@ export default function SuperAdmin() {
 
                             {/* 2. Plan */}
                             <td className="py-3.5 px-4">
-                              {landingTariffLabel(c) ? (
-                                <div className="space-y-1">
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-teal-500/15 text-teal-100 text-[10px] font-semibold uppercase tracking-wider border border-teal-400/25">
-                                    {landingTariffLabel(c)}
+                              {(() => {
+                                const badge = planBadge(c);
+                                return (
+                                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${
+                                    badge.basic
+                                      ? 'bg-slate-800 text-slate-300 border-slate-700'
+                                      : 'bg-teal-500/15 text-teal-100 border-teal-400/25'
+                                  }`}>
+                                    {badge.premium ? '◆' : badge.basic ? '⭐' : '🚀'} {badge.label}
                                   </span>
-                                  <p className="text-[10px] text-slate-500">{c.plan === 'basic' ? 'BASIC' : 'PRO'}</p>
-                                </div>
-                              ) : c.plan === 'basic' ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-[10px] font-black uppercase tracking-wider border border-slate-700">
-                                  ⭐ BASIC
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-teal-500/15 text-teal-100 text-[10px] font-semibold uppercase tracking-wider border border-teal-400/25">
-                                  🚀 PRO
-                                </span>
-                              )}
+                                );
+                              })()}
                             </td>
 
                             {/* 3. Users count */}
@@ -1558,9 +1579,9 @@ export default function SuperAdmin() {
                             {/* 6. Monthly Fee */}
                             <td className="py-3.5 px-4">
                               <div>
-                                <p className="font-semibold text-white text-xs tabular-nums">{formatMoney(c.monthly_fee)} <span className="text-[10px] text-slate-400 font-normal">UZS</span></p>
-                                {isCustomMonthly(c) && (
-                                  <p className="text-[10px] text-teal-300">Maxsus · katalog {formatMoney(catalogAmount(c.plan))}</p>
+                                <p className="font-semibold text-white text-xs tabular-nums">{formatMoney(displayMonthlyFee({ ...c, plan: resolveClinicPlan(c) }))} <span className="text-[10px] text-slate-400 font-normal">UZS</span></p>
+                                {isCustomMonthly({ ...c, plan: resolveClinicPlan(c) }) && (
+                                  <p className="text-[10px] text-teal-300">Maxsus · katalog {formatMoney(catalogAmount(resolveClinicPlan(c)))}</p>
                                 )}
                                 <p className={`text-[10px] ${overdue ? 'text-orange-300' : 'text-emerald-400'}`}>
                                   Oxirgi: {c.last_payment_date || 'To\'lanmagan'}
@@ -2255,20 +2276,19 @@ export default function SuperAdmin() {
                     const newPlan = e.target.value;
                     const legacy = shifoTariffs.legacyPortalMonthlyFee;
                     const current = Number(form.monthly_fee);
-                    const wasLegacy = current === legacy.basic || current === legacy.pro;
-                    const nextFee = wasLegacy || !current
-                      ? (newPlan === 'basic' ? legacy.basic : legacy.pro)
-                      : current;
-                    setForm({ ...form, plan: newPlan, monthly_fee: nextFee });
+                    const known = new Set([0, legacy.basic, legacy.pro, legacy.premium, 990000, 1990000, 3490000]);
+                    const nextFee = known.has(current) || !current ? legacy[newPlan] : current;
+                    setForm({ ...form, plan: newPlan, tariff: newPlan, monthly_fee: nextFee });
                   }} 
                   className={SELECT}
                 >
-                  <option value="basic" className="bg-slate-900 text-white">BASIC · qo'lda {shifoTariffs.legacyPortalMonthlyFee.basic.toLocaleString()} UZS</option>
-                  <option value="pro" className="bg-slate-900 text-white">PRO · qo'lda {shifoTariffs.legacyPortalMonthlyFee.pro.toLocaleString()} UZS</option>
+                  <option value="basic" className="bg-slate-900 text-white">BASIC · {shifoTariffs.legacyPortalMonthlyFee.basic.toLocaleString()} UZS</option>
+                  <option value="pro" className="bg-slate-900 text-white">PRO · {shifoTariffs.legacyPortalMonthlyFee.pro.toLocaleString()} UZS</option>
+                  <option value="premium" className="bg-slate-900 text-white">PREMIUM · {shifoTariffs.legacyPortalMonthlyFee.premium.toLocaleString()} UZS</option>
                 </select>
                 <p className="text-[10px] leading-snug text-slate-500">
-                  Landing narxlari: {shifoTariffs.tariffs.filter((plan) => plan.id !== 'trial').map((plan) => `${plan.name} ${plan.priceUzs.toLocaleString()} → ${plan.crmPlan.toUpperCase()}`).join(', ')}.
-                  Qo'lda yaratilgan klinika {shifoTariffs.legacyPortalMonthlyFee.basic.toLocaleString()} / {shifoTariffs.legacyPortalMonthlyFee.pro.toLocaleString()} UZS da qoladi.
+                  {shifoTariffs.tariffs.filter((plan) => plan.id !== 'trial').map((plan) => `${plan.name} ${plan.priceUzs.toLocaleString()} so'm/oy`).join(' · ')}.
+                  Yillik to'lov 10 oy. Sinov 14 kun, tanlangan tarifda.
                 </p>
               </div>
               <div className="space-y-1">
@@ -2281,7 +2301,7 @@ export default function SuperAdmin() {
                 />
               </div>
             </div>
-            <p className="text-[10px] text-slate-500 -mt-2">Start → BASIC, Pro va Klinika → PRO. Summani o'zgartirsangiz maxsus narx saqlanadi.</p>
+            <p className="text-[10px] text-slate-500 -mt-2">BASIC 99 000 · PRO 189 000 · PREMIUM 349 000. Summani o'zgartirsangiz maxsus narx saqlanadi. Muddati va to'lov tarixi shu yerda ko'rinadi.</p>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -2581,9 +2601,9 @@ export default function SuperAdmin() {
                     <span>{selectedClinicForDetail.name}</span>
                   </div>
                   <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg ${
-                    selectedClinicForDetail.plan === 'basic' ? 'bg-slate-800 text-slate-300' : 'bg-teal-500/15 text-teal-100 border border-teal-400/30'
+                    planBadge(selectedClinicForDetail).basic ? 'bg-slate-800 text-slate-300' : 'bg-teal-500/15 text-teal-100 border border-teal-400/30'
                   }`}>
-                    {selectedClinicForDetail.plan === 'basic' ? '⭐ BASIC' : '🚀 PRO'}
+                    {planBadge(selectedClinicForDetail).label}
                   </span>
                 </DialogTitle>
               </DialogHeader>
@@ -2613,7 +2633,7 @@ export default function SuperAdmin() {
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] block">Oylik to'lov</span>
-                    <strong className="text-teal-200 text-xs">{formatMoney(selectedClinicForDetail.monthly_fee)} UZS</strong>
+                    <strong className="text-teal-200 text-xs">{formatMoney(displayMonthlyFee({ ...selectedClinicForDetail, plan: resolveClinicPlan(selectedClinicForDetail) }))} UZS</strong>
                   </div>
                   <div>
                     <span className="text-slate-400 text-[10px] block">Egasi</span>

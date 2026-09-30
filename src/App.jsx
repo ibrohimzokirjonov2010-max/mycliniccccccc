@@ -134,8 +134,10 @@ const AdminRoute = memo(({ children }) => {
 
 const DoctorRoute = memo(({ children }) => {
   const { user, isDoctor, isLoadingAuth } = useAuth();
+  const doctorAccounts = useFeature('doctor_accounts');
   if (isLoadingAuth) return null;
   if (!user || !isDoctor) return <Navigate to="/login" replace />;
+  if (!doctorAccounts) return <Paywall featureName="doctor_accounts" />;
   return children;
 });
 
@@ -203,13 +205,13 @@ const AuthenticatedApp = memo(() => {
               <Route path="/admin/dashboard"
                 element={<AdminRoute>{M(<Dashboard />, <MobileDashboardV2 />)}</AdminRoute>} />
               <Route path="/expenses"
-                element={<AdminRoute>{M(<Expenses />, <MobileExpenses />)}</AdminRoute>} />
+                element={<PlanRoute feature="expenses"><AdminRoute>{M(<Expenses />, <MobileExpenses />)}</AdminRoute></PlanRoute>} />
               <Route path="/payroll"
-                element={<PlanRoute feature="staff"><AdminRoute>{M(<Payroll />, <MobilePayroll />)}</AdminRoute></PlanRoute>} />
+                element={<PlanRoute feature="payroll"><AdminRoute>{M(<Payroll />, <MobilePayroll />)}</AdminRoute></PlanRoute>} />
               <Route path="/reports"
-                element={<AdminRoute>{M(<Reports />, <MobileReports />)}</AdminRoute>} />
+                element={<PlanRoute feature="reports"><AdminRoute>{M(<Reports />, <MobileReports />)}</AdminRoute></PlanRoute>} />
               <Route path="/staff"
-                element={<AdminRoute>{M(<Staff />, <MobileStaff />)}</AdminRoute>} />
+                element={<PlanRoute feature="staff"><AdminRoute>{M(<Staff />, <MobileStaff />)}</AdminRoute></PlanRoute>} />
 
               {/* ── Doctor ── */}
               <Route path="/doctor/dashboard"
@@ -223,15 +225,15 @@ const AuthenticatedApp = memo(() => {
               <Route path="/patients"          element={M(<Patients />, <MobilePatientsV2 />)} />
               <Route path="/patients/:id"      element={M(<PatientProfile />, <MobilePatientProfile />)} />
               <Route path="/appointments"      element={M(<Appointments />, <MobileAppointmentsV2 />)} />
-              <Route path="/leads"             element={M(<Leads />, <MobileLeadsV6 />)} />
+              <Route path="/leads"             element={<PlanRoute feature="leads">{M(<Leads />, <MobileLeadsV6 />)}</PlanRoute>} />
               <Route path="/payments"          element={M(<Payments />, <MobilePaymentsV2 />)} />
               <Route path="/services"          element={M(<Services />, <MobileServicesV2 />)} />
-              <Route path="/inventory"         element={M(<Inventory />, <MobileInventoryV2 />)} />
+              <Route path="/inventory"         element={<PlanRoute feature="inventory">{M(<Inventory />, <MobileInventoryV2 />)}</PlanRoute>} />
               <Route path="/treatment-plans"   element={M(<TreatmentPlans />, <MobileTreatmentPlansV2 />)} />
               <Route path="/recall"            element={M(<RecallSystem />, <MobileRecall />)} />
               <Route path="/recalls"           element={M(<RecallSystem />, <MobileRecall />)} />
-              <Route path="/no-show"           element={<NoShow />} />
-              <Route path="/treatment-tracking" element={<TreatmentTracking />} />
+              <Route path="/no-show"           element={<PlanRoute feature="no_show"><NoShow /></PlanRoute>} />
+              <Route path="/treatment-tracking" element={<PlanRoute feature="treatment_tracking"><TreatmentTracking /></PlanRoute>} />
               <Route path="/debts"             element={M(<Debts />, <MobileDebts />)} />
               <Route path="/implants"
                 element={<PlanRoute feature="implants">{M(<Implants />, <MobileImplants />)}</PlanRoute>} />

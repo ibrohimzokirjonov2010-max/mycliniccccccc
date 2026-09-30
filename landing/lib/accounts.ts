@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
-import { TRIAL_DAYS } from "../config/tariffs";
+import { canonicalPlanId, TRIAL_DAYS, type BillingCycle } from "../config/tariffs";
 import { clinicNameFor } from "./billing";
 import { hashPassword, isPasswordHash, verifyPassword } from "./password";
 import { readStore, updateStore, type DemoLead, type Subscription } from "./store";
@@ -54,6 +54,8 @@ type RegisterInput = {
   doctor?: string;
   phone?: string;
   email?: string;
+  plan?: string;
+  cycle?: string;
 };
 
 function loginName(email: string, phone: string, id: string) {
@@ -113,13 +115,15 @@ export function parseRegistration(input: RegisterInput) {
       throw new AuthError("Klinika nomini kiriting.", 400);
     }
   }
-  return { name, password, clinicName, doctorName, phone: phone || "", email: email || "" };
+  const plan = canonicalPlanId(String(input.plan || "")) || "pro";
+  const cycle: BillingCycle = input.cycle === "year" ? "year" : "month";
+  return { name, password, clinicName, doctorName, phone: phone || "", email: email || "", plan, cycle };
 }
 
 function accountFromSubscription(sub: Subscription): Account {
   const open = sub.accessUnlocked && Date.parse(sub.expiresAt) > Date.now();
   const lockReason =
-    sub.planId === "trial"
+    sub.paymentMethod === "trial" || sub.planId === "trial"
       ? "14 kunlik sinov muddati tugagan. Tarifni sotib oling."
       : "Kirish muddati tugagan. Tarifni yangilang.";
   return {
@@ -348,6 +352,8 @@ export async function registerAccount(input: RegisterInput, request: Request, fe
       phone: fields.phone,
       clinic: fields.clinicName,
       email: fields.email,
+      planId: fields.plan,
+      billingCycle: fields.cycle,
       createdAt: new Date().toISOString(),
     };
     return stageTrial(db, lead, { passwordHash, username, ownerName: fields.name });

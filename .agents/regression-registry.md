@@ -13,6 +13,18 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 💳 Tariflar — BASIC da PRO modullar ochiq qolmasin
+- **Sana:** 2026-09-30
+- **Tuzatilgan Fayllar:**
+  - [`src/lib/clinicPlan.js`](src/lib/clinicPlan.js)
+  - [`src/api/base44Client.jsx`](src/api/base44Client.jsx)
+  - [`src/App.jsx`](src/App.jsx)
+  - [`landing/config/shifo-tariffs.json`](landing/config/shifo-tariffs.json)
+- **Muammo Tavsifi:** Basic tarifda lid, xarajat, ish haqi, ombor, hisobot va shifokor hisobi ochiq edi. Narxlar Start/Pro/Klinika (990 000 / 1 990 000 / 3 490 000) edi. Premium yo'q edi.
+- **Sababi:** `PLAN_FEATURES.basic` PRO modullarni o'z ichiga olardi. `enforceFeature` faqat `pro` ni tanirdi, `premium` ni basic deb olardi.
+- **Qanday tuzatildi:** Basic faqat navbat, bemor, uchrashuv, reja, to'lov, qarz, xizmat, eslatma, sozlama. Pro qolgan modullar. Premium dasturiy jihatdan Pro. Narx 99 000 / 189 000 / 349 000. Yopiq menyu qulf bilan ko'rinadi.
+- **Qaytalamaslik choralari:** Lid, implant, xodim, ombor, hisobot, marketing va shifokor hisobini BASIC ro'yxatiga qaytarmang. `readClinicPlan()` `premium` ni tashlab yubormasin. `patient-y2ii8ynf2` ga yozmang. Tarixiy to'lov summalarini qayta yozmang.
+
 ### 💳 To'lov tafsiloti — Hozirgi qarz o'rniga sana
 - **Sana:** 2026-09-30
 - **Tuzatilgan Fayllar:**

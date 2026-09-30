@@ -74,17 +74,21 @@ assert(legacy.key === 'active', `legacy unlimited ${legacy.key}`);
 
 assert(catalogAmount('basic') === 99000, 'basic price');
 assert(catalogAmount('pro') === 189000, 'pro price');
-assert(PLAN_CATALOG.basic.landing.includes('Start'), 'start map');
-assert(PLAN_CATALOG.pro.landing.join(',').includes('Klinika'), 'klinika map');
+assert(catalogAmount('premium') === 349000, 'premium price');
+assert(PLAN_CATALOG.basic.landing.includes('Basic'), 'basic map');
+assert(PLAN_CATALOG.premium.landing.includes('Premium'), 'premium map');
 assert(isCustomMonthly({ plan: 'pro', monthly_fee: 250000 }) === true, 'custom fee');
+assert(isCustomMonthly({ plan: 'basic', monthly_fee: 0 }) === false, 'zero fee uses catalog');
 assert(isCustomMonthly({ plan: 'basic', monthly_fee: 99000 }) === false, 'catalog basic');
-assert(isCustomMonthly({ plan: 'pro', monthly_fee: 1990000 }) === false, 'landing pro is known');
-assert(isCustomMonthly({ plan: 'pro', monthly_fee: 3490000 }) === false, 'landing klinika is known');
-assert(isCustomMonthly({ plan: 'basic', monthly_fee: 990000 }) === false, 'landing start is known');
+assert(isCustomMonthly({ plan: 'pro', monthly_fee: 1990000 }) === false, 'historical pro is known');
+assert(isCustomMonthly({ plan: 'pro', monthly_fee: 3490000 }) === false, 'historical klinika is known');
+assert(isCustomMonthly({ plan: 'basic', monthly_fee: 990000 }) === false, 'historical start is known');
+assert(isCustomMonthly({ plan: 'premium', monthly_fee: 349000 }) === false, 'catalog premium');
 
 const tariffFile = JSON.parse(fs.readFileSync(new URL('../landing/config/shifo-tariffs.json', import.meta.url), 'utf8'));
 assert(tariffFile.legacyPortalMonthlyFee.basic === LEGACY_FEES.basic, 'legacy basic matches landing config');
 assert(tariffFile.legacyPortalMonthlyFee.pro === LEGACY_FEES.pro, 'legacy pro matches landing config');
+assert(tariffFile.legacyPortalMonthlyFee.premium === LEGACY_FEES.premium, 'legacy premium matches landing config');
 tariffFile.tariffs.forEach((plan) => {
   const known = LANDING_TARIFFS.find((row) => row.id === plan.id);
   assert(known && known.priceUzs === plan.priceUzs && known.crmPlan === plan.crmPlan, `tariff drift ${plan.id}`);

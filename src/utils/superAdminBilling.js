@@ -2,37 +2,51 @@
 
 export const LEDGER_STORAGE_KEY = 'system_payment_ledger';
 
-/** Hand-created clinics keep the older portal fees. Landing prices live in LANDING_TARIFFS. */
-export const LEGACY_FEES = { basic: 99000, pro: 189000 };
+/** Catalog prices. Older public prices stay "known" so historical clinics are not marked custom. */
+export const LEGACY_FEES = { basic: 99000, pro: 189000, premium: 349000 };
 
 export const LANDING_TARIFFS = [
-  { id: 'start', name: 'Start', priceUzs: 990000, crmPlan: 'basic' },
-  { id: 'pro', name: 'Pro', priceUzs: 1990000, crmPlan: 'pro' },
-  { id: 'klinika', name: 'Klinika', priceUzs: 3490000, crmPlan: 'pro' },
+  { id: 'basic', name: 'Basic', priceUzs: 99000, crmPlan: 'basic' },
+  { id: 'pro', name: 'Pro', priceUzs: 189000, crmPlan: 'pro' },
+  { id: 'premium', name: 'Premium', priceUzs: 349000, crmPlan: 'premium' },
   { id: 'trial', name: 'Sinov', priceUzs: 0, crmPlan: 'basic' },
 ];
+
+const HISTORICAL_FEES = {
+  basic: [990000],
+  pro: [1990000, 3490000],
+  premium: [3490000],
+};
 
 export const PLAN_CATALOG = {
   basic: {
     id: 'basic',
     label: 'BASIC',
-    landing: ['Start'],
+    landing: ['Basic'],
     catalogPrice: LEGACY_FEES.basic,
     landingPrices: LANDING_TARIFFS.filter((plan) => plan.crmPlan === 'basic' && plan.id !== 'trial'),
-    summary: 'Qo\'lda yaratilgan klinika 99,000 UZS. Landingdagi Start (990,000 UZS) shu tarifga tushadi.',
+    summary: 'Yakka shifokor yoki kichik kabinet. Oylik 99 000 so\'m. Yillik to\'lov 10 oy.',
   },
   pro: {
     id: 'pro',
     label: 'PRO',
-    landing: ['Pro', 'Klinika'],
+    landing: ['Pro'],
     catalogPrice: LEGACY_FEES.pro,
     landingPrices: LANDING_TARIFFS.filter((plan) => plan.crmPlan === 'pro'),
-    summary: 'Qo\'lda yaratilgan klinika 189,000 UZS. Landingdagi Pro (1,990,000) va Klinika (3,490,000) shu tarifga tushadi.',
+    summary: '2–5 kreslolik klinika. Oylik 189 000 so\'m. Implant, xodim, ombor va hisobot shu tarifda.',
+  },
+  premium: {
+    id: 'premium',
+    label: 'PREMIUM',
+    landing: ['Premium'],
+    catalogPrice: LEGACY_FEES.premium,
+    landingPrices: LANDING_TARIFFS.filter((plan) => plan.crmPlan === 'premium'),
+    summary: 'Katta klinika va filiallar. Oylik 349 000 so\'m. Dasturiy qism PRO bilan bir xil.',
   },
 };
 
 export const PLAN_MAPPING_NOTE =
-  'Landing: Start 990,000 → BASIC, Pro 1,990,000 → PRO, Klinika 3,490,000 → PRO, sinov 0 UZS. Qo\'lda klinika BASIC 99,000 / PRO 189,000. Boshqa oylik summa maxsus narx sifatida saqlanadi.';
+  'BASIC 99 000, PRO 189 000, PREMIUM 349 000 so\'m / oy. Yillik to\'lov 10 oy (2 oy bepul). 14 kunlik sinov tanlangan tarifda ochiladi. Eski 990 000 / 1 990 000 / 3 490 000 summalar tarixiy to\'lov sifatida qoladi.';
 
 export const METHOD_LABELS = {
   manual: 'Qo\'lda',
@@ -99,23 +113,36 @@ export function formatMoney(value) {
   return Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
+export function catalogPlanKey(plan) {
+  if (plan === 'premium' || plan === 'klinika') return 'premium';
+  if (plan === 'basic' || plan === 'start') return 'basic';
+  return 'pro';
+}
+
 export function catalogAmount(plan) {
-  return plan === 'basic' ? PLAN_CATALOG.basic.catalogPrice : PLAN_CATALOG.pro.catalogPrice;
+  return PLAN_CATALOG[catalogPlanKey(plan)].catalogPrice;
 }
 
 export function knownMonthlyFees(plan) {
-  const key = plan === 'basic' ? 'basic' : 'pro';
+  const key = catalogPlanKey(plan);
   const fees = new Set([LEGACY_FEES[key]]);
   LANDING_TARIFFS.forEach((tariff) => {
     if (tariff.crmPlan === key) fees.add(tariff.priceUzs);
   });
+  (HISTORICAL_FEES[key] || []).forEach((fee) => fees.add(fee));
   return fees;
 }
 
 export function isCustomMonthly(clinic) {
   const fee = Number(clinic?.monthly_fee);
-  if (!Number.isFinite(fee)) return false;
+  if (!Number.isFinite(fee) || fee === 0) return false;
   return !knownMonthlyFees(clinic?.plan).has(fee);
+}
+
+export function displayMonthlyFee(clinic) {
+  const fee = Number(clinic?.monthly_fee);
+  if (Number.isFinite(fee) && fee > 0) return fee;
+  return catalogAmount(clinic?.plan);
 }
 
 export function daysBetween(from, to) {
@@ -378,7 +405,10 @@ export function normalizeClinicBilling(form, now = new Date()) {
   if (life === 'past_due') next.subscription_status = 'past_due';
 
   next.monthly_fee = Number(next.monthly_fee || 0);
-  next.plan = next.plan === 'basic' ? 'basic' : 'pro';
+  next.plan = next.plan === 'premium' || next.plan === 'klinika'
+    ? 'premium'
+    : (next.plan === 'basic' || next.plan === 'start' ? 'basic' : 'pro');
+  next.tariff = next.plan;
   if (!next.signup_source) next.signup_source = (next.tariff || next.email) ? 'landing' : 'manual';
   if (!next.payment_provider) {
     const method = next.payment_method;

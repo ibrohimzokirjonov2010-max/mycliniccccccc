@@ -43,7 +43,7 @@ export const faqs = [
   },
   {
     q: "Sinov tugagach nima bo'ladi?",
-    a: "14 kun o'tgach kirish yopiladi. Start, Pro yoki Klinika tarifini Payme yoki Click orqali olsangiz, 30 kunlik litsenziya ochiladi.",
+    a: "14 kun o'tgach kirish yopiladi. Basic, Pro yoki Premium tarifini Payme yoki Click orqali olsangiz, 30 kunlik litsenziya ochiladi.",
   },
   {
     q: "Bu bemorlar uchun saytmi?",
@@ -63,7 +63,7 @@ export const faqs = [
   },
   {
     q: "Qaysi tarifda implant moduli bor?",
-    a: "Implant moduli, hisobotlar va odontogram Pro tarifida. Klinika tarifida filial, ombor va prioritet qo'llab-quvvatlash qo'shiladi. Start — bitta shifokor, bemor, navbat va to'lov.",
+    a: "Basic: navbat, bemorlar, tish kartasi, davolash rejasi, to'lov va qarz. Pro: implant, xodim, ombor, hisobot, lid va shifokor hisobi. Premium: Pro dagi hamma narsa, ustuvor yordam va moslashtirish.",
   },
   {
     q: "Interfeys o'zbek tilidami?",
@@ -71,7 +71,7 @@ export const faqs = [
   },
   {
     q: "Obuna qancha muddatga ochiladi?",
-    a: "Har bir to'lov 30 kunlik litsenziya ochadi. Narxlar oylik, so'mda: Start 990 000, Pro 1 990 000, Klinika 3 490 000.",
+    a: "Har bir to'lov 30 kunlik litsenziya ochadi. Oylik narxlar, so'mda: Basic 99 000, Pro 189 000, Premium 349 000. Yillik to'lov 10 oy — 2 oy bepul.",
   },
   {
     q: "Ma'lumot va to'lov xavfsizmi?",

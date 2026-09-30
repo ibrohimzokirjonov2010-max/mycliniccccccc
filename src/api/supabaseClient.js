@@ -172,6 +172,29 @@ function makeTable(tableName, orderField = 'created_date') {
   };
 }
 
+function softenRejectedPlan(record, error) {
+  const check = error?.code === '23514' || /check constraint/i.test(error?.message || '');
+  if (!check || !record?.plan || record.plan === 'pro') return false;
+  if (record.plan === 'premium') {
+    const raw = typeof record.logo === 'string' ? record.logo : '';
+    if (raw.startsWith('[EXT]')) {
+      const end = raw.indexOf('[/EXT]');
+      if (end > 5) {
+        try {
+          const extra = JSON.parse(raw.slice(5, end));
+          extra.tariff = 'premium';
+          record.logo = `[EXT]${JSON.stringify(extra)}[/EXT]${raw.slice(end + 6)}`;
+          record.plan = 'pro';
+          return true;
+        } catch { /* fall through */ }
+      }
+    }
+    record.logo = `[EXT]${JSON.stringify({ tariff: 'premium' })}[/EXT]${raw}`;
+  }
+  record.plan = 'pro';
+  return true;
+}
+
 // Helper functions for database operations
 export const db = {
   // Clinics
@@ -209,6 +232,7 @@ export const db = {
               continue;
             }
           }
+          if (softenRejectedPlan(record, error)) continue;
           throw error;
         }
         return data;
@@ -236,6 +260,7 @@ export const db = {
               continue;
             }
           }
+          if (softenRejectedPlan(record, error)) continue;
           console.error('Error updating clinic:', error);
           throw error;
         }

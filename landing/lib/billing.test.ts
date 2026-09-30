@@ -60,9 +60,9 @@ describe("SHIFO billing", { concurrency: 1 }, () => {
     assert.deepEqual(
       TARIFFS.map((plan) => [plan.id, plan.priceUzs, plan.recommended]),
       [
-        ["start", 990_000, false],
-        ["pro", 1_990_000, true],
-        ["klinika", 3_490_000, false],
+        ["basic", 99_000, false],
+        ["pro", 189_000, true],
+        ["premium", 349_000, false],
       ],
     );
   });
@@ -110,7 +110,7 @@ describe("SHIFO billing", { concurrency: 1 }, () => {
     process.env.PAYME_MERCHANT_ID = "merchant-1";
     process.env.PAYME_SECRET_KEY = "payme-secret";
     const order = await createOrder({
-      planId: "start",
+      planId: "basic",
       name: "Dilnoza Rahimova",
       phone: "+998901112233",
       email: "dilnoza@clinic.uz",
@@ -130,7 +130,7 @@ describe("SHIFO billing", { concurrency: 1 }, () => {
       {
         method: "CheckPerformTransaction",
         id: 3,
-        params: { amount: 990_000 * 100, account: { order_id: order.id } },
+        params: { amount: 99_000 * 100, account: { order_id: order.id } },
       },
       auth,
     )) as { result: Record<string, unknown> };
@@ -140,7 +140,7 @@ describe("SHIFO billing", { concurrency: 1 }, () => {
       {
         method: "CreateTransaction",
         id: 4,
-        params: { id: "payme-tx-1", time: Date.now(), amount: 990_000 * 100, account: { order_id: order.id } },
+        params: { id: "payme-tx-1", time: Date.now(), amount: 99_000 * 100, account: { order_id: order.id } },
       },
       auth,
     )) as { result: Record<string, unknown> };
@@ -159,7 +159,7 @@ describe("SHIFO billing", { concurrency: 1 }, () => {
     assert.equal(saved?.status, "active");
     const license = await getLicense(saved!.licenseId!);
     assert.equal(license?.provider, "payme");
-    assert.equal(license?.planId, "start");
+    assert.equal(license?.planId, "basic");
     assert.ok(paymeCheckoutUrl(order.id, order.amountUzs, "https://landing.test/tolov/kutilmoqda?order=1").includes("checkout.paycom.uz"));
 
     const cancelled = (await handlePaymeRpc(
@@ -175,21 +175,21 @@ describe("SHIFO billing", { concurrency: 1 }, () => {
     process.env.CLICK_SERVICE_ID = "20";
     process.env.CLICK_SECRET_KEY = "click-secret";
     const order = await createOrder({
-      planId: "klinika",
+      planId: "premium",
       name: "Jasur Tursunov",
       phone: "998933445566",
       email: "jasur@nur.uz",
       provider: "click",
     });
-    const bad = await handleClick({ ...clickBody(0, { merchant_trans_id: order.id, amount: "3490000" }), sign_string: "deadbeef" });
+    const bad = await handleClick({ ...clickBody(0, { merchant_trans_id: order.id, amount: "349000" }), sign_string: "deadbeef" });
     assert.equal(bad.error, -1);
 
-    const prepared = await handleClick(clickBody(0, { merchant_trans_id: order.id, amount: "3490000.00" }));
+    const prepared = await handleClick(clickBody(0, { merchant_trans_id: order.id, amount: "349000.00" }));
     assert.equal(prepared.error, 0);
     const prepareId = "merchant_prepare_id" in prepared ? prepared.merchant_prepare_id : null;
     assert.equal(typeof prepareId, "number");
 
-    const again = await handleClick(clickBody(0, { merchant_trans_id: order.id, amount: "3490000.00" }));
+    const again = await handleClick(clickBody(0, { merchant_trans_id: order.id, amount: "349000.00" }));
     assert.equal("merchant_prepare_id" in again ? again.merchant_prepare_id : null, prepareId);
 
     const wrong = await handleClick(
@@ -205,7 +205,7 @@ describe("SHIFO billing", { concurrency: 1 }, () => {
       clickBody(1, {
         merchant_trans_id: order.id,
         merchant_prepare_id: String(prepareId),
-        amount: "3490000.00",
+        amount: "349000.00",
       }),
     );
     assert.equal(done.error, 0);
@@ -217,7 +217,7 @@ describe("SHIFO billing", { concurrency: 1 }, () => {
       clickBody(1, {
         merchant_trans_id: order.id,
         merchant_prepare_id: String(prepareId),
-        amount: "3490000.00",
+        amount: "349000.00",
       }),
     );
     assert.equal(replay.error, 0);

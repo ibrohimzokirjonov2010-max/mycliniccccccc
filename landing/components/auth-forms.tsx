@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
+import { canonicalPlanId, getTariff, type BillingCycle, type PlanId } from "@/config/tariffs";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -24,8 +26,25 @@ function formatDay(value: string) {
   return date.toLocaleDateString("uz-UZ", { day: "numeric", month: "long", year: "numeric" });
 }
 
-export function AuthPanel({ mode, onMode }: { mode: Mode; onMode?: (mode: Mode) => void }) {
-  return mode === "login" ? <LoginForm onMode={onMode} /> : <RegisterForm onMode={onMode} />;
+export function AuthPanel({
+  mode,
+  onMode,
+  plan = "pro",
+  cycle = "month",
+}: {
+  mode: Mode;
+  onMode?: (mode: Mode) => void;
+  plan?: PlanId;
+  cycle?: BillingCycle;
+}) {
+  return mode === "login" ? <LoginForm onMode={onMode} /> : <RegisterForm onMode={onMode} plan={plan} cycle={cycle} />;
+}
+
+export function RegisterWithPlan() {
+  const params = useSearchParams();
+  const plan = canonicalPlanId(params.get("plan") || "") || "pro";
+  const cycle: BillingCycle = params.get("cycle") === "year" ? "year" : "month";
+  return <AuthPanel mode="register" plan={plan} cycle={cycle} />;
 }
 
 function switchMode(mode: Mode, onMode?: (mode: Mode) => void) {
@@ -46,7 +65,15 @@ function Field({ id, label, hint, children }: { id: string; label: string; hint?
   );
 }
 
-export function RegisterForm({ onMode }: { onMode?: (mode: Mode) => void }) {
+export function RegisterForm({
+  onMode,
+  plan = "pro",
+  cycle = "month",
+}: {
+  onMode?: (mode: Mode) => void;
+  plan?: PlanId;
+  cycle?: BillingCycle;
+}) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<AuthResult | null>(null);
@@ -73,6 +100,8 @@ export function RegisterForm({ onMode }: { onMode?: (mode: Mode) => void }) {
           phone: String(form.get("phone") || ""),
           email: String(form.get("email") || ""),
           password,
+          plan,
+          cycle,
         }),
       });
       const data = (await response.json()) as AuthResult & { error?: string };
@@ -127,7 +156,7 @@ export function RegisterForm({ onMode }: { onMode?: (mode: Mode) => void }) {
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9db7ff]">14 kun bepul</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9db7ff]">14 kun bepul · {getTariff(plan)?.name || "Pro"} · {cycle === "year" ? "yillik" : "oylik"}</p>
         <h2 className="mt-1 text-3xl font-semibold tracking-tight">Ro&apos;yxatdan o&apos;tish</h2>
       </div>
       <Field id="reg-name" label="Ism">

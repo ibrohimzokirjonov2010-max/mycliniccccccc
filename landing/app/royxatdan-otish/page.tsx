@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { AuthPanel } from "@/components/auth-forms";
+import { Suspense } from "react";
+import { RegisterWithPlan } from "@/components/auth-forms";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 
@@ -15,7 +16,9 @@ export default function RegisterPage() {
       <Header />
       <main className="mx-auto max-w-lg px-4 py-16">
         <div className="rounded-3xl border border-line bg-surface p-6">
-          <AuthPanel mode="register" />
+          <Suspense fallback={null}>
+            <RegisterWithPlan />
+          </Suspense>
         </div>
       </main>
       <Footer />

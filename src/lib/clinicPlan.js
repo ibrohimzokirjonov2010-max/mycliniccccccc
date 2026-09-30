@@ -1,23 +1,24 @@
 import { supabase } from '@/api/supabaseClient';
 import { assertClinicNotExpired } from '@/lib/clinicExpiry';
 
-/** Hand-created clinics with no plan stay BASIC. These two already-live clinics stay PRO without a database write. */
-export const PROTECTED_PRO_CLINIC_IDS = new Set(['default_clinic', 'ava-dent']);
-
 export const CLINIC_SESSION_EVENT = 'shifo:clinic-session';
 
+const BASIC_FEATURES = [
+  'patients', 'appointments', 'payments', 'recalls', 'settings',
+  'services', 'treatment_plans', 'debts',
+];
+
+const PRO_FEATURES = [
+  ...BASIC_FEATURES,
+  'leads', 'expenses', 'payroll', 'inventory', 'reports',
+  'no_show', 'treatment_tracking', 'technicians', 'staff',
+  'implants', 'marketing', 'cases', 'doctor_accounts',
+];
+
 export const PLAN_FEATURES = {
-  basic: [
-    'patients', 'appointments', 'payments', 'recalls', 'leads', 'settings',
-    'expenses', 'payroll', 'services', 'inventory', 'reports', 'treatment_plans',
-    'no_show', 'treatment_tracking', 'debts', 'technicians', 'staff',
-  ],
-  pro: [
-    'patients', 'appointments', 'payments', 'recalls', 'leads', 'settings',
-    'expenses', 'payroll', 'services', 'inventory', 'reports', 'treatment_plans',
-    'no_show', 'treatment_tracking', 'debts', 'technicians', 'staff',
-    'implants', 'marketing', 'cases',
-  ],
+  basic: BASIC_FEATURES,
+  pro: PRO_FEATURES,
+  premium: PRO_FEATURES,
 };
 
 export const FEATURE_LABELS = {
@@ -40,18 +41,66 @@ export const FEATURE_LABELS = {
   staff: 'Xodimlar',
   implants: 'Implantlar',
   marketing: 'Marketing',
-  cases: 'Mening Keyslarim',
+  cases: 'Mening keyslarim',
+  doctor_accounts: 'Shifokor hisobi',
 };
 
-export const PRO_EXTRA_LABELS = ['Implantlar', 'Marketing', 'Mening Keyslarim'];
+export const PRO_EXTRA_LABELS = [
+  'Implantlar va PDF pasport',
+  'Xodimlar, ish haqi, xarajatlar',
+  'Ombor va hisobotlar',
+  'Lidlar, kelmaganlar, kuzatuv',
+  'Marketing va Mening keyslarim',
+  'Shifokor uchun alohida kirish',
+];
+
+export const PATH_FEATURES = {
+  '/implants': 'implants',
+  '/marketing': 'marketing',
+  '/cases': 'cases',
+  '/technicians': 'technicians',
+  '/expenses': 'expenses',
+  '/payroll': 'payroll',
+  '/inventory': 'inventory',
+  '/reports': 'reports',
+  '/no-show': 'no_show',
+  '/treatment-tracking': 'treatment_tracking',
+  '/staff': 'staff',
+  '/leads': 'leads',
+};
 
 const SERVER_PLAN_CACHE = new Map();
 
+export function normalizePlan(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'premium' || raw === 'klinika') return 'premium';
+  if (raw === 'pro') return 'pro';
+  if (raw === 'basic' || raw === 'start') return 'basic';
+  return '';
+}
+
+export function decodeClinicExtras(clinic) {
+  if (!clinic || typeof clinic.logo !== 'string' || !clinic.logo.startsWith('[EXT]')) return clinic;
+  const end = clinic.logo.indexOf('[/EXT]');
+  if (end < 5) return clinic;
+  try {
+    const extra = JSON.parse(clinic.logo.slice(5, end));
+    return { ...clinic, ...extra };
+  } catch {
+    return clinic;
+  }
+}
+
+/** Tariff in the logo wins when the plan column cannot store PREMIUM. */
 export function resolveClinicPlan(clinic) {
-  const raw = String(clinic?.plan || '').trim().toLowerCase();
-  if (raw === 'pro' || raw === 'basic') return raw;
-  const id = String(clinic?.id || '').trim().toLowerCase();
-  if (PROTECTED_PRO_CLINIC_IDS.has(id)) return 'pro';
+  const decoded = decodeClinicExtras(clinic);
+  const tariff = normalizePlan(decoded?.tariff);
+  const column = normalizePlan(decoded?.plan);
+  if (tariff) return tariff;
+  if (column) return column;
+  const id = String(decoded?.id || clinic?.id || '').trim().toLowerCase();
+  if (id === 'default_clinic') return 'premium';
+  if (id === 'ava-dent') return 'pro';
   return 'basic';
 }
 
@@ -60,9 +109,20 @@ export function planAllows(plan, feature) {
   return features.includes(feature);
 }
 
+export function planRequiredFor(feature) {
+  if (planAllows('basic', feature)) return 'basic';
+  if (planAllows('pro', feature)) return 'pro';
+  return 'premium';
+}
+
+export function isPathLocked(plan, path) {
+  const feature = PATH_FEATURES[path];
+  if (!feature) return false;
+  return !planAllows(plan, feature);
+}
+
 export function readClinicPlan() {
-  const stored = localStorage.getItem('clinic_plan');
-  return stored === 'pro' || stored === 'basic' ? stored : 'basic';
+  return normalizePlan(localStorage.getItem('clinic_plan')) || 'basic';
 }
 
 export function subscribeClinicPlan(listener) {
@@ -114,10 +174,11 @@ export async function fetchServerPlan(clinicId) {
   const hit = SERVER_PLAN_CACHE.get(key);
   if (hit && Date.now() - hit.at < 15000) return hit.plan;
 
-  const { data, error } = await supabase.from('clinics').select('id,plan').eq('id', id).maybeSingle();
+  const { data, error } = await supabase.from('clinics').select('id,plan,logo').eq('id', id).maybeSingle();
   let plan = 'basic';
   if (!error && data) plan = resolveClinicPlan(data);
-  else if (PROTECTED_PRO_CLINIC_IDS.has(key)) plan = 'pro';
+  else if (key === 'default_clinic') plan = 'premium';
+  else if (key === 'ava-dent') plan = 'pro';
   SERVER_PLAN_CACHE.set(key, { plan, at: Date.now() });
 
   const current = localStorage.getItem('clinic_plan');
@@ -132,7 +193,8 @@ export async function assertServerFeature(feature) {
   await assertClinicNotExpired();
   const plan = await fetchServerPlan();
   if (!planAllows(plan, feature)) {
-    const error = new Error("Bu moduldan foydalanish uchun PRO ta'rifiga o'ting!");
+    const needed = planRequiredFor(feature) === 'premium' ? 'PREMIUM' : 'PRO';
+    const error = new Error(`Bu moduldan foydalanish uchun ${needed} ta'rifiga o'ting!`);
     error.code = 403;
     throw error;
   }

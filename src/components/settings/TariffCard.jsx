@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { CreditCard } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { FEATURE_LABELS, PLAN_FEATURES, resolveClinicPlan } from '@/lib/clinicPlan';
-import { isCustomMonthly, LEGACY_FEES } from '@/utils/superAdminBilling';
+import { displayMonthlyFee, isCustomMonthly } from '@/utils/superAdminBilling';
 
 function formatSoom(value) {
   const amount = Math.round(Number(value) || 0);
@@ -44,9 +44,8 @@ export default function TariffCard() {
 
   const plan = resolveClinicPlan(clinic);
   const custom = isCustomMonthly({ ...clinic, plan });
-  const catalogFee = plan === 'basic' ? LEGACY_FEES.basic : LEGACY_FEES.pro;
-  const fee = custom ? Number(clinic.monthly_fee) : (Number(clinic.monthly_fee) || catalogFee);
-  const planTitle = custom ? 'Maxsus' : (plan === 'basic' ? 'BASIC' : 'PRO');
+  const fee = custom ? Number(clinic.monthly_fee) : displayMonthlyFee({ ...clinic, plan });
+  const planTitle = custom ? 'Maxsus' : (plan === 'basic' ? 'BASIC' : plan === 'premium' ? 'PREMIUM' : 'PRO');
   const remaining = daysLeft(clinic.expires_at);
   const sections = (PLAN_FEATURES[plan] || []).map((key) => FEATURE_LABELS[key] || key);
 
@@ -58,8 +57,11 @@ export default function TariffCard() {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Tarif</p>
-          <h2 className="text-lg font-black tracking-tight text-slate-900">
-            {planTitle} · {formatSoom(fee)} so'm
+          <h2 className="flex flex-wrap items-center gap-2 text-lg font-black tracking-tight text-slate-900">
+            <span>{planTitle} · {formatSoom(fee)} so'm</span>
+            {plan === 'premium' && !custom ? (
+              <span className="rounded-full bg-[#0b3550] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Premium</span>
+            ) : null}
           </h2>
           <p className="mt-1 text-xs font-medium text-slate-500">
             Oylik to'lov · amal qilish muddati {formatExpiry(clinic.expires_at)}

@@ -83,10 +83,14 @@ export default function BillingPanel({
     .filter((c) => c.plan === 'basic')
     .reduce((sum, c) => sum + Number(c.monthly_fee || 0), 0);
   const proBilled = source
-    .filter((c) => c.plan !== 'basic')
+    .filter((c) => c.plan === 'pro' && c.tariff !== 'premium' && c.tariff !== 'klinika')
+    .reduce((sum, c) => sum + Number(c.monthly_fee || 0), 0);
+  const premiumBilled = source
+    .filter((c) => c.plan === 'premium' || c.tariff === 'premium' || c.tariff === 'klinika')
     .reduce((sum, c) => sum + Number(c.monthly_fee || 0), 0);
   const basicCustom = source.filter((c) => c.plan === 'basic' && isCustomMonthly(c)).length;
-  const proCustom = source.filter((c) => c.plan !== 'basic' && isCustomMonthly(c)).length;
+  const proCustom = source.filter((c) => c.plan === 'pro' && isCustomMonthly(c)).length;
+  const premiumCustom = source.filter((c) => (c.plan === 'premium' || c.tariff === 'premium') && isCustomMonthly(c)).length;
 
   return (
     <div className="space-y-4">
@@ -94,9 +98,10 @@ export default function BillingPanel({
         {PLAN_MAPPING_NOTE}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <PlanCard planKey="basic" count={stats.basicCount} customCount={basicCustom} billed={basicBilled} />
         <PlanCard planKey="pro" count={stats.proCount} customCount={proCustom} billed={proBilled} />
+        <PlanCard planKey="premium" count={stats.premiumCount || 0} customCount={premiumCustom} billed={premiumBilled} />
       </div>
 
       <div className="bg-[#0e141c] border border-white/[0.07] rounded-2xl p-4 space-y-3">
@@ -115,8 +120,9 @@ export default function BillingPanel({
             <div className="flex bg-black/20 p-1 rounded-xl border border-white/5">
               {[
                 ['all', 'Ta\'rif'],
-                ['pro', 'PRO'],
                 ['basic', 'BASIC'],
+                ['pro', 'PRO'],
+                ['premium', 'PREMIUM'],
               ].map(([id, label]) => (
                 <button key={id} type="button" onClick={() => setBillingPlan(id)} className={chip(billingPlan === id, 'bg-white/10 text-white')}>
                   {label}

@@ -43,7 +43,7 @@ describe("super admin ingest", { concurrency: 1 }, () => {
     assert.equal(saved.status, "paid");
     assert.equal(saved.accessUnlocked, true);
     assert.equal(saved.paymentMethod, "mock");
-    assert.equal(saved.amountUzs, 1_990_000);
+    assert.equal(saved.amountUzs, 189_000);
     assert.equal(saved.clinicName, "Smile Stomatologiya");
     const again = await syncOrderToAdmin(order.id);
     assert.equal(again?.temporaryPassword, saved.temporaryPassword);
@@ -51,7 +51,7 @@ describe("super admin ingest", { concurrency: 1 }, () => {
     const { clinic, user } = buildCrmRows(saved);
     assert.equal(clinic.plan, "pro");
     assert.equal(clinic.status, "Active");
-    assert.equal(clinic.monthly_fee, 1_990_000);
+    assert.equal(clinic.monthly_fee, 189_000);
     assert.equal(user.role, "admin");
     assert.equal(user.commission_rate, 0);
     assert.equal(user.name, "Akmal Karimov");
@@ -59,7 +59,7 @@ describe("super admin ingest", { concurrency: 1 }, () => {
     const extra = decodeLogo(String(clinic.logo));
     assert.equal(saved.subscriptionStatus, "active");
     assert.equal(saved.paymentLedger.length, 1);
-    assert.equal(saved.paymentLedger[0]?.amountUzs, 1_990_000);
+    assert.equal(saved.paymentLedger[0]?.amountUzs, 189_000);
     assert.equal(again?.paymentLedger.length, 1);
     assert.equal(extra.tariff, "pro");
     assert.equal(extra.subscription_status, "active");
@@ -72,7 +72,7 @@ describe("super admin ingest", { concurrency: 1 }, () => {
 
   test("start maps to basic and a revoked license locks access", async () => {
     const order = await createOrder({
-      planId: "start",
+      planId: "basic",
       name: "Dilnoza Rahimova",
       phone: "+998901112233",
       email: "dilnoza@clinic.uz",
@@ -90,13 +90,14 @@ describe("super admin ingest", { concurrency: 1 }, () => {
     assert.equal(saved?.status, "expired");
     assert.equal(saved?.subscriptionStatus, "expired");
     assert.equal(saved?.paymentLedger.length, 1);
-    assert.equal(saved?.paymentLedger[0]?.amountUzs, 990_000);
+    assert.equal(saved?.paymentLedger[0]?.amountUzs, 99_000);
     assert.equal(saved?.accessUnlocked, false);
     const { clinic } = buildCrmRows(saved!);
     assert.equal(clinic.plan, "basic");
     assert.equal(clinic.status, "Expired");
-    assert.equal(decodeLogo(String(clinic.logo)).tariff, "start");
-    assert.equal(crmPlanColumn("klinika"), "pro");
+    assert.equal(decodeLogo(String(clinic.logo)).tariff, "basic");
+    assert.equal(crmPlanColumn("klinika"), "premium");
+    assert.equal(crmPlanColumn("start"), "basic");
   });
 
   test("free trial is a zero-amount unlocked tenant", async () => {
@@ -116,7 +117,7 @@ describe("super admin ingest", { concurrency: 1 }, () => {
     assert.equal(saved.paidAt, null);
     const { clinic } = buildCrmRows(saved);
     assert.equal(clinic.plan, "basic");
-    assert.equal(clinic.monthly_fee, 0);
+    assert.equal(clinic.monthly_fee, 99_000);
     assert.equal(clinic.last_payment_date, undefined);
     assert.equal(decodeLogo(String(clinic.logo)).subscription_status, "trialing");
     const listed = await listSubscriptions();
@@ -128,7 +129,7 @@ describe("super admin ingest", { concurrency: 1 }, () => {
     process.env.CRM_SUPABASE_URL = "https://crm.example.test";
     process.env.CRM_SUPABASE_KEY = "test-key";
     const order = await createOrder({
-      planId: "klinika",
+      planId: "premium",
       name: "Malika Tosheva",
       phone: "909998877",
       email: "malika@klinika.uz",
@@ -144,9 +145,9 @@ describe("super admin ingest", { concurrency: 1 }, () => {
     );
     assert.equal(calls, 1);
     const [saved] = await listSubscriptions();
-    assert.equal(saved?.planId, "klinika");
+    assert.equal(saved?.planId, "premium");
     assert.equal(saved?.status, "paid");
-    assert.equal(buildCrmRows(saved!).clinic.plan, "pro");
+    assert.equal(buildCrmRows(saved!).clinic.plan, "premium");
   });
 
   test("upsert drops an unknown column and retries a rejected plan", async () => {

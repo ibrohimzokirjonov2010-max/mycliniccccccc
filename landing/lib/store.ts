@@ -59,6 +59,8 @@ export type DemoLead = {
   clinic: string;
   email: string;
   createdAt: string;
+  planId?: string;
+  billingCycle?: "month" | "year";
 };
 
 export type BillingStatus = "trial" | "paid" | "expired";
@@ -86,6 +88,7 @@ export type Subscription = {
   username: string;
   planId: string;
   planName: string;
+  billingCycle?: "month" | "year";
   status: BillingStatus;
   subscriptionStatus: SubscriptionStatus;
   amountUzs: number;
