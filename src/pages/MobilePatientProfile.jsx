@@ -1210,7 +1210,7 @@ export default function MobilePatientProfile() {
               data-payment-accept="centered"
               onClick={(e) => e.stopPropagation()}
               className="pointer-events-auto flex w-full max-w-md flex-col overflow-hidden rounded-[2.5rem] bg-white shadow-2xl"
-              style={{ maxHeight: 'min(90dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 4.5rem))' }}
+              style={{ maxHeight: 'min(86dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 8rem))' }}
             >
               <div className="flex shrink-0 items-center justify-between px-5 pb-2 pt-4">
                 <h3 className="text-base font-black text-slate-900">{t('patientProfile.personalCard.acceptPayment', "To'lov qabul qilish")}</h3>

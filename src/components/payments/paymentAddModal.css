@@ -378,7 +378,7 @@
     width: min(32rem, calc(100vw - 2rem)) !important;
     max-width: calc(100vw - 2rem) !important;
     height: auto !important;
-    max-height: min(90dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 4.5rem)) !important;
+    max-height: min(86dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 8rem)) !important;
     min-height: 0 !important;
     margin: 0 !important;
     transform: translate(-50%, -50%) !important;
