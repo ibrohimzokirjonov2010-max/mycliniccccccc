@@ -977,6 +977,20 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
 .fdi-on-crown.is-upper { bottom: 1px; }
 .odonto-jaw-lower .fdi-on-crown,
 .fdi-on-crown.is-lower { top: 1px; }
+/* Status mark on the tooth drawing. No FDI digits. */
+.tooth-status-dot {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 22;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1.5px #fff;
+  pointer-events: none;
+}
+.tooth-status-dot.is-upper { bottom: 3px; }
+.tooth-status-dot.is-lower { top: 3px; }
 @container (max-width: 560px) {
   .odonto-cross {
     --odonto-pad: 22px;

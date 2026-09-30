@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ProfessionalOdontogram from '../patients/ProfessionalOdontogram';
 import PatientSelect from '../patients/PatientSelect';
 import { cn, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
-import { pickIllustrationKindFromServices } from '@/utils/toothIllustration';
+import { getToothIllustrationSrc, pickIllustrationKindFromServices } from '@/utils/toothIllustration';
 import { paymentsForPlan } from '@/lib/treatmentDelete';
 import JawChoice from '@/components/patients/JawChoice';
 import {
@@ -1060,10 +1060,14 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                       const isSelected = selectedTeeth.includes(internalId);
                       const isActive   = activeTooth === internalId;
                       const isDisabled = removedToothFdis.map(fdiToInternal).filter(Boolean).includes(internalId);
+                      const mark = isActive ? '#1499AD' : isSelected ? '#10b981' : null;
                       return (
                         <button
                           type="button"
                           disabled={isDisabled}
+                          data-fdi={fdi}
+                          aria-label={`${fdi}-tish`}
+                          title={isDisabled ? `${fdi}-tish olib tashlangan` : `${fdi}-tish`}
                           onClick={() => {
                             if (isDisabled) { toast.error(`Tish #${fdi} olib tashlangan.`); return; }
                             const isActive = activeTooth === internalId;
@@ -1078,17 +1082,25 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                             applySelectableTeeth(next, next.includes(internalId) ? internalId : null);
                           }}
                           className={cn(
-                            "flex items-center justify-center font-black transition-all cursor-pointer leading-none shrink-0 p-0 border",
+                            "relative flex items-end justify-center overflow-hidden transition-all cursor-pointer leading-none shrink-0 p-0.5 border bg-white",
                             large
-                              ? "w-9 h-10 lg:w-10 lg:h-11 rounded-xl text-xs lg:text-[13px]"
-                              : "w-6 sm:w-7 md:w-[25px] lg:w-7 h-7 sm:h-8 rounded-lg text-[10px] sm:text-[11px]",
-                            isDisabled  ? "bg-slate-100 text-slate-350 border-slate-200 cursor-not-allowed" :
-                            isActive    ? "bg-[#1499AD] text-white border-[#1499AD] ring-2 ring-[#1499AD]/30 shadow-md shadow-[#1499AD]/10 scale-105" :
-                            isSelected  ? "bg-emerald-500 text-white border-emerald-500 shadow-sm" :
-                                          "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                              ? "w-9 h-10 lg:w-10 lg:h-11 rounded-xl"
+                              : "w-6 sm:w-7 md:w-[25px] lg:w-7 h-7 sm:h-8 rounded-lg",
+                            isDisabled  ? "bg-slate-100 border-slate-200 cursor-not-allowed opacity-40" :
+                            isActive    ? "border-[#1499AD] ring-2 ring-[#1499AD]/30 shadow-md shadow-[#1499AD]/10 scale-105" :
+                            isSelected  ? "border-emerald-500 shadow-sm" :
+                                          "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                           )}
                         >
-                          <span className={cn("font-black", large ? "text-xs lg:text-[13px]" : "text-[10px] sm:text-[11px]")}>{fdi}</span>
+                          <img
+                            src={getToothIllustrationSrc(fdi, 'healthy')}
+                            alt=""
+                            draggable={false}
+                            className="h-full w-full object-contain pointer-events-none"
+                          />
+                          {mark && (
+                            <span aria-hidden="true" className="absolute bottom-0.5 left-0.5 right-0.5 h-[3px] rounded-full" style={{ background: mark }} />
+                          )}
                         </button>
                       );
                     };

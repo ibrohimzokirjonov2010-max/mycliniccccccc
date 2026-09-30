@@ -1228,11 +1228,14 @@ function ToothCell({ fdi, isUpper, entry, active, picked, dim, onClick }) {
   const color = entry ? KIND_COLOR[entry.kind] : null;
   const src = getToothIllustrationSrc(fdi, entry?.illustration && entry.illustration !== 'missing' ? entry.illustration : (entry?.kind === 'missing' ? 'missing' : 'healthy'));
   const crownDown = fdiCrownDown(fdi);
+  const label = `${fdi}-tish`;
   return (
     <button
       type="button"
       onClick={onClick}
       data-fdi={fdi}
+      aria-label={label}
+      title={label}
       className={cn('compact-hit flex w-full min-w-0 max-w-full flex-col', isUpper ? 'justify-end' : 'justify-start', dim && 'opacity-30')}
       style={{ '--fdi-len': fdiLengthWeight(fdi) }}
     >
@@ -1255,19 +1258,13 @@ function ToothCell({ fdi, isUpper, entry, active, picked, dim, onClick }) {
             style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
           />
         )}
-        <span
-          className={cn('fdi-on-crown', crownDown ? 'is-upper' : 'is-lower')}
-          style={color ? {
-            color: '#fff',
-            background: color,
-            textShadow: 'none',
-            borderRadius: 3,
-            padding: '1px 3px',
-            border: 'none',
-          } : undefined}
-        >
-          {fdi}
-        </span>
+        {color && (
+          <span
+            className={cn('tooth-status-dot', crownDown ? 'is-upper' : 'is-lower')}
+            style={{ background: color }}
+            aria-hidden="true"
+          />
+        )}
         {entry?.kind === 'missing' && (
           <X className="absolute h-5 w-5 text-slate-500" strokeWidth={2.5} />
         )}

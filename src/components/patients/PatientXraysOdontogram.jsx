@@ -243,6 +243,7 @@ export default function PatientXraysOdontogram({ patientId }) {
                 : 'border-transparent bg-transparent'
         }`}
         style={{ '--fdi-len': fdiLengthWeight(fdi) }}
+        aria-label={`${fdi}-tish`}
         title={`${fdi}-tish — bosib rentgen ko'ring yoki yuklang`}
       >
         <img
@@ -252,12 +253,13 @@ export default function PatientXraysOdontogram({ patientId }) {
           draggable={false}
           style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
         />
-        <span
-          className={`fdi-on-crown ${crownDown ? 'is-upper' : 'is-lower'}`}
-          style={count > 0 ? { color: '#059669' } : isActive ? { color: '#0891b2' } : undefined}
-        >
-          {fdi}
-        </span>
+        {(count > 0 || isActive) && (
+          <span
+            className={`tooth-status-dot ${crownDown ? 'is-upper' : 'is-lower'}`}
+            style={{ background: isActive ? '#0891b2' : '#059669' }}
+            aria-hidden="true"
+          />
+        )}
         {count > 0 && (
           <span className={`absolute top-0.5 right-0.5 w-3.5 h-3.5 flex items-center justify-center rounded-full text-[8px] font-black shadow-sm z-20 ${
             isActive ? 'bg-cyan-500 text-white' : 'bg-emerald-500 text-white'

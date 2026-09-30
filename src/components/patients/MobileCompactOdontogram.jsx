@@ -32,6 +32,21 @@ export function internalIdToFdi(id) {
   return `${qMap[quad]}${num}`;
 }
 
+const MARK = {
+  caries: '#E11D48',
+  plomba: '#2563EB',
+  endo: '#7C3AED',
+  shtift: '#7C3AED',
+  sirkon: '#CA8A04',
+  'metal-keramika': '#CA8A04',
+  implant: '#64748B',
+  missing: '#94A3B8',
+  breket: '#DB2777',
+  'protez-syomniy': '#0F766E',
+  'protez-implant': '#0F766E',
+  'protez-babochka': '#C2410C',
+};
+
 const ToothCell = memo(function ToothCell({ fdi, selected, toothStatus, onSelect, isUpper }) {
   const status = toothStatus || { status: 'healthy' };
   const kind = resolveToothIllustrationKind(status);
@@ -41,7 +56,8 @@ const ToothCell = memo(function ToothCell({ fdi, selected, toothStatus, onSelect
       type="button"
       onClick={() => onSelect(fdi)}
       aria-pressed={selected}
-      aria-label={`FDI ${fdi}`}
+      aria-label={`${fdi}-tish`}
+      title={`${fdi}-tish`}
       data-fdi={fdi}
       data-illustration={kind}
       className={cn(
@@ -63,10 +79,13 @@ const ToothCell = memo(function ToothCell({ fdi, selected, toothStatus, onSelect
             style={{ objectPosition: isUpper ? 'center bottom' : 'center top' }}
           />
         )}
-        <span
-          className={cn('fdi-on-crown', isUpper ? 'is-upper' : 'is-lower')}
-          style={selected ? { background: '#14b8a6', color: '#fff', textShadow: 'none', borderRadius: 3, padding: '1px 2px' } : undefined}
-        >{fdi}</span>
+        {kind && kind !== 'healthy' && (
+          <span
+            className={cn('tooth-status-dot', isUpper ? 'is-upper' : 'is-lower')}
+            style={{ background: MARK[kind] || '#64748B' }}
+            aria-hidden="true"
+          />
+        )}
         {selected && (
           <span
             className="absolute left-0.5 right-0.5 h-[3px] rounded-full bg-[#14b8a6] pointer-events-none"

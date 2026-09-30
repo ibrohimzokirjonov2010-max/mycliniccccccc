@@ -25,6 +25,7 @@ import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
 import { resolveAssignedDoctorName, isTreatingClinician, clinicianDisplayName } from '@/lib/treatingDoctor';
 import { normalizePatientGender, patientGenderForDb } from '@/lib/patientGender';
 import JawChoice from '@/components/patients/JawChoice';
+import { getToothIllustrationSrc } from '@/utils/toothIllustration';
 import {
   applyJawChoice,
   collectJawRows,
@@ -1920,9 +1921,13 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
               const isSelected = planForm.tooth_numbers.includes(internalId);
               const isActive   = activeTooth === internalId;
               const jawMarked = jawsCoveringFdi(toothData, fdi).length > 0;
+              const mark = isActive ? '#1499AD' : jawMarked ? '#db2777' : isSelected ? '#10b981' : null;
               return (
                 <button
                   type="button"
+                  data-fdi={fdi}
+                  aria-label={`${fdi}-tish`}
+                  title={`${fdi}-tish`}
                   onClick={() => {
                     const isActive = activeTooth === internalId;
                     let next;
@@ -1937,14 +1942,22 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     setActiveTooth(next.includes(internalId) ? internalId : null);
                   }}
                   className={cn(
-                    "odontogram-tooth wizard-tooth-hit w-full rounded-md flex items-center justify-center font-black transition-colors cursor-pointer leading-none p-0 border touch-manipulation text-[17px]",
-                    isActive    ? "bg-[#1499AD] text-white border-[#1499AD] ring-2 ring-[#1499AD]/30" :
-                    jawMarked   ? "bg-pink-50 text-pink-700 border-pink-400" :
-                    isSelected  ? "bg-emerald-500 text-white border-emerald-500" :
-                                  "bg-white text-slate-800 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                    "odontogram-tooth wizard-tooth-hit relative w-full overflow-hidden rounded-md flex items-end justify-center transition-colors cursor-pointer leading-none p-0.5 border touch-manipulation bg-white",
+                    isActive    ? "border-[#1499AD] ring-2 ring-[#1499AD]/30" :
+                    jawMarked   ? "border-pink-400" :
+                    isSelected  ? "border-emerald-500" :
+                                  "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                   )}
                 >
-                  <span className="font-black">{fdi}</span>
+                  <img
+                    src={getToothIllustrationSrc(fdi, 'healthy')}
+                    alt=""
+                    draggable={false}
+                    className="h-full w-full object-contain pointer-events-none"
+                  />
+                  {mark && (
+                    <span aria-hidden="true" className="absolute bottom-0.5 left-1 right-1 h-[3px] rounded-full" style={{ background: mark }} />
+                  )}
                 </button>
               );
             };
@@ -2220,10 +2233,14 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         const isSelected = planForm.tooth_numbers.includes(internalId);
                         const isActive = activeTooth === internalId;
                         const jawMarked = jawsCoveringFdi(toothData, fdi).length > 0;
+                        const mark = isActive ? '#1499AD' : jawMarked ? '#db2777' : isSelected ? '#10b981' : null;
                         return (
                           <button
                             key={fdi}
                             type="button"
+                            data-fdi={fdi}
+                            aria-label={`${fdi}-tish`}
+                            title={`${fdi}-tish`}
                             onClick={() => {
                               const next = isActive
                                 ? planForm.tooth_numbers.filter((tooth) => tooth !== internalId)
@@ -2232,14 +2249,22 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                               setActiveTooth(next.includes(internalId) ? internalId : null);
                             }}
                             className={cn(
-                              "wizard-tooth-hit w-full min-w-0 rounded-lg font-black text-[15px] leading-none border cursor-pointer touch-manipulation",
-                              isActive ? "bg-[#1499AD] text-white border-[#1499AD]" :
-                              jawMarked ? "bg-pink-50 text-pink-700 border-pink-400" :
-                              isSelected ? "bg-emerald-500 text-white border-emerald-500" :
-                              "bg-white text-slate-800 border-slate-200"
+                              "wizard-tooth-hit relative flex w-full min-w-0 items-end justify-center overflow-hidden rounded-lg border p-0.5 cursor-pointer touch-manipulation bg-white",
+                              isActive ? "border-[#1499AD]" :
+                              jawMarked ? "border-pink-400" :
+                              isSelected ? "border-emerald-500" :
+                              "border-slate-200"
                             )}
                           >
-                            {fdi}
+                            <img
+                              src={getToothIllustrationSrc(fdi, 'healthy')}
+                              alt=""
+                              draggable={false}
+                              className="h-full w-full object-contain pointer-events-none"
+                            />
+                            {mark && (
+                              <span aria-hidden="true" className="absolute bottom-0.5 left-0.5 right-0.5 h-[3px] rounded-full" style={{ background: mark }} />
+                            )}
                           </button>
                         );
                       })}

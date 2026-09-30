@@ -583,13 +583,12 @@ const ToothColumn = memo(function ToothColumn({
             </div>
           </>
         )}
-        {!isCrown && (
+        {!isCrown && statusKey && statusKey !== 'healthy' && (
           <span
-            className={cn('fdi-on-crown', isUpper ? 'is-upper' : 'is-lower')}
-            style={selected ? { backgroundColor: st.color, color: '#fff', textShadow: 'none', borderRadius: 3, padding: '1px 2px' } : undefined}
-          >
-            {fdiLabel}
-          </span>
+            className={cn('tooth-status-dot', isUpper ? 'is-upper' : 'is-lower')}
+            style={{ background: st.color }}
+            aria-hidden="true"
+          />
         )}
       </div>
     );
@@ -601,7 +600,8 @@ const ToothColumn = memo(function ToothColumn({
       data-fdi={fdiLabel}
       data-tooth-id={id}
       data-illustration={illustrationKind || 'healthy'}
-      aria-label={`FDI ${fdiLabel}`}
+      aria-label={`${fdiLabel}-tish`}
+      title={`${fdiLabel}-tish`}
       style={{
         width: '100%',
         minWidth: 0,

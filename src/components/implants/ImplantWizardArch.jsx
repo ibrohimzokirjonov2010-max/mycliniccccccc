@@ -9,7 +9,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 const UPPER_FDI = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
 const LOWER_FDI = [38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
 
-/** Profile implant status color — number badge only, no outline box. */
+/** Profile implant status color — dot on the drawing, no digit. */
 const IMPLANT_BADGE = '#64748B';
 
 function WizardTooth({ fdi, selected, active, onClick }) {
@@ -22,8 +22,8 @@ function WizardTooth({ fdi, selected, active, onClick }) {
       data-fdi={fdi}
       aria-pressed={selected}
       aria-current={active ? 'true' : undefined}
-      aria-label={`#${fdi}`}
-      title={`#${fdi}`}
+      aria-label={`${fdi}-tish`}
+      title={`${fdi}-tish`}
       className={cn(
         'compact-hit flex w-full min-w-0 max-w-full flex-col border-0 bg-transparent p-0 cursor-pointer',
         crownDown ? 'justify-end' : 'justify-start',
@@ -47,19 +47,13 @@ function WizardTooth({ fdi, selected, active, onClick }) {
           className="h-[94%] w-full max-w-full min-w-0 object-contain pointer-events-none"
           style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
         />
-        <span
-          className={cn('fdi-on-crown', crownDown ? 'is-upper' : 'is-lower')}
-          style={selected ? {
-            color: '#fff',
-            background: IMPLANT_BADGE,
-            textShadow: 'none',
-            borderRadius: 3,
-            padding: '1px 3px',
-            border: 'none',
-          } : undefined}
-        >
-          {fdi}
-        </span>
+        {selected && (
+          <span
+            className={cn('tooth-status-dot', crownDown ? 'is-upper' : 'is-lower')}
+            style={{ background: IMPLANT_BADGE }}
+            aria-hidden="true"
+          />
+        )}
       </span>
     </button>
   );
