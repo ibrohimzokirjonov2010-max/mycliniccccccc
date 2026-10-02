@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { isPlanLocked } from '@/lib/planLock';
 
 const LOCKED_PATIENT = 'patient-y2ii8ynf2';
 
@@ -105,6 +106,8 @@ export async function deleteTreatmentRow({ patientId, plan, serviceIndex }) {
   if (!plan?.id) throw new Error('missing-plan');
 
   const services = Array.isArray(plan.services) ? [...plan.services] : [];
+  // Saqlangan (qulflangan) rejadan alohida xizmatni olib tashlab bo'lmaydi; faqat yagona xizmatli rejani butunlay o'chirish mumkin.
+  if (isPlanLocked(plan) && services.length > 1) throw new Error('plan-locked');
   const nextServices = services.length
     ? services.filter((_, index) => index !== Number(serviceIndex))
     : [];

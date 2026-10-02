@@ -7,8 +7,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { 
   Loader2, CheckCircle2, Circle, Activity, ChevronRight, ChevronLeft, 
-  Camera, Package, Search, Plus, Minus, Layers, DollarSign, Sparkles, AlertCircle
+  Camera, Package, Search, Plus, Minus, Layers, DollarSign, Sparkles, AlertCircle, Lock
 } from 'lucide-react';
+import { isPlanLocked, PLAN_LOCKED_TOOLTIP } from '@/lib/planLock';
 import { toast } from 'sonner';
 
 const DEFAULT_INVENTORY_CATEGORIES = [
@@ -173,6 +174,9 @@ export default function AppointmentTreatmentModal({ open, onClose, appointment, 
 
   // Handle individual service price edit
   const handleServicePriceChange = (serviceId, newPrice) => {
+    // Saqlangan reja xizmatlarining narxi o'zgarmaydi (faqat qulflanmagan qoralama).
+    const owner = plans.find(p => (p.services || []).some(sv => sv.service_id === serviceId));
+    if (owner && isPlanLocked(owner)) return;
     setServiceCustomPrices(prev => ({
       ...prev,
       [serviceId]: Number(newPrice) || 0
@@ -238,7 +242,7 @@ export default function AppointmentTreatmentModal({ open, onClose, appointment, 
 
         const updatedServices = plan.services.map(s => {
           if (itemIds.includes(s.service_id)) {
-            const finalPrice = serviceCustomPrices[s.service_id] !== undefined 
+            const finalPrice = !isPlanLocked(plan) && serviceCustomPrices[s.service_id] !== undefined 
               ? Number(serviceCustomPrices[s.service_id]) 
               : Number(s.price || 0);
             return { 
@@ -640,9 +644,14 @@ export default function AppointmentTreatmentModal({ open, onClose, appointment, 
                                     Xizmat narxi (so'm):
                                   </span>
                                   <div className="flex items-center gap-1.5">
+                                    {isPlanLocked(plan) && (
+                                      <span title={PLAN_LOCKED_TOOLTIP} data-testid="plan-locked-icon" className="inline-flex text-amber-600"><Lock className="w-3.5 h-3.5" /></span>
+                                    )}
                                     <Input
                                       type="number"
-                                      value={currentPrice}
+                                      value={isPlanLocked(plan) ? (service.price || 0) : currentPrice}
+                                      readOnly={isPlanLocked(plan)}
+                                      title={isPlanLocked(plan) ? PLAN_LOCKED_TOOLTIP : undefined}
                                       onChange={(e) => handleServicePriceChange(service.service_id, e.target.value)}
                                       className="h-8 w-32 rounded-lg bg-white border-emerald-300 text-xs font-mono font-bold text-right text-emerald-900"
                                     />

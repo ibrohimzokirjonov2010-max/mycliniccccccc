@@ -3,9 +3,10 @@ import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { 
   Plus, Search, Check, X, ArrowLeft, User, Sparkles, Shield, Trash2, ClipboardList, Info,
-  Activity, Scissors, Layers, TrendingUp, Syringe, Baby, CheckCircle2
+  Activity, Scissors, Layers, TrendingUp, Syringe, Baby, CheckCircle2, Lock
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { isPlanLocked, PLAN_LOCKED_BADGE, PLAN_LOCKED_TOOLTIP } from '@/lib/planLock';
 import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import ProfessionalOdontogram from '@/components/patients/ProfessionalOdontogram';
@@ -477,6 +478,11 @@ export default function MobileTreatmentPlansV2() {
                              </div>
                              
                              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-tight leading-tight mb-1 truncate">
+                                {isPlanLocked(plan) && (
+                                  <span data-testid="plan-locked-icon" title={PLAN_LOCKED_TOOLTIP} aria-label={PLAN_LOCKED_BADGE} className="inline-flex mr-1 align-middle text-amber-600">
+                                    <Lock className="w-3 h-3" />
+                                  </span>
+                                )}
                                 {plan.name || (t ? t('patientProfile.treatmentPlanSingular') : 'Davolash rejasi')}
                              </h3>
                              
