@@ -1,4 +1,4 @@
-import { Check, Pencil, Search, Droplets } from 'lucide-react';
+import { Check, Pencil, Search, Droplets, X } from 'lucide-react';
 import { Tooth, CrownIcon, FormerIcon, AbutmentIcon, BoneGraftIcon, SinusLiftIcon } from '@/components/ui/Icons';
 import { cn } from '@/lib/utils';
 import { getServiceLabel, IMPLANT_WIZARD_STEP2_MARKER } from './implantWizardLabels';
@@ -30,9 +30,18 @@ function ServiceGlyph({ service }) {
   return <Tooth className={cls} />;
 }
 
+function toothBrand(row) {
+  if (!row) return '';
+  return row.firma === 'Boshqa' ? (row.firma_custom || row.brend || '') : (row.firma || row.brend || '');
+}
+
 export default function ImplantWizardStep2({
   selectedFdis,
   brandLabel,
+  toothDataMap = {},
+  activeFdi = null,
+  onSelectTooth,
+  onRemoveTooth,
   extraServicesList,
   extraSearch,
   setExtraSearch,
@@ -56,23 +65,52 @@ export default function ImplantWizardStep2({
     >
       <aside className="implant-wizard-teeth">
         <div className="implant-wizard-teeth-head mb-3">
-          <h3 className="text-[15px] font-bold text-[#111827]">{tw('selectedTeeth', 'Tanlangan tishlar')}</h3>
+          <h3 className="implant-wizard-teeth-title text-[13px] font-bold uppercase tracking-wide text-[#111827]">
+            {tw('selectedTeeth', 'Tanlangan tishlar')}
+            {selectedFdis.length > 0 ? ` (${selectedFdis.length})` : ''}
+          </h3>
           <div className="implant-wizard-teeth-sub mt-1 h-[3px] w-10 rounded-full" style={{ background: '#0d9488' }} />
         </div>
         <div className="implant-wizard-teeth-list flex-1 space-y-1 overflow-y-auto min-h-0 pr-0.5">
-          {selectedFdis.map((fdi, idx) => (
-            <div key={fdi} className="implant-wizard-tooth-chip flex items-center gap-2.5 px-1 py-1.5">
-              <span
-                className="chip-index w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0"
-                style={{ border: '1px solid #0d9488', color: '#0d9488' }}
+          {selectedFdis.map((fdi, idx) => {
+            const brand = toothBrand(toothDataMap[fdi]) || brandLabel;
+            return (
+              <div
+                key={fdi}
+                className={cn('implant-wizard-tooth-chip flex items-center gap-1 px-1 py-1.5', String(activeFdi) === String(fdi) && 'is-active')}
+                data-chip-fdi={fdi}
               >
-                {idx + 1}
-              </span>
-              <Tooth className="chip-tooth w-4 h-4 text-[#9ca3af] shrink-0" />
-              <span className="chip-fdi text-sm font-semibold text-[#111827] tabular-nums">#{fdi}</span>
-              <span className="ml-auto text-xs text-[#9ca3af] chip-brand">{brandLabel}</span>
-            </div>
-          ))}
+                <button
+                  type="button"
+                  onClick={() => onSelectTooth && onSelectTooth(fdi)}
+                  className="implant-wizard-tooth-chip-main flex items-center gap-2.5 flex-1 min-w-0 bg-transparent border-0 p-0 cursor-pointer text-left"
+                  data-select-fdi={fdi}
+                >
+                  <span
+                    className="chip-index w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0"
+                    style={{ border: '1px solid #0d9488', color: '#0d9488' }}
+                  >
+                    {idx + 1}
+                  </span>
+                  <Tooth className="chip-tooth w-4 h-4 text-[#9ca3af] shrink-0" />
+                  <span className="chip-fdi text-sm font-semibold text-[#111827] tabular-nums">#{fdi}</span>
+                  <span className="ml-auto text-xs text-[#9ca3af] chip-brand truncate">{brand}</span>
+                </button>
+                {onRemoveTooth ? (
+                  <button
+                    type="button"
+                    onClick={() => onRemoveTooth(fdi)}
+                    className="implant-wizard-chip-remove"
+                    aria-label={`#${fdi} tishni olib tashlash`}
+                    title={tw('removeTooth', 'Olib tashlash')}
+                    data-remove-fdi={fdi}
+                  >
+                    <X className="w-3 h-3" strokeWidth={3} />
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
         {selectedFdis.length > 4 && (
           <p className="implant-wizard-scroll-hint">{tw('scrollHint', '← Yon tomonga suring →')}</p>
