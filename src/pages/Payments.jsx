@@ -2777,7 +2777,7 @@ export default function Payments() {
                             ...(String(prev.patient_id) !== String(id) ? { amount: '', service_name: '' } : {})
                           }));
                        }} 
-                       inputClassName="h-11 rounded-xl border-none bg-slate-50 px-5 font-black text-slate-900 text-sm"
+                       inputClassName={`h-12 rounded-xl border-2 pl-10 pr-9 text-sm font-semibold text-slate-900 shadow-sm placeholder:text-slate-400 placeholder:font-normal focus:border-[#1499AD] focus:ring-2 focus:ring-[#1499AD]/25 focus-visible:ring-2 focus-visible:ring-[#1499AD]/25 focus-visible:ring-offset-0 ${form.patient_id ? 'border-emerald-300 bg-emerald-50/50' : 'border-slate-300 bg-white hover:border-slate-400'}`}
                      />
                    </div>
 
