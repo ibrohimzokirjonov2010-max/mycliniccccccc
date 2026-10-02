@@ -2195,3 +2195,108 @@
     box-shadow: none !important;
   }
 }
+
+
+/* Step 2 selected-teeth list: per-tooth remove button + active row */
+.implant-wizard-tooth-chip {
+  border-radius: 10px;
+}
+
+.implant-wizard-tooth-chip.is-active {
+  background: #f0fdfa;
+}
+
+.implant-wizard-chip-remove {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.implant-wizard-chip-remove:hover,
+.implant-wizard-chip-remove:focus-visible {
+  background: #e11d48;
+  color: #fff;
+  outline: none;
+}
+
+@media (max-width: 767px) {
+  .implant-wizard-tooth-chip .implant-wizard-tooth-chip-main {
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+  .implant-wizard-tooth-chip {
+    padding: 0 6px 0 12px !important;
+  }
+  .implant-wizard-chip-remove {
+    background: rgba(15, 118, 110, 0.12);
+    color: #0f766e;
+  }
+}
+
+/* Confirm popup when removing a tooth that already has data */
+.implant-wizard-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 420;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.implant-wizard-confirm {
+  width: 100%;
+  max-width: 300px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+}
+
+.implant-wizard-confirm-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.implant-wizard-confirm-text {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.implant-wizard-confirm-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.implant-wizard-confirm-actions button {
+  flex: 1;
+  height: 38px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+}
+
+.implant-wizard-confirm-actions button.is-danger {
+  border-color: #e11d48;
+  background: #e11d48;
+  color: #fff;
+}

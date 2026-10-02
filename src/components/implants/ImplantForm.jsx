@@ -690,6 +690,26 @@ export default function ImplantForm({
     });
   }, []);
 
+  /** Remove a selected tooth, but ask first when brand/price/size were already filled in. */
+  const [pendingRemoveFdi, setPendingRemoveFdi] = useState(null);
+  useEffect(() => { if (!open) setPendingRemoveFdi(null); }, [open]);
+  const requestRemoveTooth = useCallback((rawId) => {
+    const id = toFdi(String(rawId));
+    if (!id) return;
+    const row = toothDataMap[id] || {};
+    const filled = Boolean(
+      String(row.firma || '').trim()
+      || String(row.firma_custom || '').trim()
+      || String(row.brend || '').trim()
+      || String(row.diameter ?? '').trim()
+      || String(row.length ?? '').trim()
+      || Number(row.price) > 0
+    );
+    if (filled) setPendingRemoveFdi(id);
+    else removeTooth(id);
+  }, [toothDataMap, removeTooth]);
+
+
   const handlePatientSelect = useCallback((patientId, patientRecord) => {
     setFormError('');
     if (!patientId) {
@@ -1203,7 +1223,7 @@ export default function ImplantForm({
                 </button>
                 <button
                   type="button"
-                  onClick={() => removeTooth(fdi)}
+                  onClick={() => requestRemoveTooth(fdi)}
                   className="implant-wizard-selected-row-remove"
                   aria-label={`#${fdi} tishni olib tashlash`}
                   title="Olib tashlash"
@@ -1306,14 +1326,14 @@ export default function ImplantForm({
               data={toothDataMap[activeFdi]}
               brands={BRANDS}
               onChange={updateActiveTooth}
-              onRemove={() => removeTooth(activeFdi)}
+              onRemove={() => requestRemoveTooth(activeFdi)}
               promptSizes={promptSizes}
               tw={tw}
             />
           ) : (
             <p className="implant-wizard-tooth-hint">{tw('toothEntryHint', "Tishni bosing — brend, narx, diametr va uzunlik shu yerda ochiladi")}</p>
           )}
-          <div className="implant-wizard-arch-meta flex items-center justify-between pt-1">
+          <div className="implant-wizard-arch-meta flex items-center justify-start pt-1">
             <button
               type="button"
               onClick={() => { setField('tooth_numbers', []); setToothDataMap({}); setActiveFdi(null); setFormError(''); setPromptSizes(false); }}
@@ -1321,10 +1341,6 @@ export default function ImplantForm({
             >
               {tw('clear', 'Tozalash')}
             </button>
-            <p className="text-sm font-semibold text-[#111827] whitespace-nowrap">
-              {tw('selectedCountPrefix', 'Tanlangan:')}{' '}
-              <span className="text-[#0d9488]">{selectedFdis.length} {tw('teethUnit', 'ta tish')}</span>
-            </p>
           </div>
         </section>
       </div>
@@ -1335,6 +1351,10 @@ export default function ImplantForm({
     <ImplantWizardStep2
       selectedFdis={selectedFdis}
       brandLabel={brandLabel}
+      toothDataMap={toothDataMap}
+      activeFdi={activeFdi}
+      onSelectTooth={focusTooth}
+      onRemoveTooth={requestRemoveTooth}
       extraServicesList={filteredExtras}
       extraSearch={extraSearch}
       setExtraSearch={setExtraSearch}
@@ -1536,15 +1556,20 @@ export default function ImplantForm({
           data-wizard-ux="linear-stack-v3"
           data-tooth-size="step1-diameter-length"
           onPointerDownOutside={(e) => {
-            if (facturaPreviewOpen) e.preventDefault();
+            if (facturaPreviewOpen || pendingRemoveFdi) e.preventDefault();
           }}
           onFocusOutside={(e) => {
-            if (facturaPreviewOpen) e.preventDefault();
+            if (facturaPreviewOpen || pendingRemoveFdi) e.preventDefault();
           }}
           onInteractOutside={(e) => {
-            if (facturaPreviewOpen) e.preventDefault();
+            if (facturaPreviewOpen || pendingRemoveFdi) e.preventDefault();
           }}
           onEscapeKeyDown={(e) => {
+            if (pendingRemoveFdi) {
+              e.preventDefault();
+              setPendingRemoveFdi(null);
+              return;
+            }
             if (!facturaPreviewOpen) return;
             e.preventDefault();
             setFacturaPreviewOpen(false);
@@ -1648,6 +1673,39 @@ export default function ImplantForm({
           </div>
         </DialogContent>
       </Dialog>
+
+      {pendingRemoveFdi && createPortal(
+        <div
+          className="implant-wizard-confirm-overlay"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label={tw('removeToothConfirm', 'Tishni olib tashlaysizmi?')}
+          data-testid="implant-remove-tooth-confirm"
+          style={{ pointerEvents: 'auto' }}
+          onClick={() => setPendingRemoveFdi(null)}
+        >
+          <div className="implant-wizard-confirm" onClick={(e) => e.stopPropagation()}>
+            <p className="implant-wizard-confirm-title">{tw('removeToothConfirm', 'Tishni olib tashlaysizmi?')}</p>
+            <p className="implant-wizard-confirm-text">
+              #{pendingRemoveFdi} — {tw('removeToothConfirmHint', "brend, narx va o'lchamlar o'chiriladi")}
+            </p>
+            <div className="implant-wizard-confirm-actions">
+              <button type="button" autoFocus onClick={() => setPendingRemoveFdi(null)} data-testid="implant-remove-tooth-cancel">
+                {tw('removeToothCancel', 'Bekor qilish')}
+              </button>
+              <button
+                type="button"
+                className="is-danger"
+                data-testid="implant-remove-tooth-yes"
+                onClick={() => { const id = pendingRemoveFdi; setPendingRemoveFdi(null); removeTooth(id); }}
+              >
+                {tw('removeToothYes', 'Ha, olib tashlash')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {facturaPreviewOpen && createPortal(
         <div
