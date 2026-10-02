@@ -23,6 +23,7 @@ import { toImplantFdi, uniqueImplantToothKeys } from '@/lib/fdiNotation';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { toast } from 'sonner';
+import { syncImplantPlan, removeImplantPlan } from '@/lib/implantPlan';
 import { uploadImage } from '@/utils/imageUpload';
 import { cn } from '@/lib/utils';
 import { ClinicDateField } from '@/components/ui/ClinicDateField';
@@ -593,6 +594,8 @@ export default function ImplantDetail() {
         services_list: updatedServices,
         timeline
       });
+      syncImplantPlan({ ...implant, id: realImplantId, services_list: updatedServices }, { createPlan: false })
+        .catch((planErr) => console.error('Implant plan sync failed:', planErr));
       setServiceModalOpen(false);
       toast.success(language === 'ru' ? "Услуга успешно добавлена!" : "Xizmat muvaffaqiyatli qo'shildi!", {
         duration: 2500,
@@ -618,6 +621,8 @@ export default function ImplantDetail() {
       await base44.entities.Implant.update(realImplantId, {
         services_list: updatedServices
       });
+      syncImplantPlan({ ...implant, id: realImplantId, services_list: updatedServices }, { createPlan: false })
+        .catch((planErr) => console.error('Implant plan sync failed:', planErr));
       toast.success(language === 'ru' ? "Услуга удалена!" : "Xizmat o'chirildi!", {
         duration: 2500,
       });
@@ -1324,6 +1329,7 @@ export default function ImplantDetail() {
               onClick={async () => {
                 try {
                   await base44.entities.Implant.delete(id);
+                  await removeImplantPlan(implant).catch((planErr) => console.error('Implant plan cleanup failed:', planErr));
                   toast.success("Implant o'chirildi!");
                   navigate('/implants');
                 } catch (e) {

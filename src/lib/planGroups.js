@@ -1,6 +1,7 @@
 // Bemor profilidagi "Davolash rejalari": har bir reja bitta qator sifatida ko'rsatiladi.
 // Bu yerda faqat ko'rinish uchun hisob-kitoblar (bazaga yozilmaydi).
 import { isPlanLocked } from '@/lib/planLock';
+import { isImplantPlan } from '@/lib/implantPlanModel';
 
 const toTime = (value) => {
   const time = value ? new Date(value).getTime() : 0;
@@ -40,7 +41,9 @@ export function formatPlanTeeth(teeth = [], limit = 6) {
 // "Reja 2 (#11, 21)"
 export function planTitle(number, plan) {
   const teeth = formatPlanTeeth(planToothList(plan));
-  return teeth ? `Reja ${number} (#${teeth})` : `Reja ${number}`;
+  // Implant rejasi foydalanuvchi bergan nom bilan ko'rinadi ("Implantlar (#11, 21)").
+  const label = isImplantPlan(plan) && String(plan?.name || '').trim() ? String(plan.name).trim() : `Reja ${number}`;
+  return teeth ? `${label} (#${teeth})` : label;
 }
 
 export function planTotal(plan) {

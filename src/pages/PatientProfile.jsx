@@ -52,6 +52,8 @@ import { exportPatientToExcel } from '@/lib/patientExcelExport';
 import AppointmentModal from '../components/appointments/AppointmentModal';
 import PatientModal from '../components/patients/PatientModal';
 import { isPlanLocked } from '../lib/planLock';
+import { renameImplantPlan } from '../lib/implantPlan';
+import { findPlanForImplant } from '../lib/implantPlanModel';
 import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
 import TreatmentPlanInvoice from '../components/treatments/TreatmentPlanInvoice';
 import ImplantForm from '../components/implants/ImplantForm';
@@ -1651,6 +1653,8 @@ export default function PatientProfile() {
     });
 
     implants?.forEach(imp => {
+      // Narxi bilan "Implantlar" rejasiga yozilgan implant ikki marta ko'rsatilmaydi.
+      if (findPlanForImplant(plans, imp.id)) return;
       const tn = imp.tooth_numbers;
       const toothNums = Array.isArray(tn) ? tn : (typeof tn === 'string' ? tn.split(',').map(s=>s.trim()) : (imp.tooth_number ? [imp.tooth_number] : []));
       toothNums.forEach(num => {
@@ -2692,6 +2696,22 @@ export default function PatientProfile() {
     await load();
   };
 
+  // Implant rejasi nomi: reja qulflangan bo'lsa ham o'zgartirish mumkin (faqat nom).
+  const handleRenamePlan = async (plan, name) => {
+    if (id === 'patient-y2ii8ynf2') {
+      toast.error("Bu test bemor ma'lumoti o'zgartirilmaydi");
+      return;
+    }
+    try {
+      const next = await renameImplantPlan(plan, name);
+      toast.success(`Reja nomi o'zgartirildi: «${next}»`);
+      await load();
+    } catch (error) {
+      console.error('Failed to rename plan:', error);
+      toast.error("Reja nomini o'zgartirib bo'lmadi");
+    }
+  };
+
   const handleDeletePayment = async (paymentId) => {
     if (!window.confirm("Haqiqatan ham ushbu to'lov yozuvini o'chirmoqchimisiz?")) return;
     try {
@@ -3250,6 +3270,7 @@ export default function PatientProfile() {
               onOpenPlanInvoice={(plan) => setInvoiceModalPlan(plan)}
               onPayInstallment={handlePayInstallment}
               onDeleteTreatment={handleDeleteTreatment}
+              onRenamePlan={handleRenamePlan}
             />
           )}
         </TabsContent>

@@ -28,6 +28,7 @@ import { IMPLANT_STATUS_ORDER, implantStatusClass, implantStatusLabel, normalize
 import { cn } from '@/lib/utils';
 import { implantRecordFdis } from '@/lib/fdiNotation';
 import { toast } from 'sonner';
+import { removeImplantPlan } from '@/lib/implantPlan';
 
 // Defensive rendering helper
 const safeRender = (val, fallback = '—') => {
@@ -496,7 +497,9 @@ export default function Implants() {
   const handleDeleteImplant = async (id) => {
     if (!window.confirm("Ushbu yozuvni o'chirishni tasdiqlaysizmi?")) return;
     try {
+      const doomed = implants.find((item) => String(item.id) === String(id));
       await base44.entities.Implant.delete(id);
+      if (doomed) await removeImplantPlan(doomed).catch((planErr) => console.error('Implant plan cleanup failed:', planErr));
       toast.success("Yozuv muvaffaqiyatli o'chirildi!");
       load();
     } catch (err) {
