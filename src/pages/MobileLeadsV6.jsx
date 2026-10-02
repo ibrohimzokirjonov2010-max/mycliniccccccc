@@ -292,14 +292,14 @@ export default function MobileLeadsV6() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: Math.min(index, 6) * 0.02 }}
-        className="mx-4 mb-3 bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3 active:scale-[0.99] hover:border-slate-200 transition-all duration-200 content-visibility-auto"
+        className="mx-3 mb-2 bg-white rounded-2xl p-3 shadow-sm border border-slate-100 flex flex-col gap-2 active:scale-[0.99] hover:border-slate-200 transition-all duration-200 content-visibility-auto"
         onClick={() => setSelectedLead(lead)}
       >
         {/* Top Row: Avatar + Name + Source Badge + Dropdown Action */}
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             {/* Brand source avatar */}
-            <LeadSourceIcon source={lead.source} className="w-10 h-10 rounded-xl shadow-sm" size={40} />
+            <LeadSourceIcon source={lead.source} className="w-9 h-9 rounded-xl shadow-sm" size={36} />
             <div className="min-w-0">
               <h3 className="font-extrabold text-slate-800 text-sm leading-snug truncate max-w-[130px]">
                 {lead.name || lead.full_name || 'Ismsiz'}
@@ -336,7 +336,7 @@ export default function MobileLeadsV6() {
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                 <button className="w-8 h-8 hover:bg-slate-50 rounded-lg flex items-center justify-center text-slate-400 active:scale-90 transition-transform">
+                 <button className="w-7 h-7 hover:bg-slate-50 rounded-lg flex items-center justify-center text-slate-400 active:scale-90 transition-transform">
                     <MoreVertical className="w-4 h-4" />
                  </button>
               </DropdownMenuTrigger>
@@ -353,7 +353,7 @@ export default function MobileLeadsV6() {
         </div>
 
         {/* Middle Row: Phone Number + Call & Telegram Buttons */}
-        <div className="flex items-center justify-between border-t border-slate-50 pt-2.5">
+        <div className="flex items-center justify-between border-t border-slate-50 pt-2">
           <div 
             onClick={(e) => copyPhoneNumber(e, lead.phone)}
             className="flex items-center gap-1.5 hover:text-slate-900 text-slate-700 transition-colors cursor-pointer active:opacity-75"
@@ -368,7 +368,7 @@ export default function MobileLeadsV6() {
                 e.stopPropagation(); 
                 window.open(`tel:${lead.phone}`, '_self'); 
               }} 
-              className="w-8 h-8 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center active:scale-90 transition-all border border-emerald-100/30"
+              className="w-7 h-7 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center active:scale-90 transition-all border border-emerald-100/30"
             >
                <Phone className="w-3.5 h-3.5" />
             </button>
@@ -378,7 +378,7 @@ export default function MobileLeadsV6() {
                 const phoneClean = lead.phone?.replace(/\D/g, '');
                 window.open(`https://t.me/+${phoneClean}`, '_blank'); 
               }} 
-              className="w-8 h-8 bg-sky-50 text-sky-600 rounded-lg flex items-center justify-center active:scale-90 transition-all border border-sky-100/30"
+              className="w-7 h-7 bg-sky-50 text-sky-600 rounded-lg flex items-center justify-center active:scale-90 transition-all border border-sky-100/30"
             >
                <MessageCircle className="w-3.5 h-3.5" />
             </button>
@@ -387,7 +387,7 @@ export default function MobileLeadsV6() {
 
         {/* Bottom Notes Row (if notes exist) */}
         {lead.notes && (
-           <div className="bg-slate-50/60 px-3 py-2 rounded-xl border border-slate-100/50 text-[10px] text-slate-500 font-medium leading-relaxed italic flex items-start gap-1">
+           <div className="bg-slate-50/60 px-2.5 py-1.5 rounded-xl border border-slate-100/50 text-[10px] text-slate-500 font-medium leading-relaxed italic flex items-start gap-1">
              <span className="text-slate-300 select-none">“</span>
              <span className="flex-1 line-clamp-2">{lead.notes}</span>
              <span className="text-slate-300 select-none">”</span>
@@ -401,45 +401,45 @@ export default function MobileLeadsV6() {
     <PullToRefresh onRefresh={loadLeads}>
       <div className="min-h-screen bg-slate-50/20 pb-24">
         {/* Top Header */}
-        <div className="bg-white px-5 pt-6 pb-4 sticky top-0 z-20 border-b border-slate-100/60 shadow-sm shadow-slate-100/5">
-          <div className="flex items-center justify-between mb-5">
+        <div className="bg-white px-4 pt-4 pb-3 sticky top-0 z-20 border-b border-slate-100/60 shadow-sm shadow-slate-100/5">
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Leadlar</h1>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight">Leadlar</h1>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5 opacity-70">Potensial Bemorlar</p>
             </div>
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => setShowSettingsModal(true)}
-                className="w-10 h-10 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center border border-slate-100 shadow-sm active:scale-95 transition-all"
+                className="w-9 h-9 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center border border-slate-100 shadow-sm active:scale-95 transition-all"
               >
                 <Settings2 className="w-4.5 h-4.5" />
               </button>
               <button 
                 onClick={() => { resetForm(); setShowAddModal(true); }}
-                className="w-12 h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-all"
+                className="w-10 h-10 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-all"
               >
-                <Plus className="w-6 h-6" />
+                <Plus className="w-5 h-5" />
               </button>
             </div>
           </div>
 
           {/* Redesigned Stats Header */}
-          <div className="grid grid-cols-3 gap-2.5 mb-5">
-             <div className="bg-gradient-to-br from-white to-slate-50/50 border border-slate-100 p-3.5 rounded-2xl shadow-sm flex flex-col justify-between h-20">
+          <div className="grid grid-cols-3 gap-2 mb-3">
+             <div className="bg-gradient-to-br from-white to-slate-50/50 border border-slate-100 p-2.5 rounded-2xl shadow-sm flex flex-col justify-between h-14">
                 <div className="flex justify-between items-start">
                    <span className="text-xl font-black text-slate-900 leading-none">{stats.total}</span>
                    <span className="text-sm select-none">🎯</span>
                 </div>
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider leading-none">Jami</p>
              </div>
-             <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-3.5 rounded-2xl shadow-md shadow-emerald-500/10 flex flex-col justify-between h-20 text-white border border-emerald-600/30">
+             <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 rounded-2xl shadow-md shadow-emerald-500/10 flex flex-col justify-between h-14 text-white border border-emerald-600/30">
                 <div className="flex justify-between items-start">
                    <span className="text-xl font-black leading-none">{stats.new}</span>
                    <span className="text-sm select-none">🔥</span>
                 </div>
                 <p className="text-[8px] font-black text-white/80 uppercase tracking-wider leading-none font-bold">Yangi</p>
              </div>
-             <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-3.5 rounded-2xl shadow-md shadow-slate-950/10 flex flex-col justify-between h-20 text-white border border-slate-800">
+             <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-2.5 rounded-2xl shadow-md shadow-slate-950/10 flex flex-col justify-between h-14 text-white border border-slate-800">
                 <div className="flex justify-between items-start">
                    <span className="text-xl font-black leading-none">{stats.conversion}%</span>
                    <span className="text-sm select-none">📈</span>
@@ -449,23 +449,23 @@ export default function MobileLeadsV6() {
           </div>
 
           {/* Compact Search Bar */}
-          <div className="relative mb-5">
+          <div className="relative mb-3">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               placeholder="Izlash..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 pl-10 pr-4 rounded-xl bg-slate-50 border border-slate-100 text-xs font-bold focus:bg-white focus:border-slate-300 focus:ring-4 focus:ring-slate-900/5 transition-all placeholder:text-slate-400"
+              className="w-full h-9 pl-10 pr-4 rounded-xl bg-slate-50 border border-slate-100 text-xs font-bold focus:bg-white focus:border-slate-300 focus:ring-4 focus:ring-slate-900/5 transition-all placeholder:text-slate-400"
             />
           </div>
 
           {/* Redesigned Filter Tabs */}
-          <div className="flex gap-2 overflow-x-auto -mx-5 px-5 no-scrollbar pb-1">
+          <div className="flex gap-2 overflow-x-auto -mx-4 px-4 no-scrollbar pb-1">
             <button
               onClick={() => setFilterStatus('all')}
               className={`
-                px-4 py-2.5 rounded-xl whitespace-nowrap transition-all border shrink-0 flex items-center gap-1.5
+                px-3 py-1.5 rounded-xl whitespace-nowrap transition-all border shrink-0 flex items-center gap-1.5
                 ${filterStatus === 'all'
                   ? 'bg-slate-900 border-slate-900 text-white shadow-md' 
                   : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}
@@ -481,7 +481,7 @@ export default function MobileLeadsV6() {
                   key={s}
                   onClick={() => setFilterStatus(s)}
                   className={`
-                    px-4 py-2.5 rounded-xl whitespace-nowrap transition-all border shrink-0 flex items-center gap-1.5
+                    px-3 py-1.5 rounded-xl whitespace-nowrap transition-all border shrink-0 flex items-center gap-1.5
                     ${isActive 
                       ? 'bg-slate-900 border-slate-900 text-white shadow-md' 
                       : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}
@@ -496,10 +496,10 @@ export default function MobileLeadsV6() {
         </div>
 
         {/* Lead List Cards */}
-        <div className="mt-4 space-y-1">
+        <div className="mt-2 space-y-0">
           {loading ? (
-             <div className="px-4 space-y-3 mt-3">
-                {[1,2,3].map(i => <div key={i} className="h-32 bg-white rounded-2xl animate-pulse border border-slate-100" />)}
+             <div className="px-3 space-y-2 mt-2">
+                {[1,2,3].map(i => <div key={i} className="h-24 bg-white rounded-2xl animate-pulse border border-slate-100" />)}
              </div>
           ) : filteredLeads.length === 0 ? (
              <div className="py-16 text-center">

@@ -194,6 +194,7 @@ export function buildFacturaDocument({
   extraServicePrices = {},
   edits = {},
   toothLines = [],
+  extractionFdis,
   t,
 } = {}) {
   const teeth = [...new Set((selectedFdis || []).map((n) => String(n).replace(/^#/, '')).filter(Boolean))];
@@ -227,12 +228,16 @@ export function buildFacturaDocument({
     if (!id || isStage2Service(id) || used.has(id)) return;
     used.add(id);
     const service = (extraServicesList || []).find((s) => normalizeServiceId(s.id) === id) || { id };
+    // Extraction is charged only for the teeth where the doctor agreed to a paid extraction.
+    const extractionQty = id === 'extraction' && Array.isArray(extractionFdis) && extractionFdis.length > 0
+      ? extractionFdis.length
+      : null;
     const line = applyEdit(
       makeLine({
         id,
         label: labelFor(service, service.label || service.name || id),
         unitPrice: catalogPrice(id, extraServicesList, extraServicePrices),
-        qty: defaultLineQty(id, teethCount, { selected: true }),
+        qty: extractionQty ?? defaultLineQty(id, teethCount, { selected: true }),
         stage: 1,
         source: 'extra',
       }),
