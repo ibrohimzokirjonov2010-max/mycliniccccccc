@@ -33,6 +33,7 @@ import {
 import ToothChartCard from '../components/patients/ToothChartCard';
 import TodayPlanBar from '../components/patients/TodayPlanBar';
 import { buildPlanStepperGroups } from '../components/patients/planStepperModel';
+import { setPlanStepInProgress } from '@/lib/planStepAdvance';
 import { isOncePricingDirty, withOncePricing } from '@/lib/toothPlanCharge';
 import { matchIllustrationKind } from '@/utils/toothIllustration';
 
@@ -795,6 +796,17 @@ export default function MobilePatientProfile() {
           totalDebt={financials.debt}
           planRemaining={planRemainingTotal}
           onPay={() => openPayModal()}
+          onAdvanceStep={async (step) => {
+            const plan = (plans || []).find((p) => String(p.id) === String(step?.planId));
+            try {
+              await setPlanStepInProgress(plan, step?.serviceIndex);
+              toast.success(`"${step?.title || 'Bosqich'}" jarayonda`);
+              await load();
+            } catch (error) {
+              console.error('Advance plan step error:', error);
+              toast.error("Bosqichni yangilashda xatolik yuz berdi");
+            }
+          }}
           onNextClinical={() => {
             document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }}

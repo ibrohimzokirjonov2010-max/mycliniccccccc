@@ -73,9 +73,12 @@ function withActive(steps) {
   return next;
 }
 
-function pushServiceStep(steps, { id, title, tooth, state, implants, language, planName, category }) {
+function pushServiceStep(steps, { id, title, tooth, state, implants, language, planName, category, planId, serviceIndex }) {
   steps.push({
     id,
+    planId,
+    serviceIndex,
+    rawState: state,
     title,
     tooth,
     state,
@@ -159,6 +162,8 @@ export function buildPlanStepperGroups({
         language,
         planName: plan.name,
         category: service.category,
+        planId: plan.id,
+        serviceIndex: idx,
       });
     });
     groups.push({
