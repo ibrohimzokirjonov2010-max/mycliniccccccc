@@ -44,8 +44,8 @@ import {
   StageMediaRail,
   ClinicalTimeline,
   LinkedServicesCard,
-  DentalArchFdi,
 } from '../components/implants/ClinicalPassportCards';
+import ImplantToothChart from '../components/implants/ImplantToothChart';
 import jsPDF from 'jspdf';
 
 // Defensive rendering helper
@@ -1075,36 +1075,40 @@ export default function ImplantDetail() {
         />
       </div>
 
-      {/* 4) TOP ROW — 3 cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch min-w-0">
-        <PassportSpecsCard implant={activeTooth} language={language} onSaveField={saveClinicalField} />
-
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 flex flex-col">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#14b8a6] flex items-center justify-center">
-              <Tooth className="w-4 h-4" />
-            </div>
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-              {language === 'ru' ? 'Место зуба (FDI)' : 'Tish Joyi (FDI)'}
-            </h3>
+      {/* 4a) TISH JOYI (FDI) — full width professional read-only chart */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 min-w-0 overflow-hidden">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#14b8a6] flex items-center justify-center">
+            <Tooth className="w-4 h-4" />
           </div>
-          <DentalArchFdi
-            activeFdis={[activeToothNumberFdi]}
-            caseFdis={caseFdis}
-            onSelectTooth={(fdi) => {
-              const found = switcherItems.find((it) => {
-                const raw = it.tooth_numbers || (it.tooth_number ? [it.tooth_number] : []);
-                return raw.map(toothIdToFdi).includes(String(fdi));
-              });
-              if (found) {
-                setSelectedRelatedTooth(found.id);
-                if (!String(found.id).includes('__') && found.id !== id) {
-                  navigate(`/implants/${found.id}`, { replace: true });
-                }
-              }
-            }}
-          />
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+            {language === 'ru' ? 'Место зуба (FDI)' : 'Tish Joyi (FDI)'}
+          </h3>
         </div>
+        <ImplantToothChart
+          patientId={implant?.patient_id}
+          implants={relatedTeeth.length > 0 ? relatedTeeth : [implant]}
+          caseFdis={caseFdis}
+          activeFdi={activeToothNumberFdi}
+          language={language}
+          onSelectTooth={(fdi) => {
+            const found = switcherItems.find((it) => {
+              const raw = it.tooth_numbers || (it.tooth_number ? [it.tooth_number] : []);
+              return raw.map(toothIdToFdi).includes(String(fdi));
+            });
+            if (found) {
+              setSelectedRelatedTooth(found.id);
+              if (!String(found.id).includes('__') && found.id !== id) {
+                navigate(`/implants/${found.id}`, { replace: true });
+              }
+            }
+          }}
+        />
+      </div>
+
+      {/* 4b) TOP ROW — passport + stage media */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch min-w-0">
+        <PassportSpecsCard implant={activeTooth} language={language} onSaveField={saveClinicalField} />
 
         <StageMediaRail
           implant={activeTooth}
