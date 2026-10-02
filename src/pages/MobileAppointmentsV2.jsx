@@ -14,6 +14,8 @@ import AppointmentConfirmationBadge from '@/components/appointments/AppointmentC
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
+import { appointmentMatchesDoctor } from '@/utils/doctorMatch';
+import { isCancelledStatus } from '@/utils/clinicMetrics';
 
 /**
  * Premium SaaS Mobile Appointments
@@ -43,6 +45,9 @@ export default function MobileAppointmentsV2() {
   const [viewDate, setViewDate] = useState(new Date(selectedDate));
   const [selectedDoctorId, setSelectedDoctorId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  // Xodimlar sahifasidan: shifokorning barcha qabullari ro'yxati (kun bo'yicha emas)
+  const [listAll, setListAll] = useState(false);
+  const [hideCancelled, setHideCancelled] = useState(false);
   
   // Form state for prefilling
   const toLocalDateStr = (d) => {
@@ -64,11 +69,27 @@ export default function MobileAppointmentsV2() {
   }, [selectedDate]);
 
   // Check for navigation state to open modal or filter a doctor
+  const handledNavKey = useRef(null);
   useEffect(() => {
     const incomingId = location.state?.doctorId;
-    if (incomingId != null && incomingId !== '') {
-      setSelectedDoctorId(incomingId);
-      if (appointments.length) {
+    if (incomingId != null && incomingId !== '' && handledNavKey.current !== location.key) {
+      const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(location.state?.date || '').split('T')[0]);
+      if (dateMatch) {
+        // Aniq kun: shu kun + shifokor
+        const next = new Date(Number(dateMatch[1]), Number(dateMatch[2]) - 1, Number(dateMatch[3]));
+        setSelectedDate(next);
+        setViewDate(next);
+        setListAll(false);
+        setHideCancelled(false);
+        setSearchQuery('');
+        handledNavKey.current = location.key;
+      } else if (location.state?.listPeriod === 'all') {
+        // Shifokorning barcha qabullari
+        setListAll(true);
+        setHideCancelled(!!location.state?.excludeCancelled);
+        setSearchQuery('');
+        handledNavKey.current = location.key;
+      } else if (appointments.length) {
         const name = String(location.state?.doctorName || '').trim().toLowerCase();
         const dates = appointments
           .filter((a) => {
@@ -85,14 +106,15 @@ export default function MobileAppointmentsV2() {
           setSelectedDate(next);
           setViewDate(next);
         }
-        navigate(location.pathname, { replace: true, state: {} });
+        handledNavKey.current = location.key;
       }
+      setSelectedDoctorId(incomingId);
     }
     if (location.state?.openAddModal) {
       openAddAppointmentModal();
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, location.pathname, openAddAppointmentModal, appointments, navigate]);
+  }, [location.state, location.key, openAddAppointmentModal, appointments]);
 
   const loadData = useCallback(async () => {
     try {
@@ -103,7 +125,7 @@ export default function MobileAppointmentsV2() {
         }, 150);
       }
       const [apps, rawPats, servs, users] = await Promise.all([
-        base44.entities.Appointment.list('-date', 50),   // ⚡ tez yuklash
+        base44.entities.Appointment.list('-date', 500),
         base44.entities.Patient.list(isDoctor ? '-created_date' : 'full_name', isDoctor ? 500 : 50),   // ⚡ tez yuklash
         base44.entities.Service.list('name', 100),
         base44.entities.User.list('name', 50)
@@ -183,6 +205,7 @@ export default function MobileAppointmentsV2() {
     setSelectedDate(targetDate);
     setViewDate(new Date(targetDate));
     setSearchQuery('');
+    setListAll(false);
     setShowMonthView(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
@@ -272,6 +295,20 @@ export default function MobileAppointmentsV2() {
       });
     }
 
+    if (listAll) {
+      const selectedDoc = doctors.find((d) => String(d.id) === String(selectedDoctorId));
+      const docName = selectedDoc?.name || selectedDoc?.full_name || '';
+      return result
+        .filter((a) => (selectedDoctorId ? appointmentMatchesDoctor(a, selectedDoctorId, docName) : true))
+        .filter((a) => !(hideCancelled && isCancelledStatus(a.status)))
+        .sort((a, b) => {
+          const da = normalize(a.date);
+          const db = normalize(b.date);
+          if (da !== db) return db.localeCompare(da);
+          return (a.time || '00:00').localeCompare(b.time || '00:00');
+        });
+    }
+
     return result.filter(app => {
       if (!app.date) return false;
       const sameDate = normalize(app.date) === getFormatDate(selectedDate);
@@ -286,7 +323,7 @@ export default function MobileAppointmentsV2() {
       }
       return true;
     }).sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
-  }, [appointments, selectedDate, selectedDoctorId, searchQuery, doctors]);
+  }, [appointments, selectedDate, selectedDoctorId, searchQuery, doctors, listAll, hideCancelled]);
 
   // Fixed working hours: 09:00 – 23:00, hourly only
   const WORKING_HOURS = useMemo(() => {
@@ -538,6 +575,13 @@ export default function MobileAppointmentsV2() {
                     <button onClick={() => setSearchQuery('')} className="p-1 px-3 bg-white rounded-lg text-[10px] font-black text-slate-400 uppercase tracking-widest border border-slate-100 shadow-sm">Tozalash</button>
                   </div>
                 </motion.div>
+              ) : listAll ? (
+                <motion.div key="list-all" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
+                  <div className="bg-[#1499AD]/10 px-4 py-3 rounded-2xl border border-[#1499AD]/20 flex items-center justify-between gap-2">
+                    <span className="text-xs font-black text-[#1499AD] uppercase tracking-widest">Barcha qabullar: {filteredAppointments.length} ta</span>
+                    <button onClick={() => setListAll(false)} className="shrink-0 p-1 px-3 bg-white rounded-lg text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-100 shadow-sm">Kunlik ko'rinish</button>
+                  </div>
+                </motion.div>
               ) : !showMonthView ? (
                 <motion.div key="week-view" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex items-center justify-between mb-5">
                   <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate()-7); setSelectedDate(d); }} className="p-2"><ChevronLeft className="w-5 h-5" /></button>
@@ -637,15 +681,15 @@ export default function MobileAppointmentsV2() {
         <div className="p-4">
           {loading ? [1,2,3].map(i => <div key={i} className="h-20 bg-slate-100 rounded-2xl animate-pulse mb-4" />) : (
             <div className="space-y-1">
-              {searchQuery.trim() ? (
-                // SEARCH RESULTS LIST
+              {searchQuery.trim() || listAll ? (
+                // SEARCH RESULTS / DOCTOR "ALL VISITS" LIST
                 <div className="space-y-3">
                   {filteredAppointments.length === 0 ? (
                     <div className="py-20 text-center">
                       <div className="w-16 h-16 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto mb-4 text-slate-300">
                         <Search className="w-8 h-8" />
                       </div>
-                      <p className="text-slate-400 font-bold">"{searchQuery}" bo'yicha uchrashuv topilmadi</p>
+                      <p className="text-slate-400 font-bold">{searchQuery.trim() ? `"${searchQuery}" bo'yicha uchrashuv topilmadi` : "Bu shifokorda qabul topilmadi"}</p>
                     </div>
                   ) : (
                     filteredAppointments.map((app, idx) => (

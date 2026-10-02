@@ -119,11 +119,14 @@ function WeekChips({ flags, todayJs, onToggle }) {
   return (
     <div className="flex gap-1">
       {WEEK_LABELS.map((d) => {
+        const on = !!flags[d.js];
         const cls = cn(
-          'flex-1 text-center text-[10.5px] font-bold py-1 rounded-md bg-slate-100 text-slate-400',
-          flags[d.js] && 'bg-teal-600 text-white',
+          'flex-1 text-center text-[10.5px] py-1 rounded-md border transition-colors',
+          on
+            ? 'bg-teal-600 border-teal-600 text-white font-extrabold'
+            : 'bg-slate-100 border-slate-200 text-slate-400 font-semibold line-through decoration-slate-400',
           d.js === todayJs && 'outline outline-1 outline-[#1499AD] -outline-offset-1',
-          onToggle && 'cursor-pointer hover:opacity-80 transition-opacity'
+          onToggle && (on ? 'cursor-pointer hover:bg-teal-700' : 'cursor-pointer hover:bg-slate-200')
         );
         if (!onToggle) return <span key={d.js} className={cls}>{d.short}</span>;
         return (
@@ -131,8 +134,9 @@ function WeekChips({ flags, todayJs, onToggle }) {
             key={d.js}
             type="button"
             onClick={(e) => { e.stopPropagation(); onToggle(d.js); }}
-            title={flags[d.js] ? 'Ish kuni — bosib dam qiling' : 'Dam — bosib ish kuni qiling'}
-            aria-pressed={!!flags[d.js]}
+            title={on ? `${d.short}: ish kuni — bosib dam olish kuni qiling` : `${d.short}: dam olish kuni — bosib ish kuni qiling`}
+            aria-label={`${d.short}: ${on ? 'ish kuni' : 'dam olish kuni'}`}
+            aria-pressed={on}
             className={cls}
           >
             {d.short}
@@ -453,17 +457,19 @@ export default function Staff() {
   };
 
   const openSchedule = (card, extra = {}) => {
+    setDetailId(null);
     navigate('/appointments', { state: { doctorId: card.id, doctorName: card.name, ...extra } });
   };
 
-  // "Qabullar" → shu shifokorning barcha qabullari
-  const openDoctorAppointments = (card) => openSchedule(card, { listPeriod: 'all' });
+  // "Qabullar" → shu shifokorning barcha qabullari (kartadagi son bekor qilinganlarni hisoblamaydi)
+  const openDoctorAppointments = (card) => openSchedule(card, { listPeriod: 'all', excludeCancelled: true });
 
   // Bu hafta kuni → shu kun + shifokor jadvali
-  const openDoctorDay = (card, date) => openSchedule(card, { date, listPeriod: 'day' });
+  const openDoctorDay = (card, date) => openSchedule(card, { date, listPeriod: 'day', excludeCancelled: true });
 
   // "Bemorlar soni" → Bemorlar sahifasi shu shifokor bo'yicha filtrlangan
   const openDoctorPatients = (card) => {
+    setDetailId(null);
     navigate('/patients', {
       state: {
         doctorFilter: {
@@ -842,6 +848,8 @@ export default function Staff() {
               onSchedule={() => openSchedule(c)}
               onPerms={() => handleOpenEditStaff(c.user, { focusRole: true })}
               onToggleDay={(js) => toggleWorkingDay(c, js)}
+              onOpenAppointments={() => openDoctorAppointments(c)}
+              onOpenPatients={() => openDoctorPatients(c)}
             />
           ))}
         </div>
@@ -1082,7 +1090,7 @@ function sortOptions(language) {
   ];
 }
 
-function StaffCard({ card, phone, compact, lead, selected, language, presenceLabel, todayJs, nowMinutes, onOpen, onEdit, onCall, onMessage, onSchedule, onPerms, onToggleDay }) {
+function StaffCard({ card, phone, compact, lead, selected, language, presenceLabel, todayJs, nowMinutes, onOpen, onEdit, onCall, onMessage, onSchedule, onPerms, onToggleDay, onOpenAppointments, onOpenPatients }) {
   const isAdmin = card.role === 'admin';
   return (
     <article className={cn('bg-white border rounded-2xl p-4 flex flex-col gap-3 min-w-0 shadow-sm', selected ? 'border-[#1499AD] ring-2 ring-[#1499AD]/20' : 'border-slate-200/80')}>
@@ -1138,9 +1146,10 @@ function StaffCard({ card, phone, compact, lead, selected, language, presenceLab
         </div>
       )}
 
-      <div className="grid grid-cols-3 border border-slate-100 rounded-xl overflow-hidden">
-        <Metric label={tx(language, 'Qabul', 'Приём', 'Visits')} value={card.appointments} />
+      <div className="grid grid-cols-4 border border-slate-100 rounded-xl overflow-hidden">
+        <Metric onClick={onOpenAppointments} label={tx(language, 'Qabul', 'Приём', 'Visits')} value={card.appointments} />
         <Metric label={tx(language, 'Bajarilgan', 'Готово', 'Done')} value={<>{card.completed} <small className="text-[11px] text-slate-400 font-semibold">/ {card.completion}%</small></>} />
+        <Metric onClick={onOpenPatients} label={tx(language, 'Bemor', 'Пациенты', 'Patients')} value={card.patients} />
         <Metric label={tx(language, 'Tushum', 'Выручка', 'Revenue')} value={fmtCompact(card.revenue)} />
       </div>
 
@@ -1188,12 +1197,25 @@ function RoleBadge({ role, language }) {
   );
 }
 
-function Metric({ label, value }) {
-  return (
-    <div className="px-2.5 py-2 border-l border-slate-100 first:border-0 min-w-0">
-      <span className="block text-[10px] font-bold uppercase tracking-wide text-slate-400 truncate">{label}</span>
+function Metric({ label, value, onClick }) {
+  const body = (
+    <>
+      <span className="flex items-center justify-between gap-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+        <span className="truncate">{label}</span>
+        {onClick && <ChevronRight className="w-3 h-3 shrink-0 text-slate-300 group-hover:text-[#1499AD] transition-colors" />}
+      </span>
       <b className="block text-[15px] font-extrabold tracking-tight mt-0.5 truncate">{value}</b>
-    </div>
+    </>
+  );
+  if (!onClick) return <div className="px-2.5 py-2 border-l border-slate-100 first:border-0 min-w-0">{body}</div>;
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className="group px-2.5 py-2 border-l border-slate-100 first:border-0 min-w-0 text-left cursor-pointer hover:bg-teal-50/60 active:bg-teal-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1499AD] -outline-offset-2 transition-colors"
+    >
+      {body}
+    </button>
   );
 }
 
@@ -1221,8 +1243,10 @@ function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, 
   const weekDays = WEEK_LABELS.map((d, i) => {
     const date = addDays(weekStart, i);
     const key = isoDate(date);
-    const hours = scheduleHoursLabel(card.user.workingHours, d.js);
-    return { ...d, date, key, count: card.weekCounts[key] || 0, hours, isToday: d.js === todayJs };
+    const rawHours = scheduleHoursLabel(card.user.workingHours, d.js);
+    const off = card.dayFlags?.[d.js] === false || rawHours === 'dam';
+    const hours = off ? 'dam' : rawHours;
+    return { ...d, date, key, count: card.weekCounts[key] || 0, hours, off, isToday: d.js === todayJs };
   });
 
   const tabs = [
@@ -1302,11 +1326,11 @@ function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, 
             <div>
               <div className="flex justify-between items-center text-[12.5px] font-bold mb-2">
                 <span>{tx(language, 'Bu hafta', 'Эта неделя', 'This week')} <em className="not-italic text-[9px] font-extrabold tracking-wider text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded ml-1">YANGI</em></span>
-                <button type="button" onClick={onSchedule} className="text-[11.5px] font-semibold text-teal-700">{tx(language, 'Jadvalni ochish', 'Открыть график', 'Open schedule')}</button>
+                <button type="button" onClick={onSchedule} className="text-[11.5px] font-semibold text-teal-700 inline-flex items-center gap-0.5">{tx(language, 'Jadvalni ochish', 'Открыть график', 'Open schedule')}<ChevronRight className="w-3.5 h-3.5" /></button>
               </div>
               <div className="grid grid-cols-7 gap-1">
                 {weekDays.map((d) => (
-                  <button type="button" key={d.key} onClick={() => onOpenDay(d.key)} title={`${d.short} ${d.date.getDate()} — jadvalni ochish`} className={cn('border rounded-lg py-1.5 text-center min-w-0 cursor-pointer hover:ring-2 hover:ring-[#1499AD]/30 transition-shadow', d.isToday ? 'bg-[#1499AD] border-[#1499AD] text-white' : d.hours === 'dam' ? 'bg-slate-50 text-slate-400 border-slate-100' : 'border-slate-100')}>
+                  <button type="button" key={d.key} onClick={() => onOpenDay(d.key)} title={`${d.short} ${d.date.getDate()} — jadvalni ochish`} className={cn('border rounded-lg py-1.5 text-center min-w-0 cursor-pointer hover:ring-2 hover:ring-[#1499AD]/30 active:scale-[0.97] transition-all', d.isToday ? 'bg-[#1499AD] border-[#1499AD] text-white' : d.off ? 'bg-slate-50 text-slate-400 border-slate-100 hover:border-[#1499AD]' : 'border-slate-100 hover:border-[#1499AD] hover:bg-teal-50/50')}>
                     <small className={cn('block text-[9.5px] font-semibold', d.isToday ? 'text-teal-50' : 'text-slate-400')}>{d.short}</small>
                     <b className="block text-[13px]">{d.date.getDate()}</b>
                     <div className={cn('text-[9px] font-semibold mt-0.5 truncate px-0.5', d.isToday ? 'text-teal-50' : 'text-slate-400')}>{d.hours || '—'}</div>
@@ -1400,7 +1424,10 @@ function QaButton({ onClick, icon, label, primary }) {
 function Kpi({ label, value, onClick }) {
   const body = (
     <>
-      <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</span>
+      <span className="flex items-center justify-between gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+        <span className="truncate">{label}</span>
+        {onClick && <ChevronRight className="w-3.5 h-3.5 shrink-0 text-slate-300 group-hover:text-[#1499AD] group-hover:translate-x-0.5 transition-all" />}
+      </span>
       <b className="block text-lg font-extrabold tracking-tight mt-0.5 truncate">{value}</b>
     </>
   );
@@ -1409,7 +1436,7 @@ function Kpi({ label, value, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="border border-slate-100 rounded-xl px-3 py-2.5 min-w-0 text-left cursor-pointer hover:border-[#1499AD] hover:bg-teal-50/40 transition-colors"
+      className="group border border-slate-200 rounded-xl px-3 py-2.5 min-w-0 text-left cursor-pointer hover:border-[#1499AD] hover:bg-teal-50/50 hover:shadow-sm active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1499AD] transition-all"
     >
       {body}
     </button>

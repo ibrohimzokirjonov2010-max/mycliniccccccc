@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { lazyWithRetry } from '@/utils/lazyWithRetry';
 import { prefetchPatientProfileChunk } from '@/utils/routeChunkPrefetch';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { patientMatchesDoctorFilter } from '@/utils/doctorMatch';
 import { 
   Plus, Search, Edit2, Trash2, Users, UserPlus,
   TrendingUp, Clock, ArrowUpDown, ArrowUp, ArrowDown, Copy, Check, 
@@ -102,13 +103,7 @@ export default function Patients() {
       const offset = page * PAGE_SIZE;
       if (doctorFilter) {
         const everyone = await base44.entities.Patient.list('-created_date', 1000).catch(() => []);
-        const ids = new Set((doctorFilter.patientIds || []).map(String));
-        const docName = String(doctorFilter.name || '').trim().toLowerCase();
-        let mine = (everyone || []).filter((p) =>
-          ids.has(String(p.id)) ||
-          String(p.main_treatment_provider) === String(doctorFilter.id) ||
-          (docName && String(p.main_treatment_provider || '').trim().toLowerCase() === docName)
-        );
+        let mine = (everyone || []).filter((p) => patientMatchesDoctorFilter(p, doctorFilter));
         if (debouncedSearch) {
           const q = debouncedSearch.toLowerCase();
           mine = mine.filter((p) => p.full_name?.toLowerCase().includes(q) || p.phone?.includes(q));
