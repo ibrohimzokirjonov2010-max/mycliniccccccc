@@ -96,7 +96,7 @@ function extraFallbackLines(implant, teethCount, covered) {
   return lines;
 }
 
-function rowsFromLine(line, fdis) {
+function rowsFromLine(line, fdis, extractionFdis = []) {
   const id = normalizeServiceId(mapLineToExtraId(line.id) || line.id);
   const teethCount = fdis.length;
   const qty = Number(line.qty) || 0;
@@ -104,6 +104,21 @@ function rowsFromLine(line, fdis) {
   const total = Number(line.total) || unit * qty;
   const label = lineLabel({ ...line, id });
   const perTooth = teethCount > 1 && isPerToothService(id) && qty === teethCount;
+
+  // Paid extraction is linked to exactly the teeth it was agreed for.
+  if (id === 'extraction' && extractionFdis.length > 0 && qty === extractionFdis.length) {
+    return extractionFdis.map((fdi) => ({
+      id: `extra-${id}-${fdi}`,
+      service_id: id,
+      service_name: label,
+      tooth_number: fdi,
+      price: unit,
+      scope: 'tooth',
+      is_primary: false,
+      deletable: false,
+      origin: 'factura',
+    }));
+  }
 
   if (perTooth) {
     return fdis.map((fdi) => ({
@@ -192,11 +207,14 @@ export function buildLinkedServiceModel(implant) {
   if (fdis.length === 0) addPrimary('', '');
   keys.forEach((key, index) => addPrimary(fdis[index], key));
 
+  const extractionFdis = fdis.filter((fdi) => (
+    (implant.tooth_data_map?.[fdi] || implant.tooth_data_map?.[toImplantFdi(fdi)])?.extraction === 'paid'
+  ));
   const fromFactura = facturaLines(factura);
   const covered = new Set(fromFactura.map((line) => normalizeServiceId(mapLineToExtraId(line.id) || line.id)));
   const lines = [...fromFactura, ...extraFallbackLines(implant, teethCount, covered)];
   lines.forEach((line) => {
-    rowsFromLine(line, fdis).forEach((row) => {
+    rowsFromLine(line, fdis, extractionFdis).forEach((row) => {
       pushRow(rows, seen, { ...row, date, firma: implant.firma || '' });
     });
   });

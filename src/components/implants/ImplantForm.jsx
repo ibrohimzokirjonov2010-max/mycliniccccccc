@@ -32,6 +32,7 @@ import {
 } from './implantFactura';
 import { buildLinkedServiceModel, persistedServicesList } from './linkedImplantServices';
 import { cn } from '@/lib/utils';
+import { matchIllustrationKind } from '@/utils/toothIllustration';
 import {
   clinicianDisplayName,
   isTreatingClinician,
@@ -85,6 +86,22 @@ export const EXTRA_SERVICES = [
   { id: 'gingivoplasty', label: 'Gingivoplastika', defaultPrice: 400000, category: 'Soft Tissue' },
   { id: 'explantation', label: 'Implantni olib tashlash', defaultPrice: 500000, category: 'Xirurgiya' },
 ];
+
+/** Services-catalog row for "Tish olish" / "Ekstraksiya" (used to price an extraction line). */
+function findExtractionService(rows) {
+  const list = (rows || []).filter((row) => {
+    const name = String(row?.name || row?.service_name || '');
+    return /tish\s*olish|tishni\s*olish|ekstraks|extraction|sug['ʻ’`]?urish/i.test(name) && !/implant/i.test(name);
+  });
+  if (!list.length) return null;
+  const exact = list.find((row) => /^\s*(tish olish|ekstraksiya|tishni olish)\s*$/i.test(String(row.name || '')));
+  const pick = exact || list.find((row) => Number(row.price) > 0) || list[0];
+  return { name: String(pick.name || pick.service_name || ''), price: Number(pick.price) || 0 };
+}
+
+function chartToothTokens(raw) {
+  return String(raw || '').split(/[,·;/]/).map((part) => toFdi(part.trim())).filter(Boolean);
+}
 
 function addMonths(date, months) {
   const d = new Date(date);
@@ -547,6 +564,17 @@ export default function ImplantForm({
   }, []);
 
   const toggleExtraService = (serviceId) => {
+    if (normalizeServiceId(serviceId) === 'extraction' && (formRef.current?.extra_services || []).includes(serviceId)) {
+      // Charge removed by hand: keep the extraction decision, but as free.
+      autoExtractionRef.current = false;
+      setToothDataMap((prev) => {
+        const next = { ...prev };
+        Object.keys(next).forEach((key) => {
+          if (next[key]?.extraction === 'paid') next[key] = { ...next[key], extraction: 'free' };
+        });
+        return next;
+      });
+    }
     setForm((prev) => {
       const current = prev.extra_services || [];
       if (current.includes(serviceId)) {
@@ -708,6 +736,96 @@ export default function ImplantForm({
     if (filled) setPendingRemoveFdi(id);
     else removeTooth(id);
   }, [toothDataMap, removeTooth]);
+
+  // ── Natural tooth at the chosen position → "Tishni olib tashlaysizmi?" flow ──
+  const [patientChart, setPatientChart] = useState({ records: [], plans: [], loadedFor: '' });
+  const [extractPrompt, setExtractPrompt] = useState(null); // { fdi, stage: 1 | 2 }
+  const [extractionService, setExtractionService] = useState(null); // { name, price } from Services catalog
+  const autoExtractionRef = useRef(false);
+  useEffect(() => { if (!open) setExtractPrompt(null); }, [open]);
+
+  useEffect(() => {
+    if (!open || !form.patient_id) {
+      setPatientChart({ records: [], plans: [], loadedFor: '' });
+      return undefined;
+    }
+    let cancelled = false;
+    const pid = form.patient_id;
+    Promise.all([
+      base44.entities.ToothRecord.filter({ patient_id: pid }, '-created_date', 200).catch(() => []),
+      base44.entities.TreatmentPlan.filter({ patient_id: pid }, '-created_date', 100).catch(() => []),
+    ]).then(([records, plans]) => {
+      if (cancelled) return;
+      setPatientChart({ records: records || [], plans: plans || [], loadedFor: String(pid) });
+    });
+    return () => { cancelled = true; };
+  }, [open, form.patient_id]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    let cancelled = false;
+    base44.entities.Service.filter({ is_active: true }, 'name', 500)
+      .then((rows) => { if (!cancelled) setExtractionService(findExtractionService(rows)); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [open]);
+
+  /** True when the chart has no "missing / extracted" mark for this tooth and no implant stands there. */
+  const hasNaturalTooth = useCallback((fdi) => {
+    if (!form.patient_id || patientChart.loadedFor !== String(form.patient_id)) return false;
+    const hasImplantThere = (patientImplants || []).some((row) => (
+      uniqueFdis([...(Array.isArray(row.tooth_numbers) ? row.tooth_numbers : String(row.tooth_numbers || '').split(',')), row.tooth_number].filter(Boolean)).includes(fdi)
+    ));
+    if (hasImplantThere) return false;
+    const isAbsentText = (text) => matchIllustrationKind(text) === 'missing';
+    const recordAbsent = (patientChart.records || []).some((rec) => (
+      chartToothTokens(rec.tooth_number).includes(fdi)
+      && isAbsentText(`${rec.condition || ''} ${rec.treatment || ''} ${rec.notes || ''}`)
+    ));
+    if (recordAbsent) return false;
+    const walk = (plan, svc) => {
+      if (Array.isArray(svc?.items) && svc.items.length) return svc.items.some((inner) => walk(plan, inner));
+      const teeth = chartToothTokens(svc?.tooth_number || svc?.tooth_id || plan?.tooth_number);
+      if (!teeth.includes(fdi)) return false;
+      return isAbsentText(`${svc?.service_name || svc?.name || ''} ${plan?.name || ''} ${svc?.category || plan?.category || ''}`);
+    };
+    const planAbsent = (patientChart.plans || []).some((plan) => {
+      const services = Array.isArray(plan?.services) ? plan.services : [];
+      if (!services.length) return walk(plan, { service_name: plan?.name || plan?.title, tooth_number: plan?.tooth_number });
+      return services.some((svc) => walk(plan, svc));
+    });
+    return !planAbsent;
+  }, [form.patient_id, patientChart, patientImplants]);
+
+  const requestPickTooth = useCallback((rawId) => {
+    const id = toFdi(String(rawId));
+    if (!id) return;
+    const already = uniqueFdis(formRef.current?.tooth_numbers).includes(id);
+    if (already || !hasNaturalTooth(id)) {
+      focusTooth(id);
+      return;
+    }
+    setExtractPrompt({ fdi: id, stage: 1 });
+  }, [hasNaturalTooth, focusTooth]);
+
+  const resolveExtractPrompt = useCallback((mode) => {
+    const id = extractPrompt?.fdi;
+    setExtractPrompt(null);
+    if (!id) return;
+    focusTooth(id);
+    if (mode === 'none') return;
+    setToothDataMap((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), extraction: mode } }));
+    if (mode !== 'paid') return;
+    setForm((prev) => {
+      const current = prev.extra_services || [];
+      if (current.some((sid) => normalizeServiceId(sid) === 'extraction')) return prev;
+      autoExtractionRef.current = true;
+      return { ...prev, extra_services: [...current, 'extraction'] };
+    });
+    if (extractionService?.price > 0) {
+      setExtraServicePrices((prev) => (prev.extraction !== undefined ? prev : { ...prev, extraction: extractionService.price }));
+    }
+  }, [extractPrompt, focusTooth, extractionService]);
 
 
   const handlePatientSelect = useCallback((patientId, patientRecord) => {
@@ -899,6 +1017,7 @@ export default function ImplantForm({
         extraServicesList,
         selectedServiceIds: form.extra_services || [],
         extraServicePrices,
+        extractionFdis: fdiNumbers.filter((fdi) => cleanedToothMap[fdi]?.extraction === 'paid'),
         edits: facturaEdits,
         toothLines: wizardToothLines(fdiNumbers, cleanedToothMap, {
           firma: finalFirma,
@@ -978,6 +1097,31 @@ export default function ImplantForm({
         }
       }
 
+      // Extraction was agreed in the wizard (paid or free) -> mark the tooth as extracted in the chart.
+      try {
+        if (form.patient_id) {
+          const absentAlready = (fdi) => (patientChart.records || []).some((rec) => (
+            chartToothTokens(rec.tooth_number).includes(fdi)
+            && matchIllustrationKind(`${rec.condition || ''} ${rec.treatment || ''} ${rec.notes || ''}`) === 'missing'
+          ));
+          for (const fdi of fdiNumbers) {
+            const mode = cleanedToothMap[fdi]?.extraction;
+            if (!mode || absentAlready(fdi)) continue;
+            await base44.entities.ToothRecord.create({
+              patient_id: form.patient_id,
+              clinic_id: user?.clinic_id || localStorage.getItem('current_clinic_id') || 'default_clinic',
+              tooth_number: fdi,
+              condition: 'Missing tooth',
+              treatment: 'Tish olingan',
+              notes: `Implant uchun tish olindi${mode === 'free' ? " (to'lovsiz)" : ''}`,
+              ...(form.doctor ? { doctor: form.doctor } : {}),
+            });
+          }
+        }
+      } catch (chartErr) {
+        console.warn('Could not mark extracted tooth in chart:', chartErr);
+      }
+
       onSaved();
       onClose();
     } catch (error) {
@@ -1022,11 +1166,28 @@ export default function ImplantForm({
     : (primaryTooth.price != null && primaryTooth.price !== ''
       ? primaryTooth.price
       : (form.price !== '' && form.price != null ? form.price : catalogPrice));
+  const extractionPaidFdis = useMemo(
+    () => selectedFdis.filter((fdi) => toothDataMap[fdi]?.extraction === 'paid'),
+    [selectedFdis, toothDataMap],
+  );
+
+  // The auto-added extraction charge goes away together with its last paid tooth.
+  useEffect(() => {
+    if (!autoExtractionRef.current || extractionPaidFdis.length > 0) return;
+    autoExtractionRef.current = false;
+    setForm((prev) => ({
+      ...prev,
+      extra_services: (prev.extra_services || []).filter((sid) => normalizeServiceId(sid) !== 'extraction'),
+    }));
+  }, [extractionPaidFdis]);
+
   const extraTotal = useMemo(() => (form.extra_services || []).reduce((acc, sid) => {
     const preset = (extraServicesList || []).find((s) => s.id === sid);
     const customPrice = extraServicePrices[sid];
-    return acc + (customPrice !== undefined ? Number(customPrice) : (preset?.defaultPrice || 0));
-  }, 0), [form.extra_services, extraServicesList, extraServicePrices]);
+    const unit = customPrice !== undefined ? Number(customPrice) : (preset?.defaultPrice || 0);
+    const qty = normalizeServiceId(sid) === 'extraction' && extractionPaidFdis.length > 0 ? extractionPaidFdis.length : 1;
+    return acc + unit * qty;
+  }, 0), [form.extra_services, extraServicesList, extraServicePrices, extractionPaidFdis]);
 
   const facturaDoc = useMemo(() => buildFacturaDocument({
     date: form.placement_date || today,
@@ -1038,13 +1199,14 @@ export default function ImplantForm({
     extraServicesList,
     selectedServiceIds: form.extra_services || [],
     extraServicePrices,
+    extractionFdis: extractionPaidFdis,
     edits: facturaEdits,
     toothLines: wizardToothLines(selectedFdis, toothDataMap, form),
     t,
   }), [
     form, today, form.patient_name, clinicName, selectedFdis, toothDataMap,
     brandLabel, implantUnitPrice, extraServicesList, form.extra_services,
-    extraServicePrices, facturaEdits, t,
+    extraServicePrices, extractionPaidFdis, facturaEdits, t,
   ]);
 
   const handleFacturaEdit = useCallback((id, field, value) => {
@@ -1317,7 +1479,7 @@ export default function ImplantForm({
           <ImplantWizardArch
             selectedFdis={selectedFdis}
             activeFdi={activeFdi}
-            onToggle={focusTooth}
+            onToggle={requestPickTooth}
             scrollHint={tw('scrollHint', '← Yon tomonga suring →')}
           />
           {activeFdi ? (
@@ -1556,15 +1718,20 @@ export default function ImplantForm({
           data-wizard-ux="linear-stack-v3"
           data-tooth-size="step1-diameter-length"
           onPointerDownOutside={(e) => {
-            if (facturaPreviewOpen || pendingRemoveFdi) e.preventDefault();
+            if (facturaPreviewOpen || pendingRemoveFdi || extractPrompt) e.preventDefault();
           }}
           onFocusOutside={(e) => {
-            if (facturaPreviewOpen || pendingRemoveFdi) e.preventDefault();
+            if (facturaPreviewOpen || pendingRemoveFdi || extractPrompt) e.preventDefault();
           }}
           onInteractOutside={(e) => {
-            if (facturaPreviewOpen || pendingRemoveFdi) e.preventDefault();
+            if (facturaPreviewOpen || pendingRemoveFdi || extractPrompt) e.preventDefault();
           }}
           onEscapeKeyDown={(e) => {
+            if (extractPrompt) {
+              e.preventDefault();
+              setExtractPrompt(null);
+              return;
+            }
             if (pendingRemoveFdi) {
               e.preventDefault();
               setPendingRemoveFdi(null);
@@ -1673,6 +1840,74 @@ export default function ImplantForm({
           </div>
         </DialogContent>
       </Dialog>
+
+      {extractPrompt && createPortal(
+        <div
+          className="implant-wizard-confirm-overlay"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label={extractPrompt.stage === 1
+            ? tw('extractToothConfirm', "Bu o'rinda bemorning tishi bor. Tishni olib tashlaysizmi?")
+            : tw('extractPayConfirm', "To'lov olamizmi?")}
+          data-testid="implant-extract-tooth-confirm"
+          style={{ pointerEvents: 'auto' }}
+          onClick={() => setExtractPrompt(null)}
+        >
+          <div className="implant-wizard-confirm" onClick={(e) => e.stopPropagation()}>
+            {extractPrompt.stage === 1 ? (
+              <>
+                <p className="implant-wizard-confirm-title">
+                  {tw('extractToothConfirm', "Bu o'rinda bemorning tishi bor. Tishni olib tashlaysizmi?")}
+                </p>
+                <p className="implant-wizard-confirm-text">#{extractPrompt.fdi}</p>
+                <div className="implant-wizard-confirm-actions">
+                  <button type="button" autoFocus onClick={() => resolveExtractPrompt('none')} data-testid="implant-extract-no">
+                    {tw('extractNo', "Yo'q")}
+                  </button>
+                  <button
+                    type="button"
+                    className="is-danger"
+                    onClick={() => setExtractPrompt({ fdi: extractPrompt.fdi, stage: 2 })}
+                    data-testid="implant-extract-yes"
+                  >
+                    {tw('extractYes', 'Ha')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="implant-wizard-confirm-title">{tw('extractPayConfirm', "To'lov olamizmi?")}</p>
+                <p className="implant-wizard-confirm-text">
+                  #{extractPrompt.fdi} — {extractionService?.name || tw('extractServiceName', 'Tish olish')}
+                  {': '}
+                  {formatSom(
+                    extraServicePrices.extraction !== undefined
+                      ? extraServicePrices.extraction
+                      : (extractionService?.price > 0
+                        ? extractionService.price
+                        : ((extraServicesList || []).find((s) => normalizeServiceId(s.id) === 'extraction')?.defaultPrice || 0)),
+                  )} so&apos;m
+                </p>
+                <div className="implant-wizard-confirm-actions">
+                  <button type="button" onClick={() => resolveExtractPrompt('free')} data-testid="implant-extract-free">
+                    {tw('extractFree', "Yo'q, to'lovsiz")}
+                  </button>
+                  <button
+                    type="button"
+                    className="is-danger"
+                    autoFocus
+                    onClick={() => resolveExtractPrompt('paid')}
+                    data-testid="implant-extract-paid"
+                  >
+                    {tw('extractPaid', "Ha, to'lov olish")}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
 
       {pendingRemoveFdi && createPortal(
         <div

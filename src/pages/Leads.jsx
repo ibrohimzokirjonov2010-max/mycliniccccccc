@@ -475,19 +475,19 @@ export default function Leads() {
   const columns = kanbanColumns;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* ─── Compact Header Section ──────────────────────────────────────── */}
       <motion.div 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs"
+        className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs"
       >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-[#1499AD] flex items-center justify-center text-white shadow-xs shrink-0">
-            <Target className="w-5 h-5" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-600 to-[#1499AD] flex items-center justify-center text-white shadow-xs shrink-0">
+            <Target className="w-4 h-4" />
           </div>
           <div>
-            <h1 className="text-lg font-black text-slate-900 leading-tight">
+            <h1 className="text-base font-black text-slate-900 leading-tight">
               {t('leads.title') || 'Lidlar Boshqaruvi'}
             </h1>
             <p className="text-[11px] font-medium text-slate-500">
@@ -509,7 +509,7 @@ export default function Leads() {
             size="sm"
             onClick={() => fileInputRef.current?.click()}
             disabled={isImporting}
-            className="h-9 px-3 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border-slate-200 rounded-lg shadow-2xs"
+            className="h-8 px-3 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 border-slate-200 rounded-lg shadow-2xs"
           >
             <Upload className="w-3.5 h-3.5 mr-1.5 text-slate-500" /> 
             {isImporting ? (language === 'ru' ? 'Загрузка...' : 'Yuklanmoqda...') : (t('leads.csvImport') || 'CSV Import')}
@@ -517,7 +517,7 @@ export default function Leads() {
 
           <Button 
             size="sm"
-            className="bg-[#0088cc] hover:bg-[#0077b5] text-white rounded-lg h-9 px-3 text-xs font-bold shadow-2xs border-none"
+            className="bg-[#0088cc] hover:bg-[#0077b5] text-white rounded-lg h-8 px-3 text-xs font-bold shadow-2xs border-none"
             asChild
           >
             <a href={`https://t.me/${botUsername}?start=admin_${clinicId}`} target="_blank" rel="noopener noreferrer">
@@ -528,7 +528,7 @@ export default function Leads() {
           <Button 
             size="sm"
             onClick={() => { setEditLead(null); setModalOpen(true); }}
-            className="bg-[#1499AD] hover:bg-[#0E7A8A] text-white rounded-lg h-9 px-4 text-xs font-bold shadow-2xs border-none"
+            className="bg-[#1499AD] hover:bg-[#0E7A8A] text-white rounded-lg h-8 px-4 text-xs font-bold shadow-2xs border-none"
           >
             <UserPlus className="w-3.5 h-3.5 mr-1.5" /> {t('leads.newLead') || 'Yangi lead'}
           </Button>
@@ -540,57 +540,57 @@ export default function Leads() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="grid grid-cols-2 lg:grid-cols-4 gap-3"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-2"
       >
         <div 
           onClick={() => setStatusFilter('all')}
-          className={`cursor-pointer bg-white border rounded-xl p-3 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between ${statusFilter === 'all' ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200/80'}`}
+          className={`cursor-pointer bg-white border rounded-xl px-3 py-2 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between ${statusFilter === 'all' ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200/80'}`}
         >
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t('leads.totalLeads') || (language === 'ru' ? 'Всего лидов' : 'Jami Lidlar')}</p>
-            <p className="text-2xl font-black text-slate-900 mt-0.5 font-mono">{stats?.total || 0}</p>
+            <p className="text-xl font-black text-slate-900 font-mono">{stats?.total || 0}</p>
           </div>
-          <div className="w-9 h-9 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center border border-blue-100 shadow-2xs">
-            <Target className="w-4.5 h-4.5" />
+          <div className="w-7 h-7 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center border border-blue-100 shadow-2xs">
+            <Target className="w-4 h-4" />
           </div>
         </div>
 
         <div 
           onClick={() => setStatusFilter('new')}
-          className={`cursor-pointer bg-white border rounded-xl p-3 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between ${statusFilter === 'new' ? 'border-purple-500 ring-2 ring-purple-100' : 'border-slate-200/80'}`}
+          className={`cursor-pointer bg-white border rounded-xl px-3 py-2 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between ${statusFilter === 'new' ? 'border-purple-500 ring-2 ring-purple-100' : 'border-slate-200/80'}`}
         >
           <div>
             <p className="text-[11px] font-bold text-purple-600 uppercase tracking-wider">{t('leads.columns.new') || 'Yangi'}</p>
-            <p className="text-2xl font-black text-purple-950 mt-0.5 font-mono">{stats?.new || 0}</p>
+            <p className="text-xl font-black text-purple-950 font-mono">{stats?.new || 0}</p>
           </div>
-          <div className="w-9 h-9 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center border border-purple-100 shadow-2xs">
-            <Zap className="w-4.5 h-4.5" />
+          <div className="w-7 h-7 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center border border-purple-100 shadow-2xs">
+            <Zap className="w-4 h-4" />
           </div>
         </div>
 
         <div 
           onClick={() => setStatusFilter('contacted')}
-          className={`cursor-pointer bg-white border rounded-xl p-3 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between ${statusFilter === 'contacted' ? 'border-amber-500 ring-2 ring-amber-100' : 'border-slate-200/80'}`}
+          className={`cursor-pointer bg-white border rounded-xl px-3 py-2 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between ${statusFilter === 'contacted' ? 'border-amber-500 ring-2 ring-amber-100' : 'border-slate-200/80'}`}
         >
           <div>
             <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">{t('leads.columns.contacted') || 'Bog\'lanildi'}</p>
-            <p className="text-2xl font-black text-amber-950 mt-0.5 font-mono">{stats?.contacted || 0}</p>
+            <p className="text-xl font-black text-amber-950 font-mono">{stats?.contacted || 0}</p>
           </div>
-          <div className="w-9 h-9 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center border border-amber-100 shadow-2xs">
-            <Phone className="w-4.5 h-4.5" />
+          <div className="w-7 h-7 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center border border-amber-100 shadow-2xs">
+            <Phone className="w-4 h-4" />
           </div>
         </div>
 
         <div 
           onClick={() => setStatusFilter('converted')}
-          className={`cursor-pointer bg-white border rounded-xl p-3 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between ${statusFilter === 'converted' ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200/80'}`}
+          className={`cursor-pointer bg-white border rounded-xl px-3 py-2 shadow-2xs hover:shadow-xs transition-all flex items-center justify-between ${statusFilter === 'converted' ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200/80'}`}
         >
           <div>
             <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">{t('leads.columns.converted') || 'Bemor (Konvertatsiya)'}</p>
-            <p className="text-2xl font-black text-emerald-950 mt-0.5 font-mono">{stats?.converted || 0}</p>
+            <p className="text-xl font-black text-emerald-950 font-mono">{stats?.converted || 0}</p>
           </div>
-          <div className="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center border border-emerald-100 shadow-2xs">
-            <TrendingUp className="w-4.5 h-4.5" />
+          <div className="w-7 h-7 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center border border-emerald-100 shadow-2xs">
+            <TrendingUp className="w-4 h-4" />
           </div>
         </div>
       </motion.div>
@@ -600,7 +600,7 @@ export default function Leads() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs"
+        className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 bg-white p-1.5 rounded-xl border border-slate-200/80 shadow-2xs"
       >
         {/* Search Input */}
         <div className="relative flex-1 max-w-md">
@@ -609,7 +609,7 @@ export default function Leads() {
             placeholder={t('leads.searchPlaceholder') || "Ism yoki telefon raqami bo'yicha qidirish..."} 
             value={search} 
             onChange={e => setSearch(e.target.value)} 
-            className="pl-9 pr-3 h-9 text-xs rounded-lg border-slate-200 focus:border-cyan-500 transition-colors bg-slate-50/50" 
+            className="pl-9 pr-3 h-8 text-xs rounded-lg border-slate-200 focus:border-cyan-500 transition-colors bg-slate-50/50" 
           />
           {search && (
             <button 
@@ -650,7 +650,7 @@ export default function Leads() {
         <div className="flex bg-slate-100 p-0.5 rounded-lg shrink-0">
           <button 
             onClick={() => setView('table')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
               view === 'table' ? 'bg-white shadow-xs text-emerald-700' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -659,7 +659,7 @@ export default function Leads() {
           </button>
           <button 
             onClick={() => setView('kanban')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${
               view === 'kanban' ? 'bg-white shadow-xs text-purple-600' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -678,7 +678,7 @@ export default function Leads() {
           className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col"
         >
           {/* Table Control Header */}
-          <div className="bg-slate-50/90 border-b border-slate-200 px-3.5 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="bg-slate-50/90 border-b border-slate-200 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2">
               <span className="font-bold text-slate-700 flex items-center gap-1.5">
                 <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
@@ -698,9 +698,9 @@ export default function Leads() {
           </div>
 
           {isLoading ? (
-            <div className="p-6 space-y-2">
+            <div className="p-3 space-y-1.5">
               {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="h-10 bg-slate-100 rounded-lg animate-pulse" />
+                <div key={i} className="h-8 bg-slate-100 rounded-lg animate-pulse" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
@@ -721,18 +721,18 @@ export default function Leads() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-100/90 text-slate-600 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider select-none">
-                    <th className="py-2.5 px-3 w-12 text-center border-r border-slate-200/80">#</th>
-                    <th className="py-2.5 px-3 min-w-[200px] border-r border-slate-200/80">{t('leads.clientPatientName') || (language === 'ru' ? 'Имя клиента / пациента' : 'Mijoz / Bemor Ismi')}</th>
-                    <th className="py-2.5 px-3 min-w-[170px] whitespace-nowrap border-r border-slate-200/80">{t('leads.contactPhone') || (language === 'ru' ? 'Контакт (Телефон)' : 'Aloqa (Telefon)')}</th>
-                    <th className="py-2.5 px-3 w-16 text-center whitespace-nowrap border-r border-slate-200/80">{t('leads.source') || (language === 'ru' ? 'Источник' : 'Manba')}</th>
-                    <th className="py-2.5 px-3 min-w-[130px] whitespace-nowrap border-r border-slate-200/80">{t('leads.visitDateCol') || (language === 'ru' ? 'Дата обращения' : 'Tashrif Sanasi')}</th>
-                    <th className="py-2.5 px-3 min-w-[240px] border-r border-slate-200/80">
+                    <th className="py-1.5 px-2.5 w-12 text-center border-r border-slate-200/80">#</th>
+                    <th className="py-1.5 px-2.5 min-w-[200px] border-r border-slate-200/80">{t('leads.clientPatientName') || (language === 'ru' ? 'Имя клиента / пациента' : 'Mijoz / Bemor Ismi')}</th>
+                    <th className="py-1.5 px-2.5 min-w-[170px] whitespace-nowrap border-r border-slate-200/80">{t('leads.contactPhone') || (language === 'ru' ? 'Контакт (Телефон)' : 'Aloqa (Telefon)')}</th>
+                    <th className="py-1.5 px-2.5 w-16 text-center whitespace-nowrap border-r border-slate-200/80">{t('leads.source') || (language === 'ru' ? 'Источник' : 'Manba')}</th>
+                    <th className="py-1.5 px-2.5 min-w-[130px] whitespace-nowrap border-r border-slate-200/80">{t('leads.visitDateCol') || (language === 'ru' ? 'Дата обращения' : 'Tashrif Sanasi')}</th>
+                    <th className="py-1.5 px-2.5 min-w-[240px] border-r border-slate-200/80">
                       <div className="flex items-center gap-1.5">
                         <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
                         <span>{language === 'ru' ? 'Статус и Изox (Заметки)' : 'Status & Izoh (Qaydlar)'}</span>
                       </div>
                     </th>
-                    <th className="py-2.5 px-3 text-center min-w-[140px]">{t('leads.actions') || (language === 'ru' ? 'Действия' : 'Amallar')}</th>
+                    <th className="py-1.5 px-2.5 text-center min-w-[140px]">{t('leads.actions') || (language === 'ru' ? 'Действия' : 'Amallar')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-xs">
@@ -748,14 +748,14 @@ export default function Leads() {
                         className="hover:bg-sky-50/60 transition-colors cursor-pointer group odd:bg-white even:bg-slate-50/40"
                       >
                         {/* # */}
-                        <td className="py-2.5 px-3 text-center font-mono text-[11px] font-bold text-slate-400 border-r border-slate-200/60 group-hover:text-slate-700">
+                        <td className="py-1.5 px-2.5 text-center font-mono text-[11px] font-bold text-slate-400 border-r border-slate-200/60 group-hover:text-slate-700">
                           {index + 1}
                         </td>
 
                         {/* Name */}
-                        <td className="py-2.5 px-3 border-r border-slate-200/60">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-300/70 shadow-2xs group-hover:scale-105 group-hover:border-purple-300 group-hover:bg-purple-50 group-hover:text-purple-700 transition-all">
+                        <td className="py-1.5 px-2.5 border-r border-slate-200/60">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-300/70 shadow-2xs group-hover:scale-105 group-hover:border-purple-300 group-hover:bg-purple-50 group-hover:text-purple-700 transition-all">
                               {initials}
                             </div>
                             <div className="min-w-0">
@@ -763,7 +763,7 @@ export default function Leads() {
                                 {l.name}
                               </p>
                               {l.interest && (
-                                <p className="text-[10px] text-purple-600 font-semibold truncate mt-0.5">
+                                <p className="text-[10px] text-purple-600 font-semibold truncate">
                                   {l.interest}
                                 </p>
                               )}
@@ -772,7 +772,7 @@ export default function Leads() {
                         </td>
 
                         {/* Phone - STRICTLY NON-WRAPPING */}
-                        <td className="py-2.5 px-3 whitespace-nowrap border-r border-slate-200/60">
+                        <td className="py-1.5 px-2.5 whitespace-nowrap border-r border-slate-200/60">
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-[13px] font-bold text-slate-800 tracking-tight whitespace-nowrap">
                               {l.phone || '—'}
@@ -795,14 +795,14 @@ export default function Leads() {
                         </td>
 
                         {/* Source with compact icon badge */}
-                        <td className="py-2.5 px-3 text-center border-r border-slate-200/60">
+                        <td className="py-1.5 px-2.5 text-center border-r border-slate-200/60">
                           <div className="flex items-center justify-center">
                             {renderSourceBadge(l.source)}
                           </div>
                         </td>
 
                         {/* Visit Date */}
-                        <td className="py-2.5 px-3 whitespace-nowrap border-r border-slate-200/60">
+                        <td className="py-1.5 px-2.5 whitespace-nowrap border-r border-slate-200/60">
                           <div className="flex items-center gap-1.5 text-slate-600 font-medium text-[11px]">
                             <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                             <span>{formatDate(l.visit_date || l.created_date)}</span>
@@ -811,13 +811,13 @@ export default function Leads() {
 
                         {/* Status & Izoh (Qaydlar) */}
                         <td 
-                          className="py-2.5 px-3 border-r border-slate-200/60"
+                          className="py-1.5 px-2.5 border-r border-slate-200/60"
                           onClick={(e) => {
                             e.stopPropagation();
                             setNotesModalLead(l);
                           }}
                         >
-                          <div className="flex flex-col gap-1.5 min-w-[210px] group/izoh cursor-pointer">
+                          <div className="flex flex-col gap-1 min-w-[210px] group/izoh cursor-pointer">
                             <div className="flex items-center justify-between gap-1.5">
                               {renderStatusBadge(l.status)}
                               <button 
@@ -837,7 +837,7 @@ export default function Leads() {
                             {/* Latest Note / Comment display */}
                             {latestNote ? (
                               <div 
-                                className="flex items-start gap-1.5 text-[11px] font-semibold text-slate-700 bg-slate-50 hover:bg-indigo-50/80 hover:border-indigo-200 p-1.5 rounded-lg border border-slate-200/70 transition-all"
+                                className="flex items-start gap-1.5 text-[11px] font-semibold text-slate-700 bg-slate-50 hover:bg-indigo-50/80 hover:border-indigo-200 px-1.5 py-1 rounded-lg border border-slate-200/70 transition-all"
                                 title={latestNote}
                               >
                                 <MessageSquare className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
@@ -854,13 +854,13 @@ export default function Leads() {
                         </td>
 
                         {/* Actions */}
-                        <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-1.5">
+                        <td className="py-1.5 px-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1">
                             {l.phone && (
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/70 rounded-lg transition-all cursor-pointer"
+                                className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/70 rounded-lg transition-all cursor-pointer"
                                 onClick={() => window.open(`tel:${l.phone}`, '_self')}
                                 title={language === 'ru' ? 'Позвонить' : "Qo'ng'iroq qilish"}
                               >
@@ -871,7 +871,7 @@ export default function Leads() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 text-sky-600 hover:text-sky-700 hover:bg-sky-100/70 rounded-lg transition-all cursor-pointer"
+                                className="h-6 w-6 text-sky-600 hover:text-sky-700 hover:bg-sky-100/70 rounded-lg transition-all cursor-pointer"
                                 onClick={() => {
                                   const phone = l.phone?.replace(/\D/g, '');
                                   if (phone) window.open(`https://t.me/+${phone}`, '_blank');
@@ -884,7 +884,7 @@ export default function Leads() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-100/70 rounded-lg transition-all cursor-pointer"
+                              className="h-6 w-6 text-amber-600 hover:text-amber-700 hover:bg-amber-100/70 rounded-lg transition-all cursor-pointer"
                               onClick={() => { setEditLead(l); setModalOpen(true); }}
                               title={language === 'ru' ? 'Редактировать' : 'Tahrirlash'}
                             >
@@ -893,7 +893,7 @@ export default function Leads() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-100/70 rounded-lg transition-all cursor-pointer"
+                              className="h-6 w-6 text-rose-500 hover:text-rose-700 hover:bg-rose-100/70 rounded-lg transition-all cursor-pointer"
                               onClick={() => setDeleteId(l.id)}
                               title={language === 'ru' ? 'Удалить' : "O'chirish"}
                             >
@@ -910,7 +910,7 @@ export default function Leads() {
           )}
 
           {/* Excel Status Bar Footer */}
-          <div className="bg-slate-100/90 border-t border-slate-200 px-4 py-2 flex flex-wrap items-center justify-between text-[11px] font-medium text-slate-600">
+          <div className="bg-slate-100/90 border-t border-slate-200 px-3 py-1.5 flex flex-wrap items-center justify-between text-[11px] font-medium text-slate-600">
             <div className="flex items-center gap-4">
               <span>{language === 'ru' ? 'Всего строк: ' : 'Jami qatorlar: '}<strong className="text-slate-900 font-mono">{filtered.length}</strong></span>
               <span className="text-slate-300">|</span>
@@ -928,14 +928,14 @@ export default function Leads() {
       {/* ─── Kanban View ─────────────────────────────────────────────────── */}
       {view === 'kanban' && !isLoading && (
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex gap-4 overflow-x-auto pb-6 custom-scrollbar min-h-[calc(100vh-380px)]">
+          <div className="flex gap-3 overflow-x-auto pb-4 custom-scrollbar min-h-[calc(100vh-380px)]">
             {columns.map(col => {
               const colLeads = filtered.filter(l => (l.status?.toLowerCase() || 'new') === col.id);
               
               return (
-                <div key={col.id} className="flex-shrink-0 w-80 flex flex-col gap-3">
+                <div key={col.id} className="flex-shrink-0 w-72 flex flex-col gap-2">
                   {/* Column Header */}
-                  <div className="flex items-center justify-between px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs sticky top-0 z-10">
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-white rounded-xl border border-slate-200 shadow-2xs sticky top-0 z-10">
                     <div className="flex items-center gap-2 group/header">
                       <Popover>
                         <PopoverTrigger asChild>
@@ -988,7 +988,7 @@ export default function Leads() {
                       <div
                         {...provided.droppableProps}
                         ref={provided.innerRef}
-                        className={`flex-1 flex flex-col gap-2.5 p-1 transition-colors rounded-2xl min-h-[160px] ${snapshot.isDraggingOver ? 'bg-slate-100/70 ring-2 ring-purple-200 ring-inset' : ''}`}
+                        className={`flex-1 flex flex-col gap-2 p-0.5 transition-colors rounded-2xl min-h-[160px] ${snapshot.isDraggingOver ? 'bg-slate-100/70 ring-2 ring-purple-200 ring-inset' : ''}`}
                       >
                         {colLeads.map((l, index) => {
                           const meta = getSourceMeta(l.source);
@@ -1005,13 +1005,13 @@ export default function Leads() {
                                     transform: snapshot.isDragging ? provided.draggableProps.style?.transform : 'none'
                                   }}
                                   className={`
-                                    bg-white p-3.5 rounded-xl border 
+                                    bg-white p-2.5 rounded-xl border 
                                     ${snapshot.isDragging ? 'border-purple-500 shadow-xl z-50 ring-4 ring-purple-500/10' : 'border-slate-200/80 shadow-2xs hover:border-purple-300 hover:shadow-xs'} 
                                     transition-all group cursor-grab active:cursor-grabbing
                                   `}
                                   onClick={() => setSelectedLead(l)}
                                 >
-                                  <div className="flex items-start justify-between gap-2 mb-2.5">
+                                  <div className="flex items-start justify-between gap-2 mb-1.5">
                                     <div className="flex items-center gap-2.5 min-w-0">
                                       <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-2xs ${meta.iconBg}`}>
                                         <SourceIcon className="w-3.5 h-3.5" />
@@ -1035,20 +1035,20 @@ export default function Leads() {
                                   
                                   {l.notes && (
                                     <div 
-                                      className="mb-2.5 cursor-pointer group/knote"
+                                      className="mb-1.5 cursor-pointer group/knote"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setNotesModalLead(l);
                                       }}
                                     >
-                                      <p className="text-[11px] text-slate-600 line-clamp-2 bg-slate-50 hover:bg-indigo-50/80 p-2 rounded-lg border border-slate-100 hover:border-indigo-200 transition-all flex items-start gap-1.5">
+                                      <p className="text-[11px] text-slate-600 line-clamp-2 bg-slate-50 hover:bg-indigo-50/80 px-2 py-1 rounded-lg border border-slate-100 hover:border-indigo-200 transition-all flex items-start gap-1.5">
                                         <MessageSquare className="w-3 h-3 text-indigo-600 shrink-0 mt-0.5" />
                                         <span>{l.notes}</span>
                                       </p>
                                     </div>
                                   )}
 
-                                  <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                                  <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px]">
                                     <span className="text-slate-400 font-medium">
                                       {formatDate(l.created_date || l.visit_date)}
                                     </span>
@@ -1059,14 +1059,14 @@ export default function Leads() {
                                           e.stopPropagation();
                                           setNotesModalLead(l);
                                         }}
-                                        className="w-7 h-7 flex items-center justify-center bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors"
+                                        className="w-6 h-6 flex items-center justify-center bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors"
                                         title="Izoh va qaydlar"
                                       >
                                         <MessageSquare className="w-3.5 h-3.5" />
                                       </button>
                                       {l.phone && (
                                         <button 
-                                          className="w-7 h-7 flex items-center justify-center bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+                                          className="w-6 h-6 flex items-center justify-center bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
                                           onClick={(e) => { e.stopPropagation(); window.open(`tel:${l.phone}`, '_self'); }}
                                           title="Qo'ng'iroq"
                                         >
@@ -1083,7 +1083,7 @@ export default function Leads() {
                         {provided.placeholder}
                         
                         {colLeads.length === 0 && (
-                          <div className="border border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center text-center">
+                          <div className="border border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center">
                             <Target className="w-5 h-5 text-slate-300 mb-1" />
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('common.noData') || "Bo'sh"}</p>
                           </div>
