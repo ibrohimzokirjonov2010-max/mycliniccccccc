@@ -68,6 +68,17 @@ export default function Patients() {
   const [allPatients, setAllPatients] = useState([]);
   const loaderRef = useRef(null);
 
+  // Xodimlar sahifasidan kelgan "shifokor bo'yicha" filtr
+  const [doctorFilter, setDoctorFilter] = useState(() => location.state?.doctorFilter || null);
+  useEffect(() => {
+    const incoming = location.state?.doctorFilter;
+    if (incoming) {
+      setDoctorFilter(incoming);
+      setPage(0);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
   // Save density preference
   const toggleDensity = (newDensity) => {
     setDensity(newDensity);
@@ -85,10 +96,25 @@ export default function Patients() {
 
   // ─── Queries (TanStack Query) ──────────────────────────────────────────
   const { data: patientsData, isLoading, isFetching } = useQuery({
-    queryKey: ['patients', debouncedSearch, page, isDoctor, user?.id],
+    queryKey: ['patients', debouncedSearch, page, isDoctor, user?.id, doctorFilter?.id ?? null],
     enabled: !!user,
     queryFn: async () => {
       const offset = page * PAGE_SIZE;
+      if (doctorFilter) {
+        const everyone = await base44.entities.Patient.list('-created_date', 1000).catch(() => []);
+        const ids = new Set((doctorFilter.patientIds || []).map(String));
+        const docName = String(doctorFilter.name || '').trim().toLowerCase();
+        let mine = (everyone || []).filter((p) =>
+          ids.has(String(p.id)) ||
+          String(p.main_treatment_provider) === String(doctorFilter.id) ||
+          (docName && String(p.main_treatment_provider || '').trim().toLowerCase() === docName)
+        );
+        if (debouncedSearch) {
+          const q = debouncedSearch.toLowerCase();
+          mine = mine.filter((p) => p.full_name?.toLowerCase().includes(q) || p.phone?.includes(q));
+        }
+        return mine;
+      }
       if (isDoctor && user?.id) {
         // Shifokor bo'yicha filtr
         const allPats = await base44.entities.Patient.list('-created_date', 500).catch(() => []);
@@ -204,6 +230,7 @@ export default function Patients() {
   }, [debouncedSearch]);
 
   const hasMore = !listExhausted
+    && !doctorFilter
     && !!patientsData
     && patientsData.length === PAGE_SIZE
     && (stats?.total == null || allPatients.length < Number(stats.total));
@@ -523,6 +550,18 @@ export default function Patients() {
               </button>
             )}
           </div>
+
+          {doctorFilter && (
+            <button
+              type="button"
+              onClick={() => { setDoctorFilter(null); setPage(0); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100 whitespace-nowrap cursor-pointer"
+              title="Shifokor filtrini olib tashlash"
+            >
+              Shifokor: {doctorFilter.name}
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
 
           {/* Quick Filter Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">

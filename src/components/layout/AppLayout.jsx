@@ -9,6 +9,7 @@ import TariffReminder from './TariffReminder';
 import ErrorBoundary from './ErrorBoundary';
 import { clinicAccessClosed, invalidateClinicExpiry, loadClinicAccess } from '@/lib/clinicExpiry';
 import { Suspense, memo } from 'react';
+import { prefetchRouteChunk } from '@/utils/routeChunkPrefetch';
 
 // Specialized skeleton loader for premium page-to-page transitions
 const InlineLoader = memo(() => (
@@ -84,6 +85,21 @@ export default function AppLayout() {
     setSeenPath(location.pathname);
     setHold(true);
   }
+
+  // After the shell is up, quietly warm the heaviest lazy routes (Bemorlar first-click chunk crash).
+  useEffect(() => {
+    const warm = () => {
+      ['/patients', '/appointments', '/payments'].forEach((path, i) => {
+        setTimeout(() => { prefetchRouteChunk(path); }, i * 800);
+      });
+    };
+    const idle = typeof window !== 'undefined' && window.requestIdleCallback;
+    const handle = idle ? window.requestIdleCallback(warm, { timeout: 4000 }) : setTimeout(warm, 2500);
+    return () => {
+      if (idle && window.cancelIdleCallback) window.cancelIdleCallback(handle);
+      else clearTimeout(handle);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

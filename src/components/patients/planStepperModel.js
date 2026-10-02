@@ -42,7 +42,7 @@ function planTeethLabel(plan) {
  */
 export function planStepperTitle(plan, index) {
   const raw = String(plan?.name || plan?.title || '').trim();
-  if (!raw || /davolash rejasi/i.test(raw)) {
+  if (!raw || /(davolash rejasi|план лечения|treatment plan)/i.test(raw)) {
     const teeth = planTeethLabel(plan);
     return `Reja ${index + 1}${teeth ? ` (#${teeth})` : ''}`;
   }
@@ -73,9 +73,12 @@ function withActive(steps) {
   return next;
 }
 
-function pushServiceStep(steps, { id, title, tooth, state, implants, language, planName, category }) {
+function pushServiceStep(steps, { id, title, tooth, state, implants, language, planName, category, planId, serviceIndex }) {
   steps.push({
     id,
+    planId,
+    serviceIndex,
+    rawState: state,
     title,
     tooth,
     state,
@@ -159,6 +162,8 @@ export function buildPlanStepperGroups({
         language,
         planName: plan.name,
         category: service.category,
+        planId: plan.id,
+        serviceIndex: idx,
       });
     });
     groups.push({

@@ -175,6 +175,7 @@ const ToothColumn = memo(function ToothColumn({
   showOcclusal = true,
   compact = true,
   hideTooltip = false,
+  historyMarker = null,
 }) {
   const { t } = useTranslation();
   const [hovered, setHovered] = useState(false);
@@ -590,6 +591,16 @@ const ToothColumn = memo(function ToothColumn({
             aria-hidden="true"
           />
         )}
+        {!isCrown && historyMarker && (historyMarker.done || historyMarker.planned) && (
+          <span
+            className="absolute top-0.5 right-0.5 z-20 flex gap-0.5 pointer-events-none"
+            data-history-marker={`${historyMarker.done ? 'done' : ''}${historyMarker.planned ? ' planned' : ''}`.trim()}
+            aria-hidden="true"
+          >
+            {historyMarker.done && <i className="block w-2 h-2 rounded-full border border-white bg-emerald-500" />}
+            {historyMarker.planned && <i className="block w-2 h-2 rounded-full border border-white bg-blue-500" />}
+          </span>
+        )}
       </div>
     );
   };
@@ -793,6 +804,7 @@ function ProfessionalOdontogram({
   compact         = false,
   patientAge      = null,
   hideTooltip     = false,
+  historyMarkers  = {},
 }) {
   const { t } = useTranslation();
 
@@ -852,6 +864,7 @@ function ProfessionalOdontogram({
           showOcclusal={showOcclusal}
           compact={compact}
           hideTooltip={hideTooltip}
+          historyMarker={historyMarkers[tooth.id] || null}
         />
       );
     });

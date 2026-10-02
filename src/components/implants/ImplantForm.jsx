@@ -1189,7 +1189,7 @@ export default function ImplantForm({
             const brand = row.firma === 'Boshqa' ? (row.firma_custom || row.brend) : (row.firma || row.brend);
             const sizeLabel = formatToothSizeSummary(row);
             return (
-              <li key={fdi}>
+              <li key={fdi} className="implant-wizard-selected-item">
                 <button
                   type="button"
                   onClick={() => focusTooth(fdi)}
@@ -1200,6 +1200,16 @@ export default function ImplantForm({
                   <span className="implant-wizard-selected-row-fdi">#{fdi}</span>
                   {sizeLabel ? <span className="implant-wizard-selected-row-size">{sizeLabel}</span> : null}
                   {brand ? <span className="implant-wizard-selected-row-brand">{brand}</span> : null}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeTooth(fdi)}
+                  className="implant-wizard-selected-row-remove"
+                  aria-label={`#${fdi} tishni olib tashlash`}
+                  title="Olib tashlash"
+                  data-remove-fdi={fdi}
+                >
+                  <X className="w-3 h-3" strokeWidth={3} />
                 </button>
               </li>
             );
@@ -1290,7 +1300,6 @@ export default function ImplantForm({
             onToggle={focusTooth}
             scrollHint={tw('scrollHint', '← Yon tomonga suring →')}
           />
-          {renderSelectedStack('implant-wizard-selected-stack')}
           {activeFdi ? (
             <ImplantWizardToothEntry
               fdi={activeFdi}

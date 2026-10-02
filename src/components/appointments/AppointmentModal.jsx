@@ -12,6 +12,7 @@ import PatientModal from '../patients/PatientModal';
 import PatientSelect from '../patients/PatientSelect';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
+import { isScheduledOn } from '@/utils/clinicMetrics';
 
 const durations = [15, 30, 45, 60, 90, 120];
 const appointmentStatuses = ['Scheduled', 'Waiting', 'In Progress', 'Completed', 'Cancelled', 'No-Show'];
@@ -187,6 +188,14 @@ const autoCategorize = (name) => {
  * @param {string} props.prefillTime - Pre-filled time
  * @param {Function} props.onSaved - Callback after successful save
  */
+/** UI darajasidagi ogohlantirish: shifokor ish jadvalida bu kun "dam" bo'lsa true. */
+function isDoctorOffOn(doc, dateStr) {
+  if (!doc || !dateStr) return false;
+  const dt = new Date(`${String(dateStr).split('T')[0]}T12:00:00`);
+  if (Number.isNaN(dt.getTime())) return false;
+  return isScheduledOn(doc.workingHours, dt.getDay()) === false;
+}
+
 export default function AppointmentModal({ 
   open, 
   onClose, 
@@ -697,7 +706,7 @@ export default function AppointmentModal({
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-100">
                     {doctors.map(d => (
-                      <SelectItem key={String(d.id)} value={String(d.id)} className="rounded-lg font-bold">{d.name}</SelectItem>
+                      <SelectItem key={String(d.id)} value={String(d.id)} className="rounded-lg font-bold">{d.name}{isDoctorOffOn(d, form.date) ? ' · dam' : ''}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -746,6 +755,16 @@ export default function AppointmentModal({
                 />
               </div>
             </div>
+
+            {(() => {
+              const selDoc = doctors.find((d) => String(d.id) === String(form.doctor_id));
+              if (!selDoc || !isDoctorOffOn(selDoc, form.date)) return null;
+              return (
+                <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">
+                  ⚠️ {selDoc.name} bu kuni dam oladi (dam). Baribir yozish mumkin, lekin shifokor bilan kelishib oling.
+                </div>
+              );
+            })()}
 
             {/* Time Grid - only full hours */}
             {form.date && (

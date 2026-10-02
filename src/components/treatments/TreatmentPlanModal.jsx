@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { buildToothHistory } from '@/lib/toothHistory';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  ClipboardList, Check, ArrowLeft, ArrowRight, 
+  ClipboardList, Check, ArrowLeft, ArrowRight, Lock, 
   X, UserCircle2, CheckCircle2, Printer, 
   Search, Download, MessageCircle, Wallet
 } from 'lucide-react';
@@ -226,6 +227,9 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   const [showCustomDiscount, setShowCustomDiscount] = useState(false);
   const [customDiscountAmount, setCustomDiscountAmount] = useState('');
   const [savedPlanData, setSavedPlanData] = useState(null);
+  // Saqlangan (qoralama bo'lmagan) reja qulflanadi: yangi ish uchun "Yangi reja" ochiladi.
+  const isLocked = !!plan && !['draft', 'qoralama'].includes(String(plan.status || '').toLowerCase());
+  const notifyLocked = () => toast.info("Saqlangan reja qulflangan. Yangi ish uchun \"Yangi reja\" yarating.");
   const [isInstallment, setIsInstallment] = useState(false);
   const [installmentMonths, setInstallmentMonths] = useState(6);
   const [installmentAdvance, setInstallmentAdvance] = useState('');
@@ -406,7 +410,12 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   }, [removedToothFdis]);
 
   const applySelectableTeeth = useCallback((teeth, nextActiveTooth = undefined) => {
-    const requested = Array.isArray(teeth) ? teeth : [];
+    let requested = Array.isArray(teeth) ? teeth : [];
+    if (isLocked) {
+      const existing = new Set(selectedTeeth);
+      if (requested.some((tId) => !existing.has(tId))) notifyLocked();
+      requested = requested.filter((tId) => existing.has(tId));
+    }
     const allowed = requested.filter(tId => !isRemovedTooth(tId));
     const blocked = requested.filter(tId => isRemovedTooth(tId));
 
@@ -431,6 +440,38 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       }))
     );
   }, [toothData]);
+
+  // Bemorning oldingi davolash rejalaridagi tish tarixi (faqat o'qish uchun)
+  const [historyPlans, setHistoryPlans] = useState([]);
+  useEffect(() => {
+    if (!open || !patientId) { setHistoryPlans([]); return undefined; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await base44.entities.TreatmentPlan.filter({ patient_id: patientId }, '-created_date', 200);
+        if (!cancelled) setHistoryPlans(Array.isArray(rows) ? rows : []);
+      } catch (error) {
+        console.warn('Tish tarixini yuklab bo\'lmadi:', error);
+        if (!cancelled) setHistoryPlans([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, patientId]);
+
+  const toothHistory = useMemo(
+    () => buildToothHistory(historyPlans, { excludePlanId: plan?.id }),
+    [historyPlans, plan?.id]
+  );
+
+  const historyMarkers = useMemo(() => {
+    const markers = {};
+    Object.entries(toothHistory).forEach(([fdi, rows]) => {
+      const done = rows.some((row) => row.done);
+      const planned = rows.some((row) => !row.done);
+      if (done || planned) markers[fdiToInternal(fdi)] = { done, planned };
+    });
+    return markers;
+  }, [toothHistory]);
 
   const odontogramStatuses = useMemo(() => {
     const statuses = {};
@@ -541,6 +582,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   }, [services, selectedCategory, serviceSearch]);
 
   const toggleService = (toothNum, svc) => {
+    if (isLocked) { notifyLocked(); return; }
     if (isJawStorageKey(toothNum)) {
       setToothData(prev => ({
         ...prev,
@@ -605,6 +647,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   };
 
   const removeService = (toothNum, svcId) => {
+    if (isLocked) { notifyLocked(); return; }
     setToothData(prev => {
         const td = prev[toothNum];
         if (!td) return prev;
@@ -656,6 +699,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       toast.error("Yuklashda xatolik yuz berdi", { id: "invoice-download" });
     }
   };  const handleSave = async () => {
+    if (isLocked) { notifyLocked(); return null; }
     if (!patientId) {
       toast.error('Bemorni tanlang');
       return;
@@ -947,6 +991,14 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
             <div>
               <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
                 {plan ? t('treatmentPlan.editPlan') : t('treatmentPlan.createNew')}
+                {isLocked && (
+                  <span
+                    data-testid="plan-locked-badge"
+                    className="ml-2 inline-flex items-center gap-1 align-middle rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black normal-case tracking-wide text-white"
+                  >
+                    <Lock className="w-2.5 h-2.5" /> Qulflangan
+                  </span>
+                )}
               </DialogTitle>
               <DialogDescription className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('treatmentPlan.subtitle') || 'Bemorga davolash rejasi tayinlash'}</DialogDescription>
             </div>
@@ -1101,6 +1153,12 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                           {mark && (
                             <span aria-hidden="true" className="absolute bottom-0.5 left-0.5 right-0.5 h-[3px] rounded-full" style={{ background: mark }} />
                           )}
+                          {historyMarkers[internalId] && (
+                            <span aria-hidden="true" className="absolute top-0.5 right-0.5 flex gap-0.5">
+                              {historyMarkers[internalId].done && <i className="block w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                              {historyMarkers[internalId].planned && <i className="block w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                            </span>
+                          )}
                         </button>
                       );
                     };
@@ -1141,6 +1199,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                 }}
                                 multi={true}
                                 toothStatuses={odontogramStatuses}
+                                historyMarkers={historyMarkers}
                                 disabledTeeth={removedToothFdis.map(fdiToInternal).filter(Boolean)}
                                 hideHeader={true}
                                 hideLegend={true}
@@ -1148,25 +1207,9 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                               />
                               </div>
                             </div>
-                            <div className="shrink-0 mt-2 mb-1 flex flex-col gap-1.5 select-none">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <div className="flex items-center justify-end gap-1 flex-1">
-                                  {upperRight.map(n => <ToothBtn key={n} fdi={n} large />)}
-                                </div>
-                                <div className="w-px h-8 bg-slate-300 shrink-0" />
-                                <div className="flex items-center justify-start gap-1 flex-1">
-                                  {upperLeft.map(n => <ToothBtn key={n} fdi={n} large />)}
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-center gap-1.5">
-                                <div className="flex items-center justify-end gap-1 flex-1">
-                                  {lowerLeft.map(n => <ToothBtn key={n} fdi={n} large />)}
-                                </div>
-                                <div className="w-px h-8 bg-slate-300 shrink-0" />
-                                <div className="flex items-center justify-start gap-1 flex-1">
-                                  {lowerRight.map(n => <ToothBtn key={n} fdi={n} large />)}
-                                </div>
-                              </div>
+                            <div className="shrink-0 mt-1 flex items-center justify-center gap-3 text-[10px] font-bold text-slate-500 select-none" data-testid="tooth-history-legend">
+                              <span className="inline-flex items-center gap-1"><i className="block w-2 h-2 rounded-full bg-emerald-500" /> Bajarilgan</span>
+                              <span className="inline-flex items-center gap-1"><i className="block w-2 h-2 rounded-full bg-blue-500" /> Rejalashtirilgan</span>
                             </div>
                           </div>
                         </div>
@@ -1182,6 +1225,32 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                         className="flex-1 bg-transparent border-none text-[11px] text-slate-700 placeholder:text-slate-300 outline-none font-medium" />
                                 </div>
                             </div>
+                            {(() => {
+                              const fdi = activeTooth ? String(idToFdi(activeTooth)) : '';
+                              const rows = fdi ? (toothHistory[fdi] || []) : [];
+                              if (!fdi || isJawStorageKey(activeTooth)) return null;
+                              return (
+                                <div className="pl-3 pr-4 py-1.5 border-b border-slate-100 bg-slate-50/60 shrink-0" data-testid="tooth-history-list">
+                                  <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                                    {fdi}-tish · oldingi xizmatlar
+                                  </div>
+                                  {rows.length === 0 ? (
+                                    <p className="text-[11px] text-slate-400 font-medium">Bu tish bo&apos;yicha oldingi xizmat yo&apos;q</p>
+                                  ) : (
+                                    <ul className="max-h-[84px] overflow-y-auto space-y-0.5 pr-1">
+                                      {rows.map((row, i) => (
+                                        <li key={`${row.name}-${row.date}-${i}`} className="flex items-center gap-1.5 text-[11px]">
+                                          <i className={cn('block w-2 h-2 rounded-full shrink-0', row.done ? 'bg-emerald-500' : 'bg-blue-500')} />
+                                          <span className="flex-1 min-w-0 truncate font-semibold text-slate-700">{row.name}</span>
+                                          <span className={cn('shrink-0 font-bold', row.done ? 'text-emerald-600' : 'text-blue-600')}>{row.done ? 'Bajarilgan' : 'Rejada'}</span>
+                                          {row.dateLabel && <span className="shrink-0 text-slate-400 tabular-nums">{row.dateLabel}</span>}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                              );
+                            })()}
                             <div className="flex-1 overflow-y-auto pl-2 pr-3 pt-1 pb-2 space-y-0.5 min-h-0">
                                 {jawPrompt && (
                                   <JawChoice
@@ -1246,12 +1315,12 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                   key={s.key || idx}
                                   className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-1"
                                 >
-                                  <span className="w-6 h-6 rounded-md bg-[#1499AD]/10 text-[#1499AD] text-[10px] font-black flex items-center justify-center shrink-0" title={"Tish #" + idToFdi(s.toothId)}>
-                                    🦷
+                                  <span className="min-w-[2.75rem] h-6 px-1.5 rounded-md bg-[#1499AD]/10 text-[#1499AD] text-[10px] font-black flex items-center justify-center shrink-0" title={"Tish #" + idToFdi(s.toothId)}>
+                                    {toothSlotLabel(s.toothId) || `${idToFdi(s.toothId)}-tish`}
                                   </span>
                                   <div className="min-w-0 flex-1 flex items-center gap-1.5">
                                     <span className="text-[11px] font-bold text-slate-800 truncate">
-                                      #{idToFdi(s.toothId)} {s.service_name}
+                                      {s.service_name}
                                     </span>
                                   </div>
                                   <span className="text-[11px] font-bold text-slate-700 tabular-nums whitespace-nowrap shrink-0">
@@ -1552,7 +1621,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                             )}
                           </div>
                           
-                          <button
+                          {!isLocked && (<button
                             type="button"
                             onClick={handleSave}
                             disabled={saving || allSelectedServices.length === 0}
@@ -1568,7 +1637,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                 Saqlash va Yakunlash <Check className="w-4.5 h-4.5 stroke-[3px]" />
                               </>
                             )}
-                          </button>
+                          </button>)}
                         </div>
                       </div>
                     </motion.div>
@@ -1870,7 +1939,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 max-w-2xl mx-auto no-print">
                              <Button 
                                 onClick={async () => {
-                                    await handleSave();
+                                    if (!isLocked) await handleSave();
                                     await generateInvoicePDF();
                                 }} 
                                 className="h-10 bg-emerald-500 hover:bg-emerald-600 text-white font-bold uppercase text-[10px] tracking-wider rounded-xl shadow-md border-none gap-1.5"
@@ -1883,7 +1952,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                              {typeof onPay === 'function' && (
                                <Button
                                  onClick={async () => {
-                                   const saved = await handleSave();
+                                   const saved = isLocked ? (savedPlanData || plan) : await handleSave();
                                    const planId = saved?.id || savedPlanData?.id || plan?.id;
                                    const total = Number(saved?.total_price ?? savedPlanData?.total_price ?? Math.floor(rawTotal * (1 - discount/100))) || 0;
                                    const paid = Number(saved?.paid_amount ?? savedPlanData?.paid_amount ?? installmentAdvance ?? 0) || 0;
@@ -1923,7 +1992,14 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                      </Button>
                 )}
                 
-                {step < 3 ? (
+                {step < 3 && isLocked && step === 2 ? (
+                     <Button
+                         onClick={onClose}
+                         className="h-11 flex-1 sm:px-12 rounded-xl bg-slate-900 text-white font-bold uppercase text-[11px] tracking-wider shadow-md border-none flex items-center justify-center gap-2"
+                     >
+                         <Lock className="w-3.5 h-3.5" /> Qulflangan · Yopish
+                     </Button>
+                ) : step < 3 ? (
                      <Button 
                          onClick={step === 1 ? () => setStep(2) : handleSave}
                          disabled={(step === 1 && (!patientId || !doctorId)) || saving}
@@ -1942,7 +2018,10 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                              step === 1 ? (
                                  <>{t('odontogram.actions.next') || 'Davom etish'} <ArrowRight className="w-3.5 h-3.5" /></>
                              ) : (
-                                 <>{t('odontogram.actions.saveFinish') || 'Saqlash & Yakunlash'} <Check className="w-3.5 h-3.5 stroke-[3px]" /></>
+                                 <>{(() => {
+                                   const teethWithServices = Object.entries(toothData || {}).filter(([k, d]) => !isJawStorageKey(k) && (d?.services || []).length > 0).length;
+                                   return teethWithServices > 0 ? `Saqlash · ${teethWithServices} ta tish` : (t('odontogram.actions.saveFinish') || 'Saqlash & Yakunlash');
+                                 })()} <Check className="w-3.5 h-3.5 stroke-[3px]" /></>
                              )
                          )}
                      </Button>
@@ -1951,7 +2030,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                        {typeof onPay === 'function' && (
                          <Button
                            onClick={async () => {
-                             const saved = await handleSave();
+                             const saved = isLocked ? (savedPlanData || plan) : await handleSave();
                              const planId = saved?.id || savedPlanData?.id || plan?.id;
                              const total = Number(saved?.total_price ?? savedPlanData?.total_price ?? 0) || 0;
                              const paid = Number(saved?.paid_amount ?? savedPlanData?.paid_amount ?? 0) || 0;

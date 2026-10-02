@@ -126,6 +126,14 @@ export default function Appointments() {
     if (incomingId == null || incomingId === '') return;
     setSelectedDoctorId(incomingId);
     setActiveTab('list');
+    const incomingDate = String(location.state?.date || '').split('T')[0];
+    const incomingPeriod = location.state?.listPeriod;
+    if (incomingPeriod === 'all' || incomingPeriod === 'day' || incomingPeriod === 'upcoming') setListPeriod(incomingPeriod);
+    if (incomingDate) {
+      setViewDate(incomingDate);
+      navigate('/appointments', { replace: true, state: {} });
+      return;
+    }
     if (!appointments.length) return;
     const name = String(location.state?.doctorName || '').trim().toLowerCase();
     const dates = appointments

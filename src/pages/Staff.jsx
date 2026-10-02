@@ -22,7 +22,7 @@ import { formatDoctorName } from '@/lib/displayText';
 import {
   dateKey, todayISO, timeToMinutes, minutesToLabel, fmtMoney, fmtCompact,
   personName, initials, avatarTone, userPhoto, isIncomePayment, isCompletedStatus,
-  isCancelledStatus, isInProgressStatus, matchStaff, isScheduledOn, scheduleHoursLabel,
+  isCancelledStatus, isInProgressStatus, matchStaff, isScheduledOn, scheduleHoursLabel, scheduleForDay,
   WEEK_LABELS, startOfWeek, addDays, isoDate, roleAccess, roleLabel,
 } from '@/utils/clinicMetrics';
 
@@ -115,21 +115,30 @@ function DayTimeline({ appointments, nowMinutes }) {
   );
 }
 
-function WeekChips({ flags, todayJs }) {
+function WeekChips({ flags, todayJs, onToggle }) {
   return (
     <div className="flex gap-1">
-      {WEEK_LABELS.map((d) => (
-        <span
-          key={d.js}
-          className={cn(
-            'flex-1 text-center text-[10.5px] font-bold py-1 rounded-md bg-slate-100 text-slate-400',
-            flags[d.js] && 'bg-teal-600 text-white',
-            d.js === todayJs && 'outline outline-1 outline-[#1499AD] -outline-offset-1'
-          )}
-        >
-          {d.short}
-        </span>
-      ))}
+      {WEEK_LABELS.map((d) => {
+        const cls = cn(
+          'flex-1 text-center text-[10.5px] font-bold py-1 rounded-md bg-slate-100 text-slate-400',
+          flags[d.js] && 'bg-teal-600 text-white',
+          d.js === todayJs && 'outline outline-1 outline-[#1499AD] -outline-offset-1',
+          onToggle && 'cursor-pointer hover:opacity-80 transition-opacity'
+        );
+        if (!onToggle) return <span key={d.js} className={cls}>{d.short}</span>;
+        return (
+          <button
+            key={d.js}
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onToggle(d.js); }}
+            title={flags[d.js] ? 'Ish kuni — bosib dam qiling' : 'Dam — bosib ish kuni qiling'}
+            aria-pressed={!!flags[d.js]}
+            className={cls}
+          >
+            {d.short}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -443,8 +452,57 @@ export default function Staff() {
     setIsEditModalOpen(true);
   };
 
-  const openSchedule = (card) => {
-    navigate('/appointments', { state: { doctorId: card.id, doctorName: card.name } });
+  const openSchedule = (card, extra = {}) => {
+    navigate('/appointments', { state: { doctorId: card.id, doctorName: card.name, ...extra } });
+  };
+
+  // "Qabullar" → shu shifokorning barcha qabullari
+  const openDoctorAppointments = (card) => openSchedule(card, { listPeriod: 'all' });
+
+  // Bu hafta kuni → shu kun + shifokor jadvali
+  const openDoctorDay = (card, date) => openSchedule(card, { date, listPeriod: 'day' });
+
+  // "Bemorlar soni" → Bemorlar sahifasi shu shifokor bo'yicha filtrlangan
+  const openDoctorPatients = (card) => {
+    navigate('/patients', {
+      state: {
+        doctorFilter: {
+          id: card.id,
+          name: card.name,
+          patientIds: Array.from(card.patientIds || []).map(String),
+        },
+      },
+    });
+  };
+
+  // Du–Ya tugmalari: ish kunini almashtirish va saqlash
+  const toggleWorkingDay = async (card, jsDay) => {
+    const WEEKDAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const prevWh = card.user.workingHours && typeof card.user.workingHours === 'object' ? card.user.workingHours : {};
+    const wh = { ...prevWh };
+    // Jadval umuman kiritilmagan bo'lsa, ko'rinib turgan holatni boshqa kunlar uchun ham saqlab qo'yamiz
+    WEEK_LABELS.forEach((d) => {
+      if (!scheduleForDay(wh, d.js)) {
+        wh[String(d.js)] = { active: !!card.dayFlags?.[d.js], start: '09:00', end: '18:00' };
+      }
+    });
+    const key = [jsDay, String(jsDay), WEEKDAY_KEYS[jsDay]].find((k) => wh[k] && typeof wh[k] === 'object') ?? String(jsDay);
+    const day = { start: '09:00', end: '18:00', ...(wh[key] || {}) };
+    const currentlyOn = isScheduledOn(wh, jsDay) ?? !!card.dayFlags?.[jsDay];
+    const nextOn = !currentlyOn;
+    if ('isOpen' in day && !('active' in day)) day.isOpen = nextOn; else day.active = nextOn;
+    wh[key] = day;
+
+    const label = WEEK_LABELS.find((d) => d.js === jsDay)?.short || '';
+    setUsers((prev) => prev.map((u) => (String(u.id) === String(card.id) ? { ...u, workingHours: wh } : u)));
+    try {
+      await base44.auth.updateUser(card.id, { workingHours: wh });
+      toast.success(`${card.name}: ${label} — ${nextOn ? 'ish kuni' : 'dam olish kuni'}`);
+    } catch (error) {
+      console.error('Toggle working day error:', error);
+      setUsers((prev) => prev.map((u) => (String(u.id) === String(card.id) ? { ...u, workingHours: prevWh } : u)));
+      toast.error("Ish kunini saqlashda xatolik yuz berdi");
+    }
   };
 
   const followLink = (url) => {
@@ -783,6 +841,7 @@ export default function Staff() {
               onMessage={() => messageUser(c.user)}
               onSchedule={() => openSchedule(c)}
               onPerms={() => handleOpenEditStaff(c.user, { focusRole: true })}
+              onToggleDay={(js) => toggleWorkingDay(c, js)}
             />
           ))}
         </div>
@@ -829,6 +888,9 @@ export default function Staff() {
           onMessage={() => messageUser(detail.user)}
           onSchedule={() => openSchedule(detail)}
           onPerms={() => handleOpenEditStaff(detail.user, { focusRole: true })}
+          onOpenAppointments={() => openDoctorAppointments(detail)}
+          onOpenPatients={() => openDoctorPatients(detail)}
+          onOpenDay={(date) => openDoctorDay(detail, date)}
         />
       )}
     </div>
@@ -1020,7 +1082,7 @@ function sortOptions(language) {
   ];
 }
 
-function StaffCard({ card, phone, compact, lead, selected, language, presenceLabel, todayJs, nowMinutes, onOpen, onEdit, onCall, onMessage, onSchedule, onPerms }) {
+function StaffCard({ card, phone, compact, lead, selected, language, presenceLabel, todayJs, nowMinutes, onOpen, onEdit, onCall, onMessage, onSchedule, onPerms, onToggleDay }) {
   const isAdmin = card.role === 'admin';
   return (
     <article className={cn('bg-white border rounded-2xl p-4 flex flex-col gap-3 min-w-0 shadow-sm', selected ? 'border-[#1499AD] ring-2 ring-[#1499AD]/20' : 'border-slate-200/80')}>
@@ -1091,7 +1153,7 @@ function StaffCard({ card, phone, compact, lead, selected, language, presenceLab
         </div>
       )}
 
-      <WeekChips flags={card.dayFlags} todayJs={todayJs} />
+      <WeekChips flags={card.dayFlags} todayJs={todayJs} onToggle={onToggleDay} />
 
       {phone ? (
         <div className="grid grid-cols-4 gap-1.5">
@@ -1151,7 +1213,7 @@ function IconAction({ onClick, children, label }) {
   );
 }
 
-function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, weekStart, presenceLabel, onClose, onEdit, onDelete, onCall, onMessage, onSchedule, onPerms }) {
+function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, weekStart, presenceLabel, onClose, onEdit, onDelete, onCall, onMessage, onSchedule, onPerms, onOpenAppointments, onOpenPatients, onOpenDay }) {
   const clinicAmount = Math.max(0, card.revenue - card.share);
   const clinicPct = card.revenue > 0 ? Math.round((clinicAmount / card.revenue) * 100) : null;
   const doctorPct = card.revenue > 0 ? Math.max(0, 100 - clinicPct) : 0;
@@ -1211,9 +1273,9 @@ function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, 
           {(tab === 'general' || tab === 'finance') && (
             <>
               <div className="grid grid-cols-2 gap-2">
-                <Kpi label={tx(language, 'Qabullar', 'Приёмы', 'Visits')} value={<>{card.appointments} <small className="text-[11px] text-slate-400 font-semibold">{tx(language, 'ta', 'шт', '')}</small></>} />
+                <Kpi onClick={onOpenAppointments} label={tx(language, 'Qabullar', 'Приёмы', 'Visits')} value={<>{card.appointments} <small className="text-[11px] text-slate-400 font-semibold">{tx(language, 'ta', 'шт', '')}</small></>} />
                 <Kpi label={tx(language, 'Bajarilgan', 'Выполнено', 'Completed')} value={<>{card.completed} <small className="text-[11px] text-slate-400 font-semibold">· {card.completion}%</small></>} />
-                <Kpi label={tx(language, 'Bemorlar soni', 'Пациенты', 'Patients')} value={<>{card.patients} <small className="text-[11px] text-slate-400 font-semibold">{tx(language, 'ta', 'чел', '')}</small></>} />
+                <Kpi onClick={onOpenPatients} label={tx(language, 'Bemorlar soni', 'Пациенты', 'Patients')} value={<>{card.patients} <small className="text-[11px] text-slate-400 font-semibold">{tx(language, 'ta', 'чел', '')}</small></>} />
                 <Kpi label={tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')} value={card.avgCheck ? fmtMoney(card.avgCheck) : '—'} />
               </div>
               <div>
@@ -1244,12 +1306,12 @@ function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, 
               </div>
               <div className="grid grid-cols-7 gap-1">
                 {weekDays.map((d) => (
-                  <div key={d.key} className={cn('border rounded-lg py-1.5 text-center min-w-0', d.isToday ? 'bg-[#1499AD] border-[#1499AD] text-white' : d.hours === 'dam' ? 'bg-slate-50 text-slate-400 border-slate-100' : 'border-slate-100')}>
+                  <button type="button" key={d.key} onClick={() => onOpenDay(d.key)} title={`${d.short} ${d.date.getDate()} — jadvalni ochish`} className={cn('border rounded-lg py-1.5 text-center min-w-0 cursor-pointer hover:ring-2 hover:ring-[#1499AD]/30 transition-shadow', d.isToday ? 'bg-[#1499AD] border-[#1499AD] text-white' : d.hours === 'dam' ? 'bg-slate-50 text-slate-400 border-slate-100' : 'border-slate-100')}>
                     <small className={cn('block text-[9.5px] font-semibold', d.isToday ? 'text-teal-50' : 'text-slate-400')}>{d.short}</small>
                     <b className="block text-[13px]">{d.date.getDate()}</b>
                     <div className={cn('text-[9px] font-semibold mt-0.5 truncate px-0.5', d.isToday ? 'text-teal-50' : 'text-slate-400')}>{d.hours || '—'}</div>
                     <div className={cn('text-[10px] font-bold', d.isToday ? 'text-white' : d.count ? 'text-teal-700' : 'text-slate-300')}>{d.count ? `${d.count}` : '—'}</div>
-                  </div>
+                  </button>
                 ))}
               </div>
               {!card.scheduleKnown && (
@@ -1335,11 +1397,21 @@ function QaButton({ onClick, icon, label, primary }) {
   );
 }
 
-function Kpi({ label, value }) {
-  return (
-    <div className="border border-slate-100 rounded-xl px-3 py-2.5 min-w-0">
+function Kpi({ label, value, onClick }) {
+  const body = (
+    <>
       <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</span>
       <b className="block text-lg font-extrabold tracking-tight mt-0.5 truncate">{value}</b>
-    </div>
+    </>
+  );
+  if (!onClick) return <div className="border border-slate-100 rounded-xl px-3 py-2.5 min-w-0">{body}</div>;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="border border-slate-100 rounded-xl px-3 py-2.5 min-w-0 text-left cursor-pointer hover:border-[#1499AD] hover:bg-teal-50/40 transition-colors"
+    >
+      {body}
+    </button>
   );
 }

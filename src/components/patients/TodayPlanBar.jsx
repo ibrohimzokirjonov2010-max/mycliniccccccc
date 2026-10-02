@@ -73,6 +73,7 @@ export default function TodayPlanBar({
   planRemaining = 0,
   onPay,
   onNextClinical,
+  onAdvanceStep,
   onOpenPlan,
   part = 'all',
 }) {
@@ -85,6 +86,7 @@ export default function TodayPlanBar({
 
   const [selectedId, setSelectedId] = useState(planGroups[0]?.id || null);
   const [doneOpen, setDoneOpen] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
 
   useEffect(() => {
     if (!planGroups.some((group) => group.id === selectedId)) {
@@ -223,19 +225,60 @@ export default function TodayPlanBar({
             )}
 
             <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-              {typeof onNextClinical === 'function' && (
-                <button
-                  type="button"
-                  onClick={() => onNextClinical(activeStep)}
-                  className="inline-flex max-w-full items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-[11px] font-black shadow-sm cursor-pointer hover:opacity-95"
-                  style={{ backgroundColor: TEAL }}
-                >
-                  <Stethoscope className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">
-                    {activeStep ? `Keyingi: ${stepCaption(activeStep)}` : 'Tashxis / muolaja'}
-                  </span>
-                </button>
-              )}
+              {typeof onNextClinical === 'function' && (() => {
+                const planSteps = (selected?.steps || []).filter((step) => step.planId != null);
+                if (typeof onAdvanceStep === 'function' && planSteps.length > 0) {
+                  const nextStep = planSteps.find((step) => step.rawState === 'pending');
+                  if (!nextStep) {
+                    const allDone = planSteps.every((step) => step.state === 'done');
+                    return (
+                      <button
+                        type="button"
+                        disabled
+                        data-testid="plan-next-step"
+                        className="inline-flex max-w-full items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-200 text-slate-500 text-[11px] font-black cursor-not-allowed"
+                      >
+                        <Check className="w-3.5 h-3.5 shrink-0" strokeWidth={3} />
+                        <span className="truncate">{allDone ? 'Reja yakunlangan' : 'Barcha bosqichlar jarayonda'}</span>
+                      </button>
+                    );
+                  }
+                  return (
+                    <button
+                      type="button"
+                      data-testid="plan-next-step"
+                      disabled={advancing}
+                      onClick={async () => {
+                        setAdvancing(true);
+                        try {
+                          await onAdvanceStep(nextStep);
+                        } finally {
+                          setAdvancing(false);
+                        }
+                        onNextClinical(nextStep);
+                      }}
+                      className="inline-flex max-w-full items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-[11px] font-black shadow-sm cursor-pointer hover:opacity-95 disabled:opacity-60 disabled:cursor-wait"
+                      style={{ backgroundColor: TEAL }}
+                    >
+                      <Stethoscope className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{`Keyingi: ${stepCaption(nextStep)}`}</span>
+                    </button>
+                  );
+                }
+                return (
+                  <button
+                    type="button"
+                    onClick={() => onNextClinical(activeStep)}
+                    className="inline-flex max-w-full items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-[11px] font-black shadow-sm cursor-pointer hover:opacity-95"
+                    style={{ backgroundColor: TEAL }}
+                  >
+                    <Stethoscope className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">
+                      {activeStep ? `Keyingi: ${stepCaption(activeStep)}` : 'Tashxis / muolaja'}
+                    </span>
+                  </button>
+                );
+              })()}
               {typeof onPay === 'function' && (
                 <button
                   type="button"

@@ -174,6 +174,8 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
                     to={item.path}
                     onClick={() => { onMobileClose(); prefetchModuleData(item.path); }}
                     onMouseEnter={() => prefetchModuleData(item.path)}
+                    onFocus={() => prefetchModuleData(item.path)}
+                    onTouchStart={() => prefetchModuleData(item.path)}
                     className={cn(
                       'flex items-center justify-between px-3.5 py-2.5 text-[11.5px] font-bold transition-all duration-150 relative group uppercase tracking-wider select-none',
                       active
@@ -219,6 +221,8 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
                     title={item.label}
                     onClick={() => { onMobileClose(); prefetchModuleData(item.path); }}
                     onMouseEnter={() => prefetchModuleData(item.path)}
+                    onFocus={() => prefetchModuleData(item.path)}
+                    onTouchStart={() => prefetchModuleData(item.path)}
                     className={cn(
                       'flex items-center justify-center p-2.5 rounded-lg border transition-all duration-150 relative group',
                       active

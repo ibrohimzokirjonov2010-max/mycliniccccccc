@@ -10,6 +10,8 @@ import TodayPlanBar from './TodayPlanBar';
 import { buildPlanStepperGroups } from './planStepperModel';
 import ChairsideClinicalTools, { ChairsideClinicalTabBar } from './ChairsideClinicalTools';
 import { withOncePricing } from '@/lib/toothPlanCharge';
+import { setPlanStepInProgress } from '@/lib/planStepAdvance';
+import { toast } from 'sonner';
 
 const TEAL = '#14b8a6';
 const TEAL_DARK = '#0d9488';
@@ -402,8 +404,19 @@ export default function ChairsidePatientProfile({
               totalDebt={totalDebt}
               planRemaining={planRemainingTotal}
               onPay={onPay}
+              onAdvanceStep={async (step) => {
+                const plan = (plans || []).find((p) => String(p.id) === String(step?.planId));
+                try {
+                  await setPlanStepInProgress(plan, step?.serviceIndex);
+                  toast.success(`"${step?.title || 'Bosqich'}" jarayonda`);
+                  if (typeof onReload === 'function') await onReload();
+                } catch (error) {
+                  console.error('Advance plan step error:', error);
+                  toast.error("Bosqichni yangilashda xatolik yuz berdi");
+                }
+              }}
               onNextClinical={(step) => {
-                const target = step || activeStep;
+                const target = step || null;
                 setClinicalTab('tashxis');
                 document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 if (target?.tooth && typeof onSelectTooth === 'function') {

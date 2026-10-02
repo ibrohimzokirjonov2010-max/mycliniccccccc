@@ -6,7 +6,7 @@ import {
   Plus, Search, TrendingUp, Wallet, Calendar, Receipt, X, Trash2, 
   Download, Clock, PlusCircle, Phone, FileText, Printer, 
   Camera, Eye, Loader2, FileSpreadsheet, Table as TableIcon, LayoutGrid,
-  ArrowUp, ArrowDown, ArrowUpDown, Copy, Check
+  ArrowUp, ArrowDown, ArrowUpDown, Copy, Check, ChevronDown, Pencil
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
@@ -260,6 +260,9 @@ export default function Payments() {
   const [patientPaymentsHistory, setPatientPaymentsHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [paymentDetailsOpen, setPaymentDetailsOpen] = useState(false); // "Batafsil" (yig'ilgan holatda)
+  const [paymentEdit, setPaymentEdit] = useState(null); // { amount, method, notes } | null
+  const [paymentEditSaving, setPaymentEditSaving] = useState(false);
 
   // ── React Query: Patients + Doctors + Treatment Plans (initial load) ─────
   const { data: initialPatients = [], isLoading: patientsLoading } = useQuery({
@@ -582,6 +585,11 @@ export default function Payments() {
       setLoadingDebt(false);
     }
   };
+
+  useEffect(() => {
+    setPaymentDetailsOpen(false);
+    setPaymentEdit(null);
+  }, [selectedPayment?.id]);
 
   useEffect(() => {
     if (selectedPayment?.patient_id) {
@@ -981,7 +989,7 @@ export default function Payments() {
   };
 
   const handleDelete = async (id, patientId) => {
-    if (!window.confirm('Haqiqatan ham ushbu to\'lovni o\'chirmoqchimisiz?')) return;
+    if (!window.confirm('Haqiqatan ham ushbu to\'lovni o\'chirmoqchimisiz?')) return false;
     try {
       await base44.entities.Payment.delete(id);
       
@@ -1032,8 +1040,71 @@ export default function Payments() {
 
       toast.success('O\'chirildi va qarz qayta hisoblandi');
       invalidatePayments();
+      return true;
     } catch (error) {
       toast.error('O\'chirishda xatolik');
+      return false;
+    }
+  };
+
+  // To'lovni tahrirlash: summa / usul / izoh. Bemor jami summalari qayta hisoblanadi.
+  const handleUpdatePayment = async (sp, values) => {
+    const newAmount = Number(String(values.amount).replace(/\s/g, ''));
+    if (!Number.isFinite(newAmount) || newAmount <= 0) {
+      toast.error("Summa noto'g'ri");
+      return;
+    }
+    const oldAmount = Number(sp.amount) || 0;
+    const changes = [];
+    if (newAmount !== oldAmount) changes.push(`summa: ${oldAmount.toLocaleString()} → ${newAmount.toLocaleString()} UZS`);
+    if ((values.method || '') !== (sp.method || '')) changes.push(`usul: ${getPaymentMethodLabel(sp.method, t)} → ${getPaymentMethodLabel(values.method, t)}`);
+    if ((values.notes || '') !== (sp.notes || '')) changes.push('izoh');
+    if (changes.length === 0) {
+      setPaymentEdit(null);
+      return;
+    }
+    if (!window.confirm(`To'lovni o'zgartirasizmi?\n${changes.join('\n')}\n\nBemor qarzi va jami to'lovlar qayta hisoblanadi.`)) return;
+    setPaymentEditSaving(true);
+    try {
+      const patch = { amount: newAmount, method: values.method || sp.method, notes: values.notes ?? sp.notes ?? '' };
+      await base44.entities.Payment.update(sp.id, patch);
+      const updated = { ...sp, ...patch };
+
+      if (sp.patient_id) {
+        try {
+          const [allPays, allPlans] = await Promise.all([
+            base44.entities.Payment.filter({ patient_id: sp.patient_id }, 'date', 5000),
+            base44.entities.TreatmentPlan.filter({ patient_id: sp.patient_id }, '-created_date', 100).catch(() => []),
+          ]);
+          const merged = (allPays || []).map((p) => (String(p.id) === String(sp.id) ? { ...p, ...patch } : p));
+          const { totals } = computePatientBalances(unionPayments(merged, [updated]), allPlans || []);
+          const row = totals[sp.patient_id];
+          if (row) {
+            await base44.entities.Patient.update(sp.patient_id, { total_paid: row.totalPaid, total_debt: row.currentDebt });
+            setPatients((prev) => prev.map((pt) => (pt.id === sp.patient_id ? { ...pt, total_paid: row.totalPaid, total_debt: row.currentDebt } : pt)));
+          }
+          if (sp.plan_id && String(sp.type || 'income').toLowerCase() === 'income' && newAmount !== oldAmount) {
+            const linked = (allPlans || []).find((pl) => String(pl.id) === String(sp.plan_id));
+            if (linked) {
+              const paid = Math.max(0, (Number(linked.paid_amount) || 0) + (newAmount - oldAmount));
+              await base44.entities.TreatmentPlan.update(linked.id, { paid_amount: paid });
+            }
+          }
+        } catch (recomputeError) {
+          console.error('Payment totals recompute error:', recomputeError);
+          toast.warning("To'lov saqlandi, lekin jami summalarni qayta hisoblashda xatolik. Sahifani yangilang.");
+        }
+      }
+
+      setSelectedPayment(updated);
+      setPaymentEdit(null);
+      toast.success("To'lov yangilandi va qarz qayta hisoblandi");
+      invalidatePayments();
+    } catch (error) {
+      console.error('Payment update error:', error);
+      toast.error("To'lovni yangilashda xatolik yuz berdi");
+    } finally {
+      setPaymentEditSaving(false);
     }
   };
 
@@ -3173,7 +3244,98 @@ export default function Payments() {
                   </table>
                 </div>
 
-                {/* ─── 2. Davolash Rejasi & Bemorning To'lovlar Tarixi (Yonma-yon 2 ustunli ixcham blok) ─── */}
+                {/* ─── Asosiy natija: ushbu to'lov + qoldiq qarz ─── */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" data-testid="payment-headline">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                    <span className="block text-[10px] font-black uppercase tracking-widest text-emerald-700">Ushbu to'lov</span>
+                    <span className="block text-2xl font-black font-mono text-emerald-700 mt-0.5">
+                      {paymentAmount < 0 ? '-' : '+'}{Math.abs(paymentAmount).toLocaleString()} <small className="text-xs font-sans font-bold">UZS</small>
+                    </span>
+                    <span className="block text-[11px] font-semibold text-emerald-800/80 mt-0.5">{methodLabel} · {paidWhen}</span>
+                  </div>
+                  <div className={`rounded-xl border px-4 py-3 ${debtAtPaymentTime > 0 ? 'border-rose-200 bg-rose-50' : 'border-emerald-200 bg-emerald-50'}`}>
+                    <span className={`block text-[10px] font-black uppercase tracking-widest ${debtAtPaymentTime > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>Qoldiq qarz</span>
+                    <span className={`block text-2xl font-black font-mono mt-0.5 ${debtAtPaymentTime > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      {debtAtPaymentTime > 0 ? debtAtPaymentTime.toLocaleString() : "0"} <small className="text-xs font-sans font-bold">UZS</small>
+                    </span>
+                    <span className={`block text-[11px] font-semibold mt-0.5 ${debtAtPaymentTime > 0 ? 'text-rose-800/80' : 'text-emerald-800/80'}`}>
+                      {debtAtPaymentTime > 0 ? "Hali to'lanishi kerak" : "✓ To'liq to'langan"}
+                    </span>
+                  </div>
+                </div>
+
+                {paymentEdit && (
+                  <div className="bg-white rounded-xl border border-amber-300 shadow-xs p-3.5 space-y-3" data-testid="payment-edit-form">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">To'lovni tahrirlash</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Summa (UZS)
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={paymentEdit.amount}
+                          onChange={(e) => setPaymentEdit((prev) => ({ ...prev, amount: e.target.value.replace(/[^\d]/g, '') }))}
+                          className="mt-1 w-full h-10 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-black text-slate-900 outline-none focus:border-[#1499AD]"
+                        />
+                      </label>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Usuli
+                        <select
+                          value={paymentEdit.method}
+                          onChange={(e) => setPaymentEdit((prev) => ({ ...prev, method: e.target.value }))}
+                          className="mt-1 w-full h-10 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-900 outline-none focus:border-[#1499AD]"
+                        >
+                          <option value="Cash">Naqd pul</option>
+                          <option value="Card">Plastik karta</option>
+                          <option value="Click">Click</option>
+                          <option value="Payme">Payme</option>
+                          <option value="Transfer">Bank/O'tkazma</option>
+                        </select>
+                      </label>
+                    </div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Izoh
+                      <textarea
+                        rows={2}
+                        value={paymentEdit.notes}
+                        onChange={(e) => setPaymentEdit((prev) => ({ ...prev, notes: e.target.value }))}
+                        className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-[#1499AD]"
+                      />
+                    </label>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentEdit(null)}
+                        disabled={paymentEditSaving}
+                        className="px-4 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 cursor-pointer"
+                      >
+                        Bekor qilish
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleUpdatePayment(sp, paymentEdit)}
+                        disabled={paymentEditSaving}
+                        className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black cursor-pointer disabled:opacity-60"
+                      >
+                        {paymentEditSaving ? 'Saqlanmoqda...' : 'Saqlash'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentDetailsOpen((open) => !open)}
+                  aria-expanded={paymentDetailsOpen}
+                  data-testid="payment-details-toggle"
+                  className="w-full flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-wider text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  <span>Batafsil</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${paymentDetailsOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* ─── 2. Davolash Rejasi & Bemorning To'lovlar Tarixi (Batafsil ichida) ─── */}
+                {paymentDetailsOpen && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-stretch">
 
                   {/* Chap ustun: Davolash Rejasi & Moliyaviy Hisob-kitob */}
@@ -3299,7 +3461,8 @@ export default function Payments() {
                               const hType = histPay.type || 'Income';
                               const hMethod = getPaymentMethodLabel(histPay.method, t);
                               const hDate = histPay.created_date || histPay.created_at || histPay.date;
-                              const hDateStr = hDate ? new Date(hDate).toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+                              const hStamp = paymentStamp(histPay);
+                              const hDateStr = hDate ? (hStamp.time ? `${hStamp.date}, ${hStamp.time}` : hStamp.date) : '—';
                               const isExp = hType === 'Expense';
                               const isCurrent = histPay.id === sp.id;
 
@@ -3327,6 +3490,7 @@ export default function Payments() {
                   </div>
 
                 </div>
+                )}
 
                 {/* ─── 4. Chek Rasmi (agar biriktirilgan bo'lsa) ─── */}
                 {(sp.receipt_url || sp.receipt_image || sp.check_image) && (
@@ -3376,13 +3540,24 @@ export default function Payments() {
 
               {/* ─── Modal Footer ─── */}
               <div className="bg-slate-100/90 px-5 py-3 border-t border-slate-200 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
                 <button
-                  onClick={() => { handleDelete(sp.id, sp.patient_id); setSelectedPayment(null); }}
+                  onClick={async () => { const deleted = await handleDelete(sp.id, sp.patient_id); if (deleted) setSelectedPayment(null); }}
                   className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-rose-600 hover:bg-rose-100/80 text-xs font-bold transition-all border border-rose-200 bg-white"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>O'chirish</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentEdit({ amount: String(Math.abs(Number(sp.amount) || 0)), method: sp.method || 'Cash', notes: sp.notes || '' })}
+                  data-testid="payment-edit-btn"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-amber-700 hover:bg-amber-50 text-xs font-bold transition-all border border-amber-300 bg-white cursor-pointer"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Tahrirlash</span>
+                </button>
+                </div>
 
                 <div className="flex items-center gap-2">
                   <button
