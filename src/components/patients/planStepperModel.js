@@ -11,9 +11,41 @@ function todayKey(today) {
   return dateKey(today || new Date());
 }
 
+function planCreatedTime(plan) {
+  const raw = plan?.created_date || plan?.created_at || plan?.start_date || plan?.date;
+  const time = raw ? new Date(raw).getTime() : NaN;
+  return Number.isNaN(time) ? 0 : time;
+}
+
+/** Plans in creation order (oldest first); ties keep their incoming order. */
+export function sortPlansChronologically(plans) {
+  return (plans || [])
+    .map((plan, index) => ({ plan, index }))
+    .sort((a, b) => (planCreatedTime(a.plan) - planCreatedTime(b.plan)) || (a.index - b.index))
+    .map((row) => row.plan);
+}
+
+function planTeethLabel(plan) {
+  const own = String(plan?.tooth_number || '').replace(/#/g, '').trim();
+  if (own && own !== 'general') return own;
+  const teeth = [];
+  (Array.isArray(plan?.services) ? plan.services : []).forEach((service) => {
+    const value = String(service?.tooth_number || service?.tooth || service?.tooth_id || '').replace(/^#/, '').trim();
+    if (value && value !== 'general' && !teeth.includes(value)) teeth.push(value);
+  });
+  return teeth.join(', ');
+}
+
+/**
+ * Title of one plan card. A real name is kept as is; a generic one ("Davolash rejasi")
+ * becomes "Reja N (#teeth)" built from the plan's OWN data, N being its chronological number.
+ */
 export function planStepperTitle(plan, index) {
   const raw = String(plan?.name || plan?.title || '').trim();
-  if (!raw || /davolash rejasi/i.test(raw)) return `Reja ${index + 1}`;
+  if (!raw || /davolash rejasi/i.test(raw)) {
+    const teeth = planTeethLabel(plan);
+    return `Reja ${index + 1}${teeth ? ` (#${teeth})` : ''}`;
+  }
   return raw;
 }
 
@@ -103,7 +135,7 @@ export function buildPlanStepperGroups({
   }
 
   const groups = [];
-  (plans || []).forEach((plan) => {
+  sortPlansChronologically(plans).forEach((plan) => {
     const st = String(plan.status || '').toLowerCase();
     if (st === 'cancelled' || st === 'canceled') return;
     const services = Array.isArray(plan.services) && plan.services.length
