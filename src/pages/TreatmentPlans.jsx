@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { localizePlanName } from '@/lib/planNameLabel';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/queryKeys';
@@ -781,7 +782,7 @@ export default function TreatmentPlans() {
                       <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
                         <div className="min-w-0">
                           <span className="font-bold text-slate-800 group-hover:text-[#1499AD] transition-colors truncate block">
-                            {language === 'ru' ? (p.name || '').replace(/Davolash rejasi/gi, 'План лечения') : (language === 'en' ? (p.name || '').replace(/Davolash rejasi/gi, 'Treatment plan') : p.name)}
+                            {localizePlanName(p.name, language)}
                           </span>
                           {p.doctor_name && (
                             <span className="text-[10px] font-medium text-slate-400 block truncate">
@@ -927,7 +928,7 @@ export default function TreatmentPlans() {
                     </div>
                     <div>
                       <DialogTitle className="text-base font-black text-slate-900 leading-tight">
-                        {language === 'ru' ? (activeDetailPlan.name || '').replace(/Davolash rejasi/gi, 'План лечения') : (language === 'en' ? (activeDetailPlan.name || '').replace(/Davolash rejasi/gi, 'Treatment plan') : activeDetailPlan.name)}
+                        {localizePlanName(activeDetailPlan.name, language)}
                       </DialogTitle>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs font-bold text-slate-700 flex items-center gap-1">

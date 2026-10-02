@@ -79,7 +79,7 @@ export default function GlobalAlerter() {
           sendNotification({
             id: alertKey,
             type: 'recall',
-            title: 'Recall vaqti keldi! 📞',
+            title: 'Qayta chaqirish vaqti keldi! 📞',
             message: `Bugun ${rec.patient_name} bilan bog'lanish vaqti (${rec.type_label || rec.type}).`
           });
         }

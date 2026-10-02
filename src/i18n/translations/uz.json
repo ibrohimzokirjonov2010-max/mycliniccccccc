@@ -476,7 +476,7 @@
       "discountError": "Chegirma qo'shishda xatolik yuz berdi",
       "saveAndFinish": "Saqlash va Yakunlash",
       "serviceSearch": "Xizmat qidirish…",
-      "saveWithCount": "Saqlash ({count})",
+      "saveWithCount": "Saqlash · {count} ta tish",
       "addedToDebt": "qarz sifatida to'lovlarga qo'shildi",
       "connectBot": "Bemorni botimizga ulab qo'ying",
       "botPrompt": "Assalomu alaykum! Klinikadan avtomatik eslatmalar olish uchun botimizga qo'shiling:",
@@ -1050,20 +1050,20 @@
     "planSuffix": "Davolash rejasi"
   },
   "recall": {
-    "title": "Eslatmalar & Recall",
+    "title": "Eslatmalar va qayta chaqirish",
     "subtitle": "Bemorlarni profilaktik ko'riklar, davolash bosqichlari va eslatmalari reyestri",
-    "newRecall": "Yangi recall",
-    "addNew": "Yangi recall",
+    "newRecall": "Yangi qayta chaqirish",
+    "addNew": "Yangi qayta chaqirish",
     "settings": "Sozlamalar",
     "month": "oy",
     "months": "oy",
     "year": "yil",
     "priority": "Muhimlik",
-    "empty": "Recall yo'q",
-    "emptyDesc": "Yangi recall qo'shish uchun tugmani bosing",
+    "empty": "Qayta chaqirish yo'q",
+    "emptyDesc": "Yangi qayta chaqirish qo'shish uchun tugmani bosing",
     "searchPlaceholder": "Bemor ismi, telefon raqami yoki muolaja turi bo'yicha qidiruv...",
     "stats": {
-      "total": "Jami recalllar",
+      "total": "Jami qayta chaqirishlar",
       "pending": "Kutilayotgan",
       "sent": "Yuborilgan"
     },
@@ -1075,7 +1075,7 @@
       "week": "Bu hafta"
     },
     "modal": {
-      "newTitle": "Yangi Recall",
+      "newTitle": "Yangi qayta chaqirish",
       "patient": "Bemor *",
       "startDate": "Boshlang'ich sana *",
       "date": "Eslatma sanasi *",
@@ -1096,7 +1096,7 @@
       "actions": "Amallar"
     },
     "bulkActions": {
-      "selected": "ta recall tanlandi",
+      "selected": "ta qayta chaqirish tanlandi",
       "send": "Yuborish",
       "cancel": "Bekor"
     },
@@ -2369,6 +2369,8 @@
     }
   },
   "odontogram": {
+    "serviceCatalog": "Xizmatlar katalogi",
+    "selectedServices": "Tanlangan xizmatlar",
     "statuses": {
       "healthy": "Sog'lom",
       "completed": "Davolangan",
@@ -2433,6 +2435,7 @@
       "discountPct": "Chegirma foizini kiriting (%)"
     },
     "errors": {
+      "noServiceSelectedYet": "Hali xizmat tanlanmagan",
       "removedToothError": "Olib tashlangan tish uchun yangi xizmat yozib bo'lmaydi",
       "removedTooth": "Bu tish olib tashlangan. Unga yangi xizmat yozib bo'lmaydi.",
       "noTreatments": "Hali davolash yozilmagan",

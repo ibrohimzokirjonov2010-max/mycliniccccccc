@@ -42,7 +42,7 @@ function planTeethLabel(plan) {
  */
 export function planStepperTitle(plan, index) {
   const raw = String(plan?.name || plan?.title || '').trim();
-  if (!raw || /davolash rejasi/i.test(raw)) {
+  if (!raw || /(davolash rejasi|план лечения|treatment plan)/i.test(raw)) {
     const teeth = planTeethLabel(plan);
     return `Reja ${index + 1}${teeth ? ` (#${teeth})` : ''}`;
   }

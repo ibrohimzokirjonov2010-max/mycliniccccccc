@@ -2259,6 +2259,8 @@
     }
   },
   "odontogram": {
+    "serviceCatalog": "Service catalog",
+    "selectedServices": "Selected services",
     "statuses": {
       "healthy": "Healthy",
       "completed": "Treated",
@@ -2323,6 +2325,7 @@
       "discountPct": "Enter discount percentage (%)"
     },
     "errors": {
+      "noServiceSelectedYet": "No service selected yet",
       "removedToothError": "Cannot add services for extracted teeth",
       "removedTooth": "This tooth has been extracted. Cannot add new services.",
       "noTreatments": "No treatments recorded",
