@@ -13,6 +13,7 @@ import { displayServiceName, formatDoctorName } from '@/lib/displayText';
 import { implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
 import { toothGroupBilling, toothGroupCharge, withOncePricing } from '@/lib/toothPlanCharge';
 import { isPlanLocked, PLAN_LOCKED_ADD_PROMPT } from '@/lib/planLock';
+import { findCatalogService, parsePriceInput, PRICE_MISSING_LABEL } from '@/lib/quickAddPricing';
 import JawChoice from '@/components/patients/JawChoice';
 import {
   buildJawPlanLines,
@@ -22,7 +23,6 @@ import {
   jawIllustration,
   jawLegendKind,
   jawMarkForService,
-  jawPlanTotal,
   jawServiceName,
   priceForJawService,
 } from '@/lib/jawServices';
@@ -55,6 +55,9 @@ const QUICK = [
   { id: 'protez', label: 'Protez', service: 'Protez', jaw: 'protez' },
   { id: 'babochka', label: 'Babochka', service: 'Babochka protez', jaw: 'babochka' },
 ];
+
+const GROUP_PRICE_LABEL = { bridge: 'Ko‘prik (protez)', same: 'Plomba', implant: 'Implant' };
+const GROUP_PRICE_KIND = { bridge: 'sirkon', same: 'plomba', implant: 'implant' };
 
 const KIND_COLOR = Object.fromEntries(LEGEND.map((k) => [k.id, k.color]));
 
@@ -305,6 +308,7 @@ function collectEntries(plans, implants, toothRecords) {
       kind,
       illustration: illustration || kind,
       finding,
+      recordId: rec.id,
       done: finding ? false : (isDoneStatus(rec.status) || !/reja|plan/i.test(String(rec.status || ''))),
       name: displayServiceName(rec.treatment || rec.condition || rec.notes || kind || 'Yozuv'),
       price: finding ? 0 : Number(rec.price || 0),
@@ -366,6 +370,8 @@ export default function ToothChartCard({
   const [noteText, setNoteText] = useState('');
   const [busy, setBusy] = useState(false);
   const [jawPrompt, setJawPrompt] = useState(null);
+  // Katalogda narxi yo'q xizmat: narxni qo'lda kiritish so'rovi.
+  const [priceAsk, setPriceAsk] = useState(null);
   const [xrays, setXrays] = useState([]);
   const [viewer, setViewer] = useState(null);
   const archScrollRef = useRef(null);
@@ -499,6 +505,7 @@ export default function ToothChartCard({
       color: KIND_COLOR[e.kind] || '#64748B',
       title: e.surfaces?.length ? `${e.name} (${e.surfaces.join(', ')})` : e.name,
       price: e.price,
+      open: !e.done,
       doctor: formatDoctorName(e.doctor || ''),
       status: e.statusLabel || (e.done ? 'bajarildi' : 'reja'),
       dateLabel: fmtDate(e.date),
@@ -583,14 +590,12 @@ export default function ToothChartCard({
     setNoteOpen(false);
   };
 
-  const catalogPrice = (label) => {
-    const q = String(label || '').toLowerCase();
-    const hit = (services || []).find((s) => {
-      const name = String(s.name || '').toLowerCase();
-      return name && (name.includes(q) || q.includes(name));
-    });
-    return Number(hit?.price || hit?.cost || 0) || 0;
-  };
+  // Narx Services katalogidan: nom -> sinonim -> kategoriya bo'yicha; shifokorga alohida narx bo'lsa o'sha.
+  const resolveCatalog = (label, kindHint = '') => findCatalogService(services, label, {
+    kindHint,
+    doctorId: doctorFields().doctor_id,
+  });
+  const catalogPrice = (label, kindHint = '') => resolveCatalog(label, kindHint).price;
 
   const doctorFields = () => {
     const doc = (doctors || []).find((d) => String(d.id) === String(user?.id)) || (doctors || [])[0];
@@ -667,7 +672,7 @@ export default function ToothChartCard({
     }
   };
 
-  const appendLinesToActivePlan = async (lines, total) => {
+  const appendLinesToActivePlan = async (lines, total, opts = {}) => {
     if (!patient?.id || patient.id === 'patient-y2ii8ynf2') return;
     const doc = doctorFields();
     if (!doc.doctor_id) {
@@ -680,7 +685,8 @@ export default function ToothChartCard({
     const rows = (lines || []).map((row) => ({
       ...row,
       tooth: row.tooth || row.tooth_number,
-      status: row.status || 'planned',
+      status: row.status || (opts.completed ? 'completed' : 'planned'),
+      ...(opts.completed ? { completed: true } : {}),
     }));
     const toothLabel = [];
     rows.forEach((row) => {
@@ -699,7 +705,7 @@ export default function ToothChartCard({
         patient_name: patient.full_name || '',
         doctor_id: doc.doctor_id,
         doctor_name: doc.doctor_name || '',
-        status: 'planned',
+        status: opts.completed ? 'completed' : 'planned',
         priority: 'medium',
         tooth_number: toothLabel.join(', '),
         services: rows,
@@ -723,7 +729,10 @@ export default function ToothChartCard({
         });
         await syncPatientBalance(patient.id);
       }
-      toast.success(`Yangi reja yaratildi: «${plan?.name || planName}»`);
+      if (opts.removeRecordId) {
+        try { await base44.entities.ToothRecord.delete(opts.removeRecordId); } catch (err) { console.error(err); }
+      }
+      toast.success(opts.completed ? `Bajarildi: «${plan?.name || planName}»` : `Yangi reja yaratildi: «${plan?.name || planName}»`);
       setNoteOpen(false);
       setNoteText('');
       setJawPrompt(null);
@@ -736,21 +745,101 @@ export default function ToothChartCard({
     }
   };
 
-  const addToActivePlan = async (fdis, serviceName, kindHint, billing = 'each') => {
+  // Narxi yo'q qatorlar uchun narxni qo'lda kiritishni so'raydi, so'ng yangi rejaga qo'shadi.
+  const submitPlanLines = async (lines, opts = {}) => {
+    const missing = (lines || [])
+      .map((line, index) => [line, index])
+      .filter(([line]) => !(Number(line.price) > 0));
+    if (missing.length && !opts.allowZero) {
+      setPriceAsk({
+        title: `${PRICE_MISSING_LABEL}: narxni kiriting`,
+        items: missing.map(([line, index]) => ({
+          key: String(index),
+          label: [line.service_name, line.tooth_number].filter(Boolean).join(' · '),
+        })),
+        onSubmit: (values) => submitPlanLines(
+          lines.map((line, index) => (values[String(index)]
+            ? { ...line, price: values[String(index)], price_source: 'manual' }
+            : line)),
+          opts,
+        ),
+        onSkip: () => submitPlanLines(lines, { ...opts, allowZero: true }),
+      });
+      return;
+    }
+    const total = (lines || []).reduce((sum, line) => sum + (Number(line.price) || 0), 0);
+    await appendLinesToActivePlan(lines, total, opts);
+  };
+
+  const addToActivePlan = async (fdis, serviceName, kindHint, billing = 'each', opts = {}) => {
     const teeth = (fdis || []).map(String).filter(Boolean);
     if (!teeth.length) return;
-    const price = catalogPrice(serviceName);
+    const found = resolveCatalog(opts.priceLabel || serviceName, kindHint);
+    const manual = Number(opts.manualPrice) || 0;
+    const price = found.price || manual;
+    const lineName = found.service?.name || serviceName;
+    if (!(price > 0) && !opts.allowZero) {
+      setPriceAsk({
+        title: `${PRICE_MISSING_LABEL}: narxni kiriting`,
+        items: [{
+          key: 'unit',
+          label: `${lineName} · ${teeth.join(', ')}${billing === 'once' ? ' (bir marta)' : teeth.length > 1 ? ' (har bir tish uchun)' : ''}`,
+        }],
+        onSubmit: (values) => addToActivePlan(fdis, serviceName, kindHint, billing, { ...opts, manualPrice: values.unit }),
+        onSkip: () => addToActivePlan(fdis, serviceName, kindHint, billing, { ...opts, allowZero: true }),
+      });
+      return;
+    }
     const charge = toothGroupCharge(price, teeth.length, billing);
     const surfaceNote = surfaces.length ? `Yuza: ${surfaces.join(', ')}` : '';
     const lines = teeth.map((fdi, index) => ({
-      service_name: serviceName,
+      service_id: found.service?.id || undefined,
+      service_name: lineName,
       tooth_number: fdi,
       price: charge.linePrices[index] || 0,
+      price_source: found.price ? 'catalog' : (manual ? 'manual' : 'missing'),
       status: 'planned',
       category: kindHint || '',
       notes: surfaceNote,
     }));
     await appendLinesToActivePlan(lines, charge.total);
+  };
+
+  // Tezkor qo'shish: xizmat katalog narxi bilan yangi rejaga tushadi (narx bo'lmasa - qo'lda kiritiladi).
+  const quickAdd = (item) => {
+    if (!active) return;
+    if (item.jaw) {
+      openJawPrompt(item.jaw, active, 'plan');
+      return;
+    }
+    addToActivePlan([active], item.service, item.id);
+  };
+
+  // Eski narxsiz "tish holati" yozuvi bajarilganda: narx bilan bajarilgan reja yaratiladi.
+  const completeFinding = async (item) => {
+    const found = resolveCatalog(item.name, item.kind || '');
+    const manual = Number(item.manualPrice) || 0;
+    const price = found.price || manual;
+    if (!(price > 0) && !item.allowZero) {
+      setPriceAsk({
+        title: `${PRICE_MISSING_LABEL}: narxni kiriting`,
+        items: [{ key: 'unit', label: `${item.name} · ${item.fdi}` }],
+        onSubmit: (values) => completeFinding({ ...item, manualPrice: values.unit }),
+        onSkip: () => completeFinding({ ...item, allowZero: true }),
+      });
+      return;
+    }
+    await appendLinesToActivePlan([{
+      service_id: found.service?.id || undefined,
+      service_name: found.service?.name || item.name,
+      tooth_number: String(item.fdi),
+      price,
+      price_source: found.price ? 'catalog' : (manual ? 'manual' : 'missing'),
+      status: 'completed',
+      completed: true,
+      category: item.kind || '',
+      notes: String(item.notes || '').replace(/\[finding\]\s*/i, ''),
+    }], price, { completed: true, removeRecordId: item.recordId });
   };
 
   const openJawPrompt = (family, fdi, mode = 'finding') => {
@@ -765,7 +854,7 @@ export default function ToothChartCard({
   const applyJawChoice = async (family, choice, mode) => {
     if (mode === 'plan') {
       const lines = buildJawPlanLines(family, choice, services);
-      await appendLinesToActivePlan(lines, jawPlanTotal(lines));
+      await submitPlanLines(lines);
       return;
     }
     const scopes = choice === 'both' ? ['upper', 'lower'] : [choice === 'lower' ? 'lower' : 'upper'];
@@ -776,6 +865,10 @@ export default function ToothChartCard({
 
   const markDone = async (item) => {
     if (!item?.planId) {
+      if (item?.finding && item.recordId && item.kind) {
+        await completeFinding(item);
+        return;
+      }
       toast.error('Bu yozuvni rejadan yopib bo‘lmaydi');
       return;
     }
@@ -926,6 +1019,13 @@ export default function ToothChartCard({
   );
 
   const splitAt = (list) => Math.ceil(list.length / 2);
+
+  const groupUnitPrice = groupAction === 'breket'
+    ? priceForJawService(services, 'breket', 'upper')
+    : catalogPrice(GROUP_PRICE_LABEL[groupAction] || '', GROUP_PRICE_KIND[groupAction] || '');
+  const quickPriceOf = (item) => (item.jaw
+    ? priceForJawService(services, item.jaw, 'upper')
+    : catalogPrice(item.service, item.id));
 
   return (
     <div id="tooth-chart-print" className={cn('tooth-chart-root min-w-0 max-w-full overflow-x-hidden', showSheet && 'is-sheet-open')}>
@@ -1112,6 +1212,9 @@ export default function ToothChartCard({
               <span className="text-[11px] text-slate-500">
                 Reja{plannedItem.doctor ? ` · ${plannedItem.doctor}` : ''}{money(plannedItem.price) ? ` · ${money(plannedItem.price)}` : ''}
               </span>
+              {!money(plannedItem.price) && (
+                <span data-testid="price-missing" className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800" title="Katalogda narx yo‘q — narx belgilanmagan">{PRICE_MISSING_LABEL}</span>
+              )}
               <span className="ml-auto flex gap-1.5">
                 <button type="button" onClick={() => onBookAppointment && onBookAppointment(plannedItem)} className="h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700">Qabulga yozish</button>
                 <button type="button" disabled={busy} onClick={() => markDone(plannedItem)} className="inline-flex h-8 items-center gap-1 rounded-lg bg-emerald-600 px-2.5 text-xs font-bold text-white disabled:opacity-60">
@@ -1160,7 +1263,8 @@ export default function ToothChartCard({
             setNoteText={setNoteText}
             setNoteOpen={setNoteOpen}
             onClose={() => { setActive(null); setSelected([]); }}
-            onQuick={(item) => (item.jaw ? openJawPrompt(item.jaw, active, 'finding') : markFindings([active], item.service, item.id))}
+            onQuick={quickAdd}
+            quickPrice={quickPriceOf}
             onNote={() => markFindings([active], noteText.trim() || 'Izoh', 'note')}
             onGroup={() => {
               if (groupAction === 'breket') {
@@ -1173,12 +1277,10 @@ export default function ToothChartCard({
                 implant: ['Implant', 'implant', 'each'],
               };
               const [name, kind, billing] = map[groupAction];
-              addToActivePlan(selected, name, kind, billing);
+              addToActivePlan(selected, name, kind, billing, { priceLabel: GROUP_PRICE_LABEL[groupAction] });
             }}
             doctorName={doctorLabel}
-            unitPrice={groupAction === 'breket'
-              ? priceForJawService(services, 'breket', 'upper')
-              : catalogPrice(({ bridge: "Ko‘prik (protez)", same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
+            unitPrice={groupUnitPrice}
             jawPrompt={jawPrompt}
             onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
             onJawClose={() => setJawPrompt(null)}
@@ -1208,7 +1310,8 @@ export default function ToothChartCard({
           setNoteText={setNoteText}
           setNoteOpen={setNoteOpen}
           onClose={() => { setActive(null); setSelected([]); }}
-          onQuick={(item) => (item.jaw ? openJawPrompt(item.jaw, active, 'finding') : markFindings([active], item.service, item.id))}
+          onQuick={quickAdd}
+            quickPrice={quickPriceOf}
           onNote={() => markFindings([active], noteText.trim() || 'Izoh', 'note')}
           onGroup={() => {
             if (groupAction === 'breket') {
@@ -1221,12 +1324,10 @@ export default function ToothChartCard({
               implant: ['Implant', 'implant', 'each'],
             };
             const [name, kind, billing] = map[groupAction];
-            addToActivePlan(selected, name, kind, billing);
+            addToActivePlan(selected, name, kind, billing, { priceLabel: GROUP_PRICE_LABEL[groupAction] });
           }}
           doctorName={doctorLabel}
-          unitPrice={groupAction === 'breket'
-            ? priceForJawService(services, 'breket', 'upper')
-            : catalogPrice(({ bridge: "Ko‘prik (protez)", same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
+          unitPrice={groupUnitPrice}
           jawPrompt={jawPrompt}
           onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
           onJawClose={() => setJawPrompt(null)}
@@ -1259,7 +1360,8 @@ export default function ToothChartCard({
             setNoteText={setNoteText}
             setNoteOpen={setNoteOpen}
             onClose={() => { setActive(null); setSelected([]); }}
-            onQuick={(item) => (item.jaw ? openJawPrompt(item.jaw, active, 'finding') : markFindings([active], item.service, item.id))}
+            onQuick={quickAdd}
+            quickPrice={quickPriceOf}
             onNote={() => markFindings([active], noteText.trim() || 'Izoh', 'note')}
             onGroup={() => {
               if (groupAction === 'breket') {
@@ -1272,12 +1374,10 @@ export default function ToothChartCard({
                 implant: ['Implant', 'implant', 'each'],
               };
               const [name, kind, billing] = map[groupAction];
-              addToActivePlan(selected, name, kind, billing);
+              addToActivePlan(selected, name, kind, billing, { priceLabel: GROUP_PRICE_LABEL[groupAction] });
             }}
             doctorName={doctorLabel}
-            unitPrice={groupAction === 'breket'
-              ? priceForJawService(services, 'breket', 'upper')
-              : catalogPrice(({ bridge: "Ko‘prik (protez)", same: 'Plomba', implant: 'Implant' })[groupAction] || '')}
+            unitPrice={groupUnitPrice}
             jawPrompt={jawPrompt}
             onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
             onJawClose={() => setJawPrompt(null)}
@@ -1289,11 +1389,62 @@ export default function ToothChartCard({
         </div>
       )}
 
+      <PriceAskDialog
+        ask={priceAsk}
+        onClose={() => setPriceAsk(null)}
+      />
+
       {viewer && (
         <button type="button" className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" onClick={() => setViewer(null)}>
           <img src={viewer} alt="Rentgen" className="max-h-[80vh] max-w-full rounded-xl" />
         </button>
       )}
+    </div>
+  );
+}
+
+function PriceAskDialog({ ask, onClose }) {
+  const [raw, setRaw] = useState({});
+  useEffect(() => { setRaw({}); }, [ask]);
+  if (!ask) return null;
+  const parsed = Object.fromEntries(ask.items.map((item) => [item.key, parsePriceInput(raw[item.key])]));
+  const ready = ask.items.every((item) => parsed[item.key] > 0);
+  const submit = async (event) => {
+    event?.preventDefault?.();
+    if (!ready) return;
+    onClose();
+    await ask.onSubmit(parsed);
+  };
+  const skip = async () => {
+    onClose();
+    await ask.onSkip();
+  };
+  return (
+    <div data-testid="price-ask" className="fixed inset-0 z-[80] grid place-items-center bg-black/40 p-4" onClick={onClose}>
+      <form onSubmit={submit} onClick={(e) => e.stopPropagation()} className="w-full max-w-sm space-y-3 rounded-2xl bg-white p-4 shadow-2xl">
+        <div>
+          <b className="block text-sm font-extrabold text-slate-900">{ask.title}</b>
+          <p className="mt-0.5 text-[11px] text-slate-500">Xizmat narxi Xizmatlar katalogida belgilanmagan. Narxni (so‘m) qo‘lda kiriting.</p>
+        </div>
+        {ask.items.map((item, index) => (
+          <label key={item.key} className="block">
+            <span className="mb-1 block text-xs font-bold text-slate-700">{item.label}</span>
+            <input
+              autoFocus={index === 0}
+              inputMode="numeric"
+              value={parsed[item.key] > 0 ? parsed[item.key].toLocaleString('ru-RU') : ''}
+              onChange={(e) => setRaw((prev) => ({ ...prev, [item.key]: e.target.value }))}
+              placeholder="Narx, so‘m"
+              className="h-9 w-full rounded-lg border border-slate-200 px-2 text-sm font-bold tabular-nums"
+            />
+          </label>
+        ))}
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <button type="button" onClick={onClose} className="h-8 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-600">Bekor</button>
+          <button type="button" onClick={skip} className="h-8 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-bold text-amber-800">Narxsiz qo‘shish</button>
+          <button type="submit" disabled={!ready} className="h-8 rounded-lg bg-emerald-600 px-3 text-xs font-bold text-white disabled:opacity-50">Qo‘shish</button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -1380,7 +1531,7 @@ function SidePanel(props) {
   const {
     sheet, embedded, active, activeEntry, multi, selected, groupAction, setGroupAction,
     surfaces, toggleSurface, history, toothXrays, busy, noteOpen, noteText,
-    setNoteText, setNoteOpen, onClose, onQuick, onNote, onGroup, onUpload, onView,
+    setNoteText, setNoteOpen, onClose, onQuick, quickPrice, onNote, onGroup, onUpload, onView,
     doctorName, unitPrice, onAddToPlan, onNewRecord,
     jawPrompt, onJawChoose, onJawClose,
   } = props;
@@ -1502,6 +1653,9 @@ function SidePanel(props) {
                   <button key={item.id} type="button" disabled={busy} onClick={() => onQuick(item)} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-slate-200 px-0.5 py-1 text-center text-[9px] font-bold leading-tight text-slate-700 disabled:opacity-50">
                     <i className="h-2.5 w-2.5 rounded-sm" style={{ background: KIND_COLOR[item.id] }} />
                     {item.label}
+                    {quickPrice && (quickPrice(item) > 0
+                      ? <span className="text-[8px] font-semibold tabular-nums text-slate-400">{formatMoneyAmount(quickPrice(item))}</span>
+                      : <span data-testid="price-missing" title="Katalogda narx yo‘q — qo‘shishda narxni kiritasiz" className="text-[8px] font-bold text-amber-600">narx yo‘q</span>)}
                   </button>
                 ))}
                 <button type="button" onClick={() => setNoteOpen(true)} className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl border border-slate-200 px-0.5 py-1 text-center text-[9px] font-bold leading-tight text-slate-700">
@@ -1533,7 +1687,9 @@ function SidePanel(props) {
                     <div key={row.id} className="border-l-2 pl-2" style={{ borderColor: row.color }}>
                       <div className="flex items-baseline justify-between gap-2">
                         <b className="text-xs font-bold text-slate-900">{row.title}</b>
-                        {money(row.price) && <span className="shrink-0 text-[11px] font-bold tabular-nums">{money(row.price)}</span>}
+                        {money(row.price)
+                          ? <span className="shrink-0 text-[11px] font-bold tabular-nums">{money(row.price)}</span>
+                          : row.open && <span data-testid="price-missing" className="shrink-0 rounded bg-amber-50 px-1 text-[10px] font-bold text-amber-700" title="Katalogda narx yo‘q — narx belgilanmagan">{PRICE_MISSING_LABEL}</span>}
                       </div>
                       <div className="text-[11px] text-slate-500">
                         {[row.dateLabel, row.doctor, row.status].filter(Boolean).join(' · ')}
