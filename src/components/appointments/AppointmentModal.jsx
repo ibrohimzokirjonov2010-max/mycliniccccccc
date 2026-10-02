@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -42,34 +42,67 @@ const APPOINTMENT_TIME_SLOTS = [
   '00:00'
 ];
 
-/** Local YYYY-MM-DD (avoid UTC shift from toISOString). */
-const getLocalDateStr = (d = new Date()) => {
-  const dt = d instanceof Date ? d : new Date(d);
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+const TASHKENT_TZ = 'Asia/Tashkent';
+
+/** Current wall-clock date/time in Asia/Tashkent (independent of the browser time zone). */
+const tashkentNow = (now = new Date()) => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TASHKENT_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now);
+  const get = (type) => parts.find((p) => p.type === type)?.value || '00';
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    hours: Number(get('hour')) % 24,
+    minutes: Number(get('minute')),
+  };
+};
+
+/** Today's YYYY-MM-DD in Asia/Tashkent (no toISOString UTC shift). */
+const tashkentToday = (now = new Date()) => tashkentNow(now).date;
+
+/** Pure calendar math on YYYY-MM-DD strings (UTC arithmetic only, so no time-zone drift). */
+const addDaysStr = (dateStr, n) => {
+  const m = String(dateStr || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '';
+  const dt = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + Number(n || 0)));
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+};
+
+/** Weekday (0 = Sunday) of a YYYY-MM-DD string, or null when unparsable. */
+const weekdayOfDateStr = (dateStr) => {
+  const m = String(dateStr || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).getUTCDay();
+};
+
+const tashkentNowMinutes = (now = new Date()) => {
+  const t = tashkentNow(now);
+  return getEffectiveMinutes(`${String(t.hours).padStart(2, '0')}:${String(t.minutes).padStart(2, '0')}`);
 };
 
 const isSlotPastForDate = (slotTime, dateStr, now = new Date()) => {
   const selected = normalizeToDateOnly(dateStr);
   if (!selected) return false;
-  const todayStr = getLocalDateStr(now);
+  const todayStr = tashkentToday(now);
   if (selected < todayStr) return true;
   if (selected > todayStr) return false;
-  const nowMins = getEffectiveMinutes(
-    `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-  );
-  return getEffectiveMinutes(slotTime) <= nowMins;
+  return getEffectiveMinutes(slotTime) <= tashkentNowMinutes(now);
 };
 
 /** Next usable grid slot for a date (today: first slot still in the future). */
 const getNextReasonableSlot = (dateStr, now = new Date()) => {
-  const selected = normalizeToDateOnly(dateStr) || getLocalDateStr(now);
-  const todayStr = getLocalDateStr(now);
+  const todayStr = tashkentToday(now);
+  const selected = normalizeToDateOnly(dateStr) || todayStr;
   if (selected < todayStr) return null;
   if (selected > todayStr) return APPOINTMENT_TIME_SLOTS[0];
-  const nowMins = getEffectiveMinutes(
-    `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-  );
-  const next = APPOINTMENT_TIME_SLOTS.find((s) => getEffectiveMinutes(s) > nowMins);
+  const nowMins = tashkentNowMinutes(now);
+  const next = APPOINTMENT_TIME_SLOTS.find((sl) => getEffectiveMinutes(sl) > nowMins);
   return next || null;
 };
 
@@ -191,9 +224,9 @@ const autoCategorize = (name) => {
 /** UI darajasidagi ogohlantirish: shifokor ish jadvalida bu kun "dam" bo'lsa true. */
 function isDoctorOffOn(doc, dateStr) {
   if (!doc || !dateStr) return false;
-  const dt = new Date(`${String(dateStr).split('T')[0]}T12:00:00`);
-  if (Number.isNaN(dt.getTime())) return false;
-  return isScheduledOn(doc.workingHours, dt.getDay()) === false;
+  const weekday = weekdayOfDateStr(normalizeToDateOnly(String(dateStr)));
+  if (weekday === null) return false;
+  return isScheduledOn(doc.workingHours, weekday) === false;
 }
 
 export default function AppointmentModal({ 
@@ -270,7 +303,19 @@ export default function AppointmentModal({
     if (open) fetchDoctors();
   }, [open]);
 
+  // Initialise the form ONLY on the closed -> open transition or when a different appointment is
+  // opened. Re-running on prefill/doctors/parent re-renders used to wipe the user's date/time/patient.
+  const initKeyRef = useRef(null);
+  const appointmentId = appointment?.id ?? null;
   useEffect(() => {
+    if (!open) {
+      initKeyRef.current = null;
+      return;
+    }
+    const key = `edit:${appointmentId ?? 'new'}`;
+    if (initKeyRef.current === key) return;
+    initKeyRef.current = key;
+
     if (appointment) {
       setForm({
         patient_id: appointment.patient_id || '',
@@ -288,23 +333,21 @@ export default function AppointmentModal({
         tooth_number: appointment.tooth_number || '',
       });
     } else {
-      // Find doctor name if prefillDoctorId is provided
       const targetDocId = isDoctor && user?.id ? user.id : (prefillDoctorId || '');
       const foundDoc = doctors.find(d => String(d.id) === String(targetDocId));
       const targetDocName = isDoctor && user?.name ? user.name : (foundDoc?.name || '');
-      
-      // Auto-fill today + next reasonable future slot (never a past/unusable time)
+
+      // Auto-fill today (Asia/Tashkent) + next reasonable future slot (never a past/unusable time)
       const now = new Date();
-      const autoDate = getLocalDateStr(now);
-      const chosenDate = prefillDate || autoDate;
+      const chosenDate = prefillDate || tashkentToday(now);
       let chosenTime = prefillTime || '';
-      if (!chosenTime || (normalizeToDateOnly(chosenDate) === getLocalDateStr(now) && isSlotPastForDate(chosenTime, chosenDate, now))) {
+      if (!chosenTime || (normalizeToDateOnly(chosenDate) === tashkentToday(now) && isSlotPastForDate(chosenTime, chosenDate, now))) {
         chosenTime = getNextReasonableSlot(chosenDate, now) || '';
       }
 
       setForm({
-        patient_id: prefillPatientId || '', 
-        patient_name: prefillPatientName || '', 
+        patient_id: prefillPatientId || '',
+        patient_name: prefillPatientName || '',
         doctor_id: targetDocId,
         doctor_name: targetDocName,
         date: chosenDate,
@@ -322,21 +365,30 @@ export default function AppointmentModal({
     setBusyInfo(null);
     setShowValidation(false);
     setShowToothPicker(false);
-  }, [
-    appointment, 
-    open, 
-    prefillDate, 
-    prefillTime, 
-    prefillDoctorId, 
-    doctors, 
-    prefillPatientId, 
-    prefillPatientName,
-    prefillServiceId,
-    prefillServiceName,
-    prefillPrice,
-    prefillNotes,
-    prefillToothNumber
-  ]);
+  }, [open, appointmentId]);
+
+  // Late-arriving data (async doctors list / auth user / prefilled patient) fills ONLY empty
+  // doctor_id / doctor_name / patient_name - it never touches date, time, service, price or notes.
+  const isNewAppointment = !appointment;
+  useEffect(() => {
+    if (!open || !isNewAppointment) return;
+    setForm(prev => {
+      let docId = prev.doctor_id;
+      let docName = prev.doctor_name;
+      if (!docId) docId = isDoctor && user?.id ? user.id : (prefillDoctorId || '');
+      if (docId && !docName) {
+        docName = isDoctor && user?.name
+          ? user.name
+          : (doctors.find(d => String(d.id) === String(docId))?.name || '');
+      }
+      let patName = prev.patient_name;
+      if (prev.patient_id && !patName && prefillPatientName && String(prev.patient_id) === String(prefillPatientId)) {
+        patName = prefillPatientName;
+      }
+      if (docId === prev.doctor_id && docName === prev.doctor_name && patName === prev.patient_name) return prev;
+      return { ...prev, doctor_id: docId, doctor_name: docName, patient_name: patName };
+    });
+  }, [open, isNewAppointment, doctors, isDoctor, user?.id, user?.name, prefillDoctorId, prefillPatientId, prefillPatientName]);
 
   // Real-time conflict check state (populated after checkDoubleBooking is defined)
   const [conflict, setConflict] = useState(null);
@@ -579,6 +631,57 @@ export default function AppointmentModal({
     onSaved(); // Refresh lists in parent
   };
 
+  /**
+   * Is `timeStr` on `dateStr` already taken for this doctor? (same rules as checkDoubleBooking)
+   */
+  const findConflictAt = (timeStr, dateStr, doctorId, duration) => {
+    const dateOnly = normalizeToDateOnly(dateStr);
+    if (!dateOnly || !timeStr) return undefined;
+    const start = getEffectiveMinutes(timeStr);
+    const end = start + (parseInt(duration) || 30);
+    return appointmentsToUse.find(a => {
+      if (a.id === appointment?.id) return false;
+      if (a.status === 'Cancelled') return false;
+      if (normalizeToDateOnly(a.date) !== dateOnly) return false;
+      if (doctorId && a.doctor_id) {
+        if (String(doctorId) !== String(a.doctor_id)) return false;
+      } else if (doctorId || a.doctor_id) {
+        return false;
+      }
+      const aStart = getEffectiveMinutes(a.time || '00:00');
+      const aEnd = aStart + (parseInt(a.duration) || 30);
+      return start < aEnd && end > aStart;
+    });
+  };
+
+  /**
+   * Change the date (typed or via Bugun/Ertaga/Indinga chips). The chosen slot is kept only if it
+   * is still free and not in the past on the new date, otherwise it is cleared with a hint.
+   */
+  const applyDate = (nextDate) => {
+    if (nextDate === form.date) return;
+    const prevTime = form.time;
+    let nextTime = prevTime;
+    let hint = null;
+    if (nextDate && prevTime) {
+      const isPast = isSlotPastForDate(prevTime, nextDate);
+      const isBusy = !isPast && !!findConflictAt(prevTime, nextDate, form.doctor_id, form.duration);
+      if (isPast || isBusy) {
+        nextTime = '';
+        hint = { time: prevTime, isPast: true, message: "Tanlangan vaqt band/o'tgan — boshqa vaqtni tanlang" };
+      }
+    }
+    setForm(prev => ({ ...prev, date: nextDate, time: nextTime }));
+    setBusyInfo(hint);
+  };
+
+  const todayStr = tashkentToday();
+  const quickDateChips = [
+    { label: 'Bugun', value: todayStr },
+    { label: 'Ertaga', value: addDaysStr(todayStr, 1) },
+    { label: 'Indinga', value: addDaysStr(todayStr, 2) },
+  ];
+
   const renderToothButton = (num) => {
     const numStr = String(num);
     const selectedTeeth = form.tooth_number 
@@ -684,8 +787,8 @@ export default function AppointmentModal({
           {/* Scrollable form body */}
           <div className="px-5 pb-5 space-y-4 flex-1 overflow-y-auto no-scrollbar">
 
-            {/* Doctor, Date, Time Grid */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Doctor + compact Sana / Vaqt row */}
+            <div className="space-y-3">
               <div className="space-y-1">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
                   {t('appointments.doctor')} <span className="text-red-500 font-black ml-0.5">*</span>
@@ -711,48 +814,59 @@ export default function AppointmentModal({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-                  {t('appointments.date')} *
-                </Label>
-                <ClinicDateField
-                  value={form.date} 
-                  onChange={e => {
-                    const nextDate = e.target.value;
-                    setForm(prev => {
-                      let nextTime = prev.time;
-                      if (nextDate && (!nextTime || isSlotPastForDate(nextTime, nextDate))) {
-                        nextTime = getNextReasonableSlot(nextDate) || '';
+              <div className="flex flex-wrap items-end gap-x-2 gap-y-2">
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                    {t('appointments.date')} *
+                  </Label>
+                  <ClinicDateField
+                    value={form.date}
+                    onChange={e => applyDate(e.target.value)}
+                    className="h-9 w-[7.25rem] rounded-xl border-slate-100 bg-slate-50 px-2.5 font-bold text-xs"
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  {quickDateChips.map(chip => {
+                    const active = normalizeToDateOnly(form.date) === chip.value;
+                    return (
+                      <button
+                        key={chip.label}
+                        type="button"
+                        onClick={() => applyDate(chip.value)}
+                        className={`h-9 px-2.5 rounded-xl border text-[10px] font-black uppercase tracking-wide transition-all active:scale-95 ${
+                          active
+                            ? 'bg-[#1499AD] border-[#1499AD] text-white shadow-sm'
+                            : 'bg-white border-slate-100 text-slate-500 hover:border-[#1499AD] hover:text-[#1499AD]'
+                        }`}
+                      >
+                        {chip.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="space-y-1 ml-auto">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                    {t('appointments.time')} *
+                  </Label>
+                  <Input
+                    type="time"
+                    value={form.time}
+                    onChange={e => {
+                      const nextTime = e.target.value;
+                      if (form.date && nextTime && isSlotPastForDate(nextTime, form.date)) {
+                        const msg = language === 'ru' ? 'Время уже прошло' : language === 'en' ? 'Time has passed' : "Ushbu vaqt o'tib ketgan";
+                        toast.warning(msg);
+                        const bumped = getNextReasonableSlot(form.date) || '';
+                        setForm(prev => ({ ...prev, time: bumped }));
+                        setBusyInfo({ time: nextTime, isPast: true, message: msg });
+                        return;
                       }
-                      return { ...prev, date: nextDate, time: nextTime };
-                    });
-                    setBusyInfo(null);
-                  }}
-                  className="h-10 rounded-xl border-slate-100 bg-slate-50 font-bold text-xs"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-                  {t('appointments.time')} *
-                </Label>
-                <Input 
-                  type="time" 
-                  value={form.time} 
-                  onChange={e => {
-                    const nextTime = e.target.value;
-                    if (form.date && nextTime && isSlotPastForDate(nextTime, form.date)) {
-                      const msg = language === 'ru' ? 'Время уже прошло' : language === 'en' ? 'Time has passed' : "Ushbu vaqt o'tib ketgan";
-                      toast.warning(msg);
-                      const bumped = getNextReasonableSlot(form.date) || '';
-                      setForm(prev => ({ ...prev, time: bumped }));
-                      setBusyInfo({ time: nextTime, isPast: true, message: msg });
-                      return;
-                    }
-                    setForm(prev => ({ ...prev, time: nextTime }));
-                    setBusyInfo(null);
-                  }}
-                  className="h-10 rounded-xl border-slate-100 bg-slate-50 font-bold text-xs"
-                />
+                      setForm(prev => ({ ...prev, time: nextTime }));
+                      setBusyInfo(null);
+                    }}
+                    className="h-9 w-[6.25rem] rounded-xl border-slate-100 bg-slate-50 px-2.5 font-bold text-xs"
+                  />
+                </div>
               </div>
             </div>
 

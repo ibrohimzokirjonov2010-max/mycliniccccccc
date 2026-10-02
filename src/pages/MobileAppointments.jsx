@@ -335,7 +335,7 @@ export default function MobileAppointments() {
           patients={patients}
           services={services}
           allAppointments={appointments}
-          prefillDate={selectedDate.toISOString().split('T')[0]}
+          prefillDate={`${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`}
           prefillTime={prefillTime}
           onSaved={loadData}
         />
