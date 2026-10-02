@@ -408,17 +408,24 @@ export default function ChairsidePatientProfile({
                 const plan = (plans || []).find((p) => String(p.id) === String(step?.planId));
                 try {
                   await setPlanStepInProgress(plan, step?.serviceIndex);
-                  toast.success(`"${step?.title || 'Bosqich'}" jarayonda`);
-                  if (typeof onReload === 'function') await onReload();
                 } catch (error) {
                   console.error('Advance plan step error:', error);
                   toast.error("Bosqichni yangilashda xatolik yuz berdi");
+                  return false;
                 }
+                toast.success(`Keyingi bosqich boshlandi: ${step?.title || 'Bosqich'}`);
+                try {
+                  if (typeof onReload === 'function') await onReload();
+                } catch (reloadError) {
+                  console.error('Plan reload after advance failed:', reloadError);
+                }
+                return true;
               }}
-              onNextClinical={(step) => {
+              onNextClinical={(step, opts) => {
                 const target = step || null;
                 setClinicalTab('tashxis');
-                document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // After "Keyingi" the stepper stays in view; it scrolls to the new step itself.
+                if (!opts?.advanced) document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 if (target?.tooth && typeof onSelectTooth === 'function') {
                   onSelectTooth({ fdi: String(target.tooth), id: String(target.tooth) });
                 }

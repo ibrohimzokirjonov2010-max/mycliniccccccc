@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { Check, CalendarDays, Stethoscope, ClipboardList, ChevronDown } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import { groupProgress } from './planStepperModel';
@@ -10,7 +11,14 @@ function stepCaption(step) {
   return `${step.title || ''}${tooth}`;
 }
 
-function StepTrack({ steps }) {
+function StepTrack({ steps, focusId }) {
+  const trackRef = useRef(null);
+  useEffect(() => {
+    if (focusId == null || !trackRef.current) return;
+    const node = Array.from(trackRef.current.querySelectorAll('[data-step-id]'))
+      .find((el) => el.getAttribute('data-step-id') === String(focusId));
+    node?.scrollIntoView?.({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [focusId]);
   const visible = (steps || []).filter((step) => step.state !== 'done');
   if (visible.length === 0) {
     return (
@@ -20,13 +28,13 @@ function StepTrack({ steps }) {
     );
   }
   return (
-    <div className="overflow-x-auto pb-1" data-testid="plan-stepper-scroll">
+    <div ref={trackRef} className="overflow-x-auto pb-1" data-testid="plan-stepper-scroll">
       <div className="flex items-start w-max">
         {visible.map((step, idx) => {
           const isActive = step.state === 'active';
           const isLast = idx === visible.length - 1;
           return (
-            <div key={step.id || idx} className="flex items-start shrink-0">
+            <div key={step.id || idx} data-step-id={step.id} className="flex items-start shrink-0">
               <div className="w-[108px] sm:w-[124px] px-1 flex flex-col items-center text-center">
                 <div
                   className={cn(
@@ -87,6 +95,9 @@ export default function TodayPlanBar({
   const [selectedId, setSelectedId] = useState(planGroups[0]?.id || null);
   const [doneOpen, setDoneOpen] = useState(false);
   const [advancing, setAdvancing] = useState(false);
+  // Steps started from the "Keyingi" button. Shown as "Jarayonda" right away, before the plan reloads.
+  const [startedIds, setStartedIds] = useState(() => new Set());
+  const [focusId, setFocusId] = useState(null);
 
   useEffect(() => {
     if (!planGroups.some((group) => group.id === selectedId)) {
@@ -98,6 +109,13 @@ export default function TodayPlanBar({
   const selected = planGroups.find((group) => group.id === selectedId) || planGroups[0] || null;
   const progress = groupProgress(selected);
   const doneSteps = (selected?.steps || []).filter((step) => step.state === 'done');
+  // A saved plan step only looks "Jarayonda" when it really is In Progress (or was just started here).
+  // Before, the first waiting step was drawn as active already, so "Keyingi" changed nothing on screen.
+  const displaySteps = (selected?.steps || []).map((step) => {
+    if (step.planId == null || step.rawState !== 'pending') return step;
+    const state = startedIds.has(step.id) ? 'active' : 'pending';
+    return state === step.state ? step : { ...step, state };
+  });
   const activeStep = (selected?.steps || []).find((step) => step.state === 'active')
     || (selected?.steps || []).find((step) => step.state === 'pending')
     || null;
@@ -194,7 +212,7 @@ export default function TodayPlanBar({
               <p className="mb-2 text-xs font-black text-slate-700 truncate">{selected.title}</p>
             )}
 
-            <StepTrack steps={selected?.steps || []} />
+            <StepTrack steps={displaySteps} focusId={focusId} />
 
             {doneSteps.length > 0 && (
               <div className="mt-2">
@@ -228,7 +246,7 @@ export default function TodayPlanBar({
               {typeof onNextClinical === 'function' && (() => {
                 const planSteps = (selected?.steps || []).filter((step) => step.planId != null);
                 if (typeof onAdvanceStep === 'function' && planSteps.length > 0) {
-                  const nextStep = planSteps.find((step) => step.rawState === 'pending');
+                  const nextStep = planSteps.find((step) => step.rawState === 'pending' && !startedIds.has(step.id));
                   if (!nextStep) {
                     const allDone = planSteps.every((step) => step.state === 'done');
                     return (
@@ -249,13 +267,18 @@ export default function TodayPlanBar({
                       data-testid="plan-next-step"
                       disabled={advancing}
                       onClick={async () => {
+                        if (advancing) return;
                         setAdvancing(true);
+                        let ok = false;
                         try {
-                          await onAdvanceStep(nextStep);
+                          ok = (await onAdvanceStep(nextStep)) !== false;
                         } finally {
                           setAdvancing(false);
                         }
-                        onNextClinical(nextStep);
+                        if (!ok) return;
+                        setStartedIds((prev) => new Set(prev).add(nextStep.id));
+                        setFocusId(nextStep.id);
+                        onNextClinical(nextStep, { advanced: true });
                       }}
                       className="inline-flex max-w-full items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-[11px] font-black shadow-sm cursor-pointer hover:opacity-95 disabled:opacity-60 disabled:cursor-wait"
                       style={{ backgroundColor: TEAL }}
@@ -268,7 +291,10 @@ export default function TodayPlanBar({
                 return (
                   <button
                     type="button"
-                    onClick={() => onNextClinical(activeStep)}
+                    onClick={() => {
+                      toast.info(activeStep ? `Keyingi bosqich: ${stepCaption(activeStep)}` : "Tashxis / muolaja bo'limi");
+                      onNextClinical(activeStep);
+                    }}
                     className="inline-flex max-w-full items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-[11px] font-black shadow-sm cursor-pointer hover:opacity-95"
                     style={{ backgroundColor: TEAL }}
                   >
