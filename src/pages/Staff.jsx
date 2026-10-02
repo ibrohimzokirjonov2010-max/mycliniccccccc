@@ -25,6 +25,8 @@ import { QUERY_KEYS } from '@/lib/queryKeys';
 import { setStaffOverride, clearStaffOverride } from '@/lib/staffOverrides';
 import { PAGE_ACCESS, PAGE_KEY_BY_LABEL, readPageAccess } from '@/lib/pageAccess';
 import { formatDoctorName } from '@/lib/displayText';
+import { formatClinicDateWithWeekday } from '@/lib/clinicTime';
+import { buildStaffDay, appointmentStatusText } from '@/lib/staffDay';
 import {
   dateKey, todayISO, timeToMinutes, minutesToLabel, fmtMoney, fmtCompact,
   personName, initials, avatarTone, userPhoto, isIncomePayment, isCompletedStatus,
@@ -164,6 +166,7 @@ export default function Staff() {
   const [users, setUsers] = useState([]);
   const [payments, setPayments] = useState([]);
   const [appointments, setAppointments] = useState([]);
+  const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useRestorableState('search', '');
   const [roleFilter, setRoleFilter] = useRestorableState('roleFilter', 'all');
@@ -189,14 +192,16 @@ export default function Staff() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [allUsers, pays, appts] = await Promise.all([
+      const [allUsers, pays, appts, planList] = await Promise.all([
         base44.entities.User.list('name', 100),
         base44.entities.Payment.list('-date', 500),
         base44.entities.Appointment.list('-date', 500),
+        base44.entities.TreatmentPlan.list('-created_date', 500).catch(() => []),
       ]);
       setUsers(allUsers || []);
       setPayments(pays || []);
       setAppointments(appts || []);
+      setPlans(planList || []);
     } catch (error) {
       console.error('Staff loading error:', error);
       toast.error(t('staff.addError'));
@@ -470,9 +475,6 @@ export default function Staff() {
 
   // "Qabullar" → shu shifokorning barcha qabullari (kartadagi son bekor qilinganlarni hisoblamaydi)
   const openDoctorAppointments = (card) => openSchedule(card, { listPeriod: 'all', excludeCancelled: true });
-
-  // Bu hafta kuni → shu kun + shifokor jadvali
-  const openDoctorDay = (card, date) => openSchedule(card, { date, listPeriod: 'day', excludeCancelled: true });
 
   // "Bemorlar soni" → Bemorlar sahifasi shu shifokor bo'yicha filtrlangan
   const openDoctorPatients = (card) => {
@@ -929,7 +931,12 @@ export default function Staff() {
 
       {detail && (
         <StaffDrawer
+          key={detail.id}
           card={detail}
+          users={users}
+          payments={payments}
+          appointments={appointments}
+          plans={plans}
           phone={phone}
           language={language}
           tab={detailTab}
@@ -949,7 +956,6 @@ export default function Staff() {
           onToggleAccess={(pageKey, next) => toggleAccess(detail, pageKey, next)}
           onOpenAppointments={() => openDoctorAppointments(detail)}
           onOpenPatients={() => openDoctorPatients(detail)}
-          onOpenDay={(date) => openDoctorDay(detail, date)}
         />
       )}
     </div>
@@ -1286,9 +1292,15 @@ function IconAction({ onClick, children, label }) {
   );
 }
 
-function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, weekStart, presenceLabel, onClose, onEdit, onDelete, onCall, onMessage, onSchedule, onPerms, onToggleAccess, onOpenAppointments, onOpenPatients, onOpenDay }) {
+function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, weekStart, presenceLabel, onClose, onEdit, onDelete, onCall, onMessage, onSchedule, onPerms, onToggleAccess, onOpenAppointments, onOpenPatients, users, payments, appointments, plans }) {
   // Telefon/brauzer "Orqaga" tugmasi avval xodim panelini yopadi
   useBackClose(true, onClose);
+  // Bu hafta: bosilgan kun shu panel ichida ochiladi (sahifaga o'tmaydi); qayta bossa yopiladi
+  const [dayKey, setDayKey] = useState(null);
+  const dayData = useMemo(
+    () => buildStaffDay({ staffId: card.id, staff: users, payments, appointments, plans, dayKey }),
+    [card.id, users, payments, appointments, plans, dayKey]
+  );
   const clinicAmount = Math.max(0, card.revenue - card.share);
   const clinicPct = card.revenue > 0 ? Math.round((clinicAmount / card.revenue) * 100) : null;
   const doctorPct = card.revenue > 0 ? Math.max(0, 100 - clinicPct) : 0;
@@ -1388,15 +1400,35 @@ function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, 
                 <button type="button" onClick={onSchedule} className="text-[11.5px] font-semibold text-teal-700 inline-flex items-center gap-0.5">{tx(language, 'Jadvalni ochish', 'Открыть график', 'Open schedule')}<ChevronRight className="w-3.5 h-3.5" /></button>
               </div>
               <div className="grid grid-cols-7 gap-1">
-                {weekDays.map((d) => (
-                  <button type="button" key={d.key} onClick={() => onOpenDay(d.key)} title={`${d.short} ${d.date.getDate()} — jadvalni ochish`} className={cn('border rounded-lg py-1.5 text-center min-w-0 cursor-pointer hover:ring-2 hover:ring-[#1499AD]/30 active:scale-[0.97] transition-all', d.isToday ? 'bg-[#1499AD] border-[#1499AD] text-white' : d.off ? 'bg-slate-50 text-slate-400 border-slate-100 hover:border-[#1499AD]' : 'border-slate-100 hover:border-[#1499AD] hover:bg-teal-50/50')}>
-                    <small className={cn('block text-[9.5px] font-semibold', d.isToday ? 'text-teal-50' : 'text-slate-400')}>{d.short}</small>
-                    <b className="block text-[13px]">{d.date.getDate()}</b>
-                    <div className={cn('text-[9px] font-semibold mt-0.5 truncate px-0.5', d.isToday ? 'text-teal-50' : 'text-slate-400')}>{d.hours || '—'}</div>
-                    <div className={cn('text-[10px] font-bold', d.isToday ? 'text-white' : d.count ? 'text-teal-700' : 'text-slate-300')}>{d.count ? `${d.count}` : '—'}</div>
-                  </button>
-                ))}
+                {weekDays.map((d) => {
+                  const active = dayKey === d.key;
+                  const light = active || d.isToday;
+                  return (
+                    <button
+                      type="button"
+                      key={d.key}
+                      onClick={() => setDayKey((cur) => (cur === d.key ? null : d.key))}
+                      aria-pressed={active}
+                      title={`${d.short} ${d.date.getDate()} — ${active ? tx(language, 'yopish', 'закрыть', 'close') : tx(language, "shu kun ma'lumoti", 'данные за день', 'day details')}`}
+                      className={cn(
+                        'border rounded-lg py-1.5 text-center min-w-0 cursor-pointer active:scale-[0.97] transition-all',
+                        active ? 'bg-[#0C1222] border-[#0C1222] text-white ring-2 ring-[#1499AD]/40'
+                          : d.isToday ? 'bg-[#1499AD] border-[#1499AD] text-white hover:ring-2 hover:ring-[#1499AD]/30'
+                            : d.off ? 'bg-slate-50 text-slate-400 border-slate-100 hover:border-[#1499AD]'
+                              : 'border-slate-100 hover:border-[#1499AD] hover:bg-teal-50/50'
+                      )}
+                    >
+                      <small className={cn('block text-[9.5px] font-semibold', light ? 'text-teal-50' : 'text-slate-400')}>{d.short}</small>
+                      <b className="block text-[13px]">{d.date.getDate()}</b>
+                      <div className={cn('text-[9px] font-semibold mt-0.5 truncate px-0.5', light ? 'text-teal-50' : 'text-slate-400')}>{d.hours || '—'}</div>
+                      <div className={cn('text-[10px] font-bold', light ? 'text-white' : d.count ? 'text-teal-700' : 'text-slate-300')}>{d.count ? `${d.count}` : '—'}</div>
+                    </button>
+                  );
+                })}
               </div>
+              {dayKey && (
+                <DayDetails dayKey={dayKey} data={dayData} language={language} onClose={() => setDayKey(null)} />
+              )}
               {!card.scheduleKnown && (
                 <p className="text-[11px] text-slate-400 mt-2">{tx(language, 'Ish soatlari sozlamalarda kiritilmagan. Kunlar qabullar bo\'yicha.', 'Часы работы не заданы. Дни отмечены по приёмам.', 'Working hours are not set. Days reflect recorded visits.')}</p>
               )}
@@ -1476,6 +1508,104 @@ function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, 
         </div>
       </aside>
     </div>
+  );
+}
+
+function DayDetails({ dayKey, data, language, onClose }) {
+  const th = 'px-1.5 py-1 text-left text-[9.5px] font-extrabold uppercase tracking-wide text-slate-500 bg-slate-100 border border-slate-200';
+  const td = 'px-1.5 py-1 border border-slate-200 align-top leading-tight break-words';
+  const kindCls = { done: 'text-emerald-600', live: 'text-teal-700', plan: 'text-slate-500' };
+  const dotCls = { done: 'bg-emerald-500', live: 'bg-[#1499AD]', plan: 'bg-slate-300' };
+  return (
+    <section className="mt-2.5 rounded-lg border border-slate-300 overflow-hidden bg-white" aria-label={tx(language, "Kun ma'lumoti", 'Данные за день', 'Day details')}>
+      <header className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-[#0C1222] text-white">
+        <b className="text-[12px] font-extrabold truncate">{formatClinicDateWithWeekday(dayKey, language)}</b>
+        <button type="button" onClick={onClose} aria-label={tx(language, 'Yopish', 'Закрыть', 'Close')} className="w-5 h-5 grid place-items-center rounded text-slate-300 hover:text-white"><X className="w-3.5 h-3.5" /></button>
+      </header>
+      <div className="grid grid-cols-2 border-b border-slate-200 bg-slate-50">
+        <div className="px-2.5 py-1.5">
+          <span className="block text-[9.5px] font-bold uppercase tracking-wide text-slate-400">{tx(language, 'Bemorlar', 'Пациенты', 'Patients')}</span>
+          <b className="text-[14px] font-extrabold tabular-nums">{data.patients}</b>
+        </div>
+        <div className="px-2.5 py-1.5 border-l border-slate-200">
+          <span className="block text-[9.5px] font-bold uppercase tracking-wide text-slate-400">{tx(language, 'Tushum', 'Выручка', 'Revenue')}</span>
+          <b className="text-[14px] font-extrabold tabular-nums">{fmtMoney(data.income)}</b>
+        </div>
+      </div>
+      <div className="p-2 space-y-2.5">
+        <div>
+          <div className="text-[11px] font-bold text-slate-700 mb-1">{tx(language, "Bemorlar ro'yxati", 'Список пациентов', 'Patients')} <span className="text-slate-400 font-semibold">({data.appointments.length})</span></div>
+          {data.appointments.length === 0 ? (
+            <p className="text-[11.5px] text-slate-400 py-1">{tx(language, "Bu kunda qabul yo'q.", 'В этот день приёмов нет.', 'No visits on this day.')}</p>
+          ) : (
+            <table className="w-full table-fixed border-collapse text-[11.5px]">
+              <colgroup><col style={{ width: 42 }} /><col /><col /><col style={{ width: 78 }} /></colgroup>
+              <thead>
+                <tr>
+                  <th className={th}>{tx(language, 'Vaqt', 'Время', 'Time')}</th>
+                  <th className={th}>{tx(language, 'Bemor', 'Пациент', 'Patient')}</th>
+                  <th className={th}>{tx(language, 'Xizmat', 'Услуга', 'Service')}</th>
+                  <th className={th}>{tx(language, 'Holat', 'Статус', 'Status')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.appointments.map((a, i) => (
+                  <tr key={a.id || `${a.time}-${a.patient}-${i}`}>
+                    <td className={cn(td, 'font-bold tabular-nums')}>{a.time || '—'}</td>
+                    <td className={cn(td, 'font-semibold')}>{a.patient || '—'}</td>
+                    <td className={td}>{a.service || '—'}</td>
+                    <td className={td}>
+                      <span className={cn('inline-flex items-start gap-1 font-semibold', kindCls[a.kind])}>
+                        <i className={cn('w-1.5 h-1.5 rounded-full mt-[5px] shrink-0', dotCls[a.kind])} />
+                        {appointmentStatusText(a.status, language)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div>
+          <div className="text-[11px] font-bold text-slate-700 mb-1">{tx(language, "To'lovlar", 'Платежи', 'Payments')} <span className="text-slate-400 font-semibold">({data.payments.length})</span></div>
+          {data.payments.length === 0 ? (
+            <p className="text-[11.5px] text-slate-400 py-1">{tx(language, "Bu kuni to'lov yo'q.", 'В этот день платежей нет.', 'No payments on this day.')}</p>
+          ) : (
+            <table className="w-full table-fixed border-collapse text-[11.5px]">
+              <colgroup><col style={{ width: '34%' }} /><col style={{ width: 96 }} /><col /></colgroup>
+              <thead>
+                <tr>
+                  <th className={th}>{tx(language, 'Bemor', 'Пациент', 'Patient')}</th>
+                  <th className={cn(th, 'text-right')}>{tx(language, "To'lov", 'Сумма', 'Paid')}</th>
+                  <th className={th}>{tx(language, 'Qaysi xizmat uchun', 'За какую услугу', 'Paid for')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.payments.map((r, i) => (
+                  <tr key={r.id || `${r.patient}-${i}`}>
+                    <td className={cn(td, 'font-semibold')}>
+                      {r.patient || '—'}
+                      {r.time && <span className="block text-[10px] font-medium text-slate-400 tabular-nums">{r.time}</span>}
+                    </td>
+                    <td className={cn(td, 'text-right font-bold tabular-nums text-emerald-700')}>{fmtMoney(r.amount)}</td>
+                    <td className={td} title={r.approx ? tx(language, "Taxminiy: to'lov yozuvida xizmat saqlanmagan", 'Примерно: в платеже услуга не сохранена', 'Approximate: the payment has no saved service') : undefined}>
+                      {r.service ? <>{r.approx && <span className="text-slate-400">≈ </span>}{r.service}</> : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td className={cn(td, 'bg-slate-50 font-extrabold')}>{tx(language, 'Jami', 'Итого', 'Total')}</td>
+                  <td className={cn(td, 'bg-slate-50 text-right font-extrabold tabular-nums')}>{fmtMoney(data.income)}</td>
+                  <td className={cn(td, 'bg-slate-50')} />
+                </tr>
+              </tfoot>
+            </table>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
