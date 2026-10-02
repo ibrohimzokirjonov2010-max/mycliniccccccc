@@ -602,6 +602,37 @@
   text-align: left;
 }
 
+.implant-wizard-selected-item {
+  position: relative;
+}
+
+.implant-wizard-selected-item .implant-wizard-selected-row {
+  padding-right: 34px;
+}
+
+.implant-wizard-selected-row-remove {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.12);
+  color: #0f766e;
+  cursor: pointer;
+  padding: 0;
+}
+
+.implant-wizard-selected-row-remove:hover {
+  background: #e11d48;
+  color: #fff;
+}
+
 .implant-wizard-selected-row.is-active {
   background: #0d9488;
   border-color: #0f766e;
