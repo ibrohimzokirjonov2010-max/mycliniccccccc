@@ -1206,7 +1206,14 @@
     "selectedServices": "Services selected",
     "planSelected": "Plan selected",
     "selectedRemaining": "Selected balance",
-    "overSelectionWarn": "Amount exceeds the selected balance by {amount} sum. The excess goes to the next open plans."
+    "overSelectionWarn": "Amount exceeds the selected balance by {amount} sum. The excess goes to the next open plans.",
+    "paidForServices": "Paid for services",
+    "colPlan": "Plan",
+    "colTooth": "Tooth",
+    "colServiceName": "Service",
+    "colPaidNow": "From this payment",
+    "wholePlan": "Whole plan",
+    "otherPlansAmount": "Other open plans"
   },
   "receipt": {
     "title": "Receipt",

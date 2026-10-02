@@ -1311,7 +1311,14 @@
     "selectedServices": "Tanlangan xizmatlar",
     "planSelected": "Reja tanlandi",
     "selectedRemaining": "Tanlangan qoldiq",
-    "overSelectionWarn": "Summa tanlangan qoldiqdan {amount} so'm ko'p. Ortig'i keyingi ochiq rejalarga o'tadi."
+    "overSelectionWarn": "Summa tanlangan qoldiqdan {amount} so'm ko'p. Ortig'i keyingi ochiq rejalarga o'tadi.",
+    "paidForServices": "Qaysi xizmatlar uchun to'langan",
+    "colPlan": "Reja",
+    "colTooth": "Tish",
+    "colServiceName": "Xizmat",
+    "colPaidNow": "Ushbu to'lovdan",
+    "wholePlan": "Butun reja",
+    "otherPlansAmount": "Boshqa ochiq rejalarga"
   },
   "receipt": {
     "title": "Chek",
