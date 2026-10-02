@@ -21,6 +21,7 @@ import { getToothIllustrationSrc, pickIllustrationKindFromServices } from '@/uti
 import { paymentsForPlan } from '@/lib/treatmentDelete';
 import { isPlanLocked, PLAN_LOCKED_TOAST, PLAN_LOCKED_TOOLTIP } from '@/lib/planLock';
 import JawChoice from '@/components/patients/JawChoice';
+import { ToothMarkerOverlay, ToothCountBadge, buildToothPlanMarkers, categoryColorOf, markerTitle, CATEGORY_DOT_COLORS } from './ToothPlanMarkers';
 import {
   applyJawChoice,
   collectJawRows,
@@ -474,6 +475,9 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
     });
     return markers;
   }, [toothHistory]);
+
+  // Reja uchun tanlangan xizmatlar: har bir tishda kategoriya rangidagi badge (soni) + tooltip
+  const planMarkers = useMemo(() => buildToothPlanMarkers(toothData, isJawStorageKey), [toothData]);
 
   const odontogramStatuses = useMemo(() => {
     const statuses = {};
@@ -1116,13 +1120,15 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                       const isActive   = activeTooth === internalId;
                       const isDisabled = removedToothFdis.map(fdiToInternal).filter(Boolean).includes(internalId);
                       const mark = isActive ? '#1499AD' : isSelected ? '#10b981' : null;
+                      const planMarker = planMarkers[internalId] || null;
+                      const isUnassigned = isSelected && !planMarker;
                       return (
                         <button
                           type="button"
                           disabled={isDisabled}
                           data-fdi={fdi}
                           aria-label={`${fdi}-tish`}
-                          title={isDisabled ? `${fdi}-tish olib tashlangan` : `${fdi}-tish`}
+                          title={isDisabled ? `${fdi}-tish olib tashlangan` : (planMarker || isUnassigned) ? markerTitle(fdi, planMarker) : `${fdi}-tish`}
                           onClick={() => {
                             if (isDisabled) { toast.error(`Tish #${fdi} olib tashlangan.`); return; }
                             const isActive = activeTooth === internalId;
@@ -1143,6 +1149,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                               : "w-6 sm:w-7 md:w-[25px] lg:w-7 h-7 sm:h-8 rounded-lg",
                             isDisabled  ? "bg-slate-100 border-slate-200 cursor-not-allowed opacity-40" :
                             isActive    ? "border-[#1499AD] ring-2 ring-[#1499AD]/30 shadow-md shadow-[#1499AD]/10 scale-105" :
+                            isUnassigned ? "border-amber-400 border-dashed bg-amber-50 shadow-sm" :
                             isSelected  ? "border-emerald-500 shadow-sm" :
                                           "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                           )}
@@ -1155,6 +1162,11 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                           />
                           {mark && (
                             <span aria-hidden="true" className="absolute bottom-0.5 left-0.5 right-0.5 h-[3px] rounded-full" style={{ background: mark }} />
+                          )}
+                          {planMarker && (
+                            <span className="absolute top-0 left-0 z-10 pointer-events-none">
+                              <ToothCountBadge marker={planMarker} size={14} />
+                            </span>
                           )}
                           {historyMarkers[internalId] && (
                             <span aria-hidden="true" className="absolute top-0.5 right-0.5 flex gap-0.5">
@@ -1180,6 +1192,13 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                           <div className="flex-1 min-h-0 overflow-hidden bg-[#fafafa] py-2 px-3 flex flex-col">
                             <div className="w-full flex-1 min-h-0 overflow-y-auto flex items-start justify-center">
                               <div className="w-full max-w-full">
+                              <ToothMarkerOverlay
+                                markers={planMarkers}
+                                selectedTeeth={selectedTeeth}
+                                activeTooth={activeTooth}
+                                fdiOf={idToFdi}
+                                onPickTooth={(toothId) => { if (selectedTeeth.includes(toothId)) setActiveTooth(toothId); }}
+                              >
                               <ProfessionalOdontogram
                                 selectedTeeth={selectedTeeth}
                                 onChange={() => {}}
@@ -1208,11 +1227,14 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                 hideLegend={true}
                                 hideStats={true}
                               />
+                              </ToothMarkerOverlay>
                               </div>
                             </div>
                             <div className="shrink-0 mt-1 flex items-center justify-center gap-3 text-[10px] font-bold text-slate-500 select-none" data-testid="tooth-history-legend">
                               <span className="inline-flex items-center gap-1"><i className="block w-2 h-2 rounded-full bg-emerald-500" /> Bajarilgan</span>
                               <span className="inline-flex items-center gap-1"><i className="block w-2 h-2 rounded-full bg-blue-500" /> Rejalashtirilgan</span>
+                              <span className="inline-flex items-center gap-1" data-testid="plan-marker-legend"><i className="block w-2.5 h-2.5 rounded-full" style={{ background: CATEGORY_DOT_COLORS.terapiya }} /><i className="block w-2.5 h-2.5 rounded-full -ml-1.5" style={{ background: CATEGORY_DOT_COLORS.xirurgiya }} /><i className="block w-2.5 h-2.5 rounded-full -ml-1.5" style={{ background: CATEGORY_DOT_COLORS.ortopediya }} /> Yangi reja xizmatlari (soni)</span>
+                              <span className="inline-flex items-center gap-1"><i className="block w-2.5 h-2.5 rounded border-2 border-dashed border-amber-400" /> Xizmat biriktirilmagan</span>
                             </div>
                           </div>
                         </div>
@@ -1322,6 +1344,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                     {toothSlotLabel(s.toothId) || `${idToFdi(s.toothId)}-tish`}
                                   </span>
                                   <div className="min-w-0 flex-1 flex items-center gap-1.5">
+                                    <i className="block w-2 h-2 rounded-full shrink-0" style={{ background: categoryColorOf(s.category, s.service_name) }} />
                                     <span className="text-[11px] font-bold text-slate-800 truncate">
                                       {s.service_name}
                                     </span>
@@ -1447,6 +1470,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                 {allSelectedServices.map((s, idx) => (
                                   <div key={idx} className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-100 shadow-sm text-left gap-2">
                                     <div className="min-w-0 flex-1">
+                                      <i className="inline-block w-2 h-2 rounded-full mr-1 align-middle" style={{ background: categoryColorOf(s.category, s.service_name) }} />
                                       <span className="text-[9px] font-black text-blue-500 uppercase mr-1.5">{toothSlotLabel(s.toothId) || `Tish #${idToFdi(s.toothId)}`}</span>
                                       <span className="text-[10px] font-bold text-slate-700 uppercase tracking-tight truncate block sm:inline">{s.service_name}</span>
                                     </div>

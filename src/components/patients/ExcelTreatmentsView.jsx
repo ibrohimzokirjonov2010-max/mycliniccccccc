@@ -1,7 +1,7 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, memo, Fragment } from 'react';
 import { useTranslation } from '@/i18n/LanguageContext';
-import { 
-  Plus, Search, FileSpreadsheet, 
+import {
+  Plus, Search, FileSpreadsheet,
   ArrowUpDown, ExternalLink, User,
   CheckCircle2, Clock, ClipboardList, FileText, ChevronRight,
   Calculator, Trash2, Lock
@@ -9,17 +9,66 @@ import {
 import { cn, formatCurrency } from '@/lib/utils';
 import TreatmentDeleteDialog from './TreatmentDeleteDialog';
 import { displayServiceName, formatDoctorName } from '@/lib/displayText';
-import { isPlanLocked, PLAN_LOCKED_BADGE, PLAN_LOCKED_TOOLTIP } from '@/lib/planLock';
+import { PLAN_LOCKED_BADGE, PLAN_LOCKED_TOOLTIP } from '@/lib/planLock';
+import {
+  isPlanLocked,
+  isDoneStatus,
+  numberPlans,
+  planPaid,
+  planProgress,
+  planStatusKey,
+  planTitle,
+  planToothList,
+  planTotal,
+} from '@/lib/planGroups';
+
+const formatDate = (value) => {
+  const dt = value ? new Date(value) : null;
+  if (!dt || isNaN(dt.getTime())) return value || '—';
+  return `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}.${dt.getFullYear()}`;
+};
+
+function StatusBadge({ status }) {
+  const s = String(status || '').toLowerCase();
+  if (s === 'completed' || s === 'bajarildi' || s === 'bajarilgan') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[9px] uppercase tracking-wide whitespace-nowrap">
+      <CheckCircle2 className="w-3 h-3" />Bajarildi
+    </span>
+  );
+  if (s === 'in_progress' || s === 'jarayonda') return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[9px] uppercase tracking-wide whitespace-nowrap">
+      <Clock className="w-3 h-3" />Jarayonda
+    </span>
+  );
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[9px] uppercase tracking-wide whitespace-nowrap">
+      <ClipboardList className="w-3 h-3" />Rejada
+    </span>
+  );
+}
+
+function LockIcon({ className = '' }) {
+  return (
+    <span
+      data-testid="plan-locked-icon"
+      title={PLAN_LOCKED_TOOLTIP}
+      aria-label={PLAN_LOCKED_BADGE}
+      className={cn('inline-flex items-center shrink-0 text-amber-600', className)}
+    >
+      <Lock className="w-3.5 h-3.5" />
+    </span>
+  );
+}
 
 /**
- * ExcelTreatmentsView – Responsive Treatment Plans View
- * Mobile: Professional card layout | Desktop: Table layout
+ * ExcelTreatmentsView – "Davolash rejalari": har bir reja = bitta qator.
+ * Qatorni bosganda faqat shu rejaning xizmatlari ochiladi (accordion).
+ * Mobile: kartalar | Desktop: jadval
  */
 function ExcelTreatmentsView({
   patient,
   plans = [],
   totalPaid = 0,
-  totalDebt = 0,
   onOpenTreatmentModal,
   onOpenPlanInvoice,
   onDeleteTreatment,
@@ -28,133 +77,178 @@ function ExcelTreatmentsView({
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState('date');
   const [sortAsc, setSortAsc] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Flatten all services across all plans
-  const allServicesRows = useMemo(() => {
-    const rows = [];
+  const planGroups = useMemo(() => {
     const effectiveTotalPaid = Math.max(Number(totalPaid || 0), Number(patient?.total_paid || 0));
-
-    (plans || []).forEach((plan, pIdx) => {
-      const planPrice = Number(plan.total_price || 0);
-      const planPaid = plans.length === 1
-        ? Math.min(planPrice, Math.max(Number(plan.paid_amount || 0), effectiveTotalPaid))
-        : Number(plan.paid_amount || 0);
-
-      const planServices = plan.services || [];
-      if (planServices.length === 0) {
-        rows.push({
-          id: `plan-${plan.id || pIdx}`,
-          planId: plan.id,
-          serviceIndex: 0,
-          planName: plan.name || `Davolash rejasi #${pIdx + 1}`,
-          serviceName: plan.name || 'Davolash muolajasi',
-          toothNumber: plan.tooth_number || '—',
-          doctorName: formatDoctorName(plan.doctor_name || patient?.doctor_name) || 'Shifokor',
-          price: planPrice,
-          status: plan.status || 'planned',
-          date: plan.created_date || plan.date || '',
-          planLocked: isPlanLocked(plan),
-          planServiceCount: planServices.length,
-          planObj: { ...plan, paid_amount: planPaid },
-        });
-      } else {
-        planServices.forEach((srv, sIdx) => {
-          rows.push({
-          id: `srv-${plan.id || pIdx}-${sIdx}`,
-          planId: plan.id,
-          serviceIndex: sIdx,
-          planName: plan.name || `Davolash rejasi #${pIdx + 1}`,
-          serviceName: displayServiceName(srv.name || srv.service_name || 'Muolaja'),
-          toothNumber: srv.tooth_number || plan.tooth_number || '—',
-          doctorName: formatDoctorName(srv.doctor || plan.doctor_name || patient?.doctor_name) || 'Shifokor',
-          price: Number(srv.price || srv.cost || 0),
-          status: srv.status || plan.status || 'planned',
-          date: srv.date || plan.created_date || '',
-          planLocked: isPlanLocked(plan),
-          planServiceCount: planServices.length,
-          planObj: { ...plan, paid_amount: planPaid },
-        });
-        });
-      }
+    const numberOf = numberPlans(plans);
+    return (plans || []).map((plan, pIdx) => {
+      const number = numberOf(plan, pIdx);
+      const total = planTotal(plan);
+      const paid = planPaid(plan, plans, effectiveTotalPaid);
+      const planObj = { ...plan, paid_amount: paid };
+      const locked = isPlanLocked(plan);
+      const rawServices = plan.services || [];
+      const serviceRows = rawServices.length === 0
+        ? [{
+            id: `plan-${plan.id || pIdx}`,
+            planId: plan.id,
+            serviceIndex: 0,
+            serviceName: plan.name || 'Davolash muolajasi',
+            toothNumber: plan.tooth_number || '—',
+            doctorName: formatDoctorName(plan.doctor_name || patient?.doctor_name) || 'Shifokor',
+            price: Number(plan.total_price || 0),
+            status: plan.status || 'planned',
+            date: plan.created_date || plan.date || '',
+            planLocked: locked,
+            planServiceCount: 0,
+            planObj,
+          }]
+        : rawServices.map((srv, sIdx) => ({
+            id: `srv-${plan.id || pIdx}-${sIdx}`,
+            planId: plan.id,
+            serviceIndex: sIdx,
+            serviceName: displayServiceName(srv.name || srv.service_name || 'Muolaja'),
+            toothNumber: srv.tooth_number || plan.tooth_number || '—',
+            doctorName: formatDoctorName(srv.doctor || plan.doctor_name || patient?.doctor_name) || 'Shifokor',
+            price: Number(srv.price || srv.cost || 0),
+            status: srv.status || (srv.completed ? 'completed' : plan.status) || 'planned',
+            date: srv.date || plan.created_date || '',
+            planLocked: locked,
+            planServiceCount: rawServices.length,
+            planObj,
+          }));
+      const progress = planProgress(plan);
+      return {
+        id: plan.id ?? `idx-${pIdx}`,
+        plan,
+        planObj,
+        number,
+        title: planTitle(number, plan),
+        rawName: plan.name || '',
+        teeth: planToothList(plan),
+        date: plan.created_date || plan.date || '',
+        total,
+        paid,
+        debt: Math.max(0, total - paid),
+        status: planStatusKey(plan),
+        locked,
+        serviceRows,
+        serviceCount: rawServices.length || serviceRows.length,
+        progress,
+      };
     });
-    return rows;
   }, [plans, patient, totalPaid]);
 
-  // Filter & sort
-  const filteredRows = useMemo(() => {
-    let list = [...allServicesRows];
+  const query = search.trim().toLowerCase();
 
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(r =>
-        r.serviceName.toLowerCase().includes(q) ||
-        r.planName.toLowerCase().includes(q) ||
-        String(r.toothNumber).includes(q) ||
-        r.doctorName.toLowerCase().includes(q)
-      );
+  // Filter: reja nomi/tish/shifokor/xizmat bo'yicha. Reja nomi mos kelsa - barcha xizmatlari, aks holda faqat mos xizmatlar.
+  const visibleGroups = useMemo(() => {
+    let list = planGroups.map((group) => ({ ...group, visibleRows: group.serviceRows }));
+    if (query) {
+      list = list.map((group) => {
+        const planHit = group.title.toLowerCase().includes(query)
+          || group.rawName.toLowerCase().includes(query)
+          || group.teeth.some((tooth) => tooth.includes(query));
+        const rows = planHit
+          ? group.serviceRows
+          : group.serviceRows.filter((row) =>
+              row.serviceName.toLowerCase().includes(query)
+              || String(row.toothNumber).toLowerCase().includes(query)
+              || row.doctorName.toLowerCase().includes(query));
+        return { ...group, visibleRows: rows, matched: rows.length > 0 };
+      }).filter((group) => group.matched);
     }
-
     list.sort((a, b) => {
-      const valA = sortField === 'date'
-        ? new Date(a.date || 0).getTime()
-        : sortField === 'price' ? a.price : (a[sortField] || '');
-      const valB = sortField === 'date'
-        ? new Date(b.date || 0).getTime()
-        : sortField === 'price' ? b.price : (b[sortField] || '');
+      const valA = sortField === 'date' ? new Date(a.date || 0).getTime() : sortField === 'price' ? a.total : a.number;
+      const valB = sortField === 'date' ? new Date(b.date || 0).getTime() : sortField === 'price' ? b.total : b.number;
+      if (valA === valB) return b.number - a.number;
       return sortAsc ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
     });
-
     return list;
-  }, [allServicesRows, search, sortField, sortAsc]);
+  }, [planGroups, query, sortField, sortAsc]);
 
-  // Totals
-  const { totalOriginal, totalDiscount, totalFinal } = useMemo(() => {
-    const orig = filteredRows.reduce((acc, r) => acc + Number(r.price || 0), 0);
-    const uniquePlansMap = new Map();
-    filteredRows.forEach(r => r.planObj?.id && uniquePlansMap.set(r.planObj.id, r.planObj));
-    let disc = 0;
-    uniquePlansMap.forEach(plan => {
-      let pDisc = Number(plan.discount_amount || 0);
-      if (!pDisc && Number(plan.discount_percent) > 0) {
-        const planServicesRaw = (plan.services || []).reduce((s, x) => s + Number(x.price || x.cost || 0), 0);
-        const raw = planServicesRaw > 0 ? planServicesRaw : Number(plan.total_price || 0);
-        pDisc = Math.floor(raw * (Number(plan.discount_percent) / 100));
-      } else if (!pDisc && Number(plan.total_price) > 0) {
-        const planServicesRaw = (plan.services || []).reduce((s, x) => s + Number(x.price || x.cost || 0), 0);
-        if (planServicesRaw > Number(plan.total_price)) pDisc = planServicesRaw - Number(plan.total_price);
-      }
-      disc += pDisc;
-    });
-    disc = Math.max(0, disc);
-    return { totalOriginal: orig, totalDiscount: disc, totalFinal: Math.max(0, orig - disc) };
-  }, [filteredRows]);
+  const totals = useMemo(() => visibleGroups.reduce((acc, group) => {
+    acc.total += group.total;
+    acc.paid += group.paid;
+    acc.debt += group.debt;
+    acc.services += group.visibleRows.length;
+    return acc;
+  }, { total: 0, paid: 0, debt: 0, services: 0 }), [visibleGroups]);
 
-  const getStatusBadge = (status) => {
-    const s = (status || '').toLowerCase();
-    if (s === 'completed' || s === 'bajarildi') return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[9px] uppercase tracking-wide">
-        <CheckCircle2 className="w-3 h-3" />Bajarildi
-      </span>
-    );
-    if (s === 'in_progress' || s === 'jarayonda') return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[9px] uppercase tracking-wide">
-        <Clock className="w-3 h-3" />Jarayonda
-      </span>
-    );
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[9px] uppercase tracking-wide">
-        <ClipboardList className="w-3 h-3" />Rejada
-      </span>
-    );
-  };
+  const allRows = useMemo(() => planGroups.flatMap((group) => group.serviceRows), [planGroups]);
+  const doneCount = allRows.filter((row) => isDoneStatus(row.status)).length;
+  const progressLabel = `${doneCount}/${allRows.length || 0}`;
 
-  const doneCount = allServicesRows.filter((row) => {
-    const status = String(row.status || '').toLowerCase();
-    return status === 'completed' || status === 'bajarildi' || status === 'bajarilgan';
-  }).length;
-  const progressLabel = `${doneCount}/${allServicesRows.length || 0}`;
+  const isOpen = (group) => (query ? true : expandedId === group.id);
+  const toggle = (group) => setExpandedId((prev) => (prev === group.id ? null : group.id));
+
+  const sortBy = (field) => { setSortField(field); setSortAsc(sortField === field ? !sortAsc : false); };
+
+  const renderServices = (group, variant) => (
+    <div className="space-y-1.5" data-testid="plan-services-panel">
+      {group.visibleRows.map((row) => {
+        const toothDisplay = row.toothNumber && row.toothNumber !== '—';
+        return (
+          <div
+            key={row.id}
+            data-testid="plan-service-row"
+            className={cn(
+              'bg-white rounded-xl border border-slate-200/80 px-3 py-2 flex gap-2',
+              variant === 'card' ? 'flex-col' : 'items-center flex-wrap'
+            )}
+          >
+            <div className="flex items-center gap-2 min-w-0 flex-1 basis-[12rem]">
+              <span className="inline-flex items-center justify-center font-mono font-black text-indigo-600 text-[11px] bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 min-w-[2.25rem] shrink-0">
+                {toothDisplay ? `#${row.toothNumber}` : '—'}
+              </span>
+              <p className="font-bold text-slate-900 text-xs leading-snug line-clamp-2 min-w-0" title={row.serviceName}>{row.serviceName}</p>
+            </div>
+            <div className="flex items-center gap-1.5 min-w-0 text-[11px] text-slate-600 font-medium basis-[8rem]" title={row.doctorName}>
+              <User className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+              <span className="truncate">{row.doctorName}</span>
+            </div>
+            <span className="font-mono font-black text-slate-900 text-xs whitespace-nowrap">{formatCurrency(row.price)}</span>
+            <StatusBadge status={row.status} />
+            <div className="flex items-center gap-1 ml-auto">
+              <button
+                type="button"
+                onClick={() => onOpenPlanInvoice && onOpenPlanInvoice(row.planObj)}
+                className="inline-flex items-center justify-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-700 text-white rounded-lg text-[10.5px] font-bold transition-all cursor-pointer active:scale-95"
+                title={t('patientProfile.invoiceBtn') || 'Faktura'}
+              >
+                <FileText className="w-3 h-3" />
+                <span>{t('patientProfile.invoiceBtn') || 'Faktura'}</span>
+                <ExternalLink className="w-2.5 h-2.5 opacity-70" />
+              </button>
+              {onDeleteTreatment && !(row.planLocked && row.planServiceCount > 1) && (
+                <button
+                  type="button"
+                  data-testid="treatment-delete"
+                  onClick={() => setPendingDelete(row)}
+                  className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-[10.5px] font-bold cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  O‘chirish
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const emptyState = (
+    <div className="py-14 text-center flex flex-col items-center gap-3">
+      <FileSpreadsheet className="w-10 h-10 text-slate-200" />
+      <p className="text-slate-400 text-sm font-semibold">
+        {t('patientProfile.noTreatmentsFound') || 'Davolash muolajalari topilmadi'}
+      </p>
+    </div>
+  );
 
   return (
     <div className="space-y-3">
@@ -167,7 +261,7 @@ function ExcelTreatmentsView({
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder={t('patientProfile.searchTreatments') || "Muolaja, tish #, shifokor qidirish..."}
+            placeholder={t('patientProfile.searchTreatments') || 'Muolaja, tish #, shifokor qidirish...'}
             className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1499AD]/30 focus:border-[#1499AD] transition-all"
           />
           {search && (
@@ -188,120 +282,75 @@ function ExcelTreatmentsView({
         )}
       </div>
 
-      {/* ── MOBILE CARDS (visible only on small screens) ── */}
+      {/* ── MOBILE CARDS (bitta reja = bitta karta) ── */}
       <div className="md:hidden space-y-2.5">
-        {filteredRows.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-100 py-14 text-center flex flex-col items-center gap-3">
-            <FileSpreadsheet className="w-10 h-10 text-slate-200" />
-            <p className="text-slate-400 text-sm font-semibold">
-              {t('patientProfile.noTreatmentsFound') || "Davolash muolajalari topilmadi"}
-            </p>
-          </div>
+        {visibleGroups.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-100">{emptyState}</div>
         ) : (
           <>
-            {filteredRows.map((row, idx) => {
-              const dateStr = row.date ? new Date(row.date).toLocaleDateString('uz-UZ') : '—';
-              const toothDisplay = row.toothNumber && row.toothNumber !== '—';
-
+            {visibleGroups.map((group) => {
+              const open = isOpen(group);
               return (
-                <div
-                  key={row.id || idx}
-                  className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
-                >
-                  {/* Card Top */}
-                  <div className="flex items-start gap-3 p-3.5 pb-2.5">
-                    {/* Tooth avatar */}
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0">
-                      {toothDisplay ? (
-                        <span className="text-[11px] font-black text-indigo-700 leading-none">#{row.toothNumber}</span>
-                      ) : (
-                        <span className="text-base">🦷</span>
-                      )}
+                <div key={group.id} data-testid="plan-row" className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={() => toggle(group)}
+                    className="w-full text-left p-3.5 flex flex-col gap-2 active:bg-slate-50"
+                  >
+                    <div className="flex items-start gap-2">
+                      <ChevronRight className={cn('w-4 h-4 text-slate-400 shrink-0 mt-0.5 transition-transform', open && 'rotate-90')} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-black text-slate-900 leading-tight flex items-center gap-1.5">
+                          <span className="truncate">{group.title}</span>
+                          {group.locked && <LockIcon />}
+                        </p>
+                        <p className="text-[10px] font-semibold text-slate-400 mt-0.5">
+                          {formatDate(group.date)} · {group.serviceCount} ta xizmat
+                        </p>
+                      </div>
+                      <StatusBadge status={group.status} />
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-black text-slate-900 leading-tight line-clamp-2">
-                        {row.serviceName}
-                      </p>
-                      <p className="text-[10px] font-semibold text-slate-400 mt-0.5 truncate flex items-center gap-1">
-                        {row.planLocked && (
-                          <span
-                            data-testid="plan-locked-icon"
-                            title={PLAN_LOCKED_TOOLTIP}
-                            aria-label={PLAN_LOCKED_BADGE}
-                            className="inline-flex items-center gap-0.5 shrink-0 text-amber-600"
-                          >
-                            <Lock className="w-3 h-3" />
-                            <span className="text-[9px] font-black uppercase tracking-wide">{PLAN_LOCKED_BADGE}</span>
-                          </span>
-                        )}
-                        <span className="truncate">{row.planName}</span>
-                      </p>
+                    <div className="grid grid-cols-3 gap-px bg-slate-100 rounded-xl overflow-hidden border border-slate-100">
+                      <div className="bg-white px-2.5 py-2">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Jami</p>
+                        <p className="text-[12px] font-black text-slate-900 mt-0.5 leading-none">{formatCurrency(group.total)}</p>
+                      </div>
+                      <div className="bg-white px-2.5 py-2">
+                        <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">To‘langan</p>
+                        <p className="text-[12px] font-black text-emerald-700 mt-0.5 leading-none">{formatCurrency(group.paid)}</p>
+                      </div>
+                      <div className="bg-white px-2.5 py-2">
+                        <p className={cn('text-[8px] font-black uppercase tracking-widest', group.debt > 0 ? 'text-rose-500' : 'text-slate-400')}>Qarz</p>
+                        <p className={cn('text-[12px] font-black mt-0.5 leading-none', group.debt > 0 ? 'text-rose-600' : 'text-slate-500')}>{formatCurrency(group.debt)}</p>
+                      </div>
                     </div>
-                    {getStatusBadge(row.status)}
-                  </div>
-
-                  {/* Card stats row */}
-                  <div className="grid grid-cols-3 gap-px bg-slate-100 border-t border-slate-100">
-                    <div className="bg-white px-3 py-2.5">
-                      <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Narxi</p>
-                      <p className="text-sm font-black text-slate-900 mt-0.5 leading-none">
-                        {formatCurrency(row.price)}
-                      </p>
+                  </button>
+                  {open && (
+                    <div className="px-3 pb-3 pt-2 bg-slate-50/70 border-t border-slate-100">
+                      {renderServices(group, 'card')}
                     </div>
-                    <div className="bg-white px-3 py-2.5">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Sana</p>
-                      <p className="text-[11px] font-bold text-slate-700 mt-0.5 leading-none">{dateStr}</p>
-                    </div>
-                    <div className="bg-white px-3 py-2.5">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Shifokor</p>
-                      <p className="text-[10px] font-bold text-slate-700 mt-0.5 leading-none truncate">{row.doctorName}</p>
-                    </div>
-                  </div>
-
-                  {/* Card footer */}
-                  <div className="px-3.5 py-2.5 bg-slate-50 border-t border-slate-100 flex gap-2">
-                    {onOpenPlanInvoice && (
-                      <button
-                        onClick={() => onOpenPlanInvoice(row.planObj)}
-                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-xl text-[11px] font-black transition-all active:scale-95"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        {t('patientProfile.invoiceBtn') || "Faktura ko'rish"}
-                      </button>
-                    )}
-                    {onDeleteTreatment && !(row.planLocked && row.planServiceCount > 1) && (
-                      <button
-                        type="button"
-                        data-testid="treatment-delete"
-                        onClick={() => setPendingDelete(row)}
-                        className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-[11px] font-black"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        O‘chirish
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
               );
             })}
 
-            {/* Mobile Total Summary */}
             <div className="bg-gradient-to-r from-[#1499AD] to-[#0d7a8a] rounded-2xl p-4 shadow-lg shadow-[#1499AD]/20">
               <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-2.5">
-                Jami: {filteredRows.length} ta muolaja
+                Jami: {visibleGroups.length} ta reja · {totals.services} ta muolaja
               </p>
               <div className="grid grid-cols-3 gap-3">
                 <div className="text-center bg-white/10 rounded-xl py-2 px-1">
-                  <p className="text-[8px] font-bold text-white/70 uppercase tracking-wider">Asosiy</p>
-                  <p className="text-sm font-black text-white mt-0.5 leading-none">{formatCurrency(totalOriginal)}</p>
+                  <p className="text-[8px] font-bold text-white/70 uppercase tracking-wider">Jami</p>
+                  <p className="text-sm font-black text-white mt-0.5 leading-none">{formatCurrency(totals.total)}</p>
                 </div>
                 <div className="text-center bg-white/10 rounded-xl py-2 px-1">
-                  <p className="text-[8px] font-bold text-white/70 uppercase tracking-wider">Chegirma</p>
-                  <p className="text-sm font-black text-white mt-0.5 leading-none">-{formatCurrency(totalDiscount)}</p>
+                  <p className="text-[8px] font-bold text-white/70 uppercase tracking-wider">To‘langan</p>
+                  <p className="text-sm font-black text-white mt-0.5 leading-none">{formatCurrency(totals.paid)}</p>
                 </div>
                 <div className="text-center bg-white/20 rounded-xl py-2 px-1 border border-white/20">
-                  <p className="text-[8px] font-black text-white/90 uppercase tracking-wider">Jami</p>
-                  <p className="text-sm font-black text-white mt-0.5 leading-none">{formatCurrency(totalFinal)}</p>
+                  <p className="text-[8px] font-black text-white/90 uppercase tracking-wider">Qarz</p>
+                  <p className="text-sm font-black text-white mt-0.5 leading-none">{formatCurrency(totals.debt)}</p>
                 </div>
               </div>
             </div>
@@ -309,203 +358,148 @@ function ExcelTreatmentsView({
         )}
       </div>
 
-      {/* ── DESKTOP TABLE (hidden on mobile) ── */}
+      {/* ── DESKTOP TABLE (bitta reja = bitta qator, bosilsa xizmatlari ochiladi) ── */}
       <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-black uppercase tracking-wider text-[10px]">
                 <th className="py-2.5 px-2 border-r border-slate-100 w-8 min-w-[32px] text-center">№</th>
-                <th className="py-2.5 px-2 border-r border-slate-100 w-14 min-w-[50px] text-center">{t('patientProfile.toothCol') || "Tish #"}</th>
-                <th className="py-2.5 px-2.5 border-r border-slate-100 min-w-[130px]">{t('patientProfile.treatmentServiceCol') || "Muolaja / Xizmat"}</th>
-                <th className="py-2.5 px-2.5 border-r border-slate-100 min-w-[95px] max-w-[135px]">{t('patientProfile.planPackageCol') || "Reja / Paket"}</th>
-                <th className="py-2.5 px-2.5 border-r border-slate-100 min-w-[85px] max-w-[120px]">{t('patientProfile.doctorCol') || "Shifokor"}</th>
+                <th className="py-2.5 px-2.5 border-r border-slate-100 min-w-[170px]">{t('patientProfile.planPackageCol') || 'Reja'}</th>
                 <th
-                  className="py-2.5 px-2.5 border-r border-slate-100 text-right cursor-pointer hover:bg-slate-100 transition-colors w-24 min-w-[85px] select-none"
-                  onClick={() => { setSortField('price'); setSortAsc(sortField === 'price' ? !sortAsc : false); }}
-                >
-                  <div className="flex items-center justify-end gap-1">
-                    {t('common.price') || "Narxi"}
-                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                  </div>
-                </th>
-                <th
-                  className="py-2.5 px-2 border-r border-slate-100 text-center cursor-pointer hover:bg-slate-100 transition-colors w-20 min-w-[75px] select-none"
-                  onClick={() => { setSortField('date'); setSortAsc(sortField === 'date' ? !sortAsc : false); }}
+                  className="py-2.5 px-2 border-r border-slate-100 text-center cursor-pointer hover:bg-slate-100 transition-colors w-24 min-w-[85px] select-none"
+                  onClick={() => sortBy('date')}
                 >
                   <div className="flex items-center justify-center gap-1">
-                    {t('common.date') || "Sana"}
+                    {t('common.date') || 'Sana'}
                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
-                <th className="py-2.5 px-2 text-center w-20 min-w-[70px]">{t('patientProfile.invoiceCol') || "Faktura"}</th>
+                <th className="py-2.5 px-2 border-r border-slate-100 text-center w-20 min-w-[70px]">Xizmatlar</th>
+                <th
+                  className="py-2.5 px-2.5 border-r border-slate-100 text-right cursor-pointer hover:bg-slate-100 transition-colors w-28 min-w-[95px] select-none"
+                  onClick={() => sortBy('price')}
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    Jami
+                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                  </div>
+                </th>
+                <th className="py-2.5 px-2.5 border-r border-slate-100 text-right min-w-[110px]">To‘langan / Qarz</th>
+                <th className="py-2.5 px-2 text-center w-28 min-w-[100px]">Holat</th>
               </tr>
             </thead>
             <tbody>
-              {filteredRows.length === 0 ? (
+              {visibleGroups.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-14 text-center">
-                    <FileSpreadsheet className="w-8 h-8 mx-auto mb-2 text-slate-200" />
-                    <p className="text-slate-400 text-sm font-semibold">
-                      {t('patientProfile.noTreatmentsFound') || "Davolash muolajalari topilmadi."}
-                    </p>
-                  </td>
+                  <td colSpan={7}>{emptyState}</td>
                 </tr>
-              ) : filteredRows.map((row, idx) => {
-                const dtObj = row.date ? new Date(row.date) : null;
-                const dateStr = dtObj && !isNaN(dtObj.getTime())
-                  ? `${String(dtObj.getDate()).padStart(2, '0')}.${String(dtObj.getMonth() + 1).padStart(2, '0')}.${dtObj.getFullYear()}`
-                  : (row.date || '—');
-
+              ) : visibleGroups.map((group, idx) => {
+                const open = isOpen(group);
                 return (
-                  <tr
-                    key={row.id || idx}
-                    className={cn("border-b border-slate-100 hover:bg-sky-50/40 transition-colors", idx % 2 === 1 && "bg-slate-50/30")}
-                  >
-                    <td className="py-2 px-2 text-center font-mono text-[11px] text-slate-400 border-r border-slate-100">
-                      {idx + 1}
-                    </td>
-                    <td className="py-2 px-1.5 text-center border-r border-slate-100">
-                      {row.toothNumber && row.toothNumber !== '—' ? (
-                        <span className="inline-flex items-center justify-center font-mono font-black text-indigo-600 text-xs bg-indigo-50/70 px-1.5 py-0.5 rounded border border-indigo-100">
-                          #{row.toothNumber}
-                        </span>
-                      ) : (
-                        <span className="text-slate-300 font-mono text-xs">—</span>
+                  <Fragment key={group.id}>
+                    <tr
+                      data-testid="plan-row"
+                      aria-expanded={open}
+                      tabIndex={0}
+                      onClick={() => toggle(group)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(group); } }}
+                      className={cn(
+                        'border-b border-slate-100 cursor-pointer hover:bg-sky-50/50 transition-colors focus:outline-none focus-visible:bg-sky-50',
+                        open ? 'bg-sky-50/60' : idx % 2 === 1 && 'bg-slate-50/30'
                       )}
-                    </td>
-                    <td className="py-2 px-2.5 border-r border-slate-100">
-                      <p className="font-bold text-slate-900 text-xs leading-snug line-clamp-2" title={row.serviceName}>
-                        {row.serviceName}
-                      </p>
-                    </td>
-                    <td className="py-2 px-2.5 border-r border-slate-100">
-                      <p className="text-slate-500 text-[11px] font-medium truncate max-w-[135px] flex items-center gap-1" title={row.planName}>
-                        {row.planLocked && (
-                          <span
-                            data-testid="plan-locked-icon"
-                            title={PLAN_LOCKED_TOOLTIP}
-                            aria-label={PLAN_LOCKED_BADGE}
-                            className="inline-flex items-center shrink-0 text-amber-600"
-                          >
-                            <Lock className="w-3 h-3" />
-                          </span>
+                    >
+                      <td className="py-2.5 px-2 text-center font-mono text-[11px] text-slate-400 border-r border-slate-100">
+                        <span className="inline-flex items-center gap-0.5">
+                          <ChevronRight className={cn('w-3.5 h-3.5 text-slate-400 transition-transform', open && 'rotate-90')} />
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-2.5 border-r border-slate-100">
+                        <p className="font-black text-slate-900 text-[13px] leading-snug flex items-center gap-1.5">
+                          <span className="truncate" title={group.title}>{group.title}</span>
+                          {group.locked && <LockIcon />}
+                        </p>
+                        {group.rawName && group.rawName !== group.title && (
+                          <p className="text-[10.5px] text-slate-400 font-medium truncate max-w-[320px]" title={group.rawName}>{group.rawName}</p>
                         )}
-                        <span className="truncate">{row.planName}</span>
-                      </p>
-                    </td>
-                    <td className="py-2 px-2.5 border-r border-slate-100">
-                      <div className="flex items-center gap-1.5 min-w-0 max-w-[120px]" title={row.doctorName}>
-                        <User className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-                        <span className="text-xs text-slate-700 font-medium truncate">
-                          {row.doctorName}
+                      </td>
+                      <td className="py-2.5 px-2 text-center text-xs text-slate-600 font-mono border-r border-slate-100 whitespace-nowrap">
+                        {formatDate(group.date)}
+                      </td>
+                      <td className="py-2.5 px-2 text-center border-r border-slate-100">
+                        <span className="inline-flex items-center justify-center min-w-[1.75rem] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-black">
+                          {group.serviceCount}
                         </span>
-                      </div>
-                    </td>
-                    <td className="py-2 px-2 text-right border-r border-slate-100 whitespace-nowrap">
-                      <span className="font-mono font-black text-slate-900 text-xs">
-                        {formatCurrency(row.price)}
-                      </span>
-                    </td>
-                    <td className="py-2 px-2 text-center text-xs text-slate-600 font-mono border-r border-slate-100 whitespace-nowrap">
-                      {dateStr}
-                    </td>
-                    <td className="py-2 px-1.5 text-center whitespace-nowrap">
-                      <button
-                        onClick={() => onOpenPlanInvoice && onOpenPlanInvoice(row.planObj)}
-                        className="inline-flex items-center justify-center gap-1 px-2.5 py-1 bg-slate-900 hover:bg-slate-700 text-white rounded-lg text-[10.5px] font-bold transition-all cursor-pointer active:scale-95 shadow-2xs hover:shadow-xs"
-                        title={t('patientProfile.invoiceBtn') || "Faktura"}
-                      >
-                        <FileText className="w-3 h-3" />
-                        <span>{t('patientProfile.invoiceBtn') || "Faktura"}</span>
-                        <ExternalLink className="w-2.5 h-2.5 opacity-70" />
-                      </button>
-                      {onDeleteTreatment && !(row.planLocked && row.planServiceCount > 1) && (
-                        <button
-                          type="button"
-                          data-testid="treatment-delete"
-                          onClick={() => setPendingDelete(row)}
-                          className="ml-1 inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-[10.5px] font-bold"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          O‘chirish
-                        </button>
-                      )}
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="py-2.5 px-2.5 text-right border-r border-slate-100 whitespace-nowrap">
+                        <span className="font-mono font-black text-slate-900 text-xs">{formatCurrency(group.total)}</span>
+                      </td>
+                      <td className="py-2.5 px-2.5 text-right border-r border-slate-100 whitespace-nowrap">
+                        <p className="font-mono font-bold text-emerald-700 text-[11px] leading-tight">{formatCurrency(group.paid)}</p>
+                        <p className={cn('font-mono font-bold text-[11px] leading-tight', group.debt > 0 ? 'text-rose-600' : 'text-slate-400')}>
+                          {group.debt > 0 ? `Qarz: ${formatCurrency(group.debt)}` : 'Qarz yo‘q'}
+                        </p>
+                      </td>
+                      <td className="py-2.5 px-2 text-center">
+                        <StatusBadge status={group.status} />
+                      </td>
+                    </tr>
+                    {open && (
+                      <tr data-testid="plan-expanded">
+                        <td colSpan={7} className="p-0 border-b border-slate-200 bg-slate-50/70">
+                          <div className="px-4 py-3">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-2">
+                              {group.title} · xizmatlar ({group.visibleRows.length})
+                            </p>
+                            {renderServices(group, 'row')}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
             </tbody>
           </table>
         </div>
 
-        {/* ── JAMI HISOB-KITOB (Full-width Desktop Summary Footer) ── */}
-        {filteredRows.length > 0 && (
+        {/* ── JAMI HISOB-KITOB ── */}
+        {visibleGroups.length > 0 && (
           <div className="bg-gradient-to-r from-slate-50 via-slate-50 to-slate-100/80 border-t-2 border-slate-200 px-3.5 py-2.5 flex items-center justify-between gap-3 flex-wrap">
-            {/* Left info */}
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-[#1499AD]/10 border border-[#1499AD]/20 flex items-center justify-center text-[#1499AD] shrink-0 shadow-2xs">
                 <Calculator className="w-3.5 h-3.5" />
               </div>
               <div className="flex items-baseline gap-2 flex-wrap">
                 <span className="font-black uppercase tracking-wider text-slate-800 text-xs">
-                  {t('patientProfile.totalCalc') || "JAMI HISOB-KITOB:"}
+                  {t('patientProfile.totalCalc') || 'JAMI HISOB-KITOB:'}
                 </span>
                 <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200/80 shadow-2xs">
-                  {filteredRows.length} {t('patientProfile.proceduresCount') || "ta muolaja"}
+                  {visibleGroups.length} ta reja · {totals.services} {t('patientProfile.proceduresCount') || 'ta muolaja'}
                 </span>
               </div>
             </div>
-
-            {/* Right amounts */}
             <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap justify-end">
-              {totalDiscount > 0 ? (
-                <>
-                  {/* Chegirmasiz summa */}
-                  <div className="flex flex-col items-end">
-                    <span className="text-[8.5px] uppercase font-bold text-slate-400 leading-none">
-                      {t('patientProfile.totalWithoutDiscount') || "Asosiy"}
-                    </span>
-                    <span className="font-mono font-bold text-xs text-slate-400 line-through mt-0.5 leading-tight">
-                      {formatCurrency(totalOriginal)}
-                    </span>
-                  </div>
-
-                  {/* Chegirma */}
-                  <div className="flex flex-col items-end bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/90 shadow-2xs">
-                    <span className="text-[8px] uppercase font-black text-amber-700 leading-none">
-                      {t('patientProfile.discount') || "Chegirma"}
-                    </span>
-                    <span className="font-mono font-black text-amber-800 text-xs mt-0.5 leading-tight">
-                      -{formatCurrency(totalDiscount)}
-                    </span>
-                  </div>
-
-                  {/* Yakuniy Jami Summa */}
-                  <div className="flex items-center gap-2 bg-[#1499AD]/10 px-3 py-1.5 rounded-xl border border-[#1499AD]/25 shadow-2xs">
-                    <div className="flex flex-col items-end">
-                      <span className="text-[8.5px] uppercase font-black text-[#1499AD] leading-none">
-                        {t('patientProfile.totalWithDiscount') || "Jami Summa"}
-                      </span>
-                      <span className="font-mono font-black text-[#0d7a8a] text-sm sm:text-[15px] mt-0.5 leading-tight">
-                        {formatCurrency(totalFinal)}
-                      </span>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                /* Chegirma bo'lmasa, faqat yagona aniq va chiroyli Jami Summa */
-                <div className="flex items-center gap-2 bg-[#1499AD]/10 px-3.5 py-1.5 rounded-xl border border-[#1499AD]/25 shadow-2xs">
-                  <div className="flex flex-col items-end">
-                    <span className="text-[8.5px] uppercase font-black text-[#1499AD] leading-none">
-                      {t('patientProfile.totalWithDiscount') || "Jami Summa"}
-                    </span>
-                    <span className="font-mono font-black text-[#0d7a8a] text-sm sm:text-[15px] mt-0.5 leading-tight">
-                      {formatCurrency(totalFinal)}
-                    </span>
-                  </div>
+              <div className="flex flex-col items-end bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/90">
+                <span className="text-[8px] uppercase font-black text-emerald-700 leading-none">To‘langan</span>
+                <span className="font-mono font-black text-emerald-800 text-xs mt-0.5 leading-tight">{formatCurrency(totals.paid)}</span>
+              </div>
+              {totals.debt > 0 && (
+                <div className="flex flex-col items-end bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200/90">
+                  <span className="text-[8px] uppercase font-black text-rose-700 leading-none">Qarz</span>
+                  <span className="font-mono font-black text-rose-800 text-xs mt-0.5 leading-tight">{formatCurrency(totals.debt)}</span>
                 </div>
               )}
+              <div className="flex items-center gap-2 bg-[#1499AD]/10 px-3.5 py-1.5 rounded-xl border border-[#1499AD]/25 shadow-2xs">
+                <div className="flex flex-col items-end">
+                  <span className="text-[8.5px] uppercase font-black text-[#1499AD] leading-none">
+                    {t('patientProfile.totalWithDiscount') || 'Jami Summa'}
+                  </span>
+                  <span className="font-mono font-black text-[#0d7a8a] text-sm sm:text-[15px] mt-0.5 leading-tight">
+                    {formatCurrency(totals.total)}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         )}
