@@ -3,8 +3,20 @@ import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { cva } from "class-variance-authority"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useBackClose } from "@/hooks/useBackClose"
 
-const Sheet = SheetPrimitive.Root
+// Telefon/brauzer "Orqaga" tugmasi avval modalni yopadi (useBackClose)
+const Sheet = ({ open, defaultOpen, onOpenChange, ...props }) => {
+  const controlled = open !== undefined
+  const [innerOpen, setInnerOpen] = React.useState(!!defaultOpen)
+  const isOpen = controlled ? !!open : innerOpen
+  const handleOpenChange = React.useCallback((next) => {
+    if (!controlled) setInnerOpen(next)
+    if (onOpenChange) onOpenChange(next)
+  }, [controlled, onOpenChange])
+  useBackClose(isOpen, () => handleOpenChange(false))
+  return <SheetPrimitive.Root open={isOpen} onOpenChange={handleOpenChange} {...props} />
+}
 
 const SheetTrigger = SheetPrimitive.Trigger
 

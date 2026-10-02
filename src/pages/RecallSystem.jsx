@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -98,8 +99,8 @@ export default function RecallSystem() {
   const [patients, setPatients] = useState([]);
   const [notificationHistory, setNotificationHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState('all'); // all, upcoming, pending, contacted, completed, history
+  const [search, setSearch] = useRestorableState('search', '');
+  const [activeTab, setActiveTab] = useRestorableState('activeTab', 'all'); // all, upcoming, pending, contacted, completed, history
   const [selectedRecalls, setSelectedRecalls] = useState(new Set());
   
   // Density switcher
@@ -112,8 +113,8 @@ export default function RecallSystem() {
   };
 
   // Sorting state
-  const [sortField, setSortField] = useState('date');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortField, setSortField] = useRestorableState('sortField', 'date');
+  const [sortOrder, setSortOrder] = useRestorableState('sortOrder', 'asc');
 
   const handleSort = (field) => {
     if (sortField === field) {

@@ -21,6 +21,8 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import ErrorBoundary from './ErrorBoundary';
 import { Suspense, memo } from 'react';
 import { ImplantIcon } from '@/components/ui/Icons';
+import BackButton from '@/components/ui/BackButton';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 
 // Specialized skeleton loader for premium page-to-page transitions
 const InlineLoader = memo(() => (
@@ -121,6 +123,9 @@ export default function NativeMobileLayout({ children }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const contentRef = useRef(null);
+  // Orqaga qaytganda scroll joyi tiklanadi, yangi sahifa tepadan boshlanadi
+  useScrollRestoration(() => contentRef.current);
+  const showBack = !['/', '/chairside', '/admin/dashboard', '/doctor/dashboard', '/patients', '/appointments', '/payments'].includes(location.pathname);
   const handleLogout = () => {
     logout();
     setShowMenu(false);
@@ -232,14 +237,11 @@ export default function NativeMobileLayout({ children }) {
       >
         <div className="flex items-center justify-between h-14 px-5">
           <div className="flex items-center gap-4">
-            {!['/', '/chairside', '/admin/dashboard', '/doctor/dashboard', '/patients', '/appointments', '/payments'].includes(location.pathname) ? (
-              <motion.button 
-                whileTap={{ scale: 0.9 }}
-                onClick={() => navigate(-1)}
-                className="p-2.5 -ml-2 rounded-2xl bg-white/50 backdrop-blur-md shadow-sm border border-white/60 text-slate-700"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </motion.button>
+            {showBack ? (
+              <BackButton
+                fallback={location.pathname.startsWith('/implants/') ? '/implants' : '/'}
+                className="h-11 -ml-1 px-3.5 rounded-2xl bg-white/70 backdrop-blur-md border-white/60"
+              />
             ) : (
                 <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-xl shadow-[#1499AD]/10 overflow-hidden p-0 ring-1 ring-slate-100">
                     {currentClinic?.logo ? (
@@ -255,7 +257,7 @@ export default function NativeMobileLayout({ children }) {
                     )}
                 </div>
             )}
-            <div className="flex flex-col">
+            <div className={showBack ? 'hidden' : 'flex flex-col'}>
               <span className="font-[900] text-lg text-slate-900 tracking-tighter leading-tight">{currentClinic?.name || 'Klinika'}</span>
               <span className="text-[9px] font-black text-[#1499AD] uppercase tracking-widest opacity-60">{t('navigation.systemName')}</span>
             </div>

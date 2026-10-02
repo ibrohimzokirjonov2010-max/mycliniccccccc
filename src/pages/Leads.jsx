@@ -24,6 +24,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import LeadQuickView from '../components/marketing/LeadQuickView';
 import LeadNotesModal, { parseLeadNotes } from '../components/marketing/LeadNotesModal';
 import { useRef, useState, useEffect, useMemo } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { 
   Search, Phone, Edit2, Trash2, MessageCircle, TrendingUp, Target, 
   Calendar, UserPlus, Filter, Zap, Upload, Bell, Download, 
@@ -38,13 +39,13 @@ export default function Leads() {
   const { t, language } = useTranslation();
   const { user, isDoctor } = useAuth();
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [search, setSearch] = useRestorableState('search', '');
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [modalOpen, setModalOpen] = useState(false);
   const [editLead, setEditLead] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
-  const [view, setView] = useState('table'); // Default to Excel Table as requested
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [view, setView] = useRestorableState('view', 'table'); // Default to Excel Table as requested
+  const [statusFilter, setStatusFilter] = useRestorableState('statusFilter', 'all');
   const [form, setForm] = useState({ name: '', phone: '', visit_date: '', source: 'Call', status: 'new', notes: '' });
   const [selectedLead, setSelectedLead] = useState(null);
   const [notesModalLead, setNotesModalLead] = useState(null);

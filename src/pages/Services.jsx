@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { 
   Plus, Search, Stethoscope, Edit2, Trash2, Clock, 
   Activity, Scissors, Layers, Baby, Syringe, 
@@ -287,8 +288,8 @@ export default function Services() {
   const [services, setServices] = useState([]);
   const [dbCategories, setDbCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [search, setSearch] = useRestorableState('search', '');
+  const [selectedCategory, setSelectedCategory] = useRestorableState('selectedCategory', 'all');
   
   const [modalOpen, setModalOpen] = useState(false);
   const [editService, setEditService] = useState(null);
@@ -313,8 +314,8 @@ export default function Services() {
     name: '', category: 'TERAPIYA (ENDO + PLOMBA)', price: '', duration: '30', is_active: true, requires_tooth: false, description: '', tooth_numbers: []
   });
 
-  const [sortField, setSortField] = useState('name');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortField, setSortField] = useRestorableState('sortField', 'name');
+  const [sortOrder, setSortOrder] = useRestorableState('sortOrder', 'asc');
 
   const handleSort = (field) => {
     if (sortField === field) {

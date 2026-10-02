@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -41,7 +42,7 @@ export default function MobileRecall() {
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useRestorableState('search', '');
   const getTodayStr = () => tashkentToday();
   const calcDate = (months, baseDate = getTodayStr()) => {
     const d = new Date(baseDate || new Date());

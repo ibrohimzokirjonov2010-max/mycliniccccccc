@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { 
   Plus, Search, Package, Edit2, Trash2, AlertOctagon, 
   CircleDollarSign, Layers, FolderPlus,
@@ -61,8 +62,8 @@ export default function Inventory() {
   const { t, language } = useTranslation();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [search, setSearch] = useRestorableState('search', '');
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
 
   // Categories state
   const [categories, setCategories] = useState(() => {
@@ -76,7 +77,7 @@ export default function Inventory() {
     return DEFAULT_INVENTORY_CATEGORIES;
   });
 
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useRestorableState('selectedCategory', 'all');
   const [hideEmptyCategories, setHideEmptyCategories] = useState(false);
   const [newCatModalOpen, setNewCatModalOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -93,8 +94,8 @@ export default function Inventory() {
   };
 
   // Sorting state
-  const [sortField, setSortField] = useState('name');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortField, setSortField] = useRestorableState('sortField', 'name');
+  const [sortOrder, setSortOrder] = useRestorableState('sortOrder', 'asc');
 
   const handleSort = (field) => {
     if (sortField === field) {

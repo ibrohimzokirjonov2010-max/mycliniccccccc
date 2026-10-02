@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, Bell, User, Settings, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,6 +14,12 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/lib/AuthContext';
 import { useClinic } from '@/lib/ClinicContext';
+import BackButton from '@/components/ui/BackButton';
+import { canGoBackInApp } from '@/hooks/useBack';
+
+// Bosh sahifalar va o'z "Orqaga" tugmasi bor ichki sahifalar
+const NO_TOPBAR_BACK = ['/', '/admin/dashboard', '/doctor/dashboard', '/chairside'];
+const OWN_BACK = [/^\/patients\/[^/]+/, /^\/implants\/[^/]+/];
 
 /**
  * Topbar Component
@@ -27,6 +33,10 @@ import { useClinic } from '@/lib/ClinicContext';
  */
 export default function Topbar({ onMenuClick, sidebarCollapsed }) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const showBack = canGoBackInApp()
+    && !NO_TOPBAR_BACK.includes(pathname)
+    && !OWN_BACK.some((re) => re.test(pathname));
   const { t } = useTranslation();
   const { user, logout } = useAuth();
   const { clinicName } = useClinic();
@@ -94,6 +104,7 @@ export default function Topbar({ onMenuClick, sidebarCollapsed }) {
         >
           <Menu className="w-5 h-5" />
         </button>
+        {showBack && <BackButton fallback="/" className="h-8 px-2.5 rounded-lg" />}
         <h1 className="text-lg font-semibold text-foreground hidden sm:block">
           {clinicName}
         </h1>

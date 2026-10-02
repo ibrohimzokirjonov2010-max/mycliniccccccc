@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -64,7 +65,7 @@ export default function ChairsideToday() {
   const { t } = useTranslation();
   const { user, isDoctor, isAdmin } = useAuth();
   const today = getTashkentDate();
-  const [doctorFilter, setDoctorFilter] = useState('all');
+  const [doctorFilter, setDoctorFilter] = useRestorableState('doctorFilter', 'all');
 
   const {
     data: appointments = [],

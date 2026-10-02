@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { 
@@ -107,8 +108,8 @@ export default function MobileTreatmentPlansV2() {
   const [patients, setPatients] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', '');
+  const [statusFilter, setStatusFilter] = useRestorableState('statusFilter', 'all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);

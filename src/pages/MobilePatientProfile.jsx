@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { canGoBackInApp } from '@/hooks/useBack';
+import { useUrlState } from '@/hooks/useRestorableState';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -182,7 +184,9 @@ export default function MobilePatientProfile() {
   const [doctors, setDoctors]                   = useState([]);
   const [services, setServices]                 = useState([]);
   const [loading, setLoading]                   = useState(true);
-  const [activeTab, setActiveTab]               = useState('tarix');
+  // Tab URL'da (?tab=) saqlanadi — Orqaga/yangilashda tiklanadi
+  const [rawTab, setActiveTab]                  = useUrlState('tab', 'tarix');
+  const activeTab = ['tarix', 'plan', 'payments', 'implant'].includes(rawTab) ? rawTab : 'tarix';
   const [apptModalOpen, setApptModalOpen]       = useState(false);
   const [selectedAppt, setSelectedAppt]         = useState(null);
   const [patientModalOpen, setPatientModalOpen] = useState(false);
@@ -578,8 +582,8 @@ export default function MobilePatientProfile() {
 
   /* ── back ── */
   const handleBack = useCallback(() => {
-    if (location.state?.from) { navigate(location.state.from); return; }
-    window.history.length > 1 ? navigate(-1) : navigate('/patients');
+    if (canGoBackInApp()) { navigate(-1); return; }
+    navigate(location.state?.from || '/patients', { replace: true });
   }, [location.state, navigate]);
 
   const clinicLabel = clinicName && clinicName !== 'ShifoCRM'

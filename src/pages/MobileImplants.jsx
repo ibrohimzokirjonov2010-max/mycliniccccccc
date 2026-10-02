@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -474,10 +475,10 @@ export default function MobileImplants() {
   const hasLoadedInitial = useRef(false);
   const loadingTimerRef = useRef(null);
 
-  const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState('list'); // 'list' | 'stats'
-  const [filterStatus, setFilterStatus] = useState(null);
-  const [filterFirma, setFilterFirma] = useState(null);
+  const [search, setSearch] = useRestorableState('search', '');
+  const [activeTab, setActiveTab] = useRestorableState('activeTab', 'list'); // 'list' | 'stats'
+  const [filterStatus, setFilterStatus] = useRestorableState('filterStatus', null);
+  const [filterFirma, setFilterFirma] = useRestorableState('filterFirma', null);
   const [showFilter, setShowFilter] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [extraServiceModalOpen, setExtraServiceModalOpen] = useState(false);

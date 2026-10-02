@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -20,7 +21,7 @@ export default function NoShow() {
   const { user, isDoctor } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', '');
   const navigate = useNavigate();
 
   const load = async () => {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -68,7 +69,7 @@ export default function MobileDebts() {
   const { user, isDoctor } = useAuth();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useRestorableState('search', '');
   const [copiedId, setCopiedId] = useState(null);
 
   // Detail Modal states

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 /* Technicians Management Module */
 import { 
   Wrench, Plus, Search, Calendar, User, Clock, 
@@ -38,14 +39,14 @@ const statusConfig = {
 export default function Technicians() {
   const { t } = useTranslation();
   const { isDoctor, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState("jobs");
+  const [activeTab, setActiveTab] = useRestorableState('activeTab', "jobs");
   const [jobs, setJobs] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState(() => (isDoctor && !isAdmin ? 'active' : 'all'));
+  const [search, setSearch] = useRestorableState('search', '');
+  const [statusFilter, setStatusFilter] = useRestorableState('statusFilter', () => (isDoctor && !isAdmin ? 'active' : 'all'));
   const [expandedJobId, setExpandedJobId] = useState(null);
   const [smsModal, setSmsModal] = useState({ open: false, job: null });
   const [smsSending, setSmsSending] = useState(false);

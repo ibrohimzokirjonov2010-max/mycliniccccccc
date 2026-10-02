@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { 
   Plus, TrendingDown, TrendingUp, DollarSign, Banknote, Wallet, Calendar, 
   Filter, PieChart, Building2, Zap, ShoppingCart, Wrench, Trash2, Pencil,
@@ -120,8 +121,8 @@ export default function Expenses() {
   };
 
   // Sorting state
-  const [sortField, setSortField] = useState('date');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortField, setSortField] = useRestorableState('sortField', 'date');
+  const [sortOrder, setSortOrder] = useRestorableState('sortOrder', 'desc');
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -265,9 +266,9 @@ export default function Expenses() {
   const [loading, setLoading] = useState(true);
   
   // Filter states
-  const [selectedMonth, setSelectedMonth] = useState('all');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMonth, setSelectedMonth] = useRestorableState('selectedMonth', 'all');
+  const [selectedCategory, setSelectedCategory] = useRestorableState('selectedCategory', 'all');
+  const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', '');
   
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);

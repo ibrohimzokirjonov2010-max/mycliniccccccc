@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { motion } from 'framer-motion';
 import { 
   Plus, Search, MoreVertical, Phone, MessageCircle, ChevronRight, 
@@ -102,8 +103,8 @@ export default function MobileLeadsV6() {
   const { user, isDoctor } = useAuth();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState('new');
+  const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', '');
+  const [filterStatus, setFilterStatus] = useRestorableState('filterStatus', 'new');
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [statusSelectionLead, setStatusSelectionLead] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);

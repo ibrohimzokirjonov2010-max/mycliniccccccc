@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Plus, X,
@@ -29,26 +30,26 @@ export default function MobilePatientsV2() {
   const [loading, setLoading] = useState(true);
   const loadingTimerRef = useRef(null);
   const hasLoadedInitial = useRef(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', '');
+  const [filterStatus, setFilterStatus] = useRestorableState('filterStatus', 'all');
   const [showFlow, setShowFlow] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const [visitIndex, setVisitIndex] = useState({ completed: new Set(), last: {} });
 
   // Xodimlar sahifasidan kelgan "shifokor bo'yicha" filtr
-  const [doctorFilter, setDoctorFilter] = useState(() => location.state?.doctorFilter || null);
+  const [doctorFilter, setDoctorFilter] = useRestorableState('doctorFilter', () => location.state?.doctorFilter || null);
   useEffect(() => {
     const incoming = location.state?.doctorFilter;
     if (incoming) {
       setDoctorFilter(incoming);
-      window.history.replaceState({}, document.title);
+      window.history.replaceState({ ...(window.history.state || {}), usr: null }, document.title);
     }
   }, [location.state]);
 
   useEffect(() => {
     if (location.state?.openAddModal) {
       setShowFlow(true);
-      window.history.replaceState({}, document.title);
+      window.history.replaceState({ ...(window.history.state || {}), usr: null }, document.title);
     }
   }, [location.state]);
 

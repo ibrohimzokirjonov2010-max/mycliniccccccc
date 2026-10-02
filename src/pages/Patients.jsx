@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { lazyWithRetry } from '@/utils/lazyWithRetry';
 import { prefetchPatientProfileChunk } from '@/utils/routeChunkPrefetch';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { patientMatchesDoctorFilter } from '@/utils/doctorMatch';
 import { 
   Plus, Search, Edit2, Trash2, Users, UserPlus,
@@ -48,15 +49,18 @@ export default function Patients() {
   const { t } = useTranslation();
   const { user, isDoctor } = useAuth();
   
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  // Orqaga qaytganda qidiruv/filtr/saralash holati tiklanadi (useRestorableState)
+  const [search, setSearch] = useRestorableState('search', '');
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [page, setPage] = useState(0);
+  const [loadedPages, setLoadedPages] = useRestorableState('loadedPages', 0);
+  const catchUpRef = useRef(loadedPages); // qaytganda shuncha sahifagacha ro'yxatni qayta yuklaymiz (scroll joyi uchun)
   const PAGE_SIZE = 50;
 
   // Filter and Sorting state (Excel-like)
-  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'debtors' | 'nodebt' | 'new' | 'active'
-  const [sortField, setSortField] = useState('created_at');
-  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+  const [activeFilter, setActiveFilter] = useRestorableState('activeFilter', 'all'); // 'all' | 'debtors' | 'nodebt' | 'new' | 'active'
+  const [sortField, setSortField] = useRestorableState('sortField', 'created_at');
+  const [sortOrder, setSortOrder] = useRestorableState('sortOrder', 'desc'); // 'asc' | 'desc'
   const [density, setDensity] = useState(() => localStorage.getItem('patients_table_density') || 'compact'); // 'compact' | 'comfortable'
   const [copiedId, setCopiedId] = useState(null);
 
@@ -70,13 +74,14 @@ export default function Patients() {
   const loaderRef = useRef(null);
 
   // Xodimlar sahifasidan kelgan "shifokor bo'yicha" filtr
-  const [doctorFilter, setDoctorFilter] = useState(() => location.state?.doctorFilter || null);
+  const [doctorFilter, setDoctorFilter] = useRestorableState('doctorFilter', () => location.state?.doctorFilter || null);
   useEffect(() => {
     const incoming = location.state?.doctorFilter;
     if (incoming) {
       setDoctorFilter(incoming);
       setPage(0);
-      window.history.replaceState({}, document.title);
+      catchUpRef.current = 0;
+      window.history.replaceState({ ...(window.history.state || {}), usr: null }, document.title);
     }
   }, [location.state]);
 
@@ -88,6 +93,8 @@ export default function Patients() {
 
   // ─── Search Debouncing ──────────────────────────────────────────────────
   useEffect(() => {
+    if (search === debouncedSearch) return undefined;
+    catchUpRef.current = 0;
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
       setPage(0);
@@ -246,7 +253,7 @@ export default function Patients() {
     if (location.state?.openAddModal) {
       setPrefillLead(location.state?.leadData || null);
       setFlowOpen(true);
-      window.history.replaceState({}, document.title);
+      window.history.replaceState({ ...(window.history.state || {}), usr: null }, document.title);
     }
   }, [location.state]);
 
@@ -283,6 +290,17 @@ export default function Patients() {
       fetchingRef.current = false;
     }
   }, [isFetching]);
+
+  // Nechta sahifa yuklanganini eslab qolamiz; Orqaga qaytganda shu sahifagacha ketma-ket yuklaymiz
+  useEffect(() => { setLoadedPages(page); }, [page, setLoadedPages]);
+  useEffect(() => {
+    const target = catchUpRef.current;
+    if (!target) return;
+    if (debouncedSearch !== search || !patientsData || isFetching) return;
+    if (!hasMore || page >= target) { catchUpRef.current = 0; return; }
+    fetchingRef.current = true;
+    setPage((p) => p + 1);
+  }, [debouncedSearch, search, patientsData, isFetching, hasMore, page]);
 
   // Intersection Observer
   useEffect(() => {

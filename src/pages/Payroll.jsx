@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { 
   DollarSign, Users, TrendingUp, Calendar, 
   Plus, Search, Trash2,
@@ -163,10 +164,10 @@ export default function Payroll() {
   const [loading, setLoading] = useState(true);
   
   // Filter states
-  const [selectedMonth, setSelectedMonth] = useState(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
-  const [selectedDoctor, setSelectedDoctor] = useState('all');
-  const [activeTypeFilter, setActiveTypeFilter] = useState('all'); // 'all' | 'percentage' | 'fixed'
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMonth, setSelectedMonth] = useRestorableState('selectedMonth', `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`);
+  const [selectedDoctor, setSelectedDoctor] = useRestorableState('selectedDoctor', 'all');
+  const [activeTypeFilter, setActiveTypeFilter] = useRestorableState('activeTypeFilter', 'all'); // 'all' | 'percentage' | 'fixed'
+  const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', '');
   const [doctorPeriodFilters, setDoctorPeriodFilters] = useState({});
 
   // Detail Modal Doctor ID (dynamic reference)
@@ -183,8 +184,8 @@ export default function Payroll() {
   };
 
   // Sorting state
-  const [sortField, setSortField] = useState('salary');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortField, setSortField] = useRestorableState('sortField', 'salary');
+  const [sortOrder, setSortOrder] = useRestorableState('sortOrder', 'desc');
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -223,7 +224,7 @@ export default function Payroll() {
   useEffect(() => {
     if (location.state?.openAddDoctor) {
       setAddDoctorOpen(true);
-      window.history.replaceState({}, document.title);
+      window.history.replaceState({ ...(window.history.state || {}), usr: null }, document.title);
     }
   }, [location.state]);
 

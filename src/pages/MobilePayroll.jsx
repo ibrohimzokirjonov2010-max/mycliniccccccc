@@ -190,7 +190,7 @@ export default function MobilePayroll() {
   useEffect(() => {
     if (location.state?.openAddDoctor) {
       setAddDoctorOpen(true);
-      window.history.replaceState({}, document.title);
+      window.history.replaceState({ ...(window.history.state || {}), usr: null }, document.title);
     }
   }, [location.state]);
 

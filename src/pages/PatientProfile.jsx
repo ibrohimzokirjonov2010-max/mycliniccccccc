@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useRestorableState, useUrlState } from '@/hooks/useRestorableState';
+import { canGoBackInApp } from '@/hooks/useBack';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -151,16 +153,14 @@ export default function PatientProfile() {
   const { id } = useParams();
   const [patient, setPatient] = useState(null);
 
+  // Orqaga: oldingi sahifaga shu sahifadagi holati (filtr/sana/scroll) bilan qaytadi;
+  // tarix yo'q bo'lsa (to'g'ridan-to'g'ri havola) — kelgan ro'yxatga yoki Bemorlarga
   const handleBack = useCallback(() => {
-    if (location.state?.from) {
-      navigate(location.state.from);
+    if (canGoBackInApp()) {
+      navigate(-1);
       return;
     }
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate('/patients');
-    }
+    navigate(location.state?.from || '/patients', { replace: true });
   }, [location.state, navigate]);
 
   // Horizontal scroll shadow indicator states
@@ -426,13 +426,13 @@ export default function PatientProfile() {
     selectedServiceIds: [] 
   });
   const [payingSaving, setPayingSaving] = useState(false);
-  const urlTab = new URLSearchParams(location.search).get('tab');
-  const [activeTab, setActiveTab] = useState(urlTab || 'info');
-  const [subSection, setSubSection] = useState('dental');
+  // Tab URL'da (?tab=) saqlanadi — Orqaga/yangilashda tiklanadi
+  const [activeTab, setActiveTab] = useUrlState('tab', 'info');
+  const [subSection, setSubSection] = useRestorableState('subSection', 'dental');
   const [toothSearchQuery, setToothSearchQuery] = useState('');
-  const [dentalViewMode, setDentalViewMode] = useState('both');
-  const [profileViewMode, setProfileViewMode] = useState('chairside'); // chairside | reyestr
-  const [treatmentStatusFilter, setTreatmentStatusFilter] = useState('all'); // 'all', 'completed', 'in_progress', 'planned'
+  const [dentalViewMode, setDentalViewMode] = useRestorableState('dentalViewMode', 'both');
+  const [profileViewMode, setProfileViewMode] = useRestorableState('profileViewMode', 'chairside'); // chairside | reyestr
+  const [treatmentStatusFilter, setTreatmentStatusFilter] = useRestorableState('treatmentStatusFilter', 'all'); // 'all', 'completed', 'in_progress', 'planned'
   const [chartView, setChartView] = useState('teeth'); // 'teeth', 'maxilla', 'mandible', 'occlusion'
   const [showOcclusal, setShowOcclusal] = useState(true);
   const [occlusionNotes, setOcclusionNotes] = useState('');
@@ -2808,9 +2808,7 @@ export default function PatientProfile() {
           occlusionClass={occlusionClass}
           handleOcclusionClassChange={handleOcclusionClassChange}
           onBack={handleBack}
-          backLabel={location.state?.fromName
-            ? location.state.fromName
-            : (language === 'ru' ? 'Назад' : language === 'en' ? 'Back' : 'Orqaga')}
+          backLabel={language === 'ru' ? 'Назад' : language === 'en' ? 'Back' : 'Orqaga'}
           onPay={openPayModal}
           onAppointment={() => setApptModalOpen(true)}
           onNewPlan={() => setTreatmentModalOpen(true)}
@@ -2844,9 +2842,7 @@ export default function PatientProfile() {
             >
               <ArrowLeft className="w-3.5 h-3.5 text-slate-600 group-hover:-translate-x-0.5 transition-transform" />
               <span className="hidden sm:inline">
-                {location.state?.fromName 
-                  ? location.state.fromName 
-                  : (language === 'ru' ? 'Назад' : language === 'en' ? 'Back' : 'Orqaga')}
+                {language === 'ru' ? 'Назад' : language === 'en' ? 'Back' : 'Orqaga'}
               </span>
             </button>
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Package, AlertTriangle, Plus, Search, Archive, TrendingDown, Boxes,
@@ -39,8 +40,8 @@ const formatItemUnit = (unit) => {
 export default function MobileInventoryV2() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', '');
+  const [filterStatus, setFilterStatus] = useRestorableState('filterStatus', 'all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [saving, setSaving] = useState(false);
