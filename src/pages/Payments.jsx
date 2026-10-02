@@ -33,7 +33,7 @@ import { paymentStamp, tashkentToday, formatClinicDate, formatClinicDateTime, pa
 import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
 import { computePatientBalances, isListedPayment, unionPayments } from '@/lib/paymentDebt';
 import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
-import { getPlanPayRows, pickSelectedServices, allocateSelectedServices } from '@/lib/paymentPlanServices';
+import { getPlanPayRows, pickSelectedServices, allocateSelectedServices, buildPlanPaidLines, normalizePaidServices, rescalePaidServices, stripHiddenTags } from '@/lib/paymentPlanServices';
 import { toast } from 'sonner';
 import '@/components/payments/paymentAddModal.css';
 
@@ -927,6 +927,12 @@ export default function Payments() {
     const savedServiceObj = patientServices.find(s => s.id === selectedServiceId) || null;
     const savedInvoiceId = selectedInvoiceId;
     const savedSelectedServices = selectedServices;
+    // Qaysi reja/xizmat(lar) uchun to'langani (faqat oynada tanlangan bo'lsa) - to'lov bilan birga yashirin saqlanadi
+    let paidServiceLines = [];
+    if (savedType.toLowerCase() === 'income') {
+      if (savedSelectedServices.length > 0) paidServiceLines = allocateSelectedServices(savedSelectedServices, savedAmount).lines;
+      else if (selectedPlanRow) paidServiceLines = buildPlanPaidLines(selectedPlanRow, savedAmount);
+    }
 
     let finalDate;
     try {
@@ -963,6 +969,7 @@ export default function Payments() {
       notes: form.notes || '',
       receipt_url: form.receipt_url || null,
       doctor_id: finalDoctorId,
+      ...(paidServiceLines.length > 0 ? { paid_services: paidServiceLines } : {}),
     };
 
     try {
@@ -1164,7 +1171,7 @@ export default function Payments() {
     // The edit form shows the absolute amount, so compare against it (an expense is stored negative).
     if (newAmount !== Math.abs(oldAmount)) changes.push(`summa: ${Math.abs(oldAmount).toLocaleString()} → ${newAmount.toLocaleString()} UZS`);
     if ((values.method || '') !== (sp.method || '')) changes.push(`usul: ${getPaymentMethodLabel(sp.method, t)} → ${getPaymentMethodLabel(values.method, t)}`);
-    if ((values.notes || '') !== (sp.notes || '')) changes.push('izoh');
+    if ((values.notes || '') !== (stripHiddenTags(sp.notes) || '')) changes.push('izoh');
     if (changes.length === 0) {
       toast.info("O'zgarish yo'q");
       setPaymentEdit(null);
@@ -1180,7 +1187,12 @@ export default function Payments() {
     const storedAmount = oldAmount < 0 ? -newAmount : newAmount;
     setPaymentEditSaving(true);
     try {
-      const patch = { amount: storedAmount, method: values.method || sp.method, notes: values.notes ?? sp.notes ?? '' };
+      const patch = { amount: storedAmount, method: values.method || sp.method, notes: stripHiddenTags(values.notes ?? sp.notes ?? '') };
+      // paid_services is kept by the data layer on update; only re-cap it when the amount changed
+      const oldLines = normalizePaidServices(sp.paid_services);
+      if (oldLines.length > 0 && Math.abs(storedAmount) !== Math.abs(oldAmount)) {
+        patch.paid_services = rescalePaidServices(oldLines, Math.abs(storedAmount));
+      }
       await base44.entities.Payment.update(sp.id, patch);
       const updated = { ...sp, ...patch };
 
@@ -1470,6 +1482,38 @@ export default function Payments() {
     const dateFormatted = !isNaN(dtObj) ? `${String(dtObj.getDate()).padStart(2,'0')}.${String(dtObj.getMonth()+1).padStart(2,'0')}.${dtObj.getFullYear()}` : new Date().toLocaleDateString('uz-UZ');
     const dateTimeFormatted = !isNaN(dtObj) ? `${dateFormatted} ${String(dtObj.getHours()).padStart(2,'0')}:${String(dtObj.getMinutes()).padStart(2,'0')}` : dateFormatted;
     const invoiceNo = (payment.id || '').split('-').pop()?.toUpperCase() || '4F255F';
+    const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const printPaidLines = normalizePaidServices(payment.paid_services);
+    const printPaidOther = Math.max(0, Math.abs(Number(payment.amount) || 0) - printPaidLines.reduce((sum, l) => sum + l.amount, 0));
+    const paidServicesHtml = printPaidLines.length === 0 ? '' : `
+        <div class="section-title">${esc(t('payments.paidForServices')).toUpperCase()}</div>
+        <table>
+          <thead>
+            <tr>
+              <th>${esc(t('payments.colPlan'))}</th>
+              <th class="text-center">${esc(t('payments.colTooth'))}</th>
+              <th>${esc(t('payments.colServiceName'))}</th>
+              <th class="text-right">${esc(t('payments.colPaidNow'))}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${printPaidLines.map(l => `
+              <tr>
+                <td class="font-bold">${esc(l.plan_name) || '—'}</td>
+                <td class="text-center">${esc(l.tooth) || '—'}</td>
+                <td>${esc(l.service_name) || esc(t('payments.wholePlan'))}</td>
+                <td class="text-right font-bold">${formatCurrency(l.amount)}</td>
+              </tr>
+            `).join('')}
+            ${printPaidOther > 0 ? `
+              <tr>
+                <td colspan="3">${esc(t('payments.otherPlansAmount'))}</td>
+                <td class="text-right font-bold">${formatCurrency(printPaidOther)}</td>
+              </tr>
+            ` : ''}
+          </tbody>
+        </table>
+    `;
 
     // Flatten services from plans
     let allServices = [];
@@ -1884,6 +1928,8 @@ export default function Payments() {
             </tr>
           </tbody>
         </table>
+
+        ${paidServicesHtml}
 
         <div class="section-title">TO'LOVLAR</div>
         <table>
@@ -3300,6 +3346,8 @@ export default function Payments() {
           const isInstallment = !!(sp.notes && sp.notes.toLowerCase().includes('reja')) || !!sp.plan_id;
           const methodLabel = getPaymentMethodLabel(sp.method, t);
           const paymentAmount = Number(sp.amount) || 0;
+          const paidServiceLines = normalizePaidServices(sp.paid_services);
+          const paidServicesOther = Math.max(0, Math.abs(paymentAmount) - paidServiceLines.reduce((sum, l) => sum + l.amount, 0));
           const debtAtPaymentTime = selectedPaymentDebt != null
             ? Number(selectedPaymentDebt)
             : Number(patientBalances[sp.id]?.debtAtTime ?? pat?.total_debt) || 0;
@@ -3446,6 +3494,44 @@ export default function Payments() {
                     </span>
                   </div>
                 </div>
+
+                {paidServiceLines.length > 0 && (
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden" data-testid="payment-paid-services">
+                    <div className="bg-slate-100/90 px-3.5 py-1.5 border-b border-slate-200 flex items-center justify-between">
+                      <span className="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <Receipt className="w-3.5 h-3.5 text-emerald-600" />
+                        {t('payments.paidForServices')}
+                      </span>
+                      <span className="text-[9.5px] font-bold text-slate-500">UZS</span>
+                    </div>
+                    <table className="w-full border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[9px]">
+                          <th className="py-1.5 px-2.5 text-left border-r border-slate-200">{t('payments.colPlan')}</th>
+                          <th className="w-16 py-1.5 px-2 text-center border-r border-slate-200">{t('payments.colTooth')}</th>
+                          <th className="py-1.5 px-2.5 text-left border-r border-slate-200">{t('payments.colServiceName')}</th>
+                          <th className="w-28 py-1.5 px-2.5 text-right">{t('payments.colPaidNow')}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200/80 text-[11px]">
+                        {paidServiceLines.map((line, idx) => (
+                          <tr key={`${line.plan_id}-${idx}`} className="hover:bg-slate-50/60">
+                            <td className="px-2.5 py-1.5 font-bold text-slate-800 border-r border-slate-200">{line.plan_name || '—'}</td>
+                            <td className="px-2 py-1.5 text-center font-mono font-bold text-slate-600 border-r border-slate-200">{line.tooth || '—'}</td>
+                            <td className="px-2.5 py-1.5 font-semibold text-slate-700 border-r border-slate-200">{line.service_name || t('payments.wholePlan')}</td>
+                            <td className="px-2.5 py-1.5 text-right font-mono font-black text-emerald-700">{line.amount.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                        {paidServicesOther > 0 && (
+                          <tr className="bg-slate-50/70">
+                            <td colSpan={3} className="px-2.5 py-1.5 font-bold text-slate-500 border-r border-slate-200">{t('payments.otherPlansAmount')}</td>
+                            <td className="px-2.5 py-1.5 text-right font-mono font-bold text-slate-600">{paidServicesOther.toLocaleString()}</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
                 {paymentEdit && (
                   <div className="bg-white rounded-xl border border-amber-300 shadow-xs p-3.5 space-y-3" data-testid="payment-edit-form">
@@ -3706,15 +3792,15 @@ export default function Payments() {
                 )}
 
                 {/* ─── 5. Izoh / Reja ─── */}
-                {sp.notes && (
+                {stripHiddenTags(sp.notes) && (
                   <div className="p-3 bg-white rounded-xl border border-slate-200 text-xs">
                     <span className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block mb-1">
                       Izoh / Qo'shimcha ma'lumot:
                     </span>
                     <p className="font-semibold text-slate-800 whitespace-pre-wrap">
-                      {sp.notes.startsWith('Linked to Plan: ')
-                        ? 'Davolash rejasiga biriktirilgan: ' + sp.notes.replace('Linked to Plan: ', '')
-                        : sp.notes}
+                      {stripHiddenTags(sp.notes).startsWith('Linked to Plan: ')
+                        ? 'Davolash rejasiga biriktirilgan: ' + stripHiddenTags(sp.notes).replace('Linked to Plan: ', '')
+                        : stripHiddenTags(sp.notes)}
                     </p>
                   </div>
                 )}
@@ -3733,7 +3819,7 @@ export default function Payments() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPaymentEdit({ amount: String(Math.abs(Number(sp.amount) || 0)), method: sp.method || 'Cash', notes: sp.notes || '' })}
+                  onClick={() => setPaymentEdit({ amount: String(Math.abs(Number(sp.amount) || 0)), method: sp.method || 'Cash', notes: stripHiddenTags(sp.notes) || '' })}
                   data-testid="payment-edit-btn"
                   className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-amber-700 hover:bg-amber-50 text-xs font-bold transition-all border border-amber-300 bg-white cursor-pointer"
                 >

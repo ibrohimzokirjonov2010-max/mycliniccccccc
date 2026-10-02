@@ -223,7 +223,8 @@ class HybridEntityLoader {
               'stage_items', 'services_list', 'stage_media'];
     }
     if (this.entityName === 'Payment') {
-      return ['doctor_id', 'commission_rate', 'patient_name', 'category', 'debt_amount', 'method'];
+      // paid_services: which plan services a payment was made for (hidden in notes, decoded on read)
+      return ['doctor_id', 'commission_rate', 'patient_name', 'category', 'debt_amount', 'method', 'paid_services'];
     }
     if (this.entityName === 'User') {
       // MUHIM: username va password notes'ga ENCODE QILINMASIN!

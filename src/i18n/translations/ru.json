@@ -1307,7 +1307,14 @@
     "selectedServices": "Выбрано услуг",
     "planSelected": "План выбран",
     "selectedRemaining": "Остаток выбранного",
-    "overSelectionWarn": "Сумма больше остатка выбранного на {amount} сум. Излишек пойдёт на следующие открытые планы."
+    "overSelectionWarn": "Сумма больше остатка выбранного на {amount} сум. Излишек пойдёт на следующие открытые планы.",
+    "paidForServices": "За какие услуги оплачено",
+    "colPlan": "План",
+    "colTooth": "Зуб",
+    "colServiceName": "Услуга",
+    "colPaidNow": "Из этого платежа",
+    "wholePlan": "Весь план",
+    "otherPlansAmount": "На другие открытые планы"
   },
   "receipt": {
     "title": "Чек",
