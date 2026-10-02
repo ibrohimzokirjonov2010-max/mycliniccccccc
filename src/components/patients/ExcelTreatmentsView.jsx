@@ -4,7 +4,7 @@ import {
   Plus, Search, FileSpreadsheet,
   ArrowUpDown, ExternalLink, User,
   CheckCircle2, Clock, ClipboardList, FileText, ChevronRight,
-  Calculator, Trash2, Lock
+  Calculator, Trash2, Lock, Pencil
 } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import TreatmentDeleteDialog from './TreatmentDeleteDialog';
@@ -21,6 +21,7 @@ import {
   planToothList,
   planTotal,
 } from '@/lib/planGroups';
+import { isImplantPlan } from '@/lib/implantPlanModel';
 
 const formatDate = (value) => {
   const dt = value ? new Date(value) : null;
@@ -72,6 +73,7 @@ function ExcelTreatmentsView({
   onOpenTreatmentModal,
   onOpenPlanInvoice,
   onDeleteTreatment,
+  onRenamePlan,
 }) {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
@@ -80,6 +82,7 @@ function ExcelTreatmentsView({
   const [expandedId, setExpandedId] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [renaming, setRenaming] = useState(null); // { id, value }
 
   const planGroups = useMemo(() => {
     const effectiveTotalPaid = Math.max(Number(totalPaid || 0), Number(patient?.total_paid || 0));
@@ -189,6 +192,51 @@ function ExcelTreatmentsView({
 
   const renderServices = (group, variant) => (
     <div className="space-y-1.5" data-testid="plan-services-panel">
+      {onRenamePlan && isImplantPlan(group.plan) && (
+        <div className="flex items-center gap-2 flex-wrap pb-1" data-testid="plan-rename">
+          {renaming?.id === group.id ? (
+            <>
+              <input
+                autoFocus
+                data-testid="plan-rename-input"
+                value={renaming.value}
+                maxLength={80}
+                onChange={(e) => setRenaming({ id: group.id, value: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); onRenamePlan(group.plan, renaming.value); setRenaming(null); }
+                  if (e.key === 'Escape') setRenaming(null);
+                }}
+                className="h-8 min-w-[10rem] flex-1 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-bold outline-none focus:border-[#1499AD]"
+              />
+              <button
+                type="button"
+                data-testid="plan-rename-save"
+                onClick={() => { onRenamePlan(group.plan, renaming.value); setRenaming(null); }}
+                className="h-8 px-3 rounded-lg bg-[#1499AD] text-white text-[11px] font-black cursor-pointer"
+              >
+                Saqlash
+              </button>
+              <button
+                type="button"
+                onClick={() => setRenaming(null)}
+                className="h-8 px-3 rounded-lg border border-slate-200 bg-white text-slate-600 text-[11px] font-bold cursor-pointer"
+              >
+                Bekor qilish
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              data-testid="plan-rename-open"
+              onClick={() => setRenaming({ id: group.id, value: group.plan.name || '' })}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 bg-white text-slate-700 text-[11px] font-bold cursor-pointer hover:bg-slate-50"
+            >
+              <Pencil className="w-3 h-3" />
+              Reja nomini o‘zgartirish
+            </button>
+          )}
+        </div>
+      )}
       {group.visibleRows.map((row) => {
         const toothDisplay = row.toothNumber && row.toothNumber !== '—';
         return (

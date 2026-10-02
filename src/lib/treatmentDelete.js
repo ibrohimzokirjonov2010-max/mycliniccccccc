@@ -58,7 +58,7 @@ export async function deleteTreatmentPlan(plan) {
   return { balance, paidAmount };
 }
 
-async function syncPatientBalance(patientId) {
+export async function syncPatientBalance(patientId) {
   if (!patientId || patientId === LOCKED_PATIENT) return null;
   const [payments, plans] = await Promise.all([
     base44.entities.Payment.filter({ patient_id: patientId }, '-date', 5000),
