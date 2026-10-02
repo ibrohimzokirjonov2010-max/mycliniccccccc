@@ -3,6 +3,7 @@ import { lazyWithRetry as lazy } from '@/utils/lazyWithRetry';
 import { Toaster } from 'sonner';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
+import { readPageAccess } from '@/lib/pageAccess';
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { LanguageProvider } from '@/i18n/LanguageContext';
@@ -125,10 +126,12 @@ const DashboardSwitcher = memo(() => {
   return <Navigate to="/login" replace />;
 });
 
-const AdminRoute = memo(({ children }) => {
+const AdminRoute = memo(({ children, pageKey }) => {
   const { user, isAdmin, isLoadingAuth } = useAuth();
   if (isLoadingAuth) return null;
-  if (!user || !isAdmin) return <Navigate to="/login" replace />;
+  // Admin-only pages open for staff the admin explicitly granted (Xodimlar → Kirish huquqlari)
+  const granted = !!pageKey && readPageAccess(user)[pageKey] === true;
+  if (!user || (!isAdmin && !granted)) return <Navigate to="/login" replace />;
   return children;
 });
 
@@ -205,13 +208,13 @@ const AuthenticatedApp = memo(() => {
               <Route path="/admin/dashboard"
                 element={<AdminRoute>{M(<Dashboard />, <MobileDashboardV2 />)}</AdminRoute>} />
               <Route path="/expenses"
-                element={<PlanRoute feature="expenses"><AdminRoute>{M(<Expenses />, <MobileExpenses />)}</AdminRoute></PlanRoute>} />
+                element={<PlanRoute feature="expenses"><AdminRoute pageKey="expenses">{M(<Expenses />, <MobileExpenses />)}</AdminRoute></PlanRoute>} />
               <Route path="/payroll"
                 element={<PlanRoute feature="payroll"><AdminRoute>{M(<Payroll />, <MobilePayroll />)}</AdminRoute></PlanRoute>} />
               <Route path="/reports"
-                element={<PlanRoute feature="reports"><AdminRoute>{M(<Reports />, <MobileReports />)}</AdminRoute></PlanRoute>} />
+                element={<PlanRoute feature="reports"><AdminRoute pageKey="reports">{M(<Reports />, <MobileReports />)}</AdminRoute></PlanRoute>} />
               <Route path="/staff"
-                element={<PlanRoute feature="staff"><AdminRoute>{M(<Staff />, <MobileStaff />)}</AdminRoute></PlanRoute>} />
+                element={<PlanRoute feature="staff"><AdminRoute pageKey="staff">{M(<Staff />, <MobileStaff />)}</AdminRoute></PlanRoute>} />
 
               {/* ── Doctor ── */}
               <Route path="/doctor/dashboard"

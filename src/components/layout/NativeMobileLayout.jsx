@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import { isPageBlocked, isPageGranted } from '@/lib/pageAccess';
 import { CLINIC_SESSION_EVENT, isPathLocked } from '@/lib/clinicPlan';
 import { useClinicPlan } from '@/hooks/useFeature';
 import AdBanner from './AdBanner';
@@ -178,8 +179,10 @@ export default function NativeMobileLayout({ children }) {
         '/no-show', '/treatment-tracking',
         '/cases', '/settings'
       ];
-      items = items.filter(item => doctorAllowedPaths.includes(item.path));
+      items = items.filter(item => doctorAllowedPaths.includes(item.path) || isPageGranted(user, item.path));
     }
+
+    items = items.filter(item => !isPageBlocked(user, item.path));
 
     items = items.map((item) => ({ ...item, locked: isPathLocked(plan, item.path) }));
     
@@ -196,7 +199,7 @@ export default function NativeMobileLayout({ children }) {
     { path: '/patients', icon: Users, label: t('navigation.patients'), color: '#1499AD' },
     { path: '/appointments', icon: Calendar, label: t('appointments.calendar'), color: '#1499AD' },
     { path: '/payments', icon: Wallet, label: t('navigation.payments'), color: '#1499AD' },
-  ], [t]);
+  ].filter((tab) => !isPageBlocked(user, tab.path)), [t, user]);
 
   const quickActions = useMemo(() => [
     { path: '/patients', icon: Users, label: t('patients.addNew'), color: '#3b82f6', state: { openAddModal: true } },
