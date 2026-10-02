@@ -1,5 +1,6 @@
 import { queryClientInstance } from '@/lib/query-client';
 import { base44 } from '@/api/base44Client';
+import { prefetchRouteChunk } from '@/utils/routeChunkPrefetch';
 
 /**
  * Prefetcher Utility
@@ -7,6 +8,8 @@ import { base44 } from '@/api/base44Client';
  * Fires on onMouseEnter (desktop) and onFocus/onClick (mobile)
  */
 export const prefetchModuleData = (path) => {
+  // Warm the lazy route chunk first so the first click never waits for / fails on the import.
+  prefetchRouteChunk(path);
   const clinicId = localStorage.getItem('current_clinic_id');
   if (!clinicId) return;
 

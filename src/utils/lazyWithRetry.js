@@ -18,10 +18,27 @@ export function isChunkLoadError(error) {
  * Pass a unique sessionKey per heavy route (Patients/Settings) so one route's reload
  * does not block soft-retry for another.
  */
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Retry a dynamic import a couple of times (flaky network / just-deployed chunk) before giving up. */
+async function importWithRetries(factory, retries = 2) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await factory();
+    } catch (error) {
+      lastError = error;
+      if (!isChunkLoadError(error) || attempt === retries) break;
+      await sleep(350 * (attempt + 1));
+    }
+  }
+  throw lastError;
+}
+
 export function lazyWithRetry(factory, sessionKey = 'chunk_soft_reload') {
   return lazy(async () => {
     try {
-      const mod = await factory();
+      const mod = await importWithRetries(factory);
       try {
         sessionStorage.removeItem(sessionKey);
       } catch (_) { /* ignore */ }
