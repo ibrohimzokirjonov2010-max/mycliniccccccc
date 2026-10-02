@@ -1294,7 +1294,20 @@
     "formErrorFill": "Укажите пациента и сумму платежа",
     "formErrorAmount": "Укажите сумму платежа",
     "formErrorNoDebt": "У этого пациента нет долга. Входящий платёж принять нельзя.",
-    "formErrorOverDebt": "Сумма больше долга пациента. Максимум: {amount} сум"
+    "formErrorOverDebt": "Сумма больше долга пациента. Максимум: {amount} сум",
+    "plansAndServices": "Планы лечения и услуги",
+    "noUnpaidPlans": "Нет неоплаченных планов",
+    "freeAmountHint": "Введите сумму вручную, не выбирая план или услугу",
+    "colService": "План / услуга",
+    "colPrice": "Цена",
+    "colPaid": "Оплачено",
+    "colRemaining": "Остаток",
+    "clearSelection": "Сбросить выбор",
+    "selectPlanHint": "Оплатить остаток всего плана",
+    "selectedServices": "Выбрано услуг",
+    "planSelected": "План выбран",
+    "selectedRemaining": "Остаток выбранного",
+    "overSelectionWarn": "Сумма больше остатка выбранного на {amount} сум. Излишек пойдёт на следующие открытые планы."
   },
   "receipt": {
     "title": "Чек",

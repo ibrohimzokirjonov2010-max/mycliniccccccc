@@ -1193,7 +1193,20 @@
     "formErrorFill": "Please enter the patient and payment amount",
     "formErrorAmount": "Please enter a payment amount",
     "formErrorNoDebt": "This patient has no debt. An incoming payment cannot be recorded.",
-    "formErrorOverDebt": "Amount exceeds the patient's debt. Maximum: {amount} sum"
+    "formErrorOverDebt": "Amount exceeds the patient's debt. Maximum: {amount} sum",
+    "plansAndServices": "Treatment plans & services",
+    "noUnpaidPlans": "No unpaid plans",
+    "freeAmountHint": "Enter an amount manually without picking a plan or service",
+    "colService": "Plan / service",
+    "colPrice": "Price",
+    "colPaid": "Paid",
+    "colRemaining": "Balance",
+    "clearSelection": "Clear selection",
+    "selectPlanHint": "Pay the balance of the whole plan",
+    "selectedServices": "Services selected",
+    "planSelected": "Plan selected",
+    "selectedRemaining": "Selected balance",
+    "overSelectionWarn": "Amount exceeds the selected balance by {amount} sum. The excess goes to the next open plans."
   },
   "receipt": {
     "title": "Receipt",

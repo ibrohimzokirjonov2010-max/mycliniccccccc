@@ -32,6 +32,7 @@ import { paymentStamp, tashkentToday, formatClinicDate, formatClinicDateTime, pa
 import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
 import { computePatientBalances, isListedPayment, unionPayments } from '@/lib/paymentDebt';
 import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
+import { getPlanPayRows, pickSelectedServices, allocateSelectedServices } from '@/lib/paymentPlanServices';
 import { toast } from 'sonner';
 import '@/components/payments/paymentAddModal.css';
 
@@ -259,6 +260,8 @@ export default function Payments() {
   const [patientBalances, setPatientBalances] = useState({});
   const [patientPlans, setPatientPlans] = useState([]);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
+  const [selectedServiceKeys, setSelectedServiceKeys] = useState([]);
+  const [plansLoading, setPlansLoading] = useState(false);
   const [selectedPlanForInvoice, setSelectedPlanForInvoice] = useState(null);
   const [showPlanInvoiceModal, setShowPlanInvoiceModal] = useState(false);
   const [patientPaymentsHistory, setPatientPaymentsHistory] = useState([]);
@@ -801,6 +804,64 @@ export default function Payments() {
   }, [payments, balancePayments, allTreatmentPlans]);
 
 
+  // ── To'lov oynasi: faqat qoldig'i bor reja va xizmatlar ───────────────────
+  const payRows = useMemo(() => getPlanPayRows(patientPlans), [patientPlans]);
+  const selectedServices = useMemo(
+    () => pickSelectedServices(payRows, selectedServiceKeys),
+    [payRows, selectedServiceKeys],
+  );
+  const selectedPlanRow = useMemo(
+    () => (selectedInvoiceId ? payRows.find(r => String(r.plan.id) === String(selectedInvoiceId)) || null : null),
+    [payRows, selectedInvoiceId],
+  );
+  // Tanlangan reja yoki xizmatlar qoldig'i (0 = hech narsa tanlanmagan → erkin summa)
+  const selectionRemaining = selectedServices.length > 0
+    ? selectedServices.reduce((sum, s) => sum + s.remaining, 0)
+    : (selectedPlanRow ? selectedPlanRow.remaining : 0);
+
+  const clearPaySelection = () => {
+    setSelectedInvoiceId('');
+    setSelectedServiceKeys([]);
+    setFormError('');
+    setForm(prev => ({ ...prev, amount: '', service_name: '' }));
+  };
+
+  const togglePlanSelect = (row) => {
+    setFormError('');
+    if (String(selectedInvoiceId) === String(row.plan.id)) {
+      clearPaySelection();
+      return;
+    }
+    const planDocId = resolveDoctorId(null, [row.plan], doctors, user, isDoctor);
+    setSelectedInvoiceId(row.plan.id);
+    setSelectedServiceKeys([]);
+    setForm(prev => ({
+      ...prev,
+      amount: row.remaining,
+      service_name: `Reja: ${row.plan.name}`,
+      doctor_id: planDocId || prev.doctor_id || '',
+    }));
+  };
+
+  const toggleServiceSelect = (svc) => {
+    setFormError('');
+    const next = selectedServiceKeys.includes(svc.key)
+      ? selectedServiceKeys.filter(k => k !== svc.key)
+      : [...selectedServiceKeys, svc.key];
+    const picked = pickSelectedServices(payRows, next);
+    const total = picked.reduce((sum, s) => sum + s.remaining, 0);
+    const firstPlan = picked[0]?.plan;
+    const planDocId = firstPlan ? resolveDoctorId(null, [firstPlan], doctors, user, isDoctor) : '';
+    setSelectedInvoiceId('');
+    setSelectedServiceKeys(next);
+    setForm(prev => ({
+      ...prev,
+      amount: total > 0 ? total : '',
+      service_name: picked.length ? picked.map(s => s.name).join(', ').slice(0, 200) : '',
+      doctor_id: (picked.length && planDocId) ? planDocId : (prev.doctor_id || ''),
+    }));
+  };
+
   const resetModal = () => {
     // Avval modalOpen=false qo'yamiz - boshqa state lar keyinroq tozalanadi
     setModalOpen(false);
@@ -808,6 +869,7 @@ export default function Payments() {
     setRealPatientDebt(null);
     setLoadingDebt(false);
     setFormError('');
+    setSelectedServiceKeys([]);
 
     // Forma va boshqa state larni async tozalash (UI block qilmasin)
     setTimeout(() => {
@@ -830,6 +892,7 @@ export default function Payments() {
       setPatientServices([]);
       setSelectedServiceId('');
       setSelectedInvoiceId('');
+      setSelectedServiceKeys([]);
       setPatientPlans([]);
     }, 100);
   };
@@ -862,6 +925,7 @@ export default function Payments() {
     const savedServiceId = selectedServiceId;
     const savedServiceObj = patientServices.find(s => s.id === selectedServiceId) || null;
     const savedInvoiceId = selectedInvoiceId;
+    const savedSelectedServices = selectedServices;
 
     let finalDate;
     try {
@@ -928,10 +992,45 @@ export default function Payments() {
           if (savedType.toLowerCase() === 'income' && savedPatientId !== 'patient-y2ii8ynf2') {
             try {
               const plans = await base44.entities.TreatmentPlan.filter({ patient_id: savedPatientId }, 'created_date', 50);
-              const slices = allocateInvoicePayment(plans, savedAmount, savedInvoiceId || savedServiceObj?.plan_id || '');
+              let slices;
+              const coveredByPlan = new Map(); // planId -> [{ index, name }] to flag as paid
+              if (savedSelectedServices.length > 0) {
+                // Tanlangan xizmatlar: avval ularning qoldig'i, ortig'i keyingi ochiq rejalarga
+                const alloc = allocateSelectedServices(savedSelectedServices, savedAmount);
+                const plansAfter = (plans || []).map(pl => {
+                  const g = alloc.groups.find(x => String(x.planId) === String(pl.id));
+                  if (!g) return pl;
+                  const total = Number(pl.total_price) || 0;
+                  const next = (Number(pl.paid_amount) || 0) + g.apply;
+                  return { ...pl, paid_amount: total > 0 ? Math.min(total, next) : next };
+                });
+                const merged = new Map();
+                alloc.groups.forEach(g => {
+                  const pl = plansAfter.find(x => String(x.id) === String(g.planId));
+                  if (pl) merged.set(String(g.planId), { id: pl.id, paid_amount: pl.paid_amount });
+                  coveredByPlan.set(String(g.planId), g.covered);
+                });
+                if (alloc.leftover > 0) {
+                  allocateInvoicePayment(plansAfter, alloc.leftover, '').forEach(sl => {
+                    merged.set(String(sl.id), { id: sl.id, paid_amount: sl.paid_amount });
+                  });
+                }
+                slices = Array.from(merged.values());
+              } else {
+                slices = allocateInvoicePayment(plans, savedAmount, savedInvoiceId || savedServiceObj?.plan_id || '');
+              }
               for (const slice of slices) {
                 const targetPlan = (plans || []).find(pl => pl.id === slice.id);
                 let services = targetPlan?.services;
+                const covered = coveredByPlan.get(String(slice.id));
+                if (targetPlan && covered && covered.length > 0) {
+                  services = (targetPlan.services || []).map((svc, idx) => {
+                    const svcName = svc.service_name || svc.name || '';
+                    return covered.some(c => c.index === idx && c.name === svcName)
+                      ? { ...svc, payment_status: 'paid' }
+                      : svc;
+                  });
+                }
                 if (targetPlan && savedServiceObj && targetPlan.id === savedServiceObj.plan_id) {
                   services = (targetPlan.services || []).map(svc => {
                     const svcName = svc.service_name || svc.name || '';
@@ -1850,9 +1949,12 @@ export default function Payments() {
   // Bemor tanlanganida uning xizmatlarini avtomatik yuklash
   useEffect(() => {
     setSelectedInvoiceId('');
+    setSelectedServiceKeys([]);
+    setPatientPlans([]);
     if (form.patient_id) {
       // Xizmatlarni yuklash (to'lanmagan rejalardan)
       const fetchServices = async () => {
+        setPlansLoading(true);
         try {
           const plans = await base44.entities.TreatmentPlan.filter({ patient_id: form.patient_id }, '-created_date', 50);
           setPatientPlans((plans || []).filter(p => (p.paid_amount || 0) < p.total_price));
@@ -1888,6 +1990,8 @@ export default function Payments() {
         } catch (e) {
           console.error('Error fetching patient services:', e);
           setPatientServices([]);
+        } finally {
+          setPlansLoading(false);
         }
       };
       fetchServices();
@@ -1917,14 +2021,8 @@ export default function Payments() {
             realDebt = Math.max(0, (totalDebts + totalRefunds) - (totalIncomes + totalDiscounts));
           }
 
+          // Summa avtomatik to'ldirilmaydi: reja/xizmat tanlanganda yoki qo'lda kiritiladi
           setRealPatientDebt(realDebt);
-          setForm(prev => {
-            if (String(prev.patient_id) !== String(form.patient_id)) return prev;
-            if (prev.amount === '' || prev.amount === 0 || prev.amount == null) {
-              return { ...prev, amount: realDebt > 0 ? realDebt : '' };
-            }
-            return prev;
-          });
 
           const pat = patients.find(p => p.id === form.patient_id);
           if (pat && form.patient_id !== 'patient-y2ii8ynf2' && Number(pat.total_debt) !== realDebt) {
@@ -1943,6 +2041,7 @@ export default function Payments() {
       setPatientServices([]);
       setSelectedServiceId('');
       setSelectedInvoiceId('');
+      setSelectedServiceKeys([]);
       setRealPatientDebt(null);
     }
   }, [form.patient_id]);
@@ -2587,8 +2686,8 @@ export default function Payments() {
           ) : null}
 
           <div className="payment-add-body no-scrollbar">
-             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="space-y-3">
+             {/* Bemor + davolash rejalari / xizmatlar (faqat qoldig'i borlar) */}
+             <div className="space-y-3 mb-3">
                    <div className="space-y-1.5 relative z-50">
                      <div className="flex items-center justify-between ml-4">
                         <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('patients.title')}</Label>
@@ -2615,6 +2714,8 @@ export default function Payments() {
                             setPatientServices([]);
                             setSelectedServiceId('');
                             setPatientPlans([]);
+                            setSelectedInvoiceId('');
+                            setSelectedServiceKeys([]);
                             setRealPatientDebt(null);
                             return;
                           }
@@ -2625,79 +2726,128 @@ export default function Payments() {
                             ...prev, 
                             patient_id: id, 
                             patient_name: selectedPat?.full_name || '',
-                            doctor_id: assignedDocId || prev.doctor_id || ''
+                            doctor_id: assignedDocId || prev.doctor_id || '',
+                            ...(String(prev.patient_id) !== String(id) ? { amount: '', service_name: '' } : {})
                           }));
                        }} 
                        inputClassName="h-11 rounded-xl border-none bg-slate-50 px-5 font-black text-slate-900 text-sm"
                      />
                    </div>
 
-                   {/* Davolash rejalari va hisob-faktura ko'rish */}
-                   {patientPlans && patientPlans.length > 0 && (
-                      <div className="space-y-1.5 pt-2.5 border-t border-slate-100/85 relative z-20">
-                        <div className="flex items-center justify-between ml-1">
-                          <Label className="text-[9px] font-black text-[#0d9488] uppercase tracking-widest flex items-center gap-1.5">
-                            <Receipt className="w-3 h-3" /> {t('patientProfile.tabs.treatments') || 'Davolash rejalari'}
-                          </Label>
-                          {patientPlans.length > 2 && (
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                              ({patientPlans.length} ta)
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-1.5 max-h-[min(160px,22vh)] overflow-y-auto pr-1">
-                          {patientPlans.map(plan => {
-                            const paid = Number(plan.paid_amount) || 0;
-                            const total = Number(plan.total_price) || 0;
-                            const remaining = Math.max(0, total - paid);
-                            return (
-                              <div 
-                                key={plan.id} 
-                                onClick={() => {
-                                  const planDocId = resolveDoctorId(null, [plan], doctors, user, isDoctor);
-                                  setSelectedInvoiceId(plan.id);
-                                  setForm(prev => ({
-                                    ...prev,
-                                    amount: remaining > 0 ? remaining : prev.amount,
-                                    service_name: `Reja: ${plan.name}`,
-                                    doctor_id: planDocId || prev.doctor_id || ''
-                                  }));
-                                  toast.info(`${plan.name} tanlandi (${formatCurrency(remaining)})`);
-                                }}
-                                className={`flex items-center justify-between cursor-pointer rounded-lg px-2.5 py-1.5 border transition-all duration-200 group ${
-                                  String(selectedInvoiceId) === String(plan.id)
-                                    ? 'bg-emerald-50 border-emerald-300 ring-1 ring-emerald-200'
-                                    : 'bg-slate-50/70 hover:bg-emerald-50/60 hover:border-emerald-200 border-slate-100'
-                                }`}
-                                title="Ushbu reja summasini to'lovga kiritish"
-                              >
-                                <div className="flex-1 min-w-0 mr-2">
-                                  <p className="text-[11px] font-black text-slate-800 group-hover:text-emerald-700 truncate leading-snug">{plan.name || (t ? t('patientProfile.treatmentPlanSingular') : 'Davolash rejasi')}</p>
-                                  <p className="text-[10px] text-slate-500 font-medium leading-none mt-0.5">
-                                    Muolaja narhi to'liq:&nbsp;
-                                    <span className="text-slate-700 font-black">{total.toLocaleString()} {t('common.currency') || "so'm"}</span>
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  <span className="text-[8px] font-black uppercase text-emerald-600 bg-emerald-100/60 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                                    Tanlash
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); setSelectedPlanForInvoice(plan); setShowPlanInvoiceModal(true); }}
-                                    className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md bg-teal-50 border border-teal-100 text-[#0d9488] text-[9px] font-black uppercase tracking-wide hover:bg-teal-100 active:scale-95 transition-all"
-                                  >
-                                    <FileText className="w-2.5 h-2.5" />
-                                    {t('common.invoice') || 'Faktura'}
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
 
+               {form.patient_id && (
+                 <div className="space-y-1.5 pt-2.5 border-t border-slate-100/85 relative z-20" data-payment-plan-table="true">
+                   <div className="flex items-center justify-between ml-1">
+                     <Label className="text-[9px] font-black text-[#0d9488] uppercase tracking-widest flex items-center gap-1.5">
+                       <Receipt className="w-3 h-3" /> {t('payments.plansAndServices')}
+                       {payRows.length > 0 && (
+                         <span className="text-slate-400 font-bold">({payRows.length})</span>
+                       )}
+                     </Label>
+                     {(selectedInvoiceId || selectedServiceKeys.length > 0) && (
+                       <button
+                         type="button"
+                         onClick={clearPaySelection}
+                         className="text-[9px] font-black text-slate-500 hover:text-rose-600 uppercase tracking-widest"
+                       >
+                         {t('payments.clearSelection')}
+                       </button>
+                     )}
+                   </div>
+
+                   {payRows.length === 0 ? (
+                     <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/70 px-3 py-2">
+                       <p className="text-[11px] font-black text-slate-500">
+                         {plansLoading ? t('common.loading') : t('payments.noUnpaidPlans')}
+                       </p>
+                       {!plansLoading && (
+                         <p className="text-[10px] font-medium text-slate-400 mt-0.5">{t('payments.freeAmountHint')}</p>
+                       )}
+                     </div>
+                   ) : (
+                     <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
+                       <div className="grid grid-cols-[20px_minmax(0,1fr)_68px_68px_68px] items-center gap-x-1.5 px-2 py-1 bg-slate-100/80 text-[9px] font-black text-slate-500 uppercase tracking-wider">
+                         <span />
+                         <span>{t('payments.colService')}</span>
+                         <span className="text-right">{t('payments.colPrice')}</span>
+                         <span className="text-right">{t('payments.colPaid')}</span>
+                         <span className="text-right">{t('payments.colRemaining')}</span>
+                       </div>
+                       <div className="max-h-[min(210px,26vh)] overflow-y-auto divide-y divide-slate-100">
+                         {payRows.map(row => {
+                           const planSelected = String(selectedInvoiceId) === String(row.plan.id);
+                           return (
+                             <div key={row.plan.id}>
+                               <div
+                                 onClick={() => togglePlanSelect(row)}
+                                 className={`grid grid-cols-[20px_minmax(0,1fr)_68px_68px_68px] items-center gap-x-1.5 px-2 py-1.5 cursor-pointer text-[11px] tabular-nums transition-colors ${
+                                   planSelected ? 'bg-emerald-50' : 'bg-slate-50/60 hover:bg-emerald-50/60'
+                                 }`}
+                                 title={t('payments.selectPlanHint')}
+                               >
+                                 <input
+                                   type="checkbox"
+                                   checked={planSelected}
+                                   onChange={() => togglePlanSelect(row)}
+                                   onClick={(e) => e.stopPropagation()}
+                                   className="w-3.5 h-3.5 accent-teal-600 cursor-pointer"
+                                   aria-label={row.plan.name}
+                                 />
+                                 <div className="flex items-center gap-1.5 min-w-0">
+                                   <span className="font-black text-slate-800 truncate">{row.plan.name || t('patientProfile.treatmentPlanSingular', 'Davolash rejasi')}</span>
+                                   <button
+                                     type="button"
+                                     onClick={(e) => { e.stopPropagation(); setSelectedPlanForInvoice(row.plan); setShowPlanInvoiceModal(true); }}
+                                     className="shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-teal-50 border border-teal-100 text-[#0d9488] text-[8px] font-black uppercase tracking-wide hover:bg-teal-100 active:scale-95 transition-all"
+                                   >
+                                     <FileText className="w-2.5 h-2.5" />
+                                     {t('common.invoice', 'Faktura')}
+                                   </button>
+                                 </div>
+                                 <span className="text-right font-bold text-slate-700">{row.total.toLocaleString('uz-UZ')}</span>
+                                 <span className="text-right font-bold text-emerald-600">{row.paid.toLocaleString('uz-UZ')}</span>
+                                 <span className="text-right font-black text-rose-500">{row.remaining.toLocaleString('uz-UZ')}</span>
+                               </div>
+                               {row.services.map(svc => {
+                                 const checked = selectedServiceKeys.includes(svc.key);
+                                 return (
+                                   <label
+                                     key={svc.key}
+                                     className={`grid grid-cols-[20px_minmax(0,1fr)_68px_68px_68px] items-center gap-x-1.5 pl-4 pr-2 py-1 cursor-pointer text-[11px] tabular-nums transition-colors ${
+                                       checked ? 'bg-emerald-50/80' : 'hover:bg-slate-50'
+                                     }`}
+                                   >
+                                     <input
+                                       type="checkbox"
+                                       checked={checked}
+                                       onChange={() => toggleServiceSelect(svc)}
+                                       className="w-3.5 h-3.5 accent-teal-600 cursor-pointer"
+                                     />
+                                     <span className="font-semibold text-slate-700 truncate" title={svc.name}>{svc.name}</span>
+                                     <span className="text-right text-slate-600">{svc.price.toLocaleString('uz-UZ')}</span>
+                                     <span className="text-right text-emerald-600">{svc.paid > 0 ? svc.paid.toLocaleString('uz-UZ') : '—'}</span>
+                                     <span className="text-right font-bold text-rose-500">{svc.remaining.toLocaleString('uz-UZ')}</span>
+                                   </label>
+                                 );
+                               })}
+                             </div>
+                           );
+                         })}
+                       </div>
+                       <div className="flex items-center justify-between px-2 py-1 bg-slate-50 border-t border-slate-200 text-[10px] font-bold text-slate-500">
+                         <span>{selectedServiceKeys.length > 0 ? `${t('payments.selectedServices')}: ${selectedServiceKeys.length}` : (selectedInvoiceId ? t('payments.planSelected') : t('payments.freeAmountHint'))}</span>
+                         {selectionRemaining > 0 && (
+                           <span className="font-black text-slate-700">{t('payments.selectedRemaining')}: {selectionRemaining.toLocaleString('uz-UZ')}</span>
+                         )}
+                       </div>
+                     </div>
+                   )}
+                 </div>
+               )}
+             </div>
+
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-3">
                     <div className="space-y-1.5 pt-2.5 border-t border-slate-100/85 relative z-10">
                        <div className="grid grid-cols-2 gap-3">
                          <div className="space-y-1.5">
@@ -2824,6 +2974,7 @@ export default function Payments() {
                                 className="text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-rose-600"
                                 onClick={() => {
                                   setSelectedInvoiceId('');
+                                  setSelectedServiceKeys([]);
                                   if (debt > 0) setForm(prev => ({ ...prev, amount: debt, service_name: '' }));
                                 }}
                               >
@@ -2851,6 +3002,23 @@ export default function Payments() {
                                 </div>
                               )}
                             </div>
+                            {/* Ortiqcha to'lov ogohlantirishi */}
+                            {isIncomeType && selectionRemaining > 0 && Number(form.amount) > selectionRemaining && (!(debt > 0) || Number(form.amount) <= debt) && (
+                              <div className="mx-2 flex items-start gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl" role="status">
+                                <span className="text-amber-500 text-sm leading-none mt-0.5">⚠️</span>
+                                <p className="text-[10px] font-bold text-amber-700">
+                                  {t('payments.overSelectionWarn', { amount: (Number(form.amount) - selectionRemaining).toLocaleString('uz-UZ') })}
+                                </p>
+                              </div>
+                            )}
+                            {isIncomeType && !loadingDebt && debt > 0 && Number(form.amount) > debt && (
+                              <div className="mx-2 flex items-start gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-xl" role="alert">
+                                <span className="text-rose-500 text-sm leading-none mt-0.5">⚠️</span>
+                                <p className="text-[10px] font-bold text-rose-700">
+                                  {t('payments.formErrorOverDebt', { amount: debt.toLocaleString('uz-UZ') })}
+                                </p>
+                              </div>
+                            )}
                             {/* Ogohlantirish — qarz yo'q bemorga Income to'lov */}
                             {noDebtWarning && (
                               <div className="mx-2 flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl">

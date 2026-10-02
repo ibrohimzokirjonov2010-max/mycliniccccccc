@@ -1298,7 +1298,20 @@
     "formErrorFill": "Iltimos, bemor va to'lov summasini kiriting",
     "formErrorAmount": "Iltimos, to'lov summasini kiriting",
     "formErrorNoDebt": "Bu bemorda qarz yo'q. Kirim to'lov qilib bo'lmaydi.",
-    "formErrorOverDebt": "Kiritilgan summa bemor qarzidan ko'p. Maksimal: {amount} so'm"
+    "formErrorOverDebt": "Kiritilgan summa bemor qarzidan ko'p. Maksimal: {amount} so'm",
+    "plansAndServices": "Davolash rejalari va xizmatlar",
+    "noUnpaidPlans": "To'lanmagan reja yo'q",
+    "freeAmountHint": "Reja yoki xizmat tanlamasdan summani o'zingiz kiriting",
+    "colService": "Reja / xizmat",
+    "colPrice": "Narxi",
+    "colPaid": "To'langan",
+    "colRemaining": "Qoldiq",
+    "clearSelection": "Tanlovni bekor qilish",
+    "selectPlanHint": "Butun rejaning qoldig'ini to'lash",
+    "selectedServices": "Tanlangan xizmatlar",
+    "planSelected": "Reja tanlandi",
+    "selectedRemaining": "Tanlangan qoldiq",
+    "overSelectionWarn": "Summa tanlangan qoldiqdan {amount} so'm ko'p. Ortig'i keyingi ochiq rejalarga o'tadi."
   },
   "receipt": {
     "title": "Chek",
