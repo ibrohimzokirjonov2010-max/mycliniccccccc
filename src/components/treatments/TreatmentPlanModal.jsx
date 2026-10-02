@@ -19,6 +19,7 @@ import PatientSelect from '../patients/PatientSelect';
 import { cn, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
 import { getToothIllustrationSrc, pickIllustrationKindFromServices } from '@/utils/toothIllustration';
 import { paymentsForPlan } from '@/lib/treatmentDelete';
+import { isPlanLocked, PLAN_LOCKED_TOAST, PLAN_LOCKED_TOOLTIP } from '@/lib/planLock';
 import JawChoice from '@/components/patients/JawChoice';
 import {
   applyJawChoice,
@@ -228,8 +229,9 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   const [customDiscountAmount, setCustomDiscountAmount] = useState('');
   const [savedPlanData, setSavedPlanData] = useState(null);
   // Saqlangan (qoralama bo'lmagan) reja qulflanadi: yangi ish uchun "Yangi reja" ochiladi.
-  const isLocked = !!plan && !['draft', 'qoralama'].includes(String(plan.status || '').toLowerCase());
-  const notifyLocked = () => toast.info("Saqlangan reja qulflangan. Yangi ish uchun \"Yangi reja\" yarating.");
+  // Shu modal ichida hozirgina saqlangan reja ham darhol qulflanadi (qayta Saqlash dublikat yaratmasligi uchun).
+  const isLocked = isPlanLocked(plan) || !!savedPlanData;
+  const notifyLocked = () => toast.info(PLAN_LOCKED_TOAST);
   const [isInstallment, setIsInstallment] = useState(false);
   const [installmentMonths, setInstallmentMonths] = useState(6);
   const [installmentAdvance, setInstallmentAdvance] = useState('');
@@ -994,6 +996,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                 {isLocked && (
                   <span
                     data-testid="plan-locked-badge"
+                    title={PLAN_LOCKED_TOOLTIP}
                     className="ml-2 inline-flex items-center gap-1 align-middle rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black normal-case tracking-wide text-white"
                   >
                     <Lock className="w-2.5 h-2.5" /> Qulflangan

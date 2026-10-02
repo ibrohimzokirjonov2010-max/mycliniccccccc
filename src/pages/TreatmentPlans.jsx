@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import { 
   Plus, Search, ClipboardList, FileDown, 
-  Edit2, Clock, 
+  Edit2, Clock, Lock,
   TrendingUp, Trash2, Table as TableIcon, LayoutGrid, FileSpreadsheet, X,
   ArrowUp, ArrowDown, ArrowUpDown, CheckCircle2, FileText, User,
   Check, Layers, ExternalLink, Printer
@@ -14,6 +14,7 @@ import { base44 } from '@/api/base44Client';
 import { formatDoctorName } from '@/lib/displayText';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { isPlanLocked, PLAN_LOCKED_BADGE, PLAN_LOCKED_TOOLTIP } from '../lib/planLock';
 import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
 import TreatmentPlanInvoice from '../components/treatments/TreatmentPlanInvoice';
 import jsPDF from 'jspdf';
@@ -781,8 +782,13 @@ export default function TreatmentPlans() {
                       {/* REJA NOMI Cell */}
                       <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
                         <div className="min-w-0">
-                          <span className="font-bold text-slate-800 group-hover:text-[#1499AD] transition-colors truncate block">
-                            {localizePlanName(p.name, language)}
+                          <span className="font-bold text-slate-800 group-hover:text-[#1499AD] transition-colors truncate flex items-center gap-1">
+                            {isPlanLocked(p) && (
+                              <span data-testid="plan-locked-icon" title={PLAN_LOCKED_TOOLTIP} aria-label={PLAN_LOCKED_BADGE} className="inline-flex shrink-0 text-amber-600">
+                                <Lock className="w-3 h-3" />
+                              </span>
+                            )}
+                            <span className="truncate">{localizePlanName(p.name, language)}</span>
                           </span>
                           {p.doctor_name && (
                             <span className="text-[10px] font-medium text-slate-400 block truncate">
@@ -854,9 +860,9 @@ export default function TreatmentPlans() {
                           <button 
                             onClick={() => { setEditPlan(p); setModalOpen(true); }}
                             className="p-1.5 rounded-lg text-slate-500 hover:text-[#1499AD] hover:bg-[#1499AD]/10 transition-all cursor-pointer"
-                            title={language === 'ru' ? 'Редактировать план' : 'Rejani tahrirlash'}
+                            title={isPlanLocked(p) ? PLAN_LOCKED_TOOLTIP : (language === 'ru' ? 'Редактировать план' : 'Rejani tahrirlash')}
                           >
-                            <Edit2 className="w-3.5 h-3.5" />
+                            {isPlanLocked(p) ? <Lock className="w-3.5 h-3.5 text-amber-600" /> : <Edit2 className="w-3.5 h-3.5" />}
                           </button>
 
                           <button 
@@ -928,6 +934,11 @@ export default function TreatmentPlans() {
                     </div>
                     <div>
                       <DialogTitle className="text-base font-black text-slate-900 leading-tight">
+                        {isPlanLocked(activeDetailPlan) && (
+                          <span data-testid="plan-locked-icon" title={PLAN_LOCKED_TOOLTIP} aria-label={PLAN_LOCKED_BADGE} className="inline-flex mr-1.5 align-middle text-amber-600">
+                            <Lock className="w-3.5 h-3.5" />
+                          </span>
+                        )}
                         {localizePlanName(activeDetailPlan.name, language)}
                       </DialogTitle>
                       <div className="flex items-center gap-2 mt-0.5">

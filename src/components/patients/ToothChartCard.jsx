@@ -12,7 +12,7 @@ import { getToothIllustrationSrc, matchIllustrationKind } from '@/utils/toothIll
 import { displayServiceName, formatDoctorName } from '@/lib/displayText';
 import { implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
 import { toothGroupBilling, toothGroupCharge, withOncePricing } from '@/lib/toothPlanCharge';
-import { paymentsForPlan } from '@/lib/treatmentDelete';
+import { isPlanLocked, PLAN_LOCKED_ADD_PROMPT } from '@/lib/planLock';
 import JawChoice from '@/components/patients/JawChoice';
 import {
   buildJawPlanLines,
@@ -346,7 +346,6 @@ export default function ToothChartCard({
   toothRecords = [],
   onReload,
   onBookAppointment,
-  onOpenPlan,
   sheetOffset = 0,
   search = '',
   sideRailId = '',
@@ -618,20 +617,6 @@ export default function ToothChartCard({
     });
   };
 
-  const openPlanComposer = () => {
-    if (typeof onOpenPlan === 'function') onOpenPlan();
-    else toast.error('Yangi reja oynasini ochib bo‘lmadi');
-  };
-
-  const pickActivePlan = () => {
-    const open = (plans || []).filter((plan) => {
-      const status = String(plan?.status || '').toLowerCase();
-      return status !== 'completed' && status !== 'cancelled' && status !== 'canceled';
-    });
-    if (open.length !== 1) return null;
-    return open[0];
-  };
-
   const visibleJawTeeth = (scope) => {
     const child = dentition === 'child';
     return expandJawToothNumbers(scope).filter((fdi) => {
@@ -689,66 +674,63 @@ export default function ToothChartCard({
       toast.error('Shifokor tanlanmagan');
       return;
     }
-    const openCount = (plans || []).filter((plan) => {
-      const status = String(plan?.status || '').toLowerCase();
-      return status !== 'completed' && status !== 'cancelled' && status !== 'canceled';
-    }).length;
-    const plan = pickActivePlan();
-    if (!plan) {
-      toast.message(openCount > 1
-        ? 'Bir nechta faol reja bor. Yangi reja oynasida qo‘shing.'
-        : 'Faol reja yo‘q. Yangi reja ochildi.');
-      openPlanComposer();
-      return;
-    }
+    // Saqlangan reja qulflangan: unga xizmat qo'shilmaydi. Har doim YANGI reja yaratiladi.
+    const hasSavedPlan = (plans || []).some((existing) => isPlanLocked(existing));
+    if (hasSavedPlan && typeof window !== 'undefined' && !window.confirm(PLAN_LOCKED_ADD_PROMPT)) return;
     const rows = (lines || []).map((row) => ({
       ...row,
       tooth: row.tooth || row.tooth_number,
       status: row.status || 'planned',
     }));
-    const prevTeeth = String(plan.tooth_number || '').split(/[,·]/).map((part) => part.trim()).filter(Boolean);
-    const toothLabel = [...prevTeeth];
+    const toothLabel = [];
     rows.forEach((row) => {
       const label = String(row.tooth_number || '').trim();
       if (label && !toothLabel.includes(label)) toothLabel.push(label);
     });
+    const serviceNames = [...new Set(rows.map((row) => String(row.service_name || '').trim()).filter(Boolean))];
+    const shownNames = serviceNames.slice(0, 2).join(', ') + (serviceNames.length > 2 ? ` +${serviceNames.length - 2} ta` : '');
+    const planName = [shownNames || 'Davolash rejasi', toothLabel.length ? `· ${toothLabel.join(', ')}` : ''].filter(Boolean).join(' ');
+    const planTotal = Number(total) || 0;
     setBusy(true);
     try {
-      await base44.entities.TreatmentPlan.update(plan.id, {
-        services: [...(plan.services || []), ...rows],
-        total_price: (Number(plan.total_price) || 0) + (Number(total) || 0),
+      const plan = await base44.entities.TreatmentPlan.create({
+        name: planName,
+        patient_id: patient.id,
+        patient_name: patient.full_name || '',
+        doctor_id: doc.doctor_id,
+        doctor_name: doc.doctor_name || '',
+        status: 'planned',
+        priority: 'medium',
         tooth_number: toothLabel.join(', '),
+        services: rows,
+        total_price: planTotal,
+        discount_percent: 0,
+        discount_amount: 0,
+        notes: `Davolash rejasi: ${toothLabel.join(', ')}`,
+        installment_plan: null,
       });
-      if (total > 0) {
-        const linked = await paymentsForPlan(patient.id, plan.id);
-        const debt = linked.find((payment) => String(payment.type || '').toLowerCase() === 'debt');
-        if (debt?.id) {
-          await base44.entities.Payment.update(debt.id, {
-            amount: (Number(debt.amount) || 0) + total,
-          });
-        } else {
-          await base44.entities.Payment.create({
-            patient_id: patient.id,
-            patient_name: patient.full_name || '',
-            doctor_id: doc.doctor_id,
-            type: 'Debt',
-            category: `Reja: ${toothLabel.join(', ')}`,
-            amount: total,
-            method: '—',
-            date: new Date().toISOString().split('T')[0],
-            notes: `Linked to Plan: ${plan.id}`,
-          });
-        }
+      if (planTotal > 0 && plan?.id) {
+        await base44.entities.Payment.create({
+          patient_id: patient.id,
+          patient_name: patient.full_name || '',
+          doctor_id: doc.doctor_id,
+          type: 'Debt',
+          category: `Reja: ${toothLabel.join(', ')}`,
+          amount: planTotal,
+          method: '—',
+          date: new Date().toISOString().split('T')[0],
+          notes: `Linked to Plan: ${plan.id}`,
+        });
         await syncPatientBalance(patient.id);
       }
-      toast.success(`«${plan.name || 'Reja'}» rejasiga qo‘shildi`);
+      toast.success(`Yangi reja yaratildi: «${plan?.name || planName}»`);
       setNoteOpen(false);
       setNoteText('');
       setJawPrompt(null);
       if (onReload) await onReload();
     } catch (err) {
       console.error(err);
-      toast.error('Rejaga qo‘shib bo‘lmadi');
+      toast.error('Yangi reja yaratib bo‘lmadi');
     } finally {
       setBusy(false);
     }

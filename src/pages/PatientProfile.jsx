@@ -49,6 +49,7 @@ import ChairsidePatientProfile from '../components/patients/ChairsidePatientProf
 import { exportPatientToExcel } from '@/lib/patientExcelExport';
 import AppointmentModal from '../components/appointments/AppointmentModal';
 import PatientModal from '../components/patients/PatientModal';
+import { isPlanLocked } from '../lib/planLock';
 import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
 import TreatmentPlanInvoice from '../components/treatments/TreatmentPlanInvoice';
 import ImplantForm from '../components/implants/ImplantForm';
@@ -2675,6 +2676,10 @@ export default function PatientProfile() {
     const plan = (plans || []).find((item) => item.id === row.planId);
     if (!plan) {
       toast.error('Reja topilmadi');
+      return;
+    }
+    if (isPlanLocked(plan) && (plan.services || []).length > 1) {
+      toast.error("Saqlangan reja qulflangan: alohida xizmatni o'chirib bo'lmaydi.");
       return;
     }
     const result = await deleteTreatmentRow({

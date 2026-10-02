@@ -4,11 +4,12 @@ import {
   Plus, Search, FileSpreadsheet, 
   ArrowUpDown, ExternalLink, User,
   CheckCircle2, Clock, ClipboardList, FileText, ChevronRight,
-  Calculator, Trash2
+  Calculator, Trash2, Lock
 } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import TreatmentDeleteDialog from './TreatmentDeleteDialog';
 import { displayServiceName, formatDoctorName } from '@/lib/displayText';
+import { isPlanLocked, PLAN_LOCKED_BADGE, PLAN_LOCKED_TOOLTIP } from '@/lib/planLock';
 
 /**
  * ExcelTreatmentsView – Responsive Treatment Plans View
@@ -54,6 +55,8 @@ function ExcelTreatmentsView({
           price: planPrice,
           status: plan.status || 'planned',
           date: plan.created_date || plan.date || '',
+          planLocked: isPlanLocked(plan),
+          planServiceCount: planServices.length,
           planObj: { ...plan, paid_amount: planPaid },
         });
       } else {
@@ -69,6 +72,8 @@ function ExcelTreatmentsView({
           price: Number(srv.price || srv.cost || 0),
           status: srv.status || plan.status || 'planned',
           date: srv.date || plan.created_date || '',
+          planLocked: isPlanLocked(plan),
+          planServiceCount: planServices.length,
           planObj: { ...plan, paid_amount: planPaid },
         });
         });
@@ -217,8 +222,19 @@ function ExcelTreatmentsView({
                       <p className="text-[13px] font-black text-slate-900 leading-tight line-clamp-2">
                         {row.serviceName}
                       </p>
-                      <p className="text-[10px] font-semibold text-slate-400 mt-0.5 truncate">
-                        {row.planName}
+                      <p className="text-[10px] font-semibold text-slate-400 mt-0.5 truncate flex items-center gap-1">
+                        {row.planLocked && (
+                          <span
+                            data-testid="plan-locked-icon"
+                            title={PLAN_LOCKED_TOOLTIP}
+                            aria-label={PLAN_LOCKED_BADGE}
+                            className="inline-flex items-center gap-0.5 shrink-0 text-amber-600"
+                          >
+                            <Lock className="w-3 h-3" />
+                            <span className="text-[9px] font-black uppercase tracking-wide">{PLAN_LOCKED_BADGE}</span>
+                          </span>
+                        )}
+                        <span className="truncate">{row.planName}</span>
                       </p>
                     </div>
                     {getStatusBadge(row.status)}
@@ -253,7 +269,7 @@ function ExcelTreatmentsView({
                         {t('patientProfile.invoiceBtn') || "Faktura ko'rish"}
                       </button>
                     )}
-                    {onDeleteTreatment && (
+                    {onDeleteTreatment && !(row.planLocked && row.planServiceCount > 1) && (
                       <button
                         type="button"
                         data-testid="treatment-delete"
@@ -364,8 +380,18 @@ function ExcelTreatmentsView({
                       </p>
                     </td>
                     <td className="py-2 px-2.5 border-r border-slate-100">
-                      <p className="text-slate-500 text-[11px] font-medium truncate max-w-[135px]" title={row.planName}>
-                        {row.planName}
+                      <p className="text-slate-500 text-[11px] font-medium truncate max-w-[135px] flex items-center gap-1" title={row.planName}>
+                        {row.planLocked && (
+                          <span
+                            data-testid="plan-locked-icon"
+                            title={PLAN_LOCKED_TOOLTIP}
+                            aria-label={PLAN_LOCKED_BADGE}
+                            className="inline-flex items-center shrink-0 text-amber-600"
+                          >
+                            <Lock className="w-3 h-3" />
+                          </span>
+                        )}
+                        <span className="truncate">{row.planName}</span>
                       </p>
                     </td>
                     <td className="py-2 px-2.5 border-r border-slate-100">
@@ -394,7 +420,7 @@ function ExcelTreatmentsView({
                         <span>{t('patientProfile.invoiceBtn') || "Faktura"}</span>
                         <ExternalLink className="w-2.5 h-2.5 opacity-70" />
                       </button>
-                      {onDeleteTreatment && (
+                      {onDeleteTreatment && !(row.planLocked && row.planServiceCount > 1) && (
                         <button
                           type="button"
                           data-testid="treatment-delete"

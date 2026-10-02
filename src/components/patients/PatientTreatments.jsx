@@ -3,7 +3,7 @@ import StatusBadge from '../ui/StatusBadge';
 import EmptyState from '../ui/EmptyState';
 import { 
   ClipboardList, Calendar, CheckCircle2, Stethoscope, 
-  ChevronRight, ListTodo, ActivitySquare, Percent, Pencil, Save, X, FileText, Printer, Plus
+  ChevronRight, ListTodo, ActivitySquare, Percent, Pencil, Save, X, FileText, Printer, Plus, Lock
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import { displayServiceName } from '@/lib/displayText';
+import { isPlanLocked, PLAN_LOCKED_BADGE, PLAN_LOCKED_TOOLTIP } from '@/lib/planLock';
 import { implantStatusClass, implantStepStatusLabel } from '@/lib/implantStatus';
 
 const REMOVED_TOOTH_STATUS = 'Olib tashlangan';
@@ -115,6 +116,20 @@ const formatDate = (value, language, { withTime = false } = {}) => {
 };
 
 const formatMoney = (value) => `${Number(value || 0).toLocaleString('ru-RU')} so'm`;
+
+function PlanLockIcon({ plan, className = '' }) {
+  if (!isPlanLocked(plan)) return null;
+  return (
+    <span
+      data-testid="plan-locked-icon"
+      title={PLAN_LOCKED_TOOLTIP}
+      aria-label={PLAN_LOCKED_BADGE}
+      className={`inline-flex items-center align-middle text-amber-600 ${className}`}
+    >
+      <Lock className="w-3 h-3" />
+    </span>
+  );
+}
 
 /**
  * PatientTreatments Component
@@ -420,7 +435,7 @@ function PatientTreatments({
                     {/* Row 1: Plan title + status */}
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-[13px] font-black text-slate-900 leading-5 uppercase break-words">
-                        {formatPlanDepartmentName(plan, t)}
+                        <PlanLockIcon plan={plan} className="mr-1" />{formatPlanDepartmentName(plan, t)}
                       </p>
                       <StatusBadge status={plan.status} />
                     </div>
@@ -529,7 +544,7 @@ function PatientTreatments({
                   <td className="px-4 py-3">
                     {/* Row 1: Plan Title */}
                     <p className="text-xs font-black text-slate-900 group-hover:text-emerald-600 transition-colors uppercase tracking-tight leading-tight mb-1.5">
-                      {formatPlanDepartmentName(plan, t)}
+                      <PlanLockIcon plan={plan} className="mr-1" />{formatPlanDepartmentName(plan, t)}
                     </p>
 
                     {/* Row 2: Services list */}
@@ -691,7 +706,7 @@ function PatientTreatments({
                           {selectedPlan.patient_name || t('patientTreatments.invoiceDetails.patient')}
                         </span>
                         <span className="text-[11px] sm:text-xs font-black text-emerald-100/80 tracking-wide leading-none">
-                          ({formatPlanDepartmentName(selectedPlan, t)})
+                          <PlanLockIcon plan={selectedPlan} className="mr-1 text-amber-200" />({formatPlanDepartmentName(selectedPlan, t)})
                         </span>
                       </div>
                       
