@@ -28,7 +28,7 @@ import { IMPLANT_STATUS_ORDER, implantStatusClass, implantStatusLabel, normalize
 import { cn } from '@/lib/utils';
 import { implantRecordFdis } from '@/lib/fdiNotation';
 import { toast } from 'sonner';
-import { removeImplantPlan } from '@/lib/implantPlan';
+import { autoSyncImplantPlan, backfillImplantPlans, removeImplantPlan } from '@/lib/implantPlan';
 
 // Defensive rendering helper
 const safeRender = (val, fallback = '—') => {
@@ -292,6 +292,14 @@ export default function Implants() {
       }
       setImplants(filteredImps);
       setPatients(pats || []);
+      // Reja/qarzi hali bog'lanmagan eski implantlar uchun "Implantlar" rejasi bir marta, takrorlamasdan ochiladi.
+      backfillImplantPlans(filteredImps, { patients: pats || [] })
+        .then((res) => {
+          if (res?.created > 0) {
+            toast.success(`${res.created} ta implant uchun «Implantlar» rejasi va qarz yaratildi (${Number(res.total).toLocaleString('uz-UZ')} so'm)`);
+          }
+        })
+        .catch((planErr) => console.error('Implant plan backfill failed:', planErr));
       setServices(svcs || []);
       setBrands(brnds || []);
       setExtraServicesCatalog(extraCatalog || []);
@@ -486,6 +494,12 @@ export default function Implants() {
     try {
       await base44.entities.Implant.update(id, { lifecycle_status: statusLabel });
       toast.success("Holat yangilandi!");
+      // Reja qatorlari holati (bajarildi) va qarz implant bosqichiga mos yangilanadi.
+      const current = implants.find((item) => item.id === id);
+      if (current) {
+        await autoSyncImplantPlan({ ...current, lifecycle_status: statusLabel })
+          .catch((planErr) => console.error('Implant plan status sync failed:', planErr));
+      }
       load();
     } catch (e) {
       console.error(e);

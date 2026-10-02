@@ -23,7 +23,7 @@ import { toImplantFdi, uniqueImplantToothKeys } from '@/lib/fdiNotation';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { toast } from 'sonner';
-import { syncImplantPlan, removeImplantPlan } from '@/lib/implantPlan';
+import { syncImplantPlan, removeImplantPlan, backfillImplantPlans, autoSyncImplantPlan } from '@/lib/implantPlan';
 import { uploadImage } from '@/utils/imageUpload';
 import { cn } from '@/lib/utils';
 import { ClinicDateField } from '@/components/ui/ClinicDateField';
@@ -146,6 +146,14 @@ export default function ImplantDetail() {
           setRelatedTeeth(uniqueRelated);
           // Keep selection on current route implant
           setSelectedRelatedTooth(currentImplant.id);
+          // Shu bemorning reja/qarzi hali bog'lanmagan implantlari uchun "Implantlar" rejasi (bir marta, takrorlamasdan).
+          backfillImplantPlans(uniqueRelated, { patients: pats || [] })
+            .then((res) => {
+              if (res?.created > 0) {
+                toast.success(`«Implantlar» rejasi va qarz yaratildi: ${Number(res.total).toLocaleString('uz-UZ')} so'm`);
+              }
+            })
+            .catch((planErr) => console.error('Implant plan backfill failed:', planErr));
         } catch {
           setRelatedTeeth([]);
         }
@@ -535,6 +543,9 @@ export default function ImplantDetail() {
       toast.success(`Implant #${toothFdi || activeTooth.id}: "${step.label}" bosqichiga o'tkazildi!`, {
         icon: '🦷',
       });
+      // Reja qatorlari holati implant bosqichiga mos yangilanadi (qarz summasi o'zgarmaydi).
+      await autoSyncImplantPlan({ ...implant, ...payload, id: realImplantId })
+        .catch((planErr) => console.error('Implant plan status sync failed:', planErr));
       load();
     } catch (err) {
       console.error(err);
