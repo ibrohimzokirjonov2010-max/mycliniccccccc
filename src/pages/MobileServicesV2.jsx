@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { 
   Plus, Search, Stethoscope, Trash2, Clock, 
   Activity, Scissors, Layers, Baby, 
@@ -124,8 +125,8 @@ export default function MobileServicesV2() {
 
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [search, setSearch] = useRestorableState('search', '');
+  const [selectedCategory, setSelectedCategory] = useRestorableState('selectedCategory', 'all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editService, setEditService] = useState(null);
   const [saving, setSaving] = useState(false);

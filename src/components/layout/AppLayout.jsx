@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { isPageBlocked, firstAllowedPath } from '@/lib/pageAccess';
@@ -12,6 +12,7 @@ import ErrorBoundary from './ErrorBoundary';
 import { clinicAccessClosed, invalidateClinicExpiry, loadClinicAccess } from '@/lib/clinicExpiry';
 import { Suspense, memo } from 'react';
 import { prefetchRouteChunk } from '@/utils/routeChunkPrefetch';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 
 // Specialized skeleton loader for premium page-to-page transitions
 const InlineLoader = memo(() => (
@@ -90,6 +91,9 @@ export default function AppLayout() {
   const [clinic, setClinic] = useState(null);
   const [seenPath, setSeenPath] = useState(location.pathname);
   const [hold, setHold] = useState(true);
+  const mainRef = useRef(null);
+  // Orqaga qaytganda scroll joyi tiklanadi (mobil layout o'zining konteynerida shuni qiladi)
+  useScrollRestoration(() => mainRef.current);
 
   if (seenPath !== location.pathname) {
     setSeenPath(location.pathname);
@@ -234,7 +238,7 @@ export default function AppLayout() {
         />
         
         {/* Page Content with Framer Motion Transitions */}
-        <main className="flex-1 overflow-y-auto px-5 py-3 pb-6 relative no-scrollbar">
+        <main ref={mainRef} className="flex-1 overflow-y-auto px-5 py-3 pb-6 relative no-scrollbar">
           <div className="max-w-[1600px] mx-auto w-full">
             <TariffReminder clinic={clinic} />
             <ErrorBoundary>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Search, CheckCircle2, 
@@ -232,9 +233,9 @@ export default function Implants() {
   const [brands, setBrands] = useState([]);
   const [brandsModalOpen, setBrandsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState('all'); // all, incomplete, implant, formik, extra, control, analytics
-  const [filterFirma, setFilterFirma] = useState('all');
+  const [search, setSearch] = useRestorableState('search', '');
+  const [activeTab, setActiveTab] = useRestorableState('activeTab', 'all'); // all, incomplete, implant, formik, extra, control, analytics
+  const [filterFirma, setFilterFirma] = useRestorableState('filterFirma', 'all');
   const [addOpen, setAddOpen] = useState(false);
   const [editingImplant, setEditingImplant] = useState(null);
   const [extraServiceModalOpen, setExtraServiceModalOpen] = useState(false);
@@ -252,8 +253,8 @@ export default function Implants() {
   };
 
   // Sorting state
-  const [sortField, setSortField] = useState('date');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortField, setSortField] = useRestorableState('sortField', 'date');
+  const [sortOrder, setSortOrder] = useRestorableState('sortOrder', 'desc');
 
   const handleSort = (field) => {
     if (sortField === field) {

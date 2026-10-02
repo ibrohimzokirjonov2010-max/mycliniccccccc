@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -144,8 +145,8 @@ export default function MobilePaymentsV2() {
   const [loading, setLoading] = useState(false);
   const loadingTimerRef = useRef(null);
   const hasLoadedInitial = useRef(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('all');
+  const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', '');
+  const [filterType, setFilterType] = useRestorableState('filterType', 'all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [formError, setFormError] = useState('');
   const [selectedPayment, setSelectedPayment] = useState(null);

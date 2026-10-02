@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { localizePlanName } from '@/lib/planNameLabel';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -39,8 +40,8 @@ export default function TreatmentPlans() {
   const { user, isDoctor } = useAuth();
   const queryClient = useQueryClient();
 
-  const [search, setSearch] = useState('');
-  const [activeStatusFilter, setActiveStatusFilter] = useState('all'); // 'all' | 'planned' | 'in_progress' | 'completed'
+  const [search, setSearch] = useRestorableState('search', '');
+  const [activeStatusFilter, setActiveStatusFilter] = useRestorableState('activeStatusFilter', 'all'); // 'all' | 'planned' | 'in_progress' | 'completed'
 
   // Density switcher with localStorage
   const [density, setDensity] = useState(() => {
@@ -52,8 +53,8 @@ export default function TreatmentPlans() {
   };
 
   // Sorting state
-  const [sortField, setSortField] = useState('date');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortField, setSortField] = useRestorableState('sortField', 'date');
+  const [sortOrder, setSortOrder] = useRestorableState('sortOrder', 'desc');
 
   const handleSort = (field) => {
     if (sortField === field) {

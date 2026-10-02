@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import BackButton from '@/components/ui/BackButton';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit2, Trash2, Download, Plus, AlertTriangle,
@@ -945,13 +946,7 @@ export default function ImplantDetail() {
 
       {/* 1) Header row — mockup exact */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <Link
-          to="/implants"
-          className="inline-flex items-center gap-1.5 text-sm font-bold text-[#14b8a6] hover:text-teal-700 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>{language === 'ru' ? 'Вернуться к паспорту импланта' : 'Implant pasportiga qaytish'}</span>
-        </Link>
+        <BackButton fallback="/implants" />
 
         {/* Phone: 2+1 large taps; sm+: inline row (desktop unchanged feel) */}
         <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:items-center sm:flex-wrap shrink-0">

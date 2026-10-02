@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useBackClose } from '@/hooks/useBackClose';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -163,15 +165,15 @@ export default function Staff() {
   const [payments, setPayments] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sortKey, setSortKey] = useState('revenue');
-  const [view, setView] = useState(() => localStorage.getItem('myclinic_staff_view') || 'grid');
+  const [search, setSearch] = useRestorableState('search', '');
+  const [roleFilter, setRoleFilter] = useRestorableState('roleFilter', 'all');
+  const [statusFilter, setStatusFilter] = useRestorableState('statusFilter', 'all');
+  const [sortKey, setSortKey] = useRestorableState('sortKey', 'revenue');
+  const [view, setView] = useRestorableState('view', () => localStorage.getItem('myclinic_staff_view') || 'grid');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [credentialsModal, setCredentialsModal] = useState(null);
   const [detailId, setDetailId] = useState(null);
-  const [detailTab, setDetailTab] = useState('general');
+  const [detailTab, setDetailTab] = useRestorableState('detailTab', 'general');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const [newStaff, setNewStaff] = useState({
@@ -1285,6 +1287,8 @@ function IconAction({ onClick, children, label }) {
 }
 
 function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, weekStart, presenceLabel, onClose, onEdit, onDelete, onCall, onMessage, onSchedule, onPerms, onToggleAccess, onOpenAppointments, onOpenPatients, onOpenDay }) {
+  // Telefon/brauzer "Orqaga" tugmasi avval xodim panelini yopadi
+  useBackClose(true, onClose);
   const clinicAmount = Math.max(0, card.revenue - card.share);
   const clinicPct = card.revenue > 0 ? Math.round((clinicAmount / card.revenue) * 100) : null;
   const doctorPct = card.revenue > 0 ? Math.max(0, 100 - clinicPct) : 0;

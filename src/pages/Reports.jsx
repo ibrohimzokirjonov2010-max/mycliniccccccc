@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
@@ -26,17 +27,17 @@ export default function Reports() {
   const [loading, setLoading] = useState(true);
 
   // Filters & Tabs
-  const [period, setPeriod] = useState('all'); // 'all' | 'this_month' | 'last_month' | 'year' | 'custom'
-  const [customFrom, setCustomFrom] = useState('');
-  const [customTo, setCustomTo] = useState('');
-  const [activeReportTab, setActiveReportTab] = useState('overview');
+  const [period, setPeriod] = useRestorableState('period', 'all'); // 'all' | 'this_month' | 'last_month' | 'year' | 'custom'
+  const [customFrom, setCustomFrom] = useRestorableState('customFrom', '');
+  const [customTo, setCustomTo] = useRestorableState('customTo', '');
+  const [activeReportTab, setActiveReportTab] = useRestorableState('activeReportTab', 'overview');
   const phone = useIsMobile(641);
   const inMobileShell = useIsMobile(1024);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', '');
 
   // Sorting state for Doctors Table
-  const [docSortField, setDocSortField] = useState('revenue');
-  const [docSortOrder, setDocSortOrder] = useState('desc');
+  const [docSortField, setDocSortField] = useRestorableState('docSortField', 'revenue');
+  const [docSortOrder, setDocSortOrder] = useRestorableState('docSortOrder', 'desc');
 
   const handleDocSort = (field) => {
     if (docSortField === field) {

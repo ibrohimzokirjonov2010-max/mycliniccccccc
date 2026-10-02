@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { localizePlanName } from '@/lib/planNameLabel';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
@@ -26,8 +27,8 @@ export default function TreatmentTracking() {
   const { user, isDoctor } = useAuth();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [activeStatusFilter, setActiveStatusFilter] = useState('all'); // all, in_progress, planned, completed
+  const [search, setSearch] = useRestorableState('search', '');
+  const [activeStatusFilter, setActiveStatusFilter] = useRestorableState('activeStatusFilter', 'all'); // all, in_progress, planned, completed
   const navigate = useNavigate();
 
   // Density switcher with localStorage
@@ -40,8 +41,8 @@ export default function TreatmentTracking() {
   };
 
   // Sorting state
-  const [sortField, setSortField] = useState('progress');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortField, setSortField] = useRestorableState('sortField', 'progress');
+  const [sortOrder, setSortOrder] = useRestorableState('sortOrder', 'desc');
 
   const handleSort = (field) => {
     if (sortField === field) {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -95,8 +96,8 @@ export default function MobileExpenses() {
   const [expenses, setExpenses] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState('all');
+  const [search, setSearch] = useRestorableState('search', '');
+  const [selectedMonth, setSelectedMonth] = useRestorableState('selectedMonth', 'all');
 
   // Category state with localStorage persistence
   const [categories, setCategories] = useState(loadSavedCategories);

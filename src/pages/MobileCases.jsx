@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Search, Image as ImageIcon, Sparkles, X, ChevronRight, ChevronLeft, ArrowLeft, Pen, Trash2, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -17,7 +18,7 @@ export default function MobileCases() {
   const [isLoading, setIsLoading] = useState(true);
   const clinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', "");
   const [activeTag, setActiveTag] = useState("Barchasi");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState(null);

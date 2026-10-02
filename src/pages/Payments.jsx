@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -186,8 +187,8 @@ export default function Payments() {
   const [doctors, setDoctors] = useState([]);
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [search, setSearch] = useRestorableState('search', '');
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const loadingTimerRef = useRef(null);
@@ -196,9 +197,9 @@ export default function Payments() {
   const [newPatientOpen, setNewPatientOpen] = useState(false);
 
   // Excel filter, sort & density states
-  const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'today' | 'thisMonth' | 'hasDebt' | 'cash' | 'card'
-  const [sortField, setSortField] = useState('date');
-  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+  const [activeFilter, setActiveFilter] = useRestorableState('activeFilter', 'all'); // 'all' | 'today' | 'thisMonth' | 'hasDebt' | 'cash' | 'card'
+  const [sortField, setSortField] = useRestorableState('sortField', 'date');
+  const [sortOrder, setSortOrder] = useRestorableState('sortOrder', 'desc'); // 'asc' | 'desc'
   const [density, setDensity] = useState(() => localStorage.getItem('payments_table_density') || 'compact');
   const [copiedPhoneId, setCopiedPhoneId] = useState(null);
 
@@ -384,7 +385,7 @@ export default function Payments() {
       toast.dismiss('implant-incomplete-notification');
 
       // Clean up history state so page refresh doesn't reopen modal endlessly
-      window.history.replaceState({}, document.title);
+      window.history.replaceState({ ...(window.history.state || {}), usr: null }, document.title);
     }
   }, [location.state, isDoctor, user, patients, allTreatmentPlans, doctors]);
 

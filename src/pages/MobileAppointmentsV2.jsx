@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useRestorableState, useRestorableDate } from '@/hooks/useRestorableState';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, User, Phone, ChevronLeft, ChevronRight,
   Plus, CheckCircle2, XCircle, Clock4, Pencil, UserSquare, MessageCircle, Search
@@ -33,7 +34,8 @@ export default function MobileAppointmentsV2() {
   const [loading, setLoading] = useState(false);
   const loadingTimerRef = useRef(null);
   const hasLoadedInitial = useRef(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  // Orqaga qaytganda tanlangan sana/shifokor/qidiruv tiklanadi
+  const [selectedDate, setSelectedDate] = useRestorableDate('selectedDate', () => new Date());
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showTreatmentModal, setShowTreatmentModal] = useState(false);
@@ -42,12 +44,12 @@ export default function MobileAppointmentsV2() {
   
   // iPhone-style Calendar State
   const [showMonthView, setShowMonthView] = useState(false);
-  const [viewDate, setViewDate] = useState(new Date(selectedDate));
-  const [selectedDoctorId, setSelectedDoctorId] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [viewDate, setViewDate] = useRestorableDate('viewDate', () => new Date(selectedDate));
+  const [selectedDoctorId, setSelectedDoctorId] = useRestorableState('selectedDoctorId', null);
+  const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', '');
   // Xodimlar sahifasidan: shifokorning barcha qabullari ro'yxati (kun bo'yicha emas)
-  const [listAll, setListAll] = useState(false);
-  const [hideCancelled, setHideCancelled] = useState(false);
+  const [listAll, setListAll] = useRestorableState('listAll', false);
+  const [hideCancelled, setHideCancelled] = useRestorableState('hideCancelled', false);
   
   // Form state for prefilling
   const toLocalDateStr = (d) => {
@@ -69,7 +71,9 @@ export default function MobileAppointmentsV2() {
   }, [selectedDate]);
 
   // Check for navigation state to open modal or filter a doctor
-  const handledNavKey = useRef(null);
+  // Qaytganda (Orqaga) kelgan filtr qayta qo'llanmasligi uchun — qo'llangan yozuv key'i saqlanadi
+  const [handledNavStored, setHandledNavStored] = useRestorableState('handledNav', null);
+  const handledNavKey = useRef(handledNavStored);
   useEffect(() => {
     const incomingId = location.state?.doctorId;
     if (incomingId != null && incomingId !== '' && handledNavKey.current !== location.key) {
@@ -82,13 +86,13 @@ export default function MobileAppointmentsV2() {
         setListAll(false);
         setHideCancelled(false);
         setSearchQuery('');
-        handledNavKey.current = location.key;
+        handledNavKey.current = location.key; setHandledNavStored(location.key);
       } else if (location.state?.listPeriod === 'all') {
         // Shifokorning barcha qabullari
         setListAll(true);
         setHideCancelled(!!location.state?.excludeCancelled);
         setSearchQuery('');
-        handledNavKey.current = location.key;
+        handledNavKey.current = location.key; setHandledNavStored(location.key);
       } else if (appointments.length) {
         const name = String(location.state?.doctorName || '').trim().toLowerCase();
         const dates = appointments
@@ -106,13 +110,13 @@ export default function MobileAppointmentsV2() {
           setSelectedDate(next);
           setViewDate(next);
         }
-        handledNavKey.current = location.key;
+        handledNavKey.current = location.key; setHandledNavStored(location.key);
       }
       setSelectedDoctorId(incomingId);
     }
     if (location.state?.openAddModal) {
       openAddAppointmentModal();
-      window.history.replaceState({}, document.title);
+      window.history.replaceState({ ...(window.history.state || {}), usr: null }, document.title);
     }
   }, [location.state, location.key, openAddAppointmentModal, appointments]);
 

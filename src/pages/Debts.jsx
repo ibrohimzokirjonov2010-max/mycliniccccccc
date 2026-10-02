@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { base44 } from '@/api/base44Client';
 import { sendTelegramMessage } from '@/api/telegramBot';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -33,8 +34,8 @@ export default function Debts() {
   const { user, isDoctor } = useAuth();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [activeFilterTab, setActiveFilterTab] = useState('all'); // all, large, medium, small, telegram
+  const [search, setSearch] = useRestorableState('search', '');
+  const [activeFilterTab, setActiveFilterTab] = useRestorableState('activeFilterTab', 'all'); // all, large, medium, small, telegram
   const [copiedId, setCopiedId] = useState(null);
   const navigate = useNavigate();
 
@@ -48,8 +49,8 @@ export default function Debts() {
   };
 
   // Sorting state
-  const [sortField, setSortField] = useState('debt');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortField, setSortField] = useRestorableState('sortField', 'debt');
+  const [sortOrder, setSortOrder] = useRestorableState('sortOrder', 'desc');
 
   const handleSort = (field) => {
     if (sortField === field) {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, CalendarDays, Search, ChevronLeft } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -50,16 +51,17 @@ export default function Appointments() {
   const [prefillDate, setPrefillDate] = useState('');
   const [prefillTime, setPrefillTime] = useState('');
   const [prefillDoctorId, setPrefillDoctorId] = useState(null);
-  const [selectedDoctorId, setSelectedDoctorId] = useState(null);
+  // Orqaga qaytganda tanlangan sana/shifokor/tab/qidiruv tiklanadi
+  const [selectedDoctorId, setSelectedDoctorId] = useRestorableState('selectedDoctorId', null);
   const [isMobile, setIsMobile] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [viewDate, setViewDate] = useState(tashkentToday());
-  const [activeTab, setActiveTab] = useState('grid');
-  const [listPeriod, setListPeriod] = useState('all');
+  const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', '');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
+  const [viewDate, setViewDate] = useRestorableState('viewDate', () => tashkentToday());
+  const [activeTab, setActiveTab] = useRestorableState('activeTab', 'grid');
+  const [listPeriod, setListPeriod] = useRestorableState('listPeriod', 'all');
   // Xodimlar sahifasidan kelgan shifokor nomi va "bekor qilinganlarsiz" belgisi
-  const [selectedDoctorName, setSelectedDoctorName] = useState('');
-  const [hideCancelled, setHideCancelled] = useState(false);
+  const [selectedDoctorName, setSelectedDoctorName] = useRestorableState('selectedDoctorName', '');
+  const [hideCancelled, setHideCancelled] = useRestorableState('hideCancelled', false);
 
   useEffect(() => {
     if (isDoctor && user?.id) {

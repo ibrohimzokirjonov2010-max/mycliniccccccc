@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useRestorableState } from '@/hooks/useRestorableState';
 import { 
   Target, TrendingUp, BarChart3, Users, Facebook, Instagram, Zap, DollarSign, RefreshCw, Workflow, Server,
   Copy, CheckCircle, Search,
@@ -33,11 +34,11 @@ export default function Marketing() {
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [activeTab, setActiveTab] = useState('leads'); // leads, campaigns, analytics, targeting, automation
+  const [activeTab, setActiveTab] = useRestorableState('activeTab', 'leads'); // leads, campaigns, analytics, targeting, automation
   const [selectedLead, setSelectedLead] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useRestorableState('search', '');
+  const [statusFilter, setStatusFilter] = useRestorableState('statusFilter', 'all');
 
   // Density switcher with localStorage
   const [density, setDensity] = useState(() => {
@@ -49,8 +50,8 @@ export default function Marketing() {
   };
 
   // Sorting state
-  const [sortField, setSortField] = useState('date');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortField, setSortField] = useRestorableState('sortField', 'date');
+  const [sortOrder, setSortOrder] = useRestorableState('sortOrder', 'desc');
 
   const handleSort = (field) => {
     if (sortField === field) {

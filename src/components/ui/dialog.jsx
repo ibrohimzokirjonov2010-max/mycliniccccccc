@@ -2,8 +2,20 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 
 import { cn } from "@/lib/utils"
+import { useBackClose } from "@/hooks/useBackClose"
 
-const Dialog = DialogPrimitive.Root
+// Telefon/brauzer "Orqaga" tugmasi avval modalni yopadi (useBackClose)
+const Dialog = ({ open, defaultOpen, onOpenChange, ...props }) => {
+  const controlled = open !== undefined
+  const [innerOpen, setInnerOpen] = React.useState(!!defaultOpen)
+  const isOpen = controlled ? !!open : innerOpen
+  const handleOpenChange = React.useCallback((next) => {
+    if (!controlled) setInnerOpen(next)
+    if (onOpenChange) onOpenChange(next)
+  }, [controlled, onOpenChange])
+  useBackClose(isOpen, () => handleOpenChange(false))
+  return <DialogPrimitive.Root open={isOpen} onOpenChange={handleOpenChange} {...props} />
+}
 
 const DialogTrigger = DialogPrimitive.Trigger
 
