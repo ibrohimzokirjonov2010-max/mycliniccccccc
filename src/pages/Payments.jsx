@@ -13,6 +13,10 @@ import { supabase } from '@/api/supabaseClient';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -263,6 +267,7 @@ export default function Payments() {
   const [paymentDetailsOpen, setPaymentDetailsOpen] = useState(false); // "Batafsil" (yig'ilgan holatda)
   const [paymentEdit, setPaymentEdit] = useState(null); // { amount, method, notes } | null
   const [paymentEditSaving, setPaymentEditSaving] = useState(false);
+  const [paymentEditConfirm, setPaymentEditConfirm] = useState(null); // { sp, values, changes } | null
 
   // ── React Query: Patients + Doctors + Treatment Plans (initial load) ─────
   const { data: initialPatients = [], isLoading: patientsLoading } = useQuery({
@@ -1056,17 +1061,26 @@ export default function Payments() {
     }
     const oldAmount = Number(sp.amount) || 0;
     const changes = [];
-    if (newAmount !== oldAmount) changes.push(`summa: ${oldAmount.toLocaleString()} → ${newAmount.toLocaleString()} UZS`);
+    // The edit form shows the absolute amount, so compare against it (an expense is stored negative).
+    if (newAmount !== Math.abs(oldAmount)) changes.push(`summa: ${Math.abs(oldAmount).toLocaleString()} → ${newAmount.toLocaleString()} UZS`);
     if ((values.method || '') !== (sp.method || '')) changes.push(`usul: ${getPaymentMethodLabel(sp.method, t)} → ${getPaymentMethodLabel(values.method, t)}`);
     if ((values.notes || '') !== (sp.notes || '')) changes.push('izoh');
     if (changes.length === 0) {
+      toast.info("O'zgarish yo'q");
       setPaymentEdit(null);
       return;
     }
-    if (!window.confirm(`To'lovni o'zgartirasizmi?\n${changes.join('\n')}\n\nBemor qarzi va jami to'lovlar qayta hisoblanadi.`)) return;
+    // Every edit save asks first (dialog "O'zgarishlarni saqlaysizmi?"); commitPaymentUpdate runs on "Ha".
+    setPaymentEditConfirm({ sp, values, changes });
+  };
+
+  const commitPaymentUpdate = async (sp, values) => {
+    const newAmount = Number(String(values.amount).replace(/\s/g, ''));
+    const oldAmount = Number(sp.amount) || 0;
+    const storedAmount = oldAmount < 0 ? -newAmount : newAmount;
     setPaymentEditSaving(true);
     try {
-      const patch = { amount: newAmount, method: values.method || sp.method, notes: values.notes ?? sp.notes ?? '' };
+      const patch = { amount: storedAmount, method: values.method || sp.method, notes: values.notes ?? sp.notes ?? '' };
       await base44.entities.Payment.update(sp.id, patch);
       const updated = { ...sp, ...patch };
 
@@ -1083,10 +1097,10 @@ export default function Payments() {
             await base44.entities.Patient.update(sp.patient_id, { total_paid: row.totalPaid, total_debt: row.currentDebt });
             setPatients((prev) => prev.map((pt) => (pt.id === sp.patient_id ? { ...pt, total_paid: row.totalPaid, total_debt: row.currentDebt } : pt)));
           }
-          if (sp.plan_id && String(sp.type || 'income').toLowerCase() === 'income' && newAmount !== oldAmount) {
+          if (sp.plan_id && String(sp.type || 'income').toLowerCase() === 'income' && storedAmount !== oldAmount) {
             const linked = (allPlans || []).find((pl) => String(pl.id) === String(sp.plan_id));
             if (linked) {
-              const paid = Math.max(0, (Number(linked.paid_amount) || 0) + (newAmount - oldAmount));
+              const paid = Math.max(0, (Number(linked.paid_amount) || 0) + (storedAmount - oldAmount));
               await base44.entities.TreatmentPlan.update(linked.id, { paid_amount: paid });
             }
           }
@@ -3580,6 +3594,41 @@ export default function Payments() {
           );
         })()}
       </Dialog>
+
+      {/* ─── To'lovni tahrirlash: tasdiqlash ─── */}
+      <AlertDialog
+        open={!!paymentEditConfirm}
+        onOpenChange={(open) => { if (!open) setPaymentEditConfirm(null); }}
+      >
+        <AlertDialogContent data-testid="payment-edit-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>O'zgarishlarni saqlaysizmi?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-slate-600">
+                <ul className="list-disc pl-5">
+                  {(paymentEditConfirm?.changes || []).map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+                <p>Bemor qarzi va jami to'lovlar qayta hisoblanadi.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="payment-edit-confirm-no">Yo'q</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="payment-edit-confirm-yes"
+              onClick={() => {
+                const pending = paymentEditConfirm;
+                setPaymentEditConfirm(null);
+                if (pending) commitPaymentUpdate(pending.sp, pending.values);
+              }}
+            >
+              Ha, saqlash
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ─── Hisob Faktura Dialog ─── */}
       <Dialog open={invoiceOpen} onOpenChange={setInvoiceOpen}>

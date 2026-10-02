@@ -800,14 +800,21 @@ export default function MobilePatientProfile() {
             const plan = (plans || []).find((p) => String(p.id) === String(step?.planId));
             try {
               await setPlanStepInProgress(plan, step?.serviceIndex);
-              toast.success(`"${step?.title || 'Bosqich'}" jarayonda`);
-              await load();
             } catch (error) {
               console.error('Advance plan step error:', error);
               toast.error("Bosqichni yangilashda xatolik yuz berdi");
+              return false;
             }
+            toast.success(`Keyingi bosqich boshlandi: ${step?.title || 'Bosqich'}`);
+            try {
+              await load();
+            } catch (reloadError) {
+              console.error('Plan reload after advance failed:', reloadError);
+            }
+            return true;
           }}
-          onNextClinical={() => {
+          onNextClinical={(step, opts) => {
+            if (opts?.advanced) return;
             document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }}
           onOpenPlan={() => setTreatModalOpen(true)}
