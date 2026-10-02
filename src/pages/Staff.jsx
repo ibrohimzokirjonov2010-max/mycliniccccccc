@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Users, UserPlus, Trash2, Shield, Search, Pencil, Phone, Send,
   Calendar, Download, LayoutGrid, List, ChevronDown, ChevronRight,
@@ -18,6 +19,9 @@ import { toast } from 'sonner';
 import { useFeature } from '@/hooks/useFeature';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
+import { QUERY_KEYS } from '@/lib/queryKeys';
+import { setStaffOverride, clearStaffOverride } from '@/lib/staffOverrides';
+import { PAGE_ACCESS, PAGE_KEY_BY_LABEL, readPageAccess } from '@/lib/pageAccess';
 import { formatDoctorName } from '@/lib/displayText';
 import {
   dateKey, todayISO, timeToMinutes, minutesToLabel, fmtMoney, fmtCompact,
@@ -150,6 +154,7 @@ function WeekChips({ flags, todayJs, onToggle }) {
 export default function Staff() {
   const { t, language } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const phone = useIsMobile(641);
   const inMobileShell = useIsMobile(1024);
   const hasStaffAccess = useFeature('staff');
@@ -481,6 +486,42 @@ export default function Staff() {
     });
   };
 
+  // Saves user fields, re-reads the row from the database and only reports success when it really
+  // stored them. If the database does not keep the value, it is remembered on this device and the
+  // user is told so (instead of a green toast followed by a revert after reload).
+  const persistStaffFields = async (card, patch, matches) => {
+    let verified = false;
+    try {
+      await base44.auth.updateUser(card.id, patch);
+      const fresh = await base44.auth.readUserFresh(card.id);
+      verified = !!fresh && !!matches(fresh);
+    } catch (error) {
+      console.error('Staff save error:', error);
+    }
+    if (verified) clearStaffOverride(card.id, Object.keys(patch));
+    else setStaffOverride(card.id, patch);
+    try {
+      const fresh = await base44.entities.User.list('name', 100);
+      setUsers(fresh || []);
+    } catch (error) {
+      console.error('Staff refetch error:', error);
+    }
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.doctors });
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+    return verified;
+  };
+
+  // Kirish huquqlari: sahifa ruxsatini saqlash (Sidebar va marshrutlar shu qiymatni o'qiydi)
+  const toggleAccess = async (card, pageKey, next) => {
+    if (!card?.user || card.role === 'admin') return;
+    const page_access = { ...readPageAccess(card.user), [pageKey]: next };
+    setUsers((prev) => prev.map((u) => (String(u.id) === String(card.id) ? { ...u, page_access } : u)));
+    const label = PAGE_ACCESS.find((p) => p.key === pageKey)?.label || pageKey;
+    const verified = await persistStaffFields(card, { page_access }, (fresh) => readPageAccess(fresh)[pageKey] === next);
+    if (verified) toast.success(`${card.name}: ${label} — ${next ? 'ruxsat berildi' : 'yopildi'}`);
+    else toast.warning(`${card.name}: ${label} faqat shu qurilmada saqlandi (bazada users.notes ustuni yo'q)`);
+  };
+
   // Du–Ya tugmalari: ish kunini almashtirish va saqlash
   const toggleWorkingDay = async (card, jsDay) => {
     const WEEKDAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -502,8 +543,15 @@ export default function Staff() {
     const label = WEEK_LABELS.find((d) => d.js === jsDay)?.short || '';
     setUsers((prev) => prev.map((u) => (String(u.id) === String(card.id) ? { ...u, workingHours: wh } : u)));
     try {
-      await base44.auth.updateUser(card.id, { workingHours: wh });
-      toast.success(`${card.name}: ${label} — ${nextOn ? 'ish kuni' : 'dam olish kuni'}`);
+      const sameDays = (fresh) => {
+        let stored = fresh.workingHours;
+        if (typeof stored === 'string') { try { stored = JSON.parse(stored); } catch { stored = null; } }
+        return WEEK_LABELS.every((d) => isScheduledOn(stored, d.js) === isScheduledOn(wh, d.js));
+      };
+      const verified = await persistStaffFields(card, { workingHours: wh }, sameDays);
+      const msg = `${card.name}: ${label} — ${nextOn ? 'ish kuni' : 'dam olish kuni'}`;
+      if (verified) toast.success(msg);
+      else toast.warning(`${msg} (faqat shu qurilmada saqlandi — bazada users.notes ustuni yo'q)`);
     } catch (error) {
       console.error('Toggle working day error:', error);
       setUsers((prev) => prev.map((u) => (String(u.id) === String(card.id) ? { ...u, workingHours: prevWh } : u)));
@@ -896,6 +944,7 @@ export default function Staff() {
           onMessage={() => messageUser(detail.user)}
           onSchedule={() => openSchedule(detail)}
           onPerms={() => handleOpenEditStaff(detail.user, { focusRole: true })}
+          onToggleAccess={(pageKey, next) => toggleAccess(detail, pageKey, next)}
           onOpenAppointments={() => openDoctorAppointments(detail)}
           onOpenPatients={() => openDoctorPatients(detail)}
           onOpenDay={(date) => openDoctorDay(detail, date)}
@@ -1235,11 +1284,17 @@ function IconAction({ onClick, children, label }) {
   );
 }
 
-function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, weekStart, presenceLabel, onClose, onEdit, onDelete, onCall, onMessage, onSchedule, onPerms, onOpenAppointments, onOpenPatients, onOpenDay }) {
+function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, weekStart, presenceLabel, onClose, onEdit, onDelete, onCall, onMessage, onSchedule, onPerms, onToggleAccess, onOpenAppointments, onOpenPatients, onOpenDay }) {
   const clinicAmount = Math.max(0, card.revenue - card.share);
   const clinicPct = card.revenue > 0 ? Math.round((clinicAmount / card.revenue) * 100) : null;
   const doctorPct = card.revenue > 0 ? Math.max(0, 100 - clinicPct) : 0;
-  const access = roleAccess(card.role);
+  const explicitAccess = readPageAccess(card.user);
+  const isAdminRole = card.role === 'admin';
+  const access = roleAccess(card.role).map(([name, template]) => {
+    const key = PAGE_KEY_BY_LABEL[name];
+    const explicit = key ? explicitAccess[key] : undefined;
+    return [name, isAdminRole ? true : (typeof explicit === 'boolean' ? explicit : template), key];
+  });
   const weekDays = WEEK_LABELS.map((d, i) => {
     const date = addDays(weekStart, i);
     const key = isoDate(date);
@@ -1375,16 +1430,24 @@ function StaffDrawer({ card, phone, language, tab, setTab, todayJs, nowMinutes, 
                 <span className="text-[11.5px] font-semibold text-slate-400">{tx(language, 'Lavozim andozasi', 'Шаблон роли', 'Role template')}: {roleLabel(card.role, language)}</span>
               </div>
               <div className="grid grid-cols-2 gap-x-4">
-                {access.map(([name, on]) => (
+                {access.map(([name, on, key]) => (
                   <div key={name} className="flex items-center justify-between py-1.5 text-xs font-medium text-slate-700">
                     {name}
-                    <span className={cn('w-8 h-[18px] rounded-full relative', on ? 'bg-emerald-500' : 'bg-slate-300')}>
-                      <i className={cn('absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow', on ? 'left-4' : 'left-0.5')} />
-                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={on}
+                      aria-label={name}
+                      disabled={isAdminRole || !key}
+                      onClick={() => onToggleAccess(key, !on)}
+                      className={cn('w-8 h-[18px] rounded-full relative transition-colors', on ? 'bg-emerald-500' : 'bg-slate-300', (isAdminRole || !key) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer')}
+                    >
+                      <i className={cn('absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-all', on ? 'left-4' : 'left-0.5')} />
+                    </button>
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">{tx(language, 'Huquqlar lavozimga bog\'langan va alohida saqlanmaydi.', 'Права следуют за ролью и отдельно не хранятся.', 'Access follows the role and is not stored separately.')}</p>
+              <p className="text-[11px] text-slate-400 mt-1">{isAdminRole ? tx(language, 'Administratorda barcha sahifalar doim ochiq.', 'У администратора всегда открыты все страницы.', 'Administrators always have every page.') : tx(language, 'O\'zgartirilgan huquq saqlanadi: o\'chirilgan sahifa menyudan yashiriladi va havola orqali ham ochilmaydi.', 'Изменённое право сохраняется: выключенная страница скрыта из меню и недоступна по ссылке.', 'A changed permission is saved: a page switched off is hidden from the menu and blocked by URL.')}</p>
               <button type="button" onClick={onPerms} className="mt-2 h-9 px-3 rounded-xl bg-[#0C1222] text-white text-xs font-bold">
                 {tx(language, 'Lavozimni o\'zgartirish', 'Изменить роль', 'Change role')}
               </button>

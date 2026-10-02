@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/lib/AuthContext';
+import { isPageBlocked, firstAllowedPath } from '@/lib/pageAccess';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import NativeMobileLayout from './NativeMobileLayout';
@@ -65,6 +67,14 @@ const InlineLoader = memo(() => (
     </div>
   </div>
 ));
+
+// Direct URL guard for pages the admin switched off for this user (Xodimlar → Kirish huquqlari)
+function GuardedOutlet() {
+  const { user } = useAuth();
+  const { pathname } = useLocation();
+  if (user && isPageBlocked(user, pathname)) return <Navigate to={firstAllowedPath(user)} replace />;
+  return <Outlet />;
+}
 
 /**
  * AppLayout Component
@@ -200,7 +210,7 @@ export default function AppLayout() {
     return (
       <NativeMobileLayout>
         <TariffReminder clinic={clinic} />
-        {hold ? null : <Outlet />}
+        {hold ? null : <GuardedOutlet />}
       </NativeMobileLayout>
     );
   }
@@ -229,7 +239,7 @@ export default function AppLayout() {
             <TariffReminder clinic={clinic} />
             <ErrorBoundary>
               <Suspense fallback={<InlineLoader />}>
-                {hold ? null : <Outlet />}
+                {hold ? null : <GuardedOutlet />}
               </Suspense>
             </ErrorBoundary>
           </div>

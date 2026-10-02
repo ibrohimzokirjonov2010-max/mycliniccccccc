@@ -392,6 +392,8 @@ export default function ChairsidePatientProfile({
               title={todaySteps.title}
               totalDebt={totalDebt}
               planRemaining={planRemainingTotal}
+              plans={plans}
+              implants={implants}
               onPay={onPay}
               onAdvanceStep={async (step) => {
                 const plan = (plans || []).find((p) => String(p.id) === String(step?.planId));

@@ -807,6 +807,8 @@ export default function MobilePatientProfile() {
           title={planStepper.title}
           totalDebt={financials.debt}
           planRemaining={planRemainingTotal}
+          plans={plans}
+          implants={implants}
           onPay={() => openPayModal()}
           onAdvanceStep={async (step) => {
             const plan = (plans || []).find((p) => String(p.id) === String(step?.planId));

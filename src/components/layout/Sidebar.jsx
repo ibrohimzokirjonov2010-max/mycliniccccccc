@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
+import { isPageBlocked, isPageGranted } from '@/lib/pageAccess';
 import { useClinicPlan } from '@/hooks/useFeature';
 import { isPathLocked } from '@/lib/clinicPlan';
 import { prefetchModuleData } from '@/utils/prefetcher';
@@ -114,8 +115,10 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
         '/cases',
         '/settings',
       ];
-      items = items.filter(item => doctorAllowedPaths.includes(item.path));
+      items = items.filter(item => doctorAllowedPaths.includes(item.path) || isPageGranted(user, item.path));
     }
+
+    items = items.filter(item => !isPageBlocked(user, item.path));
 
     return items.map((item) => ({ ...item, locked: isPathLocked(plan, item.path) }));
   }, [t, isDoctor, user, plan]);

@@ -182,3 +182,32 @@ export function groupProgress(group) {
   const done = steps.filter((step) => step.state === 'done').length;
   return { done, total: steps.length, pending: steps.length - done };
 }
+
+/**
+ * Saved plan step that "Keyingi" should start when the visible steps come from today's
+ * appointments (those carry no planId). Only waiting steps of non-cancelled plans count;
+ * the one matching the appointment's tooth/service wins, otherwise the first in plan order.
+ */
+export function findNextSavedPlanStep({ plans = [], hint = null, implants = [], language = 'uz' } = {}) {
+  const model = buildPlanStepperGroups({ appointments: [], plans, implants, language });
+  const pending = [];
+  (model.groups || []).forEach((group) => {
+    (group.steps || []).forEach((step) => {
+      if (step.planId != null && step.rawState === 'pending') pending.push(step);
+    });
+  });
+  if (!pending.length) return null;
+  const norm = (value) => String(value || '').trim().toLowerCase();
+  if (hint) {
+    const hintTitle = norm(hint.title);
+    const hintTooth = norm(hint.tooth);
+    const byBoth = pending.find((step) => hintTooth && norm(step.tooth) === hintTooth
+      && hintTitle && (norm(step.title).includes(hintTitle) || hintTitle.includes(norm(step.title))));
+    if (byBoth) return byBoth;
+    const byTitle = pending.find((step) => hintTitle && hintTitle !== 'uchrashuv' && norm(step.title) === hintTitle);
+    if (byTitle) return byTitle;
+    const byTooth = pending.find((step) => hintTooth && norm(step.tooth) === hintTooth);
+    if (byTooth) return byTooth;
+  }
+  return pending[0];
+}

@@ -1,4 +1,5 @@
 import { supabase, db } from './supabaseClient';
+import { applyStaffOverride } from '@/lib/staffOverrides';
 import { createCaseOnServer, deleteCaseOnServer, isClinicCaseRow, listServerCases } from './caseServerStore';
 import { missingColumnFromError, omitMissingColumn } from './missingColumn';
 import { sendTelegramMessage, formatLeadMessage } from './telegramBot';
@@ -237,6 +238,7 @@ class HybridEntityLoader {
         'name',
         'role',
         'workingHours',
+        'page_access',
         'avatar_url',
         'photo_url',
         'photo',
@@ -318,7 +320,21 @@ class HybridEntityLoader {
     const userNotes = payload.notes || '';
     
     // Don't double-encode
-    if (typeof userNotes === 'string' && userNotes.startsWith('[TECH_DATA]')) return payload;
+    if (typeof userNotes === 'string' && userNotes.startsWith('[TECH_DATA]')) {
+      if (this.entityName !== 'User') return payload;
+      // User: merge the new tech fields into the block already in notes instead of dropping them
+      // (otherwise e.g. a new workingHours is silently lost while the old one stays stored).
+      const endIdx = userNotes.indexOf('[END_TECH]');
+      if (endIdx === -1) return payload;
+      try {
+        const existing = JSON.parse(userNotes.substring(11, endIdx));
+        const rest = userNotes.substring(endIdx + 10).replace(/^\n/, '');
+        const mergedTech = '[TECH_DATA]' + JSON.stringify({ ...existing, ...techData }) + '[END_TECH]' + (rest ? '\n' + rest : '');
+        return { ...payload, notes: mergedTech };
+      } catch {
+        return payload;
+      }
+    }
     
     const encoded = '[TECH_DATA]' + JSON.stringify(techData) + '[END_TECH]' + (userNotes ? '\n' + userNotes : '');
     return { ...payload, notes: encoded };
@@ -416,7 +432,7 @@ class HybridEntityLoader {
       result.push(enriched);
     }
 
-    return this.entityName === 'User' ? sanitizeUsers(result) : result;
+    return this.entityName === 'User' ? sanitizeUsers(result.map(applyStaffOverride)) : result;
   }
 
   _getDeepLocal(id) {
@@ -2394,6 +2410,19 @@ export const base44 = {
       }
     },
 
+    // Fresh DB read (no cache, no local overrides) — used to confirm a staff write really persisted
+    readUserFresh: async (userId) => {
+      if (!userId || !import.meta.env.VITE_SUPABASE_URL) return null;
+      RequestCache.invalidate('User');
+      try {
+        const { data, error } = await supabase.from('users').select('*').eq('id', userId).single();
+        if (error || !data) return null;
+        return sanitizeUser(new HybridEntityLoader('User')._decodeNotes(data));
+      } catch {
+        return null;
+      }
+    },
+
     // Get single user by ID — tez va samarali (faqat 1 qator DB so'rov)
     getUserById: async (userId) => {
       if (!userId) return null;
@@ -2428,7 +2457,7 @@ export const base44 = {
           }
 
           // Tech fields ni decode qilib qaytarish — parolni UI/cache ga chiqarmaymiz
-          return sanitizeUser(userLoader._decodeNotes(data));
+          return sanitizeUser(applyStaffOverride(userLoader._decodeNotes(data)));
         } catch (err) {
           console.error('[getUserById] Error:', err);
           const stored = localStorage.getItem('system_users');

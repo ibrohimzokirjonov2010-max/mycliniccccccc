@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Check, CalendarDays, Stethoscope, ClipboardList, ChevronDown } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
-import { groupProgress } from './planStepperModel';
+import { groupProgress, findNextSavedPlanStep } from './planStepperModel';
 
 const TEAL = '#14b8a6';
 
@@ -83,6 +83,8 @@ export default function TodayPlanBar({
   onNextClinical,
   onAdvanceStep,
   onOpenPlan,
+  plans = null,
+  implants = [],
   part = 'all',
 }) {
   const planGroups = useMemo(() => {
@@ -291,11 +293,31 @@ export default function TodayPlanBar({
                 return (
                   <button
                     type="button"
-                    onClick={() => {
+                    disabled={advancing}
+                    data-testid="plan-next-step"
+                    onClick={async () => {
+                      // Steps built from today's appointments have no planId: start the saved plan step behind them.
+                      if (typeof onAdvanceStep === 'function' && Array.isArray(plans)) {
+                        if (advancing) return;
+                        const target = findNextSavedPlanStep({ plans, hint: activeStep, implants });
+                        if (!target) {
+                          toast.info("Keyingi bosqich yo'q");
+                          return;
+                        }
+                        setAdvancing(true);
+                        let ok = false;
+                        try {
+                          ok = (await onAdvanceStep(target)) !== false;
+                        } finally {
+                          setAdvancing(false);
+                        }
+                        if (ok) onNextClinical(target, { advanced: true });
+                        return;
+                      }
                       toast.info(activeStep ? `Keyingi bosqich: ${stepCaption(activeStep)}` : "Tashxis / muolaja bo'limi");
                       onNextClinical(activeStep);
                     }}
-                    className="inline-flex max-w-full items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-[11px] font-black shadow-sm cursor-pointer hover:opacity-95"
+                    className="inline-flex max-w-full items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-[11px] font-black shadow-sm cursor-pointer hover:opacity-95 disabled:opacity-60 disabled:cursor-wait"
                     style={{ backgroundColor: TEAL }}
                   >
                     <Stethoscope className="w-3.5 h-3.5 shrink-0" />
