@@ -1,5 +1,6 @@
 import { base44 } from '@/api/base44Client';
 import { isPlanLocked } from '@/lib/planLock';
+import { planImplantIds, setPlanOptOut } from '@/lib/implantPlanModel';
 
 const LOCKED_PATIENT = 'patient-y2ii8ynf2';
 
@@ -51,6 +52,8 @@ export async function deleteTreatmentPlan(plan) {
     }
   }
   await base44.entities.TreatmentPlan.delete(plan.id);
+  // Implant rejasi qo'lda o'chirilsa, avtomatik backfill uni qayta ochmaydi.
+  planImplantIds(plan).forEach((implantId) => setPlanOptOut(implantId, true));
   const balance = await syncPatientBalance(patientId);
   const paidAmount = linked
     .filter((payment) => String(payment.type || '').toLowerCase() === 'income')
@@ -121,6 +124,7 @@ export async function deleteTreatmentRow({ patientId, plan, serviceIndex }) {
 
   if (nextServices.length === 0) {
     await base44.entities.TreatmentPlan.delete(plan.id);
+    planImplantIds(plan).forEach((implantId) => setPlanOptOut(implantId, true));
   } else {
     const teeth = [...new Set(nextServices.map((service) => service.tooth_number).filter(Boolean))];
     const done = nextServices.filter(isDone).length;

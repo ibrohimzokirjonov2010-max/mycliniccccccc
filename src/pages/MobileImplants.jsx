@@ -22,6 +22,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import { formatClinicDate } from '@/lib/clinicTime';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
+import { autoSyncImplantPlan, backfillImplantPlans } from '@/lib/implantPlan';
 import { implantStatusClass, implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
 import { 
   ImplantIcon, CrownIcon, FormerIcon, AbutmentIcon, 
@@ -518,6 +519,14 @@ export default function MobileImplants() {
       }
       setImplants(filteredImps);
       setPatients(pats || []);
+      // Reja/qarzi hali bog'lanmagan eski implantlar uchun "Implantlar" rejasi bir marta, takrorlamasdan ochiladi.
+      backfillImplantPlans(filteredImps, { patients: pats || [] })
+        .then((res) => {
+          if (res?.created > 0) {
+            toast.success(`${res.created} ta implant uchun «Implantlar» rejasi va qarz yaratildi`);
+          }
+        })
+        .catch((planErr) => console.error('Implant plan backfill failed:', planErr));
       setServices(svcs || []);
       setBrands(brnds || []);
       hasLoadedInitial.current = true;
@@ -597,6 +606,8 @@ export default function MobileImplants() {
     try {
       await base44.entities.Implant.update(implant.id, { lifecycle_status: statusLabel });
       toast.success('Holat yangilandi!');
+      await autoSyncImplantPlan({ ...implant, lifecycle_status: statusLabel })
+        .catch((planErr) => console.error('Implant plan status sync failed:', planErr));
       setStatusSheet({ open: false, implant: null });
     } catch (e) {
       setImplants(oldImplants);

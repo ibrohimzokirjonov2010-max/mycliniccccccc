@@ -34,7 +34,7 @@ import { buildLinkedServiceModel, persistedServicesList } from './linkedImplantS
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { syncImplantPlan } from '@/lib/implantPlan';
-import { IMPLANT_PLAN_DEFAULT_NAME, findPlanForImplant, implantPlanName, implantPlanTotal } from '@/lib/implantPlanModel';
+import { IMPLANT_PLAN_DEFAULT_NAME, findPlanForImplant, implantPlanName, implantPlanTotal, isPlanOptedOut, setPlanOptOut } from '@/lib/implantPlanModel';
 import { matchIllustrationKind } from '@/utils/toothIllustration';
 import {
   clinicianDisplayName,
@@ -781,14 +781,13 @@ export default function ImplantForm({
     if (!open || planNameTouched || !linkedPlan?.name) return;
     setPlanName(linkedPlan.name);
   }, [open, linkedPlan, planNameTouched]);
-  // Yangi implant (yoki tarif rejasidan kelgan to'ldirilmagan yozuv) default holatda qarzga yoziladi.
-  // Eski, rejasiz implant tahrirlanganda o'z-o'zidan qarz paydo bo'lmasligi uchun default o'chiq.
+  // Belgi default YOQIQ: yangi implant, to'ldirilmagan yozuv va eski (rejasiz) implant ham qarzga yoziladi.
+  // Faqat foydalanuvchi ilgari aniq rad etgan (belgini o'chirgan yoki rejani o'chirgan) implantda o'chiq turadi.
   useEffect(() => {
     if (!open) return;
     if (linkedPlan) { setCreatePlan(true); return; }
-    const legacy = Boolean(implant?.id) && !(implant.needs_fill || implant.incomplete_data);
-    setCreatePlan(!legacy);
-  }, [open, linkedPlan, implant?.id, implant?.needs_fill, implant?.incomplete_data]);
+    setCreatePlan(!(implant?.id && isPlanOptedOut(implant.id)));
+  }, [open, linkedPlan, implant?.id]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -1142,6 +1141,7 @@ export default function ImplantForm({
               patient: patientRow || { full_name: form.patient_name },
             },
           );
+          if (!linkedPlan) setPlanOptOut(savedId, !createPlan);
           if (planResult.action === 'created') {
             toast.success(`«${planResult.plan?.name || planName}» rejasi yaratildi: ${Number(planResult.total).toLocaleString('uz-UZ')} so'm qarz`);
           }
