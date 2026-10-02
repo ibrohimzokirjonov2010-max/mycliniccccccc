@@ -2833,27 +2833,6 @@ export default function PatientProfile() {
       <>
       {/* ══ TOP NAVIGATION & HEADER ══ */}
       <div className="bg-white border-b border-[#e8eaed] sticky top-0 z-30 shadow-xs">
-        {/* Warning Alerts Banner */}
-        {medicalAlerts && medicalAlerts.length > 0 && (
-          <div className="bg-rose-50 border-b border-rose-100 px-4 py-2 flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 text-rose-600 text-[10.5px] font-[900] uppercase tracking-wider shrink-0 mr-2">
-              <AlertTriangle className="w-4 h-4 text-rose-500 animate-pulse shrink-0" />
-              <span>{t('patientProfile.medicalAlert')}:</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {medicalAlerts.map((alert, idx) => (
-                <span
-                  key={idx}
-                  className="inline-flex items-center gap-1.5 bg-gradient-to-r from-red-500 to-rose-600 text-white text-[9.5px] font-[900] uppercase tracking-wider px-2.5 py-1 rounded-lg shadow-sm"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping shrink-0" />
-                  {t(`patientProfile.${alert.type}`)}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* ══ TOP ACTION & BREADCRUMB BAR ══ */}
         <div className="px-3 sm:px-6 py-2.5 flex items-center justify-between gap-3 flex-wrap">
           {/* Left: Back button + Patient Name Breadcrumb */}
@@ -2942,10 +2921,10 @@ export default function PatientProfile() {
       </div>
 
       {/* ══ MAIN 2-COLUMN LAYOUT (EXACT REFERENCE DESIGN) ══ */}
-      <div className="max-w-[1680px] mx-auto p-3 sm:p-5 lg:p-6 flex flex-col lg:flex-row gap-4 lg:gap-6 items-start">
+      <div className="max-w-[1680px] mx-auto px-3 pt-2 pb-3 sm:px-5 sm:pt-3 sm:pb-5 lg:px-6 lg:pt-3 lg:pb-6 flex flex-col lg:flex-row gap-4 lg:gap-6 items-start">
 
         {/* ════ LEFT SIDEBAR: PATIENT CARD (Compact & Bold Style) ════ */}
-        <div className="w-full lg:w-[250px] xl:w-[270px] shrink-0 flex flex-col gap-3 sticky top-28">
+        <div className="w-full lg:w-[250px] xl:w-[270px] shrink-0 flex flex-col gap-3 sticky top-20">
 
           <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/90 shadow-sm flex flex-col gap-3">
             {/* Top header row with title and code badge */}

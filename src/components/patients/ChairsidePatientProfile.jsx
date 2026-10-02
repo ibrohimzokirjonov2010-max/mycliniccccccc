@@ -152,17 +152,6 @@ export default function ChairsidePatientProfile({
 
   return (
     <div className="min-h-0 font-sans">
-      {medicalAlerts?.length > 0 && (
-        <div className="bg-rose-600 text-white px-4 py-2.5 flex flex-wrap items-center gap-2 sticky top-0 z-40 shadow-md">
-          <AlertTriangle className="w-4 h-4 shrink-0 animate-pulse" />
-          <span className="text-[10px] font-black uppercase tracking-wider">Allergiya / Tibbiy ogohlantirish:</span>
-          {medicalAlerts.map((alert, idx) => (
-            <span key={idx} className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-white/15 border border-white/25 text-white text-[9px] font-black uppercase tracking-wide">
-              {alertLabel(alert, language)}
-            </span>
-          ))}
-        </div>
-      )}
 
       <div className="chairside-patient-header bg-white border-b border-slate-200/80 sticky top-0 z-40 overflow-visible shadow-[0_1px_0_rgba(15,23,42,0.06)]" data-chairside-header="true" data-patient-header="true">
         <div className="max-w-[1680px] mx-auto w-full min-w-0 px-3 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
