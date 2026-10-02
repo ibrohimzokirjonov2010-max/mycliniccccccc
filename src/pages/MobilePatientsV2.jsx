@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Search, Plus,
+  Search, Plus, X,
   User, Calendar, Phone, ChevronRight
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import { formatCurrency, capitalizeName, formatDate, formatPhone } from '@/lib/utils';
+import { patientMatchesDoctorFilter } from '@/utils/doctorMatch';
 import { buildVisitIndex, isActiveTreatmentPatient, isNewPatient, lastVisitKey } from '@/lib/patientVisits';
 import NewPatientFlow from '@/components/patients/NewPatientFlow';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -33,6 +34,16 @@ export default function MobilePatientsV2() {
   const [showFlow, setShowFlow] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const [visitIndex, setVisitIndex] = useState({ completed: new Set(), last: {} });
+
+  // Xodimlar sahifasidan kelgan "shifokor bo'yicha" filtr
+  const [doctorFilter, setDoctorFilter] = useState(() => location.state?.doctorFilter || null);
+  useEffect(() => {
+    const incoming = location.state?.doctorFilter;
+    if (incoming) {
+      setDoctorFilter(incoming);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (location.state?.openAddModal) {
@@ -91,6 +102,7 @@ export default function MobilePatientsV2() {
   }, [loadPatients]);
 
   const filteredPatients = patients.filter(p => {
+    if (doctorFilter && !patientMatchesDoctorFilter(p, doctorFilter)) return false;
     const matchesSearch = p.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          p.phone?.includes(searchQuery);
     const fresh = isNewPatient(p, visitIndex);
@@ -150,9 +162,10 @@ export default function MobilePatientsV2() {
     </div>
   );
 
-  const totalDebt = patients.reduce((sum, p) => sum + (p.total_debt || 0), 0);
-  const newCount = patients.filter(p => isNewPatient(p, visitIndex)).length;
-  const activeCount = patients.filter(isActiveTreatmentPatient).length;
+  const scopedPatients = doctorFilter ? patients.filter((p) => patientMatchesDoctorFilter(p, doctorFilter)) : patients;
+  const totalDebt = scopedPatients.reduce((sum, p) => sum + (p.total_debt || 0), 0);
+  const newCount = scopedPatients.filter(p => isNewPatient(p, visitIndex)).length;
+  const activeCount = scopedPatients.filter(isActiveTreatmentPatient).length;
 
   return (
     <PullToRefresh onRefresh={loadPatients}>
@@ -163,7 +176,7 @@ export default function MobilePatientsV2() {
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">{t('patients.title')}</h1>
                 <p className="text-sm text-slate-500 mt-0.5">
-                  <span className="font-semibold text-slate-700">{totalCount || patients.length}</span> {t('patients.patientList')}
+                  <span className="font-semibold text-slate-700">{doctorFilter ? scopedPatients.length : (totalCount || patients.length)}</span> {t('patients.patientList')}
                 </p>
               </div>
               
@@ -192,6 +205,19 @@ export default function MobilePatientsV2() {
                 </div>
               )}
             </div>
+
+            {doctorFilter && (
+              <div className="mb-3 flex items-center justify-between gap-2 bg-[#1499AD]/10 border border-[#1499AD]/20 rounded-2xl px-4 py-2.5">
+                <span className="text-xs font-black text-[#1499AD] truncate">Shifokor: {doctorFilter.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setDoctorFilter(null)}
+                  className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 bg-white rounded-lg text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-100 shadow-sm"
+                >
+                  <X className="w-3 h-3" /> Tozalash
+                </button>
+              </div>
+            )}
 
             <div className="relative mb-3">
               <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />

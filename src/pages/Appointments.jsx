@@ -18,6 +18,8 @@ import { addDaysKey, dateKeyOf, formatClinicDate, formatClinicDateWithWeekday, t
 import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import { useAuth } from '@/lib/AuthContext';
+import { appointmentMatchesDoctor } from '@/utils/doctorMatch';
+import { isCancelledStatus } from '@/utils/clinicMetrics';
 
 // ── Appointment date/time normalizer (shared helper) ─────────────────────────
 const normalizeAppt = (a) => {
@@ -55,6 +57,9 @@ export default function Appointments() {
   const [viewDate, setViewDate] = useState(tashkentToday());
   const [activeTab, setActiveTab] = useState('grid');
   const [listPeriod, setListPeriod] = useState('all');
+  // Xodimlar sahifasidan kelgan shifokor nomi va "bekor qilinganlarsiz" belgisi
+  const [selectedDoctorName, setSelectedDoctorName] = useState('');
+  const [hideCancelled, setHideCancelled] = useState(false);
 
   useEffect(() => {
     if (isDoctor && user?.id) {
@@ -125,6 +130,8 @@ export default function Appointments() {
     const incomingId = location.state?.doctorId;
     if (incomingId == null || incomingId === '') return;
     setSelectedDoctorId(incomingId);
+    setSelectedDoctorName(String(location.state?.doctorName || ''));
+    setHideCancelled(!!location.state?.excludeCancelled);
     setActiveTab('list');
     const incomingDate = String(location.state?.date || '').split('T')[0];
     const incomingPeriod = location.state?.listPeriod;
@@ -256,14 +263,11 @@ export default function Appointments() {
     // by a single doctor unless we're in list or calendar view where only one doctor's data is shown.
     if (activeTab !== 'grid' && selectedDoctorId !== null) {
       const selectedDoc = doctors.find(d => String(d.id) === String(selectedDoctorId));
-      result = result.filter(a => {
-        const matchId = String(a.doctor_id) === String(selectedDoctorId);
-        const matchName = selectedDoc && (
-          a.notes?.includes(selectedDoc.name) ||
-          (a.doctor_name || '').toLowerCase().includes((selectedDoc.name || '').toLowerCase())
-        );
-        return matchId || matchName;
-      });
+      const docName = selectedDoc?.name || selectedDoc?.full_name || selectedDoctorName;
+      result = result.filter(a => (
+        appointmentMatchesDoctor(a, selectedDoctorId, docName) ||
+        !!(selectedDoc?.name && a.notes?.includes(selectedDoc.name))
+      ));
     }
 
     if (debouncedSearch.trim()) {
@@ -280,7 +284,7 @@ export default function Appointments() {
     }
 
     return result;
-  }, [appointments, selectedDoctorId, doctors, debouncedSearch, patients, activeTab]);
+  }, [appointments, selectedDoctorId, selectedDoctorName, doctors, debouncedSearch, patients, activeTab]);
 
   // Enriched appointments with patient photos and details
   const enrichedAppointments = useMemo(() => {
@@ -307,10 +311,11 @@ export default function Appointments() {
     if (activeTab !== 'list') {
       return filteredAppointments.filter((a) => withDate(a) === viewDate);
     }
-    if (listPeriod === 'day') return filteredAppointments.filter((a) => withDate(a) === viewDate);
-    if (listPeriod === 'upcoming') return filteredAppointments.filter((a) => withDate(a) >= todayKey);
-    return filteredAppointments;
-  }, [activeTab, filteredAppointments, listPeriod, viewDate, todayKey]);
+    const pool = hideCancelled ? filteredAppointments.filter((a) => !isCancelledStatus(a.status)) : filteredAppointments;
+    if (listPeriod === 'day') return pool.filter((a) => withDate(a) === viewDate);
+    if (listPeriod === 'upcoming') return pool.filter((a) => withDate(a) >= todayKey);
+    return pool;
+  }, [activeTab, filteredAppointments, listPeriod, viewDate, todayKey, hideCancelled]);
 
   const otherDayMatchesCount = useMemo(() => {
     if (!debouncedSearch.trim()) return 0;
@@ -586,6 +591,15 @@ export default function Appointments() {
                             </button>
                           ))}
                           <span className="text-[10px] font-bold text-slate-400 ml-1">{periodLabel}: {dayAppts.length} ta</span>
+                          {hideCancelled && (
+                            <button
+                              type="button"
+                              onClick={() => setHideCancelled(false)}
+                              className="ml-1 px-2.5 py-1 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-500 hover:border-[#1499AD] hover:text-[#1499AD] transition-colors"
+                            >
+                              Bekor qilinganlarsiz · ko'rsatish
+                            </button>
+                          )}
                         </div>
                         {dayAppts.length === 0 ? (
                           <div className="py-20 text-center">
