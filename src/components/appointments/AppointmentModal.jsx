@@ -72,6 +72,95 @@ const getNextReasonableSlot = (dateStr, now = new Date()) => {
   return next || null;
 };
 
+/** YYYY-MM-DD for the DB `date` column (accepts dd.mm.yyyy / ISO strings). */
+const toDbDate = (value) => normalizeToDateOnly(String(value || ''));
+
+/** Build the exact payload sent to the Appointment table (clean types, no empty junk). */
+const buildAppointmentPayload = (form) => {
+  const payload = {
+    ...form,
+    date: toDbDate(form.date),
+    time: String(form.time || '').slice(0, 5),
+    duration: Number(form.duration) || 30,
+    price: Number(form.price) || 0,
+    status: form.status || 'Scheduled',
+  };
+  Object.keys(payload).forEach((key) => {
+    if (payload[key] === '' || payload[key] === undefined) delete payload[key];
+  });
+  return payload;
+};
+
+/**
+ * Save a new appointment. The first attempt sends the full payload; if the server rejects it
+ * (HTTP 400 - e.g. an optional column with a different type) we retry once with only the core
+ * columns and keep the optional values inside the notes so nothing is lost.
+ */
+const createAppointmentSafely = async (form) => {
+  const payload = buildAppointmentPayload(form);
+  try {
+    return await base44.entities.Appointment.create(payload);
+  } catch (firstError) {
+    console.warn('Appointment.create failed, retrying with core columns only:', firstError);
+    const { tooth_number, service_id, price, duration, ...core } = payload;
+    const extra = [
+      tooth_number ? `Tish: ${tooth_number}` : '',
+      service_id ? `Xizmat ID: ${service_id}` : '',
+    ].filter(Boolean).join(' | ');
+    const retryPayload = {
+      ...core,
+      price: Number(price) || 0,
+      duration: Number(duration) || 30,
+      notes: [core.notes, extra].filter(Boolean).join('\n'),
+    };
+    try {
+      return await base44.entities.Appointment.create(retryPayload);
+    } catch (secondError) {
+      console.error('Appointment.create retry failed:', secondError);
+      throw secondError;
+    }
+  }
+};
+
+/**
+ * Schedule the morning + 2h Telegram reminders. Entirely best-effort:
+ * a missing entity / table or any network error is logged and ignored.
+ */
+const scheduleAppointmentNotifications = async (appointmentRecord, form) => {
+  try {
+    const notificationEntity = base44?.entities?.ScheduledNotification;
+    if (!notificationEntity || typeof notificationEntity.create !== 'function') return;
+    if (!appointmentRecord?.id || !form?.date || !form?.time) return;
+
+    const apptDate = toDbDate(form.date);
+    const apptTime = String(form.time).slice(0, 5);
+    const morningDate = new Date(`${apptDate}T08:00:00`);
+    const fullApptDate = new Date(`${apptDate}T${apptTime || '00:00'}:00`);
+    if (Number.isNaN(morningDate.getTime()) || Number.isNaN(fullApptDate.getTime())) return;
+    const reminderDate = new Date(fullApptDate.getTime() - 2 * 60 * 60 * 1000);
+
+    const hour = new Date().getHours();
+    let greeting = 'Xayrli kun';
+    if (hour < 11) greeting = '☀️ Xayrli tong';
+    else if (hour > 18) greeting = '🌙 Xayrli kech';
+
+    const morningMsg = `${greeting}, ${form.patient_name}! \n\n🦷 Ertangi qabulingizni oldindan rejalashtirib qo'ydik. Soat ${apptTime}da sizni kutib qolamiz. 👌`;
+    const reminderMsg = `🔔 Eslatma: \nQabulingizga 2 soat vaqt qoldi. Soat ${apptTime}da uchrashuvimiz bor. ✅`;
+
+    const base = {
+      patient_id: form.patient_id,
+      patient_name: form.patient_name,
+      channel: 'telegram',
+      status: 'scheduled',
+      appointment_id: appointmentRecord.id,
+    };
+    await notificationEntity.create({ ...base, message: morningMsg, scheduled_at: morningDate.toISOString(), type: 'appointment_morning' });
+    await notificationEntity.create({ ...base, message: reminderMsg, scheduled_at: reminderDate.toISOString(), type: 'appointment_2hr' });
+  } catch (notifErr) {
+    console.error('Xabarlarni rejalashtirishda xatolik:', notifErr);
+  }
+};
+
 const autoCategorize = (name) => {
   const n = name?.toLowerCase() || '';
   if (n.includes('olish') || n.includes('sug\'urish') || n.includes('implant') || n.includes('xirurg') || n.includes('anesteziya')) return 'XIRURGIYA';
@@ -428,55 +517,10 @@ export default function AppointmentModal({
         }
       } else {
         // Create new appointment
-        const res = await base44.entities.Appointment.create(form);
-        
-        // --- NEW: Schedule Automated Notifications ---
-        try {
-          const apptDate = form.date; // YYYY-MM-DD
-          const apptTime = form.time; // HH:MM
-          
-          // 1. Morning notification (8:00 AM on the day)
-          const morningDate = new Date(`${apptDate}T08:00:00`);
-          
-          // 2. 2-hour notification
-          const [h, m] = apptTime.split(':').map(Number);
-          const fullApptDate = new Date(`${apptDate}T${apptTime || '00:00'}:00`);
-          const reminderDate = new Date(fullApptDate.getTime() - 2 * 60 * 60 * 1000);
+        const res = await createAppointmentSafely(form);
 
-          const now = new Date();
-          const hour = now.getHours();
-          let greeting = 'Xayrli kun';
-          if (hour < 11) greeting = '☀️ Xayrli tong';
-          else if (hour > 18) greeting = '🌙 Xayrli kech';
-
-          const morningMsg = `${greeting}, ${form.patient_name}! \n\n🦷 Ertangi qabulingizni oldindan rejalashtirib qo'ydik. Soat ${apptTime}da sizni kutib qolamiz. 👌`;
-          const reminderMsg = `🔔 Eslatma: \nQabulingizga 2 soat vaqt qoldi. Soat ${apptTime}da uchrashuvimiz bor. ✅`;
-
-          await base44.entities.ScheduledNotification.create({
-            patient_id: form.patient_id,
-            patient_name: form.patient_name,
-            message: morningMsg,
-            scheduled_at: morningDate.toISOString(),
-            channel: 'telegram',
-            status: 'scheduled',
-            type: 'appointment_morning',
-            appointment_id: res.id
-          });
-
-          await base44.entities.ScheduledNotification.create({
-            patient_id: form.patient_id,
-            patient_name: form.patient_name,
-            message: reminderMsg,
-            scheduled_at: reminderDate.toISOString(),
-            channel: 'telegram',
-            status: 'scheduled',
-            type: 'appointment_2hr',
-            appointment_id: res.id
-          });
-        } catch (notifErr) {
-          console.error("Xabarlarni rejalashtirishda xatolik:", notifErr);
-        }
-        // --- END NEW ---
+        // Eslatma xabarlarini rejalashtirish: hech qachon saqlashni to'smasligi kerak.
+        await scheduleAppointmentNotifications(res, form);
 
         // Handle case where new appointment is created as Completed
         if (form.status === 'Completed') {
@@ -488,7 +532,8 @@ export default function AppointmentModal({
       onSaved();
       onClose();
     } catch (error) {
-      setError(t('common.errorSave'));
+      const detail = String(error?.message || '').replace(/^Supabase DB Error \(\w+\):\s*/, '').slice(0, 140);
+      setError(detail ? `${t('common.errorSave')} (${detail})` : t('common.errorSave'));
       console.error('Save error:', error);
     } finally {
       setSaving(false);

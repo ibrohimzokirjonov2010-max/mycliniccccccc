@@ -1,5 +1,5 @@
 import { base44 } from '@/api/base44Client';
-import { getTashkentDate, getTashkentNow } from '@/lib/telegramReminderService';
+import { dateKeyOf, tashkentToday, addDaysKey } from '@/lib/clinicTime';
 
 /** Local calendar YYYY-MM-DD — same rules as ChairsideToday queue. */
 export function toDateOnly(value) {
@@ -26,8 +26,10 @@ function paymentDate(p) {
   return toDateOnly(p?.date || p?.created_date || p?.created_at);
 }
 
+/** Calendar day of an appointment in Asia/Tashkent (handles date-only, ISO with offset, dd.mm.yyyy). */
 function appointmentDate(a) {
-  return toDateOnly(a?.date);
+  const raw = a?.date || a?.appointment_date;
+  return dateKeyOf(raw) || toDateOnly(raw);
 }
 
 function patientCreatedDate(p) {
@@ -35,9 +37,7 @@ function patientCreatedDate(p) {
 }
 
 function shiftTashkentDate(days) {
-  const t = getTashkentNow();
-  t.setDate(t.getDate() + days);
-  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  return addDaysKey(tashkentToday(), days);
 }
 
 /** Match chairside doctor filter: doctor_id OR doctor_name. */
@@ -58,7 +58,7 @@ function matchesDoctor(row, doctor) {
  * Aligns today KPIs with ChairsideToday queue (Tashkent day + doctor match).
  */
 export async function fetchDashboardStats(user, isDoctor, isAdmin) {
-  const today = getTashkentDate();
+  const today = tashkentToday();
 
   // Same volume strategy as chairside: list then client-filter (API doctor_id-only
   // filter undercounts when appointments only store doctor_name).
@@ -98,11 +98,13 @@ export async function fetchDashboardStats(user, isDoctor, isAdmin) {
     })
     .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
+  // Percent change vs the previous period. A zero / tiny base or an absurd jump shows "—".
   const calculateTrend = (current, previous) => {
     if (current === 0 && previous === 0) return '0%';
-    if (!previous || previous === 0) return '—';
+    if (!previous || previous <= 0) return '—';
     if (current === 0) return '—';
     const diff = ((current - previous) / previous) * 100;
+    if (!Number.isFinite(diff) || Math.abs(diff) > 999) return '—';
     const sign = diff >= 0 ? '+' : '';
     return `${sign}${diff.toFixed(0)}%`;
   };

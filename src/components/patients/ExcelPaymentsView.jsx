@@ -12,6 +12,7 @@ import { formatDoctorName, formatTableDate } from '@/lib/displayText';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import EmptyState from '../ui/EmptyState';
+import { allocatePaymentsToPlans } from '@/lib/planPaymentAllocation';
 
 /**
  * ExcelPaymentsView Component
@@ -90,60 +91,20 @@ function ExcelPaymentsView({
     return list;
   }, [realIncomePayments, search, sortField, sortAsc]);
 
-  // Dynamic calculation of plan paid amount & debt from patient payments
-  const enrichedPlans = useMemo(() => {
-    if (!plans || plans.length === 0) return [];
-    
-    // Total income payments made by the patient
-    const totalPatientIncomes = realIncomePayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-    const effectiveTotalPaid = Math.max(totalPatientIncomes, Number(totalPaid) || 0, Number(patient?.total_paid) || 0);
-
-    // Track pool of paid money to allocate across plans
-    let remainingPoolToAllocate = effectiveTotalPaid;
-
-    return plans.map((plan, idx) => {
-      const planPrice = Number(plan.total_price || 0);
-      
-      // 1. Direct payments linked to this plan by plan_id, notes, or name
-      const directPays = realIncomePayments.filter(p => {
-        if (p.plan_id && p.plan_id === plan.id) return true;
-        const notes = (p.notes || '').toLowerCase();
-        const sName = (p.service_name || p.treatment_name || p.category || '').toLowerCase();
-        const pName = (plan.name || '').toLowerCase();
-        return (pName && (notes.includes(pName) || sName.includes(pName)));
-      });
-      const directPaidSum = directPays.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-
-      // 2. Base recorded plan.paid_amount
-      const baseRecordedPaid = Number(plan.paid_amount) || 0;
-
-      let calculatedPaid = Math.max(directPaidSum, baseRecordedPaid);
-
-      // If only 1 plan exists for this patient, ALL patient's income payments apply to this single plan!
-      if (plans.length === 1) {
-        calculatedPaid = Math.max(calculatedPaid, effectiveTotalPaid);
-      } else {
-        // If multiple plans, allocate from remaining pool
-        if (calculatedPaid === 0 && remainingPoolToAllocate > 0) {
-          const alloc = Math.min(planPrice > 0 ? planPrice : remainingPoolToAllocate, remainingPoolToAllocate);
-          calculatedPaid = alloc;
-          remainingPoolToAllocate = Math.max(0, remainingPoolToAllocate - alloc);
-        } else {
-          remainingPoolToAllocate = Math.max(0, remainingPoolToAllocate - calculatedPaid);
-        }
-      }
-
-      const effectivePaid = planPrice > 0 ? Math.min(planPrice, calculatedPaid) : calculatedPaid;
-      const effectiveDebt = Math.max(0, planPrice - effectivePaid);
-
-      return {
-        ...plan,
-        paid_amount: effectivePaid,
-        effectiveDebt,
-        calculatedPrice: planPrice
-      };
+  // Per-plan paid amounts: each payment is counted exactly once (see planPaymentAllocation.js)
+  const planAllocation = useMemo(() => {
+    if (!plans || plans.length === 0) return { rows: [], unallocated: 0 };
+    return allocatePaymentsToPlans(plans, realIncomePayments, {
+      totalPaid: Math.max(Number(totalPaid) || 0, 0),
     });
-  }, [plans, realIncomePayments, totalPaid, patient?.total_paid]);
+  }, [plans, realIncomePayments, totalPaid]);
+
+  const enrichedPlans = useMemo(() => planAllocation.rows.map(({ plan, paid, remaining }) => ({
+    ...plan,
+    paid_amount: paid,
+    effectiveDebt: remaining,
+    calculatedPrice: Number(plan.total_price || 0),
+  })), [planAllocation]);
 
   const installmentPlans = useMemo(() => {
     return (enrichedPlans || []).filter(p => p.installment_plan && p.installment_plan.months > 0);
@@ -1034,6 +995,20 @@ function ExcelPaymentsView({
                       </tr>
                     );
                   })
+                )}
+                {planAllocation.unallocated > 0 && (
+                  <tr className="border-b border-slate-200/70 bg-slate-50/60">
+                    <td className="border-r border-slate-200 text-center text-slate-400 text-xs py-1.5 px-2.5">&Sigma;</td>
+                    <td colSpan={3} className="border-r border-slate-200 font-bold text-slate-700 text-[11px] py-2 px-2">
+                      Umumiy to'lov (rejaga biriktirilmagan)
+                    </td>
+                    <td className="border-r border-slate-200 text-right font-mono text-slate-400 text-[11px] py-2 px-1.5">&mdash;</td>
+                    <td className="border-r border-slate-200 text-right font-mono font-black text-emerald-700 text-[11px] py-2 px-1.5">
+                      {planAllocation.unallocated.toLocaleString()}
+                    </td>
+                    <td className="border-r border-slate-200 text-right font-mono text-slate-400 text-[11px] py-2 px-1.5">&mdash;</td>
+                    <td />
+                  </tr>
                 )}
               </tbody>
             </table>
