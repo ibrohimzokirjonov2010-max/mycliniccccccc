@@ -18,6 +18,7 @@ import PatientSelect from '../patients/PatientSelect';
 import PatientModal from '../patients/PatientModal';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
+import { autoSyncImplantPlan } from '@/lib/implantPlan';
 import { cn } from '@/lib/utils';
 import { ClinicDateField } from '@/components/ui/ClinicDateField';
 
@@ -268,12 +269,31 @@ export default function ExtraServiceModal({
         ]
       };
 
+      let savedRecord = null;
       if (serviceItem?.id) {
-        await base44.entities.Implant.update(serviceItem.id, payload);
+        savedRecord = await base44.entities.Implant.update(serviceItem.id, payload);
         toast.success("Qo'shimcha xizmat muvaffaqiyatli tahrirlandi!");
       } else {
-        await base44.entities.Implant.create(payload);
+        savedRecord = await base44.entities.Implant.create(payload);
         toast.success("Yangi qo'shimcha xizmat muvaffaqiyatli saqlandi!");
+      }
+
+      // Xizmat narxi bemorning "Implantlar" rejasiga va qarziga yoziladi (reja bo'lmasa yaratiladi).
+      try {
+        const recordId = serviceItem?.id || savedRecord?.id;
+        if (recordId && payload.patient_id) {
+          const patientRow = (localPatients || []).find((p) => String(p.id) === String(payload.patient_id));
+          const planResult = await autoSyncImplantPlan(
+            { ...(serviceItem || {}), ...payload, id: recordId },
+            { patient: patientRow || { full_name: payload.patient_name } },
+          );
+          if (planResult.action === 'created' || planResult.action === 'updated') {
+            toast.success(`Bemor rejasi/qarzi yangilandi: «${planResult.plan?.name || 'Implantlar'}»`);
+          }
+        }
+      } catch (planErr) {
+        console.error('Extra service plan sync failed:', planErr);
+        toast.error("Xizmat saqlandi, lekin bemor rejasi/qarzi yangilanmadi. Qayta saqlab ko'ring.");
       }
 
       onSaved?.();

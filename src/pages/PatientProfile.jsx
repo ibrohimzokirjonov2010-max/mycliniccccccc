@@ -52,7 +52,7 @@ import { exportPatientToExcel } from '@/lib/patientExcelExport';
 import AppointmentModal from '../components/appointments/AppointmentModal';
 import PatientModal from '../components/patients/PatientModal';
 import { isPlanLocked } from '../lib/planLock';
-import { renameImplantPlan } from '../lib/implantPlan';
+import { renameImplantPlan, backfillImplantPlans } from '../lib/implantPlan';
 import { findPlanForImplant } from '../lib/implantPlanModel';
 import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
 import TreatmentPlanInvoice from '../components/treatments/TreatmentPlanInvoice';
@@ -1286,6 +1286,17 @@ export default function PatientProfile() {
       }
 
       setImplants(implantsRes || []);
+      // Reja/qarzi bog'lanmagan eski implantlar: "Implantlar" rejasi bir marta ochiladi, so'ng ro'yxat yangilanadi.
+      if (canImplants && id && id !== 'patient-y2ii8ynf2' && (implantsRes || []).length > 0) {
+        backfillImplantPlans(implantsRes, { patients: rawPatient ? [rawPatient] : [] })
+          .then((res) => {
+            if (res?.created > 0) {
+              toast.success(`«Implantlar» rejasi va qarz yaratildi: ${Number(res.total).toLocaleString('uz-UZ')} so'm`);
+              load();
+            }
+          })
+          .catch((planErr) => console.error('Implant plan backfill failed:', planErr));
+      }
       setToothRecords(toothRes || []);
       setDoctors(doctorsRes || []);
       setXrays(xraysRes || []);

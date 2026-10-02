@@ -7,18 +7,40 @@ import { base44 } from '@/api/base44Client';
 import { deleteTreatmentPlan, syncPatientBalance } from '@/lib/treatmentDelete';
 import {
   IMPLANT_PLAN_DEFAULT_NAME,
+  applyLifecycleToLines,
+  billedElsewhereTeeth,
   findAdoptableLines,
   findPlanForImplant,
   implantPlanLines,
   implantPlanMarker,
   implantPlanName,
+  implantPlanTotal,
+  isBackfillEligible,
+  isExtraServiceRecord,
+  isPlanOptedOut,
   mergeImplantLines,
+  pickHostPlan,
+  planImplantIds,
+  planStatusFromServices,
   planTotalAfterDiscount,
   teethLabel,
 } from '@/lib/implantPlanModel';
 
 const LOCKED_PATIENT = 'patient-y2ii8ynf2';
 const today = () => new Date().toISOString().split('T')[0];
+
+// Bir bemor bo'yicha sinxronlash ketma-ket bajariladi (ro'yxat, tafsilot va profil bir vaqtda ochilganda
+// bir implant uchun ikki reja/qarz yaratilib ketmasligi uchun).
+const patientQueues = new Map();
+function withPatientLock(patientId, task) {
+  const key = String(patientId || '');
+  const prev = patientQueues.get(key) || Promise.resolve();
+  const run = prev.catch(() => {}).then(task);
+  const tail = run.catch(() => {});
+  patientQueues.set(key, tail);
+  tail.then(() => { if (patientQueues.get(key) === tail) patientQueues.delete(key); });
+  return run;
+}
 
 export async function loadPatientPlans(patientId) {
   if (!patientId) return [];
@@ -84,13 +106,27 @@ async function detachLine({ plan, index, patient }) {
  * - reja bor: qatorlar/summa/Debt yangilanadi (qulflangan bo'lsa ham: bu implantning o'z rejasi), nom ixtiyoriy o'zgaradi.
  * Natija: { action: 'created' | 'updated' | 'none', plan, total, adopted }
  */
-export async function syncImplantPlan(implant, { planName, createPlan = true, doctor = null, patient = null } = {}) {
+export function syncImplantPlan(implant, options = {}) {
   const patientId = implant?.patient_id;
-  if (!implant?.id || !patientId || patientId === LOCKED_PATIENT) return { action: 'none', plan: null, total: 0, adopted: 0 };
+  if (!implant?.id || !patientId || patientId === LOCKED_PATIENT) {
+    return Promise.resolve({ action: 'none', plan: null, total: 0, adopted: 0 });
+  }
+  return withPatientLock(patientId, () => syncImplantPlanLocked(implant, options));
+}
 
-  const lines = implantPlanLines(implant);
+const lifecycleOf = (implant) => implant?.lifecycle_status || implant?.status || '';
+
+async function syncImplantPlanLocked(implant, { planName, createPlan = true, onlyIfMissing = false, doctor = null, patient = null } = {}) {
+  const patientId = implant.patient_id;
   const plans = await loadPatientPlans(patientId);
-  const existing = findPlanForImplant(plans, implant.id);
+  let existing = findPlanForImplant(plans, implant.id);
+  if (existing && onlyIfMissing) return { action: 'exists', plan: existing, total: Number(existing.total_price) || 0, adopted: 0 };
+
+  // Boshqa rejada allaqachon bajarilgan shu tish implanti bo'lsa, asosiy implant qatori qayta qo'shilmaydi.
+  const lines = implantPlanLines(implant, { skipPrimaryTeeth: billedElsewhereTeeth(plans, implant) });
+
+  // Qo'shimcha xizmat (karonka, abutment...) - bemorning mavjud "Implantlar" rejasiga qo'shiladi.
+  if (!existing && createPlan && isExtraServiceRecord(implant)) existing = pickHostPlan(plans, implant);
 
   if (!existing) {
     const rawTotal = lines.reduce((sum, line) => sum + (Number(line.price) || 0), 0);
@@ -123,16 +159,17 @@ export async function syncImplantPlan(implant, { planName, createPlan = true, do
 
     const name = implantPlanName(planName);
     const teeth = teethLabel(lines);
+    const lifecycle = applyLifecycleToLines(lines, implant.id, lifecycleOf(implant));
     const plan = await base44.entities.TreatmentPlan.create({
       name,
       patient_id: patientId,
       patient_name: patient?.full_name || implant.patient_name || '',
       doctor_id: doctor?.id || implant.doctor_id || '',
       doctor_name: doctor?.name || implant.doctor || '',
-      status: 'planned',
+      status: planStatusFromServices(lifecycle.services),
       priority: 'medium',
       tooth_number: teeth,
-      services: lines,
+      services: lifecycle.services,
       total_price: rawTotal,
       discount_percent: 0,
       discount_amount: 0,
@@ -141,11 +178,27 @@ export async function syncImplantPlan(implant, { planName, createPlan = true, do
     });
     if (!plan?.id) throw new Error('Implant rejasi yaratilmadi');
     await upsertPlanDebt({ plan, patient, total: rawTotal, doctor, teeth });
+
+    // Parallel (boshqa tab/qurilma) chaqiruv bir implant uchun ikkinchi reja ochgan bo'lsa - eng eskisi qoladi.
+    const after = await loadPatientPlans(patientId);
+    const twins = after
+      .filter((candidate) => planImplantIds(candidate).includes(String(implant.id)))
+      .sort((a, b) => String(a.created_date || '').localeCompare(String(b.created_date || '')) || String(a.id).localeCompare(String(b.id)));
+    let finalPlan = plan;
+    if (twins.length > 1) {
+      finalPlan = twins[0];
+      for (const twin of twins.slice(1)) await deleteTreatmentPlan(twin).catch(() => {});
+    }
     await syncPatientBalance(patientId);
-    return { action: 'created', plan, total: rawTotal, adopted: adoptable.length };
+    return { action: 'created', plan: finalPlan, total: rawTotal, adopted: adoptable.length };
   }
 
-  const services = mergeImplantLines(existing.services, lines, implant.id);
+  const lifecycle = applyLifecycleToLines(
+    mergeImplantLines(existing.services, lines, implant.id),
+    implant.id,
+    lifecycleOf(implant),
+  );
+  const services = lifecycle.services;
   const { discount, total } = planTotalAfterDiscount(existing, services);
   const teeth = teethLabel(services);
   const patch = {
@@ -155,6 +208,7 @@ export async function syncImplantPlan(implant, { planName, createPlan = true, do
     tooth_number: teeth,
     paid_amount: Math.min(Number(existing.paid_amount) || 0, total),
   };
+  if (lifecycle.changed) patch.status = planStatusFromServices(services);
   if (planName != null && String(planName).trim()) patch.name = implantPlanName(planName);
   const plan = await base44.entities.TreatmentPlan.update(existing.id, patch);
   const merged = { ...existing, ...patch, ...(plan && typeof plan === 'object' ? plan : {}), id: existing.id };
@@ -196,6 +250,73 @@ export async function renameImplantPlan(plan, name) {
   const next = implantPlanName(name);
   await base44.entities.TreatmentPlan.update(plan.id, { name: next });
   return next;
+}
+
+/**
+ * Avtomatik sinxronlash (ro'yxat/tafsilot/profil/qo'shimcha xizmat/status): implant yaroqli bo'lsa va foydalanuvchi
+ * qarzga yozishni rad etmagan bo'lsa, reja yo'q bo'lganda yaratadi; bor bo'lsa yangilaydi.
+ */
+export function autoSyncImplantPlan(implant, options = {}) {
+  const createPlan = isBackfillEligible(implant) && !isPlanOptedOut(implant?.id);
+  return syncImplantPlan(implant, { ...options, createPlan });
+}
+
+let backfillRun = null;
+const backfillDone = new Set();
+
+/**
+ * Mavjud implantlar uchun (PR #50 dan oldin yaratilgan) "Implantlar" rejasi va bog'langan qarzni bir marta,
+ * takrorlamasdan yaratadi. Allaqachon rejaga bog'langan implantlarga tegmaydi.
+ * Natija: { created, total, errors }
+ */
+export async function backfillImplantPlans(implants, { patients = [] } = {}) {
+  if (backfillRun) await backfillRun.catch(() => {});
+  const task = (async () => {
+    const result = { created: 0, total: 0, errors: 0, patientIds: [] };
+    const candidates = (implants || []).filter((item) => (
+      item?.id && !backfillDone.has(String(item.id)) && isBackfillEligible(item) && !isPlanOptedOut(item.id)
+      && item.patient_id !== LOCKED_PATIENT
+    ));
+    if (candidates.length === 0) return result;
+
+    // Bir so'rov bilan barcha rejalar: allaqachon bog'langan implantlar chetlab o'tiladi.
+    const allPlans = (await base44.entities.TreatmentPlan.list('-created_date', 3000).catch(() => null)) || [];
+    const linked = new Set();
+    allPlans.forEach((plan) => planImplantIds(plan).forEach((id) => linked.add(id)));
+    const missing = candidates.filter((item) => !linked.has(String(item.id)));
+    candidates.filter((item) => linked.has(String(item.id))).forEach((item) => backfillDone.add(String(item.id)));
+
+    // Avval asosiy implantlar (reja yaratadi), keyin qo'shimcha xizmatlar (shu rejaga qo'shiladi).
+    missing.sort((a, b) => Number(isExtraServiceRecord(a)) - Number(isExtraServiceRecord(b)));
+    const patientsById = new Map((patients || []).map((p) => [String(p.id), p]));
+    const touched = new Set();
+    for (const item of missing) {
+      try {
+        const res = await syncImplantPlan(item, {
+          createPlan: true,
+          onlyIfMissing: true,
+          patient: patientsById.get(String(item.patient_id)) || { full_name: item.patient_name || '' },
+        });
+        backfillDone.add(String(item.id));
+        if (res.action === 'created' || (res.action === 'updated' && res.total > 0)) {
+          result.created += 1;
+          result.total += implantPlanTotal(item);
+          touched.add(String(item.patient_id));
+        }
+      } catch (err) {
+        result.errors += 1;
+        console.error('Implant plan backfill failed:', item.id, err);
+      }
+    }
+    result.patientIds = [...touched];
+    return result;
+  })();
+  backfillRun = task;
+  try {
+    return await task;
+  } finally {
+    if (backfillRun === task) backfillRun = null;
+  }
 }
 
 export { IMPLANT_PLAN_DEFAULT_NAME };
