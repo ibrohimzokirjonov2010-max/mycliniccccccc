@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  ClipboardList, Check, ArrowLeft, ArrowRight, 
+  ClipboardList, Check, ArrowLeft, ArrowRight, Lock, 
   X, UserCircle2, CheckCircle2, Printer, 
   Search, Download, MessageCircle, Wallet
 } from 'lucide-react';
@@ -226,6 +226,9 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   const [showCustomDiscount, setShowCustomDiscount] = useState(false);
   const [customDiscountAmount, setCustomDiscountAmount] = useState('');
   const [savedPlanData, setSavedPlanData] = useState(null);
+  // Saqlangan (qoralama bo'lmagan) reja qulflanadi: yangi ish uchun "Yangi reja" ochiladi.
+  const isLocked = !!plan && !['draft', 'qoralama'].includes(String(plan.status || '').toLowerCase());
+  const notifyLocked = () => toast.info("Saqlangan reja qulflangan. Yangi ish uchun \"Yangi reja\" yarating.");
   const [isInstallment, setIsInstallment] = useState(false);
   const [installmentMonths, setInstallmentMonths] = useState(6);
   const [installmentAdvance, setInstallmentAdvance] = useState('');
@@ -406,7 +409,12 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   }, [removedToothFdis]);
 
   const applySelectableTeeth = useCallback((teeth, nextActiveTooth = undefined) => {
-    const requested = Array.isArray(teeth) ? teeth : [];
+    let requested = Array.isArray(teeth) ? teeth : [];
+    if (isLocked) {
+      const existing = new Set(selectedTeeth);
+      if (requested.some((tId) => !existing.has(tId))) notifyLocked();
+      requested = requested.filter((tId) => existing.has(tId));
+    }
     const allowed = requested.filter(tId => !isRemovedTooth(tId));
     const blocked = requested.filter(tId => isRemovedTooth(tId));
 
@@ -541,6 +549,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   }, [services, selectedCategory, serviceSearch]);
 
   const toggleService = (toothNum, svc) => {
+    if (isLocked) { notifyLocked(); return; }
     if (isJawStorageKey(toothNum)) {
       setToothData(prev => ({
         ...prev,
@@ -605,6 +614,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   };
 
   const removeService = (toothNum, svcId) => {
+    if (isLocked) { notifyLocked(); return; }
     setToothData(prev => {
         const td = prev[toothNum];
         if (!td) return prev;
@@ -656,6 +666,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       toast.error("Yuklashda xatolik yuz berdi", { id: "invoice-download" });
     }
   };  const handleSave = async () => {
+    if (isLocked) { notifyLocked(); return null; }
     if (!patientId) {
       toast.error('Bemorni tanlang');
       return;
@@ -947,6 +958,14 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
             <div>
               <DialogTitle className="text-base font-black text-white uppercase tracking-tight">
                 {plan ? t('treatmentPlan.editPlan') : t('treatmentPlan.createNew')}
+                {isLocked && (
+                  <span
+                    data-testid="plan-locked-badge"
+                    className="ml-2 inline-flex items-center gap-1 align-middle rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black normal-case tracking-wide text-white"
+                  >
+                    <Lock className="w-2.5 h-2.5" /> Qulflangan
+                  </span>
+                )}
               </DialogTitle>
               <DialogDescription className="text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('treatmentPlan.subtitle') || 'Bemorga davolash rejasi tayinlash'}</DialogDescription>
             </div>
@@ -1552,7 +1571,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                             )}
                           </div>
                           
-                          <button
+                          {!isLocked && (<button
                             type="button"
                             onClick={handleSave}
                             disabled={saving || allSelectedServices.length === 0}
@@ -1568,7 +1587,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                 Saqlash va Yakunlash <Check className="w-4.5 h-4.5 stroke-[3px]" />
                               </>
                             )}
-                          </button>
+                          </button>)}
                         </div>
                       </div>
                     </motion.div>
@@ -1870,7 +1889,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 max-w-2xl mx-auto no-print">
                              <Button 
                                 onClick={async () => {
-                                    await handleSave();
+                                    if (!isLocked) await handleSave();
                                     await generateInvoicePDF();
                                 }} 
                                 className="h-10 bg-emerald-500 hover:bg-emerald-600 text-white font-bold uppercase text-[10px] tracking-wider rounded-xl shadow-md border-none gap-1.5"
@@ -1883,7 +1902,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                              {typeof onPay === 'function' && (
                                <Button
                                  onClick={async () => {
-                                   const saved = await handleSave();
+                                   const saved = isLocked ? (savedPlanData || plan) : await handleSave();
                                    const planId = saved?.id || savedPlanData?.id || plan?.id;
                                    const total = Number(saved?.total_price ?? savedPlanData?.total_price ?? Math.floor(rawTotal * (1 - discount/100))) || 0;
                                    const paid = Number(saved?.paid_amount ?? savedPlanData?.paid_amount ?? installmentAdvance ?? 0) || 0;
@@ -1923,7 +1942,14 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                      </Button>
                 )}
                 
-                {step < 3 ? (
+                {step < 3 && isLocked && step === 2 ? (
+                     <Button
+                         onClick={onClose}
+                         className="h-11 flex-1 sm:px-12 rounded-xl bg-slate-900 text-white font-bold uppercase text-[11px] tracking-wider shadow-md border-none flex items-center justify-center gap-2"
+                     >
+                         <Lock className="w-3.5 h-3.5" /> Qulflangan · Yopish
+                     </Button>
+                ) : step < 3 ? (
                      <Button 
                          onClick={step === 1 ? () => setStep(2) : handleSave}
                          disabled={(step === 1 && (!patientId || !doctorId)) || saving}
@@ -1951,7 +1977,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                        {typeof onPay === 'function' && (
                          <Button
                            onClick={async () => {
-                             const saved = await handleSave();
+                             const saved = isLocked ? (savedPlanData || plan) : await handleSave();
                              const planId = saved?.id || savedPlanData?.id || plan?.id;
                              const total = Number(saved?.total_price ?? savedPlanData?.total_price ?? 0) || 0;
                              const paid = Number(saved?.paid_amount ?? savedPlanData?.paid_amount ?? 0) || 0;
