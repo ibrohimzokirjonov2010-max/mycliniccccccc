@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import AllergyChips from './AllergyChips';
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -343,6 +344,11 @@ export default function PatientModal({ open, onClose, patient, onSaved }) {
               placeholder={t('patients.importantInfoPlaceholder')}
               disabled={saving}
               className="text-rose-600 placeholder-rose-300 font-semibold"
+            />
+            <AllergyChips
+              value={form.important_info}
+              onChange={(next) => handleChange('important_info', next)}
+              disabled={saving}
             />
           </div>
 

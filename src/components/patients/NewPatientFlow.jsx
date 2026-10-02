@@ -15,6 +15,8 @@ import {
   resolveBotUsernameFromConfig,
 } from '@/lib/telegramBotConfig';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { ClinicDateField } from '@/components/ui/ClinicDateField';
+import AllergyChips from '@/components/patients/AllergyChips';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -1738,14 +1740,21 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   {/* Date of birth */}
                   <div className="order-7">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">{t('patients.birthDate')}</label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      <EditableSelect value={patientForm.birth_day} onChange={v => setPatientForm(prev => ({ ...prev, birth_day: v }))}
-                        onValidate={handleDayValidate} placeholder={t('common.day') || 'Kun'} options={dayOptions} type="text" maxLength={2} />
-                      <EditableSelect value={patientForm.birth_month} onChange={v => setPatientForm(prev => ({ ...prev, birth_month: v }))}
-                        onValidate={handleMonthValidate} placeholder={t('common.month') || 'Oy'} options={monthOptions} type="text" maxLength={2} />
-                      <EditableSelect value={patientForm.birth_year} onChange={v => setPatientForm(prev => ({ ...prev, birth_year: v }))}
-                        onValidate={handleYearValidate} placeholder={t('common.year') || 'Yil'} options={yearOptions} type="text" maxLength={4} />
-                    </div>
+                    <ClinicDateField
+                      id="new_patient_birth_date"
+                      value={(patientForm.birth_year && patientForm.birth_month && patientForm.birth_day)
+                        ? `${patientForm.birth_year}-${String(patientForm.birth_month).padStart(2, '0')}-${String(patientForm.birth_day).padStart(2, '0')}`
+                        : ''}
+                      onChange={(e) => {
+                        const match = String(e?.target?.value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+                        setPatientForm((prev) => ({
+                          ...prev,
+                          birth_year: match ? match[1] : '',
+                          birth_month: match ? String(Number(match[2])) : '',
+                          birth_day: match ? String(Number(match[3])) : '',
+                        }));
+                      }}
+                    />
                   </div>
 
 
@@ -1838,6 +1847,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                           patientForm.important_info ? 'pl-10 text-rose-700 font-medium' : 'text-slate-800'
                         )} />
                     </div>
+                    <AllergyChips
+                      value={patientForm.important_info}
+                      onChange={(next) => setPatientForm((prev) => ({ ...prev, important_info: next }))}
+                    />
                   </div>
 
 
