@@ -1,4 +1,6 @@
-**Welcome to your Base44 project** 
+**Welcome to your Base44 project**
+
+The Expo iOS and Android app lives in [`mobile/`](mobile/README.md). 
 
 **About**
 
