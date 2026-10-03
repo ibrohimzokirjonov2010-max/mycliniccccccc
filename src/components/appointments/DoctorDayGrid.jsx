@@ -723,13 +723,13 @@ export default function DoctorDayGrid({
             const isHour = time.endsWith(':00');
             // Bo'sh soat qatori past, uchrashuv bor qator kontentga qarab
             const rowFilled = doctors.some((d) => !!gridData[d.id]?.[time]);
-            const rowH = rowFilled ? "min-h-[80px] lg:min-h-[40px]" : "h-20 lg:h-auto lg:min-h-[24px]";
+            const rowH = rowFilled ? "min-h-[80px] lg:min-h-[64px]" : "h-20 lg:h-auto lg:min-h-[64px]";
             return (
               <div key={time} className="contents">
                 {/* Time column cell: Sticky Left */}
                 <div className={cn(
                   rowH, "flex flex-col items-center justify-center border-r-2 border-b-2 border-slate-300 bg-slate-50/95 backdrop-blur-sm sticky left-0 z-20 shadow-[1px_0_3px_rgba(0,0,0,0.04)]",
-                  isHour ? "text-slate-800 font-black text-[11px]" : "text-slate-400 font-bold text-[9.5px]"
+                  isHour ? "text-slate-800 font-black text-[11px] lg:text-[13px]" : "text-slate-400 font-bold text-[9.5px] lg:text-[12px]"
                 )}>
                   <span>{time}</span>
                 </div>
@@ -773,7 +773,7 @@ export default function DoctorDayGrid({
                           <div
                             onClick={(e) => handleAppointmentClick(e, appointment)}
                             className={cn(
-                              "flex-1 min-w-0 rounded-xl lg:rounded-lg border-l-[4px] lg:border-l-[3px] p-1.5 lg:px-1.5 lg:py-1 flex flex-col justify-between lg:justify-center lg:gap-0.5 shadow-xs transition-all hover:brightness-95 active:scale-[0.98] cursor-pointer group/card relative overflow-hidden",
+                              "flex-1 min-w-0 rounded-xl lg:rounded-lg border-l-[4px] lg:border-l-[3px] p-1.5 lg:px-1.5 lg:py-1 lg:min-h-[60px] flex flex-col justify-between lg:justify-center lg:gap-0.5 shadow-xs transition-all hover:brightness-95 active:scale-[0.98] cursor-pointer group/card relative overflow-hidden",
                               statusColors[appointment.status] || statusColors.Scheduled,
                               isMatch && "ring-2 ring-[#1499AD] ring-offset-1 animate-pulse scale-[1.02] z-10 shadow-lg shadow-[#1499AD]/20"
                             )}
@@ -788,7 +788,7 @@ export default function DoctorDayGrid({
                                     className="w-4 h-4 rounded-full object-cover shrink-0 border border-white/80 shadow-xs" 
                                   />
                                 )}
-                                <span className="text-[11px] font-black truncate leading-none lg:leading-tight uppercase tracking-tight text-slate-900">
+                                <span title={appointment.patient_name} className="text-[11px] lg:text-[14px] font-black lg:font-semibold truncate leading-none lg:leading-tight uppercase tracking-tight text-slate-900">
                                   {appointment.patient_name}
                                 </span>
                               </div>
@@ -798,7 +798,7 @@ export default function DoctorDayGrid({
                             </div>
 
                             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 lg:mt-0 min-w-0">
-                              <span className="text-[9px] font-bold opacity-75 whitespace-nowrap">
+                              <span className="text-[9px] lg:text-[13px] font-bold opacity-75 whitespace-nowrap">
                                 {appointment.time} — {(() => {
                                     const [h, m] = appointment.time.split(':').map(Number);
                                     const dur = appointment.duration || 30;
@@ -806,7 +806,7 @@ export default function DoctorDayGrid({
                                     return `${String(Math.floor(endMin/60)).padStart(2,'0')}:${String(endMin%60).padStart(2,'0')}`;
                                 })()}
                               </span>
-                              <div className="px-2 py-0.5 lg:px-1.5 lg:py-px bg-white/70 rounded-lg text-[8px] font-black uppercase tracking-tighter truncate max-w-full border border-black/5 min-w-0">
+                              <div className="px-2 py-0.5 lg:px-1.5 lg:py-px bg-white/70 rounded-lg text-[8px] lg:text-[12px] font-black lg:font-semibold uppercase tracking-tighter truncate max-w-full border border-black/5 min-w-0">
                                   {appointment.tooth_number ? `${appointment.tooth_number}-tish: ` : ''}{appointment.service_name || t('appointments.defaultService') || 'Maslahat'}
                               </div>
                               <AppointmentConfirmationBadge appointment={appointment} size="sm" className="!text-[8px] !px-1.5 !py-0.5 lg:!py-px" />

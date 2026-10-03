@@ -165,12 +165,11 @@ export default function CalendarView({ appointments = [], onSlotClick, onEditCli
         <div ref={gridRef} className="flex-1 overflow-y-auto no-scrollbar bg-slate-50/10">
           <div className="grid grid-cols-[52px_repeat(7,1fr)]">
             {timeSlots.map(time => {
-              // Bo'sh soat qatori past; navbat bor qatorda (shu jumladan davom etayotgan) to'liq balandlik
-              const rowHasAppts = weekDays.some((day) => getSlotAppointments(day, time).length > 0);
-              const rowMin = rowHasAppts ? "min-h-[52px] lg:min-h-[44px]" : "min-h-[52px] lg:min-h-[26px]";
+              // Desktop: har bir soat qatori kamida 64px
+                            const rowMin = "min-h-[52px] lg:min-h-[64px]";
               return (
               <div key={time} className="contents group">
-                <div className={cn(rowMin, "py-2.5 lg:py-1 px-2 text-[9px] font-black text-slate-500 border-r border-b border-slate-300 bg-white text-right tracking-tight whitespace-nowrap leading-none transition-colors group-hover:bg-slate-50")}>
+                <div className={cn(rowMin, "py-2.5 lg:py-1 px-2 text-[9px] lg:text-[12px] font-black text-slate-500 border-r border-b border-slate-300 bg-white text-right tracking-tight whitespace-nowrap leading-none transition-colors group-hover:bg-slate-50")}>
                   {time}
                 </div>
                 {weekDays.map((day, dIdx) => {
@@ -206,14 +205,14 @@ export default function CalendarView({ appointments = [], onSlotClick, onEditCli
                                 <div className={cn("absolute left-0 top-0 bottom-0 w-[3px] rounded-l-lg", style.pill)} />
                                 <div className="pl-2.5 pr-1.5 pt-1 pb-1 flex flex-col gap-0.5">
                                   <div className="flex items-center justify-between">
-                                    <h4 className="text-[11px] font-[800] text-slate-900 leading-tight truncate flex-1 mr-1">{a.patient_name}</h4>
+                                    <h4 className="text-[11px] lg:text-[14px] font-[800] lg:font-semibold text-slate-900 leading-tight truncate flex-1 mr-1">{a.patient_name}</h4>
                                     <div className={cn("shrink-0 w-1.5 h-1.5 rounded-full", style.pill)} />
                                   </div>
                                   <div className="flex items-center gap-1">
-                                    <Clock className="w-2 h-2 text-slate-300" />
-                                    <span className={cn("text-[9px] font-bold", style.text)}>{a.time}</span>
+                                    <Clock className="w-2 h-2 lg:w-3 lg:h-3 shrink-0 text-slate-300" />
+                                    <span className={cn("text-[9px] lg:text-[13px] font-bold shrink-0", style.text)}>{a.time}</span>
                                     {a.service_name && (
-                                      <span className="text-[8px] text-slate-400 truncate ml-0.5">· {a.tooth_number ? `${a.tooth_number}-tish: ` : ''}{a.service_name}</span>
+                                      <span className="text-[8px] lg:text-[12px] text-slate-400 truncate ml-0.5">· {a.tooth_number ? `${a.tooth_number}-tish: ` : ''}{a.service_name}</span>
                                     )}
                                   </div>
                                 </div>
