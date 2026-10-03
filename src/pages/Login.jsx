@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Lock, User, Building2, Eye, EyeOff, 
@@ -28,6 +28,8 @@ export default function Login() {
   
   const [showOnboarding, setShowOnboarding] = useState(() => {
     if (window.location.hash.includes('handoff=')) return false;
+    // Landing'dan kelgan foydalanuvchiga mobil onboarding (davlat/til) ko'rsatilmaydi
+    if (new URLSearchParams(window.location.search).get('from') === 'landing') return false;
     const completed = localStorage.getItem('has_completed_onboarding');
     const isMobileScreen = window.innerWidth < 1024;
     return isMobileScreen && !completed;
@@ -364,7 +366,7 @@ export default function Login() {
                   <div className="flex-1 flex flex-col justify-between">
                     <div className="border-b border-white/5 pb-1 mb-1.5 flex justify-between items-center">
                       <span className="text-[7px] font-bold text-white/50 uppercase">Dental Patient</span>
-                      <span className="text-[6px] text-emerald-400 font-bold uppercase tracking-wider">Active</span>
+                      <span className="text-[6px] text-teal-400 font-bold uppercase tracking-wider">Active</span>
                     </div>
                     
                     <div className="flex-1 flex items-center justify-center relative">
@@ -387,7 +389,7 @@ export default function Login() {
                     </div>
 
                     <div className="space-y-1 mt-1">
-                      <div className="bg-white/5 p-1 rounded-md flex justify-between items-center"><span className="text-[5px] text-white/80">L. Chen - Fillings</span><span className="text-[5px] text-emerald-400 font-bold">100%</span></div>
+                      <div className="bg-white/5 p-1 rounded-md flex justify-between items-center"><span className="text-[5px] text-white/80">L. Chen - Fillings</span><span className="text-[5px] text-teal-400 font-bold">100%</span></div>
                       <div className="bg-white/5 p-1 rounded-md flex justify-between items-center"><span className="text-[5px] text-white/80">T. Ortho - Crown</span><span className="text-[5px] text-[#1499AD] font-bold">Planned</span></div>
                     </div>
                   </div>
@@ -571,19 +573,24 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden font-sans">
       {/* Ambient background glow effects */}
-      <div className="absolute -top-24 -left-24 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
-      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-600/5 rounded-full blur-3xl" />
+      <div className="absolute -top-24 -left-24 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl" />
+      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-teal-600/5 rounded-full blur-3xl" />
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-[400px] z-10"
       >
+        <div className="mb-4 flex justify-start">
+          <Link to="/landing" className="text-xs font-bold text-slate-400 transition-colors hover:text-teal-600">
+            ← Bosh sahifa
+          </Link>
+        </div>
         <div className="text-center mb-6">
           <motion.div 
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
-            className="w-16 h-16 bg-emerald-600 rounded-2xl shadow-xl shadow-emerald-200 flex items-center justify-center mx-auto mb-4 border border-white"
+            className="w-16 h-16 bg-teal-600 rounded-2xl shadow-xl shadow-teal-200 flex items-center justify-center mx-auto mb-4 border border-white"
           >
             {loginRole === 'admin' ? <ShieldCheck className="w-8 h-8 text-white" /> : <Building2 className="w-8 h-8 text-white" />}
           </motion.div>
@@ -596,13 +603,13 @@ export default function Login() {
           <div className="flex bg-slate-50 p-1 rounded-xl mb-6 relative z-10">
             <button 
               onClick={() => setLoginRole('admin')}
-              className={`flex-1 py-2 px-3 rounded-lg text-[10.5px] font-bold uppercase tracking-wider transition-all duration-200 ${loginRole === 'admin' ? 'bg-white shadow-md text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`flex-1 py-2 px-3 rounded-lg text-[10.5px] font-bold uppercase tracking-wider transition-all duration-200 ${loginRole === 'admin' ? 'bg-white shadow-md text-teal-600' : 'text-slate-400 hover:text-slate-600'}`}
             >
               Ma'mur
             </button>
             <button 
               onClick={() => setLoginRole('doctor')}
-              className={`flex-1 py-2 px-3 rounded-lg text-[10.5px] font-bold uppercase tracking-wider transition-all duration-200 ${loginRole === 'doctor' ? 'bg-white shadow-md text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`flex-1 py-2 px-3 rounded-lg text-[10.5px] font-bold uppercase tracking-wider transition-all duration-200 ${loginRole === 'doctor' ? 'bg-white shadow-md text-teal-600' : 'text-slate-400 hover:text-slate-600'}`}
             >
               Shifokor
             </button>
@@ -626,12 +633,12 @@ export default function Login() {
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 ml-1">Klinika ID</Label>
               <div className="relative group">
-                <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
+                <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors" />
                 <Input 
                   placeholder="clinic-id" 
                   value={form.clinicId}
                   onChange={e => setForm({...form, clinicId: e.target.value})}
-                  className="h-11 pl-11 bg-slate-50 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-emerald-500/20 text-slate-700 placeholder:text-slate-450 font-semibold transition-all"
+                  className="h-11 pl-11 bg-slate-50 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-teal-500/20 text-slate-700 placeholder:text-slate-450 font-semibold transition-all"
                 />
               </div>
             </div>
@@ -639,12 +646,12 @@ export default function Login() {
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 ml-1">Foydalanuvchi nomi</Label>
               <div className="relative group">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors" />
                 <Input 
                   placeholder="username" 
                   value={form.username}
                   onChange={e => setForm({...form, username: e.target.value})}
-                  className="h-11 pl-11 bg-slate-50 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-emerald-500/20 text-slate-700 placeholder:text-slate-450 font-semibold transition-all"
+                  className="h-11 pl-11 bg-slate-50 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-teal-500/20 text-slate-700 placeholder:text-slate-450 font-semibold transition-all"
                 />
               </div>
             </div>
@@ -652,18 +659,18 @@ export default function Login() {
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 ml-1">Parol</Label>
               <div className="relative group">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-teal-500 transition-colors" />
                 <Input 
                   type={showPassword ? "text" : "password"} 
                   placeholder="••••••••" 
                   value={form.password}
                   onChange={e => setForm({...form, password: e.target.value})}
-                  className="h-11 pl-11 pr-11 bg-slate-50 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-emerald-500/20 text-slate-700 placeholder:text-slate-450 font-semibold transition-all"
+                  className="h-11 pl-11 pr-11 bg-slate-50 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-teal-500/20 text-slate-700 placeholder:text-slate-450 font-semibold transition-all"
                 />
                 <button 
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-emerald-600 transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-teal-600 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -676,11 +683,11 @@ export default function Login() {
                   id="remember" 
                   checked={form.rememberMe}
                   onCheckedChange={(checked) => setForm({...form, rememberMe: checked})}
-                  className="rounded-md border-slate-200 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                  className="rounded-md border-slate-200 data-[state=checked]:bg-teal-600 data-[state=checked]:border-teal-600"
                 />
                 <label htmlFor="remember" className="text-xs font-bold text-slate-500 cursor-pointer select-none">Eslab qolish</label>
               </div>
-              <button type="button" className="text-xs font-bold text-emerald-600 hover:underline decoration-2 underline-offset-4 tracking-tight">
+              <button type="button" className="text-xs font-bold text-teal-600 hover:underline decoration-2 underline-offset-4 tracking-tight">
                 Parolni unutdingizmi?
               </button>
             </div>
@@ -688,7 +695,7 @@ export default function Login() {
             <Button 
               type="submit"
               disabled={loading}
-              className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold uppercase tracking-wider transition-all shadow-lg shadow-emerald-200 active:scale-[0.98] mt-2 border-none"
+              className="w-full h-11 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold uppercase tracking-wider transition-all shadow-lg shadow-teal-200 active:scale-[0.98] mt-2 border-none"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -704,22 +711,20 @@ export default function Login() {
         <div className="mt-8 text-center">
           <p className="text-xs font-bold text-slate-400">
             Hisobingiz yo'qmi?{' '}
-            <a 
-              href="https://t.me/dentist_shaxin" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-emerald-600 hover:underline decoration-2 underline-offset-4"
+            <Link
+              to="/register?from=landing"
+              className="text-teal-600 hover:underline decoration-2 underline-offset-4"
             >
-              Ro'yxatdan o'tish
-            </a>
+              Ro'yxatdan o'tish (14 kun bepul)
+            </Link>
           </p>
           <div className="flex items-center justify-center gap-6 pt-6 mt-6 border-t border-slate-200/50">
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <div className="w-1.5 h-1.5 rounded-full bg-teal-500" />
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">SSL Encrypted</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <div className="w-1.5 h-1.5 rounded-full bg-teal-500" />
               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Medical Cloud</span>
             </div>
           </div>

@@ -44,6 +44,7 @@ const Reports             = lazy(() => import('./pages/Reports'));
 const MobileReports       = lazy(() => import('./pages/MobileReports'));
 const SuperAdmin          = lazy(() => import('./pages/SuperAdmin'));
 const Register            = lazy(() => import('./pages/Register'));
+const Landing             = lazy(() => import('./pages/Landing'), 'chunk_landing');
 
 // Clinical pages
 const MobilePatientsV2    = lazy(() => import('./pages/MobilePatientsV2'), 'chunk_mobile_patients');
@@ -126,6 +127,26 @@ const DashboardSwitcher = memo(() => {
   return <Navigate to="/login" replace />;
 });
 
+// ─── Landing ──────────────────────────────────────────────────────────────────
+// "/" da landing faqat kirmagan (brauzer) foydalanuvchilarga ko'rsatiladi.
+// O'rnatilgan ilova (PWA / native) ochilganda eski xatti-harakat saqlanadi: to'g'ridan-to'g'ri Login.
+function isInstalledApp() {
+  try {
+    return (
+      window.matchMedia?.('(display-mode: standalone)')?.matches === true ||
+      window.navigator?.standalone === true ||
+      window.Capacitor?.isNativePlatform?.() === true
+    );
+  } catch {
+    return false;
+  }
+}
+
+const LandingGate = memo(() => {
+  if (isInstalledApp()) return <Navigate to="/login" replace />;
+  return <Landing />;
+});
+
 const AdminRoute = memo(({ children, pageKey }) => {
   const { user, isAdmin, isLoadingAuth } = useAuth();
   if (isLoadingAuth) return null;
@@ -190,6 +211,7 @@ const AuthenticatedApp = memo(() => {
         <Routes>
           <Route path="/login"   element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/landing"  element={<Landing />} />
           <Route path="/p/:slug"  element={<PublicClinicPage />} />
           <Route path="/super-admin"        element={<SuperAdmin />} />
           <Route path="/super-admin-portal" element={<SuperAdmin />} />
@@ -260,7 +282,10 @@ const AuthenticatedApp = memo(() => {
               <Route path="*" element={<PageNotFound />} />
             </Route>
           ) : (
-            <Route path="*" element={<Login />} />
+            <>
+              <Route path="/" element={<LandingGate />} />
+              <Route path="*" element={<Login />} />
+            </>
           )}
         </Routes>
       </Suspense>

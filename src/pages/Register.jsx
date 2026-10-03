@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Building2, UserPlus, Loader2, 
   AlertCircle, ChevronLeft,
@@ -10,10 +10,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
+import { ShifoCrmLogoEmblem } from '@/components/ui/ShifoCrmLogo';
+import { normalizeClinicBilling } from '@/utils/superAdminBilling';
+import { LANDING_PLANS, TRIAL_DAYS } from '@/config/landingPricing';
 
 export default function Register() {
   const navigate = useNavigate();
-  const [role, setRole] = useState(null); // 'admin' or 'doctor'
+  const { setAuthData } = useAuth();
+  const [searchParams] = useSearchParams();
+  const fromLanding = searchParams.get('from') === 'landing';
+  // Landing'dan tanlangan tarif (basic | pro | premium). Bo'lmasa — mavjud standart: basic.
+  const planParam = String(searchParams.get('plan') || '').toLowerCase();
+  const selectedPlan = LANDING_PLANS.find((p) => p.id === planParam) || LANDING_PLANS[0];
+  const [role, setRole] = useState(fromLanding ? 'admin' : null); // 'admin' or 'doctor'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -46,10 +56,33 @@ export default function Register() {
 
     setLoading(true);
     try {
+      const clinicId = adminForm.clinicId.toLowerCase();
+      // 14 kunlik sinov: super-admin "Sinov (14 kun)" bilan bir xil mantiq
+      // (subscription_status=trialing, trial_ends_at va expires_at = bugun + 14 kun). DB sxemasi o'zgarmaydi.
+      const clinicPayload = normalizeClinicBilling({
+        id: clinicId,
+        name: adminForm.clinicName,
+        plan: selectedPlan.id,
+        subscription_status: 'trialing',
+        signup_source: fromLanding ? 'landing' : 'manual',
+      });
       await base44.clinic.createClinic(
-        { id: adminForm.clinicId.toLowerCase(), name: adminForm.clinicName },
+        clinicPayload,
         { name: 'Admin', username: adminForm.username, password: adminForm.password }
       );
+
+      // Ro'yxatdan o'tgach to'g'ridan-to'g'ri CRM'ga kiramiz (muvaffaqiyatsiz bo'lsa — Login'ga).
+      try {
+        const loginResult = await base44.auth.login(clinicId, adminForm.username, adminForm.password);
+        if (loginResult?.success && loginResult.user) {
+          toast.success(`Klinika ochildi! ${TRIAL_DAYS} kunlik bepul sinov boshlandi.`);
+          if (setAuthData) setAuthData(loginResult.user);
+          setTimeout(() => navigate('/admin/dashboard'), 100);
+          return;
+        }
+      } catch (loginErr) {
+        console.warn('Auto-login after register failed:', loginErr);
+      }
       toast.success('Klinika muvaffaqiyatli ochildi! Endi tizimga kiring.');
       navigate('/login');
     } catch (err) {
@@ -91,8 +124,8 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-start sm:items-center justify-center p-3 sm:p-6 relative overflow-hidden font-sans">
-      <div className="absolute -top-24 -left-24 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
-      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-600/5 rounded-full blur-3xl" />
+      <div className="absolute -top-24 -left-24 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl" />
+      <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-teal-600/5 rounded-full blur-3xl" />
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
@@ -101,17 +134,27 @@ export default function Register() {
       >
         {/* Top nav */}
         <div className="mb-4 flex items-center justify-between">
-          <Link to="/login" className="flex items-center gap-1.5 text-slate-400 hover:text-emerald-600 transition-colors font-bold text-xs group">
+          <Link to={fromLanding ? '/landing' : '/login'} className="flex items-center gap-1.5 text-slate-400 hover:text-teal-600 transition-colors font-bold text-xs group">
             <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
             Ortga qaytish
           </Link>
           {role && (
             <button 
               onClick={() => {setRole(null); setError('');}}
-              className="text-emerald-600 font-black text-[9px] uppercase tracking-widest hover:bg-emerald-50 px-2.5 py-1 rounded-lg transition-colors"
+              className="text-teal-600 font-black text-[9px] uppercase tracking-widest hover:bg-teal-50 px-2.5 py-1 rounded-lg transition-colors"
             >
               Rolni o'zgartirish
             </button>
+          )}
+        </div>
+
+        <div className="mb-5 flex flex-col items-center gap-2 text-center">
+          <ShifoCrmLogoEmblem className="h-12 w-12" size={48} hasGlow={false} />
+          <p className="text-base font-black tracking-tight text-slate-900">SHIFO <span className="text-teal-600">CRM</span></p>
+          {role !== 'doctor' && (
+            <span className="rounded-full bg-teal-50 px-3 py-1 text-[11px] font-bold text-teal-700">
+              {TRIAL_DAYS} kunlik bepul sinov · {selectedPlan.name} tarifi
+            </span>
           )}
         </div>
 
@@ -128,9 +171,9 @@ export default function Register() {
             <div className="grid grid-cols-2 gap-3">
               <button 
                 onClick={() => setRole('admin')}
-                className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] border-2 border-transparent hover:border-emerald-500 shadow-xl shadow-slate-200/50 transition-all group text-left"
+                className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] border-2 border-transparent hover:border-teal-500 shadow-xl shadow-slate-200/50 transition-all group text-left"
               >
-                <div className="w-11 h-11 sm:w-14 sm:h-14 bg-emerald-600 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-6 shadow-lg shadow-emerald-200 transition-transform group-hover:scale-110">
+                <div className="w-11 h-11 sm:w-14 sm:h-14 bg-teal-600 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-6 shadow-lg shadow-teal-200 transition-transform group-hover:scale-110">
                   <Building2 className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
                 </div>
                 <h3 className="text-sm sm:text-xl font-black text-slate-900 mb-1">Klinika Admin</h3>
@@ -144,9 +187,9 @@ export default function Register() {
 
               <button 
                 onClick={() => setRole('doctor')}
-                className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] border-2 border-transparent hover:border-emerald-500 shadow-xl shadow-slate-200/50 transition-all group text-left"
+                className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] border-2 border-transparent hover:border-teal-500 shadow-xl shadow-slate-200/50 transition-all group text-left"
               >
-                <div className="w-11 h-11 sm:w-14 sm:h-14 bg-emerald-500 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-6 shadow-lg shadow-emerald-200 transition-transform group-hover:scale-110">
+                <div className="w-11 h-11 sm:w-14 sm:h-14 bg-teal-500 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-6 shadow-lg shadow-teal-200 transition-transform group-hover:scale-110">
                   <Stethoscope className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
                 </div>
                 <h3 className="text-sm sm:text-xl font-black text-slate-900 mb-1">Shifokor</h3>
@@ -164,7 +207,7 @@ export default function Register() {
           <div className="bg-white rounded-2xl sm:rounded-[3rem] p-5 sm:p-10 shadow-2xl shadow-slate-200/60 border border-white">
             {/* Form header */}
             <div className="flex items-center gap-3 mb-5 sm:mb-8 sm:flex-col sm:text-center">
-              <div className="w-10 h-10 sm:w-16 sm:h-16 bg-emerald-600 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 sm:mx-auto">
+              <div className="w-10 h-10 sm:w-16 sm:h-16 bg-teal-600 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 sm:mx-auto">
                 {role === 'admin'
                   ? <SettingsIcon className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
                   : <UserPlus className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
@@ -231,9 +274,9 @@ export default function Register() {
                 </div>
                 <Button
                   disabled={loading}
-                  className="w-full h-11 sm:h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl sm:rounded-2xl font-black uppercase tracking-widest mt-2 text-xs sm:text-sm"
+                  className="w-full h-11 sm:h-14 bg-teal-600 hover:bg-teal-700 text-white rounded-xl sm:rounded-2xl font-black uppercase tracking-widest mt-2 text-xs sm:text-sm"
                 >
-                  {loading ? <Loader2 className="animate-spin w-4 h-4" /> : 'Klinikani Yaratish'}
+                  {loading ? <Loader2 className="animate-spin w-4 h-4" /> : `${TRIAL_DAYS} kun bepul boshlash`}
                 </Button>
               </form>
             ) : (
@@ -299,7 +342,7 @@ export default function Register() {
                 </div>
                 <Button
                   disabled={loading}
-                  className="w-full h-11 sm:h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl sm:rounded-2xl font-black uppercase tracking-widest mt-2 text-xs sm:text-sm"
+                  className="w-full h-11 sm:h-14 bg-teal-600 hover:bg-teal-700 text-white rounded-xl sm:rounded-2xl font-black uppercase tracking-widest mt-2 text-xs sm:text-sm"
                 >
                   {loading ? <Loader2 className="animate-spin w-4 h-4" /> : 'Ro\'yxatdan O\'tish'}
                 </Button>
