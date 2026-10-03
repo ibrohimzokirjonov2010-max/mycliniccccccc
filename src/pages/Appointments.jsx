@@ -328,21 +328,21 @@ export default function Appointments() {
   }, [filteredAppointments, viewDate, debouncedSearch]);
 
   return (
-    <div className="space-y-3 pb-3">
+    <div className="space-y-3 lg:space-y-2 pb-3 lg:pb-2">
       <div className="flex items-center justify-between px-1">
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-3"
         >
-          <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100 text-[#1499AD]">
-            <CalendarDays className="w-5 h-5" />
+          <div className="w-10 h-10 lg:w-8 lg:h-8 bg-white rounded-2xl lg:rounded-xl flex items-center justify-center shadow-sm border border-slate-100 text-[#1499AD]">
+            <CalendarDays className="w-5 h-5 lg:w-4 lg:h-4" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none uppercase">
+            <h1 className="text-xl lg:text-base font-black text-slate-900 tracking-tight leading-none uppercase">
                 {t('appointments.title')}
             </h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 lg:mt-0.5">
                 {t('appointments.queueCount', { count: listedAppointments.length }) || `${listedAppointments.length} ta navbat mavjud`}
             </p>
           </div>
@@ -352,7 +352,7 @@ export default function Appointments() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => openNewAppt('', '', null)}
-          className="flex items-center gap-2 px-6 py-2.5 bg-[#1499AD] text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-[#1499AD]/20 transition-all border-none"
+          className="flex items-center gap-2 px-6 py-2.5 lg:px-4 lg:py-1.5 bg-[#1499AD] text-white rounded-2xl lg:rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-[#1499AD]/20 transition-all border-none"
         >
           <Plus className="w-4 h-4" />
           {t('appointments.addNew')}
@@ -360,14 +360,14 @@ export default function Appointments() {
       </div>
 
       {/* View Switcher & Date Navigation Unified Header */}
-      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden mb-4">
-        <div className="flex flex-col lg:flex-row items-center justify-between p-4 gap-4">
+      <div className="bg-white rounded-[2rem] lg:rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-4 lg:mb-0">
+        <div className="flex flex-col lg:flex-row items-center justify-between p-4 lg:px-2.5 lg:py-1.5 gap-4 lg:gap-2">
           {/* Left: Date Type Navigation */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-2xl border border-slate-100">
+            <div className="flex items-center gap-1 lg:gap-0.5 bg-slate-50 p-1 lg:p-0.5 rounded-2xl lg:rounded-xl border border-slate-100">
                <button 
                 onClick={() => setViewDate(addDaysKey(viewDate, -1))}
-                className="p-2 hover:bg-white hover:shadow-sm rounded-xl text-slate-400 transition-all active:scale-90"
+                className="p-2 lg:p-1.5 hover:bg-white hover:shadow-sm rounded-xl text-slate-400 transition-all active:scale-90"
                >
                  <ChevronLeft className="w-4 h-4" />
                </button>
@@ -375,19 +375,19 @@ export default function Appointments() {
                <div className="flex items-center gap-1">
                  <button 
                   onClick={() => setViewDate(addDaysKey(todayKey, -1))}
-                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all", viewDate === addDaysKey(todayKey, -1) ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
+                  className={cn("px-4 py-1.5 lg:px-3 lg:py-1 rounded-xl lg:rounded-lg text-[10px] font-black uppercase tracking-tight transition-all", viewDate === addDaysKey(todayKey, -1) ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
                  >
                    {t('appointments.yesterday') || 'Kecha'}
                  </button>
                  <button 
                   onClick={() => setViewDate(todayKey)}
-                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all", viewDate === todayKey ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
+                  className={cn("px-4 py-1.5 lg:px-3 lg:py-1 rounded-xl lg:rounded-lg text-[10px] font-black uppercase tracking-tight transition-all", viewDate === todayKey ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
                  >
                    {t('appointments.today') || 'Bugun'}
                  </button>
                  <button 
                   onClick={() => setViewDate(addDaysKey(todayKey, 1))}
-                  className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all", viewDate === addDaysKey(todayKey, 1) ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
+                  className={cn("px-4 py-1.5 lg:px-3 lg:py-1 rounded-xl lg:rounded-lg text-[10px] font-black uppercase tracking-tight transition-all", viewDate === addDaysKey(todayKey, 1) ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
                  >
                    {t('appointments.tomorrow') || 'Ertaga'}
                  </button>
@@ -395,7 +395,7 @@ export default function Appointments() {
 
                <button 
                 onClick={() => setViewDate(addDaysKey(viewDate, 1))}
-                className="p-2 hover:bg-white hover:shadow-sm rounded-xl text-slate-400 transition-all active:scale-90"
+                className="p-2 lg:p-1.5 hover:bg-white hover:shadow-sm rounded-xl text-slate-400 transition-all active:scale-90"
                >
                  <ChevronLeft className="w-4 h-4 rotate-180" />
                </button>
@@ -405,7 +405,7 @@ export default function Appointments() {
               <ClinicDateField
                 value={viewDate}
                 onChange={(e) => e.target.value && setViewDate(e.target.value)}
-                className="h-10 w-[9.5rem] px-4 rounded-2xl border border-slate-100 text-[11px] font-black text-slate-600 shadow-sm bg-white"
+                className="h-10 lg:h-8 w-[9.5rem] lg:w-[8.5rem] px-4 lg:px-3 rounded-2xl lg:rounded-xl border border-slate-100 text-[11px] font-black text-slate-600 shadow-sm bg-white"
               />
               <span className="text-[11px] font-black text-slate-500 whitespace-nowrap">{weekdayName(viewDate, 'uz')}</span>
             </div>
@@ -413,10 +413,10 @@ export default function Appointments() {
 
           {/* Center: Search (Visible on all views) */}
           <div className={cn(
-            "h-11 bg-slate-50 border border-slate-100 rounded-[1.25rem] px-5 flex items-center gap-3 transition-all flex-1 max-w-md",
+            "h-11 lg:h-8 bg-slate-50 border border-slate-100 rounded-[1.25rem] lg:rounded-xl px-5 lg:px-3 flex items-center gap-3 lg:gap-2 transition-all flex-1 max-w-md",
             searchQuery ? "ring-2 ring-[#1499AD]/10 border-[#1499AD]/30" : ""
           )}>
-            <Search className="w-4 h-4 text-slate-300" />
+            <Search className="w-4 h-4 lg:w-3.5 lg:h-3.5 text-slate-300" />
             <input 
               placeholder={t('appointments.searchPlaceholder') || "Bemor, xizmat yoki shifokor..."} 
               value={searchQuery}
@@ -427,14 +427,14 @@ export default function Appointments() {
 
           {/* Right: View Switcher Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
-            <TabsList className="bg-slate-50 p-1 rounded-2xl h-11 border border-slate-100 gap-1">
-              <TabsTrigger value="grid" className="rounded-xl h-9 px-6 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm">
+            <TabsList className="bg-slate-50 p-1 lg:p-0.5 rounded-2xl lg:rounded-xl h-11 lg:h-8 border border-slate-100 gap-1 lg:gap-0.5">
+              <TabsTrigger value="grid" className="rounded-xl h-9 lg:h-7 px-6 lg:px-4 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm">
                 {t('appointments.viewGrid') || 'Setka'}
               </TabsTrigger>
-              <TabsTrigger value="calendar" className="rounded-xl h-9 px-6 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm">
+              <TabsTrigger value="calendar" className="rounded-xl h-9 lg:h-7 px-6 lg:px-4 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm">
                 {t('appointments.viewWeekly') || 'Haftalik'}
               </TabsTrigger>
-              <TabsTrigger value="list" className="rounded-xl h-9 px-6 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm">
+              <TabsTrigger value="list" className="rounded-xl h-9 lg:h-7 px-6 lg:px-4 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm">
                 {t('appointments.viewList') || 'Ro\'yxat'}
               </TabsTrigger>
             </TabsList>
@@ -449,13 +449,13 @@ export default function Appointments() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-4 px-1"
+            className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-4 lg:pb-1 px-1"
           >
             <div className="flex items-center gap-2 flex-nowrap">
               <button
                 onClick={() => setSelectedDoctorId(null)}
                 className={cn(
-                  "px-5 h-10 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest whitespace-nowrap",
+                  "px-5 h-10 lg:h-8 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest whitespace-nowrap",
                   selectedDoctorId === null
                     ? "bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-900/20"
                     : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 shadow-sm"
@@ -471,7 +471,7 @@ export default function Appointments() {
                     key={doc.id}
                     onClick={() => setSelectedDoctorId(doc.id)}
                     className={cn(
-                      "px-3.5 h-10 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest whitespace-nowrap shrink-0 flex items-center gap-2",
+                      "px-3.5 h-10 lg:h-8 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest whitespace-nowrap shrink-0 flex items-center gap-2",
                       String(selectedDoctorId) === String(doc.id)
                         ? "bg-[#1499AD] border-[#1499AD] text-white shadow-lg shadow-[#1499AD]/20"
                         : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 shadow-sm"
@@ -493,7 +493,7 @@ export default function Appointments() {
         )}
       </AnimatePresence>
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
+      <div className="bg-white rounded-[2.5rem] lg:rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* Interior page headers are now handled by the unified dashboard header */}
 
@@ -501,7 +501,7 @@ export default function Appointments() {
             <TabsContent value="grid" key="grid" className="mt-0 outline-none focus-visible:ring-0">
                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 {debouncedSearch.trim() && otherDayMatchesCount > 0 && (
-                  <div className="bg-[#1499AD]/10 px-6 py-2.5 border-b border-[#1499AD]/20 flex items-center justify-between animate-in slide-in-from-top duration-300">
+                  <div className="bg-[#1499AD]/10 px-6 py-2.5 lg:py-1.5 border-b border-[#1499AD]/20 flex items-center justify-between animate-in slide-in-from-top duration-300">
                     <p className="text-[10px] font-black text-[#1499AD] uppercase tracking-widest">
                       Boshqa kunlarda ham {otherDayMatchesCount} ta natija topildi
                     </p>
