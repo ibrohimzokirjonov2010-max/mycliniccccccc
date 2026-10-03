@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useBackClose } from '@/hooks/useBackClose';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Wallet, CheckCircle2, FlaskConical, X, Phone, Calendar, Stethoscope, CreditCard, FileText, History, Receipt, Edit3, UserCircle, Camera, Upload } from 'lucide-react';
 import { cn, formatDateWithWeekday } from '@/lib/utils';
@@ -112,6 +113,8 @@ const DOCTOR_PALETTES = [
    ═══════════════════════════════════════════════════ */
 export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
   const { t, language } = useTranslation();
+  // Brauzer "Orqaga" tugmasi avval tezkor ko'rish oynasini yopadi
+  useBackClose(true, onClose);
   const popupRef = useRef(null);
   const navigate = useNavigate();
   const [placement, setPlacement] = useState('bottom');
