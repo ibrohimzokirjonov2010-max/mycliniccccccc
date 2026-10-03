@@ -25,6 +25,43 @@ const TASHKENT_OFFSET = 5; // UTC+5
 // /start polling uchun oxirgi update ID ni xotirda saqlaymiz
 let _lastUpdateId = 0;
 
+// Token yo'q yoki Telegram uni rad etganda (401/403/404) polling butunlay to'xtaydi.
+// Holat localStorage'da token oxiriga bog'lab saqlanadi — sahifa yangilanganda ham qayta so'rov
+// yuborilmaydi; token almashtirilsa (yangi deploy) flag avtomatik yangilanadi.
+const POLL_DISABLED_KEY = `telegram_poll_disabled_${String(BOT_TOKEN || '').slice(-8)}`;
+let _pollingDisabled = false;
+
+function readPollingDisabledFlag() {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(POLL_DISABLED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function disableBotPolling(persist = true) {
+  _pollingDisabled = true;
+  if (!persist) return;
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(POLL_DISABLED_KEY, '1');
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * getUpdates polling hozir ishlashi mumkinmi? (token bor va Telegram rad etmagan)
+ */
+export function isBotPollingEnabled() {
+  if (!String(BOT_TOKEN || '').trim()) return false;
+  if (_pollingDisabled) return false;
+  if (readPollingDisabledFlag()) {
+    _pollingDisabled = true;
+    return false;
+  }
+  return true;
+}
+
 /**
  * Supabase'dan klinika ma'lumotlarini olish
  */
@@ -80,10 +117,21 @@ function buildStartWelcomeMessage(firstName, clinicInfo) {
  * /start xabarini tutib, klinika ma'lumotlari bilan javob beradi
  */
 export async function pollBotUpdates(clinicId) {
+  // Token yo'q yoki avval 401 qaytgan bo'lsa — so'rov umuman yuborilmaydi
+  if (!isBotPollingEnabled()) return;
   try {
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=${_lastUpdateId + 1}&timeout=0&limit=20&allowed_updates=["message","callback_query"]`;
     const res = await fetch(url);
-    if (!res.ok) return;
+    if (!res.ok) {
+      // 401/403/404 — token yaroqsiz/bekor qilingan: polling'ni to'xtatamiz (foydalanuvchiga xato ko'rsatilmaydi)
+      if (res.status === 401 || res.status === 403 || res.status === 404) {
+        disableBotPolling(true);
+      } else if (res.status === 409) {
+        // Webhook o'rnatilgan — getUpdates ishlamaydi; shu sessiya davomida qayta urinmaymiz
+        disableBotPolling(false);
+      }
+      return;
+    }
     const data = await res.json();
     if (!data.ok || !Array.isArray(data.result) || data.result.length === 0) return;
 
@@ -277,6 +325,7 @@ export async function sendTelegramMessage(chatId, text, replyMarkup = null) {
     });
     const data = await res.json();
     if (data.ok) return data.result?.message_id ?? true;
+    if (res.status === 401) disableBotPolling(true);
     console.warn('[ReminderService] Telegram sendMessage failed:', data);
     return null;
   } catch (e) {
