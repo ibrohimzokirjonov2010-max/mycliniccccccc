@@ -11,7 +11,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { check2HourReminders, checkMorningReminders, getTashkentHHMM, pollBotUpdates } from '@/lib/telegramReminderService';
+import { check2HourReminders, checkMorningReminders, getTashkentHHMM, pollBotUpdates, isBotPollingEnabled } from '@/lib/telegramReminderService';
 
 export default function TelegramReminderWorker() {
   const { user } = useAuth();
@@ -46,6 +46,14 @@ export default function TelegramReminderWorker() {
 
   const runPoll = async () => {
     if (!user) return;
+    // Token yo'q yoki 401 qaytgan — polling to'xtatiladi, timer ham o'chiriladi
+    if (!isBotPollingEnabled()) {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+      return;
+    }
     const clinicId = localStorage.getItem('current_clinic_id') || user?.clinic_id || null;
     try {
       await pollBotUpdates(clinicId);
@@ -73,9 +81,9 @@ export default function TelegramReminderWorker() {
       runPoll();
     }, 2 * 60 * 1000); // 2 daqiqa
 
-    pollTimerRef.current = setInterval(() => {
+    pollTimerRef.current = isBotPollingEnabled() ? setInterval(() => {
       runPoll();
-    }, 2 * 60 * 1000); // 30s → 120s: Telegram bot uchun 2 daqiqa yetarli (trafik 4x kamaydi)
+    }, 2 * 60 * 1000) : null; // 30s → 120s: Telegram bot uchun 2 daqiqa yetarli (trafik 4x kamaydi)
 
     return () => {
       clearTimeout(initTimer);

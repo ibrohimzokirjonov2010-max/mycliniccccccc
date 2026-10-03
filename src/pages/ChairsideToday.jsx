@@ -149,17 +149,17 @@ export default function ChairsideToday() {
   };
 
   return (
-    <div className="space-y-4 pb-8 max-w-3xl mx-auto w-full px-1 sm:px-0">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white flex items-center justify-center shadow-lg shadow-teal-500/20 shrink-0">
-            <CalendarClock className="w-5 h-5" />
+    <div className="space-y-4 pb-8 lg:space-y-2.5 lg:pb-1 max-w-3xl lg:max-w-5xl mx-auto w-full px-1 sm:px-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 lg:gap-2">
+        <div className="flex items-start lg:items-center gap-3 lg:gap-2.5 min-w-0">
+          <div className="w-11 h-11 lg:w-9 lg:h-9 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white flex items-center justify-center shadow-lg shadow-teal-500/20 shrink-0">
+            <CalendarClock className="w-5 h-5 lg:w-4 lg:h-4" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight truncate">
+            <h1 className="text-xl sm:text-2xl lg:text-lg lg:leading-tight font-black text-slate-900 tracking-tight truncate">
               {t('navigation.chairsideToday')}
             </h1>
-            <p className="text-xs font-bold text-teal-700/80 mt-1 capitalize truncate">
+            <p className="text-xs lg:text-[11px] font-bold text-teal-700/80 mt-1 lg:mt-0.5 capitalize truncate">
               {formatTodayLabel()}
               <span className="text-slate-400 font-black mx-1.5">·</span>
               <span className="text-slate-500">
@@ -174,7 +174,7 @@ export default function ChairsideToday() {
             <select
               value={doctorFilter}
               onChange={(e) => setDoctorFilter(e.target.value)}
-              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+              className="h-10 lg:h-8 rounded-xl border border-slate-200 bg-white px-3 lg:px-2.5 text-xs font-bold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500/30"
               aria-label={t('chairside.doctorFilter')}
             >
               <option value="all">{t('chairside.allDoctors')}</option>
@@ -190,7 +190,7 @@ export default function ChairsideToday() {
             variant="outline"
             size="sm"
             onClick={() => refetch()}
-            className="h-10 rounded-xl font-bold gap-2"
+            className="h-10 lg:h-8 rounded-xl font-bold gap-2 lg:px-3"
             disabled={isFetching}
           >
             <RefreshCw className={cn('w-3.5 h-3.5', isFetching && 'animate-spin')} />
@@ -200,9 +200,9 @@ export default function ChairsideToday() {
       </div>
 
       {loading ? (
-        <div className="space-y-3 animate-pulse">
+        <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-2 animate-pulse">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-white border border-slate-100 rounded-2xl" />
+            <div key={i} className="h-24 lg:h-[72px] bg-white border border-slate-100 rounded-2xl" />
           ))}
         </div>
       ) : todayQueue.length === 0 ? (
@@ -215,7 +215,7 @@ export default function ChairsideToday() {
           onAction={() => navigate('/appointments')}
         />
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-2.5 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-2 lg:items-start">
           {todayQueue.map((appt) => (
             <button
               key={appt.id}
@@ -223,14 +223,14 @@ export default function ChairsideToday() {
               onClick={() => openPatient(appt)}
               disabled={!appt.patient_id}
               className={cn(
-                'w-full text-left bg-white border border-slate-100 rounded-2xl p-3.5 sm:p-4 shadow-sm',
+                'w-full text-left bg-white border border-slate-100 rounded-2xl p-3.5 sm:p-4 lg:p-2.5 shadow-sm',
                 'hover:border-teal-200 hover:shadow-md hover:shadow-teal-500/5 transition-all',
                 'active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40',
                 !appt.patient_id && 'opacity-70 cursor-not-allowed'
               )}
             >
-              <div className="flex items-start gap-3">
-                <div className="w-12 shrink-0 rounded-xl bg-slate-900 text-white flex flex-col items-center justify-center py-2 shadow-md">
+              <div className="flex items-start gap-3 lg:gap-2.5">
+                <div className="w-12 lg:w-11 shrink-0 rounded-xl bg-slate-900 text-white flex flex-col items-center justify-center py-2 lg:py-1.5 shadow-md">
                   <Clock className="w-3.5 h-3.5 text-teal-300 mb-0.5" />
                   <span className="text-sm font-black tabular-nums leading-none">{appt._time}</span>
                 </div>
@@ -243,13 +243,13 @@ export default function ChairsideToday() {
                         {appt._patientName}
                       </p>
                       {appt._phone ? (
-                        <p className="text-[11px] font-bold text-slate-500 mt-1 flex items-center gap-1.5 truncate">
+                        <p className="text-[11px] font-bold text-slate-500 mt-1 lg:mt-0.5 flex items-center gap-1.5 truncate">
                           <Phone className="w-3 h-3 shrink-0" />
                           {appt._phone}
                         </p>
                       ) : null}
                     </div>
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <div className="flex flex-col items-end gap-1.5 lg:gap-1 shrink-0">
                       <StatusBadge status={appt.status || 'Scheduled'} size="sm" />
                       {appt._debt > 0 && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-100 text-[10px] font-black">
@@ -260,7 +260,7 @@ export default function ChairsideToday() {
                     </div>
                   </div>
 
-                  <div className="mt-2.5 flex items-center justify-between gap-2">
+                  <div className="mt-2.5 lg:mt-1.5 flex items-center justify-between gap-2">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 truncate">
                       <Stethoscope className="w-3 h-3 shrink-0" />
                       {appt.doctor_name || t('chairside.doctor')}
