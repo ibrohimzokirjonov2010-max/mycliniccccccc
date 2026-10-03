@@ -148,14 +148,14 @@ export default function CalendarView({ appointments = [], onSlotClick, onEditCli
             const dStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
             const isToday = dStr === todayStr;
             return (
-              <div key={idx} className={cn("py-1.5 text-center border-r border-slate-300 last:border-0", isToday && "bg-blue-50/30")}>
+              <div key={idx} className={cn("py-1.5 lg:py-1 text-center border-r border-slate-300 last:border-0", isToday && "bg-blue-50/30")}>
                 <span className={cn("text-[9px] font-black uppercase tracking-[0.1em]", isToday ? "text-[#1499AD]" : "text-slate-400")}>
                   {daysShort[idx]}
                 </span>
-                <p className={cn("text-[15px] font-black leading-tight tracking-tighter mt-0.5", isToday ? "text-[#1499AD]" : "text-slate-900")}>
+                <p className={cn("text-[15px] lg:text-[13px] font-black leading-tight tracking-tighter mt-0.5 lg:mt-0", isToday ? "text-[#1499AD]" : "text-slate-900")}>
                   {day.getDate()}
                 </p>
-                {isToday && <div className="w-1.5 h-1.5 rounded-full bg-[#1499AD] mx-auto mt-0.5" />}
+                {isToday && <div className="w-1.5 h-1.5 rounded-full bg-[#1499AD] mx-auto mt-0.5 lg:mt-0" />}
               </div>
             );
           })}
@@ -164,9 +164,13 @@ export default function CalendarView({ appointments = [], onSlotClick, onEditCli
         {/* Time Grid Scrollable Area */}
         <div ref={gridRef} className="flex-1 overflow-y-auto no-scrollbar bg-slate-50/10">
           <div className="grid grid-cols-[52px_repeat(7,1fr)]">
-            {timeSlots.map(time => (
+            {timeSlots.map(time => {
+              // Bo'sh soat qatori past; navbat bor qatorda (shu jumladan davom etayotgan) to'liq balandlik
+              const rowHasAppts = weekDays.some((day) => getSlotAppointments(day, time).length > 0);
+              const rowMin = rowHasAppts ? "min-h-[52px] lg:min-h-[44px]" : "min-h-[52px] lg:min-h-[26px]";
+              return (
               <div key={time} className="contents group">
-                <div className="py-2.5 px-2 text-[9px] font-black text-slate-500 border-r border-b border-slate-300 bg-white text-right tracking-tight whitespace-nowrap leading-none transition-colors group-hover:bg-slate-50">
+                <div className={cn(rowMin, "py-2.5 lg:py-1 px-2 text-[9px] font-black text-slate-500 border-r border-b border-slate-300 bg-white text-right tracking-tight whitespace-nowrap leading-none transition-colors group-hover:bg-slate-50")}>
                   {time}
                 </div>
                 {weekDays.map((day, dIdx) => {
@@ -180,7 +184,7 @@ export default function CalendarView({ appointments = [], onSlotClick, onEditCli
                       key={dIdx}
                       onClick={() => isEmpty && onSlotClick && onSlotClick(dStr, time)}
                       className={cn(
-                        "min-h-[52px] border-r border-b border-slate-300 transition-all relative",
+                        rowMin, "border-r border-b border-slate-300 transition-all relative",
                         isEmpty && "hover:bg-slate-100/50 cursor-pointer",
                         isToday && "bg-blue-50/20"
                       )}
@@ -222,13 +226,14 @@ export default function CalendarView({ appointments = [], onSlotClick, onEditCli
                   );
                 })}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
 
       {/* Legend & Footer */}
-      <div className="px-4 py-2 border-t border-slate-100 flex items-center justify-between bg-white">
+      <div className="px-4 py-2 lg:py-1 border-t border-slate-100 flex items-center justify-between bg-white">
         <div className="flex items-center gap-3 flex-wrap">
           {Object.entries(statusStyles).map(([status, style]) => (
             <div key={status} className="flex items-center gap-1">

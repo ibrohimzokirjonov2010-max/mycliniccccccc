@@ -616,7 +616,7 @@ export default function DoctorDayGrid({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white overflow-hidden min-h-[600px] relative">
+    <div className="flex flex-col h-full bg-white overflow-hidden min-h-[600px] lg:min-h-[280px] relative">
       {/* Test reminder toast */}
       {testToast && (
         <div className={cn(
@@ -643,17 +643,17 @@ export default function DoctorDayGrid({
       {/* Unified Single CSS Grid for 100% straight vertical alignment between header and body */}
       <div ref={gridRef} className="flex-1 overflow-auto no-scrollbar scroll-smooth bg-white">
         <div 
-          className="grid w-full min-w-max"
-          style={{ gridTemplateColumns: `56px repeat(${doctors.length}, minmax(210px, 1fr))` }}
+          className="grid w-full min-w-max [grid-template-columns:56px_repeat(var(--doc-n),minmax(210px,1fr))] lg:[grid-template-columns:44px_repeat(var(--doc-n),minmax(150px,1fr))]"
+          style={{ '--doc-n': Math.max(doctors.length, 1) }}
         >
           {/* ══════════════════════════════════════════════
               ROW 0: STICKY TOP DOCTOR HEADER
               ══════════════════════════════════════════════ */}
           <div className="contents">
             {/* Top-Left Corner Cell: Sticky Top & Sticky Left */}
-            <div className="sticky top-0 left-0 z-40 bg-slate-100/95 backdrop-blur-sm border-r-2 border-b-2 border-slate-300 flex flex-col items-center justify-center py-2.5 shadow-sm">
-              <Clock className="w-4 h-4 stroke-[2.5] text-[#1499AD]" />
-              <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 mt-0.5">Vaqt</span>
+            <div className="sticky top-0 left-0 z-40 bg-slate-100/95 backdrop-blur-sm border-r-2 border-b-2 border-slate-300 flex flex-col items-center justify-center py-2.5 lg:py-1 shadow-sm">
+              <Clock className="w-4 h-4 lg:w-3 lg:h-3 stroke-[2.5] text-[#1499AD]" />
+              <span className="text-[8px] lg:text-[7px] font-black uppercase tracking-wider text-slate-500 mt-0.5 lg:mt-0 lg:leading-none">Vaqt</span>
             </div>
 
             {/* Doctor Column Headers: Sticky Top */}
@@ -665,15 +665,16 @@ export default function DoctorDayGrid({
                 <div 
                   key={`hdr-${doc.id}`} 
                   className={cn(
-                    "sticky top-0 z-30 py-2.5 px-3 border-r-2 border-b-2 border-slate-300 last:border-r-0 flex items-center justify-between gap-2.5 group relative overflow-hidden transition-colors border-t-4 shadow-sm backdrop-blur-sm",
+                    "sticky top-0 z-30 py-2.5 px-3 lg:py-1 lg:px-1.5 border-r-2 border-b-2 border-slate-300 last:border-r-0 flex items-center justify-between gap-2.5 lg:gap-1.5 group relative overflow-hidden transition-colors border-t-4 lg:border-t-[3px] shadow-sm backdrop-blur-sm",
                     palette.headerBg
                   )}
                   style={{ borderTopColor: palette.primary }}
+                  title={`${doc.name || ''}${doc.specialty ? ' — ' + doc.specialty : ''}`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex items-center gap-2.5 lg:gap-1.5 min-w-0">
                     {/* Doctor Avatar / Photo */}
                     <div 
-                      className="w-9 h-9 rounded-xl border-2 shadow-xs flex items-center justify-center overflow-hidden shrink-0 bg-white"
+                      className="w-9 h-9 lg:w-6 lg:h-6 rounded-xl lg:rounded-lg border-2 shadow-xs flex items-center justify-center overflow-hidden shrink-0 bg-white"
                       style={{ borderColor: palette.primary }}
                     >
                       {avatarUrl ? (
@@ -683,17 +684,17 @@ export default function DoctorDayGrid({
                           className="w-full h-full object-cover" 
                         />
                       ) : (
-                        <span className="text-xs font-black uppercase" style={{ color: palette.primary }}>
+                        <span className="text-xs lg:text-[10px] font-black uppercase" style={{ color: palette.primary }}>
                           {(doc.name || doc.full_name)?.charAt(0)}
                         </span>
                       )}
                     </div>
 
-                    <div className="min-w-0 text-left">
-                      <h4 className="text-xs font-black text-slate-900 tracking-tight leading-tight uppercase truncate max-w-[130px]">
+                    <div className="min-w-0 text-left lg:flex lg:items-baseline lg:gap-1">
+                      <h4 className="text-xs lg:text-[11px] font-black text-slate-900 tracking-tight leading-tight uppercase truncate max-w-[130px] lg:max-w-none lg:min-w-0">
                         {doc.name}
                       </h4>
-                      <p className="text-[9px] font-bold uppercase tracking-wider truncate max-w-[130px]" style={{ color: palette.primary }}>
+                      <p className="text-[9px] lg:text-[8px] font-bold uppercase tracking-wider truncate max-w-[130px] lg:max-w-none lg:hidden 2xl:block lg:min-w-0" style={{ color: palette.primary }}>
                         {doc.specialty || t('staff.roles.doctor') || 'Stomatolog'}
                       </p>
                     </div>
@@ -701,14 +702,14 @@ export default function DoctorDayGrid({
 
                   {/* Today's appointments count badge */}
                   <div 
-                    className="px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider shrink-0 shadow-xs border"
+                    className="px-2 py-0.5 lg:px-1.5 lg:py-px rounded-full text-[8.5px] lg:text-[8px] font-black uppercase tracking-wider shrink-0 shadow-xs border whitespace-nowrap"
                     style={{
                       backgroundColor: apptCount > 0 ? `${palette.primary}18` : '#f1f5f9',
                       color: apptCount > 0 ? palette.primary : '#94a3b8',
                       borderColor: apptCount > 0 ? `${palette.primary}40` : '#e2e8f0'
                     }}
                   >
-                    {apptCount > 0 ? `${apptCount} ta qabul` : `Bo'sh`}
+                    {apptCount > 0 ? <>{apptCount} ta<span className="lg:hidden 2xl:inline"> qabul</span></> : `Bo'sh`}
                   </div>
                 </div>
               );
@@ -720,11 +721,14 @@ export default function DoctorDayGrid({
               ══════════════════════════════════════════════ */}
           {displayTimeSlots.map((time) => {
             const isHour = time.endsWith(':00');
+            // Bo'sh soat qatori past, uchrashuv bor qator kontentga qarab
+            const rowFilled = doctors.some((d) => !!gridData[d.id]?.[time]);
+            const rowH = rowFilled ? "min-h-[80px] lg:min-h-[40px]" : "h-20 lg:h-auto lg:min-h-[24px]";
             return (
               <div key={time} className="contents">
                 {/* Time column cell: Sticky Left */}
                 <div className={cn(
-                  "h-20 flex flex-col items-center justify-center border-r-2 border-b-2 border-slate-300 bg-slate-50/95 backdrop-blur-sm sticky left-0 z-20 shadow-[1px_0_3px_rgba(0,0,0,0.04)]",
+                  rowH, "flex flex-col items-center justify-center border-r-2 border-b-2 border-slate-300 bg-slate-50/95 backdrop-blur-sm sticky left-0 z-20 shadow-[1px_0_3px_rgba(0,0,0,0.04)]",
                   isHour ? "text-slate-800 font-black text-[11px]" : "text-slate-400 font-bold text-[9.5px]"
                 )}>
                   <span>{time}</span>
@@ -742,7 +746,7 @@ export default function DoctorDayGrid({
                       onClick={() => !appointment && onSlotClick?.(selectedDate, time, doc.id)}
                       title={!appointment ? `${doc.name} — ${time} ga yangi uchrashuv belgilash` : undefined}
                       className={cn(
-                        "h-20 border-r-2 border-b-2 border-slate-300 last:border-r-0 p-1 relative transition-all group/slot",
+                        rowH, "flex border-r-2 border-b-2 border-slate-300 last:border-r-0 p-1 lg:p-0.5 relative transition-all group/slot",
                         isEvenCol ? "bg-white" : "bg-slate-50/30",
                         !appointment && "hover:bg-[#1499AD]/10 cursor-pointer"
                       )}
@@ -751,7 +755,7 @@ export default function DoctorDayGrid({
                       {!appointment && (
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/slot:opacity-100 transition-opacity pointer-events-none z-10">
                           <span 
-                            className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg bg-white/95 shadow-sm border border-slate-200"
+                            className="text-[9px] font-black uppercase tracking-wider px-2 py-1 lg:py-px rounded-lg bg-white/95 shadow-sm border border-slate-200"
                             style={{ color: palette.primary }}
                           >
                             + {doc.name} ({time})
@@ -769,67 +773,61 @@ export default function DoctorDayGrid({
                           <div
                             onClick={(e) => handleAppointmentClick(e, appointment)}
                             className={cn(
-                              "h-full w-full rounded-xl border-l-[4px] p-1.5 flex flex-col justify-between shadow-xs transition-all hover:brightness-95 active:scale-[0.98] cursor-pointer group/card relative overflow-hidden",
+                              "flex-1 min-w-0 rounded-xl lg:rounded-lg border-l-[4px] lg:border-l-[3px] p-1.5 lg:px-1.5 lg:py-1 flex flex-col justify-between lg:justify-center lg:gap-0.5 shadow-xs transition-all hover:brightness-95 active:scale-[0.98] cursor-pointer group/card relative overflow-hidden",
                               statusColors[appointment.status] || statusColors.Scheduled,
                               isMatch && "ring-2 ring-[#1499AD] ring-offset-1 animate-pulse scale-[1.02] z-10 shadow-lg shadow-[#1499AD]/20"
                             )}
                             style={{ borderLeftColor: palette.primary }}
                           >
-                            <div className="flex flex-col gap-0.5">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 min-w-0 max-w-[85%]">
-                                  {(appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url) && (
-                                    <img 
-                                      src={appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url} 
-                                      alt={appointment.patient_name} 
-                                      className="w-4 h-4 rounded-full object-cover shrink-0 border border-white/80 shadow-xs" 
-                                    />
-                                  )}
-                                  <span className="text-[11px] font-black truncate leading-none uppercase tracking-tight text-slate-900">
-                                    {appointment.patient_name}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-0.5 opacity-40 group-hover/card:opacity-100 transition-opacity shrink-0">
-                                  {appointment.is_paid ? <Wallet className="w-2.5 h-2.5 text-emerald-600" /> : <Clock className="w-2.5 h-2.5" />}
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="text-[9px] font-bold opacity-75">
-                                  {appointment.time} — {(() => {
-                                      const [h, m] = appointment.time.split(':').map(Number);
-                                      const dur = appointment.duration || 30;
-                                      const endMin = h * 60 + m + Number(dur);
-                                      return `${String(Math.floor(endMin/60)).padStart(2,'0')}:${String(endMin%60).padStart(2,'0')}`;
-                                  })()}
+                            <div className="flex items-center justify-between gap-1">
+                              <div className="flex items-center gap-1.5 min-w-0 max-w-[85%] lg:max-w-full lg:flex-1">
+                                {(appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url) && (
+                                  <img 
+                                    src={appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url} 
+                                    alt={appointment.patient_name} 
+                                    className="w-4 h-4 rounded-full object-cover shrink-0 border border-white/80 shadow-xs" 
+                                  />
+                                )}
+                                <span className="text-[11px] font-black truncate leading-none lg:leading-tight uppercase tracking-tight text-slate-900">
+                                  {appointment.patient_name}
                                 </span>
                               </div>
+                              <div className="flex items-center gap-0.5 opacity-40 group-hover/card:opacity-100 transition-opacity shrink-0">
+                                {appointment.is_paid ? <Wallet className="w-2.5 h-2.5 text-emerald-600" /> : <Clock className="w-2.5 h-2.5" />}
+                              </div>
                             </div>
-                            
-                            <div className="flex items-center justify-between mt-1">
-                               <div className="flex items-center gap-1 min-w-0 max-w-[78%]">
-                                 <div className="px-2 py-0.5 bg-white/70 rounded-lg text-[8px] font-black uppercase tracking-tighter truncate max-w-[85%] border border-black/5">
-                                     {appointment.tooth_number ? `${appointment.tooth_number}-tish: ` : ''}{appointment.service_name || t('appointments.defaultService') || 'Maslahat'}
-                                 </div>
-                                 <AppointmentConfirmationBadge appointment={appointment} size="sm" className="!text-[8px] !px-1.5 !py-0.5" />
-                               </div>
-                               <div className="flex items-center gap-0.5 shrink-0">
-                                 {/* Test eslatma tugmasi */}
-                                 <button
-                                   title="Test Telegram eslatma yuborish"
-                                   onClick={(e) => sendTest(appointment, e)}
-                                   disabled={loadingId === String(appointment._id || appointment.id || '')}
-                                   className={cn(
-                                     "w-5 h-5 rounded-md flex items-center justify-center transition-all",
-                                     "opacity-0 group-hover/card:opacity-100",
-                                     "bg-violet-100 hover:bg-violet-500 hover:text-white text-violet-500",
-                                     "border border-violet-200 hover:border-violet-500",
-                                     loadingId === String(appointment._id || appointment.id || '') && "animate-pulse opacity-100"
-                                   )}
-                                 >
-                                   <FlaskConical className="w-2.5 h-2.5" />
-                                 </button>
-                                 <CheckCircle2 className="w-3 h-3 opacity-10" />
-                               </div>
+
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 lg:mt-0 min-w-0">
+                              <span className="text-[9px] font-bold opacity-75 whitespace-nowrap">
+                                {appointment.time} — {(() => {
+                                    const [h, m] = appointment.time.split(':').map(Number);
+                                    const dur = appointment.duration || 30;
+                                    const endMin = h * 60 + m + Number(dur);
+                                    return `${String(Math.floor(endMin/60)).padStart(2,'0')}:${String(endMin%60).padStart(2,'0')}`;
+                                })()}
+                              </span>
+                              <div className="px-2 py-0.5 lg:px-1.5 lg:py-px bg-white/70 rounded-lg text-[8px] font-black uppercase tracking-tighter truncate max-w-full border border-black/5 min-w-0">
+                                  {appointment.tooth_number ? `${appointment.tooth_number}-tish: ` : ''}{appointment.service_name || t('appointments.defaultService') || 'Maslahat'}
+                              </div>
+                              <AppointmentConfirmationBadge appointment={appointment} size="sm" className="!text-[8px] !px-1.5 !py-0.5 lg:!py-px" />
+                              <div className="flex items-center gap-0.5 shrink-0 ml-auto">
+                                {/* Test eslatma tugmasi */}
+                                <button
+                                  title="Test Telegram eslatma yuborish"
+                                  onClick={(e) => sendTest(appointment, e)}
+                                  disabled={loadingId === String(appointment._id || appointment.id || '')}
+                                  className={cn(
+                                    "w-5 h-5 lg:w-4 lg:h-4 rounded-md flex items-center justify-center transition-all",
+                                    "opacity-0 group-hover/card:opacity-100",
+                                    "bg-violet-100 hover:bg-violet-500 hover:text-white text-violet-500",
+                                    "border border-violet-200 hover:border-violet-500",
+                                    loadingId === String(appointment._id || appointment.id || '') && "animate-pulse opacity-100"
+                                  )}
+                                >
+                                  <FlaskConical className="w-2.5 h-2.5" />
+                                </button>
+                                <CheckCircle2 className="w-3 h-3 opacity-10" />
+                              </div>
                             </div>
                           </div>
                         );
