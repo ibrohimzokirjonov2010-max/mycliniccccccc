@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useBackClose } from '@/hooks/useBackClose';
+import { BackClose } from '@/hooks/useBackClose';
 import { createPortal } from 'react-dom';
 import {
   Check, Layers, Plus, Printer, X,
@@ -1339,6 +1341,7 @@ export default function ToothChartCard({
         railNode,
       )}
 
+      <BackClose open={!!showSheet} onClose={() => { setActive(null); setSelected([]); }} />
       {showSheet && (
         <div className="fixed inset-x-0 z-[60] mx-auto flex max-h-[70vh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_-12px_40px_rgba(15,23,42,0.25)]" style={{ bottom: sheetOffset }}>
           <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-slate-200" />
@@ -1394,6 +1397,7 @@ export default function ToothChartCard({
         onClose={() => setPriceAsk(null)}
       />
 
+      <BackClose open={!!viewer} onClose={() => setViewer(null)} />
       {viewer && (
         <button type="button" className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" onClick={() => setViewer(null)}>
           <img src={viewer} alt="Rentgen" className="max-h-[80vh] max-w-full rounded-xl" />
@@ -1404,6 +1408,7 @@ export default function ToothChartCard({
 }
 
 function PriceAskDialog({ ask, onClose }) {
+  useBackClose(!!ask, onClose);
   const [raw, setRaw] = useState({});
   useEffect(() => { setRaw({}); }, [ask]);
   if (!ask) return null;

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { BackClose } from '@/hooks/useBackClose';
 import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -1952,6 +1953,7 @@ export default function ImplantForm({
         </DialogContent>
       </Dialog>
 
+      <BackClose open={!!extractPrompt} onClose={() => setExtractPrompt(null)} />
       {extractPrompt && createPortal(
         <div
           className="implant-wizard-confirm-overlay"
@@ -2020,6 +2022,7 @@ export default function ImplantForm({
         document.body
       )}
 
+      <BackClose open={!!pendingRemoveFdi} onClose={() => setPendingRemoveFdi(null)} />
       {pendingRemoveFdi && createPortal(
         <div
           className="implant-wizard-confirm-overlay"
@@ -2053,6 +2056,7 @@ export default function ImplantForm({
         document.body
       )}
 
+      <BackClose open={!!facturaPreviewOpen} onClose={() => setFacturaPreviewOpen(false)} />
       {facturaPreviewOpen && createPortal(
         <div
           className="implant-wizard-factura-overlay"

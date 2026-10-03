@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useBackClose } from '@/hooks/useBackClose';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,6 +14,7 @@ import { supabase } from '@/api/supabaseClient';
 import { assertServerFeature } from '@/lib/clinicPlan';
 
 export default function LeadQuickView({ lead, isOpen, onClose }) {
+  useBackClose(!!isOpen, onClose);
   const { t, language } = useTranslation();
   const navigate = useNavigate();
   const [isConverting, setIsConverting] = useState(false);

@@ -5,8 +5,20 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { useBackClose } from "@/hooks/useBackClose"
 
-const AlertDialog = AlertDialogPrimitive.Root
+// Telefon/brauzer "Orqaga" tugmasi avval oynani yopadi (useBackClose)
+const AlertDialog = ({ open, defaultOpen, onOpenChange, ...props }) => {
+  const controlled = open !== undefined
+  const [innerOpen, setInnerOpen] = React.useState(!!defaultOpen)
+  const isOpen = controlled ? !!open : innerOpen
+  const handleOpenChange = React.useCallback((next) => {
+    if (!controlled) setInnerOpen(next)
+    if (onOpenChange) onOpenChange(next)
+  }, [controlled, onOpenChange])
+  useBackClose(isOpen, () => handleOpenChange(false))
+  return <AlertDialogPrimitive.Root open={isOpen} onOpenChange={handleOpenChange} {...props} />
+}
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger
 

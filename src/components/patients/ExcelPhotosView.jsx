@@ -1,4 +1,5 @@
 import { useState, useMemo, memo } from 'react';
+import { BackClose } from '@/hooks/useBackClose';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { 
   Camera, Upload, Search,
@@ -361,6 +362,7 @@ function ExcelPhotosView({
         </div>
       )}
 
+      <BackClose open={!!lightboxPhoto} onClose={() => setLightboxPhoto(null)} />
       {/* ══ LIGHTBOX MODAL ══ */}
       {lightboxPhoto && (
         <div

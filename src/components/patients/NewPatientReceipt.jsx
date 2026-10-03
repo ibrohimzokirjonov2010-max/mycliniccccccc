@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useBackClose } from '@/hooks/useBackClose';
 import { createPortal } from 'react-dom';
 import { Printer, Download, X } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
@@ -354,6 +355,7 @@ export function NewPatientReceiptOverlay({
     };
   }, [open, onClose]);
 
+  useBackClose(!!open, onClose);
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(

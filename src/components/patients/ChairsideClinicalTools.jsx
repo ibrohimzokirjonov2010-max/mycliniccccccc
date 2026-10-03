@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { BackClose } from '@/hooks/useBackClose';
 import {
   Activity, FileText, Image as ImageIcon,
   Loader2, Trash2, Upload, X, ZoomIn
@@ -315,6 +316,7 @@ export default function ChairsideClinicalTools({
         />
       </section>
 
+      <BackClose open={!!lightbox} onClose={() => setLightbox(null)} />
       {/* Lightbox */}
       {lightbox && (
         <div

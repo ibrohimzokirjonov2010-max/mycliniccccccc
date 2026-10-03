@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useBackClose } from '@/hooks/useBackClose';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Search, Image as ImageIcon, Sparkles, X, ChevronRight, ChevronLeft, ArrowLeft, Pen, Trash2, AlertCircle } from 'lucide-react';
@@ -362,6 +363,7 @@ const compressImage = (base64Str, maxWidth = 1200, quality = 0.7) => {
 /*                          UPLOAD/ADD NEW CASE MODAL                         */
 /* -------------------------------------------------------------------------- */
 function AddTagModalMobile({ isOpen, onClose, onAdd }) {
+  useBackClose(isOpen, onClose);
   const [tagName, setTagName] = useState("");
 
   if (!isOpen) return null;
@@ -402,6 +404,7 @@ function AddTagModalMobile({ isOpen, onClose, onAdd }) {
 /*                        MOBILE BEFORE/AFTER VIEWER                          */
 /* -------------------------------------------------------------------------- */
 function MobileCaseViewer({ data, onClose, onDelete }) {
+  useBackClose(true, onClose);
   const [sliderPos, setSliderPos] = useState(50);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [color, setColor] = useState('#1499AD');

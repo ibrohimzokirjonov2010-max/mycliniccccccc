@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useBackClose } from '@/hooks/useBackClose';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Plus, Search, Image as ImageIcon, Sparkles, X, ChevronRight, ChevronLeft, Pen, Trash2, AlertCircle, Crop, CheckCircle2 } from 'lucide-react';
@@ -331,6 +332,7 @@ export default function Cases() {
 /*                         CUSTOM ADD TAG MODAL                               */
 /* -------------------------------------------------------------------------- */
 function AddTagModal({ isOpen, onClose, onAdd }) {
+  useBackClose(isOpen, onClose);
   const [tagName, setTagName] = useState("");
 
   if (!isOpen) return null;
@@ -427,6 +429,7 @@ function CaseCard({ data, onClick }) {
 /*                             BEFORE / AFTER MODAL                           */
 /* -------------------------------------------------------------------------- */
 function CaseDetailModal({ data, onClose, onDelete }) {
+  useBackClose(true, onClose);
   const { t, language } = useTranslation();
   const [sliderPos, setSliderPos] = useState(50);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
@@ -802,6 +805,7 @@ const compressImage = (base64Str, maxWidth = 1200, quality = 0.75) => {
 /*                          UPLOAD/ADD NEW CASE MODAL                         */
 /* -------------------------------------------------------------------------- */
 function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients = [], doctors = [] }) {
+  useBackClose(isOpen, onClose);
   const { t, language } = useTranslation();
   const [beforeImg, setBeforeImg] = useState(null);
   const [afterImg, setAfterImg] = useState(null);

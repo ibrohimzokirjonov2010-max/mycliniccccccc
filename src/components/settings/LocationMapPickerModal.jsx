@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useBackClose } from '@/hooks/useBackClose';
 import { 
   MapPin, Search, Navigation, Check, X, 
   Loader2, ExternalLink, Compass, AlertCircle
@@ -145,6 +146,7 @@ export default function LocationMapPickerModal({
     onClose();
   };
 
+  useBackClose(!!isOpen, onClose);
   if (!isOpen) return null;
 
   // Static / Interactive map preview URL using OpenStreetMap iframe embed

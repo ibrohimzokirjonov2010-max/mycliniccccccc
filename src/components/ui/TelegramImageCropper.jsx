@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useBackClose } from '@/hooks/useBackClose';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   RotateCw, 
@@ -295,6 +296,7 @@ export default function TelegramImageCropper({
     }
   };
 
+  useBackClose(!!(isOpen && imageSrc), onClose);
   if (!isOpen || !imageSrc) return null;
 
   return (
