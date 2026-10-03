@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useBackClose } from '@/hooks/useBackClose';
 import { CreditCard, X } from 'lucide-react';
 import { resolveClinicPlan } from '@/lib/clinicPlan';
 import { isCustomMonthly, LEGACY_FEES } from '@/utils/superAdminBilling';
@@ -33,6 +34,7 @@ export default function TariffReminder({ clinic }) {
     setOpen(true);
   }, [clinic]);
 
+  useBackClose(!!(open && clinic), () => setOpen(false));
   if (!open || !clinic) return null;
 
   const days = daysUntilExpiry(clinic.expires_at);

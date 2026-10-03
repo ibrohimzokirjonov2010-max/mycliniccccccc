@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, memo } from 'react';
+import { BackClose } from '@/hooks/useBackClose';
 import { motion } from 'framer-motion';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -318,6 +319,7 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
 
   return (
     <>
+      <BackClose open={!!mobileOpen} onClose={onMobileClose} />
       {/* Mobile Overlay */}
       {mobileOpen && (
         <motion.div 

@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useBackClose } from '@/hooks/useBackClose';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, X, Trash2, Clock, AlertCircle } from 'lucide-react';
 import { notificationStore } from '@/lib/notificationStore';
 import { formatClinicDate } from '@/lib/clinicTime';
 
 export default function NotificationPanel({ isOpen, onClose }) {
+  useBackClose(isOpen, onClose);
   const [notifications, setNotifications] = useState([]);
 
   const loadNotifications = useCallback(() => {

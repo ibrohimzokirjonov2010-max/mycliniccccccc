@@ -68,4 +68,13 @@ export function useBackClose(isOpen, onClose) {
   }, [isOpen]);
 }
 
+/**
+ * JSX ichida (shartli render qilingan modal yonida) ishlatish uchun: hech narsa chizmaydi,
+ * faqat `open` true bo'lganda Orqaga tugmasi `onClose`ni chaqiradi.
+ */
+export function BackClose({ open, onClose }) {
+  useBackClose(!!open, onClose);
+  return null;
+}
+
 export default useBackClose;

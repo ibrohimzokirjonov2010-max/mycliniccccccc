@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { BackClose } from '@/hooks/useBackClose';
 import { useRestorableState } from '@/hooks/useRestorableState';
 /* Technicians Management Module */
 import { 
@@ -534,6 +535,7 @@ export default function Technicians() {
         </TabsContent>
       </Tabs>
 
+      <BackClose open={!!(smsModal.open && smsModal.job)} onClose={() => setSmsModal({ open: false, job: null })} />
       {/* === SMS Modal === */}
       {smsModal.open && smsModal.job && (() => {
         const job = smsModal.job;

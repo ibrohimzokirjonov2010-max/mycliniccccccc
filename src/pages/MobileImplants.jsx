@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { BackClose } from '@/hooks/useBackClose';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -971,6 +972,7 @@ export default function MobileImplants() {
       </PullToRefresh>
 
       {/* ── Filter Sheet ── */}
+      <BackClose open={!!showFilter} onClose={() => setShowFilter(false)} />
       <FilterSheet
         open={showFilter}
         onClose={() => setShowFilter(false)}
@@ -982,6 +984,7 @@ export default function MobileImplants() {
       />
 
       {/* ── Status Update Sheet ── */}
+      <BackClose open={!!(statusSheet.open && statusSheet.implant)} onClose={() => setStatusSheet({ open: false, implant: null })} />
       <StatusUpdateSheet
         open={statusSheet.open}
         implant={statusSheet.implant}

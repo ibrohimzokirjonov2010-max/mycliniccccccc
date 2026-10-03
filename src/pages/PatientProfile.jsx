@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { BackClose } from '@/hooks/useBackClose';
 import { useRestorableState, useUrlState } from '@/hooks/useRestorableState';
 import { canGoBackInApp } from '@/hooks/useBack';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
@@ -4396,6 +4397,7 @@ export default function PatientProfile() {
 
       {/* Local FAB - Contextual Add Button for BClinic Mobile */}
       <div className="fixed bottom-24 right-5 z-40 lg:hidden">
+        <BackClose open={!!showLocalActions} onClose={() => setShowLocalActions(false)} />
         {/* local actions popup speed dial */}
         <AnimatePresence>
           {showLocalActions && (

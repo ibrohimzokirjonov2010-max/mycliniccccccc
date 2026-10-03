@@ -1,6 +1,8 @@
 import { formatCurrency } from '@/lib/utils';
+import { useBackClose } from '@/hooks/useBackClose';
 
 export default function TreatmentDeleteDialog({ row, busy, onCancel, onConfirm }) {
+  useBackClose(!!row, () => { if (!busy && onCancel) onCancel(); });
   if (!row) return null;
   const paid = Number(row.paidAmount) > 0;
   return (

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { BackClose } from '@/hooks/useBackClose';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -610,6 +611,7 @@ export default function PublicClinicPage() {
       </div>
 
 
+      <BackClose open={!!showBooking} onClose={() => setShowBooking(false)} />
       {/* Booking Modal / Drawer Overlay */}
       <AnimatePresence>
         {showBooking && (

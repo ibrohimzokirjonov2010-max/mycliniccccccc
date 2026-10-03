@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { BackClose } from '@/hooks/useBackClose';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { 
   Plus, TrendingDown, TrendingUp, DollarSign, Banknote, Wallet, Calendar, 
@@ -1103,6 +1104,7 @@ export default function Expenses() {
       </motion.div>
 
       {/* ─── Receipt Lightbox Preview Modal ─────────────────────────── */}
+      <BackClose open={!!previewReceiptUrl} onClose={() => setPreviewReceiptUrl(null)} />
       <AnimatePresence>
         {previewReceiptUrl && (
           <div 

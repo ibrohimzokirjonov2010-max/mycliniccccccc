@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { BackClose } from '@/hooks/useBackClose';
 import { canGoBackInApp } from '@/hooks/useBack';
 import { useUrlState } from '@/hooks/useRestorableState';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -1234,6 +1235,7 @@ export default function MobilePatientProfile() {
         </AnimatePresence>
       </div>
 
+      <BackClose open={!!(toothHistoryOpen && selectedTooth)} onClose={() => setToothHistoryOpen(false)} />
       {/* TOOTH HISTORY SHEET — portaled so Framer page transform cannot trap fixed under bottom nav */}
       {typeof document !== 'undefined' && createPortal(
       <AnimatePresence>
@@ -1275,6 +1277,7 @@ export default function MobilePatientProfile() {
       document.body)}
 
       {/* PAYMENT MODAL — portaled above sticky bottom nav */}
+      <BackClose open={!!payModalOpen} onClose={() => setPayModalOpen(false)} />
       {typeof document !== 'undefined' && createPortal(
       <AnimatePresence>
         {payModalOpen && (

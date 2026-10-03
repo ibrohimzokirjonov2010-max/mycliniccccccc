@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { BackClose } from '@/hooks/useBackClose';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -422,6 +423,7 @@ export default function NativeMobileLayout({ children }) {
         </motion.button>
       ) : null}
 
+      <BackClose open={!!showQuickActions} onClose={() => setShowQuickActions(false)} />
       {/* Quick Actions Menu */}
       <AnimatePresence>
         {showQuickActions && (
@@ -472,6 +474,7 @@ export default function NativeMobileLayout({ children }) {
         )}
       </AnimatePresence>
 
+      <BackClose open={!!showMenu} onClose={() => setShowMenu(false)} />
       {/* Full Screen Menu */}
       <AnimatePresence>
         {showMenu && (
