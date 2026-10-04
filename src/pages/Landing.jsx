@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, ChevronDown, Menu, Phone, Send, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { ShifoCrmLogoEmblem } from '@/components/ui/ShifoCrmLogo';
+import { MyClinicLogoImage } from '@/components/ui/ShifoCrmLogo';
 import {
   LANDING_CONTACT, TRIAL_DAYS, phoneHref, phoneLabel, registerPath,
 } from '@/config/landingPricing';
@@ -20,12 +20,7 @@ const NAVY = 'bg-[#0b2a4a] hover:bg-[#10375f]';
 
 function Brand({ light = false }) {
   return (
-    <span className="flex items-center gap-2.5">
-      <ShifoCrmLogoEmblem className="h-9 w-9" size={36} hasGlow={false} />
-      <span className={`text-[17px] font-black tracking-tight ${light ? 'text-white' : 'text-slate-900'}`}>
-        SHIFO <span className={light ? 'text-teal-300' : 'text-teal-600'}>CRM</span>
-      </span>
-    </span>
+    <MyClinicLogoImage variant={light ? 'dark' : 'light'} className="h-10 w-auto sm:h-11" />
   );
 }
 
@@ -52,7 +47,7 @@ function Navbar({ authed }) {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <a href="#top" onClick={(e) => go(e, 'top')} aria-label="SHIFO CRM — bosh sahifa"><Brand /></a>
+        <a href="#top" onClick={(e) => go(e, 'top')} aria-label="My Clinic — bosh sahifa"><Brand /></a>
 
         <nav className="hidden items-center gap-1 md:flex" aria-label="Asosiy menyu">
           {NAV_LINKS.map((l) => (
@@ -120,6 +115,7 @@ function Hero({ authed }) {
         style={{ backgroundImage: 'radial-gradient(circle at 15% 10%, rgba(20,153,173,0.12), transparent 42%), radial-gradient(circle at 90% 30%, rgba(14,116,144,0.10), transparent 40%)' }} />
       <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-10 lg:py-24">
         <div>
+          <MyClinicLogoImage variant="light" className="mb-5 h-14 w-auto sm:h-16" />
           <span className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-white px-3.5 py-1.5 text-xs font-bold text-teal-700 shadow-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-teal-500" /> {HERO.badge}
           </span>
@@ -203,7 +199,7 @@ function Problems() {
               <div className="mt-auto pt-4">
                 <div className="flex items-start gap-2.5 rounded-2xl bg-teal-50/70 p-3.5">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" strokeWidth={2.8} />
-                  <p className="text-[13.5px] font-semibold leading-snug text-teal-900"><span className="font-extrabold">SHIFO CRM'da: </span>{p.fix}</p>
+                  <p className="text-[13.5px] font-semibold leading-snug text-teal-900"><span className="font-extrabold">My Clinic'da: </span>{p.fix}</p>
                 </div>
               </div>
             </article>
@@ -426,7 +422,7 @@ export default function Landing() {
 
   useEffect(() => {
     const prev = document.title;
-    document.title = "SHIFO CRM — stomatologik klinikalar uchun CRM";
+    document.title = "My Clinic — stomatologik klinikalar uchun Dental CRM";
     return () => { document.title = prev; };
   }, []);
 

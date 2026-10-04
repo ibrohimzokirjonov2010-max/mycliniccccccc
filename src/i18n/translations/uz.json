@@ -903,7 +903,7 @@
     "integration": {
       "activeSync": "INTEGRATSIYA FAOL (JONLI ULASH)",
       "title": "Vebsayt & Shablon Integratsiyasi",
-      "description": "Vebsayt shabloningiz Shifo CRM bilan 2 tomonlama ulangan. Arizalar CRM bazasiga tushadi, band vaqtlar esa saytda avtomatik bloklanadi.",
+      "description": "Vebsayt shabloningiz My Clinic bilan 2 tomonlama ulangan. Arizalar CRM bazasiga tushadi, band vaqtlar esa saytda avtomatik bloklanadi.",
       "checkConnection": "Ulanishni Tekshirish",
       "testRealBooking": "Real Bron Sinash",
       "tabStatus": "Integratsiya Holati",
@@ -2343,7 +2343,7 @@
     "debt": "Qarz",
     "monthlyInstallment": "{months} oy / {amount} so'm",
     "safeDbNotice": "Xavfsiz ma'lumotlar bazasi bilan ishlamoqdasiz",
-    "version": "SHIFOCRM v2.0",
+    "version": "My Clinic v2.0",
     "departments": {
       "implant": "Implantatsiya",
       "child": "Bolalar stomatologiyasi",

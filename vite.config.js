@@ -106,7 +106,7 @@ export default defineConfig({
     }),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon-192x192.svg', 'icon-512x512.svg', 'logo.png'],
+      includeAssets: ['icon-192x192.svg', 'icon-512x512.svg', 'icon-192x192.png', 'icon-512x512.png', 'favicon.png', 'logo-full.png', 'logo-full-dark.png', 'logo-icon.png', 'logo-icon-dark.png', 'logo.png'],
       manifest: false, // manifest.json allaqachon public/ da bor
       workbox: {
         // Offline shell stays precached (navigateFallback: 'index.html').

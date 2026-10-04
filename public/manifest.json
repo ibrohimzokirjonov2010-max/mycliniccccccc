@@ -1,5 +1,5 @@
 {
-  "name": "My Clinic — Stomatologik CRM",
+  "name": "My Clinic — Dental CRM",
   "short_name": "My Clinic",
   "description": "Zamonaviy stomatologik klinika boshqaruv tizimi — bemorlar, to'lovlar va davolash rejalari",
   "start_url": "/",
@@ -15,27 +15,27 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/icon-192x192.svg",
+      "src": "/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512x512.svg",
+      "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-192x192.svg",
+      "src": "/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-512x512.svg",
+      "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "maskable"
     }
   ],
@@ -45,21 +45,21 @@
       "short_name": "Bemorlar",
       "description": "Bemorlar ro'yxati",
       "url": "/patients",
-      "icons": [{ "src": "/icon-192x192.svg", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
     },
     {
       "name": "Uchrashuvlar",
       "short_name": "Uchrashuvlar",
       "description": "Bugungi uchrashuvlar",
       "url": "/appointments",
-      "icons": [{ "src": "/icon-192x192.svg", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
     },
     {
       "name": "To'lovlar",
       "short_name": "To'lovlar",
       "description": "Moliyaviy hisobot",
       "url": "/payments",
-      "icons": [{ "src": "/icon-192x192.svg", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
     }
   ]
 }

@@ -16,6 +16,7 @@ import { base44 } from '@/api/base44Client';
 import { applyClinicSession, resolveClinicPlan } from '@/lib/clinicPlan';
 import { clinicAccessClosed } from '@/lib/clinicExpiry';
 import { useAuth } from '@/lib/AuthContext';
+import { MyClinicLogoImage } from '@/components/ui/ShifoCrmLogo';
 
 /**
  * Production-ready Login Page with Clinic ID + Username
@@ -587,12 +588,12 @@ export default function Login() {
           </Link>
         </div>
         <div className="text-center mb-6">
-          <motion.div 
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            className="w-16 h-16 bg-teal-600 rounded-2xl shadow-xl shadow-teal-200 flex items-center justify-center mx-auto mb-4 border border-white"
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="mx-auto mb-4 flex justify-center"
           >
-            {loginRole === 'admin' ? <ShieldCheck className="w-8 h-8 text-white" /> : <Building2 className="w-8 h-8 text-white" />}
+            <MyClinicLogoImage variant="light" className="h-16 w-auto" />
           </motion.div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Kirish</h1>
           <p className="text-slate-400 font-bold mt-1.5 uppercase text-[9px] tracking-[0.2em]">{loginRole === 'admin' ? 'Klinika Ma\'muri' : 'Shifokor / Xodim'}</p>

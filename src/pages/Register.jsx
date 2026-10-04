@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { ShifoCrmLogoEmblem } from '@/components/ui/ShifoCrmLogo';
+import { MyClinicLogoImage } from '@/components/ui/ShifoCrmLogo';
 import { normalizeClinicBilling } from '@/utils/superAdminBilling';
 import { LANDING_PLANS, TRIAL_DAYS } from '@/config/landingPricing';
 
@@ -149,8 +149,7 @@ export default function Register() {
         </div>
 
         <div className="mb-5 flex flex-col items-center gap-2 text-center">
-          <ShifoCrmLogoEmblem className="h-12 w-12" size={48} hasGlow={false} />
-          <p className="text-base font-black tracking-tight text-slate-900">SHIFO <span className="text-teal-600">CRM</span></p>
+          <MyClinicLogoImage variant="light" className="h-14 w-auto" />
           {role !== 'doctor' && (
             <span className="rounded-full bg-teal-50 px-3 py-1 text-[11px] font-bold text-teal-700">
               {TRIAL_DAYS} kunlik bepul sinov · {selectedPlan.name} tarifi

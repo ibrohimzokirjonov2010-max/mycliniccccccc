@@ -605,8 +605,8 @@ export default function PublicClinicPage() {
 
         {/* FOOTER */}
         <div className="pt-6 pb-4 text-center border-t border-slate-200">
-          <p className="text-[11px] font-bold text-slate-400 tracking-widest uppercase">Powered by SHIFOCRM</p>
-          <p className="text-[10px] text-slate-300 mt-1">© {new Date().getFullYear()} ShifoCRM</p>
+          <p className="text-[11px] font-bold text-slate-400 tracking-widest uppercase">Powered by My Clinic</p>
+          <p className="text-[10px] text-slate-300 mt-1">© {new Date().getFullYear()} My Clinic</p>
         </div>
       </div>
 

@@ -798,7 +798,7 @@
     "integration": {
       "activeSync": "INTEGRATION ACTIVE (LIVE)",
       "title": "Website & Template Integration",
-      "description": "Your website template is connected to Shifo CRM via two-way sync. Inquiries are sent to the CRM database, and busy time slots are automatically blocked on the site.",
+      "description": "Your website template is connected to My Clinic via two-way sync. Inquiries are sent to the CRM database, and busy time slots are automatically blocked on the site.",
       "checkConnection": "Check Connection",
       "testRealBooking": "Test Real Booking",
       "tabStatus": "Integration Status",
@@ -2233,7 +2233,7 @@
     "debt": "Debt",
     "monthlyInstallment": "{months} mos / {amount} UZS",
     "safeDbNotice": "Working with a secure database connection",
-    "version": "SHIFOCRM v2.0",
+    "version": "My Clinic v2.0",
     "departments": {
       "implant": "Implantology",
       "child": "Pediatric Dentistry",

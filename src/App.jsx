@@ -24,7 +24,7 @@ import PageNotFound from './lib/PageNotFound';
 import ErrorBoundary from './components/layout/ErrorBoundary';
 import { useFeature } from './hooks/useFeature';
 import { useIsMobile } from './hooks/useIsMobile';
-import { ShifoCrmLogoEmblem } from './components/ui/ShifoCrmLogo';
+import { MyClinicLogoImage } from './components/ui/ShifoCrmLogo';
 
 // ─── Lazy page imports (loaded only when user navigates there) ──────────────
 // Core pages (lazy for faster initial load)
@@ -175,13 +175,7 @@ const PlanRoute = memo(({ feature, children }) => {
 const AuthLoadingScreen = memo(() => (
   <div className="fixed inset-0 flex items-center justify-center bg-slate-950/95 backdrop-blur-md z-[99999]">
     <div className="flex flex-col items-center gap-4">
-      <div className="relative">
-        <ShifoCrmLogoEmblem className="w-16 h-16 animate-pulse" size={64} hasGlow={true} />
-      </div>
-      <div className="flex items-center gap-1.5">
-        <span className="text-white font-[950] text-sm tracking-widest uppercase">SHIFO</span>
-        <span className="text-[#00D084] font-[950] text-sm tracking-widest uppercase">CRM</span>
-      </div>
+      <MyClinicLogoImage variant="dark" className="h-16 w-auto animate-pulse" />
     </div>
   </div>
 ));
