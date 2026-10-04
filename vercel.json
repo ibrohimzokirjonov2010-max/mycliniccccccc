@@ -22,9 +22,12 @@
       ]
     }
   ],
+  "crons": [
+    { "path": "/api/cron/charge-trials", "schedule": "0 3 * * *" }
+  ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]

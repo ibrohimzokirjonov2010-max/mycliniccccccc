@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Building2, UserPlus, Loader2, 
@@ -14,6 +14,9 @@ import { useAuth } from '@/lib/AuthContext';
 import { MyClinicLogoImage } from '@/components/ui/ShifoCrmLogo';
 import { normalizeClinicBilling } from '@/utils/superAdminBilling';
 import { LANDING_PLANS, TRIAL_DAYS } from '@/config/landingPricing';
+import { CARD_BINDING_REQUIRED } from '@/config/cardBinding';
+import { attachCard, getBindingStatus } from '@/api/cardBindingClient';
+import CardBindingStep from '@/components/register/CardBindingStep';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -26,6 +29,13 @@ export default function Register() {
   const [role, setRole] = useState(fromLanding ? 'admin' : null); // 'admin' or 'doctor'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Karta biriktirish qadami (VITE_CARD_BINDING_REQUIRED yoki ?card_demo=1). Default: o'chiq.
+  const cardDemo = searchParams.get('card_demo') === '1';
+  const bindingWanted = CARD_BINDING_REQUIRED || cardDemo;
+  const [step, setStep] = useState('form'); // 'form' | 'card'
+  const [bindMode, setBindMode] = useState('live'); // live | mock | local-mock
+  const [cardError, setCardError] = useState('');
+  const createdClinicRef = useRef(null); // klinika yaratilgan bo'lsa (attach xatosida qayta yaratmaslik uchun)
   
   // Registration Forms
   const [adminForm, setAdminForm] = useState({
@@ -45,6 +55,32 @@ export default function Register() {
     commission: 30
   });
 
+  const buildClinicPayload = (clinicId, provider) => normalizeClinicBilling({
+    id: clinicId,
+    name: adminForm.clinicName,
+    plan: selectedPlan.id,
+    subscription_status: 'trialing',
+    signup_source: fromLanding ? 'landing' : 'manual',
+    ...(provider ? { payment_provider: provider } : {}),
+  });
+
+  // Klinika yaratilgach: auto-login va CRM (karta bilan ham, kartasiz ham bir xil).
+  const finishRegistration = async (clinicId) => {
+    try {
+      const loginResult = await base44.auth.login(clinicId, adminForm.username, adminForm.password);
+      if (loginResult?.success && loginResult.user) {
+        toast.success(`Klinika ochildi! ${TRIAL_DAYS} kunlik bepul sinov boshlandi.`);
+        if (setAuthData) setAuthData(loginResult.user);
+        setTimeout(() => navigate('/admin/dashboard'), 100);
+        return;
+      }
+    } catch (loginErr) {
+      console.warn('Auto-login after register failed:', loginErr);
+    }
+    toast.success('Klinika muvaffaqiyatli ochildi! Endi tizimga kiring.');
+    navigate('/login');
+  };
+
   const handleAdminRegister = async (e) => {
     e.preventDefault();
     setError('');
@@ -57,36 +93,60 @@ export default function Register() {
     setLoading(true);
     try {
       const clinicId = adminForm.clinicId.toLowerCase();
-      // 14 kunlik sinov: super-admin "Sinov (14 kun)" bilan bir xil mantiq
-      // (subscription_status=trialing, trial_ends_at va expires_at = bugun + 14 kun). DB sxemasi o'zgarmaydi.
-      const clinicPayload = normalizeClinicBilling({
-        id: clinicId,
-        name: adminForm.clinicName,
-        plan: selectedPlan.id,
-        subscription_status: 'trialing',
-        signup_source: fromLanding ? 'landing' : 'manual',
-      });
-      await base44.clinic.createClinic(
-        clinicPayload,
-        { name: 'Admin', username: adminForm.username, password: adminForm.password }
-      );
 
-      // Ro'yxatdan o'tgach to'g'ridan-to'g'ri CRM'ga kiramiz (muvaffaqiyatsiz bo'lsa — Login'ga).
-      try {
-        const loginResult = await base44.auth.login(clinicId, adminForm.username, adminForm.password);
-        if (loginResult?.success && loginResult.user) {
-          toast.success(`Klinika ochildi! ${TRIAL_DAYS} kunlik bepul sinov boshlandi.`);
-          if (setAuthData) setAuthData(loginResult.user);
-          setTimeout(() => navigate('/admin/dashboard'), 100);
+      if (bindingWanted) {
+        // 1-qadam tugadi -> karta qadami. Avval Click holatini aniqlaymiz.
+        const status = await getBindingStatus();
+        if (status.mode === 'unavailable') {
+          setError("Karta tekshiruvi xizmati hozircha mavjud emas. Birozdan so'ng qayta urinib ko'ring.");
           return;
         }
-      } catch (loginErr) {
-        console.warn('Auto-login after register failed:', loginErr);
+        // ?card_demo=1 (flag o'chiq) faqat TEST REJIMda ko'rsatiladi: Click haqiqiy ulangan bo'lsa — eski oqim.
+        const demoOnly = cardDemo && !CARD_BINDING_REQUIRED;
+        if (!(demoOnly && status.mode === 'live')) {
+          const existing = await base44.clinic.getAll();
+          if (existing.find((c) => String(c.id).toLowerCase() === clinicId)) {
+            setError('Ushbu Klinika ID band!');
+            return;
+          }
+          setBindMode(status.mode);
+          setCardError('');
+          setStep('card');
+          return;
+        }
       }
-      toast.success('Klinika muvaffaqiyatli ochildi! Endi tizimga kiring.');
-      navigate('/login');
+
+      // 14 kunlik sinov: super-admin "Sinov (14 kun)" bilan bir xil mantiq
+      // (subscription_status=trialing, trial_ends_at va expires_at = bugun + 14 kun). DB sxemasi o'zgarmaydi.
+      await base44.clinic.createClinic(
+        buildClinicPayload(clinicId),
+        { name: 'Admin', username: adminForm.username, password: adminForm.password }
+      );
+      await finishRegistration(clinicId);
     } catch (err) {
       setError(err.message || 'Xatolik yuz berdi');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Karta tasdiqlangan + rozilik berilgan: klinika yaratiladi, token serverda saqlanadi, CRM'ga kiramiz.
+  const handleCardComplete = async ({ proof, consentVersion }) => {
+    setCardError('');
+    setLoading(true);
+    const clinicId = adminForm.clinicId.toLowerCase();
+    try {
+      if (!createdClinicRef.current) {
+        await base44.clinic.createClinic(
+          buildClinicPayload(clinicId, bindMode === 'live' ? 'click' : 'mock'),
+          { name: 'Admin', username: adminForm.username, password: adminForm.password }
+        );
+        createdClinicRef.current = clinicId;
+      }
+      await attachCard(bindMode, { clinicId, proof, consentVersion });
+      await finishRegistration(clinicId);
+    } catch (err) {
+      setCardError(err.message || 'Xatolik yuz berdi. Qayta urinib ko\'ring');
     } finally {
       setLoading(false);
     }
@@ -230,7 +290,20 @@ export default function Register() {
               )}
             </AnimatePresence>
 
-            {role === 'admin' ? (
+            {role === 'admin' && step === 'card' ? (
+              <CardBindingStep
+                plan={selectedPlan}
+                mode={bindMode}
+                trialDays={TRIAL_DAYS}
+                submitting={loading}
+                submitError={cardError}
+                onBack={() => {
+                  if (createdClinicRef.current) { setCardError('Klinika allaqachon yaratilgan. Karta biriktirishni yakunlang.'); return; }
+                  setStep('form'); setCardError('');
+                }}
+                onComplete={handleCardComplete}
+              />
+            ) : role === 'admin' ? (
               <form onSubmit={handleAdminRegister} className="space-y-3">
                 <div className="space-y-1">
                   <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Klinika Nomi</Label>
@@ -275,7 +348,7 @@ export default function Register() {
                   disabled={loading}
                   className="w-full h-11 sm:h-14 bg-teal-600 hover:bg-teal-700 text-white rounded-xl sm:rounded-2xl font-black uppercase tracking-widest mt-2 text-xs sm:text-sm"
                 >
-                  {loading ? <Loader2 className="animate-spin w-4 h-4" /> : `${TRIAL_DAYS} kun bepul boshlash`}
+                  {loading ? <Loader2 className="animate-spin w-4 h-4" /> : (bindingWanted ? 'Davom etish' : `${TRIAL_DAYS} kun bepul boshlash`)}
                 </Button>
               </form>
             ) : (
