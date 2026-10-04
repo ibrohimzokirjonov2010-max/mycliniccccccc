@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { profileState } from '@/hooks/useBack';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { localizePlanName } from '@/lib/planNameLabel';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -802,7 +803,7 @@ export default function TreatmentTracking() {
                               onClick={(e) => {
                                 if (p.patient_id) {
                                   e.stopPropagation();
-                                  navigate(`/patients/${p.patient_id}`);
+                                  navigate(`/patients/${p.patient_id}`, { state: profileState() });
                                 }
                               }}
                               className="font-extrabold text-slate-900 hover:text-blue-600 transition-colors truncate block hover:underline"
@@ -914,7 +915,7 @@ export default function TreatmentTracking() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              onClick={() => navigate(`/patients/${p.patient_id}`)}
+                              onClick={() => navigate(`/patients/${p.patient_id}`, { state: profileState() })}
                               className="w-7 h-7 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50"
                               title={language === 'ru' ? 'Перейти в профиль пациента' : "Bemor Profiliga o'tish"}
                             >
@@ -1157,7 +1158,7 @@ export default function TreatmentTracking() {
                     type="button"
                     onClick={() => {
                       setSelectedDetailPlanId(null);
-                      navigate(`/patients/${activeDetailPlan.patient_id}`);
+                      navigate(`/patients/${activeDetailPlan.patient_id}`, { state: profileState() });
                     }}
                     className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
                   >

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { BackClose } from '@/hooks/useBackClose';
 import { useRestorableState, useUrlState } from '@/hooks/useRestorableState';
-import { canGoBackInApp } from '@/hooks/useBack';
+import { useProfileBack } from '@/hooks/useBack';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -158,13 +158,7 @@ export default function PatientProfile() {
 
   // Orqaga: oldingi sahifaga shu sahifadagi holati (filtr/sana/scroll) bilan qaytadi;
   // tarix yo'q bo'lsa (to'g'ridan-to'g'ri havola) — kelgan ro'yxatga yoki Bemorlarga
-  const handleBack = useCallback(() => {
-    if (canGoBackInApp()) {
-      navigate(-1);
-      return;
-    }
-    navigate(location.state?.from || '/patients', { replace: true });
-  }, [location.state, navigate]);
+  const handleBack = useProfileBack('/patients');
 
   // Horizontal scroll shadow indicator states
   const tabScrollRef = useRef(null);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { profileState } from '@/hooks/useBack';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -1054,7 +1055,7 @@ export default function Implants() {
                                 onClick={(e) => {
                                   if (i.patient_id) {
                                     e.stopPropagation();
-                                    navigate(`/patients/${i.patient_id}`);
+                                    navigate(`/patients/${i.patient_id}`, { state: profileState() });
                                   }
                                 }}
                                 className="font-black text-slate-900 hover:text-[#1499AD] transition-colors truncate block hover:underline text-xs"

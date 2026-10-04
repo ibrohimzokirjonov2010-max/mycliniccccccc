@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { BackClose } from '@/hooks/useBackClose';
-import { canGoBackInApp } from '@/hooks/useBack';
+import { useProfileBack } from '@/hooks/useBack';
 import { useUrlState } from '@/hooks/useRestorableState';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -582,10 +582,7 @@ export default function MobilePatientProfile() {
   };
 
   /* ── back ── */
-  const handleBack = useCallback(() => {
-    if (canGoBackInApp()) { navigate(-1); return; }
-    navigate(location.state?.from || '/patients', { replace: true });
-  }, [location.state, navigate]);
+  const handleBack = useProfileBack('/patients');
 
   const clinicLabel = clinicName && clinicName !== 'ShifoCRM'
     ? clinicName

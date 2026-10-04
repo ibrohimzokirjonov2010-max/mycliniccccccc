@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { profileState } from '@/hooks/useBack';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { localizePlanName } from '@/lib/planNameLabel';
 import { useNavigate } from 'react-router-dom';
@@ -769,7 +770,7 @@ export default function TreatmentPlans() {
                               onClick={(e) => {
                                 if (p.patient_id) {
                                   e.stopPropagation();
-                                  navigate(`/patients/${p.patient_id}`);
+                                  navigate(`/patients/${p.patient_id}`, { state: profileState() });
                                 }
                               }}
                               className="font-extrabold text-slate-900 hover:text-blue-600 transition-colors truncate block hover:underline"
@@ -1189,7 +1190,7 @@ export default function TreatmentPlans() {
                     type="button"
                     onClick={() => {
                       setSelectedDetailPlanId(null);
-                      navigate(`/patients/${activeDetailPlan.patient_id}`);
+                      navigate(`/patients/${activeDetailPlan.patient_id}`, { state: profileState() });
                     }}
                     className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
                   >

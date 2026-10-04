@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { profileState } from '@/hooks/useBack';
 import BackButton from '@/components/ui/BackButton';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
@@ -992,7 +993,7 @@ export default function ImplantDetail() {
             <span>{language === 'ru' ? 'Редактировать' : 'Tahrirlash'}</span>
           </Button>
           {activeTooth.patient_id && (
-            <Link to={`/patients/${activeTooth.patient_id}`} className="col-span-2 sm:col-span-1">
+            <Link to={`/patients/${activeTooth.patient_id}`} state={profileState()} className="col-span-2 sm:col-span-1">
               <Button
                 variant="outline"
                 size="sm"
