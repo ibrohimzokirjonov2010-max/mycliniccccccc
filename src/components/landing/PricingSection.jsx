@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, CalendarCheck, Check, Gift, Send, Star } from 'lucide-react';
-import { ShifoCrmLogoEmblem } from '@/components/ui/ShifoCrmLogo';
+import { MyClinicLogoImage } from '@/components/ui/ShifoCrmLogo';
 import {
   LANDING_PLANS, PRICING_HEADER, annualPrice, buyUrl, formatSoom, registerPath, ANNUAL_PAID_MONTHS, TRIAL_DAYS,
 } from '@/config/landingPricing';
@@ -124,12 +124,7 @@ export default function PricingSection() {
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <ShifoCrmLogoEmblem className="h-10 w-10" size={40} hasGlow={false} />
-            <span className="text-lg font-black tracking-tight text-slate-900">
-              SHIFO <span className="text-teal-600">CRM</span>
-            </span>
-          </div>
+          <MyClinicLogoImage variant="light" className="h-11 w-auto" />
           <div className="flex flex-wrap gap-2.5">
             <Badge icon={CalendarCheck}>{PRICING_HEADER.trialBadge}</Badge>
             <Badge icon={Gift}>{PRICING_HEADER.annualBadge}</Badge>

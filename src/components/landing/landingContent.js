@@ -32,7 +32,7 @@ export const QUICK_FACTS = [
 export const PROBLEMS = {
   eyebrow: 'Tanish holatlarmi?',
   title: "Har bir stomatolog duch keladigan muammolar",
-  text: "Daftar, Excel va telefon eslatmalari bilan klinikani boshqarish qimmatga tushadi. SHIFO CRM har birini hal qiladi.",
+  text: "Daftar, Excel va telefon eslatmalari bilan klinikani boshqarish qimmatga tushadi. My Clinic har birini hal qiladi.",
   items: [
     {
       icon: 'book',
@@ -77,7 +77,7 @@ export const PROBLEMS = {
 export const FEATURES = {
   eyebrow: 'Imkoniyatlar',
   title: 'Klinikangiz uchun kerak bo\'lgan hamma narsa',
-  text: "Quyidagi barcha bo'limlar SHIFO CRM ichida tayyor — alohida dastur o'rnatish shart emas.",
+  text: "Quyidagi barcha bo'limlar My Clinic ichida tayyor — alohida dastur o'rnatish shart emas.",
   items: [
     {
       icon: 'users', title: 'Bemorlar bazasi', plan: 'Basic',
@@ -195,7 +195,7 @@ export const FAQ = {
     },
     {
       q: "Telefonda ishlaydimi?",
-      a: "Ha. SHIFO CRM brauzerda ishlaydi va telefon yoki planshetga ilova kabi o'rnatiladi. Interfeys kichik ekranlar uchun moslashtirilgan.",
+      a: "Ha. My Clinic brauzerda ishlaydi va telefon yoki planshetga ilova kabi o'rnatiladi. Interfeys kichik ekranlar uchun moslashtirilgan.",
     },
     {
       q: "Telegram eslatma qanday ishlaydi?",

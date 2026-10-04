@@ -394,7 +394,7 @@ export default function MobilePublicPage() {
       {/* Footer hint */}
       <div className="px-10 text-center py-8">
         <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">
-          ShifoCRM Professional Public Links
+          My Clinic Professional Public Links
         </p>
       </div>
     </div>

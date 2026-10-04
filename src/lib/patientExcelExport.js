@@ -33,7 +33,7 @@ export function exportPatientToExcel({
   };
 
   // 1. HEADER & META
-  lines.push(`"SHIFOCRM — BEMOR TIBBIY KARTASI VA HISOBOTI (EXCEL EKSPORT)"`);
+  lines.push(`"MY CLINIC — BEMOR TIBBIY KARTASI VA HISOBOTI (EXCEL EKSPORT)"`);
   lines.push(`"Eksport sanasi:","${new Date().toLocaleDateString('uz-UZ')} ${new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}"`);
 
   // 2. BEMOR PASPORT VA SHAXSIY MA'LUMOTLARI

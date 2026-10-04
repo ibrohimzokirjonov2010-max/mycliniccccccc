@@ -14,7 +14,7 @@ const support = supportContacts();
 export const LANDING_CONTACT = {
   telegramUrl: support.url,
   phone: support.phone,
-  brand: 'SHIFO CRM',
+  brand: 'My Clinic',
 };
 
 /** Bepul sinov kunlari (superAdminBilling.normalizeClinicBilling → 14 kun). */
@@ -101,7 +101,7 @@ export function registerPath(planId) {
 
 /** "Sotib olish": Telegram orqali (oldindan yozilgan matn bilan). */
 export function buyUrl(plan) {
-  const text = `Salom! SHIFO CRM ${plan.name} tarifini (${formatSoom(plan.priceUzs).replace(/\u00A0/g, ' ')} so'm/oy) sotib olmoqchiman.`;
+  const text = `Salom! My Clinic ${plan.name} tarifini (${formatSoom(plan.priceUzs).replace(/\u00A0/g, ' ')} so'm/oy) sotib olmoqchiman.`;
   const sep = LANDING_CONTACT.telegramUrl.includes('?') ? '&' : '?';
   return `${LANDING_CONTACT.telegramUrl}${sep}text=${encodeURIComponent(text)}`;
 }
