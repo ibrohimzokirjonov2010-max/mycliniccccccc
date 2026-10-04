@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { profileState } from '@/hooks/useBack';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/lib/queryKeys';
@@ -2398,7 +2399,7 @@ export default function Payments() {
                                   onClick={(e) => {
                                     if (p.patient_id) {
                                       e.stopPropagation();
-                                      navigate(`/patients/${p.patient_id}`);
+                                      navigate(`/patients/${p.patient_id}`, { state: profileState() });
                                     }
                                   }}
                                   className="font-extrabold text-slate-900 group-hover:text-[#1499AD] transition-colors truncate block hover:underline"
@@ -3428,7 +3429,7 @@ export default function Payments() {
                             onClick={() => {
                               if (sp.patient_id) {
                                 setSelectedPayment(null);
-                                navigate(`/patients/${sp.patient_id}`);
+                                navigate(`/patients/${sp.patient_id}`, { state: profileState() });
                               }
                             }}
                             className="hover:text-[#1499AD] hover:underline cursor-pointer"

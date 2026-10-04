@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { profileState } from '@/hooks/useBack';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -137,7 +138,7 @@ export default function ChairsideToday() {
 
   const openPatient = (appt) => {
     if (!appt.patient_id) return;
-    navigate(`/patients/${appt.patient_id}`);
+    navigate(`/patients/${appt.patient_id}`, { state: profileState() });
   };
 
   const formatTodayLabel = () => {

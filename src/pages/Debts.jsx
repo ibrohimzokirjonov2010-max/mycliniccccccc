@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { profileState } from '@/hooks/useBack';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { base44 } from '@/api/base44Client';
 import { sendTelegramMessage } from '@/api/telegramBot';
@@ -745,7 +746,7 @@ export default function Debts() {
                             <span 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(`/patients/${p.id}`);
+                                navigate(`/patients/${p.id}`, { state: profileState() });
                               }}
                               className="font-extrabold text-slate-900 hover:text-blue-600 transition-colors truncate block hover:underline"
                             >
@@ -1236,7 +1237,7 @@ export default function Debts() {
                 onClick={() => {
                   const pId = selectedDebtPatient.id;
                   setSelectedDebtPatient(null);
-                  navigate(`/patients/${pId}`);
+                  navigate(`/patients/${pId}`, { state: profileState() });
                 }}
                 className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
               >

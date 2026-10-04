@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { profileState } from '@/hooks/useBack';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -275,7 +276,7 @@ export default function MobilePatientsV2() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: searchQuery ? 0 : Math.min(index, 6) * 0.02 }}
-                    onClick={() => navigate(`/patients/${patient.id}`)}
+                    onClick={() => navigate(`/patients/${patient.id}`, { state: profileState() })}
                     className="bg-white rounded-2xl p-3.5 mb-2.5 shadow-sm border border-slate-100 flex items-center gap-3 relative active:scale-[0.98] transition-transform content-visibility-auto"
                   >
                     {/* Avatar */}

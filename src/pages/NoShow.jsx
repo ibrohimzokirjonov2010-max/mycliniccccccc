@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { profileState } from '@/hooks/useBack';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
@@ -243,7 +244,7 @@ export default function NoShow() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-7.5 w-7.5 rounded-lg bg-slate-50 text-slate-450 hover:bg-slate-900 hover:text-white transition-all shrink-0 animate-none p-0"
-                                onClick={() => navigate(`/patients/${appt.patient_id}`)}
+                                onClick={() => navigate(`/patients/${appt.patient_id}`, { state: profileState() })}
                                 title={t('noShow.patientProfile') || "Bemor profili"}
                               >
                                 <ChevronRight className="w-3.5 h-3.5" />
@@ -330,7 +331,7 @@ export default function NoShow() {
                             <Button 
                               variant="ghost" 
                               size="icon"
-                              onClick={() => navigate(`/patients/${appt.patient_id}`)}
+                              onClick={() => navigate(`/patients/${appt.patient_id}`, { state: profileState() })}
                               className="h-8 w-8 rounded-lg bg-slate-50 text-slate-450 p-0 hover:bg-slate-100"
                             >
                               <ChevronRight className="w-3.5 h-3.5" />

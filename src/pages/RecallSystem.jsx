@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { profileState } from '@/hooks/useBack';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '@/i18n/LanguageContext';
@@ -1103,7 +1104,7 @@ export default function RecallSystem() {
                                 onClick={(e) => {
                                   if (recall.patient_id) {
                                     e.stopPropagation();
-                                    navigate(`/patients/${recall.patient_id}`);
+                                    navigate(`/patients/${recall.patient_id}`, { state: profileState() });
                                   }
                                 }}
                                 className="font-extrabold text-slate-900 hover:text-blue-600 transition-colors truncate block hover:underline"

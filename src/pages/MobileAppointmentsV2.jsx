@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { profileState } from '@/hooks/useBack';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useRestorableState, useRestorableDate } from '@/hooks/useRestorableState';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -392,7 +393,7 @@ export default function MobileAppointmentsV2() {
     try {
       await base44.entities.Appointment.update(app.id, { status: 'In Progress', start_time: new Date().toISOString() });
       toast.success(t('common.success'));
-      navigate(`/patients/${app.patient_id}`);
+      navigate(`/patients/${app.patient_id}`, { state: profileState() });
     } catch (e) { toast.error(t('common.error')); }
   };
 

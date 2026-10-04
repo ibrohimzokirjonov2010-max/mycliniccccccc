@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { profileState } from '@/hooks/useBack';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -83,7 +84,7 @@ export default function MobilePatients() {
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div 
-            onClick={() => navigate(`/patients/${patient.id}`)}
+            onClick={() => navigate(`/patients/${patient.id}`, { state: profileState() })}
             className="cursor-pointer"
           >
             <div className="flex items-start justify-between gap-2">
@@ -140,7 +141,7 @@ export default function MobilePatients() {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                navigate(`/patients/${patient.id}`);
+                navigate(`/patients/${patient.id}`, { state: profileState() });
               }}
               className="flex flex-col items-center justify-center gap-1 py-1.5 px-2 rounded-xl bg-gray-100 text-gray-700 font-semibold text-[10px] active:scale-95 transition-all min-h-[40px] mt-2 col-span-3"
             >
