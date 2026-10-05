@@ -2225,7 +2225,7 @@
     box-shadow: none !important;
   }
   html.printing-implant-factura .implant-factura-jaw {
-    max-height: 36mm;
+    max-height: 32mm;
     width: auto;
     margin-left: auto;
     margin-right: auto;
@@ -2250,8 +2250,8 @@
   }
   html.printing-implant-factura .implant-factura-eslatma strong,
   html.printing-implant-factura .implant-factura-eslatma p {
-    font-size: 11px;
-    line-height: 1.25;
+    font-size: 10px;
+    line-height: 1.2;
   }
 }
 
