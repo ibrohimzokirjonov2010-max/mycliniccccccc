@@ -523,7 +523,9 @@ export function stripInventedPlaceholderPrices(snapshot) {
     const invented = INVENTED_PLACEHOLDER_PRICES[line.id];
     const qty = Number(line.qty) || 0;
     const price = Number(line.unitPrice) || 0;
-    if (qty === 0 && invented && price === invented && line.source !== 'extra') {
+    const unselectedPlaceholder = qty === 0 && price > 0 && line.source === 'placeholder';
+    const inventedBlank = qty === 0 && invented && price === invented && line.source !== 'extra';
+    if (unselectedPlaceholder || inventedBlank) {
       return { ...line, unitPrice: 0, total: 0 };
     }
     return line;

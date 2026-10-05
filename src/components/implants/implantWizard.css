@@ -1937,8 +1937,8 @@
 .implant-factura-colhead,
 .implant-factura-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) 104px 72px minmax(108px, 0.95fr);
-  gap: 2px 4px;
+  grid-template-columns: minmax(0, 1.85fr) 68px 50px minmax(78px, 0.82fr);
+  gap: 1px 3px;
   align-items: center;
 }
 .implant-factura-colhead {
@@ -1955,10 +1955,10 @@
   justify-self: end;
 }
 .implant-factura-row {
-  min-height: 30px;
-  padding: 3px 0;
+  min-height: 26px;
+  padding: 2px 0;
   border-bottom: 1px solid #e7e5e4;
-  font-size: 12px;
+  font-size: 11px;
 }
 .implant-factura-row.is-flat {
   grid-template-columns: minmax(0, 1.45fr) 1fr minmax(120px, 0.9fr);
@@ -1970,7 +1970,8 @@
   min-width: 0;
   font-weight: 700;
   color: #1c1917;
-  line-height: 1.25;
+  line-height: 1.2;
+  font-size: 11px;
 }
 .implant-factura-row-label small {
   display: block;
@@ -2018,10 +2019,11 @@
   box-shadow: none;
 }
 .implant-factura-input-money {
-  width: 100px;
+  width: 64px;
   max-width: 100%;
   text-align: right;
-  padding: 0 2px;
+  padding: 0 1px;
+  font-size: 11px;
 }
 .implant-factura-input-qty {
   width: 32px;
@@ -2045,7 +2047,7 @@
   font-size: 12px;
 }
 .implant-factura-line-total {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   color: #1d4ed8;
   white-space: nowrap;

@@ -161,6 +161,14 @@ const presented = facturaFromImplantRecord({
 assert(presented.patient_name === 'Odilbek Panda', 'saved factura patient');
 assert(presented.stage2[0].unitPrice === 0, 'saved invented titan price is blank on the print');
 assert(presented.stage1[0].unitPrice === 1500000 && presented.stage1[0].qty === 2, 'saved implant price kept');
+const unselected = facturaFromImplantRecord({
+  factura: {
+    stage1: [{ id: 'implant', qty: 1, unitPrice: 1000, total: 1000, source: 'implant' }],
+    stage2: [{ id: 'veneer', qty: 0, unitPrice: 1600000, total: 0, source: 'placeholder' }],
+  },
+});
+assert(unselected.stage2[0].unitPrice === 0, 'unselected placeholder price stays blank');
+assert(unselected.stage1[0].unitPrice === 1000, 'selected case price kept');
 assert(typeof printImplantFactura === 'function', 'print helper');
 assert(typeof isDesktopViewport === 'function', 'desktop helper');
 assert(printImplantFactura() === false, 'print no-ops without window.print');
