@@ -45,8 +45,8 @@ const PAPER = {
   veneer: 'Vinir',
   metal: 'Metallokeramika',
   zircon: 'Sirkoniy koronka',
-  zirconStd: 'Standart',
-  zirconEst: 'Estetik',
+  zirconStd: 'Standard',
+  zirconEst: 'High',
   zirconPre: 'Premium',
   notice: 'Eslatma!',
   notice1: "1- bosqichda hisoblab berilgan harajatlar miqdori 3 oy amal qiladi,",
@@ -98,12 +98,13 @@ function sizeHint(snapshot) {
   return sizes.length === 1 ? sizes[0] : '';
 }
 
-function FacturaMoney({ value, onChange, ariaLabel }) {
+function FacturaMoney({ value, onChange, ariaLabel, readOnly = false }) {
   return (
     <input
       type="text"
       inputMode="numeric"
       aria-label={ariaLabel}
+      readOnly={readOnly}
       value={Number(value) ? formatSom(value) : ''}
       onChange={(e) => {
         const digits = e.target.value.replace(/\D/g, '');
@@ -114,12 +115,13 @@ function FacturaMoney({ value, onChange, ariaLabel }) {
   );
 }
 
-function FacturaQty({ value, onChange, ariaLabel }) {
+function FacturaQty({ value, onChange, ariaLabel, readOnly = false }) {
   return (
     <input
       type="text"
       inputMode="numeric"
       aria-label={ariaLabel}
+      readOnly={readOnly}
       value={Number(value) ? String(value) : ''}
       onChange={(e) => {
         const digits = e.target.value.replace(/\D/g, '');
@@ -208,6 +210,7 @@ function MoneyRow({ item, onEdit }) {
             <span className="implant-factura-eq">=</span>
             <FacturaMoney
               value={line.unitPrice}
+              readOnly={!onEdit}
               onChange={(unitPrice) => onEdit?.(line.id, 'unitPrice', unitPrice)}
               ariaLabel={`${label} ${PAPER.price}`}
             />
@@ -219,6 +222,7 @@ function MoneyRow({ item, onEdit }) {
           <span className="implant-factura-row-price">
             <FacturaMoney
               value={line.unitPrice}
+              readOnly={!onEdit}
               onChange={(unitPrice) => onEdit?.(line.id, 'unitPrice', unitPrice)}
               ariaLabel={`${label} ${PAPER.price}`}
             />
@@ -227,6 +231,7 @@ function MoneyRow({ item, onEdit }) {
             <span className="implant-factura-times">×</span>
             <FacturaQty
               value={line.qty}
+              readOnly={!onEdit}
               onChange={(qty) => onEdit?.(line.id, 'qty', qty)}
               ariaLabel={`${label} ${PAPER.qty}`}
             />
@@ -287,13 +292,28 @@ function take(byId, used, id) {
   return line;
 }
 
-function partitionStage1(lines, snapshot) {
+function resolveBrandRows(catalogBrands) {
+  if (!Array.isArray(catalogBrands) || catalogBrands.length === 0) {
+    return CATALOG_BRANDS.map((row) => ({ ...row, aliases: [row.label] }));
+  }
+  return catalogBrands.map((brand) => {
+    const label = String(brand.label || brand.name || '').trim();
+    const modelBits = String(brand.model || '')
+      .split(/[,/|]/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    return { key: normBrand(label), label, aliases: [label, ...modelBits] };
+  }).filter((row) => row.label);
+}
+
+function partitionStage1(lines, snapshot, catalogBrands) {
   const byId = new Map((lines || []).map((line) => [line.id, line]));
   const used = new Set();
   const implant = take(byId, used, 'implant');
   const brand = brandOf(snapshot, implant);
   const brandKey = normBrand(brand);
-  const catalogHit = CATALOG_BRANDS.find((row) => row.key === brandKey);
+  const rows = resolveBrandRows(catalogBrands);
+  const catalogHit = rows.find((row) => row.aliases.some((alias) => normBrand(alias) === brandKey));
   const hint = sizeHint(snapshot);
   const left = [];
 
@@ -306,12 +326,13 @@ function partitionStage1(lines, snapshot) {
       icon: 'screw',
     });
   }
-  CATALOG_BRANDS.forEach((row) => {
+  rows.forEach((row) => {
     if (catalogHit && row.key === catalogHit.key && implant) {
+      const matched = row.aliases.find((alias) => normBrand(alias) === brandKey) || row.label;
       left.push({
         type: 'line',
         line: implant,
-        displayLabel: row.label,
+        displayLabel: matched,
         hint,
         icon: 'screw',
       });
@@ -430,69 +451,88 @@ function toothBox(t) {
   return { w: 10, h: 10 };
 }
 
-function ArchDiagram({ teeth, selectedSet, variant }) {
-  const upper = variant === 'upper';
-  const p0 = upper ? { x: 24, y: 34 } : { x: 32, y: 112 };
-  const p1 = upper ? { x: 210, y: 146 } : { x: 210, y: 4 };
-  const p2 = upper ? { x: 396, y: 34 } : { x: 388, y: 112 };
-  const placed = teeth.map((fdi, index) => {
+function placeArch(teeth, p0, p1, p2) {
+  return teeth.map((fdi, index) => {
     const t = (index + 0.5) / teeth.length;
     const pos = quadPoint(t, p0, p1, p2);
     const tan = quadTangent(t, p0, p1, p2);
     const rot = (Math.atan2(tan.y, tan.x) * 180) / Math.PI;
-    return { fdi: String(fdi), t, ...pos, rot, ...toothBox(t) };
+    return { fdi: String(fdi), ...pos, rot, ...toothBox(t) };
   });
+}
+
+function JawTooth({ tooth, selected }) {
+  return (
+    <g data-factura-tooth={tooth.fdi} data-selected={selected ? 'true' : 'false'}>
+      <g transform={`translate(${tooth.x} ${tooth.y}) rotate(${tooth.rot})`}>
+        <rect
+          x={-tooth.w / 2}
+          y={-tooth.h / 2}
+          width={tooth.w}
+          height={tooth.h}
+          rx="3.5"
+          fill={selected ? '#e7efff' : '#f4f1ec'}
+          stroke={selected ? '#1d4ed8' : '#b7b0a8'}
+          strokeWidth={selected ? 1.7 : 0.8}
+        />
+      </g>
+      {selected ? (
+        <path
+          d={`M ${tooth.x - 4.2} ${tooth.y + 0.4} l 2.8 3.1 l 5.6 -6.4`}
+          fill="none"
+          stroke="#1d4ed8"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ) : null}
+    </g>
+  );
+}
+
+function JawSilhouette({ selectedSet }) {
+  const upper = placeArch(
+    UPPER_FDI,
+    { x: 62, y: 74 },
+    { x: 280, y: 128 },
+    { x: 498, y: 74 },
+  );
+  const lower = placeArch(
+    LOWER_FDI,
+    { x: 86, y: 178 },
+    { x: 280, y: 156 },
+    { x: 474, y: 178 },
+  );
   return (
     <svg
-      className="implant-factura-arch-svg"
-      viewBox="0 0 420 150"
+      className="implant-factura-jaw"
+      viewBox="0 0 560 248"
       role="img"
-      aria-label={upper ? 'Yuqori tish qatori' : 'Pastki tish qatori'}
-      data-testid={upper ? 'implant-factura-arch-upper' : 'implant-factura-arch-lower'}
+      aria-label="Tish qatori formulasi"
+      data-testid="implant-factura-jaw"
     >
       <path
-        d={`M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`}
-        fill="none"
-        stroke="#d9d4ce"
-        strokeWidth="38"
-        strokeLinecap="round"
+        className="implant-factura-gum"
+        d="M30 90 C52 34 150 10 280 10 C410 10 508 34 530 90 C498 122 408 146 280 150 C152 146 62 122 30 90 Z"
       />
       <path
-        d={`M ${p0.x} ${p0.y} Q ${p1.x} ${p1.y} ${p2.x} ${p2.y}`}
-        fill="none"
-        stroke="#eeeae4"
-        strokeWidth="16"
-        strokeLinecap="round"
+        className="implant-factura-gum-inner"
+        d="M92 92 C132 58 200 44 280 44 C360 44 428 58 468 92 C424 114 356 126 280 126 C204 126 136 114 92 92 Z"
       />
-      {placed.map((tooth) => {
-        const on = selectedSet.has(tooth.fdi);
-        return (
-          <g key={tooth.fdi} data-factura-tooth={tooth.fdi} data-selected={on ? 'true' : 'false'}>
-            <g transform={`translate(${tooth.x} ${tooth.y}) rotate(${tooth.rot})`}>
-              <rect
-                x={-tooth.w / 2}
-                y={-tooth.h / 2}
-                width={tooth.w}
-                height={tooth.h}
-                rx="3"
-                fill={on ? '#e8eefc' : '#f7f4ef'}
-                stroke={on ? '#1d4ed8' : '#a8a29e'}
-                strokeWidth={on ? 1.6 : 1}
-              />
-            </g>
-            {on ? (
-              <path
-                d={`M ${tooth.x - 4.5} ${tooth.y} l 3 3.4 l 6.2 -7`}
-                fill="none"
-                stroke="#1d4ed8"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            ) : null}
-          </g>
-        );
-      })}
+      <path
+        className="implant-factura-gum implant-factura-gum-lower"
+        d="M52 160 C82 214 164 238 280 240 C396 238 478 214 508 160 C468 196 386 214 280 216 C174 214 92 196 52 160 Z"
+      />
+      <g data-testid="implant-factura-arch-upper">
+        {upper.map((tooth) => (
+          <JawTooth key={tooth.fdi} tooth={tooth} selected={selectedSet.has(tooth.fdi)} />
+        ))}
+      </g>
+      <g data-testid="implant-factura-arch-lower">
+        {lower.map((tooth) => (
+          <JawTooth key={`l-${tooth.fdi}`} tooth={tooth} selected={selectedSet.has(tooth.fdi)} />
+        ))}
+      </g>
     </svg>
   );
 }
@@ -516,11 +556,12 @@ export default function ImplantWizardFactura({
   onEdit,
   onPrint,
   showPrintButton = true,
+  catalogBrands,
 }) {
   if (!snapshot) return null;
   const selectedSet = new Set((snapshot.teeth || []).map(String));
   const title = resolveClinicTitle(clinicName || snapshot.clinic);
-  const stage1 = partitionStage1(snapshot.stage1, snapshot);
+  const stage1 = partitionStage1(snapshot.stage1, snapshot, catalogBrands);
   const stage2 = partitionStage2(snapshot.stage2);
   const lines = snapshot.toothLines || [];
 
@@ -584,9 +625,7 @@ export default function ImplantWizardFactura({
           <div className="implant-factura-formula-note">
             <span>{PAPER.overall}:</span>
             <p className="implant-factura-ink">
-              {snapshot.brand ? `${snapshot.brand}` : ''}
-              {snapshot.teeth?.length ? `${snapshot.brand ? ' · ' : ''}${snapshot.teeth.length} ${PAPER.each}` : ''}
-              {!snapshot.brand && !snapshot.teeth?.length ? '—' : ''}
+              {snapshot.teeth?.length ? snapshot.teeth.join(', ') : ''}
             </p>
             {lines.length ? (
               <ul className="implant-factura-sizes">
@@ -602,8 +641,7 @@ export default function ImplantWizardFactura({
           </div>
         </div>
         <div className="implant-factura-arches" data-testid="implant-factura-arch">
-          <ArchDiagram teeth={UPPER_FDI} selectedSet={selectedSet} variant="upper" />
-          <ArchDiagram teeth={LOWER_FDI} selectedSet={selectedSet} variant="lower" />
+          <JawSilhouette selectedSet={selectedSet} />
         </div>
       </section>
 

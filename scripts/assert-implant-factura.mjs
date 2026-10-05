@@ -14,6 +14,7 @@ import {
   formatSom,
   printImplantFactura,
   isDesktopViewport,
+  facturaFromImplantRecord,
   IMPLANT_WIZARD_FACTURA_MARKER,
 } from '../src/components/implants/implantFactura.js';
 
@@ -141,6 +142,25 @@ const sizedNotes = encodeFacturaNotes('', sameSize);
 assert(sizedNotes.includes('Ø4.5×L10'), 'factura text includes size');
 assert(sizedNotes.includes('Osstem'), 'factura text includes brand');
 assert(empty.stage2.some((l) => l.id === 'zircon_std' && l.qty === 0), 'empty zircon tiers');
+const titanBlank = empty.stage2.find((l) => l.id === 'titan_frame');
+assert(titanBlank && titanBlank.unitPrice === 0, `titan stays blank without a catalog price: ${titanBlank?.unitPrice}`);
+const zirconTier = empty.stage2.find((l) => l.id === 'zircon_std');
+assert(zirconTier && zirconTier.unitPrice === 0, `zircon tier stays blank without a tier price: ${zirconTier?.unitPrice}`);
+const presented = facturaFromImplantRecord({
+  patient_name: 'Odilbek Panda',
+  factura: {
+    v: 1,
+    patient_name: 'Odilbek Panda',
+    teeth: ['11', '48'],
+    stage1: [{ id: 'implant', label: 'Dentium', qty: 2, unitPrice: 1500000, total: 3000000 }],
+    stage2: [{ id: 'titan_frame', qty: 0, unitPrice: 250000, total: 0, source: 'placeholder' }],
+    stage1Total: 3000000,
+    stage2Total: 0,
+  },
+});
+assert(presented.patient_name === 'Odilbek Panda', 'saved factura patient');
+assert(presented.stage2[0].unitPrice === 0, 'saved invented titan price is blank on the print');
+assert(presented.stage1[0].unitPrice === 1500000 && presented.stage1[0].qty === 2, 'saved implant price kept');
 assert(typeof printImplantFactura === 'function', 'print helper');
 assert(typeof isDesktopViewport === 'function', 'desktop helper');
 assert(printImplantFactura() === false, 'print no-ops without window.print');

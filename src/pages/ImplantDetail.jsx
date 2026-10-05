@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { profileState } from '@/hooks/useBack';
 import BackButton from '@/components/ui/BackButton';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft, Edit2, Trash2, Download, Plus, AlertTriangle,
+  ArrowLeft, Edit2, Trash2, Printer, Plus, AlertTriangle,
   Clock, FileText, Camera, Activity, Phone,
   Building2, Layers, Settings2, Hash, UserRound, CalendarDays,
   BellRing, Receipt, Table as TableIcon,
@@ -29,6 +30,9 @@ import { uploadImage } from '@/utils/imageUpload';
 import { cn } from '@/lib/utils';
 import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import ImplantForm from '../components/implants/ImplantForm';
+import ImplantWizardFactura from '../components/implants/ImplantWizardFactura';
+import { facturaFromImplantRecord, printImplantFactura } from '../components/implants/implantFactura';
+import { DEFAULT_IMPLANT_BRANDS, listImplantBrandsReadOnly } from '../components/implants/ImplantBrandsModal';
 import {
   buildLinkedServiceModel,
   caseServicesGrandTotal,
@@ -95,6 +99,8 @@ export default function ImplantDetail() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('excel'); // 'excel' | 'clinical' | 'docs' | 'timeline'
   const [editOpen, setEditOpen] = useState(false);
+  const [facturaOpen, setFacturaOpen] = useState(false);
+  const [catalogBrands, setCatalogBrands] = useState(null);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
   const [zoomImg, setZoomImg] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -314,6 +320,30 @@ export default function ImplantDetail() {
     if (activeTooth.syntheticToothKey) return implant?.id || String(activeTooth.id).split('__')[0];
     return activeTooth.id;
   }, [activeTooth, implant]);
+
+  useEffect(() => {
+    if (!facturaOpen) return undefined;
+    let cancelled = false;
+    listImplantBrandsReadOnly().then((rows) => {
+      if (!cancelled) setCatalogBrands(Array.isArray(rows) ? rows : []);
+    });
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => {
+      if (e.key === 'Escape') setFacturaOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      cancelled = true;
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [facturaOpen]);
+
+  const facturaSnapshot = useMemo(
+    () => (implant ? facturaFromImplantRecord(implant, { clinicName }) : null),
+    [implant, clinicName],
+  );
 
   if (loading) return (
     <div className="space-y-4 max-w-6xl mx-auto pb-10">
@@ -670,57 +700,6 @@ export default function ImplantDetail() {
     }
   };
 
-  const exportClinicalPassport = () => {
-    const doc = new jsPDF();
-    const brand = (activeTooth.firma === 'Boshqa' ? (activeTooth.firma_custom || 'Boshqa') : activeTooth.firma) || '—';
-    const system = activeTooth.brend || activeTooth.model || '—';
-    const fdi = teethList.map((n) => toothIdToFdi(n)).filter(Boolean).join(', ') || '—';
-    const size = (activeTooth.diameter || activeTooth.length)
-      ? `${activeTooth.diameter || '—'} × ${activeTooth.length || '—'} mm`
-      : '—';
-    const placed = (() => {
-      const raw = String(activeTooth.placement_date || '');
-      const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      return iso ? `${iso[3]}.${iso[2]}.${iso[1]}` : (raw || '—');
-    })();
-    doc.setFontSize(16);
-    doc.setTextColor(15, 118, 110);
-    doc.text(`${clinicName || 'Klinika'} — Implant pasporti`, 14, 18);
-    doc.setTextColor(30, 41, 59);
-    doc.setFontSize(11);
-    const rows = [
-      ['Klinika', clinicName || '—'],
-      ['Bemor', activeTooth.patient_name || '—'],
-      ['Tish (FDI)', fdi],
-      ['Brend', brand],
-      ['Tizim / model', system],
-      ['Diametr × uzunlik', size],
-      ['LOT / seria', activeTooth.lot_number || '—'],
-      ['Suyak turi', activeTooth.bone_type || '—'],
-      ['Torque (Ncm)', activeTooth.torque || '—'],
-      ['ISQ', activeTooth.isq || '—'],
-      ['Joylash sanasi', placed],
-      ['Loading protokoli', activeTooth.loading_protocol || activeTooth.protocol || '—'],
-      ['Jarroh', activeTooth.doctor || '—'],
-      ['Holati', displayStatus || '—'],
-    ];
-    let y = 28;
-    rows.forEach(([label, value]) => {
-      doc.setFont(undefined, 'bold');
-      doc.text(`${label}:`, 14, y);
-      doc.setFont(undefined, 'normal');
-      doc.text(String(value), 70, y);
-      y += 8;
-    });
-    doc.setDrawColor(20, 184, 166);
-    doc.rect(14, y + 4, 80, 36);
-    doc.setFontSize(9);
-    doc.text('Pasport stikeri', 18, y + 14);
-    const tishStr = teethList.map((n) => toothIdToFdi(n)).join('-') || 'tish';
-    doc.save(`Implant_Pasport_${(activeTooth.patient_name || 'Bemor').replace(/\s+/g, '_')}_#${tishStr}.pdf`);
-    toast.success('Klinik pasport PDF yuklandi');
-  };
-
   // Services card PDF (separate from the clinical passport)
   const exportPDF = () => {
     const doc = new jsPDF();
@@ -970,11 +949,12 @@ export default function ImplantDetail() {
           <Button
             variant="outline"
             size="sm"
-            onClick={exportClinicalPassport}
+            onClick={() => setFacturaOpen(true)}
+            data-testid="implant-detail-chop-etish"
             className="min-h-[44px] h-11 sm:h-9 px-3.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 gap-1.5 bg-white hover:bg-slate-50"
           >
-            <Download className="w-4 h-4 text-[#14b8a6] shrink-0" />
-            <span>{language === 'ru' ? 'PDF Паспорт' : 'PDF Pasport'}</span>
+            <Printer className="w-4 h-4 text-[#14b8a6] shrink-0" />
+            <span>{language === 'ru' ? 'Печать' : 'Chop etish'}</span>
           </Button>
           <Button
             variant="outline"
@@ -1131,7 +1111,7 @@ export default function ImplantDetail() {
           implant={activeTooth}
           language={language}
           onZoom={setZoomImg}
-          onOpenPassport={exportClinicalPassport}
+          onOpenPassport={() => setFacturaOpen(true)}
           onUpload={handleStagePhotoUpload}
           uploadingSlot={uploadingSlot}
         />
@@ -1451,6 +1431,54 @@ export default function ImplantDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {facturaOpen && facturaSnapshot && createPortal(
+        <div
+          className="implant-wizard-factura-overlay"
+          data-implant-factura-overlay
+          role="dialog"
+          aria-modal="true"
+          aria-label="Hisob-faktura"
+          style={{ pointerEvents: 'auto', zIndex: 400 }}
+          onClick={() => setFacturaOpen(false)}
+        >
+          <div
+            className="implant-wizard-factura-sheet implant-wizard-factura-print-root"
+            style={{ pointerEvents: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="implant-wizard-factura-toolbar" style={{ pointerEvents: 'auto', zIndex: 30 }}>
+              <button
+                type="button"
+                className="implant-wizard-ghost"
+                data-testid="implant-wizard-factura-close"
+                style={{ pointerEvents: 'auto' }}
+                onClick={() => setFacturaOpen(false)}
+              >
+                {language === 'ru' ? 'Закрыть' : 'Yopish'}
+              </button>
+              <button
+                type="button"
+                className="implant-wizard-cta"
+                data-testid="implant-wizard-factura-print"
+                style={{ backgroundColor: '#0d9488', color: '#fff', pointerEvents: 'auto' }}
+                onClick={() => printImplantFactura()}
+              >
+                <Printer className="w-4 h-4" />
+                {language === 'ru' ? 'Печать' : 'Chop etish'}
+              </button>
+            </div>
+            <ImplantWizardFactura
+              snapshot={facturaSnapshot}
+              clinicName={clinicName}
+              catalogBrands={catalogBrands?.length ? catalogBrands : DEFAULT_IMPLANT_BRANDS}
+              showPrintButton={false}
+              onPrint={printImplantFactura}
+            />
+          </div>
+        </div>,
+        document.body
+      )}
 
     </div>
   );

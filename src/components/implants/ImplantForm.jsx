@@ -20,6 +20,7 @@ import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import { useAuth } from '@/lib/AuthContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { getOrSeedExtraServices, DEFAULT_EXTRA_SERVICES } from './ExtraServicesManagerModal';
+import { DEFAULT_IMPLANT_BRANDS, listImplantBrandsReadOnly } from './ImplantBrandsModal';
 import { getServiceLabel, mergeExtraServicesCatalog, IMPLANT_WIZARD_STEP2_MARKER, normalizeServiceId } from './implantWizardLabels';
 import {
   buildFacturaDocument,
@@ -301,6 +302,7 @@ export default function ImplantForm({
   const [promptSizes, setPromptSizes] = useState(false);
   const [facturaEdits, setFacturaEdits] = useState({});
   const [facturaPreviewOpen, setFacturaPreviewOpen] = useState(false);
+  const [catalogBrands, setCatalogBrands] = useState(null);
   // Implant narxi bemorning alohida "Implantlar" rejasi (qarz) sifatida yoziladi; nomi tahrirlanadi.
   const [planName, setPlanName] = useState(IMPLANT_PLAN_DEFAULT_NAME);
   const [planNameTouched, setPlanNameTouched] = useState(false);
@@ -314,6 +316,15 @@ export default function ImplantForm({
   useEffect(() => {
     setLocalPatients(patients);
   }, [patients]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    let cancelled = false;
+    listImplantBrandsReadOnly().then((rows) => {
+      if (!cancelled) setCatalogBrands(Array.isArray(rows) ? rows : []);
+    });
+    return () => { cancelled = true; };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -2103,6 +2114,7 @@ export default function ImplantForm({
               onPrint={printImplantFactura}
               tw={tf}
               showPrintButton={false}
+              catalogBrands={catalogBrands?.length ? catalogBrands : DEFAULT_IMPLANT_BRANDS}
             />
           </div>
         </div>,

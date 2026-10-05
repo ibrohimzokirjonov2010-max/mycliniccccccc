@@ -13,6 +13,20 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🧾 Implant hisob-fakturasi — qog'oz blanka va Chop etish
+- **Sana:** 2026-10-05
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/ImplantWizardFactura.jsx`](src/components/implants/ImplantWizardFactura.jsx)
+  - [`src/components/implants/implantFactura.js`](src/components/implants/implantFactura.js)
+  - [`src/components/implants/implantWizard.css`](src/components/implants/implantWizard.css)
+  - [`src/pages/ImplantDetail.jsx`](src/pages/ImplantDetail.jsx)
+  - [`src/components/implants/ClinicalPassportCards.jsx`](src/components/implants/ClinicalPassportCards.jsx)
+  - [`scripts/assert-implant-factura.mjs`](scripts/assert-implant-factura.mjs)
+- **Muammo Tavsifi:** Implant pasporti matnli PDF edi. Hisob-faktura faqat yangi implant ustasida ochilardi va qog'oz blankaga o'xshamasdi. Titan karkas va sirkoniy qatorlariga katalogda yo'q narx yozilardi.
+- **Sababi:** Chop etish `jsPDF` matn kartasini chaqirardi. Faktura varaqasi ikki alohida yoy edi. `titan_frame` 250000 va sirkoniy darajalari 1.2/1.5/2.2 mln so'mga tushardi.
+- **Qanday tuzatildi:** A4 portret, jigarrang «1. Bosqich» / «2. Bosqich», jag' silueti, klinika brendlari. Chop etish saqlangan faktura yoki yozuvdagi narxni ochadi. Narx yo'q bo'lsa qator bo'sh qoladi.
+- **Qaytalamaslik choralari:** Titan va sirkoniy darajalariga qattiq narx qaytarmang. `data-factura-layout="implant-center-paper"` va print overlay qoidalarini buzmang. `node scripts/assert-implant-factura.mjs` o'tsin.
+
 ### 🔐 Tarif sotib olish — klinika paroli yo'qolmasin
 - **Sana:** 2026-09-30
 - **Tuzatilgan Fayllar:**

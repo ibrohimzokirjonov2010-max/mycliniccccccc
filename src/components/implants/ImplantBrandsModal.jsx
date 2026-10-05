@@ -23,6 +23,19 @@ export const DEFAULT_IMPLANT_BRANDS = [
 /**
  * Fetch or auto-seed implant brands
  */
+/** Read the clinic brand catalog. Does not create rows when the list is empty. */
+export async function listImplantBrandsReadOnly() {
+  try {
+    const brandApi = base44.entities?.ImplantBrand;
+    if (!brandApi || typeof brandApi.list !== 'function') return [];
+    const brands = await brandApi.list('name', 100);
+    return Array.isArray(brands) ? brands.filter((row) => row && row.name) : [];
+  } catch (err) {
+    console.warn('Implant brand list unavailable', err);
+    return [];
+  }
+}
+
 export async function getOrSeedImplantBrands() {
   const defaults = () => DEFAULT_IMPLANT_BRANDS.map((d, i) => ({ id: `default_${i}`, ...d }));
   try {

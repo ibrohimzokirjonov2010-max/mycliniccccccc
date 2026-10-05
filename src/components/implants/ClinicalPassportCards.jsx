@@ -691,15 +691,16 @@ export function StageMediaRail({
       <div className="mt-4 rounded-xl border border-dashed border-teal-300/80 bg-teal-50/30 px-3 py-2.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 min-w-0">
           <FileText className="w-3.5 h-3.5 text-[#14b8a6] shrink-0" />
-          <span className="break-words">{language === 'ru' ? 'Паспорт stikeri (PDF)' : 'Pasport stikeri (PDF)'}</span>
+          <span className="break-words">{language === 'ru' ? 'Счёт-фактура' : 'Hisob-faktura'}</span>
         </div>
         <button
           type="button"
           onClick={onOpenPassport}
+          data-testid="implant-case-chop-etish"
           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-black bg-[#14b8a6] text-white hover:bg-teal-600 cursor-pointer shrink-0 shadow-sm"
         >
           <Download className="w-3 h-3" />
-          {language === 'ru' ? 'Смотреть / Скачать' : "Ko'rish / Yuklab olish"}
+          {language === 'ru' ? 'Печать' : 'Chop etish'}
         </button>
       </div>
     </div>

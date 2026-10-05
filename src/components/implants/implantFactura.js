@@ -1,6 +1,7 @@
 /** Implant Center-style treatment plan / factura helpers for wizard step 3. */
 
 import { getServiceLabel, normalizeServiceId, looksLikeI18nKey } from './implantWizardLabels.js';
+import { toImplantFdi } from '../../lib/fdiNotation.js';
 
 export const IMPLANT_WIZARD_FACTURA_MARKER = 'implant-step3-factura-overlay-v2-0d9488';
 
@@ -173,9 +174,9 @@ function zirconPlaceholders(t) {
     return fallback;
   };
   return [
-    { id: 'zircon_std', label: label('zirconStd', 'Sirkoniy koronka (standart)'), defaultPrice: 1200000 },
-    { id: 'zircon_est', label: label('zirconEst', 'Sirkoniy koronka (estetik)'), defaultPrice: 1500000 },
-    { id: 'zircon_pre', label: label('zirconPre', 'Sirkoniy koronka (premium)'), defaultPrice: 2200000 },
+    { id: 'zircon_std', label: label('zirconStd', 'Standard') },
+    { id: 'zircon_est', label: label('zirconEst', 'High') },
+    { id: 'zircon_pre', label: label('zirconPre', 'Premium') },
   ];
 }
 
@@ -290,9 +291,7 @@ export function buildFacturaDocument({
       makeLine({
         id: 'titan_frame',
         label: looksLikeI18nKey(titanLabel) ? 'Titan karkas' : titanLabel,
-        unitPrice: extraServicePrices.titan_frame !== undefined
-          ? Number(extraServicePrices.titan_frame) || 0
-          : 250000,
+        unitPrice: catalogPrice('titan_frame', extraServicesList, extraServicePrices),
         qty: defaultLineQty('titan_frame', teethCount, { selected: false, placeholder: true }),
         stage: 2,
         source: 'placeholder',
@@ -341,7 +340,7 @@ export function buildFacturaDocument({
           label: tier.label,
           unitPrice: extraServicePrices[tier.id] !== undefined
             ? Number(extraServicePrices[tier.id]) || 0
-            : catalogPrice('zirkon_crown', extraServicesList, extraServicePrices) || tier.defaultPrice,
+            : 0,
           qty: defaultLineQty(tier.id, teethCount, { selected: false, placeholder: true }),
           stage: 2,
           source: 'placeholder',
@@ -476,6 +475,154 @@ export function parseFacturaSnapshot(record) {
 
 export function isDesktopViewport() {
   return typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
+}
+
+/** Placeholder prices that were hardcoded and are not a catalog or case value. */
+const INVENTED_PLACEHOLDER_PRICES = {
+  titan_frame: 250000,
+  zircon_std: 1200000,
+  zircon_est: 1500000,
+  zircon_pre: 2200000,
+};
+
+const SERVICE_NAME_RULES = [
+  [/multi[\s-]?unit/i, 'multi_unit'],
+  [/vaqtinchalik|pmma|provisional|temp(?:orary)?\s*(crown|toj|koronka)/i, 'temp_crown'],
+  [/tish olish|atravmatik|extraction/i, 'extraction'],
+  [/suyak|bone\s*graft|greft/i, 'bone_graft'],
+  [/membrana/i, 'membrane'],
+  [/metallokeramika|metal[\s-]?ceramic/i, 'metal_crown'],
+  [/e-?max/i, 'emax_crown'],
+  [/zirkon|zircon|sirkon/i, 'zirkon_crown'],
+  [/vinir|veneer/i, 'veneer'],
+  [/titan/i, 'titan_frame'],
+  [/operatsion/i, 'operation_fee'],
+  [/davolash/i, 'davolash'],
+  [/shablon|surgical\s*guide/i, 'surgical_guide'],
+  [/sinus/i, 'open_sinus'],
+];
+
+function positivePrice(value) {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function guessServiceId(name) {
+  const text = String(name || '');
+  for (const [pattern, id] of SERVICE_NAME_RULES) {
+    if (pattern.test(text)) return id;
+  }
+  return '';
+}
+
+export function stripInventedPlaceholderPrices(snapshot) {
+  if (!snapshot) return snapshot;
+  const cleanLine = (line) => {
+    if (!line) return line;
+    const invented = INVENTED_PLACEHOLDER_PRICES[line.id];
+    const qty = Number(line.qty) || 0;
+    const price = Number(line.unitPrice) || 0;
+    if (qty === 0 && invented && price === invented && line.source !== 'extra') {
+      return { ...line, unitPrice: 0, total: 0 };
+    }
+    return line;
+  };
+  return {
+    ...snapshot,
+    stage1: (snapshot.stage1 || []).map(cleanLine),
+    stage2: (snapshot.stage2 || []).map(cleanLine),
+  };
+}
+
+function fdisFromRecord(record) {
+  const raw = record?.tooth_numbers || (record?.tooth_number ? [record.tooth_number] : (record?.tooth_id ? [record.tooth_id] : []));
+  const list = Array.isArray(raw) ? raw : String(raw || '').split(/[,·]/);
+  return [...new Set(list.map((item) => toImplantFdi(item)).filter(Boolean))];
+}
+
+function toothLinesFromRecord(record, teeth) {
+  const map = record?.tooth_data_map || {};
+  return teeth.map((fdi) => {
+    const entry = map[fdi] || map[String(fdi)] || {};
+    const firma = entry.firma || record.firma || '';
+    const brand = firma === 'Boshqa'
+      ? (entry.firma_custom || entry.brend || record.firma_custom || record.brend || '')
+      : (entry.brend || firma || record.brend || '');
+    const diameter = entry.diameter != null && entry.diameter !== '' ? entry.diameter : (record.diameter || '');
+    const length = entry.length != null && entry.length !== '' ? entry.length : (record.length || '');
+    return { fdi, brand, diameter, length };
+  });
+}
+
+function implantUnitFromRecord(record, teeth) {
+  const map = record?.tooth_data_map || {};
+  const perTooth = teeth.map((fdi) => {
+    const entry = map[fdi] || map[String(fdi)] || {};
+    return positivePrice(entry.price);
+  }).filter((n) => n != null);
+  if (perTooth.length && perTooth.every((n) => n === perTooth[0])) return perTooth[0];
+  if (teeth.length <= 1) return positivePrice(record?.price) || positivePrice(record?.narxi) || 0;
+  return 0;
+}
+
+function servicesFromRecord(record) {
+  const ids = [];
+  const prices = {};
+  const list = [];
+  const add = (rawId, price, label) => {
+    const id = normalizeServiceId(rawId);
+    if (!id || id === 'implant') return;
+    if (!ids.includes(id)) ids.push(id);
+    const n = positivePrice(price);
+    if (n != null && prices[id] == null) prices[id] = n;
+    if (!list.some((row) => row.id === id)) {
+      list.push({ id, label: label || id, defaultPrice: n || 0 });
+    }
+  };
+  (record?.extra_services || []).forEach((rawId) => {
+    const id = normalizeServiceId(rawId);
+    const stored = record?.extra_service_prices?.[id] ?? record?.extra_service_prices?.[rawId];
+    add(id, stored);
+  });
+  (record?.services_list || []).forEach((row) => {
+    const named = guessServiceId(row?.service_name || row?.name || row?.label);
+    const id = normalizeServiceId(row?.id || row?.service_id) || named;
+    if (!id) return;
+    add(id, row?.price, row?.service_name || row?.name || row?.label);
+  });
+  const crownId = guessServiceId(record?.crown_type);
+  if (crownId && positivePrice(record?.crown_price) != null) {
+    add(crownId, record.crown_price, record.crown_type);
+  }
+  return { ids, prices, list };
+}
+
+/**
+ * Print snapshot for an existing implant. Prefers a saved factura.
+ * Never fills a missing price with a hardcoded default.
+ */
+export function facturaFromImplantRecord(record, { clinicName } = {}) {
+  if (!record) return null;
+  const saved = parseFacturaSnapshot(record);
+  if (saved) return stripInventedPlaceholderPrices(saved);
+  const teeth = fdisFromRecord(record);
+  const firma = record.firma === 'Boshqa' ? (record.firma_custom || '') : (record.firma || '');
+  const brandLabel = String(firma || record.brend || '').trim();
+  const services = servicesFromRecord(record);
+  return buildFacturaDocument({
+    date: record.placement_date || '',
+    patientName: record.patient_name || '',
+    clinicName: clinicName || '',
+    selectedFdis: teeth,
+    brandLabel,
+    implantUnitPrice: implantUnitFromRecord(record, teeth),
+    extraServicesList: services.list,
+    selectedServiceIds: services.ids,
+    extraServicePrices: services.prices,
+    toothLines: toothLinesFromRecord(record, teeth),
+    extractionFdis: Array.isArray(record.extraction_fdis) ? record.extraction_fdis : undefined,
+  });
 }
 
 let printCleanupTimer = 0;
