@@ -28,6 +28,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { IMPLANT_STATUS_ORDER, implantStatusClass, implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
 import { cn } from '@/lib/utils';
 import { implantRecordFdis } from '@/lib/fdiNotation';
+import { implantCasePrice } from '@/components/implants/linkedImplantServices';
 import { toast } from 'sonner';
 import { autoSyncImplantPlan, backfillImplantPlans, removeImplantPlan } from '@/lib/implantPlan';
 
@@ -121,53 +122,8 @@ export const getServiceConfig = (serviceName) => {
   return { label: serviceName, icon: DentalSurgicalIcon, badge: 'bg-slate-100 text-slate-700 border-slate-200' };
 };
 
-// Resolve price in UZS
-export const resolvePrice = (implant) => {
-  // Prefer sum of unique per-tooth prices from tooth_data_map when available
-  const map = implant?.tooth_data_map;
-  if (map && typeof map === 'object') {
-    const rawTeeth = (Array.isArray(implant.tooth_numbers) && implant.tooth_numbers.length > 0)
-      ? implant.tooth_numbers
-      : (implant.tooth_number ? [implant.tooth_number] : []);
-    const seen = new Set();
-    let sum = 0;
-    let count = 0;
-    const keys = rawTeeth.length > 0 ? rawTeeth : Object.keys(map);
-    keys.forEach((toothId) => {
-      const tid = String(toothId);
-      const match = tid.match(/^(ur|ul|lr|ll)(\d+)$/);
-      const fdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : tid;
-      const priceKey = fdi || tid;
-      if (seen.has(priceKey)) return;
-      seen.add(priceKey);
-      const entry = map[tid] || map[fdi];
-      if (entry && entry.price != null && entry.price !== '') {
-        const n = Number(entry.price);
-        if (!isNaN(n)) {
-          sum += n;
-          count += 1;
-        }
-      }
-    });
-    if (count > 0) return sum;
-  }
-
-  if (implant.price !== undefined && implant.price !== null && implant.price !== '') {
-    const num = Number(implant.price);
-    if (!isNaN(num)) return num;
-  }
-  if (implant.narxi !== undefined && implant.narxi !== null && implant.narxi !== '') {
-    const num = Number(implant.narxi);
-    if (!isNaN(num)) return num;
-  }
-  const svc = resolveService(implant).toLowerCase();
-  if (svc.includes('formik') || svc.includes('healing')) return 100000;
-  if (svc.includes('karonka') || svc.includes('crown')) return 1500000;
-  if (svc.includes('abutment')) return 300000;
-  if (svc.includes('sinus')) return 2000000;
-  if (svc.includes('graft') || svc.includes('suyak')) return 1000000;
-  return 1500000; // Default standard implant
-};
+// List Narxi matches the detail "Jami" (selected services, shared items once).
+export const resolvePrice = (implant) => implantCasePrice(implant);
 
 /** Per-tooth size label from tooth_data_map (or top-level fallback) */
 export const getToothSizeLabel = (implant, toothId) => {

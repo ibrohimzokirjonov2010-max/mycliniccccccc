@@ -17,6 +17,7 @@ import {
   facturaFromImplantRecord,
   IMPLANT_WIZARD_FACTURA_MARKER,
 } from '../src/components/implants/implantFactura.js';
+import { buildLinkedServiceModel, implantCasePrice } from '../src/components/implants/linkedImplantServices.js';
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -249,5 +250,89 @@ const overlayPos = printBlock.slice(printBlock.lastIndexOf('html.printing-implan
 const overlayPosRule = overlayPos.slice(0, overlayPos.indexOf('}'));
 assert(overlayPosRule.includes('position: static !important'), 'print overlay rule is in normal flow');
 assert(!overlayPosRule.includes('position: absolute'), 'print overlay must not be taken out of flow');
+
+const stickerCrowns = {
+  extra_services: ['extraction', 'surgical_guide', 'metal_crown', 'temp_crown', 'zirkon_crown', 'emax_crown', 'standard_abutment', 'healing_abutment'],
+  extra_service_prices: {
+    extraction: 150000,
+    surgical_guide: 500000,
+    temp_crown: 200000,
+    standard_abutment: 300000,
+    healing_abutment: 100000,
+    metal_crown: 800000,
+    zirkon_crown: 1500000,
+    emax_crown: 1800000,
+  },
+  tooth_numbers: ['26', '43'],
+  tooth_data_map: {
+    26: { price: 1500000, extraction: 'paid' },
+    43: { price: 1500000, extraction: 'paid' },
+  },
+  price: 3000000,
+  factura: {
+    stage1: [
+      { id: 'implant', qty: 2, unitPrice: 1500000, total: 3000000, source: 'implant' },
+      { id: 'extraction', qty: 2, unitPrice: 150000, total: 300000, source: 'extra' },
+      { id: 'surgical_guide', qty: 1, unitPrice: 500000, total: 500000, source: 'extra' },
+      { id: 'temp_crown', qty: 2, unitPrice: 200000, total: 400000, source: 'extra' },
+      { id: 'standard_abutment', qty: 2, unitPrice: 300000, total: 600000, source: 'extra' },
+      { id: 'healing_abutment', qty: 2, unitPrice: 100000, total: 200000, source: 'extra' },
+    ],
+    stage2: [
+      { id: 'metal_crown', qty: 2, unitPrice: 800000, total: 1600000, source: 'extra' },
+      { id: 'zirkon_crown', qty: 2, unitPrice: 1500000, total: 3000000, source: 'extra' },
+      { id: 'emax_crown', qty: 2, unitPrice: 1800000, total: 3600000, source: 'extra' },
+    ],
+    stage1Total: 5000000,
+    stage2Total: 8200000,
+    grandTotal: 13200000,
+  },
+};
+const linked = buildLinkedServiceModel(stickerCrowns);
+const names = linked.rows.map((row) => row.service_id);
+assert(!names.includes('metal_crown') && !names.includes('zirkon_crown') && !names.includes('emax_crown'), `catalog crowns must not be charged: ${names}`);
+assert(names.includes('extraction') && names.includes('temp_crown') && names.includes('surgical_guide'), `kept real services ${names}`);
+assert(implantCasePrice(stickerCrowns) === 5000000, `case price ${implantCasePrice(stickerCrowns)}`);
+const tooth26 = linked.rows.filter((row) => row.tooth_number === '26' && row.scope !== 'case').reduce((sum, row) => sum + row.price, 0);
+assert(tooth26 === 2250000, `shu tish ${tooth26}`);
+const printed = facturaFromImplantRecord(stickerCrowns);
+assert(printed.grandTotal === 5000000, `invoice total ${printed.grandTotal}`);
+assert(printed.stage2.every((line) => !line.qty), 'unused crown rows stay qty 0');
+assert(printed.stage2.every((line) => !line.unitPrice), 'unused crown rows stay blank');
+
+const pair = buildFacturaDocument({
+  date: '2026-10-05',
+  patientName: 'Pair',
+  clinicName: 'Ibrohim Dent',
+  selectedFdis: ['26'],
+  brandLabel: 'Dentium',
+  implantUnitPrice: 1500000,
+  extraServicesList: [
+    { id: 'metal_crown', defaultPrice: 800000 },
+    { id: 'zirkon_crown', defaultPrice: 1500000 },
+  ],
+  selectedServiceIds: ['metal_crown', 'zirkon_crown'],
+  extraServicePrices: { metal_crown: 800000, zirkon_crown: 1500000 },
+});
+assert(pair.stage2.find((line) => line.id === 'metal_crown')?.qty === 1, 'explicit metal+zircon pair keeps metal');
+assert(pair.stage2.find((line) => line.id === 'zirkon_crown')?.qty === 1, 'explicit metal+zircon pair keeps zircon');
+
+const custom = buildFacturaDocument({
+  date: '2026-10-05',
+  patientName: 'Custom',
+  clinicName: 'Ibrohim Dent',
+  selectedFdis: ['26'],
+  brandLabel: 'Dentium',
+  implantUnitPrice: 1500000,
+  extraServicesList: [
+    { id: 'metal_crown', defaultPrice: 800000 },
+    { id: 'zirkon_crown', defaultPrice: 1500000 },
+    { id: 'emax_crown', defaultPrice: 1800000 },
+  ],
+  selectedServiceIds: ['metal_crown', 'zirkon_crown', 'emax_crown'],
+  extraServicePrices: { metal_crown: 800000, zirkon_crown: 1700000, emax_crown: 1800000 },
+});
+assert(custom.stage2.find((line) => line.id === 'zirkon_crown')?.qty === 1, 'custom crown price keeps an explicit full set');
+assert(custom.grandTotal > 1500000 + 800000 + 1700000 + 1800000 - 1, 'custom full set is summed');
 
 console.log('assert-implant-factura: ok');

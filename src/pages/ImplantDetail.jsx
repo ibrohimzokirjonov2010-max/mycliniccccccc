@@ -192,6 +192,13 @@ export default function ImplantDetail() {
         const fdi = toImplantFdi(tId);
         const tData = rec.tooth_data_map?.[tId] || rec.tooth_data_map?.[fdi] || {};
         const toothTimeline = Array.isArray(tData.timeline) ? tData.timeline : null;
+        const caseTimeline = Array.isArray(rec.timeline) ? rec.timeline : [];
+        const fdiStr = String(fdi || '');
+        const inheritedTimeline = caseTimeline.filter((event) => {
+          const tag = event?.tooth_fdi || event?.tooth_number || event?.tooth_key;
+          if (!tag) return true;
+          return String(toImplantFdi(tag) || tag) === fdiStr;
+        });
         return {
           ...rec,
           id: `${rec.id}__${tId}`,
@@ -213,7 +220,7 @@ export default function ImplantDetail() {
           service_name: tData.service_name || rec.service_name,
           lifecycle_status: tData.lifecycle_status || rec.lifecycle_status,
           status: tData.lifecycle_status || rec.status || rec.lifecycle_status,
-          timeline: toothTimeline && toothTimeline.length > 0 ? toothTimeline : (rec.timeline || []),
+          timeline: toothTimeline && toothTimeline.length > 0 ? toothTimeline : inheritedTimeline,
         };
       });
     };

@@ -13,6 +13,20 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 💰 Implant narxi — katalogdagi tojlar yig'ilmasin
+- **Sana:** 2026-10-05
+- **Tuzatilgan Fayllar:**
+  - [`src/components/implants/implantFactura.js`](src/components/implants/implantFactura.js)
+  - [`src/components/implants/linkedImplantServices.js`](src/components/implants/linkedImplantServices.js)
+  - [`src/pages/Implants.jsx`](src/pages/Implants.jsx)
+  - [`src/pages/ImplantDetail.jsx`](src/pages/ImplantDetail.jsx)
+  - [`src/components/implants/ClinicalPassportCards.jsx`](src/components/implants/ClinicalPassportCards.jsx)
+  - [`scripts/assert-implant-factura.mjs`](scripts/assert-implant-factura.mjs)
+- **Muammo Tavsifi:** Implant tafsilotida bir tishga Metallokeramika, Zirkon va E-Max bir vaqtda yozilardi. Shu tish 6 350 000, Jami 13 200 000 chiqardi. Ro'yxatdagi Narxi esa faqat implant narxi (3 000 000) edi. #43 bosqichlari #26 tarixida ko'rinardi.
+- **Sababi:** Uchala toj katalog narxida (800 000 / 1 500 000 / 1 800 000) tanlangandek saqlangan va hammasi qarzga qo'shilgan. Ro'yxat narxi bog'langan xizmatlarni hisoblamagan. Tishda o'z tarixi bo'lmasa, boshqa tishning bosqichlari tushardi.
+- **Qanday tuzatildi:** Metallokeramika + Zirkon + E-Max uchalasi ham katalog narxida bo'lsa, ular tanlanmagan qator. Bitta yoki ikkita toj, yoki o'zgartirilgan narx, hisobda qoladi. Ro'yxat Narxi shu Jami bilan bir xil. Bosqich faqat o'z tishida.
+- **Qaytalamaslik choralari:** Katalogdagi uchala tojni yana yig'mang. Bo'sh qatorni qty 0 qoldiring. `node scripts/assert-implant-factura.mjs` o'tsin. `patient-y2ii8ynf2` ga yozmang.
+
 ### 🧾 Implant hisob-fakturasi — qog'oz blanka va Chop etish
 - **Sana:** 2026-10-05
 - **Tuzatilgan Fayllar:**

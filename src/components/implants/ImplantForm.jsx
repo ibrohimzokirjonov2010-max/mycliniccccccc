@@ -24,8 +24,10 @@ import { DEFAULT_IMPLANT_BRANDS, listImplantBrandsReadOnly } from './ImplantBran
 import { getServiceLabel, mergeExtraServicesCatalog, IMPLANT_WIZARD_STEP2_MARKER, normalizeServiceId } from './implantWizardLabels';
 import {
   buildFacturaDocument,
+  exclusiveCrownId,
   extraIdsFromFactura,
   snapshotToEdits,
+  unchosenCatalogCrownIds,
   encodeFacturaNotes,
   stripFacturaFromNotes,
   parseFacturaSnapshot,
@@ -1069,11 +1071,20 @@ export default function ImplantForm({
         t,
       });
       const fromFactura = extraIdsFromFactura(facturaSnapshot);
-      const mergedExtraIds = [...new Set([
+      const mergedExtraPrices = { ...extraServicePrices, ...fromFactura.extraPrices };
+      const candidateExtraIds = [...new Set([
         ...(form.extra_services || []).map(normalizeServiceId).filter(Boolean),
         ...(fromFactura.extraIds || []),
       ])];
-      const mergedExtraPrices = { ...extraServicePrices, ...fromFactura.extraPrices };
+      const dropCrowns = unchosenCatalogCrownIds(candidateExtraIds.map((id) => ({
+        id,
+        qty: 1,
+        unitPrice: Number(mergedExtraPrices[id]) || 0,
+      })));
+      const mergedExtraIds = candidateExtraIds.filter((id) => {
+        const crown = exclusiveCrownId(id);
+        return !crown || !dropCrowns.has(crown);
+      });
       const userNotes = stripFacturaFromNotes(form.notes);
 
       const data = {

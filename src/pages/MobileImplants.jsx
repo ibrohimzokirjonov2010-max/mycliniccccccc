@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 import { autoSyncImplantPlan, backfillImplantPlans } from '@/lib/implantPlan';
 import { implantStatusClass, implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
+import { implantCasePrice } from '@/components/implants/linkedImplantServices';
 import { 
   ImplantIcon, CrownIcon, FormerIcon, AbutmentIcon, 
   BoneGraftIcon, SinusLiftIcon, DentalSurgicalIcon, 
@@ -129,23 +130,7 @@ const resolveService = (implant) => {
   return 'Implant';
 };
 
-const resolvePrice = (implant) => {
-  if (implant.price !== undefined && implant.price !== null && implant.price !== '') {
-    const num = Number(implant.price);
-    if (!isNaN(num)) return num;
-  }
-  if (implant.narxi !== undefined && implant.narxi !== null && implant.narxi !== '') {
-    const num = Number(implant.narxi);
-    if (!isNaN(num)) return num;
-  }
-  const svc = resolveService(implant).toLowerCase();
-  if (svc.includes('formik') || svc.includes('healing')) return 100000;
-  if (svc.includes('karonka') || svc.includes('crown')) return 1500000;
-  if (svc.includes('abutment')) return 300000;
-  if (svc.includes('sinus')) return 2000000;
-  if (svc.includes('graft') || svc.includes('suyak')) return 1000000;
-  return 1500000;
-};
+const resolvePrice = (implant) => implantCasePrice(implant);
 
 const getServiceIcon = (serviceName) => {
   const s = (serviceName || '').toLowerCase();

@@ -132,6 +132,63 @@ function lineTotal(unitPrice, qty) {
   return Math.max(0, Math.round(Number(unitPrice) || 0) * Math.max(0, Number(qty) || 0));
 }
 
+/** Stage-2 crown choices. One tooth gets one of these unless the clinician picked a smaller set on purpose. */
+export const EXCLUSIVE_CROWN_IDS = ['metal_crown', 'zirkon_crown', 'emax_crown'];
+
+/** Untouched catalog stickers. All three at these prices means the option list was saved as if it were selected. */
+export const CROWN_CATALOG_STICKER = {
+  metal_crown: 800000,
+  zirkon_crown: 1500000,
+  emax_crown: 1800000,
+};
+
+export function exclusiveCrownId(raw) {
+  const id = normalizeServiceId(raw);
+  if (id === 'zircon_crown' || id === 'zircon_std' || id === 'zircon_est' || id === 'zircon_pre') return 'zirkon_crown';
+  return EXCLUSIVE_CROWN_IDS.includes(id) ? id : '';
+}
+
+/**
+ * Metal + zirkon + emax all charged at the catalog sticker is not a choice.
+ * One crown, or any pair, or a custom price, stays.
+ */
+export function unchosenCatalogCrownIds(lines) {
+  const priceById = new Map();
+  (lines || []).forEach((line) => {
+    const id = exclusiveCrownId(line?.id || line?.service_id);
+    if (!id || priceById.has(id)) return;
+    const qty = line?.qty == null ? 1 : Number(line.qty) || 0;
+    if (qty <= 0) return;
+    priceById.set(id, Number(line.unitPrice ?? line.price) || 0);
+  });
+  if (priceById.size < EXCLUSIVE_CROWN_IDS.length) return new Set();
+  const allStickers = EXCLUSIVE_CROWN_IDS.every((id) => priceById.get(id) === CROWN_CATALOG_STICKER[id]);
+  return allStickers ? new Set(EXCLUSIVE_CROWN_IDS) : new Set();
+}
+
+export function blankUnchosenCatalogCrowns(snapshot) {
+  if (!snapshot) return snapshot;
+  const drop = unchosenCatalogCrownIds([...(snapshot.stage1 || []), ...(snapshot.stage2 || [])]);
+  if (drop.size === 0) return snapshot;
+  const blank = (line) => {
+    const id = exclusiveCrownId(line?.id);
+    if (!id || !drop.has(id)) return line;
+    return { ...line, qty: 0, total: 0, source: 'placeholder' };
+  };
+  const stage1 = (snapshot.stage1 || []).map(blank);
+  const stage2 = (snapshot.stage2 || []).map(blank);
+  const stage1Total = stage1.reduce((sum, line) => sum + (Number(line.total) || 0), 0);
+  const stage2Total = stage2.reduce((sum, line) => sum + (Number(line.total) || 0), 0);
+  return {
+    ...snapshot,
+    stage1,
+    stage2,
+    stage1Total,
+    stage2Total,
+    grandTotal: stage1Total + stage2Total,
+  };
+}
+
 function applyEdit(base, edit) {
   const next = { ...base };
   if (edit && edit.unitPrice !== undefined && edit.unitPrice !== null && edit.unitPrice !== '') {
@@ -352,8 +409,7 @@ export function buildFacturaDocument({
 
   const stage1Total = stage1.reduce((sum, line) => sum + (Number(line.total) || 0), 0);
   const stage2Total = stage2.reduce((sum, line) => sum + (Number(line.total) || 0), 0);
-
-  return {
+  return blankUnchosenCatalogCrowns({
     v: 1,
     date: date || '',
     patient_name: patientName || '',
@@ -368,7 +424,7 @@ export function buildFacturaDocument({
     stage1Total,
     stage2Total,
     grandTotal: stage1Total + stage2Total,
-  };
+  });
 }
 
 export function extraIdsFromFactura(snapshot) {
@@ -607,7 +663,7 @@ function servicesFromRecord(record) {
 export function facturaFromImplantRecord(record, { clinicName } = {}) {
   if (!record) return null;
   const saved = parseFacturaSnapshot(record);
-  if (saved) return stripInventedPlaceholderPrices(saved);
+  if (saved) return stripInventedPlaceholderPrices(blankUnchosenCatalogCrowns(saved));
   const teeth = fdisFromRecord(record);
   const firma = record.firma === 'Boshqa' ? (record.firma_custom || '') : (record.firma || '');
   const brandLabel = String(firma || record.brend || '').trim();

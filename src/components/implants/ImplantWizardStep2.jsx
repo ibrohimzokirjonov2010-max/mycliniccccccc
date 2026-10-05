@@ -210,10 +210,7 @@ export default function ImplantWizardStep2({
                   ) : (
                     <button
                       type="button"
-                      onClick={() => {
-                        if (!isSelected) onToggleService(service.id);
-                        setEditingPriceId(service.id);
-                      }}
+                      onClick={() => setEditingPriceId(service.id)}
                       className="flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
                     >
                       <span className={cn('text-xs font-semibold whitespace-nowrap', isSelected ? 'text-[#111827]' : 'text-[#6b7280]')}>

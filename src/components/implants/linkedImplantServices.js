@@ -5,7 +5,13 @@
  * belong to, and manual passport rows are kept without being counted twice.
  */
 
-import { defaultLineQty, mapLineToExtraId, parseFacturaSnapshot } from './implantFactura.js';
+import {
+  defaultLineQty,
+  exclusiveCrownId,
+  mapLineToExtraId,
+  parseFacturaSnapshot,
+  unchosenCatalogCrownIds,
+} from './implantFactura.js';
 import { getServiceLabel, looksLikeI18nKey, normalizeServiceId } from './implantWizardLabels.js';
 import { toImplantFdi, uniqueImplantToothKeys } from '../../lib/fdiNotation.js';
 
@@ -212,8 +218,21 @@ export function buildLinkedServiceModel(implant) {
   ));
   const fromFactura = facturaLines(factura);
   const covered = new Set(fromFactura.map((line) => normalizeServiceId(mapLineToExtraId(line.id) || line.id)));
+  const prices = implant?.extra_service_prices && typeof implant.extra_service_prices === 'object'
+    ? implant.extra_service_prices
+    : {};
   const lines = [...fromFactura, ...extraFallbackLines(implant, teethCount, covered)];
-  lines.forEach((line) => {
+  const dropCrowns = unchosenCatalogCrownIds([
+    ...lines,
+    ...(implant?.extra_services || []).map((raw) => {
+      const id = normalizeServiceId(raw);
+      return { id, qty: 1, unitPrice: readPrice(prices[id]) ?? readPrice(prices[raw]) ?? 0 };
+    }),
+  ]);
+  lines.filter((line) => {
+    const crown = exclusiveCrownId(line.id);
+    return !crown || !dropCrowns.has(crown);
+  }).forEach((line) => {
     rowsFromLine(line, fdis, extractionFdis).forEach((row) => {
       pushRow(rows, seen, { ...row, date, firma: implant.firma || '' });
     });
@@ -278,6 +297,13 @@ export function toothServicesTotal(rows) {
 export function caseServicesGrandTotal(modelOrRows) {
   const rows = Array.isArray(modelOrRows) ? modelOrRows : (modelOrRows?.rows || []);
   return rows.reduce((sum, row) => sum + (Number(row.price) || 0), 0);
+}
+
+/** List "Narxi", detail Jami, and the implant plan all use this total. */
+export function implantCasePrice(implant) {
+  const total = caseServicesGrandTotal(buildLinkedServiceModel(implant));
+  if (total > 0) return total;
+  return readPrice(implant?.price) ?? readPrice(implant?.narxi) ?? 0;
 }
 
 /** Non-primary rows to store on the implant so the link exists after the next save. */

@@ -12,7 +12,7 @@ import {
   LIFECYCLE_COLORS,
 } from './ClinicalStepper';
 import DentalArchFdi from './DentalArchFdi';
-import { implantRecordFdis } from '@/lib/fdiNotation';
+import { implantRecordFdis, toImplantFdi } from '@/lib/fdiNotation';
 import { implantStatusLabelIfKnown } from '@/lib/implantStatus';
 
 export { DentalArchFdi };
@@ -401,7 +401,16 @@ export function PassportSpecsCard({ implant, language = 'uz', onSaveField }) {
  * Does NOT invent hardcoded future stages — those made the bottom history look frozen.
  */
 export function buildClinicalHistoryItems(implant, language = 'uz') {
-  const rawTimeline = Array.isArray(implant?.timeline) ? implant.timeline : [];
+  const rawTeeth = Array.isArray(implant?.tooth_numbers) ? implant.tooth_numbers : [];
+  const viewFdi = rawTeeth.length <= 1
+    ? String(toImplantFdi(implant?.tooth_number || implant?.syntheticToothKey || rawTeeth[0] || '') || '')
+    : '';
+  const rawTimeline = (Array.isArray(implant?.timeline) ? implant.timeline : []).filter((event) => {
+    if (!viewFdi) return true;
+    const tag = event?.tooth_fdi || event?.tooth_number || event?.tooth_key;
+    if (!tag) return true;
+    return String(toImplantFdi(tag) || tag) === viewFdi;
+  });
 
   const entries = rawTimeline
     .filter((it) => it && (it.status || it.title || it.note || it.detail))
