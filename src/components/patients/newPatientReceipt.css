@@ -100,6 +100,13 @@
   overflow: hidden;
 }
 
+/* receipt-scroll-v2: the paper (overflow hidden) shrank to the sheet's max-height
+   and clipped the rows, so nothing could scroll. Keep its natural height; the sheet scrolls. */
+.new-patient-receipt-sheet > #new-patient-receipt {
+  flex-shrink: 0;
+  overflow: clip;
+}
+
 @media (max-width: 767px) {
   .new-patient-receipt-overlay {
     padding: 8px;
