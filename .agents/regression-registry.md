@@ -13,6 +13,22 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 📅 Tug'ilgan sana — yangi bemor oynasida yo'qolmasin
+- **Sana:** 2026-10-06
+- **Tuzatilgan Fayllar:** `src/components/ui/ClinicDateField.jsx`, `src/components/patients/NewPatientFlow.jsx`
+- **Muammo Tavsifi:** Halil Halilbe (patient-oeor9r3ep) tug'ilgan sanasi kiritilgan, lekin profilda bo'sh (DB `birth_date` null).
+- **Sababi:** (1) "1.5.1990", "01/05/90" kabi yozuvlar raqamlarga aylantirilib noto'g'ri bo'linardi va blur'da jim qaytarilardi. (2) Bemor yaratilgandan keyin 1-qadamga qaytib o'zgartirilgan maydonlar (sana, telefon, manzil...) saqlanmasdi — `persistPatient` faqat birinchi marta create qilardi.
+- **Qanday tuzatildi:** `normalizeTypedDate` 1.5.1990, 01/05/90, 1-5-1990, 01051990, 010590, yyyy-mm-dd ni qabul qiladi. O'qib bo'lmaydigan sana qizil bo'ladi va saqlashni to'xtatadi ("Tug'ilgan sana noto'g'ri"). Bemor yaratilgan bo'lsa, o'zgargan maydonlar `Patient.update` bilan yoziladi.
+- **Qaytalamaslik choralari:** Sanani blur'da jim qaytarmang. Yaratilgan bemorni 1-qadamda tahrirlash update qilishi shart.
+
+### 💸 Chegirma — bitta qoida hamma joyda (planDiscount)
+- **Sana:** 2026-10-06
+- **Tuzatilgan Fayllar:** `src/lib/planDiscount.js`, `src/components/patients/NewPatientFlow.jsx`
+- **Muammo Tavsifi:** Asad Asadbe: 2-qadam jami, Yakun qarz, faktura Jami, saqlangan reja va bemor qarzi har xil edi; Yakun'dan qayta saqlaganda ikkinchi (dublikat) reja va ikkinchi Debt yozuvi paydo bo'ldi (qarz 2 baravar).
+- **Sababi:** Chegirma bosilgan paytda (xizmatlar to'liq bo'lmagan holda) summasi hisoblanib Discount to'lovi yaratilardi va keyin yangilanmasdi; qayta saqlash har safar yangi reja + yangi Debt yaratardi.
+- **Qanday tuzatildi:** Chegirma faqat foiz holati. Saqlashda `splitDiscount(jami, foiz)` → reja `total_price` = yakuniy, `discount_amount` = chegirma. Qayta saqlash mavjud rejani va unga bog'langan Debt qatorini yangilaydi. Bemor qarzi `computePatientBalances` bilan qayta hisoblanadi. Yakun va faktura shu reja raqamlarini ko'rsatadi.
+- **Qaytalamaslik choralari:** Chegirma tugmasida DB yozuvi yaratmang. Yakun'dan qayta saqlash yangi reja yaratmasin. 2-qadam = Yakun = faktura Jami = reja = bemor qarzi.
+
 ### 🧾 Yangi bemor hisob-fakturasi — modal ichida skroll (receipt-scroll-v2)
 - **Sana:** 2026-10-06
 - **Tuzatilgan Fayllar:** `src/components/patients/NewPatientReceipt.jsx`, `src/components/patients/newPatientReceipt.css`, `src/hooks/useEscapeDialogScrollLock.js`
