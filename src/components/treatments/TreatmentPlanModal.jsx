@@ -208,6 +208,66 @@ const formatDepartmentPlanName = (services = [], selectedTeeth = []) => {
   return `${compactName}${toothLabel}`;
 };
 
+// plan-discount-chips-v1: same CHEGIRMA selector as the new-patient wizard step 2
+// (Yo'q / 10% / 20% / 30% / Boshqa). Saved with the wizard's rule:
+// discount_amount = round(raw * % / 100), total_price = raw - discount_amount.
+function PlanDiscountChips({ discount, onChange, disabled = false, className = '' }) {
+  const [custom, setCustom] = useState(false);
+  const [value, setValue] = useState('');
+  const presets = [0, 10, 20, 30];
+  const isPreset = presets.includes(Number(discount) || 0);
+  const chip = (active) => cn(
+    'px-2 py-0.5 min-h-[24px] rounded-md text-[10px] font-black transition-all border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
+    active ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200',
+  );
+  return (
+    <div className={cn('flex items-center gap-1 flex-wrap', className)} data-testid="plan-discount-chips">
+      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Chegirma:</span>
+      {presets.map((val) => (
+        <button
+          key={val}
+          type="button"
+          disabled={disabled}
+          data-discount={val}
+          onClick={() => { onChange(val); setCustom(false); setValue(''); }}
+          className={chip((Number(discount) || 0) === val && !custom)}
+        >
+          {val === 0 ? "Yo'q" : `${val}%`}
+        </button>
+      ))}
+      <button
+        type="button"
+        disabled={disabled}
+        data-discount="custom"
+        onClick={() => setCustom(!custom)}
+        className={chip(custom || !isPreset)}
+      >
+        {!custom && !isPreset ? `${discount}%` : 'Boshqa'}
+      </button>
+      {custom && (
+        <span className="flex gap-1">
+          <input
+            type="text"
+            inputMode="numeric"
+            value={value}
+            onChange={(e) => setValue(e.target.value.replace(/\D/g, '').slice(0, 3))}
+            placeholder="%"
+            data-testid="plan-discount-custom"
+            className="w-12 h-6 rounded border border-slate-200 text-center text-[11px] font-bold outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => { const v = parseInt(value, 10); if (v >= 0 && v <= 100) { onChange(v); setCustom(false); } }}
+            className="h-6 px-2 rounded bg-slate-900 text-white text-[10px] font-black border-none cursor-pointer"
+          >
+            OK
+          </button>
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function TreatmentPlanModal({ open, onClose, plan, patients, services, onSaved, initialPatientId, onPay }) {
   const { t, language } = useTranslation();
   const { clinicName } = useClinic();
@@ -664,7 +724,9 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
   const toothTotal = (t) => (toothData[t]?.services || []).reduce((s, sv) => s + (sv.price || 0), 0);
   // rawTotal вЂ” barcha tanlangan tishlar VA umumiy xizmatlar yig'indisi
   const rawTotal = Object.keys(toothData).reduce((s, t) => s + toothTotal(t), 0);
-  const finalTotal = rawTotal - (rawTotal * (discount / 100));
+  // One discount rule (same as the new-patient wizard): amount rounded, total = raw - amount.
+  const discountAmount = Math.round((rawTotal * (Number(discount) || 0)) / 100);
+  const finalTotal = Math.max(0, rawTotal - discountAmount);
   const customDiscountPercentValue = Math.max(0, Math.min(100, Number(customDiscountAmount) || 0));
   const customDiscountPreviewAmount = Math.floor((rawTotal * customDiscountPercentValue) / 100);
   const customDiscountPreviewTotal = Math.max(0, Math.floor(rawTotal - customDiscountPreviewAmount));
@@ -740,9 +802,9 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
         priority: 'medium',
         tooth_number: scopeLabel,
         services: allSvcs,
-        total_price: Math.floor(rawTotal * (1 - discount / 100)),
+        total_price: finalTotal,
         discount_percent: discount,
-        discount_amount: Math.floor(rawTotal * discount / 100),
+        discount_amount: discountAmount,
         notes: `Davolash rejasi: ${scopeLabel}`,
         installment_plan: isInstallment ? {
           months: installmentMonths,
@@ -800,7 +862,6 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
       const discountPayment = existingPayments.find(p => String(p.type || '').toLowerCase() === 'discount');
 
       // 1. Manage Debt — chegirma bilan hisoblab saqlaymiz (finalTotal = chegirmali narx)
-      const finalTotal = Math.floor(rawTotal * (1 - discount / 100));
       if (finalTotal > 0) {
         if (debtPayment) {
           // Update existing debt with discounted price
@@ -918,13 +979,14 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
     if (!planToUpdate?.id) return;
     setSaving(true);
     try {
-      const newFinalTotal = Math.floor(rawTotal * (1 - newDiscount / 100));
+      const newDiscountAmount = Math.round((rawTotal * newDiscount) / 100);
+      const newFinalTotal = Math.max(0, rawTotal - newDiscountAmount);
       
       // Rejani yangilash
       await base44.entities.TreatmentPlan.update(planToUpdate.id, {
         total_price: newFinalTotal,
         discount_percent: newDiscount,
-        discount_amount: Math.floor(rawTotal * newDiscount / 100),
+        discount_amount: newDiscountAmount,
       });
 
       // Debt payment ni yangilash
@@ -1365,14 +1427,22 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                             </div>
                           )}
                         </div>
-                        <div className="w-[168px] shrink-0 px-4 py-2 flex flex-col items-end justify-center gap-0.5 self-stretch">
+                        <div className="min-w-[168px] shrink-0 px-4 py-2 flex flex-col items-end justify-center gap-0.5 self-stretch">
+                          <PlanDiscountChips discount={discount} onChange={setDiscount} disabled={isLocked} className="justify-end mb-1" />
                           <span className="text-[10px] font-black uppercase tracking-widest text-[#1499AD]">
                             {t('odontogram.tableHeaders.total') || 'JAMI'}
                           </span>
-                          <span className="text-xl font-black text-[#1499AD] tabular-nums leading-tight">
-                            {Math.floor(rawTotal * (1 - discount / 100)).toLocaleString()}
+                          <span className="text-xl font-black text-[#1499AD] tabular-nums leading-tight" data-testid="plan-modal-total">
+                            {finalTotal.toLocaleString()}
                           </span>
-                          <span className="text-[10px] font-bold text-[#1499AD]/80">so'm</span>
+                          {discount > 0 ? (
+                            <span className="text-[10px] font-bold text-rose-500 tabular-nums whitespace-nowrap">
+                              <span className="line-through text-slate-400 mr-1">{rawTotal.toLocaleString()}</span>
+                              -{discount}% ({discountAmount.toLocaleString()})
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-[#1499AD]/80">so'm</span>
+                          )}
                         </div>
                       </div>
 
@@ -1620,6 +1690,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
 
                         {/* Bottom Sticky Bar */}
                         <div className="p-4 border-t border-slate-150 bg-white flex flex-col gap-3 shrink-0 shadow-lg sticky bottom-0 z-50">
+                          <PlanDiscountChips discount={discount} onChange={setDiscount} disabled={isLocked} className="px-1" />
                           <div className="flex justify-between items-end px-1">
                             <div className="flex flex-col text-left">
                               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
@@ -1627,7 +1698,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                               </span>
                               <div className="flex items-center gap-1 mt-1">
                                 <span className="text-lg font-black text-slate-900 tabular-nums">
-                                  {Math.floor(rawTotal * (1 - discount/100)).toLocaleString()}
+                                  {finalTotal.toLocaleString()}
                                 </span>
                                 <span className="text-[10px] text-slate-400 font-bold">so'm</span>
                                 {discount > 0 && (
@@ -1837,7 +1908,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                                         <span>{language === 'ru' ? 'Стоимость со скидкой' : language === 'en' ? 'Discounted price' : 'Chegirmali narxi'}</span>
                                                         {discount > 0 && (
                                                             <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100/80 border border-emerald-300 px-1.5 py-0.5 rounded">
-                                                                -{discount}% ({Math.floor(rawTotal * (discount / 100)).toLocaleString()} so'm)
+                                                                -{discount}% ({discountAmount.toLocaleString()} so'm)
                                                             </span>
                                                         )}
                                                     </div>
@@ -1981,7 +2052,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                  onClick={async () => {
                                    const saved = isLocked ? (savedPlanData || plan) : await handleSave();
                                    const planId = saved?.id || savedPlanData?.id || plan?.id;
-                                   const total = Number(saved?.total_price ?? savedPlanData?.total_price ?? Math.floor(rawTotal * (1 - discount/100))) || 0;
+                                   const total = Number(saved?.total_price ?? savedPlanData?.total_price ?? finalTotal) || 0;
                                    const paid = Number(saved?.paid_amount ?? savedPlanData?.paid_amount ?? installmentAdvance ?? 0) || 0;
                                    const remaining = Math.max(0, total - paid);
                                    onPay({ planId, amount: remaining > 0 ? remaining : total });
