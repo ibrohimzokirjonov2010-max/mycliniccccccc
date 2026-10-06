@@ -310,7 +310,7 @@ function App() {
               mobileOffset={{ bottom: 88, right: 12 }}
               duration={4000}
               expand={false}
-              style={{ zIndex: 90, '--width': '280px' }}
+              style={{ zIndex: 2147483000, '--width': '280px' }}
               toastOptions={{
                 className: 'payment-toast-behind-modal',
                 duration: 4000,
