@@ -13,6 +13,13 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Implant sahifasi: rasm yuklagandan keyin tanlangan tish saqlansin (implant-keep-tooth-on-reload)
+- **Sana:** 2026-10-06
+- **Tuzatilgan Fayllar:** `src/pages/ImplantDetail.jsx`
+- **Muammo Tavsifi:** Ko'p tishli case'da #22 tanlanib rasm yuklangach, sahifa qayta yuklanib birinchi tishga (#21) qaytib ketardi (rasm to'g'ri tishga saqlangan bo'lsa ham).
+- **Qanday tuzatildi:** `load()` tanlovni faqat boshqa yozuvga tegishli bo'lsa almashtiradi; shu case tishi (`id__tish`) saqlanib qoladi. Chiplarga `data-testid="implant-case-chip"`, `data-fdi`, `aria-pressed` qo'shildi.
+- **Qaytalamaslik choralari:** `load()` ichida tanlovni so'zsiz `currentImplant.id` ga qaytarmang.
+
 ### 💳 /payments to'lov oynasi — bemor rejalari va hisob-faktura (payment-detail-plans-v1)
 - **Sana:** 2026-10-06
 - **Tuzatilgan Fayllar:** `src/components/payments/PaymentPatientPlans.jsx`, `src/pages/Payments.jsx`, `src/pages/MobilePaymentsV2.jsx`

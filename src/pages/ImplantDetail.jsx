@@ -153,7 +153,10 @@ export default function ImplantDetail() {
             .sort((a, b) => String(a.placement_date || '').localeCompare(String(b.placement_date || '')));
           setRelatedTeeth(uniqueRelated);
           // Keep selection on current route implant (or the tooth picked on another case)
-          setSelectedRelatedTooth(pendingToothRef.current || currentImplant.id);
+          // implant-keep-tooth-on-reload: rasm yuklagandan keyin tanlangan tish (masalan #22) saqlanib qolsin
+          const pendingTooth = pendingToothRef.current;
+          setSelectedRelatedTooth((prev) => pendingTooth
+            || (prev && String(prev).split('__')[0] === String(currentImplant.id) ? prev : currentImplant.id));
           pendingToothRef.current = null;
           // Shu bemorning reja/qarzi hali bog'lanmagan implantlari uchun "Implantlar" rejasi (bir marta, takrorlamasdan).
           backfillImplantPlans(uniqueRelated, { patients: pats || [] })
@@ -1007,6 +1010,9 @@ export default function ImplantDetail() {
                       key={imp.id}
                       type="button"
                       onClick={() => selectCaseTooth(imp)}
+                      data-testid="implant-case-chip"
+                      data-fdi={fdi}
+                      aria-pressed={selected}
                       className={cn(
                         'shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-left transition-all',
                         selected
