@@ -1283,7 +1283,7 @@ export default function ToothChartCard({
             }}
             doctorName={doctorLabel}
             unitPrice={groupUnitPrice}
-            jawPrompt={jawPrompt}
+            jawPrompt={jawPrompt} jawServices={services}
             onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
             onJawClose={() => setJawPrompt(null)}
             onUpload={uploadXray}
@@ -1330,7 +1330,7 @@ export default function ToothChartCard({
           }}
           doctorName={doctorLabel}
           unitPrice={groupUnitPrice}
-          jawPrompt={jawPrompt}
+          jawPrompt={jawPrompt} jawServices={services}
           onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
           onJawClose={() => setJawPrompt(null)}
           onUpload={uploadXray}
@@ -1381,7 +1381,7 @@ export default function ToothChartCard({
             }}
             doctorName={doctorLabel}
             unitPrice={groupUnitPrice}
-            jawPrompt={jawPrompt}
+            jawPrompt={jawPrompt} jawServices={services}
             onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
             onJawClose={() => setJawPrompt(null)}
             onUpload={uploadXray}
@@ -1538,7 +1538,7 @@ function SidePanel(props) {
     surfaces, toggleSurface, history, toothXrays, busy, noteOpen, noteText,
     setNoteText, setNoteOpen, onClose, onQuick, quickPrice, onNote, onGroup, onUpload, onView,
     doctorName, unitPrice, onAddToPlan, onNewRecord,
-    jawPrompt, onJawChoose, onJawClose,
+    jawPrompt, onJawChoose, onJawClose, jawServices,
   } = props;
   const [showAllHistory, setShowAllHistory] = useState(false);
   useEffect(() => { setShowAllHistory(false); }, [active]);
@@ -1603,7 +1603,7 @@ function SidePanel(props) {
         {jawPrompt && (
           <JawChoice
             title={jawPrompt.title}
-            preset={jawPrompt.preset}
+            preset={jawPrompt.preset} family={jawPrompt.family} services={jawPrompt.mode === 'plan' ? jawServices : undefined}
             busy={busy}
             onChoose={onJawChoose}
             onClose={onJawClose}

@@ -704,7 +704,7 @@ export default function MobileTreatmentPlansV2() {
                                 {jawPrompt && (
                                   <JawChoice
                                     title={jawPrompt.title}
-                                    preset={jawPrompt.preset}
+                                    preset={jawPrompt.preset} family={jawPrompt.family} services={services}
                                     onChoose={confirmJawChoice}
                                     onClose={() => setJawPrompt(null)}
                                   />

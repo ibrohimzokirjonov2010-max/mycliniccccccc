@@ -2182,7 +2182,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       {jawPrompt && (
                         <JawChoice
                           title={jawPrompt.title}
-                          preset={jawPrompt.preset}
+                          preset={jawPrompt.preset} family={jawPrompt.family} services={services}
                           onChoose={confirmJawChoice}
                           onClose={() => setJawPrompt(null)}
                         />
@@ -2418,7 +2418,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     {jawPrompt && (
                       <JawChoice
                         title={jawPrompt.title}
-                        preset={jawPrompt.preset}
+                        preset={jawPrompt.preset} family={jawPrompt.family} services={services}
                         onChoose={confirmJawChoice}
                         onClose={() => setJawPrompt(null)}
                       />
