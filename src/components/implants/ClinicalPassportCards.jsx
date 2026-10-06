@@ -216,20 +216,6 @@ export function PassportSpecsCard({ implant, language = 'uz', onSaveField }) {
         </div>
 
         <div className="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <label className="min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tizim / model</span>
-            {onSaveField ? (
-              <input
-                data-testid="passport-system"
-                defaultValue={implant?.brend || implant?.model || ''}
-                placeholder="masalan: SuperLine"
-                onBlur={(e) => onSaveField('brend', e.target.value.trim())}
-                className="mt-0.5 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-bold text-slate-900 placeholder:font-medium placeholder:italic placeholder:text-slate-400 outline-none focus:border-[#14b8a6]"
-              />
-            ) : (
-              <div className="text-sm font-black text-slate-900 break-words">{implant?.brend || implant?.model || EM}</div>
-            )}
-          </label>
           <div className="min-w-0">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Brend</span>
             <div className="text-sm font-black text-slate-900 break-words">{(implant?.firma === 'Boshqa' ? implant?.firma_custom : implant?.firma) || EM}</div>
