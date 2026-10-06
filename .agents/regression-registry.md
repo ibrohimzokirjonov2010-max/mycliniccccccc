@@ -13,6 +13,13 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 📅 Tug'ilgan sana — mavjud bo'lmagan sana (31.02) yaroqsiz (birth-date-calendar-check)
+- **Sana:** 2026-10-06
+- **Tuzatilgan Fayllar:** `src/components/ui/ClinicDateField.jsx`
+- **Muammo Tavsifi:** "31.02.1990" kabi sana yaroqli deb qabul qilinardi (faqat kun ≤ 31 tekshirilardi) va `1990-02-31` sifatida yuborilardi — Postgres `date` uni rad etadi, bemor saqlanmaydi yoki sana yo'qoladi.
+- **Qanday tuzatildi:** `displayDateToIso` haqiqiy kalendar tekshiruvi (Date.UTC orqali) va yil 1900–2100. Yaroqsiz sana qizil bo'ladi va saqlashni to'xtatadi.
+- **Qaytalamaslik choralari:** Sana validatsiyasini faqat raqam diapazoni bilan cheklamang.
+
 ### 🦷 Implant sahifasi: rasm yuklagandan keyin tanlangan tish saqlansin (implant-keep-tooth-on-reload)
 - **Sana:** 2026-10-06
 - **Tuzatilgan Fayllar:** `src/pages/ImplantDetail.jsx`

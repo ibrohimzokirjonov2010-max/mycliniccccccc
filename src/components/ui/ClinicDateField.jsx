@@ -66,7 +66,10 @@ function displayDateToIso(text) {
   const day = Number(match[1]);
   const month = Number(match[2]);
   const year = Number(match[3]);
-  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900) return '';
+  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > 2100) return '';
+  // birth-date-calendar-check: 31.02 / 30.02 / 31.04 kabi mavjud bo'lmagan sanalar yaroqsiz (Postgres rad etadi)
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== month - 1 || probe.getUTCDate() !== day) return '';
   return `${match[3]}-${match[2]}-${match[1]}`;
 }
 
