@@ -330,8 +330,8 @@ export default function PatientXraysOdontogram({ patientId }) {
                 </div>
                 <div className="odonto-bite-line" aria-hidden="true" />
                 <div className="odonto-jaw-band">
-                  <span className="odonto-side odonto-side-r">CHAP</span>
-                  <span className="odonto-side odonto-side-l">O‘NG</span>
+                  <span className="odonto-side odonto-side-r">O‘NG</span>
+                  <span className="odonto-side odonto-side-l">CHAP</span>
                   <div className="odonto-jaw odonto-jaw-lower">
                     {renderHalf(patientType === 'adult' ? LOWER_LEFT : LOWER_LEFT_CHILD)}
                     <div className="odonto-midline" aria-hidden="true" />

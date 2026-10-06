@@ -2024,8 +2024,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     <div className="odonto-bite-line" aria-hidden="true" />
                     <div className="odonto-jaw-band">
                       <div className="flex justify-between px-1 pt-1 text-[10px] font-black tracking-wide text-rose-600">
-                        <span>CHAP</span>
                         <span>O‘NG</span>
+                        <span>CHAP</span>
                       </div>
                       <div className="odonto-jaw odonto-jaw-lower">
                         <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate() }}>

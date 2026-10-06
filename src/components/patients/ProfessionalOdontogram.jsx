@@ -1052,8 +1052,8 @@ function ProfessionalOdontogram({
               {chartView === 'teeth' && <div className="odonto-bite-line" aria-hidden="true" />}
               {chartView !== 'maxilla' && (
                 <div className="odonto-jaw-band">
-                  <span className="odonto-side odonto-side-r">CHAP</span>
-                  <span className="odonto-side odonto-side-l">O‘NG</span>
+                  <span className="odonto-side odonto-side-r">O‘NG</span>
+                  <span className="odonto-side odonto-side-l">CHAP</span>
                   <div className="odonto-jaw odonto-jaw-lower">
                     <div className="odonto-quad" data-label={`${lowerLeft[0]?.fdi}–${lowerLeft[lowerLeft.length - 1]?.fdi}`} style={{ gridTemplateColumns: fdiGridTemplate(lowerLeft.map((t) => t.fdi)) }}>
                       {renderRow(lowerLeft, false)}

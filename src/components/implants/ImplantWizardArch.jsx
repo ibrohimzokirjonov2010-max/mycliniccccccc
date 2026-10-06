@@ -168,8 +168,8 @@ export default function ImplantWizardArch({ selectedFdis = [], activeFdi = '', o
               </div>
               <div className="odonto-bite-line" aria-hidden="true" />
               <div className="odonto-jaw-band">
-                <span className="odonto-side odonto-side-r">CHAP</span>
-                <span className="odonto-side odonto-side-l">O‘NG</span>
+                <span className="odonto-side odonto-side-r">O‘NG</span>
+                <span className="odonto-side odonto-side-l">CHAP</span>
                 <div className="odonto-jaw odonto-jaw-lower">
                   <Half fdis={LOWER_FDI.slice(0, splitAt(LOWER_FDI))} phone={phone} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} />
                   <div className="odonto-midline" aria-hidden="true" />
