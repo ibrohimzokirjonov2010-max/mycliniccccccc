@@ -11,6 +11,7 @@ import {
   ArrowUp, ArrowDown, ArrowUpDown, Copy, Check, ChevronDown, Pencil
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import PaymentPatientPlans from '@/components/payments/PaymentPatientPlans';
 import { supabase } from '@/api/supabaseClient';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
@@ -3355,12 +3356,6 @@ export default function Payments() {
           const stamp = paymentStamp(sp);
           const paidWhen = stamp.time ? `${stamp.date}, ${stamp.time}` : stamp.date;
 
-          const origPrice = selectedPaymentPatientData?.originalPrice ?? (Number(pat?.total_debt) + Number(pat?.total_paid) || paymentAmount);
-          const discAmt = selectedPaymentPatientData?.totalDiscount ?? 0;
-          const discPct = selectedPaymentPatientData?.discountPercent ?? (origPrice > 0 && discAmt > 0 ? Math.round((discAmt / origPrice) * 100) : 0);
-          const finTotal = selectedPaymentPatientData?.finalPlanTotal ?? Math.max(0, origPrice - discAmt);
-          const patTotals = patientCurrentTotals[sp.patient_id];
-          const displayPaid = selectedPaymentPatientData?.totalPaid ?? patTotals?.totalPaid ?? (Number(pat?.total_paid) || 0);
 
           return (
             <DialogContent className="w-[96vw] max-w-4xl lg:max-w-5xl p-0 overflow-hidden rounded-2xl border border-slate-300 shadow-2xl [&>button]:hidden bg-white">
@@ -3534,6 +3529,9 @@ export default function Payments() {
                   </div>
                 )}
 
+                {/* payment-detail-plans-v1: "Davolash rejasi & hisob-kitob" o'rniga bemor rejalari */}
+                {sp.patient_id && <PaymentPatientPlans patientId={sp.patient_id} />}
+
                 {paymentEdit && (
                   <div className="bg-white rounded-xl border border-amber-300 shadow-xs p-3.5 space-y-3" data-testid="payment-edit-form">
                     <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">To'lovni tahrirlash</span>
@@ -3606,92 +3604,7 @@ export default function Payments() {
 
                 {/* ─── 2. Davolash Rejasi & Bemorning To'lovlar Tarixi (Batafsil ichida) ─── */}
                 {paymentDetailsOpen && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-stretch">
-
-                  {/* Chap ustun: Davolash Rejasi & Moliyaviy Hisob-kitob */}
-                  <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden flex flex-col h-full">
-                    <div className="bg-slate-100/90 px-3.5 py-1.5 border-b border-slate-200 flex items-center justify-between">
-                      <span className="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                        Davolash rejasi & hisob-kitob
-                      </span>
-                      <span className="text-[9.5px] font-bold text-slate-500">
-                        UZS (So'm)
-                      </span>
-                    </div>
-
-                    <table className="w-full border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[9px]">
-                          <th className="w-8 py-1.5 px-2 text-center border-r border-slate-200">№</th>
-                          <th className="py-1.5 px-2.5 text-left border-r border-slate-200">Ko'rsatkich</th>
-                          <th className="py-1.5 px-2.5 text-right">Summa (UZS)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200/80 font-mono text-[11px]">
-                        
-                        {/* 1. Reja narxi */}
-                        <tr className="hover:bg-slate-50/60">
-                          <td className="text-center font-bold text-slate-400 border-r border-slate-200 py-1.5">01</td>
-                          <td className="px-2.5 py-1.5 font-sans font-bold text-slate-800 border-r border-slate-200">Reja (asl narxi)</td>
-                          <td className="px-2.5 py-1.5 text-right font-black text-slate-900">
-                            {origPrice.toLocaleString()}
-                          </td>
-                        </tr>
-
-                        {/* 2. Chegirma */}
-                        <tr className="hover:bg-purple-50/40 bg-purple-50/20">
-                          <td className="text-center font-bold text-purple-400 border-r border-slate-200 py-1.5">02</td>
-                          <td className="px-2.5 py-1.5 font-sans font-bold text-purple-800 border-r border-slate-200">Qo'llanilgan Chegirma</td>
-                          <td className="px-2.5 py-1.5 text-right font-black text-purple-700">
-                            {discAmt > 0 ? `-${discAmt.toLocaleString()}` : '0'} <span className="font-sans text-[9px] font-bold">({discPct}%)</span>
-                          </td>
-                        </tr>
-
-                        {/* 3. Chegirmali jami summa */}
-                        <tr className="hover:bg-blue-50/40 bg-blue-50/10">
-                          <td className="text-center font-bold text-blue-400 border-r border-slate-200 py-1.5">03</td>
-                          <td className="px-2.5 py-1.5 font-sans font-extrabold text-blue-900 border-r border-slate-200">To'lanishi Kerak</td>
-                          <td className="px-2.5 py-1.5 text-right font-black text-blue-700">
-                            {finTotal.toLocaleString()}
-                          </td>
-                        </tr>
-
-                        {/* 4. Ushbu to'lov */}
-                        <tr className="bg-emerald-50/50 hover:bg-emerald-50">
-                          <td className="text-center font-bold text-emerald-600 border-r border-slate-200 py-1.5">04</td>
-                          <td className="px-2.5 py-1.5 font-sans font-black text-emerald-900 border-r border-slate-200 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            Ushbu To'lov
-                          </td>
-                          <td className="px-2.5 py-1.5 text-right font-black text-emerald-700 text-xs">
-                            +{paymentAmount.toLocaleString()}
-                          </td>
-                        </tr>
-
-                        {/* 5. Jami to'langan */}
-                        <tr className="hover:bg-slate-50/60">
-                          <td className="text-center font-bold text-slate-400 border-r border-slate-200 py-1.5">05</td>
-                          <td className="px-2.5 py-1.5 font-sans font-bold text-slate-800 border-r border-slate-200">Bemor Jami To'lagan</td>
-                          <td className="px-2.5 py-1.5 text-right font-black text-emerald-600">
-                            {displayPaid.toLocaleString()}
-                          </td>
-                        </tr>
-
-                        {/* 6. Qoldiq Qarz */}
-                        <tr className={debtAtPaymentTime > 0 ? "bg-rose-50/50 hover:bg-rose-50" : "bg-emerald-50/30"}>
-                          <td className={`text-center font-bold border-r border-slate-200 py-1.5 ${debtAtPaymentTime > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>06</td>
-                          <td className={`px-2.5 py-1.5 font-sans font-black border-r border-slate-200 ${debtAtPaymentTime > 0 ? 'text-rose-900' : 'text-emerald-900'}`}>
-                            Qoldiq Qarz
-                          </td>
-                          <td className={`px-2.5 py-1.5 text-right font-black text-xs ${debtAtPaymentTime > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                            {debtAtPaymentTime > 0 ? `${debtAtPaymentTime.toLocaleString()}` : "0 (✓ To'liq)"}
-                          </td>
-                        </tr>
-
-                      </tbody>
-                    </table>
-                  </div>
+                <div className="grid grid-cols-1 gap-3.5 items-stretch">
 
                   {/* O'ng ustun: Bemorning To'lovlar Tarixi */}
                   <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden flex flex-col h-full">

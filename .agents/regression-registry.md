@@ -13,6 +13,13 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 💳 /payments to'lov oynasi — bemor rejalari va hisob-faktura (payment-detail-plans-v1)
+- **Sana:** 2026-10-06
+- **Tuzatilgan Fayllar:** `src/components/payments/PaymentPatientPlans.jsx`, `src/pages/Payments.jsx`, `src/pages/MobilePaymentsV2.jsx`
+- **Muammo Tavsifi:** To'lov qatori oynasidagi "DAVOLASH REJASI & HISOB-KITOB" jadvali (asl narx / chegirma / jami) chalkash va eskirgan raqamlar ko'rsatardi; bemorning qaysi rejalari borligi ko'rinmasdi.
+- **Qanday tuzatildi:** Jadval (va mobil 4 ta karta) olib tashlandi. O'rniga bemorning davolash rejalari profildagidek kartalarda (nomi, holati, xizmatlar, Reja jami, Qarz, sana). Karta bosilsa `TreatmentPlanInvoice` faqat o'qish rejimida ochiladi (skroll, Chop etish); yopilganda to'lov oynasi ochiq qoladi. Ushbu to'lov / Qoldiq qarz, to'lovlar tarixi va chek chop etish saqlandi.
+- **Qaytalamaslik choralari:** Hisob-kitob jadvalini qaytarmang; rejalar ro'yxati `PaymentPatientPlans` orqali bo'lsin.
+
 ### 🦷 Implant case'lari bir-birini bosmasin + har tish uchun rasmlar (implant-case-isolation-v1)
 - **Sana:** 2026-10-06
 - **Tuzatilgan Fayllar:** `src/components/implants/implantCaseTeeth.js`, `src/pages/ImplantDetail.jsx`
