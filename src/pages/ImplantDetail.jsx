@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { profileState } from '@/hooks/useBack';
 import BackButton from '@/components/ui/BackButton';
@@ -106,6 +106,8 @@ export default function ImplantDetail() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [relatedTeeth, setRelatedTeeth] = useState([]);
   const [selectedRelatedTooth, setSelectedRelatedTooth] = useState(null);
+  // implant-case-isolation-v1: tooth picked on another case's page; applied after that case loads.
+  const pendingToothRef = useRef(null);
 
   // New Service Form State
   const [serviceForm, setServiceForm] = useState({
@@ -151,8 +153,9 @@ export default function ImplantDetail() {
           const uniqueRelated = Array.from(new Map((related || []).map(item => [item.id, item])).values())
             .sort((a, b) => String(a.placement_date || '').localeCompare(String(b.placement_date || '')));
           setRelatedTeeth(uniqueRelated);
-          // Keep selection on current route implant
-          setSelectedRelatedTooth(currentImplant.id);
+          // Keep selection on current route implant (or the tooth picked on another case)
+          setSelectedRelatedTooth(pendingToothRef.current || currentImplant.id);
+          pendingToothRef.current = null;
           // Shu bemorning reja/qarzi hali bog'lanmagan implantlari uchun "Implantlar" rejasi (bir marta, takrorlamasdan).
           backfillImplantPlans(uniqueRelated, { patients: pats || [] })
             .then((res) => {
@@ -175,7 +178,7 @@ export default function ImplantDetail() {
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => { setSelectedRelatedTooth(id || null); }, [id]);
+  useEffect(() => { setSelectedRelatedTooth(pendingToothRef.current || id || null); }, [id]);
 
   // Build case teeth items for left rail switcher (placed before early returns for React Rules of Hooks)
   // Prefer expanding the CURRENT multi-tooth case over dumping all patient-related implants
@@ -226,7 +229,7 @@ export default function ImplantDetail() {
     };
 
     const currentExpanded = expandMultiTooth(cur);
-    if (currentExpanded) return currentExpanded;
+    if (currentExpanded && relatedTeeth.length <= 1) return currentExpanded;
 
     if (relatedTeeth.length > 1) {
       return relatedTeeth.flatMap((rec) => {
@@ -254,23 +257,18 @@ export default function ImplantDetail() {
 
   const linkedCase = useMemo(() => {
     if (!implant) return { rows: [], total: 0 };
-    const teeth = uniqueImplantToothKeys(
-      implant.tooth_numbers || (implant.tooth_number ? [implant.tooth_number] : []),
-    );
-    if (teeth.length <= 1 && relatedTeeth.length > 1) {
-      const rows = relatedTeeth.flatMap((rec) => buildLinkedServiceModel(rec).rows);
-      return { rows, total: caseServicesGrandTotal(rows) };
-    }
+    // Jami = this case's services only (another case's services are never mixed in).
     return { rows: linkedModel.rows, total: caseServicesGrandTotal(linkedModel) };
-  }, [implant, relatedTeeth, linkedModel]);
+  }, [implant, linkedModel]);
 
   // Active tooth selection with resolution of tooth_data_map properties
   const activeTooth = useMemo(() => {
     let raw = null;
+    const ownItems = switcherItems.filter((r) => String(r.id).split('__')[0] === String(implant?.id));
     if (selectedRelatedTooth) {
-      raw = switcherItems.find(r => r.id === selectedRelatedTooth) || relatedTeeth.find(r => r.id === selectedRelatedTooth);
+      raw = ownItems.find(r => r.id === selectedRelatedTooth) || null;
     }
-    if (!raw) raw = switcherItems[0] || implant;
+    if (!raw) raw = ownItems[0] || implant;
     if (!raw) return null;
 
     // Check if raw has tooth_data_map for its active tooth
@@ -325,8 +323,20 @@ export default function ImplantDetail() {
   const realImplantId = useMemo(() => {
     if (!activeTooth) return implant?.id || null;
     if (activeTooth.syntheticToothKey) return implant?.id || String(activeTooth.id).split('__')[0];
-    return activeTooth.id;
+    return implant?.id || activeTooth.id;
   }, [activeTooth, implant]);
+
+  // A tooth of another case opens that case's own page (its data, services, Jami).
+  const selectCaseTooth = (item) => {
+    if (!item?.id) return;
+    const recordId = String(item.id).split('__')[0];
+    if (implant && recordId !== String(implant.id)) {
+      pendingToothRef.current = item.id;
+      navigate(`/implants/${recordId}`, { replace: true });
+      return;
+    }
+    setSelectedRelatedTooth(item.id);
+  };
 
   useEffect(() => {
     if (!facturaOpen) return undefined;
@@ -406,7 +416,8 @@ export default function ImplantDetail() {
   })();
 
   const caseFdis = (() => {
-    const list = switcherItems.length > 0 ? switcherItems : (activeTooth ? [activeTooth] : []);
+    const own = switcherItems.filter((it) => String(it.id).split('__')[0] === String(implant?.id));
+    const list = own.length > 0 ? own : (activeTooth ? [activeTooth] : []);
     const all = list.flatMap((it) => {
       const raw = it.tooth_numbers || (it.tooth_number ? [it.tooth_number] : []);
       return raw.map(toothIdToFdi);
@@ -1046,12 +1057,7 @@ export default function ImplantDetail() {
                     <button
                       key={imp.id}
                       type="button"
-                      onClick={() => {
-                        setSelectedRelatedTooth(imp.id);
-                        if (imp.id && !String(imp.id).includes('__') && imp.id !== id) {
-                          navigate(`/implants/${imp.id}`, { replace: true });
-                        }
-                      }}
+                      onClick={() => selectCaseTooth(imp)}
                       className={cn(
                         'shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-left transition-all',
                         selected
@@ -1100,12 +1106,7 @@ export default function ImplantDetail() {
               const raw = it.tooth_numbers || (it.tooth_number ? [it.tooth_number] : []);
               return raw.map(toothIdToFdi).includes(String(fdi));
             });
-            if (found) {
-              setSelectedRelatedTooth(found.id);
-              if (!String(found.id).includes('__') && found.id !== id) {
-                navigate(`/implants/${found.id}`, { replace: true });
-              }
-            }
+            if (found) selectCaseTooth(found);
           }}
         />
       </div>
