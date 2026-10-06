@@ -1158,13 +1158,13 @@ export default function ImplantForm({
           const planResult = await syncImplantPlan(
             { ...payload, factura: facturaSnapshot, id: savedId, patient_id: form.patient_id, patient_name: form.patient_name },
             {
-              planName,
-              createPlan,
+              planName: linkedPlan?.name || planName || IMPLANT_PLAN_DEFAULT_NAME,
+              createPlan: true,
               doctor: { id: doc?.id || '', name: doc?.id ? clinicianDisplayName(doc) : String(form.doctor || '') },
               patient: patientRow || { full_name: form.patient_name },
             },
           );
-          if (!linkedPlan) setPlanOptOut(savedId, !createPlan);
+          setPlanOptOut(savedId, false);
           if (planResult.action === 'created') {
             toast.success(`«${planResult.plan?.name || planName}» rejasi yaratildi: ${Number(planResult.total).toLocaleString('uz-UZ')} so'm qarz`);
           }
@@ -1658,46 +1658,7 @@ export default function ImplantForm({
         </button>
       </div>
 
-      <section className={cardClass} data-testid="implant-plan-section">
-        <h3 className="text-[15px] font-bold text-[#111827] mb-1">{tw('planTitle', 'Davolash rejasi va qarz')}</h3>
-        <p className="text-xs text-[#6b7280] mb-3">
-          {tw('planHint', "Implant xizmatlari bemorning alohida rejasiga tish raqami va narxi bilan yoziladi; reja summasi qarz sifatida hisoblanadi.")}
-        </p>
-        {!linkedPlan && (
-          <label className="flex items-start gap-2 mb-3 text-sm text-[#111827] cursor-pointer">
-            <input
-              type="checkbox"
-              data-testid="implant-plan-create"
-              className="mt-0.5 h-4 w-4 accent-[#0d9488]"
-              checked={createPlan}
-              onChange={(e) => setCreatePlan(e.target.checked)}
-            />
-            <span>{tw('planCreate', "Implant narxini bemor qarziga yozish (alohida reja yaratish)")}</span>
-          </label>
-        )}
-        {(createPlan || linkedPlan) && (
-          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2.5 items-end">
-            <div>
-              <label className="block text-xs font-semibold text-[#6b7280] mb-1" htmlFor="implant-plan-name">
-                {tw('planName', 'Reja nomi')}
-              </label>
-              <input
-                id="implant-plan-name"
-                data-testid="implant-plan-name"
-                value={planName}
-                maxLength={80}
-                onChange={(e) => { setPlanName(e.target.value); setPlanNameTouched(true); }}
-                onBlur={() => setPlanName((prev) => implantPlanName(prev))}
-                placeholder={IMPLANT_PLAN_DEFAULT_NAME}
-                className="w-full h-10 rounded-[10px] border border-[#e5e7eb] bg-white px-3 text-sm outline-none focus:border-[#0d9488]"
-              />
-            </div>
-            <div className="h-10 flex items-center text-sm font-bold text-[#111827] whitespace-nowrap" data-testid="implant-plan-total">
-              {tw('planTotal', 'Reja summasi')}: {formatSom(planTotalPreview)} <span className="font-medium text-[#6b7280] ml-1">so&apos;m</span>
-            </div>
-          </div>
-        )}
-      </section>
+      {/* implant-plan-auto-v1: "Davolash rejasi va qarz" section removed; price always goes to the "Implantlar" plan/debt. */}
 
       <section className={cardClass}>
         <h3 className="text-[15px] font-bold text-[#111827] mb-3">{tw('dateStatus', 'Sana va holat')}</h3>
