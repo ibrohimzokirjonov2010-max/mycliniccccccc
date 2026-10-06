@@ -453,6 +453,13 @@ export default function ToothChartCard({
     let planned = 0;
     let plannedSum = 0;
     const seenCharges = new Set();
+    // plan-discount-summary-v1: reja chegirmasi (discount_amount) bilan — qarz/faktura bilan bir xil qoida
+    const planFactor = new Map();
+    (plans || []).forEach((p) => {
+      const disc = Number(p?.discount_amount) || 0;
+      const net = Number(p?.total_price) || 0;
+      if (p?.id && disc > 0 && net + disc > 0) planFactor.set(p.id, net / (net + disc));
+    });
     teeth.forEach((fdi) => {
       const list = byTooth[fdi] || [];
       if (list.some((e) => e.done && !e.finding)) done += 1;
@@ -464,7 +471,7 @@ export default function ToothChartCard({
             if (seenCharges.has(entry.chargeKey)) return;
             seenCharges.add(entry.chargeKey);
           }
-          plannedSum += Number(entry.price) || 0;
+          plannedSum += (Number(entry.price) || 0) * (planFactor.get(entry.planId) ?? 1);
         });
       }
     });
@@ -484,7 +491,7 @@ export default function ToothChartCard({
       patient?.last_visit,
     ].map(dateKey).filter(Boolean).sort();
     const lastVisit = dates.length ? dates[dates.length - 1] : null;
-    return { done, planned, plannedSum, lastVisit };
+    return { done, planned, plannedSum: Math.round(plannedSum), lastVisit };
   }, [byTooth, appointments, plans, patient?.last_visit, upper, lower]);
 
   const plannedItem = useMemo(() => {
