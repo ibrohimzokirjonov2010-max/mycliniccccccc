@@ -13,6 +13,13 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🧾 Implant: KLINIK PASPORT va XIZMATLAR kartalari (passport-no-system-model, implant-service-cards-v1)
+- **Sana:** 2026-10-06
+- **Tuzatilgan Fayllar:** `src/components/implants/ClinicalPassportCards.jsx`
+- **Muammo Tavsifi:** KLINIK PASPORT'da keraksiz "TIZIM / MODEL" maydoni bor edi. XIZMATLAR (BOG'LANGAN) ro'yxatida "Shu tish" oraliq summasi va "Jami" ikkalasi chiqib chalkashtirardi; xizmatlar oddiy qatorlar edi.
+- **Qanday tuzatildi:** "Tizim / model" maydoni olib tashlandi (Brend bitta ustunda). Xizmatlar endi responsive grid'dagi alohida, chegarali, yumaloq kartalar: nomi, #tish yoki "Umumiy", sana, narx, "Tahrirlash". Faqat bitta "Jami" qoldi.
+- **Qaytalamaslik choralari:** "Shu tish" oraliq summasini qaytarmang. Tizim/model maydonini pasportga qaytarmang.
+
 ### 🦷 Jag' tanlash — markazdagi popup (jaw-choice-popup-v2)
 - **Sana:** 2026-10-06
 - **Tuzatilgan Fayllar:** `src/components/patients/JawChoice.jsx`, `NewPatientFlow.jsx`, `ToothChartCard.jsx`, `TreatmentPlanModal.jsx`, `MobileTreatmentPlansV2.jsx`

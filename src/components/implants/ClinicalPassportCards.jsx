@@ -215,21 +215,8 @@ export function PassportSpecsCard({ implant, language = 'uz', onSaveField }) {
           </h3>
         </div>
 
-        <div className="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <label className="min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tizim / model</span>
-            {onSaveField ? (
-              <input
-                data-testid="passport-system"
-                defaultValue={implant?.brend || implant?.model || ''}
-                placeholder="masalan: SuperLine"
-                onBlur={(e) => onSaveField('brend', e.target.value.trim())}
-                className="mt-0.5 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-bold text-slate-900 placeholder:font-medium placeholder:italic placeholder:text-slate-400 outline-none focus:border-[#14b8a6]"
-              />
-            ) : (
-              <div className="text-sm font-black text-slate-900 break-words">{implant?.brend || implant?.model || EM}</div>
-            )}
-          </label>
+        {/* passport-no-system-model: "Tizim / model" was removed on owner request (2026-10-06). */}
+        <div className="mb-3 grid grid-cols-1 gap-2">
           <div className="min-w-0">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Brend</span>
             <div className="text-sm font-black text-slate-900 break-words">{(implant?.firma === 'Boshqa' ? implant?.firma_custom : implant?.firma) || EM}</div>
@@ -727,14 +714,21 @@ function serviceDateLabel(raw) {
 export function LinkedServicesCard({
   services = [],
   total = 0,
-  caseTotal = null,
+  activeTooth = null,
   language = 'uz',
   onAdd,
   onDelete,
+  onEdit,
   onEditPrimary,
 }) {
+  // implant-service-cards-v1: one bordered card per service, only "Jami" below.
+  const editOf = (svc) => {
+    if (onEdit) return () => onEdit(svc);
+    if (svc.is_primary && onEditPrimary) return onEditPrimary;
+    return null;
+  };
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sm:p-6 h-full flex flex-col">
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 h-full flex flex-col min-w-0" data-testid="implant-linked-services">
       <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#14b8a6] flex items-center justify-center shrink-0">
@@ -756,72 +750,73 @@ export function LinkedServicesCard({
         )}
       </div>
 
-      <div className="overflow-x-auto flex-1">
-        <table className="w-full text-left text-xs">
-          <thead>
-            <tr className="border-b border-slate-100 text-slate-400">
-              <th className="pb-2 pr-2 font-bold">{language === 'ru' ? 'Услуга' : 'Xizmat'}</th>
-              <th className="pb-2 px-2 font-bold whitespace-nowrap">{language === 'ru' ? 'Дата' : 'Sana'}</th>
-              <th className="pb-2 pl-2 font-bold text-right whitespace-nowrap">{language === 'ru' ? 'Цена' : 'Narx'}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {services.length === 0 ? (
-              <tr>
-                <td colSpan={3} className="py-6 text-center text-slate-400 font-medium">
-                  {language === 'ru' ? 'Нет связанных услуг' : "Bog'langan xizmatlar yo'q"}
-                </td>
-              </tr>
-            ) : services.map((svc, idx) => (
-              <tr key={svc.id || idx} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
-                <td className="py-3 pr-2 align-top">
-                  <div className="font-bold text-slate-900 leading-snug">{svc.service_name || EM}</div>
-                  {svc.tooth_number ? (
-                    <div className="text-[10px] font-mono font-bold text-slate-400 mt-0.5">#{svc.tooth_number}</div>
-                  ) : (
-                    <div className="text-[10px] font-bold text-slate-400 mt-0.5">
-                      {language === 'ru' ? 'Общая' : 'Umumiy'}
-                    </div>
+      <div className="flex-1 min-w-0">
+        {services.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-xs text-slate-400 font-medium">
+            {language === 'ru' ? 'Нет связанных услуг' : "Bog'langan xizmatlar yo'q"}
+          </div>
+        ) : (
+          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2.5">
+            {services.map((svc, idx) => {
+              const edit = editOf(svc);
+              const mine = activeTooth && svc.tooth_number && String(svc.tooth_number) === String(activeTooth);
+              return (
+                <li
+                  key={svc.id || idx}
+                  data-testid="implant-service-card"
+                  className={cn(
+                    'min-w-0 rounded-xl border bg-white p-3 flex flex-col gap-2',
+                    mine ? 'border-teal-300 ring-1 ring-teal-100' : 'border-slate-200',
                   )}
-                  {svc.is_primary && onEditPrimary ? (
-                    <button type="button" onClick={onEditPrimary} className="text-[10px] font-bold text-[#14b8a6] hover:underline mt-0.5 cursor-pointer">
-                      {language === 'ru' ? 'Редактировать' : 'Tahrirlash'}
-                    </button>
-                  ) : null}
-                </td>
-                <td className="py-3 px-2 align-top font-mono text-slate-500 whitespace-nowrap">{serviceDateLabel(svc.date)}</td>
-                <td className="py-3 pl-2 align-top text-right whitespace-nowrap">
-                  <div className="font-mono font-black text-slate-800">
-                    {(Number(svc.price) || 0).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">so&apos;m</span>
+                >
+                  <div className="flex items-start justify-between gap-2 min-w-0">
+                    <div className="font-bold text-sm text-slate-900 leading-snug break-words min-w-0">{svc.service_name || EM}</div>
+                    {!svc.is_primary && svc.deletable !== false && onDelete ? (
+                      <button
+                        type="button"
+                        onClick={() => onDelete(svc.id)}
+                        className="text-slate-300 hover:text-rose-600 cursor-pointer text-base leading-none shrink-0"
+                        title={language === 'ru' ? 'Удалить' : "O'chirish"}
+                        aria-label={language === 'ru' ? 'Удалить' : "O'chirish"}
+                      >
+                        ×
+                      </button>
+                    ) : null}
                   </div>
-                  {!svc.is_primary && svc.deletable !== false && onDelete ? (
-                    <button
-                      type="button"
-                      onClick={() => onDelete(svc.id)}
-                      className="text-slate-300 hover:text-rose-600 cursor-pointer text-sm leading-none mt-1"
-                      title={language === 'ru' ? 'Удалить' : "O'chirish"}
-                    >
-                      ×
-                    </button>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                    {svc.tooth_number ? (
+                      <span className="px-1.5 py-0.5 rounded-md bg-slate-900 text-white font-mono font-bold">#{svc.tooth_number}</span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold">{language === 'ru' ? 'Общая' : 'Umumiy'}</span>
+                    )}
+                    <span className="font-mono text-slate-500">{serviceDateLabel(svc.date)}</span>
+                  </div>
+                  <div className="flex flex-wrap items-end justify-between gap-2 mt-auto">
+                    <div className="font-mono font-black text-slate-800 whitespace-nowrap">
+                      {(Number(svc.price) || 0).toLocaleString('uz-UZ')} <span className="text-[10px] font-bold text-slate-400">so&apos;m</span>
+                    </div>
+                    {edit ? (
+                      <button
+                        type="button"
+                        onClick={edit}
+                        className="px-2 py-1 rounded-lg border border-teal-200 text-[11px] font-bold text-[#0f766e] hover:bg-teal-50 cursor-pointer shrink-0"
+                      >
+                        {language === 'ru' ? 'Редактировать' : 'Tahrirlash'}
+                      </button>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
 
-      <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+      <div className="mt-4 pt-4 border-t border-slate-100">
         <div className="flex items-end justify-between gap-3">
-          <span className="text-[11px] font-bold text-slate-500">Shu tish</span>
-          <span className="text-lg font-black font-mono text-slate-800 leading-none whitespace-nowrap">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Jami</span>
+          <span className="text-xl sm:text-2xl font-black font-mono text-[#14b8a6] leading-none whitespace-nowrap" data-testid="implant-services-total">
             {(Number(total) || 0).toLocaleString('uz-UZ')} <span className="text-sm font-bold">so&apos;m</span>
-          </span>
-        </div>
-        <div className="flex items-end justify-between gap-3">
-          <span className="text-[11px] font-bold text-slate-500">Jami (barcha tishlar)</span>
-          <span className="text-xl sm:text-2xl font-black font-mono text-[#14b8a6] leading-none whitespace-nowrap">
-            {(Number(caseTotal != null ? caseTotal : total) || 0).toLocaleString('uz-UZ')} <span className="text-sm font-bold">so&apos;m</span>
           </span>
         </div>
       </div>
