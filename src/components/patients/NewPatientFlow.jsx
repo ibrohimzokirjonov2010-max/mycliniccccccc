@@ -1908,8 +1908,9 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         {step === 2 && (() => {
             const UPPER_RIGHT = ['18', '17', '16', '15', '14', '13', '12', '11'];
             const UPPER_LEFT  = ['21', '22', '23', '24', '25', '26', '27', '28'];
-            const LOWER_LEFT  = ['38', '37', '36', '35', '34', '33', '32', '31'];
-            const LOWER_RIGHT = ['41', '42', '43', '44', '45', '46', '47', '48'];
+            // Dentist view: patient's right on the viewer's left for both jaws (48→41 | 31→38).
+            const LOWER_RIGHT = ['48', '47', '46', '45', '44', '43', '42', '41'];
+            const LOWER_LEFT  = ['31', '32', '33', '34', '35', '36', '37', '38'];
 
             const upperRight = UPPER_RIGHT;
             const upperLeft  = UPPER_LEFT;
@@ -1980,8 +1981,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
             const WIZARD_QUADS = [
               { id: 'ur', title: "Yuqori · O‘ng", teeth: upperRight },
               { id: 'ul', title: "Yuqori · Chap", teeth: upperLeft },
-              { id: 'll', title: "Pastki · Chap", teeth: lowerLeft },
               { id: 'lr', title: "Pastki · O‘ng", teeth: lowerRight },
+              { id: 'll', title: "Pastki · Chap", teeth: lowerLeft },
             ];
             const activeQuad = WIZARD_QUADS.find((quad) => quad.id === wizardQuad) || WIZARD_QUADS[0];
 
@@ -2007,16 +2008,16 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     <div className="odonto-bite-line" aria-hidden="true" />
                     <div className="odonto-jaw-band">
                       <div className="flex justify-between px-1 pt-1 text-[10px] font-black tracking-wide text-rose-600">
-                        <span>CHAP</span>
                         <span>O‘NG</span>
+                        <span>CHAP</span>
                       </div>
                       <div className="odonto-jaw odonto-jaw-lower">
                         <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate() }}>
-                          {lowerLeft.map((n) => <ToothBtn key={n} fdi={n} />)}
+                          {lowerRight.map((n) => <ToothBtn key={n} fdi={n} />)}
                         </div>
                         <div className="odonto-midline" aria-hidden="true" />
                         <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate() }}>
-                          {lowerRight.map((n) => <ToothBtn key={n} fdi={n} />)}
+                          {lowerLeft.map((n) => <ToothBtn key={n} fdi={n} />)}
                         </div>
                       </div>
                     </div>

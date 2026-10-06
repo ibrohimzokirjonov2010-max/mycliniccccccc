@@ -30,7 +30,7 @@ import {
 } from '@/lib/jawServices';
 
 const ADULT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
-const ADULT_LOWER = [38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
+const ADULT_LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
 const CHILD_UPPER = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65];
 const CHILD_LOWER = [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
 
@@ -1180,8 +1180,8 @@ export default function ToothChartCard({
                     </div>
                     <div className="odonto-bite-line" aria-hidden="true" />
                     <div className="odonto-jaw-band">
-                      <span className="odonto-side odonto-side-r">{dentition === 'child' ? 'O‘NG' : 'CHAP'}</span>
-                      <span className="odonto-side odonto-side-l">{dentition === 'child' ? 'CHAP' : 'O‘NG'}</span>
+                      <span className="odonto-side odonto-side-r">O‘NG</span>
+                      <span className="odonto-side odonto-side-l">CHAP</span>
                       <div className="odonto-jaw odonto-jaw-lower">
                         {renderHalf(lower.slice(0, splitAt(lower)), false)}
                         <div className="odonto-midline" aria-hidden="true" />

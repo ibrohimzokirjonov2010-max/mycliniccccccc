@@ -4,7 +4,7 @@ import { fdiGridTemplate, fdiLengthWeight } from '@/lib/fdiNotation';
 import { getToothIllustrationSrcFromStatus, resolveToothIllustrationKind } from '@/utils/toothIllustration';
 
 export const FDI_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
-export const FDI_LOWER = [38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
+export const FDI_LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
 
 export function fdiToInternalId(fdi) {
   const n = parseInt(fdi, 10);
@@ -148,8 +148,8 @@ export default function MobileCompactOdontogram({
           </div>
           <div className="odonto-bite-line" aria-hidden="true" />
           <div className="odonto-jaw-band">
-            <span className="odonto-side odonto-side-r">CHAP</span>
-            <span className="odonto-side odonto-side-l">O‘NG</span>
+            <span className="odonto-side odonto-side-r">O‘NG</span>
+            <span className="odonto-side odonto-side-l">CHAP</span>
             <div className="odonto-jaw odonto-jaw-lower">
               {renderHalf(FDI_LOWER.slice(0, 8), false)}
               <div className="odonto-midline" aria-hidden="true" />

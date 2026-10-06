@@ -1100,11 +1100,11 @@ export default function AppointmentModal({
                 <div className="h-px bg-slate-200/50 my-1" />
                 <div>
                   <div className="text-[8px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1.5 text-center">
-                    Pastda chap / o‘ng (38-48)
+                    Pastda o‘ng / chap (48-38)
                   </div>
                   <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5">
-                    {[38, 37, 36, 35, 34, 33, 32, 31].map(num => renderToothButton(num))}
-                    {[41, 42, 43, 44, 45, 46, 47, 48].map(num => renderToothButton(num))}
+                    {[48, 47, 46, 45, 44, 43, 42, 41].map(num => renderToothButton(num))}
+                    {[31, 32, 33, 34, 35, 36, 37, 38].map(num => renderToothButton(num))}
                   </div>
                 </div>
               </div>

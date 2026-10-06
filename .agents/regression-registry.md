@@ -13,6 +13,14 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Tish kartasi — pastki jag' ham shifokor ko'rinishida (O'NG chapda, 48→41 | 31→38)
+- **Sana:** 2026-10-06
+- **Tuzatilgan Fayllar:** `src/lib/fdiNotation.js`, `ProfessionalOdontogram.jsx`, `ToothChartCard.jsx`, `MobileCompactOdontogram.jsx`, `PatientXraysOdontogram.jsx`, `NewPatientFlow.jsx`, `ImplantWizardArch.jsx`, `implantFactura.js`, `TreatmentPlanModal.jsx`, `AppointmentModal.jsx`, `ui/DentalChart.jsx`, `Services.jsx`, `MobileServicesV2.jsx`, Excel/print massivlari
+- **Muammo Tavsifi:** Yuqori qatorda O'NG chapda, CHAP o'ngda edi, pastki qatorda esa teskari (CHAP chapda, 38→31 | 41→48).
+- **Sababi:** d74c2fd "pastki jag'ni ko'zgulash" commiti pastki qatorni teskari qo'ygan va yorliqlarni almashtirgan.
+- **Qanday tuzatildi:** Ikkala jag' ham FDI shifokor ko'rinishida: yuqori 18→11 | 21→28, pastki 48→41 | 31→38, O'NG chapda, CHAP o'ngda. Rasm fayllari asl (48→41 | 31→38 uchun chizilgan), scaleX yo'q. Tish bosilganda internal id (lr*/ll*) o'zgarmagan, saqlanadigan FDI to'g'ri.
+- **Qaytalamaslik choralari:** Pastki qatorni hech qachon 38→31 | 41→48 qilmang. `scripts/assert-odontogram-fdi.mjs` o'tishi shart.
+
 ### 💰 Implant narxi — katalogdagi tojlar yig'ilmasin
 - **Sana:** 2026-10-05
 - **Tuzatilgan Fayllar:**
