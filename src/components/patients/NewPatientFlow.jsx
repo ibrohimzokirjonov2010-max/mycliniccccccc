@@ -27,6 +27,7 @@ import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
 import { resolveAssignedDoctorName, isTreatingClinician, clinicianDisplayName } from '@/lib/treatingDoctor';
 import { normalizePatientGender, patientGenderForDb } from '@/lib/patientGender';
 import JawChoice from '@/components/patients/JawChoice';
+import { isLinkedPlanInternal } from '@/lib/paymentDebt';
 import { getToothIllustrationSrc } from '@/utils/toothIllustration';
 import {
   applyJawChoice,
@@ -770,6 +771,13 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     return teethSum + toothTotal('general') + jawSum;
   }, [planForm.tooth_numbers, toothTotal, toothData]);
 
+  // wizard-discount-rule-v1: one rule everywhere (same as the saved plan):
+  // discount = round(total * % / 100), total after discount = total - discount.
+  // Math.floor(total * (1 - %/100)) showed 7 699 999 for 11 000 000 at 30%.
+  const discountPct = discountPercent > 0 ? discountPercent : 0;
+  const discountSum = Math.round((grandTotal * discountPct) / 100);
+  const discountedGrandTotal = Math.max(0, grandTotal - discountSum);
+
   // receiptServicesTotal = asl xizmat narxlari yig'indisi (chegirmasiz)
   // Bu qiymat chekda "Xizmatlar" qatorida ko'rsatiladi
   // Muhim: createdPlan.total_price allaqachon chegirmali bo'lishi mumkin,
@@ -1163,7 +1171,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         const paid = allPays.filter(p => p.type?.toLowerCase() === 'income').reduce((s, p) => s + (p.amount || 0), 0);
         const debt = allPays.filter(p => p.type?.toLowerCase() === 'debt').reduce((s, p) => s + (p.amount || 0), 0);
         const refund = allPays.filter(p => p.type?.toLowerCase() === 'refund').reduce((s, p) => s + (p.amount || 0), 0);
-        const discount = allPays.filter(p => p.type?.toLowerCase() === 'discount').reduce((s, p) => s + (p.amount || 0), 0);
+        // wizard-debt-discount-v1: the Debt row is already discounted; the step-2 "Avtomatik chegirma"
+        // row is bookkeeping (as in computePatientBalances). Its negative amount used to be added back,
+        // so total_debt was saved as the undiscounted subtotal.
+        const discount = allPays
+          .filter(p => p.type?.toLowerCase() === 'discount' && !isLinkedPlanInternal(p, 'discount'))
+          .reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
         
         await base44.entities.Patient.update(patientRecord.id, {
           total_paid: paid, 
@@ -2083,7 +2096,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         </div>
                       ) : (
                         allSelectedServices.map((s, idx) => {
-                          const discPrice = Math.floor((s.price || 0) * (1 - discountPercent / 100));
+                          const discPrice = (s.price || 0) - Math.round(((s.price || 0) * discountPct) / 100);
                           const dotColors = ['#4285f4','#ea4335','#34a853','#fbbc04','#9c27b0','#00bcd4','#ff5722'];
                           const dotColor  = dotColors[idx % dotColors.length];
                           return (
@@ -2144,12 +2157,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-0.5 text-left">
                           <div>
-                            <span className="font-black text-slate-900 text-base tabular-nums">{formatCurrency(Math.floor(grandTotal * (1 - discountPercent/100)))}</span>
+                            <span className="font-black text-slate-900 text-base tabular-nums">{formatCurrency(discountedGrandTotal)}</span>
                             {discountPercent > 0 && <span className="ml-2 text-[11px] text-slate-400 line-through tabular-nums">{formatMoneyAmount(grandTotal)}</span>}
                           </div>
                           {discountPercent > 0 && (
                             <span className="text-[11px] font-bold text-rose-500">
-                              {t('patients.wizard.discountAmountSummary', { amount: formatMoneyAmount(Math.floor(grandTotal * (discountPercent/100))), percent: discountPercent })}
+                              {t('patients.wizard.discountAmountSummary', { amount: formatMoneyAmount(discountSum), percent: discountPercent })}
                             </span>
                           )}
                         </div>
@@ -2557,7 +2570,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         </p>
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-xl font-black text-slate-900 leading-none tabular-nums">
-                            {formatCurrency(Math.floor(grandTotal * (1 - discountPercent / 100)))}
+                            {formatCurrency(discountedGrandTotal)}
                           </span>
                           {discountPercent > 0 && (
                             <span className="text-[10px] text-slate-400 line-through font-medium tabular-nums">
@@ -2567,7 +2580,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         </div>
                         {discountPercent > 0 && (
                           <span className="text-[10px] font-black text-emerald-600">
-                            {discountPercent}% chegirma — -{formatCurrency(Math.floor(grandTotal * discountPercent / 100))}
+                            {discountPercent}% chegirma — -{formatCurrency(discountSum)}
                           </span>
                         )}
                       </div>
