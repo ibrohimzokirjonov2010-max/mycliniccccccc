@@ -1934,6 +1934,10 @@ export default function ImplantForm({
                   else setStep(step - 1);
                 }}
                 className="implant-wizard-ghost implant-wizard-back"
+                // implant-step1-no-back: hidden on step 1 only; space kept so "Keyingisi" stays in place
+                style={step === 1 ? { visibility: 'hidden' } : undefined}
+                aria-hidden={step === 1 || undefined}
+                tabIndex={step === 1 ? -1 : undefined}
               >
                 <ArrowLeft className="w-4 h-4" /> {tw('back', 'Orqaga')}
               </button>
