@@ -910,7 +910,24 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   }, [normalizedLastName, normalizedFirstName, normalizedPatientPhone, patientForm.main_treatment_provider, patientForm.address, t]);
 
   const persistPatient = useCallback(async () => {
-    if (createdPatient?.id) return createdPatient;
+    if (createdPatient?.id) {
+      // birth-date-post-create-v1: the patient already exists (user went back to step 1);
+      // a birth date entered/changed now used to be ignored. Save it.
+      const birthDateNow = (patientForm.birth_year && patientForm.birth_month && patientForm.birth_day)
+        ? `${patientForm.birth_year}-${String(patientForm.birth_month).padStart(2, '0')}-${String(patientForm.birth_day).padStart(2, '0')}`
+        : '';
+      if (birthDateNow && String(createdPatient.birth_date || '').slice(0, 10) !== birthDateNow) {
+        try {
+          await base44.entities.Patient.update(createdPatient.id, { birth_date: birthDateNow });
+          const updated = { ...createdPatient, birth_date: birthDateNow };
+          setCreatedPatient(updated);
+          return updated;
+        } catch (error) {
+          console.error('Failed to update birth date:', error);
+        }
+      }
+      return createdPatient;
+    }
     if (!validatePatientFields()) return null;
     try {
       const birthDate = (patientForm.birth_year && patientForm.birth_month && patientForm.birth_day)

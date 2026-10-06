@@ -27,13 +27,58 @@ function isoDateToDisplay(value) {
   return `${match[3]}.${match[2]}.${match[1]}`;
 }
 
+// typed-date-parse-v1: "1.5.1990", "01/05/90", "1-5-1990", "010590" used to be mangled
+// (1.5.1990 -> 15.19.90) and silently dropped, so the birth date was never saved.
+function expandYear(y) {
+  const s = String(y || '');
+  if (s.length === 4) return s;
+  if (s.length !== 2) return '';
+  const nowYY = new Date().getFullYear() % 100;
+  return Number(s) <= nowYY ? `20${s}` : `19${s}`;
+}
+
+const TYPED_SEPARATOR = /[./\-\s]/;
+
+/** Loose typed date -> "dd.mm.yyyy" ('' if it cannot be read). */
+function normalizeTypedDate(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return '';
+  if (TYPED_SEPARATOR.test(raw)) {
+    const parts = raw.split(/[./\-\s]+/).filter(Boolean);
+    if (parts.length !== 3 || parts.some((p) => !/^\d+$/.test(p))) return '';
+    let [d, m, y] = parts;
+    if (d.length === 4) [y, m, d] = [d, m, y]; // yyyy-mm-dd
+    if (d.length > 2 || m.length > 2) return '';
+    const yyyy = expandYear(y);
+    if (!yyyy) return '';
+    return `${d.padStart(2, '0')}.${m.padStart(2, '0')}.${yyyy}`;
+  }
+  const digits = digitsOf(raw);
+  if (digits.length === 8) return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
+  if (digits.length === 6) return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${expandYear(digits.slice(4))}`;
+  return '';
+}
+
+/** True once the typed text is a whole date (no premature value while typing). */
+function isCompleteTypedDate(text) {
+  const raw = String(text || '').trim();
+  if (TYPED_SEPARATOR.test(raw)) {
+    const parts = raw.split(/[./\-\s]+/).filter(Boolean);
+    return parts.length === 3 && (parts[2].length === 4 || parts[0].length === 4);
+  }
+  return digitsOf(raw).length === 8;
+}
+
 function displayDateToIso(text) {
-  const match = String(text || '').trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  const match = normalizeTypedDate(text).match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
   if (!match) return '';
   const day = Number(match[1]);
   const month = Number(match[2]);
   const year = Number(match[3]);
   if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900) return '';
+  // Real calendar day only (31.02 would be rejected by the database).
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== month - 1 || probe.getUTCDate() !== day) return '';
   return `${match[3]}-${match[2]}-${match[1]}`;
 }
 
@@ -102,13 +147,17 @@ export function ClinicDateField({ value, onChange, className, disabled, id, name
         setText(isoDateToDisplay(value));
       }}
       onChange={(event) => {
-        const next = formatDateDigits(digitsOf(event.target.value));
+        const rawInput = String(event.target.value || '');
+        // Separators the user typed (1.5.1990) are kept; bare digits get auto dots as before.
+        const next = TYPED_SEPARATOR.test(rawInput.replace(/^(\d{2})\.(\d{2})\.?/, '$1$2'))
+          ? rawInput.replace(/[^\d./\-\s]/g, '').slice(0, 10)
+          : formatDateDigits(digitsOf(rawInput));
         setText(next);
         if (!digitsOf(next)) {
           emitChange(onChange, '');
           return;
         }
-        const iso = displayDateToIso(next);
+        const iso = isCompleteTypedDate(next) ? displayDateToIso(next) : '';
         if (iso && !blockedByMin(iso, min)) emitChange(onChange, iso);
       }}
       className={cn(
