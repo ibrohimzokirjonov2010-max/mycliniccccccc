@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import { base44 } from '@/api/base44Client';
-import PaymentPatientPlans from '@/components/payments/PaymentPatientPlans';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
 import { cn, formatCurrency, resolveDoctorId, getTreatmentTypeLabel } from '@/lib/utils';
@@ -1658,26 +1657,37 @@ onClose={() => { setShowPlanInvoiceModal(false); setSelectedPlanForInvoice(null)
                       </div>
                     </div>
 
-                    {/* payment-detail-plans-v1: eski "Reja / chegirma / jami" kartalari o'rniga: Ushbu to'lov + Qoldiq qarz + bemor rejalari */}
+                    {/* 4 Financial Cards: Reja (asl narxi), Qo'llanilgan chegirma, Chegirmali jami summa, Qolgan qarz */}
                     {(() => {
+                      const origPrice = selectedPaymentPatientData?.originalPrice ?? (Number(pat?.total_debt) + Number(pat?.total_paid) || rawAmt);
+                      const discAmt = selectedPaymentPatientData?.totalDiscount ?? 0;
+                      const discPct = selectedPaymentPatientData?.discountPercent ?? (origPrice > 0 && discAmt > 0 ? Math.round((discAmt / origPrice) * 100) : 0);
+                      const finTotal = selectedPaymentPatientData?.finalPlanTotal ?? Math.max(0, origPrice - discAmt);
                       const qarzVal = qarzAtTime != null ? Number(qarzAtTime) : (Number(pat?.total_debt) || 0);
+
                       return (
-                        <div className="grid grid-cols-2 gap-2" data-testid="payment-headline">
-                          <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-3">
-                            <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mb-1">Ushbu to'lov</p>
-                            <p className="text-[13px] font-[900] text-emerald-700">{rawAmt < 0 ? '-' : '+'}{Math.abs(rawAmt).toLocaleString()} UZS</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Reja (asl narxi)</p>
+                            <p className="text-[12px] font-[900] text-slate-800">{origPrice.toLocaleString()} UZS</p>
+                          </div>
+                          <div className="rounded-2xl bg-purple-50/60 border border-purple-100 p-3">
+                            <p className="text-[8px] font-black text-purple-500 uppercase tracking-widest mb-1">Qo'llanilgan chegirma</p>
+                            <p className="text-[12px] font-[900] text-purple-700">{discPct}% ({discAmt.toLocaleString()} UZS)</p>
+                          </div>
+                          <div className="rounded-2xl bg-blue-50/60 border border-blue-100 p-3">
+                            <p className="text-[8px] font-black text-blue-500 uppercase tracking-widest mb-1">Chegirmali jami summa</p>
+                            <p className="text-[12px] font-[900] text-blue-700">{finTotal.toLocaleString()} UZS</p>
                           </div>
                           <div className={`rounded-2xl border p-3 ${qarzVal > 0 ? 'bg-rose-50 border-rose-100' : 'bg-emerald-50 border-emerald-100'}`}>
-                            <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${qarzVal > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>Qoldiq qarz</p>
-                            <p className={`text-[13px] font-[900] ${qarzVal > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+                            <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${qarzVal > 0 ? 'text-rose-400' : 'text-emerald-500'}`}>Qolgan qarz</p>
+                            <p className={`text-[12px] font-[900] ${qarzVal > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
                               {qarzVal > 0 ? `${qarzVal.toLocaleString()} UZS` : "✓ To'liq yopilgan"}
                             </p>
                           </div>
                         </div>
                       );
                     })()}
-
-                    {sp.patient_id && <PaymentPatientPlans patientId={sp.patient_id} compact />}
 
                     {/* Xizmat */}
 

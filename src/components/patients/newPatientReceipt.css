@@ -17,7 +17,6 @@
 }
 
 .new-patient-receipt-sheet {
-  overscroll-behavior: contain;
   width: min(720px, calc(100vw - 24px));
   max-height: min(86dvh, 760px);
   overflow: auto;
@@ -99,23 +98,6 @@
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   overflow: hidden;
-}
-
-/* receipt-scroll-v2: the sheet is a flex column with max-height. The paper
-   (overflow hidden) used to shrink to the sheet height and clip the rows, so
-   nothing could scroll. Keep its natural height, scroll the sheet, and pin
-   the Jami bar to the bottom while the toolbar stays pinned to the top. */
-.new-patient-receipt-sheet > #new-patient-receipt {
-  flex-shrink: 0;
-  overflow: clip;
-}
-
-.new-patient-receipt-sheet .receipt-total-wrap {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
-  background: #fff;
-  box-shadow: 0 -6px 12px -10px rgba(15, 23, 42, 0.35);
 }
 
 @media (max-width: 767px) {
@@ -218,12 +200,5 @@
   html.printing-new-patient-receipt .receipt-total-bar,
   html.printing-new-patient-receipt .receipt-total-bar * {
     color: #0f172a !important;
-  }
-}
-
-@media print {
-  html.printing-new-patient-receipt .receipt-total-wrap {
-    position: static !important;
-    box-shadow: none !important;
   }
 }

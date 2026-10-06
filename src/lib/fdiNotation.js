@@ -1,9 +1,9 @@
 /**
  * Canonical FDI tooth numbering for odontogram labels.
- * Display order (dentist view — patient's right on the viewer's left, both jaws):
- *   Upper: O‘NG 18→11 | 21→28 CHAP
- *   Lower: O‘NG 48→41 | 31→38 CHAP
- * Primary (child): 55→51 | 61→65  /  85→81 | 71→75
+ * Display order:
+ *   Upper (patient's right on screen-left): 18→11 | 21→28
+ *   Lower (quadrant 3 on screen-left, 31/71 at the midline): 38→31 | 41→48
+ * Primary (child): 55→51 | 61→65  /  75→71 | 81→85
  * Selection APIs still use internal ids (ur1, ul3c, …).
  */
 
@@ -13,15 +13,15 @@ const CHILD_Q = { ur: 5, ul: 6, ll: 7, lr: 8 };
 export const ADULT_FDI_ARCS = {
   upperRight: [18, 17, 16, 15, 14, 13, 12, 11],
   upperLeft: [21, 22, 23, 24, 25, 26, 27, 28],
-  lowerLeft: [31, 32, 33, 34, 35, 36, 37, 38],
-  lowerRight: [48, 47, 46, 45, 44, 43, 42, 41],
+  lowerLeft: [38, 37, 36, 35, 34, 33, 32, 31],
+  lowerRight: [41, 42, 43, 44, 45, 46, 47, 48],
 };
 
 export const CHILD_FDI_ARCS = {
   upperRight: [55, 54, 53, 52, 51],
   upperLeft: [61, 62, 63, 64, 65],
-  lowerLeft: [71, 72, 73, 74, 75],
-  lowerRight: [85, 84, 83, 82, 81],
+  lowerLeft: [75, 74, 73, 72, 71],
+  lowerRight: [81, 82, 83, 84, 85],
 };
 
 const INTERNAL_ID_RE = /^(ur|ul|lr|ll)(\d+)(c)?$/i;
@@ -47,16 +47,10 @@ export function flattenArcs(arcs) {
   return [
     ...arcs.upperRight,
     ...arcs.upperLeft,
-    ...arcs.lowerRight,
     ...arcs.lowerLeft,
+    ...arcs.lowerRight,
   ];
 }
-
-/** Screen order of the lower row, viewer's left → right: 48…41 | 31…38. */
-export const ADULT_LOWER_ROW = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
-export const ADULT_UPPER_ROW = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
-export const CHILD_LOWER_ROW = [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
-export const CHILD_UPPER_ROW = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65];
 
 export function findDuplicateFdis(fdis) {
   const counts = new Map();
@@ -149,16 +143,18 @@ export function fdiCrownDown(fdi) {
 }
 
 /**
- * Screen side of the mesial surface in the dentist view.
- * Quadrants 1/4 (and 5/8) sit on the viewer's left, so mesial faces right.
+ * Screen side of the mesial surface after the lower row is mirrored.
+ * Upper quads 1 and 5 still face right. Lower quads 3 and 7 now sit on
+ * the viewer's left, so their mesial faces the midline on the right.
  */
 export function fdiMesialIsRight(fdi) {
   const q = Math.floor(Number(fdi) / 10);
-  return q === 1 || q === 4 || q === 5 || q === 8;
+  return q === 1 || q === 3 || q === 5 || q === 7;
 }
 
 /**
- * Lower PNGs are the original art drawn for 48–41 | 31–38. Do not scaleX them.
+ * Lower PNGs are the original unmirrored files. The row order is 38–31 | 41–48.
+ * Do not scaleX them.
  */
 export function fdiLowerImageFlip() {
   return false;

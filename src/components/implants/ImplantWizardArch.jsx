@@ -7,7 +7,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 
 /** Same adult FDI order as the profile Tish kartasi. */
 const UPPER_FDI = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
-const LOWER_FDI = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+const LOWER_FDI = [38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
 
 /** Profile implant status color — dot on the drawing, no digit. */
 const IMPLANT_BADGE = '#64748B';
@@ -168,8 +168,8 @@ export default function ImplantWizardArch({ selectedFdis = [], activeFdi = '', o
               </div>
               <div className="odonto-bite-line" aria-hidden="true" />
               <div className="odonto-jaw-band">
-                <span className="odonto-side odonto-side-r">O‘NG</span>
-                <span className="odonto-side odonto-side-l">CHAP</span>
+                <span className="odonto-side odonto-side-r">CHAP</span>
+                <span className="odonto-side odonto-side-l">O‘NG</span>
                 <div className="odonto-jaw odonto-jaw-lower">
                   <Half fdis={LOWER_FDI.slice(0, splitAt(LOWER_FDI))} phone={phone} selectedSet={selectedSet} activeFdi={activeFdi} onToggle={onToggle} />
                   <div className="odonto-midline" aria-hidden="true" />

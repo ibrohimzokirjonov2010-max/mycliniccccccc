@@ -13,95 +13,6 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
-### 📅 Tug'ilgan sana — mavjud bo'lmagan sana (31.02) yaroqsiz (birth-date-calendar-check)
-- **Sana:** 2026-10-06
-- **Tuzatilgan Fayllar:** `src/components/ui/ClinicDateField.jsx`
-- **Muammo Tavsifi:** "31.02.1990" kabi sana yaroqli deb qabul qilinardi (faqat kun ≤ 31 tekshirilardi) va `1990-02-31` sifatida yuborilardi — Postgres `date` uni rad etadi, bemor saqlanmaydi yoki sana yo'qoladi.
-- **Qanday tuzatildi:** `displayDateToIso` haqiqiy kalendar tekshiruvi (Date.UTC orqali) va yil 1900–2100. Yaroqsiz sana qizil bo'ladi va saqlashni to'xtatadi.
-- **Qaytalamaslik choralari:** Sana validatsiyasini faqat raqam diapazoni bilan cheklamang.
-
-### 🦷 Implant sahifasi: rasm yuklagandan keyin tanlangan tish saqlansin (implant-keep-tooth-on-reload)
-- **Sana:** 2026-10-06
-- **Tuzatilgan Fayllar:** `src/pages/ImplantDetail.jsx`
-- **Muammo Tavsifi:** Ko'p tishli case'da #22 tanlanib rasm yuklangach, sahifa qayta yuklanib birinchi tishga (#21) qaytib ketardi (rasm to'g'ri tishga saqlangan bo'lsa ham).
-- **Qanday tuzatildi:** `load()` tanlovni faqat boshqa yozuvga tegishli bo'lsa almashtiradi; shu case tishi (`id__tish`) saqlanib qoladi. Chiplarga `data-testid="implant-case-chip"`, `data-fdi`, `aria-pressed` qo'shildi.
-- **Qaytalamaslik choralari:** `load()` ichida tanlovni so'zsiz `currentImplant.id` ga qaytarmang.
-
-### 💳 /payments to'lov oynasi — bemor rejalari va hisob-faktura (payment-detail-plans-v1)
-- **Sana:** 2026-10-06
-- **Tuzatilgan Fayllar:** `src/components/payments/PaymentPatientPlans.jsx`, `src/pages/Payments.jsx`, `src/pages/MobilePaymentsV2.jsx`
-- **Muammo Tavsifi:** To'lov qatori oynasidagi "DAVOLASH REJASI & HISOB-KITOB" jadvali (asl narx / chegirma / jami) chalkash va eskirgan raqamlar ko'rsatardi; bemorning qaysi rejalari borligi ko'rinmasdi.
-- **Qanday tuzatildi:** Jadval (va mobil 4 ta karta) olib tashlandi. O'rniga bemorning davolash rejalari profildagidek kartalarda (nomi, holati, xizmatlar, Reja jami, Qarz, sana). Karta bosilsa `TreatmentPlanInvoice` faqat o'qish rejimida ochiladi (skroll, Chop etish); yopilganda to'lov oynasi ochiq qoladi. Ushbu to'lov / Qoldiq qarz, to'lovlar tarixi va chek chop etish saqlandi.
-- **Qaytalamaslik choralari:** Hisob-kitob jadvalini qaytarmang; rejalar ro'yxati `PaymentPatientPlans` orqali bo'lsin.
-
-### 🦷 Implant case'lari bir-birini bosmasin + har tish uchun rasmlar (implant-case-isolation-v1)
-- **Sana:** 2026-10-06
-- **Tuzatilgan Fayllar:** `src/components/implants/implantCaseTeeth.js`, `src/pages/ImplantDetail.jsx`
-- **Muammo Tavsifi:** Bemorga A (#11) keyin B (#12) implant qo'shilganda B sahifasi A tishlarini B xizmatlari bilan ko'rsatardi — A ma'lumotlari "yo'qolgandek" edi; tahrir/yuklash B yozuviga ketardi. PRE-OP/POST-OP/HEALING/FINAL rasmlar butun case uchun bitta edi; PRE-OP'da xizmatlar ro'yxati ko'rinardi.
-- **Qanday tuzatildi:** Tish tanlagich bemorning barcha implant yozuvlaridagi tishlarni `realId` bilan ko'rsatadi; boshqa case tishi bosilsa o'sha case sahifasiga o'tadi. Xizmatlar/Jami faqat joriy case'niki. Rasmlar tish bo'yicha: birinchi tish eski case-darajasidagi rasmlarni oladi, qolganlari `tooth_data_map[tish].stage_media` ga yoziladi. Halil Halilbe A case PRE-OP'idagi xato yuklangan rasm (Asad Asadbe fakturasi skrinshoti) tozalandi (backup: /workspace/repair-backups/halil-implants.json).
-- **Qaytalamaslik choralari:** Bir case sahifasida boshqa case'ning xizmatlari yoki rasmlarini fallback qilib ko'rsatmang.
-
-### 🦷 Yangi implant: 1-qadamda "Orqaga" yo'q; reja/qarz har doim avtomatik (implant-step1-no-back, implant-plan-auto-v1, implant-plan-accumulate-v1)
-- **Sana:** 2026-10-06
-- **Tuzatilgan Fayllar:** `src/components/implants/ImplantForm.jsx`, `src/lib/implantPlan.js`
-- **Muammo Tavsifi:** 1-qadamda ma'nosiz "Orqaga" tugmasi bor edi. 3-qadamdagi "Davolash rejasi va qarz" bo'limi belgilanmasa narx bemor qarziga tushmasdi. Shu bemorga ikkinchi implant (B) qo'shilganda alohida reja ochilar yoki A rejasini qayta nomlardi.
-- **Qanday tuzatildi:** "Orqaga" faqat `step > 1` da. Reja bo'limi olib tashlandi; saqlash har doim `createPlan: true` bilan "Implantlar" rejasiga yozadi (opt-out tozalanadi). Yangi case bemorning ochiq (yakunlanmagan) rejasiga qo'shiladi (`pickHostPlan`), boshqa implantlarning qatorlari saqlanadi; reja faqat o'zining rejasi bo'lsa qayta nomlanadi. Test: A #11 3 150 000 + B #12 2 150 000 → bitta reja 5 300 000, Debt 5 300 000, total_debt 5 300 000.
-- **Qaytalamaslik choralari:** Reja checkbox'ini qaytarmang. Ikkinchi case'da boshqa implantning `implant_id` qatorlarini o'chirmang.
-
-### 🧾 Implant: KLINIK PASPORT va XIZMATLAR kartalari (passport-no-system-model, implant-service-cards-v1)
-- **Sana:** 2026-10-06
-- **Tuzatilgan Fayllar:** `src/components/implants/ClinicalPassportCards.jsx`
-- **Muammo Tavsifi:** KLINIK PASPORT'da keraksiz "TIZIM / MODEL" maydoni bor edi. XIZMATLAR (BOG'LANGAN) ro'yxatida "Shu tish" oraliq summasi va "Jami" ikkalasi chiqib chalkashtirardi; xizmatlar oddiy qatorlar edi.
-- **Qanday tuzatildi:** "Tizim / model" maydoni olib tashlandi (Brend bitta ustunda). Xizmatlar endi responsive grid'dagi alohida, chegarali, yumaloq kartalar: nomi, #tish yoki "Umumiy", sana, narx, "Tahrirlash". Faqat bitta "Jami" qoldi.
-- **Qaytalamaslik choralari:** "Shu tish" oraliq summasini qaytarmang. Tizim/model maydonini pasportga qaytarmang.
-
-### 🦷 Jag' tanlash — markazdagi popup (jaw-choice-popup-v2)
-- **Sana:** 2026-10-06
-- **Tuzatilgan Fayllar:** `src/components/patients/JawChoice.jsx`, `NewPatientFlow.jsx`, `ToothChartCard.jsx`, `TreatmentPlanModal.jsx`, `MobileTreatmentPlansV2.jsx`
-- **Muammo Tavsifi:** Breket/Protez/Babochka bosilganda jag' tanlash kichik pushti blok bo'lib xizmatlar ro'yxatining tepasida chiqardi — ro'yxat pastga aylantirilgan bo'lsa umuman ko'rinmasdi.
-- **Qanday tuzatildi:** `JawChoice` endi eng yaqin `[role=dialog]` ichiga portal qilingan markazdagi popup: katta "Tepa jag'" / "Pastki jag'" / "Ikkalasi" tugmalari narxi bilan, X va Escape yopadi. Bitta bosish xizmatni qo'shadi va popup yopiladi. Bir vaqtda desktop+mobil layout render qilinsa, faqat ko'rinadigan nusxa popup chiqaradi.
-- **Qaytalamaslik choralari:** Popupni body'ga (dialog tashqarisiga) portal qilmang — Radix uni "tashqariga bosish" deb wizardni yopadi. Ro'yxat ichidagi inline blokni qaytarmang.
-
-### 📅 Tug'ilgan sana — yangi bemor oynasida yo'qolmasin
-- **Sana:** 2026-10-06
-- **Tuzatilgan Fayllar:** `src/components/ui/ClinicDateField.jsx`, `src/components/patients/NewPatientFlow.jsx`
-- **Muammo Tavsifi:** Halil Halilbe (patient-oeor9r3ep) tug'ilgan sanasi kiritilgan, lekin profilda bo'sh (DB `birth_date` null).
-- **Sababi:** (1) "1.5.1990", "01/05/90" kabi yozuvlar raqamlarga aylantirilib noto'g'ri bo'linardi va blur'da jim qaytarilardi. (2) Bemor yaratilgandan keyin 1-qadamga qaytib o'zgartirilgan maydonlar (sana, telefon, manzil...) saqlanmasdi — `persistPatient` faqat birinchi marta create qilardi.
-- **Qanday tuzatildi:** `normalizeTypedDate` 1.5.1990, 01/05/90, 1-5-1990, 01051990, 010590, yyyy-mm-dd ni qabul qiladi. O'qib bo'lmaydigan sana qizil bo'ladi va saqlashni to'xtatadi ("Tug'ilgan sana noto'g'ri"). Bemor yaratilgan bo'lsa, o'zgargan maydonlar `Patient.update` bilan yoziladi.
-- **Qaytalamaslik choralari:** Sanani blur'da jim qaytarmang. Yaratilgan bemorni 1-qadamda tahrirlash update qilishi shart.
-
-### 💸 Chegirma — bitta qoida hamma joyda (planDiscount)
-- **Sana:** 2026-10-06
-- **Tuzatilgan Fayllar:** `src/lib/planDiscount.js`, `src/components/patients/NewPatientFlow.jsx`
-- **Muammo Tavsifi:** Asad Asadbe: 2-qadam jami, Yakun qarz, faktura Jami, saqlangan reja va bemor qarzi har xil edi; Yakun'dan qayta saqlaganda ikkinchi (dublikat) reja va ikkinchi Debt yozuvi paydo bo'ldi (qarz 2 baravar).
-- **Sababi:** Chegirma bosilgan paytda (xizmatlar to'liq bo'lmagan holda) summasi hisoblanib Discount to'lovi yaratilardi va keyin yangilanmasdi; qayta saqlash har safar yangi reja + yangi Debt yaratardi.
-- **Qanday tuzatildi:** Chegirma faqat foiz holati. Saqlashda `splitDiscount(jami, foiz)` → reja `total_price` = yakuniy, `discount_amount` = chegirma. Qayta saqlash mavjud rejani va unga bog'langan Debt qatorini yangilaydi. Bemor qarzi `computePatientBalances` bilan qayta hisoblanadi. Yakun va faktura shu reja raqamlarini ko'rsatadi.
-- **Qaytalamaslik choralari:** Chegirma tugmasida DB yozuvi yaratmang. Yakun'dan qayta saqlash yangi reja yaratmasin. 2-qadam = Yakun = faktura Jami = reja = bemor qarzi.
-
-### 🧾 Yangi bemor hisob-fakturasi — modal ichida skroll (receipt-scroll-v2)
-- **Sana:** 2026-10-06
-- **Tuzatilgan Fayllar:** `src/components/patients/NewPatientReceipt.jsx`, `src/components/patients/newPatientReceipt.css`, `src/hooks/useEscapeDialogScrollLock.js`
-- **Muammo Tavsifi:** Yakun → "Chek ko'rish" hisob-fakturasi uzun bo'lsa pastga aylanmasdi; Jami ko'rinmasdi (1366x650, telefon).
-- **Sababi:** `.new-patient-receipt-sheet` flex-column + max-height, ichidagi `#new-patient-receipt` esa `overflow: hidden` — flex uni varaq balandligiga siqib, qatorlarni kesib qo'yardi, scrollHeight == clientHeight. Bundan tashqari overlay Radix modal ustida body'ga portal qilingan, react-remove-scroll wheel/touch hodisalarini bekor qilardi.
-- **Qanday tuzatildi:** Qog'oz `flex-shrink: 0; overflow: clip`, varaq o'zi aylanadi. Yopish/Saqlash/Chop etish tepada sticky, JAMI TO'LOV paneli pastda sticky (`.receipt-total-wrap`). Overlay ildizida wheel/touch hodisalari `stopPropagation` (`useEscapeDialogScrollLock`). Printda sticky o'chiriladi.
-- **Qaytalamaslik choralari:** Varaq ichidagi qog'ozga yana `flex-shrink: 1` + `overflow: hidden` bermang. Radix dialog ustidagi body-portal overlaylarda `useEscapeDialogScrollLock` ishlating. 1280x800, 1366x650, 390x844 da tekshiring.
-
-### 🔔 Toastlar har doim dialoglar ustida (toast-above-dialogs-v1)
-- **Sana:** 2026-10-06
-- **Tuzatilgan Fayllar:** `src/index.css`, `src/App.jsx`, `src/components/ui/dialog.jsx`, `scripts/assert-payment-add-modal.mjs`
-- **Muammo Tavsifi:** Modal ochiq bo'lganda xabarlar (toast) modal orqasida qolib, ko'rinmas edi.
-- **Sababi:** Sonner toaster z-index modal/overlay qatlamlaridan past edi (oldingi qoida: "toastni z-100 dan oshirmang").
-- **Qanday tuzatildi:** `[data-sonner-toaster]` z-index 2147483000 (har qanday dialog, overlay, hisob-faktura va jag' popupidan yuqori). Telefonda dialog ochiq bo'lsa toast tepaga chiqadi. Toastni bosish Radix dialogni "tashqariga bosish" deb yopmaydi (`isToastTarget`).
-- **Qaytalamaslik choralari:** Egasining 2026-10-06 talabi bilan eski "toast z-100 dan oshmasin" qoidasi bekor qilingan. Toast z-indexini dialoglardan pastga tushirmang. Yangi overlay qo'shsangiz z-index 2147483000 dan past bo'lsin.
-
-### 🦷 Tish kartasi — pastki jag' ham shifokor ko'rinishida (O'NG chapda, 48→41 | 31→38)
-- **Sana:** 2026-10-06
-- **Tuzatilgan Fayllar:** `src/lib/fdiNotation.js`, `ProfessionalOdontogram.jsx`, `ToothChartCard.jsx`, `MobileCompactOdontogram.jsx`, `PatientXraysOdontogram.jsx`, `NewPatientFlow.jsx`, `ImplantWizardArch.jsx`, `implantFactura.js`, `TreatmentPlanModal.jsx`, `AppointmentModal.jsx`, `ui/DentalChart.jsx`, `Services.jsx`, `MobileServicesV2.jsx`, Excel/print massivlari
-- **Muammo Tavsifi:** Yuqori qatorda O'NG chapda, CHAP o'ngda edi, pastki qatorda esa teskari (CHAP chapda, 38→31 | 41→48).
-- **Sababi:** d74c2fd "pastki jag'ni ko'zgulash" commiti pastki qatorni teskari qo'ygan va yorliqlarni almashtirgan.
-- **Qanday tuzatildi:** Ikkala jag' ham FDI shifokor ko'rinishida: yuqori 18→11 | 21→28, pastki 48→41 | 31→38, O'NG chapda, CHAP o'ngda. Rasm fayllari asl (48→41 | 31→38 uchun chizilgan), scaleX yo'q. Tish bosilganda internal id (lr*/ll*) o'zgarmagan, saqlanadigan FDI to'g'ri.
-- **Qaytalamaslik choralari:** Pastki qatorni hech qachon 38→31 | 41→48 qilmang. `scripts/assert-odontogram-fdi.mjs` o'tishi shart.
-
 ### 💰 Implant narxi — katalogdagi tojlar yig'ilmasin
 - **Sana:** 2026-10-05
 - **Tuzatilgan Fayllar:**
@@ -513,7 +424,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
   - [`src/components/notifications/ImplantAlerter.jsx`](src/components/notifications/ImplantAlerter.jsx)
 - **Muammo Tavsifi:** Toastlar o'ng yuqorida PDF / Tahrirlash ni yopardi. Tish bosilganda qo'shimcha toast. Legend 390px da chiqib ketardi.
 - **Qanday tuzatildi:** Toaster pastki markaz, mobil nav ustida, ko'pi bilan 2 ta. Dialog ochiq bo'lsa z-index 40 (to'lov modali ortida). `/implants` da to'liqsiz-implant toasti chiqmaydi. Legend o'raladi.
-- **Qaytalamaslik choralari:** ~~Toaster z-index ni dialog `z-[100]` dan yuqoriga ko'tarmang.~~ (2026-10-06 dan bekor: toast har doim dialog ustida, qarang "toast-above-dialogs-v1".) `position="top-right"` qaytarmang. Step 3 faktura overlay va `#0d9488` o'zgarmasin.
+- **Qaytalamaslik choralari:** Toaster z-index ni dialog `z-[100]` dan yuqoriga ko'tarmang. `position="top-right"` qaytarmang. Step 3 faktura overlay va `#0d9488` o'zgarmasin.
 
 ### 🦷 Odontogramma — 390px sig'im va tish PNG kesh
 - **Sana:** 2026-09-22
@@ -666,7 +577,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 - **Muammo Tavsifi:** Mobil YANGI TO'LOV oynasida sariq "Implant ma'lumotlarini kiritish kerak" toast modal ustiga chiqib +50 000 chip-larini bosib qolgan. Bekor qilish / To'lash footer skroll ichida edi — telefonda pastga tushmasdan to'lab bo'lmasdi.
 - **Sababi:** Sonner toaster default z-index (~999999999) dialog overlay (`z-[100]`) dan yuqori; action tugmalari `overflow-y-auto` body ichida edi.
 - **Qanday tuzatildi:** Toaster dialog ochiq bo'lganda `z-index: 40` (overlay orqasida). ImplantAlerter modal ochiq bo'lsa toast chiqarmaydi. Validatsiya inline banner (header ostida). Sticky footer 44px teng Bekor qilish / To'lash. Teal `#0d9488`, chip-lar har doim skrollda.
-- **Qaytalamaslik choralari:** ~~Sonner toaster ni dialog `z-[100]` dan yuqoriga ko'tarmang.~~ (2026-10-06 dan bekor: toast dialog ustida, telefonda dialog ochiq bo'lsa tepada — "toast-above-dialogs-v1".) To'lov CTA ni `overflow-y-auto` body ichiga qaytarmang — `.payment-add-footer` `flex-shrink: 0`. Marker `payment-add-teal-v1-0d9488`. Validatsiyada `alert()` va modal-ustidagi toast qaytarmang. Indigo/purple CTA yo'q. `node scripts/assert-payment-add-modal.mjs` o'tsin.
+- **Qaytalamaslik choralari:** Sonner toaster ni dialog `z-[100]` dan yuqoriga ko'tarmang. To'lov CTA ni `overflow-y-auto` body ichiga qaytarmang — `.payment-add-footer` `flex-shrink: 0`. Marker `payment-add-teal-v1-0d9488`. Validatsiyada `alert()` va modal-ustidagi toast qaytarmang. Indigo/purple CTA yo'q. `node scripts/assert-payment-add-modal.mjs` o'tsin.
 
 ### 🦷 Yangi implant wizard — clinic-grade mobile polish
 - **Sana:** 2026-09-21

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { profileState } from '@/hooks/useBack';
 import BackButton from '@/components/ui/BackButton';
@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toImplantFdi, uniqueImplantToothKeys } from '@/lib/fdiNotation';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { toast } from 'sonner';
@@ -35,6 +36,8 @@ import { DEFAULT_IMPLANT_BRANDS, listImplantBrandsReadOnly } from '../components
 import {
   buildLinkedServiceModel,
   caseServicesGrandTotal,
+  linkedServicesForTooth,
+  toothServicesTotal,
 } from '../components/implants/linkedImplantServices';
 import ClinicalStepper, {
   LIFECYCLE_COLORS,
@@ -49,7 +52,6 @@ import {
   LinkedServicesCard,
 } from '../components/implants/ClinicalPassportCards';
 import ImplantToothChart from '../components/implants/ImplantToothChart';
-import { expandPatientTeeth, stagePhotoPayload, toothStageMedia } from '../components/implants/implantCaseTeeth';
 import jsPDF from 'jspdf';
 
 // Defensive rendering helper
@@ -100,13 +102,10 @@ export default function ImplantDetail() {
   const [facturaOpen, setFacturaOpen] = useState(false);
   const [catalogBrands, setCatalogBrands] = useState(null);
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
-  const [editingServiceId, setEditingServiceId] = useState(null);
   const [zoomImg, setZoomImg] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [relatedTeeth, setRelatedTeeth] = useState([]);
   const [selectedRelatedTooth, setSelectedRelatedTooth] = useState(null);
-  // Tooth to select after navigating to another case of the same patient.
-  const pendingToothRef = useRef(null);
 
   // New Service Form State
   const [serviceForm, setServiceForm] = useState({
@@ -152,12 +151,8 @@ export default function ImplantDetail() {
           const uniqueRelated = Array.from(new Map((related || []).map(item => [item.id, item])).values())
             .sort((a, b) => String(a.placement_date || '').localeCompare(String(b.placement_date || '')));
           setRelatedTeeth(uniqueRelated);
-          // Keep selection on current route implant (or the tooth picked on another case)
-          // implant-keep-tooth-on-reload: rasm yuklagandan keyin tanlangan tish (masalan #22) saqlanib qolsin
-          const pendingTooth = pendingToothRef.current;
-          setSelectedRelatedTooth((prev) => pendingTooth
-            || (prev && String(prev).split('__')[0] === String(currentImplant.id) ? prev : currentImplant.id));
-          pendingToothRef.current = null;
+          // Keep selection on current route implant
+          setSelectedRelatedTooth(currentImplant.id);
           // Shu bemorning reja/qarzi hali bog'lanmagan implantlari uchun "Implantlar" rejasi (bir marta, takrorlamasdan).
           backfillImplantPlans(uniqueRelated, { patients: pats || [] })
             .then((res) => {
@@ -180,35 +175,102 @@ export default function ImplantDetail() {
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => { setSelectedRelatedTooth(pendingToothRef.current || id || null); }, [id]);
+  useEffect(() => { setSelectedRelatedTooth(id || null); }, [id]);
 
-  // implant-case-isolation-v1: every implant tooth of the patient is listed,
-  // each one bound to its own Implant row (realId). Picking a tooth of another
-  // case opens that case, so `implant` is always the row being shown/edited.
-  const switcherItems = useMemo(
-    () => (implant ? expandPatientTeeth(relatedTeeth, implant) : []),
-    [relatedTeeth, implant],
-  );
+  // Build case teeth items for left rail switcher (placed before early returns for React Rules of Hooks)
+  // Prefer expanding the CURRENT multi-tooth case over dumping all patient-related implants
+  // (relatedTeeth > 1 previously hid per-tooth FDI labels and made both chips show #11).
+  const switcherItems = useMemo(() => {
+    const cur = implant;
+    if (!cur) return [];
+
+    const expandMultiTooth = (rec) => {
+      const teeth = rec.tooth_numbers || (rec.tooth_number ? [rec.tooth_number] : (rec.tooth_id ? [rec.tooth_id] : []));
+      const uniqueTeeth = uniqueImplantToothKeys(Array.isArray(teeth) ? teeth : String(teeth || '').split(/[,·]/));
+      if (uniqueTeeth.length <= 1) return null;
+      return uniqueTeeth.map((tId) => {
+        const fdi = toImplantFdi(tId);
+        const tData = rec.tooth_data_map?.[tId] || rec.tooth_data_map?.[fdi] || {};
+        const toothTimeline = Array.isArray(tData.timeline) ? tData.timeline : null;
+        const caseTimeline = Array.isArray(rec.timeline) ? rec.timeline : [];
+        const fdiStr = String(fdi || '');
+        const inheritedTimeline = caseTimeline.filter((event) => {
+          const tag = event?.tooth_fdi || event?.tooth_number || event?.tooth_key;
+          if (!tag) return true;
+          return String(toImplantFdi(tag) || tag) === fdiStr;
+        });
+        return {
+          ...rec,
+          id: `${rec.id}__${tId}`,
+          syntheticToothKey: tId,
+          tooth_id: tId,
+          tooth_number: fdi,
+          tooth_numbers: [tId],
+          firma: tData.firma || rec.firma,
+          firma_custom: tData.firma_custom || rec.firma_custom,
+          brend: tData.brend || rec.brend,
+          diameter: tData.diameter != null && tData.diameter !== '' ? tData.diameter : rec.diameter,
+          length: tData.length != null && tData.length !== '' ? tData.length : rec.length,
+          lot_number: tData.lot_number != null && tData.lot_number !== '' ? tData.lot_number : rec.lot_number,
+          torque: tData.torque != null && tData.torque !== '' ? tData.torque : rec.torque,
+          isq: tData.isq != null && tData.isq !== '' ? tData.isq : rec.isq,
+          bone_type: tData.bone_type || rec.bone_type,
+          price: (tData.price != null && tData.price !== '') ? tData.price : rec.price,
+          narxi: (tData.price != null && tData.price !== '') ? tData.price : (rec.narxi || rec.price),
+          service_name: tData.service_name || rec.service_name,
+          lifecycle_status: tData.lifecycle_status || rec.lifecycle_status,
+          status: tData.lifecycle_status || rec.status || rec.lifecycle_status,
+          timeline: toothTimeline && toothTimeline.length > 0 ? toothTimeline : inheritedTimeline,
+        };
+      });
+    };
+
+    const currentExpanded = expandMultiTooth(cur);
+    if (currentExpanded) return currentExpanded;
+
+    if (relatedTeeth.length > 1) {
+      return relatedTeeth.flatMap((rec) => {
+        const expanded = expandMultiTooth(rec);
+        if (expanded) return expanded;
+        const key = rec.tooth_id || (Array.isArray(rec.tooth_numbers) && rec.tooth_numbers[0]) || rec.tooth_number;
+        const match = key ? String(key).match(/^(ur|ul|lr|ll)(\d+)$/) : null;
+        const fdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : (key ? String(key) : null);
+        return [{
+          ...rec,
+          tooth_id: key || rec.tooth_id,
+          tooth_number: fdi || rec.tooth_number,
+          tooth_numbers: key ? [key] : (rec.tooth_numbers || (rec.tooth_number ? [rec.tooth_number] : [])),
+        }];
+      });
+    }
+
+    return [cur];
+  }, [relatedTeeth, implant]);
 
   const linkedModel = useMemo(
     () => (implant ? buildLinkedServiceModel(implant) : { teeth: [], rows: [], date: '' }),
     [implant],
   );
 
-  // Services, Jami and exports belong to this case only (never the other cases).
-  const linkedCase = useMemo(
-    () => ({ rows: linkedModel.rows, total: caseServicesGrandTotal(linkedModel) }),
-    [linkedModel],
-  );
+  const linkedCase = useMemo(() => {
+    if (!implant) return { rows: [], total: 0 };
+    const teeth = uniqueImplantToothKeys(
+      implant.tooth_numbers || (implant.tooth_number ? [implant.tooth_number] : []),
+    );
+    if (teeth.length <= 1 && relatedTeeth.length > 1) {
+      const rows = relatedTeeth.flatMap((rec) => buildLinkedServiceModel(rec).rows);
+      return { rows, total: caseServicesGrandTotal(rows) };
+    }
+    return { rows: linkedModel.rows, total: caseServicesGrandTotal(linkedModel) };
+  }, [implant, relatedTeeth, linkedModel]);
 
   // Active tooth selection with resolution of tooth_data_map properties
   const activeTooth = useMemo(() => {
     let raw = null;
-    const ownItems = switcherItems.filter((r) => String(r.realId) === String(implant?.id));
     if (selectedRelatedTooth) {
-      raw = ownItems.find((r) => r.id === selectedRelatedTooth) || null;
+      raw = switcherItems.find(r => r.id === selectedRelatedTooth) || relatedTeeth.find(r => r.id === selectedRelatedTooth);
     }
-    if (!raw) raw = ownItems[0] || implant;
+    if (!raw) raw = switcherItems[0] || implant;
     if (!raw) return null;
 
     // Check if raw has tooth_data_map for its active tooth
@@ -217,7 +279,6 @@ export default function ImplantDetail() {
     const match = toothKey ? String(toothKey).match(/^(ur|ul|lr|ll)(\d+)$/) : null;
     const toothFdi = match ? ({ ur: '1', ul: '2', ll: '3', lr: '4' }[match[1]] + match[2]) : toothKey;
     const toothData = (raw.tooth_data_map?.[toothKey] || raw.tooth_data_map?.[toothFdi]) || {};
-    const media = toothStageMedia(implant || raw, toothKey || toothFdi);
 
     const pick = (mapVal, rawVal) => {
       if (mapVal != null && String(mapVal).trim() !== '') return String(mapVal).trim();
@@ -246,10 +307,13 @@ export default function ImplantDetail() {
       timeline: (Array.isArray(toothData.timeline) && toothData.timeline.length > 0)
         ? toothData.timeline
         : (raw.timeline || []),
-      // Stage photos are per tooth; never borrowed from another tooth or case.
-      xray_urls: media.xray_urls,
-      stage_media: media.stage_media,
-      passport_url: toothData.passport_url || raw.passport_url || null,
+      xray_urls: (Array.isArray(toothData.xray_urls) && toothData.xray_urls.length > 0)
+        ? toothData.xray_urls
+        : (raw.xray_urls || implant?.xray_urls || []),
+      stage_media: (toothData.stage_media && typeof toothData.stage_media === 'object')
+        ? toothData.stage_media
+        : (raw.stage_media || implant?.stage_media || null),
+      passport_url: toothData.passport_url || raw.passport_url || implant?.passport_url || null,
       tooth_number: toothFdi || raw.tooth_number,
       tooth_numbers: toothKey ? [toothKey] : rawTeeth,
       syntheticToothKey: raw.syntheticToothKey || toothKey || null,
@@ -260,7 +324,8 @@ export default function ImplantDetail() {
   // Synthetic teeth have id="realDbId__toothKey" — never use these as update targets.
   const realImplantId = useMemo(() => {
     if (!activeTooth) return implant?.id || null;
-    return activeTooth.realId || implant?.id || String(activeTooth.id).split('__')[0];
+    if (activeTooth.syntheticToothKey) return implant?.id || String(activeTooth.id).split('__')[0];
+    return activeTooth.id;
   }, [activeTooth, implant]);
 
   useEffect(() => {
@@ -325,11 +390,8 @@ export default function ImplantDetail() {
 
   const displayStatus = getCurrentStatus();
 
-  // Every service of this case (each card shows its tooth or "Umumiy"); Jami = their sum.
-  const caseServiceRows = [...linkedCase.rows].sort((a, b) => {
-    const mine = (row) => (String(row.tooth_number || '') === String(activeToothNumberFdi) ? 0 : 1);
-    return mine(a) - mine(b);
-  });
+  const toothServices = linkedServicesForTooth(linkedModel, activeToothNumberFdi);
+  const toothServicesSum = toothServicesTotal(toothServices);
   const caseServicesSum = linkedCase.total;
 
   const counts = (() => {
@@ -344,26 +406,13 @@ export default function ImplantDetail() {
   })();
 
   const caseFdis = (() => {
-    const own = switcherItems.filter((it) => String(it.realId) === String(implant?.id));
-    const list = own.length > 0 ? own : (activeTooth ? [activeTooth] : []);
+    const list = switcherItems.length > 0 ? switcherItems : (activeTooth ? [activeTooth] : []);
     const all = list.flatMap((it) => {
       const raw = it.tooth_numbers || (it.tooth_number ? [it.tooth_number] : []);
       return raw.map(toothIdToFdi);
     });
     return [...new Set(all.filter(Boolean))];
   })();
-
-  // A tooth of another case of this patient opens that case (its own row).
-  const selectCaseTooth = (item) => {
-    if (!item) return;
-    const recordId = item.realId || String(item.id).split('__')[0];
-    if (recordId && String(recordId) !== String(implant?.id)) {
-      pendingToothRef.current = item.id;
-      navigate(`/implants/${recordId}`, { replace: true });
-      return;
-    }
-    setSelectedRelatedTooth(item.id);
-  };
 
   const handleStagePhotoUpload = async ({ slotKey, slotIndex, file }) => {
     if (!realImplantId || !file) return;
@@ -379,21 +428,35 @@ export default function ImplantDetail() {
         throw new Error(result.error || 'Upload failed');
       }
 
-      // Photos are saved on the active tooth of this case only (implantCaseTeeth).
-      const toothKey = activeTooth?.syntheticToothKey
-        || (Array.isArray(activeTooth?.tooth_numbers) ? activeTooth.tooth_numbers[0] : null)
-        || activeTooth?.tooth_number;
-      const photoPayload = stagePhotoPayload(implant, toothKey, slotKey, slotIndex, result.data);
+      const existing = Array.isArray(implant?.xray_urls) ? [...implant.xray_urls] : [];
+      // Normalize to fixed 4-slot string array aligned with MEDIA_LABELS indices
+      const nextUrls = [0, 1, 2, 3].map((i) => {
+        const cur = existing[i];
+        if (i === slotIndex) return result.data;
+        if (typeof cur === 'string') return cur || null;
+        if (cur && typeof cur === 'object' && cur.url) return cur.url;
+        return null;
+      });
+      // Preserve any extra legacy xray entries beyond the 4 stage slots
+      for (let i = 4; i < existing.length; i++) nextUrls.push(existing[i]);
+
+      const nextStageMedia = {
+        ...(implant?.stage_media && typeof implant.stage_media === 'object' ? implant.stage_media : {}),
+        [slotKey]: result.data,
+      };
 
       // Optimistic UI
       setImplant((prev) => prev && String(prev.id) === String(realImplantId)
-        ? { ...prev, ...photoPayload }
+        ? { ...prev, xray_urls: nextUrls, stage_media: nextStageMedia }
         : prev);
       setRelatedTeeth((prev) => prev.map((t) => String(t.id) === String(realImplantId)
-        ? { ...t, ...photoPayload }
+        ? { ...t, xray_urls: nextUrls, stage_media: nextStageMedia }
         : t));
 
-      await base44.entities.Implant.update(realImplantId, photoPayload);
+      await base44.entities.Implant.update(realImplantId, {
+        xray_urls: nextUrls,
+        stage_media: nextStageMedia,
+      });
 
       toast.success(language === 'ru'
         ? ('Фото ' + slotKey + ' сохранено')
@@ -531,7 +594,6 @@ export default function ImplantDetail() {
 
   // Handle Adding a New Service
   const handleOpenAddService = () => {
-    setEditingServiceId(null);
     setServiceForm({
       service_name: 'Metallokeramika Karonka',
       date: activeTooth.placement_date || new Date().toISOString().split('T')[0],
@@ -551,27 +613,6 @@ export default function ImplantDetail() {
     }));
   };
 
-  // Tahrirlash on a service card: manually added rows open the service form,
-  // wizard (factura) rows open the implant wizard where they were priced.
-  const handleEditService = (svc) => {
-    const stored = Array.isArray(implant?.services_list) ? implant.services_list : [];
-    const manual = svc?.origin === 'manual' && stored.some((s) => s.id === svc.id);
-    if (!manual) {
-      setEditOpen(true);
-      return;
-    }
-    setEditingServiceId(svc.id);
-    setServiceForm({
-      service_name: svc.service_name || '',
-      date: svc.date || new Date().toISOString().split('T')[0],
-      tooth_number: svc.tooth_number || '',
-      firma: svc.firma || firmaNom,
-      price: Number(svc.price) || 0,
-      notes: svc.notes || '',
-    });
-    setServiceModalOpen(true);
-  };
-
   const handleSaveNewService = async () => {
     if (!serviceForm.service_name.trim()) {
       toast.warning("Xizmat nomini kiriting");
@@ -588,15 +629,12 @@ export default function ImplantDetail() {
       notes: serviceForm.notes || ''
     };
 
-    const storedServices = Array.isArray(implant?.services_list) ? implant.services_list : [];
-    const updatedServices = editingServiceId
-      ? storedServices.map((s) => (s.id === editingServiceId ? { ...s, ...newSvc, id: s.id } : s))
-      : [...storedServices, newSvc];
+    const updatedServices = [...(Array.isArray(implant?.services_list) ? implant.services_list : []), newSvc];
     const now = new Date().toISOString();
     const timeline = [...(activeTooth.timeline || []), {
       date: now,
-      status: editingServiceId ? 'Xizmat tahrirlandi' : "Xizmat qo'shildi",
-      note: `${newSvc.service_name} (${newSvc.price.toLocaleString()} so'm) ${editingServiceId ? 'yangilandi' : "ro'yxatga kiritildi"}`,
+      status: "Xizmat qo'shildi",
+      note: `${newSvc.service_name} (${newSvc.price.toLocaleString()} so'm) ro'yxatga kiritildi`,
       user: 'Dr.'
     }];
 
@@ -608,8 +646,7 @@ export default function ImplantDetail() {
       syncImplantPlan({ ...implant, id: realImplantId, services_list: updatedServices }, { createPlan: false })
         .catch((planErr) => console.error('Implant plan sync failed:', planErr));
       setServiceModalOpen(false);
-      setEditingServiceId(null);
-      toast.success(language === 'ru' ? "Услуга успешно добавлена!" : "Xizmat muvaffaqiyatli saqlandi!", {
+      toast.success(language === 'ru' ? "Услуга успешно добавлена!" : "Xizmat muvaffaqiyatli qo'shildi!", {
         duration: 2500,
       });
       load();
@@ -1009,10 +1046,12 @@ export default function ImplantDetail() {
                     <button
                       key={imp.id}
                       type="button"
-                      onClick={() => selectCaseTooth(imp)}
-                      data-testid="implant-case-chip"
-                      data-fdi={fdi}
-                      aria-pressed={selected}
+                      onClick={() => {
+                        setSelectedRelatedTooth(imp.id);
+                        if (imp.id && !String(imp.id).includes('__') && imp.id !== id) {
+                          navigate(`/implants/${imp.id}`, { replace: true });
+                        }
+                      }}
                       className={cn(
                         'shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-left transition-all',
                         selected
@@ -1061,7 +1100,12 @@ export default function ImplantDetail() {
               const raw = it.tooth_numbers || (it.tooth_number ? [it.tooth_number] : []);
               return raw.map(toothIdToFdi).includes(String(fdi));
             });
-            if (found) selectCaseTooth(found);
+            if (found) {
+              setSelectedRelatedTooth(found.id);
+              if (!String(found.id).includes('__') && found.id !== id) {
+                navigate(`/implants/${found.id}`, { replace: true });
+              }
+            }
           }}
         />
       </div>
@@ -1081,20 +1125,20 @@ export default function ImplantDetail() {
       </div>
 
       {/* 5) BOTTOM ROW — 2 cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch min-w-0">
         <ClinicalTimeline
           implant={activeTooth}
           language={language}
           onAddMilestone={() => setAddMilestoneOpen(true)}
         />
         <LinkedServicesCard
-          services={caseServiceRows}
-          total={caseServicesSum}
-          activeTooth={activeToothNumberFdi}
+          services={toothServices}
+          total={toothServicesSum}
+          caseTotal={caseServicesSum}
           language={language}
           onAdd={handleOpenAddService}
           onDelete={handleDeleteService}
-          onEdit={handleEditService}
+          onEditPrimary={() => setEditOpen(true)}
         />
       </div>
 
@@ -1307,10 +1351,7 @@ export default function ImplantDetail() {
         patients={patients}
         services={[]}
         implant={implant}
-        relatedImplants={(() => {
-          const own = switcherItems.filter((it) => String(it.realId) === String(implant?.id));
-          return own.length > 0 ? own : [implant];
-        })()}
+        relatedImplants={switcherItems.length > 0 ? switcherItems : [implant]}
         onSaved={() => load()}
       />
 

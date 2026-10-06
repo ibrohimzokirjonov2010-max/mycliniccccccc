@@ -1563,13 +1563,13 @@ export default function Services() {
                   </div>
 
                   <div className="flex items-center justify-between px-1">
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Pastki o'ng (48-41)</span>
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Pastki chap (38-31)</span>
                     <span className="text-[9px] font-black text-[#1499AD] uppercase tracking-wider">▼ Pastki jag' (Past)</span>
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Pastki chap (31-38)</span>
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Pastki o'ng (41-48)</span>
                   </div>
-                  {/* Pastki o'ng (48-41) va Pastki chap (31-38) */}
+                  {/* Pastki chap (38-31) va Pastki o'ng (41-48) */}
                   <div className="flex justify-center items-center gap-0.5 min-w-max">
-                    {[48,47,46,45,44,43,42,41].map(n => (
+                    {[38,37,36,35,34,33,32,31].map(n => (
                       <ToothButton 
                         key={n} 
                         num={n} 
@@ -1582,7 +1582,7 @@ export default function Services() {
                       />
                     ))}
                     <div className="w-0.5 h-6 bg-slate-300 mx-1 rounded-full" />
-                    {[31,32,33,34,35,36,37,38].map(n => (
+                    {[41,42,43,44,45,46,47,48].map(n => (
                       <ToothButton 
                         key={n} 
                         num={n} 

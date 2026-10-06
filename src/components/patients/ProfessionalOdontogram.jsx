@@ -72,29 +72,28 @@ const UPPER_LEFT = [
   T('ul7', 't17', 'left',  52),
   T('ul8', 't18', 'left',  52),
 ];
-// Dentist view (FDI): patient's right (Q4) sits on the viewer's left, 48→41 | 31→38.
 const LOWER_RIGHT = [
-  T('lr8', 't48', 'right', 52),
-  T('lr7', 't47', 'right', 52),
-  T('lr6', 't46', 'right', 58),
-  T('lr5', 't45', 'right', 46),
-  T('lr4', 't44', 'right', 46),
-  T('lr3', 't43', 'right', 42),
-  T('lr2', 't42', 'right', 42),
-  T('lr1', 't41', 'right', 42),
+  T('lr1', 't31', 'right', 42),
+  T('lr2', 't32', 'right', 42),
+  T('lr3', 't33', 'right', 42),
+  T('lr4', 't34', 'right', 46),
+  T('lr5', 't35', 'right', 46),
+  T('lr6', 't36', 'right', 58),
+  T('lr7', 't37', 'right', 52),
+  T('lr8', 't38', 'right', 52),
 ];
 const LOWER_LEFT = [
-  T('ll1', 't31', 'left',  42),
-  T('ll2', 't32', 'left',  42),
-  T('ll3', 't33', 'left',  42),
-  T('ll4', 't34', 'left',  46),
-  T('ll5', 't35', 'left',  46),
-  T('ll6', 't36', 'left',  58),
-  T('ll7', 't37', 'left',  52),
-  T('ll8', 't38', 'left',  52),
+  T('ll8', 't48', 'left',  52),
+  T('ll7', 't47', 'left',  52),
+  T('ll6', 't46', 'left',  58),
+  T('ll5', 't45', 'left',  46),
+  T('ll4', 't44', 'left',  46),
+  T('ll3', 't43', 'left',  42),
+  T('ll2', 't42', 'left',  42),
+  T('ll1', 't41', 'left',  42),
 ];
 
-// Child / primary FDI (55–51 | 61–65 / 85–81 | 71–75)
+// Child / primary FDI (55–51 | 61–65 / 75–71 | 81–85)
 const CHILD_UPPER_RIGHT = [
   T('ur5c', 't15_25', 'right', 46),
   T('ur4c', 't14_24', 'right', 46),
@@ -110,18 +109,18 @@ const CHILD_UPPER_LEFT = [
   T('ul5c', 't15_25', 'left',  46),
 ];
 const CHILD_LOWER_RIGHT = [
-  T('lr5c', 't45_35', 'right', 46),
-  T('lr4c', 't44_34', 'right', 46),
-  T('lr3c', 't43_33', 'right', 42),
-  T('lr2c', 't42_32', 'right', 42),
   T('lr1c', 't41_31', 'right', 42),
+  T('lr2c', 't42_32', 'right', 42),
+  T('lr3c', 't43_33', 'right', 42),
+  T('lr4c', 't44_34', 'right', 46),
+  T('lr5c', 't45_35', 'right', 46),
 ];
 const CHILD_LOWER_LEFT = [
-  T('ll1c', 't41_31', 'left',  42),
-  T('ll2c', 't42_32', 'left',  42),
-  T('ll3c', 't43_33', 'left',  42),
-  T('ll4c', 't44_34', 'left',  46),
   T('ll5c', 't45_35', 'left',  46),
+  T('ll4c', 't44_34', 'left',  46),
+  T('ll3c', 't43_33', 'left',  42),
+  T('ll2c', 't42_32', 'left',  42),
+  T('ll1c', 't41_31', 'left',  42),
 ];
 
 function fdisOf(list) {
@@ -816,7 +815,7 @@ function ProfessionalOdontogram({
 
   const allTeeth  = useMemo(() => [...upperRight, ...upperLeft, ...lowerRight, ...lowerLeft], [upperRight, upperLeft, lowerRight, lowerLeft]);
   const allUpper  = useMemo(() => [...upperRight, ...upperLeft].map(t => t.id), [upperRight, upperLeft]);
-  const allLower  = useMemo(() => [...lowerRight, ...lowerLeft].map(t => t.id), [lowerLeft, lowerRight]);
+  const allLower  = useMemo(() => [...lowerLeft, ...lowerRight].map(t => t.id), [lowerLeft, lowerRight]);
   const disabledSet = useMemo(() => new Set(disabledTeeth.map(String)), [disabledTeeth]);
   const handleToothClick = useCallback((toothId) => {
     if (onToothClick) onToothClick(toothId);
@@ -1010,14 +1009,14 @@ function ProfessionalOdontogram({
           </div>
         ) : quadrantFilter === 'Q3' ? (
           <div className="flex flex-col items-center gap-2 p-2 bg-slate-50/70 border border-slate-200 rounded-xl w-full min-w-0">
-            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono text-center">Q3 — Chap Pastki Jag' (31 - 38)</span>
+            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono text-center">Q3 — Chap Pastki Jag' (38 - 31)</span>
             <div className="odonto-quad w-full min-w-0" style={{ gridTemplateColumns: fdiGridTemplate(lowerLeft.map((t) => t.fdi)) }}>
               {renderRow(lowerLeft, false)}
             </div>
           </div>
         ) : quadrantFilter === 'Q4' ? (
           <div className="flex flex-col items-center gap-2 p-2 bg-slate-50/70 border border-slate-200 rounded-xl w-full min-w-0">
-            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono text-center">Q4 — O'ng Pastki Jag' (48 - 41)</span>
+            <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-700 font-mono text-center">Q4 — O'ng Pastki Jag' (41 - 48)</span>
             <div className="odonto-quad w-full min-w-0" style={{ gridTemplateColumns: fdiGridTemplate(lowerRight.map((t) => t.fdi)) }}>
               {renderRow(lowerRight, false)}
             </div>
@@ -1053,15 +1052,15 @@ function ProfessionalOdontogram({
               {chartView === 'teeth' && <div className="odonto-bite-line" aria-hidden="true" />}
               {chartView !== 'maxilla' && (
                 <div className="odonto-jaw-band">
-                  <span className="odonto-side odonto-side-r">O‘NG</span>
-                  <span className="odonto-side odonto-side-l">CHAP</span>
+                  <span className="odonto-side odonto-side-r">CHAP</span>
+                  <span className="odonto-side odonto-side-l">O‘NG</span>
                   <div className="odonto-jaw odonto-jaw-lower">
-                    <div className="odonto-quad" data-label={`${lowerRight[0]?.fdi}–${lowerRight[lowerRight.length - 1]?.fdi}`} style={{ gridTemplateColumns: fdiGridTemplate(lowerRight.map((t) => t.fdi)) }}>
-                      {renderRow(lowerRight, false)}
-                    </div>
-                    <div className="odonto-midline" aria-hidden="true" />
                     <div className="odonto-quad" data-label={`${lowerLeft[0]?.fdi}–${lowerLeft[lowerLeft.length - 1]?.fdi}`} style={{ gridTemplateColumns: fdiGridTemplate(lowerLeft.map((t) => t.fdi)) }}>
                       {renderRow(lowerLeft, false)}
+                    </div>
+                    <div className="odonto-midline" aria-hidden="true" />
+                    <div className="odonto-quad" data-label={`${lowerRight[0]?.fdi}–${lowerRight[lowerRight.length - 1]?.fdi}`} style={{ gridTemplateColumns: fdiGridTemplate(lowerRight.map((t) => t.fdi)) }}>
+                      {renderRow(lowerRight, false)}
                     </div>
                   </div>
                 </div>

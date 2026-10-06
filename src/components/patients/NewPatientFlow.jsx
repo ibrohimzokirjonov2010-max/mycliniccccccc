@@ -27,8 +27,6 @@ import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
 import { resolveAssignedDoctorName, isTreatingClinician, clinicianDisplayName } from '@/lib/treatingDoctor';
 import { normalizePatientGender, patientGenderForDb } from '@/lib/patientGender';
 import JawChoice from '@/components/patients/JawChoice';
-import { splitDiscount } from '@/lib/planDiscount';
-import { computePatientBalances } from '@/lib/paymentDebt';
 import { getToothIllustrationSrc } from '@/utils/toothIllustration';
 import {
   applyJawChoice,
@@ -316,7 +314,6 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   const [saving, setSaving] = useState(false);
   const [savingError, setSavingError] = useState(null);
   const [doctorError, setDoctorError] = useState('');
-  const [birthDateInvalid, setBirthDateInvalid] = useState(false);
   const [services, setServices] = useState([]);
   const [createdPatient, setCreatedPatient] = useState(null);
   const [createdPlan, setCreatedPlan] = useState(null);
@@ -524,6 +521,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   });
 
   const [discountPercent, setDiscountPercent] = useState(0);
+  const [appliedDiscountAmount, setAppliedDiscountAmount] = useState(0);
+  const [discountPaymentId, setDiscountPaymentId] = useState(null);
   const [showCustomDiscount, setShowCustomDiscount] = useState(false);
   const [customDiscountAmount, setCustomDiscountAmount] = useState('');
 
@@ -604,6 +603,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       setIsBulkMode(false);
       setPatientType('adult');
       setDiscountPercent(0);
+      setDiscountPaymentId(null);
       setShowCustomDiscount(false);
       setCustomDiscountAmount('');
       
@@ -817,20 +817,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   const receiptNow = new Date();
   const receiptDateLabel = formatReceiptDate(receiptNow, t);
   const receiptTimeLabel = receiptNow.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
-  // Discount actually saved on the plan(s) — never a click-time snapshot.
-  const createdPlanDiscountTotal = useMemo(() => {
-    const plans = createdPlan?.allPlansObjects || [];
-    return plans.reduce((sum, plan) => sum + (Number(plan?.discount_amount) || 0), 0);
-  }, [createdPlan]);
-  const createdPlanNetTotal = useMemo(() => {
-    const plans = createdPlan?.allPlansObjects || [];
-    if (!plans.length) return null;
-    return plans.reduce((sum, plan) => sum + (Number(plan?.total_price) || 0), 0);
-  }, [createdPlan]);
-  // Yakun JAMI TO'LOV (QARZ) = saved plan total (already discounted) − advance.
-  const receiptDueTotal = Math.max(0, (createdPlanNetTotal != null
-    ? createdPlanNetTotal
-    : receiptServicesTotal - createdPlanDiscountTotal) - createdPlanAdvanceTotal);
+  const receiptDueTotal = Math.max(0, receiptServicesTotal - appliedDiscountAmount - createdPlanAdvanceTotal);
   const closeReceipt = useCallback(() => setReceiptOpen(false), []);
 
   useEffect(() => {
@@ -909,10 +896,6 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       toast.error(t('patients.errorPhoneRequired') || "Telefon raqamini to'liq kiriting");
       return false;
     }
-    if (birthDateInvalid) {
-      toast.error("Tug'ilgan sana noto'g'ri. Masalan: 19.07.1998");
-      return false;
-    }
     const missingDoctor = getPatientDoctorRequiredError(patientForm.main_treatment_provider, t);
     if (missingDoctor) {
       setDoctorError(missingDoctor);
@@ -924,45 +907,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       return false;
     }
     return true;
-  }, [normalizedLastName, normalizedFirstName, normalizedPatientPhone, patientForm.main_treatment_provider, patientForm.address, birthDateInvalid, t]);
+  }, [normalizedLastName, normalizedFirstName, normalizedPatientPhone, patientForm.main_treatment_provider, patientForm.address, t]);
 
   const persistPatient = useCallback(async () => {
-    if (createdPatient?.id) {
-      // The patient row is created when leaving step 1. If the user went back
-      // and changed the form (e.g. added the birth date), write those edits too
-      // — they used to be silently ignored.
-      if (!validatePatientFields()) return null;
-      const birthDateNow = (patientForm.birth_year && patientForm.birth_month && patientForm.birth_day)
-        ? `${patientForm.birth_year}-${String(patientForm.birth_month).padStart(2, '0')}-${String(patientForm.birth_day).padStart(2, '0')}`
-        : '';
-      const genderNow = patientGenderForDb(patientForm.gender);
-      const edits = {
-        first_name: normalizedFirstName,
-        last_name: normalizedLastName,
-        full_name: normalizedPatientName,
-        phone: normalizedPatientPhone,
-        phone_secondary: (patientForm.phone_secondary || '').replace(/\D/g, ''),
-        email: patientForm.email || '',
-        address: patientForm.address || '',
-        ...(genderNow ? { gender: genderNow } : {}),
-        birth_date: birthDateNow,
-        important_info: patientForm.important_info || '',
-        main_treatment_provider: patientForm.main_treatment_provider || '',
-      };
-      const changed = Object.entries(edits).filter(([k, v]) => String(createdPatient[k] ?? '') !== String(v ?? ''));
-      if (changed.length === 0) return createdPatient;
-      try {
-        const patch = Object.fromEntries(changed);
-        await base44.entities.Patient.update(createdPatient.id, patch);
-        const merged = { ...createdPatient, ...patch };
-        setCreatedPatient(merged);
-        return merged;
-      } catch (error) {
-        console.error('Failed to update patient:', error);
-        toast.error(error?.message || "Bemor ma'lumotlarini yangilab bo'lmadi");
-        return createdPatient;
-      }
-    }
+    if (createdPatient?.id) return createdPatient;
     if (!validatePatientFields()) return null;
     try {
       const birthDate = (patientForm.birth_year && patientForm.birth_month && patientForm.birth_day)
@@ -1116,15 +1064,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
       const displayCategory = planForm.name || (serviceNames ? `${serviceNames}${teethSuffix}` : t('patients.wizard.treatmentPlan'));
 
-      // 1. One treatment plan with all services. Discount = splitDiscount (same as step 2).
-      const { amount: planDiscountAmt, final: planFinalPrice } = splitDiscount(price, discountPercent);
+      // 1. Create a single treatment plan containing all services
+      const planDiscountAmt = Math.round((price * discountPercent) / 100);
+      const planFinalPrice = Math.max(0, price - planDiscountAmt);
 
       const selectedDoc = doctors.find(d => d.id === patientForm.main_treatment_provider);
-      // Going back from Yakun to Reja and pressing Saqlash again must update the
-      // plan it already made — it used to create a second plan + second debt
-      // (Asad Asadbe had the same 10 704 000 plan twice → 21 408 000 qarz).
-      const existingPlan = createdPlan?.allPlansObjects?.[0]?.id ? createdPlan.allPlansObjects[0] : null;
-      const planPayload = {
+      const plan = await base44.entities.TreatmentPlan.create({
         name: displayCategory,
         patient_id: patientRecord.id,
         patient_name: patientRecord.full_name,
@@ -1149,15 +1094,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
           monthly_amount: Math.round((installmentTotal - installmentAdvance) / installmentMonths),
           service_ids: consolidatedServices.map(s => s.service_id)
         } : null
-      };
-      let plan;
-      if (existingPlan) {
-        const updated = await base44.entities.TreatmentPlan.update(existingPlan.id, planPayload);
-        if (updated?.error) throw new Error(updated.error);
-        plan = { ...existingPlan, ...(updated && typeof updated === 'object' ? updated : {}), ...planPayload, id: existingPlan.id };
-      } else {
-        plan = await base44.entities.TreatmentPlan.create(planPayload);
-      }
+      });
 
       if (!plan || plan.error) {
         throw new Error(plan?.error || 'Reja yaratishda xatolik yuz berdi');
@@ -1168,25 +1105,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       allCreatedPlans.push(plan);
       const linkedContext = `Linked to Plan: ${plan.id}`;
 
-      // 2. Single Payment (Debt) for the combined plan (update it on re-save).
-      let existingDebtRow = null;
-      if (existingPlan) {
-        try {
-          const rows = await base44.entities.Payment.filter({ patient_id: patientRecord.id }, '-date', 500);
-          existingDebtRow = (rows || []).find((row) => String(row.type || '').toLowerCase() === 'debt'
-            && String(row.notes || '').includes(`Linked to Plan: ${existingPlan.id}`)) || null;
-        } catch (lookupErr) {
-          console.warn('[NewPatientFlow] debt row lookup failed', lookupErr);
-        }
-      }
-      if (existingDebtRow) {
-        await base44.entities.Payment.update(existingDebtRow.id, {
-          amount: planFinalPrice,
-          debt_amount: planFinalPrice,
-          category: displayCategory,
-        });
-        totalDebt += planFinalPrice;
-      } else if (planFinalPrice > 0) {
+      // 2. Create single Payment (Debt) for the combined plan
+      if (planFinalPrice > 0) {
         await base44.entities.Payment.create({
           patient_id: patientRecord.id,
           patient_name: patientRecord.full_name,
@@ -1201,8 +1121,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         totalDebt += planFinalPrice;
       }
 
-      // 3. Create single Payment (Income) for advance payment if set (first save only)
-      if (!existingPlan && isInstallment && installmentAdvance > 0) {
+      // 3. Create single Payment (Income) for advance payment if set
+      if (isInstallment && installmentAdvance > 0) {
         await base44.entities.Payment.create({
           patient_id: patientRecord.id,
           patient_name: patientRecord.full_name,
@@ -1223,13 +1143,14 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
           '-date', 
           500
         );
-        // Same balance rule as Payments / profile: plan totals minus income.
-        const patientPlans = await base44.entities.TreatmentPlan.filter({ patient_id: patientRecord.id }, '-created_date', 500);
-        const { totals: balanceTotals } = computePatientBalances(allPays || [], patientPlans || []);
-        const own = balanceTotals[patientRecord.id] || { currentDebt: planFinalPrice, totalPaid: 0 };
+        const paid = allPays.filter(p => p.type?.toLowerCase() === 'income').reduce((s, p) => s + (p.amount || 0), 0);
+        const debt = allPays.filter(p => p.type?.toLowerCase() === 'debt').reduce((s, p) => s + (p.amount || 0), 0);
+        const refund = allPays.filter(p => p.type?.toLowerCase() === 'refund').reduce((s, p) => s + (p.amount || 0), 0);
+        const discount = allPays.filter(p => p.type?.toLowerCase() === 'discount').reduce((s, p) => s + (p.amount || 0), 0);
+        
         await base44.entities.Patient.update(patientRecord.id, {
-          total_paid: own.totalPaid,
-          total_debt: own.currentDebt,
+          total_paid: paid, 
+          total_debt: Math.max(0, debt - paid + refund - discount),
         });
         
         toast.success(t('patients.wizard.planCreatedWithDebt', { amount: formatMoneyAmount(totalDebt) }));
@@ -1346,8 +1267,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     planForm, toothData, createdPatient, persistPatient, onSaved,
     isInstallment, installmentMonths, installmentAdvance, 
     installmentStartDate, installmentDay, installmentServiceKeys, installmentTotal, allSelectedServices,
-    discountPercent,  // MUHIM: chegirma noto'g'ri saqlanmasligi uchun qo'shildi (stale closure bug fix)
-    createdPlan, doctors, patientForm, t,
+    discountPercent  // MUHIM: chegirma noto'g'ri saqlanmasligi uchun qo'shildi (stale closure bug fix)
   ]);
 
   /**
@@ -1435,17 +1355,151 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
     onClose();
   }, [onClose, step, patientForm.full_name, patientForm.phone]);
 
-  /**
-   * Step-2 discount is only a percentage on screen. Nothing is written here:
-   * Saqlash stores the discounted plan (total_price + discount_amount) and the
-   * patient debt from that same number. (It used to create a Discount payment
-   * from the total at click time, so services added afterwards were not
-   * discounted on Yakun / the invoice — Asad Asadbe 10 704 000 vs 12 344 000.)
-   */
-  const handleApplyDiscount = useCallback((val) => {
-    const pct = Math.max(0, Math.min(100, Number(val) || 0));
-    setDiscountPercent(pct);
-  }, []);
+  const handleApplyDiscount = useCallback(async (val, mode = 'pct') => {
+    try {
+      if (!createdPatient) return;
+      
+      const originalTotal = createdPlan?.total_price || grandTotal || 0;
+      let discountAmount = 0;
+      let label = "";
+      
+      if (mode === 'pct') {
+        setDiscountPercent(val);
+        discountAmount = (originalTotal * val) / 100;
+        label = val === 0 ? "Yo'q" : t('patients.wizard.discountPercentLabel', { val });
+      } else {
+        // Use a unique number to identify custom amount in UI
+        setDiscountPercent(-1); 
+        discountAmount = val;
+        label = t('patients.wizard.discountAmountLabel', { val: val.toLocaleString() });
+      }
+      setAppliedDiscountAmount(discountAmount);
+      
+      if (discountPaymentId) {
+        if (val === 0 && mode === 'pct') {
+          await base44.entities.Payment.delete(discountPaymentId);
+          setDiscountPaymentId(null);
+        } else {
+          await base44.entities.Payment.update(discountPaymentId, {
+            amount: -discountAmount,
+            category: label,
+            notes: `Avtomatik chegirma: ${label}`
+          });
+        }
+      } else if (discountAmount > 0) {
+        const pay = await base44.entities.Payment.create({
+          patient_id: createdPatient.id,
+          patient_name: createdPatient.full_name,
+          type: 'Discount',
+          category: label,
+          amount: -discountAmount,
+          method: '—',
+          date: new Date().toISOString(),
+          notes: `Avtomatik chegirma: ${label}`
+        });
+        if (pay && pay.id) {
+          setDiscountPaymentId(pay.id);
+        }
+      }
+      
+      // TreatmentPlan yozuvlarini ham net summa bilan yangilaymiz
+      const plansToUpdate = createdPlan?.allPlansObjects?.length
+        ? createdPlan.allPlansObjects
+        : (createdPlan?.id ? [createdPlan] : []);
+      if (plansToUpdate.length > 0) {
+        const planOriginals = plansToUpdate.map((plan) => {
+          const currentTotal = Number(plan.total_price) || 0;
+          const existingDiscount = Number(plan.discount_amount) || 0;
+          return {
+            ...plan,
+            original_price: currentTotal + existingDiscount
+          };
+        });
+
+        for (const plan of plansToUpdate) {
+            const sourcePlan = planOriginals.find((p) => p.id === plan.id) || plan;
+            const planOriginalPrice = Number(sourcePlan.original_price) || 0;
+            if (planOriginalPrice <= 0) continue;
+            
+            // Distribute discount proportionally
+            let planDiscountAmt = 0;
+            if (mode === 'pct') {
+                planDiscountAmt = (planOriginalPrice * val) / 100;
+            } else {
+                // If it's a fixed amount, distribute it based on weight
+                const totalOriginal = planOriginals.reduce((s, p) => s + (Number(p.original_price) || 0), 0);
+                planDiscountAmt = totalOriginal > 0 ? (planOriginalPrice / totalOriginal) * val : 0;
+            }
+            
+            const roundedDiscountAmt = Math.max(0, Math.round(planDiscountAmt));
+            const planDiscountPct = mode === 'pct' ? val : (planOriginalPrice > 0 ? Math.round((roundedDiscountAmt / planOriginalPrice) * 100) : 0);
+            const discountedPlanTotal = Math.max(0, Math.round(planOriginalPrice - roundedDiscountAmt));
+
+            await base44.entities.TreatmentPlan.update(plan.id, {
+                total_price: discountedPlanTotal,
+                discount_amount: roundedDiscountAmt,
+                discount_percent: planDiscountPct
+            });
+        }
+
+        setCreatedPlan(prev => {
+          if (!prev) return prev;
+
+          const updatedPlanObjects = (prev.allPlansObjects || []).map((plan) => {
+            const existingDiscount = Number(plan.discount_amount) || 0;
+            const originalPrice = (Number(plan.total_price) || 0) + existingDiscount;
+
+            let distributedDiscount = 0;
+            if (mode === 'pct') {
+              distributedDiscount = (originalPrice * val) / 100;
+            } else {
+              const totalOriginal = (prev.allPlansObjects || []).reduce((sum, p) => {
+                const pExistingDiscount = Number(p.discount_amount) || 0;
+                return sum + ((Number(p.total_price) || 0) + pExistingDiscount);
+              }, 0);
+              distributedDiscount = totalOriginal > 0 ? (originalPrice / totalOriginal) * val : 0;
+            }
+
+            const roundedDiscount = Math.max(0, Math.round(distributedDiscount));
+
+            return {
+              ...plan,
+              total_price: Math.max(0, Math.round(originalPrice - roundedDiscount)),
+              discount_amount: roundedDiscount,
+              discount_percent: mode === 'pct' ? val : (originalPrice > 0 ? Math.round((roundedDiscount / originalPrice) * 100) : 0)
+            };
+          });
+
+          return {
+            ...prev,
+            allPlansObjects: updatedPlanObjects
+          };
+        });
+      }
+      
+      const allPays = await base44.entities.Payment.filter(
+        { patient_id: createdPatient.id }, 
+        '-date', 
+        500
+      );
+      const paid = allPays.filter(p => p.type?.toLowerCase() === 'income').reduce((s, p) => s + (p.amount || 0), 0);
+      const debt = allPays.filter(p => p.type?.toLowerCase() === 'debt').reduce((s, p) => s + (p.amount || 0), 0);
+      const refund = allPays.filter(p => p.type?.toLowerCase() === 'refund').reduce((s, p) => s + (p.amount || 0), 0);
+      const discount = allPays.filter(p => p.type?.toLowerCase() === 'discount').reduce((s, p) => s + (p.amount || 0), 0);
+      
+      await base44.entities.Patient.update(createdPatient.id, {
+        total_paid: paid, 
+        total_debt: Math.max(0, debt + discount - paid - refund),
+      });
+      
+      if (onSaved) onSaved();
+      
+      toast.success(val === 0 && mode === 'pct' ? t('patients.wizard.discountRemoved') : t('patients.wizard.discountApplied', { label }));
+    } catch (error) {
+      console.error('Chegirma tizimida xatolik:', error);
+      toast.error(t('patients.wizard.discountError'));
+    }
+  }, [createdPatient, createdPlan, grandTotal, discountPaymentId, onSaved]);
 
   const goToStep = (target) => {
     if (target === step || (target === 3 && step === 4)) return;
@@ -1691,7 +1745,6 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       value={(patientForm.birth_year && patientForm.birth_month && patientForm.birth_day)
                         ? `${patientForm.birth_year}-${String(patientForm.birth_month).padStart(2, '0')}-${String(patientForm.birth_day).padStart(2, '0')}`
                         : ''}
-                      onValidityChange={(ok) => setBirthDateInvalid(!ok)}
                       onChange={(e) => {
                         const match = String(e?.target?.value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
                         setPatientForm((prev) => ({
@@ -1855,9 +1908,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         {step === 2 && (() => {
             const UPPER_RIGHT = ['18', '17', '16', '15', '14', '13', '12', '11'];
             const UPPER_LEFT  = ['21', '22', '23', '24', '25', '26', '27', '28'];
-            // Dentist view: patient's right on the viewer's left for both jaws (48→41 | 31→38).
-            const LOWER_RIGHT = ['48', '47', '46', '45', '44', '43', '42', '41'];
-            const LOWER_LEFT  = ['31', '32', '33', '34', '35', '36', '37', '38'];
+            const LOWER_LEFT  = ['38', '37', '36', '35', '34', '33', '32', '31'];
+            const LOWER_RIGHT = ['41', '42', '43', '44', '45', '46', '47', '48'];
 
             const upperRight = UPPER_RIGHT;
             const upperLeft  = UPPER_LEFT;
@@ -1928,8 +1980,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
             const WIZARD_QUADS = [
               { id: 'ur', title: "Yuqori · O‘ng", teeth: upperRight },
               { id: 'ul', title: "Yuqori · Chap", teeth: upperLeft },
-              { id: 'lr', title: "Pastki · O‘ng", teeth: lowerRight },
               { id: 'll', title: "Pastki · Chap", teeth: lowerLeft },
+              { id: 'lr', title: "Pastki · O‘ng", teeth: lowerRight },
             ];
             const activeQuad = WIZARD_QUADS.find((quad) => quad.id === wizardQuad) || WIZARD_QUADS[0];
 
@@ -1955,16 +2007,16 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     <div className="odonto-bite-line" aria-hidden="true" />
                     <div className="odonto-jaw-band">
                       <div className="flex justify-between px-1 pt-1 text-[10px] font-black tracking-wide text-rose-600">
-                        <span>O‘NG</span>
                         <span>CHAP</span>
+                        <span>O‘NG</span>
                       </div>
                       <div className="odonto-jaw odonto-jaw-lower">
                         <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate() }}>
-                          {lowerRight.map((n) => <ToothBtn key={n} fdi={n} />)}
+                          {lowerLeft.map((n) => <ToothBtn key={n} fdi={n} />)}
                         </div>
                         <div className="odonto-midline" aria-hidden="true" />
                         <div className="odonto-quad" style={{ gridTemplateColumns: quadTemplate() }}>
-                          {lowerLeft.map((n) => <ToothBtn key={n} fdi={n} />)}
+                          {lowerRight.map((n) => <ToothBtn key={n} fdi={n} />)}
                         </div>
                       </div>
                     </div>
@@ -2075,12 +2127,12 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-0.5 text-left">
                           <div>
-                            <span className="font-black text-slate-900 text-base tabular-nums" data-testid="wizard-step2-total">{formatCurrency(splitDiscount(grandTotal, discountPercent).final)}</span>
+                            <span className="font-black text-slate-900 text-base tabular-nums">{formatCurrency(Math.floor(grandTotal * (1 - discountPercent/100)))}</span>
                             {discountPercent > 0 && <span className="ml-2 text-[11px] text-slate-400 line-through tabular-nums">{formatMoneyAmount(grandTotal)}</span>}
                           </div>
                           {discountPercent > 0 && (
                             <span className="text-[11px] font-bold text-rose-500">
-                              {t('patients.wizard.discountAmountSummary', { amount: formatMoneyAmount(splitDiscount(grandTotal, discountPercent).amount), percent: discountPercent })}
+                              {t('patients.wizard.discountAmountSummary', { amount: formatMoneyAmount(Math.floor(grandTotal * (discountPercent/100))), percent: discountPercent })}
                             </span>
                           )}
                         </div>
@@ -2113,7 +2165,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       {jawPrompt && (
                         <JawChoice
                           title={jawPrompt.title}
-                          preset={jawPrompt.preset} family={jawPrompt.family} services={services}
+                          preset={jawPrompt.preset}
                           onChoose={confirmJawChoice}
                           onClose={() => setJawPrompt(null)}
                         />
@@ -2349,7 +2401,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     {jawPrompt && (
                       <JawChoice
                         title={jawPrompt.title}
-                        preset={jawPrompt.preset} family={jawPrompt.family} services={services}
+                        preset={jawPrompt.preset}
                         onChoose={confirmJawChoice}
                         onClose={() => setJawPrompt(null)}
                       />
@@ -2488,7 +2540,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         </p>
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-xl font-black text-slate-900 leading-none tabular-nums">
-                            {formatCurrency(splitDiscount(grandTotal, discountPercent).final)}
+                            {formatCurrency(Math.floor(grandTotal * (1 - discountPercent / 100)))}
                           </span>
                           {discountPercent > 0 && (
                             <span className="text-[10px] text-slate-400 line-through font-medium tabular-nums">
@@ -2498,7 +2550,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         </div>
                         {discountPercent > 0 && (
                           <span className="text-[10px] font-black text-emerald-600">
-                            {discountPercent}% chegirma — -{formatCurrency(splitDiscount(grandTotal, discountPercent).amount)}
+                            {discountPercent}% chegirma — -{formatCurrency(Math.floor(grandTotal * discountPercent / 100))}
                           </span>
                         )}
                       </div>
@@ -2788,7 +2840,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       treatmentName={createdPlan?.services?.[0]?.service_name || createdPlan?.name || t('patients.wizard.treatmentPlan')}
       doctorName={createdPlan?.doctor_name || resolveAssignedDoctorName(createdPatient, doctors) || ''}
       servicesTotal={receiptServicesTotal}
-      discountAmount={createdPlanDiscountTotal}
+      discountAmount={appliedDiscountAmount}
       discountPercent={discountPercent}
       advanceTotal={createdPlanAdvanceTotal}
       dueTotal={receiptDueTotal}

@@ -30,7 +30,7 @@ import {
 } from '@/lib/jawServices';
 
 const ADULT_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
-const ADULT_LOWER = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+const ADULT_LOWER = [38, 37, 36, 35, 34, 33, 32, 31, 41, 42, 43, 44, 45, 46, 47, 48];
 const CHILD_UPPER = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65];
 const CHILD_LOWER = [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
 
@@ -453,13 +453,6 @@ export default function ToothChartCard({
     let planned = 0;
     let plannedSum = 0;
     const seenCharges = new Set();
-    // plan-discount-summary-v1: reja chegirmasi (discount_amount) bilan — qarz/faktura bilan bir xil qoida
-    const planFactor = new Map();
-    (plans || []).forEach((p) => {
-      const disc = Number(p?.discount_amount) || 0;
-      const net = Number(p?.total_price) || 0;
-      if (p?.id && disc > 0 && net + disc > 0) planFactor.set(p.id, net / (net + disc));
-    });
     teeth.forEach((fdi) => {
       const list = byTooth[fdi] || [];
       if (list.some((e) => e.done && !e.finding)) done += 1;
@@ -471,7 +464,7 @@ export default function ToothChartCard({
             if (seenCharges.has(entry.chargeKey)) return;
             seenCharges.add(entry.chargeKey);
           }
-          plannedSum += (Number(entry.price) || 0) * (planFactor.get(entry.planId) ?? 1);
+          plannedSum += Number(entry.price) || 0;
         });
       }
     });
@@ -491,7 +484,7 @@ export default function ToothChartCard({
       patient?.last_visit,
     ].map(dateKey).filter(Boolean).sort();
     const lastVisit = dates.length ? dates[dates.length - 1] : null;
-    return { done, planned, plannedSum: Math.round(plannedSum), lastVisit };
+    return { done, planned, plannedSum, lastVisit };
   }, [byTooth, appointments, plans, patient?.last_visit, upper, lower]);
 
   const plannedItem = useMemo(() => {
@@ -1187,8 +1180,8 @@ export default function ToothChartCard({
                     </div>
                     <div className="odonto-bite-line" aria-hidden="true" />
                     <div className="odonto-jaw-band">
-                      <span className="odonto-side odonto-side-r">O‘NG</span>
-                      <span className="odonto-side odonto-side-l">CHAP</span>
+                      <span className="odonto-side odonto-side-r">{dentition === 'child' ? 'O‘NG' : 'CHAP'}</span>
+                      <span className="odonto-side odonto-side-l">{dentition === 'child' ? 'CHAP' : 'O‘NG'}</span>
                       <div className="odonto-jaw odonto-jaw-lower">
                         {renderHalf(lower.slice(0, splitAt(lower)), false)}
                         <div className="odonto-midline" aria-hidden="true" />
@@ -1290,7 +1283,7 @@ export default function ToothChartCard({
             }}
             doctorName={doctorLabel}
             unitPrice={groupUnitPrice}
-            jawPrompt={jawPrompt} jawServices={services}
+            jawPrompt={jawPrompt}
             onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
             onJawClose={() => setJawPrompt(null)}
             onUpload={uploadXray}
@@ -1337,7 +1330,7 @@ export default function ToothChartCard({
           }}
           doctorName={doctorLabel}
           unitPrice={groupUnitPrice}
-          jawPrompt={jawPrompt} jawServices={services}
+          jawPrompt={jawPrompt}
           onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
           onJawClose={() => setJawPrompt(null)}
           onUpload={uploadXray}
@@ -1388,7 +1381,7 @@ export default function ToothChartCard({
             }}
             doctorName={doctorLabel}
             unitPrice={groupUnitPrice}
-            jawPrompt={jawPrompt} jawServices={services}
+            jawPrompt={jawPrompt}
             onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
             onJawClose={() => setJawPrompt(null)}
             onUpload={uploadXray}
@@ -1545,7 +1538,7 @@ function SidePanel(props) {
     surfaces, toggleSurface, history, toothXrays, busy, noteOpen, noteText,
     setNoteText, setNoteOpen, onClose, onQuick, quickPrice, onNote, onGroup, onUpload, onView,
     doctorName, unitPrice, onAddToPlan, onNewRecord,
-    jawPrompt, onJawChoose, onJawClose, jawServices,
+    jawPrompt, onJawChoose, onJawClose,
   } = props;
   const [showAllHistory, setShowAllHistory] = useState(false);
   useEffect(() => { setShowAllHistory(false); }, [active]);
@@ -1610,7 +1603,7 @@ function SidePanel(props) {
         {jawPrompt && (
           <JawChoice
             title={jawPrompt.title}
-            preset={jawPrompt.preset} family={jawPrompt.family} services={jawPrompt.mode === 'plan' ? jawServices : undefined}
+            preset={jawPrompt.preset}
             busy={busy}
             onChoose={onJawChoose}
             onClose={onJawClose}

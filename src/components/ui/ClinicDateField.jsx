@@ -27,49 +27,13 @@ function isoDateToDisplay(value) {
   return `${match[3]}.${match[2]}.${match[1]}`;
 }
 
-/** 2-digit year → 4 digits: 00..(this year) → 20xx, otherwise 19xx. */
-function expandYear(y) {
-  const s = String(y || '');
-  if (s.length === 4) return s;
-  if (s.length !== 2) return '';
-  const nowYY = new Date().getFullYear() % 100;
-  return Number(s) <= nowYY ? `20${s}` : `19${s}`;
-}
-
-/**
- * Loose typed date → "dd.mm.yyyy" (or '' if it cannot be read).
- * Accepts 1.5.1990, 01/05/90, 1-5-1990, 01051990, 010590.
- * (Typing "1.5.1990" used to become "15.19.90" and the date was silently dropped.)
- */
-function normalizeTypedDate(text) {
-  const raw = String(text || '').trim();
-  if (!raw) return '';
-  if (/[./\-\s]/.test(raw)) {
-    const parts = raw.split(/[./\-\s]+/).filter(Boolean);
-    if (parts.length !== 3 || parts.some((p) => !/^\d+$/.test(p))) return '';
-    let [d, m, y] = parts;
-    if (d.length === 4) [y, m, d] = [d, m, y]; // yyyy-mm-dd
-    if (d.length > 2 || m.length > 2) return '';
-    const yyyy = expandYear(y);
-    if (!yyyy) return '';
-    return `${d.padStart(2, '0')}.${m.padStart(2, '0')}.${yyyy}`;
-  }
-  const digits = digitsOf(raw);
-  if (digits.length === 8) return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
-  if (digits.length === 6) return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${expandYear(digits.slice(4))}`;
-  return '';
-}
-
 function displayDateToIso(text) {
-  const match = (normalizeTypedDate(text) || '').match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  const match = String(text || '').trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
   if (!match) return '';
   const day = Number(match[1]);
   const month = Number(match[2]);
   const year = Number(match[3]);
-  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > 2100) return '';
-  // birth-date-calendar-check: 31.02 / 30.02 / 31.04 kabi mavjud bo'lmagan sanalar yaroqsiz (Postgres rad etadi)
-  const probe = new Date(Date.UTC(year, month - 1, day));
-  if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== month - 1 || probe.getUTCDate() !== day) return '';
+  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900) return '';
   return `${match[3]}-${match[2]}-${match[1]}`;
 }
 
@@ -103,19 +67,13 @@ function blockedByMin(iso, min) {
 }
 
 /** Text date field. Value stays YYYY-MM-DD. The box shows dd.mm.yyyy. */
-export function ClinicDateField({ value, onChange, className, disabled, id, name, min, onValidityChange }) {
+export function ClinicDateField({ value, onChange, className, disabled, id, name, min }) {
   const [text, setText] = useState(() => isoDateToDisplay(value));
   const [focused, setFocused] = useState(false);
-  const [invalid, setInvalid] = useState(false);
 
   useEffect(() => {
-    if (!focused && !invalid) setText(isoDateToDisplay(value));
-  }, [value, focused, invalid]);
-
-  const markInvalid = (next) => {
-    setInvalid(next);
-    if (typeof onValidityChange === 'function') onValidityChange(!next);
-  };
+    if (!focused) setText(isoDateToDisplay(value));
+  }, [value, focused]);
 
   return (
     <input
@@ -127,46 +85,34 @@ export function ClinicDateField({ value, onChange, className, disabled, id, name
       disabled={disabled}
       placeholder="kk.oo.yyyy"
       value={text}
-      aria-invalid={invalid || undefined}
-      title={invalid ? "Sana noto'g'ri. Masalan: 19.07.1998" : undefined}
       onFocus={() => setFocused(true)}
       onBlur={() => {
         setFocused(false);
         const iso = displayDateToIso(text);
         if (iso && !blockedByMin(iso, min)) {
           setText(isoDateToDisplay(iso));
-          markInvalid(false);
           if (iso !== value) emitChange(onChange, iso);
           return;
         }
         if (!digitsOf(text)) {
           setText('');
-          markInvalid(false);
           if (value) emitChange(onChange, '');
           return;
         }
-        // Keep what was typed and flag it, instead of silently dropping the date.
-        markInvalid(true);
-        if (value) emitChange(onChange, '');
+        setText(isoDateToDisplay(value));
       }}
       onChange={(event) => {
-        const rawInput = String(event.target.value || '');
-        // Typed separators (1.5.1990) are kept as typed; bare digits get auto dots.
-        const next = /[./\-\s]/.test(rawInput.replace(/^(\d{2})\.(\d{2})\.?/, '$1$2'))
-          ? rawInput.replace(/[^\d./\-\s]/g, '').slice(0, 10)
-          : formatDateDigits(digitsOf(rawInput));
+        const next = formatDateDigits(digitsOf(event.target.value));
         setText(next);
-        if (invalid) markInvalid(false);
         if (!digitsOf(next)) {
           emitChange(onChange, '');
           return;
         }
         const iso = displayDateToIso(next);
-        if (iso && !blockedByMin(iso, min) && digitsOf(next).length >= 8) emitChange(onChange, iso);
+        if (iso && !blockedByMin(iso, min)) emitChange(onChange, iso);
       }}
       className={cn(
         'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring',
-        invalid && 'border-rose-400 ring-1 ring-rose-300 text-rose-700',
         className,
       )}
     />
