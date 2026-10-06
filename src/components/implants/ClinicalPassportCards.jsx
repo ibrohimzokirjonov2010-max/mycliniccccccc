@@ -717,6 +717,7 @@ export function LinkedServicesCard({
   language = 'uz',
   onAdd,
   onDelete,
+  onEdit,
   onEditPrimary,
 }) {
   return (
@@ -742,54 +743,63 @@ export function LinkedServicesCard({
         )}
       </div>
 
+      {/* implant-service-grid-v1: Excel-like grid (cell borders), only "Jami" below */}
       <div className="overflow-x-auto flex-1">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs border-collapse border border-slate-200" data-testid="implant-services-grid">
           <thead>
-            <tr className="border-b border-slate-100 text-slate-400">
-              <th className="pb-2 pr-2 font-bold">{language === 'ru' ? 'Услуга' : 'Xizmat'}</th>
-              <th className="pb-2 px-2 font-bold whitespace-nowrap">{language === 'ru' ? 'Дата' : 'Sana'}</th>
-              <th className="pb-2 pl-2 font-bold text-right whitespace-nowrap">{language === 'ru' ? 'Цена' : 'Narx'}</th>
+            <tr className="bg-slate-50 text-slate-400">
+              <th className="px-2 py-2 font-bold border border-slate-200">{language === 'ru' ? 'Услуга' : 'Xizmat'}</th>
+              <th className="px-2 py-2 font-bold border border-slate-200 whitespace-nowrap">{language === 'ru' ? 'Зуб' : 'Tish'}</th>
+              <th className="px-2 py-2 font-bold border border-slate-200 whitespace-nowrap">{language === 'ru' ? 'Дата' : 'Sana'}</th>
+              <th className="px-2 py-2 font-bold border border-slate-200 text-right whitespace-nowrap">{language === 'ru' ? 'Цена' : 'Narx'}</th>
+              <th className="px-2 py-2 font-bold border border-slate-200 w-px" aria-label={language === 'ru' ? 'Действие' : 'Amal'} />
             </tr>
           </thead>
           <tbody>
             {services.length === 0 ? (
               <tr>
-                <td colSpan={3} className="py-6 text-center text-slate-400 font-medium">
+                <td colSpan={5} className="py-6 text-center text-slate-400 font-medium border border-slate-200">
                   {language === 'ru' ? 'Нет связанных услуг' : "Bog'langan xizmatlar yo'q"}
                 </td>
               </tr>
             ) : services.map((svc, idx) => (
-              <tr key={svc.id || idx} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
-                <td className="py-3 pr-2 align-top">
-                  <div className="font-bold text-slate-900 leading-snug">{svc.service_name || EM}</div>
+              <tr key={svc.id || idx} data-testid="implant-service-row" className="hover:bg-slate-50/50">
+                <td className="px-2 py-2 align-top border border-slate-200 font-bold text-slate-900 leading-snug">{svc.service_name || EM}</td>
+                <td className="px-2 py-2 align-top border border-slate-200 whitespace-nowrap">
                   {svc.tooth_number ? (
-                    <div className="text-[10px] font-mono font-bold text-slate-400 mt-0.5">#{svc.tooth_number}</div>
+                    <span className="text-[10px] font-mono font-bold text-slate-400">#{svc.tooth_number}</span>
                   ) : (
-                    <div className="text-[10px] font-bold text-slate-400 mt-0.5">
-                      {language === 'ru' ? 'Общая' : 'Umumiy'}
-                    </div>
+                    <span className="text-[10px] font-bold text-slate-400">{language === 'ru' ? 'Общая' : 'Umumiy'}</span>
                   )}
-                  {svc.is_primary && onEditPrimary ? (
-                    <button type="button" onClick={onEditPrimary} className="text-[10px] font-bold text-[#14b8a6] hover:underline mt-0.5 cursor-pointer">
-                      {language === 'ru' ? 'Редактировать' : 'Tahrirlash'}
-                    </button>
-                  ) : null}
                 </td>
-                <td className="py-3 px-2 align-top font-mono text-slate-500 whitespace-nowrap">{serviceDateLabel(svc.date)}</td>
-                <td className="py-3 pl-2 align-top text-right whitespace-nowrap">
-                  <div className="font-mono font-black text-slate-800">
+                <td className="px-2 py-2 align-top border border-slate-200 font-mono text-slate-500 whitespace-nowrap">{serviceDateLabel(svc.date)}</td>
+                <td className="px-2 py-2 align-top border border-slate-200 text-right whitespace-nowrap">
+                  <span className="font-mono font-black text-slate-800">
                     {(Number(svc.price) || 0).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">so&apos;m</span>
+                  </span>
+                </td>
+                <td className="px-2 py-2 align-top border border-slate-200 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    {(onEdit || onEditPrimary) ? (
+                      <button
+                        type="button"
+                        onClick={() => (onEdit ? onEdit(svc) : onEditPrimary())}
+                        className="text-[10px] font-bold text-[#14b8a6] hover:underline cursor-pointer"
+                      >
+                        {language === 'ru' ? 'Редактировать' : 'Tahrirlash'}
+                      </button>
+                    ) : null}
+                    {!svc.is_primary && svc.deletable !== false && onDelete ? (
+                      <button
+                        type="button"
+                        onClick={() => onDelete(svc.id)}
+                        className="text-slate-300 hover:text-rose-600 cursor-pointer text-sm leading-none"
+                        title={language === 'ru' ? 'Удалить' : "O'chirish"}
+                      >
+                        ×
+                      </button>
+                    ) : null}
                   </div>
-                  {!svc.is_primary && svc.deletable !== false && onDelete ? (
-                    <button
-                      type="button"
-                      onClick={() => onDelete(svc.id)}
-                      className="text-slate-300 hover:text-rose-600 cursor-pointer text-sm leading-none mt-1"
-                      title={language === 'ru' ? 'Удалить' : "O'chirish"}
-                    >
-                      ×
-                    </button>
-                  ) : null}
                 </td>
               </tr>
             ))}
@@ -799,14 +809,8 @@ export function LinkedServicesCard({
 
       <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
         <div className="flex items-end justify-between gap-3">
-          <span className="text-[11px] font-bold text-slate-500">Shu tish</span>
-          <span className="text-lg font-black font-mono text-slate-800 leading-none whitespace-nowrap">
-            {(Number(total) || 0).toLocaleString('uz-UZ')} <span className="text-sm font-bold">so&apos;m</span>
-          </span>
-        </div>
-        <div className="flex items-end justify-between gap-3">
           <span className="text-[11px] font-bold text-slate-500">Jami (barcha tishlar)</span>
-          <span className="text-xl sm:text-2xl font-black font-mono text-[#14b8a6] leading-none whitespace-nowrap">
+          <span data-testid="implant-services-total" className="text-xl sm:text-2xl font-black font-mono text-[#14b8a6] leading-none whitespace-nowrap">
             {(Number(caseTotal != null ? caseTotal : total) || 0).toLocaleString('uz-UZ')} <span className="text-sm font-bold">so&apos;m</span>
           </span>
         </div>

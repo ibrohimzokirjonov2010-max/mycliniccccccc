@@ -1138,6 +1138,7 @@ export default function ImplantDetail() {
           language={language}
           onAdd={handleOpenAddService}
           onDelete={handleDeleteService}
+          onEdit={() => setEditOpen(true)}
           onEditPrimary={() => setEditOpen(true)}
         />
       </div>
