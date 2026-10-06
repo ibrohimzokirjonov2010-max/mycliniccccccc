@@ -13,6 +13,14 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🧾 Yangi bemor hisob-fakturasi — modal ichida skroll (receipt-scroll-v2)
+- **Sana:** 2026-10-06
+- **Tuzatilgan Fayllar:** `src/components/patients/NewPatientReceipt.jsx`, `src/components/patients/newPatientReceipt.css`, `src/hooks/useEscapeDialogScrollLock.js`
+- **Muammo Tavsifi:** Yakun → "Chek ko'rish" hisob-fakturasi uzun bo'lsa pastga aylanmasdi; Jami ko'rinmasdi (1366x650, telefon).
+- **Sababi:** `.new-patient-receipt-sheet` flex-column + max-height, ichidagi `#new-patient-receipt` esa `overflow: hidden` — flex uni varaq balandligiga siqib, qatorlarni kesib qo'yardi, scrollHeight == clientHeight. Bundan tashqari overlay Radix modal ustida body'ga portal qilingan, react-remove-scroll wheel/touch hodisalarini bekor qilardi.
+- **Qanday tuzatildi:** Qog'oz `flex-shrink: 0; overflow: clip`, varaq o'zi aylanadi. Yopish/Saqlash/Chop etish tepada sticky, JAMI TO'LOV paneli pastda sticky (`.receipt-total-wrap`). Overlay ildizida wheel/touch hodisalari `stopPropagation` (`useEscapeDialogScrollLock`). Printda sticky o'chiriladi.
+- **Qaytalamaslik choralari:** Varaq ichidagi qog'ozga yana `flex-shrink: 1` + `overflow: hidden` bermang. Radix dialog ustidagi body-portal overlaylarda `useEscapeDialogScrollLock` ishlating. 1280x800, 1366x650, 390x844 da tekshiring.
+
 ### 🔔 Toastlar har doim dialoglar ustida (toast-above-dialogs-v1)
 - **Sana:** 2026-10-06
 - **Tuzatilgan Fayllar:** `src/index.css`, `src/App.jsx`, `src/components/ui/dialog.jsx`, `scripts/assert-payment-add-modal.mjs`

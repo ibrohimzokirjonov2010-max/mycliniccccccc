@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useEscapeDialogScrollLock } from '@/hooks/useEscapeDialogScrollLock';
 import { useBackClose } from '@/hooks/useBackClose';
 import { createPortal } from 'react-dom';
 import { Printer, Download, X } from 'lucide-react';
@@ -224,7 +225,7 @@ function ReceiptPaper({
         </div>
       </div>
 
-      <div className="px-3 py-3 sm:px-4 border-t border-slate-100">
+      <div className="receipt-total-wrap px-3 py-3 sm:px-4 border-t border-slate-100">
         <div className="receipt-total-bar bg-slate-900 rounded-xl px-3 py-3 sm:px-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('patients.wizard.totalDebt')}</p>
@@ -356,10 +357,14 @@ export function NewPatientReceiptOverlay({
   }, [open, onClose]);
 
   useBackClose(!!open, onClose);
+  const overlayRef = useRef(null);
+  // The wizard is a Radix modal: without this the paper could not be scrolled.
+  useEscapeDialogScrollLock(overlayRef, !!open);
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
     <div
+      ref={overlayRef}
       className="new-patient-receipt-overlay"
       data-testid="new-patient-receipt-overlay"
       data-new-patient-receipt="overlay-v1"
