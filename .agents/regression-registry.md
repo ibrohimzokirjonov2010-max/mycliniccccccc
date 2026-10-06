@@ -13,6 +13,13 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Jag' tanlash — markazdagi popup (jaw-choice-popup-v2)
+- **Sana:** 2026-10-06
+- **Tuzatilgan Fayllar:** `src/components/patients/JawChoice.jsx`, `NewPatientFlow.jsx`, `ToothChartCard.jsx`, `TreatmentPlanModal.jsx`, `MobileTreatmentPlansV2.jsx`
+- **Muammo Tavsifi:** Breket/Protez/Babochka bosilganda jag' tanlash kichik pushti blok bo'lib xizmatlar ro'yxatining tepasida chiqardi — ro'yxat pastga aylantirilgan bo'lsa umuman ko'rinmasdi.
+- **Qanday tuzatildi:** `JawChoice` endi eng yaqin `[role=dialog]` ichiga portal qilingan markazdagi popup: katta "Tepa jag'" / "Pastki jag'" / "Ikkalasi" tugmalari narxi bilan, X va Escape yopadi. Bitta bosish xizmatni qo'shadi va popup yopiladi. Bir vaqtda desktop+mobil layout render qilinsa, faqat ko'rinadigan nusxa popup chiqaradi.
+- **Qaytalamaslik choralari:** Popupni body'ga (dialog tashqarisiga) portal qilmang — Radix uni "tashqariga bosish" deb wizardni yopadi. Ro'yxat ichidagi inline blokni qaytarmang.
+
 ### 📅 Tug'ilgan sana — yangi bemor oynasida yo'qolmasin
 - **Sana:** 2026-10-06
 - **Tuzatilgan Fayllar:** `src/components/ui/ClinicDateField.jsx`, `src/components/patients/NewPatientFlow.jsx`
