@@ -35,7 +35,14 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 // Avtomatik X tugmasi olib tashlangan - har bir modal o'z yopish tugmasini boshqaradi
-const DialogContent = React.forwardRef(({ className, children, style, ...props }, ref) => {
+// Toasts float above every dialog. Clicking one (or its close X) must not count
+// as an "outside" click that dismisses the dialog underneath.
+const isToastTarget = (event) => {
+  const target = event?.detail?.originalEvent?.target || event?.target;
+  return Boolean(target && typeof target.closest === 'function' && target.closest('[data-sonner-toaster]'));
+};
+
+const DialogContent = React.forwardRef(({ className, children, style, onPointerDownOutside, onInteractOutside, ...props }, ref) => {
   const classStr = typeof className === 'string' ? className : '';
   const columnLayout = classStr.includes('payment-add-dialog');
   // Fluid shells (payment / implant / callers with max-h-*) own their height —
@@ -77,6 +84,14 @@ const DialogContent = React.forwardRef(({ className, children, style, ...props }
           minHeight: 0,
         } : null),
         ...style,
+      }}
+      onPointerDownOutside={(event) => {
+        if (isToastTarget(event)) { event.preventDefault(); return; }
+        onPointerDownOutside?.(event);
+      }}
+      onInteractOutside={(event) => {
+        if (isToastTarget(event)) { event.preventDefault(); return; }
+        onInteractOutside?.(event);
       }}
       {...props}>
       {children}

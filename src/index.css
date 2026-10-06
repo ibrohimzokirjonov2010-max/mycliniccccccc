@@ -659,10 +659,11 @@ img.tooth-illus {
   contain-intrinsic-size: 0 74px; /* Approximates the standard card height */
 }
 
-/* Toasts sit below dialog overlay (z-100) so system alerts never cover modal UI.
-   Marker: payment-add-teal-v1-0d9488 */
+/* Toasts sit ABOVE every dialog/backdrop (owner request 2026-10-06: a toast hidden
+   behind the modal backdrop is unreadable). Marker: toast-above-dialogs-v1 */
 [data-sonner-toaster] {
-  z-index: 90 !important;
+  z-index: 2147483000 !important;
+  pointer-events: auto !important;
   top: auto !important;
   bottom: 16px !important;
   right: 12px !important;
@@ -708,7 +709,17 @@ body:has([role="dialog"][data-state="open"]) {
 
 body:has([data-radix-dialog-content]) [data-sonner-toaster],
 body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
-  z-index: 40 !important;
+  z-index: 2147483000 !important;
+}
+
+/* Phone + open dialog: lift the toast to the top so it never covers the sticky
+   footer (Bekor qilish / To'lash) of a bottom-anchored modal. */
+@media (max-width: 767px) {
+  body:has([data-radix-dialog-content]) [data-sonner-toaster],
+  body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
+    top: calc(12px + env(safe-area-inset-top, 0px)) !important;
+    bottom: auto !important;
+  }
 }
 
 /* Implant registry — contained horizontal scroll at notebook (~1280) widths.

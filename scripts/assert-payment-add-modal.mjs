@@ -52,9 +52,10 @@ assert(cssBeforeMobile.includes('translate: none !important'), 'desktop kills in
 assert(!cssBeforeMobile.includes('translate: -50%'), 'desktop must not set translate -50%');
 assert(cssBeforeMobile.includes('position: relative'), 'desktop footer in-flow');
 
-assert(indexCss.includes('[data-sonner-toaster]'), 'toaster z-index park');
-assert(indexCss.includes('z-index: 40 !important'), 'toasts behind dialog overlay');
-assert(indexCss.includes('body:has([data-radix-dialog-content])'), 'park toasts when dialog open');
+assert(indexCss.includes('[data-sonner-toaster]'), 'toaster rule');
+assert(indexCss.includes('toast-above-dialogs-v1'), 'toasts above every dialog (2026-10-06)');
+assert(!indexCss.includes('z-index: 40 !important'), 'toasts must not park behind dialog overlay');
+assert(indexCss.includes('body:has([data-radix-dialog-content])'), 'phone toast moves to top when dialog open');
 
 assert(mobile.includes("PAYMENT_ADD_MARKER = 'payment-add-teal-v5-single-center'"), 'mobile marker const');
 assert(mobile.includes('minHeight: 0'), 'mobile dialog minHeight 0');
@@ -91,7 +92,7 @@ assert(pay.includes('payment-accept-footer'), 'save button stays in the footer')
 assert(pay.includes('handleSavePay'), 'save handler stays');
 
 assert(alerter.includes('isBlockingModalOpen'), 'alerter skips open modals');
-assert(app.includes('zIndex: 90'), 'toaster z-index 90');
+assert(app.includes('zIndex: 2147483000'), 'toaster above dialogs');
 
 for (const [lang, dict] of [['uz', uz], ['ru', ru], ['en', en]]) {
   assert(dict.payments.submitPay, `${lang} submitPay`);

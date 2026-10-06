@@ -13,6 +13,14 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🔔 Toastlar har doim dialoglar ustida (toast-above-dialogs-v1)
+- **Sana:** 2026-10-06
+- **Tuzatilgan Fayllar:** `src/index.css`, `src/App.jsx`, `src/components/ui/dialog.jsx`, `scripts/assert-payment-add-modal.mjs`
+- **Muammo Tavsifi:** Modal ochiq bo'lganda xabarlar (toast) modal orqasida qolib, ko'rinmas edi.
+- **Sababi:** Sonner toaster z-index modal/overlay qatlamlaridan past edi (oldingi qoida: "toastni z-100 dan oshirmang").
+- **Qanday tuzatildi:** `[data-sonner-toaster]` z-index 2147483000 (har qanday dialog, overlay, hisob-faktura va jag' popupidan yuqori). Telefonda dialog ochiq bo'lsa toast tepaga chiqadi. Toastni bosish Radix dialogni "tashqariga bosish" deb yopmaydi (`isToastTarget`).
+- **Qaytalamaslik choralari:** Egasining 2026-10-06 talabi bilan eski "toast z-100 dan oshmasin" qoidasi bekor qilingan. Toast z-indexini dialoglardan pastga tushirmang. Yangi overlay qo'shsangiz z-index 2147483000 dan past bo'lsin.
+
 ### 🦷 Tish kartasi — pastki jag' ham shifokor ko'rinishida (O'NG chapda, 48→41 | 31→38)
 - **Sana:** 2026-10-06
 - **Tuzatilgan Fayllar:** `src/lib/fdiNotation.js`, `ProfessionalOdontogram.jsx`, `ToothChartCard.jsx`, `MobileCompactOdontogram.jsx`, `PatientXraysOdontogram.jsx`, `NewPatientFlow.jsx`, `ImplantWizardArch.jsx`, `implantFactura.js`, `TreatmentPlanModal.jsx`, `AppointmentModal.jsx`, `ui/DentalChart.jsx`, `Services.jsx`, `MobileServicesV2.jsx`, Excel/print massivlari
@@ -432,7 +440,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
   - [`src/components/notifications/ImplantAlerter.jsx`](src/components/notifications/ImplantAlerter.jsx)
 - **Muammo Tavsifi:** Toastlar o'ng yuqorida PDF / Tahrirlash ni yopardi. Tish bosilganda qo'shimcha toast. Legend 390px da chiqib ketardi.
 - **Qanday tuzatildi:** Toaster pastki markaz, mobil nav ustida, ko'pi bilan 2 ta. Dialog ochiq bo'lsa z-index 40 (to'lov modali ortida). `/implants` da to'liqsiz-implant toasti chiqmaydi. Legend o'raladi.
-- **Qaytalamaslik choralari:** Toaster z-index ni dialog `z-[100]` dan yuqoriga ko'tarmang. `position="top-right"` qaytarmang. Step 3 faktura overlay va `#0d9488` o'zgarmasin.
+- **Qaytalamaslik choralari:** ~~Toaster z-index ni dialog `z-[100]` dan yuqoriga ko'tarmang.~~ (2026-10-06 dan bekor: toast har doim dialog ustida, qarang "toast-above-dialogs-v1".) `position="top-right"` qaytarmang. Step 3 faktura overlay va `#0d9488` o'zgarmasin.
 
 ### 🦷 Odontogramma — 390px sig'im va tish PNG kesh
 - **Sana:** 2026-09-22
@@ -585,7 +593,7 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 - **Muammo Tavsifi:** Mobil YANGI TO'LOV oynasida sariq "Implant ma'lumotlarini kiritish kerak" toast modal ustiga chiqib +50 000 chip-larini bosib qolgan. Bekor qilish / To'lash footer skroll ichida edi — telefonda pastga tushmasdan to'lab bo'lmasdi.
 - **Sababi:** Sonner toaster default z-index (~999999999) dialog overlay (`z-[100]`) dan yuqori; action tugmalari `overflow-y-auto` body ichida edi.
 - **Qanday tuzatildi:** Toaster dialog ochiq bo'lganda `z-index: 40` (overlay orqasida). ImplantAlerter modal ochiq bo'lsa toast chiqarmaydi. Validatsiya inline banner (header ostida). Sticky footer 44px teng Bekor qilish / To'lash. Teal `#0d9488`, chip-lar har doim skrollda.
-- **Qaytalamaslik choralari:** Sonner toaster ni dialog `z-[100]` dan yuqoriga ko'tarmang. To'lov CTA ni `overflow-y-auto` body ichiga qaytarmang — `.payment-add-footer` `flex-shrink: 0`. Marker `payment-add-teal-v1-0d9488`. Validatsiyada `alert()` va modal-ustidagi toast qaytarmang. Indigo/purple CTA yo'q. `node scripts/assert-payment-add-modal.mjs` o'tsin.
+- **Qaytalamaslik choralari:** ~~Sonner toaster ni dialog `z-[100]` dan yuqoriga ko'tarmang.~~ (2026-10-06 dan bekor: toast dialog ustida, telefonda dialog ochiq bo'lsa tepada — "toast-above-dialogs-v1".) To'lov CTA ni `overflow-y-auto` body ichiga qaytarmang — `.payment-add-footer` `flex-shrink: 0`. Marker `payment-add-teal-v1-0d9488`. Validatsiyada `alert()` va modal-ustidagi toast qaytarmang. Indigo/purple CTA yo'q. `node scripts/assert-payment-add-modal.mjs` o'tsin.
 
 ### 🦷 Yangi implant wizard — clinic-grade mobile polish
 - **Sana:** 2026-09-21
