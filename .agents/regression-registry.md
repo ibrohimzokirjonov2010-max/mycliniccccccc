@@ -13,6 +13,20 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🦷 Implant case'lari bir-birini bosmasin + har tish uchun rasmlar (implant-case-isolation-v1)
+- **Sana:** 2026-10-06
+- **Tuzatilgan Fayllar:** `src/components/implants/implantCaseTeeth.js`, `src/pages/ImplantDetail.jsx`
+- **Muammo Tavsifi:** Bemorga A (#11) keyin B (#12) implant qo'shilganda B sahifasi A tishlarini B xizmatlari bilan ko'rsatardi — A ma'lumotlari "yo'qolgandek" edi; tahrir/yuklash B yozuviga ketardi. PRE-OP/POST-OP/HEALING/FINAL rasmlar butun case uchun bitta edi; PRE-OP'da xizmatlar ro'yxati ko'rinardi.
+- **Qanday tuzatildi:** Tish tanlagich bemorning barcha implant yozuvlaridagi tishlarni `realId` bilan ko'rsatadi; boshqa case tishi bosilsa o'sha case sahifasiga o'tadi. Xizmatlar/Jami faqat joriy case'niki. Rasmlar tish bo'yicha: birinchi tish eski case-darajasidagi rasmlarni oladi, qolganlari `tooth_data_map[tish].stage_media` ga yoziladi. Halil Halilbe A case PRE-OP'idagi xato yuklangan rasm (Asad Asadbe fakturasi skrinshoti) tozalandi (backup: /workspace/repair-backups/halil-implants.json).
+- **Qaytalamaslik choralari:** Bir case sahifasida boshqa case'ning xizmatlari yoki rasmlarini fallback qilib ko'rsatmang.
+
+### 🦷 Yangi implant: 1-qadamda "Orqaga" yo'q; reja/qarz har doim avtomatik (implant-step1-no-back, implant-plan-auto-v1, implant-plan-accumulate-v1)
+- **Sana:** 2026-10-06
+- **Tuzatilgan Fayllar:** `src/components/implants/ImplantForm.jsx`, `src/lib/implantPlan.js`
+- **Muammo Tavsifi:** 1-qadamda ma'nosiz "Orqaga" tugmasi bor edi. 3-qadamdagi "Davolash rejasi va qarz" bo'limi belgilanmasa narx bemor qarziga tushmasdi. Shu bemorga ikkinchi implant (B) qo'shilganda alohida reja ochilar yoki A rejasini qayta nomlardi.
+- **Qanday tuzatildi:** "Orqaga" faqat `step > 1` da. Reja bo'limi olib tashlandi; saqlash har doim `createPlan: true` bilan "Implantlar" rejasiga yozadi (opt-out tozalanadi). Yangi case bemorning ochiq (yakunlanmagan) rejasiga qo'shiladi (`pickHostPlan`), boshqa implantlarning qatorlari saqlanadi; reja faqat o'zining rejasi bo'lsa qayta nomlanadi. Test: A #11 3 150 000 + B #12 2 150 000 → bitta reja 5 300 000, Debt 5 300 000, total_debt 5 300 000.
+- **Qaytalamaslik choralari:** Reja checkbox'ini qaytarmang. Ikkinchi case'da boshqa implantning `implant_id` qatorlarini o'chirmang.
+
 ### 🧾 Implant: KLINIK PASPORT va XIZMATLAR kartalari (passport-no-system-model, implant-service-cards-v1)
 - **Sana:** 2026-10-06
 - **Tuzatilgan Fayllar:** `src/components/implants/ClinicalPassportCards.jsx`
