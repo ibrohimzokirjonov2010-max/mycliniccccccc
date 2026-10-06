@@ -30,14 +30,25 @@ export default function PaymentPatientPlans({ patientId, patient }) {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(false);
   const [invoicePlan, setInvoicePlan] = useState(null);
+  const [incomes, setIncomes] = useState(0);
 
   useEffect(() => {
     let alive = true;
     setPlans([]);
+    setIncomes(0);
     if (!patientId) return undefined;
     setLoading(true);
-    base44.entities.TreatmentPlan.filter({ patient_id: patientId }, '-created_date', 200)
-      .then((rows) => { if (alive) setPlans(Array.isArray(rows) ? rows : []); })
+    Promise.all([
+      base44.entities.TreatmentPlan.filter({ patient_id: patientId }, '-created_date', 200),
+      base44.entities.Payment.filter({ patient_id: patientId }, 'date', 5000).catch(() => []),
+    ])
+      .then(([rows, pays]) => {
+        if (!alive) return;
+        setPlans(Array.isArray(rows) ? rows : []);
+        // Same "to'langan" source as the profile: sum of Income payments.
+        setIncomes((pays || []).filter((p) => String(p.type || '').toLowerCase() === 'income')
+          .reduce((sum, p) => sum + (Number(p.amount) || 0), 0));
+      })
       .catch(() => { if (alive) setPlans([]); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
@@ -45,7 +56,7 @@ export default function PaymentPatientPlans({ patientId, patient }) {
 
   // Same numbers as the profile "Davolash rejalari" table (planGroups helpers).
   const rows = useMemo(() => {
-    const totalPaid = Number(patient?.total_paid || 0);
+    const totalPaid = Math.max(incomes, Number(patient?.total_paid || 0));
     const numberOf = numberPlans(plans);
     return plans.map((plan, idx) => {
       const number = numberOf(plan, idx);
@@ -65,7 +76,7 @@ export default function PaymentPatientPlans({ patientId, patient }) {
         planObj: { ...plan, paid_amount: paid },
       };
     }).sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime() || b.number - a.number);
-  }, [plans, patient]);
+  }, [plans, patient, incomes]);
 
   const totals = useMemo(() => rows.reduce((acc, r) => {
     acc.total += r.total; acc.paid += r.paid; acc.debt += r.debt; return acc;
@@ -96,8 +107,7 @@ export default function PaymentPatientPlans({ patientId, patient }) {
                 <th className="py-1.5 px-2 text-center border-r border-slate-200">Sana</th>
                 <th className="py-1.5 px-1.5 text-center border-r border-slate-200" title="Xizmatlar">Xiz.</th>
                 <th className="py-1.5 px-2 text-right border-r border-slate-200">Jami</th>
-                <th className="py-1.5 px-2 text-right border-r border-slate-200">To'langan / qarz</th>
-                <th className="py-1.5 px-1.5 text-center">Holat</th>
+                <th className="py-1.5 px-2 text-right">To'langan / qarz</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/80 text-[11px]">
@@ -111,21 +121,23 @@ export default function PaymentPatientPlans({ patientId, patient }) {
                 >
                   <td className="text-center font-bold text-slate-400 border-r border-slate-200 py-1.5">{String(i + 1).padStart(2, '0')}</td>
                   <td className="px-2 py-1.5 border-r border-slate-200 min-w-0">
-                    <div className="font-bold text-slate-800 leading-tight break-words">{r.title}</div>
-                    {r.sub && r.sub !== r.title && <div className="text-[9.5px] text-slate-400 leading-tight truncate max-w-[180px]">{r.sub}</div>}
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="font-bold text-slate-800 leading-tight break-words min-w-0">{r.title}</span>
+                      <StatusBadge status={r.status} />
+                    </div>
+                    {r.sub && r.sub !== r.title && <div className="text-[9.5px] text-slate-400 leading-tight truncate max-w-[200px]">{r.sub}</div>}
                   </td>
                   <td className="px-2 py-1.5 text-center font-mono text-[10px] text-slate-500 border-r border-slate-200 whitespace-nowrap">{fmtDate(r.date)}</td>
                   <td className="px-1.5 py-1.5 text-center border-r border-slate-200">
                     <span className="inline-flex min-w-5 justify-center rounded-full bg-slate-100 px-1.5 text-[10px] font-bold text-slate-600">{r.services}</span>
                   </td>
-                  <td className="px-2 py-1.5 text-right font-mono font-black text-slate-900 border-r border-slate-200 whitespace-nowrap">{fmt(r.total)}</td>
-                  <td className="px-2 py-1.5 text-right font-mono border-r border-slate-200 whitespace-nowrap leading-tight">
+                  <td className="px-2 py-1.5 text-right font-mono text-[10.5px] font-black text-slate-900 border-r border-slate-200 whitespace-nowrap">{fmt(r.total)}</td>
+                  <td className="px-2 py-1.5 text-right font-mono text-[10.5px] whitespace-nowrap leading-tight">
                     <div className="font-bold text-emerald-600">{fmt(r.paid)}</div>
-                    <div className={r.debt > 0 ? 'text-[10px] font-bold text-rose-600' : 'text-[10px] text-slate-400'}>
-                      {r.debt > 0 ? `Qarz: ${fmt(r.debt)}` : "Qarz yo'q"}
+                    <div className={r.debt > 0 ? 'font-bold text-rose-600' : 'text-slate-400'}>
+                      {r.debt > 0 ? fmt(r.debt) : "Qarz yo'q"}
                     </div>
                   </td>
-                  <td className="px-1.5 py-1.5 text-center"><StatusBadge status={r.status} /></td>
                 </tr>
               ))}
             </tbody>
@@ -133,11 +145,10 @@ export default function PaymentPatientPlans({ patientId, patient }) {
               <tr className="bg-slate-50 border-t border-slate-200 text-[10px] font-black">
                 <td colSpan={4} className="px-2 py-1.5 text-slate-600 uppercase border-r border-slate-200">Jami</td>
                 <td className="px-2 py-1.5 text-right font-mono text-slate-900 border-r border-slate-200 whitespace-nowrap">{fmt(totals.total)}</td>
-                <td className="px-2 py-1.5 text-right font-mono border-r border-slate-200 whitespace-nowrap leading-tight">
+                <td className="px-2 py-1.5 text-right font-mono whitespace-nowrap leading-tight">
                   <div className="text-emerald-600">{fmt(totals.paid)}</div>
-                  <div className={totals.debt > 0 ? 'text-rose-600' : 'text-slate-400'}>{totals.debt > 0 ? `Qarz: ${fmt(totals.debt)}` : "Qarz yo'q"}</div>
+                  <div className={totals.debt > 0 ? 'text-rose-600' : 'text-slate-400'}>{totals.debt > 0 ? fmt(totals.debt) : "Qarz yo'q"}</div>
                 </td>
-                <td />
               </tr>
             </tfoot>
           </table>
