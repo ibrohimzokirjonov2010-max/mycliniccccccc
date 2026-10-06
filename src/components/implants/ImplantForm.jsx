@@ -38,7 +38,7 @@ import { buildLinkedServiceModel, persistedServicesList } from './linkedImplantS
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { syncImplantPlan } from '@/lib/implantPlan';
-import { IMPLANT_PLAN_DEFAULT_NAME, findPlanForImplant, implantPlanName, implantPlanTotal, isPlanOptedOut, setPlanOptOut } from '@/lib/implantPlanModel';
+import { IMPLANT_PLAN_DEFAULT_NAME, findPlanForImplant, setPlanOptOut } from '@/lib/implantPlanModel';
 import { matchIllustrationKind } from '@/utils/toothIllustration';
 import {
   clinicianDisplayName,
@@ -308,7 +308,6 @@ export default function ImplantForm({
   // Implant narxi bemorning alohida "Implantlar" rejasi (qarz) sifatida yoziladi; nomi tahrirlanadi.
   const [planName, setPlanName] = useState(IMPLANT_PLAN_DEFAULT_NAME);
   const [planNameTouched, setPlanNameTouched] = useState(false);
-  const [createPlan, setCreatePlan] = useState(true);
   const wizardBodyRef = useRef(null);
   const formRef = useRef(form);
   formRef.current = form;
@@ -490,7 +489,6 @@ export default function ImplantForm({
     }
     setPlanName(IMPLANT_PLAN_DEFAULT_NAME);
     setPlanNameTouched(false);
-    setCreatePlan(true);
     setStep(1);
     setFormError('');
     setFacturaPreviewOpen(false);
@@ -795,13 +793,6 @@ export default function ImplantForm({
     if (!open || planNameTouched || !linkedPlan?.name) return;
     setPlanName(linkedPlan.name);
   }, [open, linkedPlan, planNameTouched]);
-  // Belgi default YOQIQ: yangi implant, to'ldirilmagan yozuv va eski (rejasiz) implant ham qarzga yoziladi.
-  // Faqat foydalanuvchi ilgari aniq rad etgan (belgini o'chirgan yoki rejani o'chirgan) implantda o'chiq turadi.
-  useEffect(() => {
-    if (!open) return;
-    if (linkedPlan) { setCreatePlan(true); return; }
-    setCreatePlan(!(implant?.id && isPlanOptedOut(implant.id)));
-  }, [open, linkedPlan, implant?.id]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -1158,15 +1149,18 @@ export default function ImplantForm({
           const planResult = await syncImplantPlan(
             { ...payload, factura: facturaSnapshot, id: savedId, patient_id: form.patient_id, patient_name: form.patient_name },
             {
-              planName,
-              createPlan,
+              planName: linkedPlan?.name || planName || IMPLANT_PLAN_DEFAULT_NAME,
+              // Always behaves as if "write to debt" were checked (owner request 2026-10-06).
+              createPlan: true,
               doctor: { id: doc?.id || '', name: doc?.id ? clinicianDisplayName(doc) : String(form.doctor || '') },
               patient: patientRow || { full_name: form.patient_name },
             },
           );
-          if (!linkedPlan) setPlanOptOut(savedId, !createPlan);
+          setPlanOptOut(savedId, false);
           if (planResult.action === 'created') {
             toast.success(`«${planResult.plan?.name || planName}» rejasi yaratildi: ${Number(planResult.total).toLocaleString('uz-UZ')} so'm qarz`);
+          } else if (planResult.action === 'updated' && !linkedPlan) {
+            toast.success(`«${planResult.plan?.name || IMPLANT_PLAN_DEFAULT_NAME}» rejasiga qo'shildi: jami ${Number(planResult.total).toLocaleString('uz-UZ')} so'm qarz`);
           }
         }
       } catch (planErr) {
@@ -1285,22 +1279,6 @@ export default function ImplantForm({
     brandLabel, implantUnitPrice, extraServicesList, form.extra_services,
     extraServicePrices, extractionPaidFdis, facturaEdits, t,
   ]);
-
-  // Reja summasi (qarz): saqlangandan keyin implant tafsilotidagi "Xizmatlar (bog'langan)" jadvali bilan bir xil.
-  const planTotalPreview = useMemo(() => {
-    try {
-      return implantPlanTotal({
-        ...form,
-        id: implant?.id || 'new',
-        tooth_numbers: selectedFdis,
-        tooth_data_map: toothDataMap,
-        factura: facturaDoc,
-        services_list: Array.isArray(form.services_list) ? form.services_list : [],
-      });
-    } catch {
-      return 0;
-    }
-  }, [form, implant?.id, selectedFdis, toothDataMap, facturaDoc]);
 
   const handleFacturaEdit = useCallback((id, field, value) => {
     setFacturaEdits((prev) => ({
@@ -1658,46 +1636,8 @@ export default function ImplantForm({
         </button>
       </div>
 
-      <section className={cardClass} data-testid="implant-plan-section">
-        <h3 className="text-[15px] font-bold text-[#111827] mb-1">{tw('planTitle', 'Davolash rejasi va qarz')}</h3>
-        <p className="text-xs text-[#6b7280] mb-3">
-          {tw('planHint', "Implant xizmatlari bemorning alohida rejasiga tish raqami va narxi bilan yoziladi; reja summasi qarz sifatida hisoblanadi.")}
-        </p>
-        {!linkedPlan && (
-          <label className="flex items-start gap-2 mb-3 text-sm text-[#111827] cursor-pointer">
-            <input
-              type="checkbox"
-              data-testid="implant-plan-create"
-              className="mt-0.5 h-4 w-4 accent-[#0d9488]"
-              checked={createPlan}
-              onChange={(e) => setCreatePlan(e.target.checked)}
-            />
-            <span>{tw('planCreate', "Implant narxini bemor qarziga yozish (alohida reja yaratish)")}</span>
-          </label>
-        )}
-        {(createPlan || linkedPlan) && (
-          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2.5 items-end">
-            <div>
-              <label className="block text-xs font-semibold text-[#6b7280] mb-1" htmlFor="implant-plan-name">
-                {tw('planName', 'Reja nomi')}
-              </label>
-              <input
-                id="implant-plan-name"
-                data-testid="implant-plan-name"
-                value={planName}
-                maxLength={80}
-                onChange={(e) => { setPlanName(e.target.value); setPlanNameTouched(true); }}
-                onBlur={() => setPlanName((prev) => implantPlanName(prev))}
-                placeholder={IMPLANT_PLAN_DEFAULT_NAME}
-                className="w-full h-10 rounded-[10px] border border-[#e5e7eb] bg-white px-3 text-sm outline-none focus:border-[#0d9488]"
-              />
-            </div>
-            <div className="h-10 flex items-center text-sm font-bold text-[#111827] whitespace-nowrap" data-testid="implant-plan-total">
-              {tw('planTotal', 'Reja summasi')}: {formatSom(planTotalPreview)} <span className="font-medium text-[#6b7280] ml-1">so&apos;m</span>
-            </div>
-          </div>
-        )}
-      </section>
+      {/* implant-plan-auto-v1: "Davolash rejasi va qarz" section removed; the price is always
+          written to the patient's "Implantlar" plan and debt (see handleSave). */}
 
       <section className={cardClass}>
         <h3 className="text-[15px] font-bold text-[#111827] mb-3">{tw('dateStatus', 'Sana va holat')}</h3>
@@ -1926,17 +1866,19 @@ export default function ImplantForm({
             ) : null}
             <div className="implant-wizard-footer-summary">{footerSummary()}</div>
             <div className="implant-wizard-footer-actions">
-              <button
-                type="button"
-                onClick={() => {
-                  setFormError('');
-                  if (step === 1) onClose();
-                  else setStep(step - 1);
-                }}
-                className="implant-wizard-ghost implant-wizard-back"
-              >
-                <ArrowLeft className="w-4 h-4" /> {tw('back', 'Orqaga')}
-              </button>
+              {/* implant-step1-no-back: step 1 has no "Orqaga" (X closes the wizard). */}
+              {step > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormError('');
+                    setStep(step - 1);
+                  }}
+                  className="implant-wizard-ghost implant-wizard-back"
+                >
+                  <ArrowLeft className="w-4 h-4" /> {tw('back', 'Orqaga')}
+                </button>
+              )}
               {step < 3 ? (
                 <button
                   type="button"

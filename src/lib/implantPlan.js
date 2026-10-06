@@ -121,12 +121,20 @@ async function syncImplantPlanLocked(implant, { planName, createPlan = true, onl
   const plans = await loadPatientPlans(patientId);
   let existing = findPlanForImplant(plans, implant.id);
   if (existing && onlyIfMissing) return { action: 'exists', plan: existing, total: Number(existing.total_price) || 0, adopted: 0 };
+  const ownPlan = !!existing;
 
   // Boshqa rejada allaqachon bajarilgan shu tish implanti bo'lsa, asosiy implant qatori qayta qo'shilmaydi.
   const lines = implantPlanLines(implant, { skipPrimaryTeeth: billedElsewhereTeeth(plans, implant) });
 
-  // Qo'shimcha xizmat (karonka, abutment...) - bemorning mavjud "Implantlar" rejasiga qo'shiladi.
-  if (!existing && createPlan && isExtraServiceRecord(implant)) existing = pickHostPlan(plans, implant);
+  // implant-plan-accumulate-v1: yangi implant holati (case B) ham, qo'shimcha xizmat ham bemorning
+  // ochiq "Implantlar" rejasiga qo'shiladi (A + B bitta reja va bitta qarzda yig'iladi). Har bir holat
+  // qatorlari implant_id bilan ajralib turadi, shuning uchun bir-birini o'chirmaydi.
+  if (!existing && createPlan) {
+    const hosts = isExtraServiceRecord(implant)
+      ? plans
+      : plans.filter((plan) => !/complet|yakun|bajaril|tugal/i.test(String(plan?.status || '')));
+    existing = pickHostPlan(hosts, implant);
+  }
 
   if (!existing) {
     const rawTotal = lines.reduce((sum, line) => sum + (Number(line.price) || 0), 0);
@@ -209,7 +217,7 @@ async function syncImplantPlanLocked(implant, { planName, createPlan = true, onl
     paid_amount: Math.min(Number(existing.paid_amount) || 0, total),
   };
   if (lifecycle.changed) patch.status = planStatusFromServices(services);
-  if (planName != null && String(planName).trim()) patch.name = implantPlanName(planName);
+  if (ownPlan && planName != null && String(planName).trim()) patch.name = implantPlanName(planName);
   const plan = await base44.entities.TreatmentPlan.update(existing.id, patch);
   const merged = { ...existing, ...patch, ...(plan && typeof plan === 'object' ? plan : {}), id: existing.id };
   await upsertPlanDebt({ plan: merged, patient, total, doctor, teeth });
