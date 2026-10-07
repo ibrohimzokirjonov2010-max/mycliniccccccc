@@ -326,6 +326,12 @@ export default function ImplantDetail() {
     return implant?.id || activeTooth.id;
   }, [activeTooth, implant]);
 
+  // FDI shown on a tab chip (one tooth per switcher item).
+  const switcherItemFdi = (imp) => {
+    const key = imp?.syntheticToothKey || imp?.tooth_id || (Array.isArray(imp?.tooth_numbers) && imp.tooth_numbers[0]) || imp?.tooth_number;
+    return String(toothIdToFdi(key) || toothIdToFdi(imp?.tooth_number) || '');
+  };
+
   // A tooth of another case opens that case's own page (its data, services, Jami).
   const selectCaseTooth = (item) => {
     if (!item?.id) return;
@@ -1049,8 +1055,7 @@ export default function ImplantDetail() {
               <div className="hidden lg:block w-px h-10 bg-slate-200 shrink-0" />
               <div className="flex items-center gap-2 overflow-x-auto scrollbar-none min-w-0 flex-1 pb-0.5">
                 {switcherItems.map((imp) => {
-                  const key = imp.syntheticToothKey || imp.tooth_id || (Array.isArray(imp.tooth_numbers) && imp.tooth_numbers[0]) || imp.tooth_number;
-                  const fdi = toothIdToFdi(key) || toothIdToFdi(imp.tooth_number) || '—';
+                  const fdi = switcherItemFdi(imp) || '—';
                   const selected = imp.id === activeTooth?.id;
                   const short = SHORT_STATUS_LABEL[normalizeLifecycleStatus(imp.lifecycle_status || imp.status)] || '—';
                   return (
@@ -1099,13 +1104,16 @@ export default function ImplantDetail() {
           patientId={implant?.patient_id}
           implants={relatedTeeth.length > 0 ? relatedTeeth : [implant]}
           caseFdis={caseFdis}
+          selectableFdis={switcherItems.length > 1 ? switcherItems.map(switcherItemFdi).filter(Boolean) : []}
           activeFdi={activeToothNumberFdi}
           language={language}
           onSelectTooth={(fdi) => {
-            const found = switcherItems.find((it) => {
-              const raw = it.tooth_numbers || (it.tooth_number ? [it.tooth_number] : []);
-              return raw.map(toothIdToFdi).includes(String(fdi));
-            });
+            // Same as clicking the tooth's tab at the top (own case or another case).
+            const found = switcherItems.find((it) => switcherItemFdi(it) === String(fdi))
+              || switcherItems.find((it) => {
+                const raw = it.tooth_numbers || (it.tooth_number ? [it.tooth_number] : []);
+                return raw.map(toothIdToFdi).includes(String(fdi));
+              });
             if (found) selectCaseTooth(found);
           }}
         />

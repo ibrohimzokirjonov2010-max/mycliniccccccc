@@ -34,7 +34,7 @@ const COPY = {
   },
 };
 
-function scopedCss(scope, caseFdis, activeFdi, otherImplantFdis) {
+function scopedCss(scope, caseFdis, activeFdi, otherImplantFdis, selectableFdis = []) {
   const cell = (f) => `.${scope} .odontogram-tooth[data-fdi="${f}"]`;
   const rules = [`
 .${scope} .odontogram-tooth{filter:none !important;cursor:default;}
@@ -66,6 +66,7 @@ ${cell(f)}{border-radius:10px;background:rgba(20,184,166,0.06);box-shadow:inset 
 .${scope} .odonto-jaw-upper ${cell(f).replace(`.${scope} `, '')}::after,
 .${scope} .odonto-jaw-lower ${cell(f).replace(`.${scope} `, '')}::before{color:${TEAL_DARK};}`);
   });
+  selectableFdis.forEach((f) => { rules.push(`${cell(f)}{cursor:pointer;}`); });
   return rules.join('\n');
 }
 
@@ -73,6 +74,7 @@ export default function ImplantToothChart({
   patientId,
   implants = [],
   caseFdis = [],
+  selectableFdis = [],
   activeFdi = '',
   onSelectTooth,
   language = 'uz',
@@ -107,6 +109,8 @@ export default function ImplantToothChart({
 
   const caseSet = useMemo(() => new Set((caseFdis || []).map(String)), [caseFdis]);
   const caseList = useMemo(() => [...caseSet], [caseSet]);
+  // Implanted teeth of the patient's other cases that have a tab: clicking opens that case.
+  const selectableSet = useMemo(() => new Set((selectableFdis || []).map(String)), [selectableFdis]);
   const otherImplants = useMemo(() => implantFdis.filter((f) => !caseSet.has(f)), [implantFdis, caseSet]);
 
   // Child (primary) dentition only when the implant itself sits on a 51–85 tooth.
@@ -116,8 +120,8 @@ export default function ImplantToothChart({
   );
 
   const css = useMemo(
-    () => scopedCss(scope, caseList, String(activeFdi || ''), otherImplants),
-    [scope, caseList, activeFdi, otherImplants],
+    () => scopedCss(scope, caseList, String(activeFdi || ''), otherImplants, [...selectableSet]),
+    [scope, caseList, activeFdi, otherImplants, selectableSet],
   );
 
   // Phones scroll the arch horizontally: bring the active implant into view.
@@ -133,7 +137,7 @@ export default function ImplantToothChart({
 
   const handleClick = (toothId) => {
     const fdi = internalIdToFdi(toothId) || String(toothId);
-    if (caseSet.has(fdi)) onSelectTooth?.(fdi);
+    if (caseSet.has(fdi) || selectableSet.has(fdi)) onSelectTooth?.(fdi);
   };
 
   return (
