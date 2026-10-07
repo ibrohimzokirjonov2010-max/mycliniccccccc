@@ -2010,8 +2010,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
             const WIZARD_QUADS = [
               { id: 'ur', title: "Yuqori · O‘ng", teeth: upperRight },
               { id: 'ul', title: "Yuqori · Chap", teeth: upperLeft },
-              { id: 'll', title: "Pastki · Chap", teeth: lowerLeft },
               { id: 'lr', title: "Pastki · O‘ng", teeth: lowerRight },
+              { id: 'll', title: "Pastki · Chap", teeth: lowerLeft },
             ];
             const activeQuad = WIZARD_QUADS.find((quad) => quad.id === wizardQuad) || WIZARD_QUADS[0];
 
