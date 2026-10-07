@@ -514,6 +514,23 @@ export default function DoctorDayGrid({
   const gridRef = useRef(null);
   const { sendTest, loadingId } = useTestReminder();
 
+  // Keep the grid inside the viewport so the horizontal scrollbar under the
+  // doctor columns is always visible (5+ doctors overflow at 1280px).
+  const [gridMaxH, setGridMaxH] = useState(null);
+  useEffect(() => {
+    const measure = () => {
+      const el = gridRef.current;
+      const main = document.querySelector('main');
+      if (!el || !main) return;
+      const mainRect = main.getBoundingClientRect();
+      const topInMain = el.getBoundingClientRect().top - mainRect.top + main.scrollTop;
+      setGridMaxH(Math.max(360, Math.floor(main.clientHeight - topInMain - 24)));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [doctors.length, searchQuery, viewDate]);
+
   // Quick View popup state
   const [quickView, setQuickView] = useState(null); // { appointment, rect }
 
@@ -641,7 +658,7 @@ export default function DoctorDayGrid({
       )}
 
       {/* Unified Single CSS Grid for 100% straight vertical alignment between header and body */}
-      <div ref={gridRef} className="flex-1 overflow-auto no-scrollbar scroll-smooth bg-white">
+      <div ref={gridRef} data-testid="doctor-day-grid-scroll" className="flex-1 overflow-auto doc-grid-scroll scroll-smooth bg-white" style={gridMaxH ? { maxHeight: gridMaxH } : undefined}>
         <div 
           className="grid w-full min-w-max [grid-template-columns:56px_repeat(var(--doc-n),minmax(210px,1fr))] lg:[grid-template-columns:44px_repeat(var(--doc-n),minmax(150px,1fr))]"
           style={{ '--doc-n': Math.max(doctors.length, 1) }}

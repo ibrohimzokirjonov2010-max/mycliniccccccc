@@ -1136,3 +1136,17 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
     display: flex !important;
   }
 }
+
+/* Uchrashuvlar day grid: subtle, always-visible scrollbars under the doctor columns */
+.doc-grid-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+.doc-grid-scroll::-webkit-scrollbar { height: 10px; width: 8px; }
+.doc-grid-scroll::-webkit-scrollbar-track { background: #f8fafc; }
+.doc-grid-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  border: 2px solid #f8fafc;
+}
+.doc-grid-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
