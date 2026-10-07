@@ -35,24 +35,24 @@ const UPPER_LEFT = [
   { id: 'ul8', fdi: 28, src: 'kamron/tepa_chap_8' },
 ];
 const LOWER_RIGHT = [
-  { id: 'lr1', fdi: 41, src: 'kamron/pas_ong_1' },
-  { id: 'lr2', fdi: 42, src: 'kamron/pas_ong_2' },
-  { id: 'lr3', fdi: 43, src: 'kamron/pas_ong_3' },
-  { id: 'lr4', fdi: 44, src: 'kamron/pas_ong_4' },
-  { id: 'lr5', fdi: 45, src: 'kamron/pas_ong_5' },
-  { id: 'lr6', fdi: 46, src: 'kamron/pas_ong_6' },
-  { id: 'lr7', fdi: 47, src: 'kamron/pas_ong_7' },
   { id: 'lr8', fdi: 48, src: 'kamron/pas_ong_8' },
+  { id: 'lr7', fdi: 47, src: 'kamron/pas_ong_7' },
+  { id: 'lr6', fdi: 46, src: 'kamron/pas_ong_6' },
+  { id: 'lr5', fdi: 45, src: 'kamron/pas_ong_5' },
+  { id: 'lr4', fdi: 44, src: 'kamron/pas_ong_4' },
+  { id: 'lr3', fdi: 43, src: 'kamron/pas_ong_3' },
+  { id: 'lr2', fdi: 42, src: 'kamron/pas_ong_2' },
+  { id: 'lr1', fdi: 41, src: 'kamron/pas_ong_1' },
 ];
 const LOWER_LEFT = [
-  { id: 'll8', fdi: 38, src: 'kamron/pas_chap_8' },
-  { id: 'll7', fdi: 37, src: 'kamron/pas_chap_7' },
-  { id: 'll6', fdi: 36, src: 'kamron/pas_chap_6' },
-  { id: 'll5', fdi: 35, src: 'kamron/pas_chap_5' },
-  { id: 'll4', fdi: 34, src: 'kamron/pas_chap_4' },
-  { id: 'll3', fdi: 33, src: 'kamron/pas_chap_3' },
-  { id: 'll2', fdi: 32, src: 'kamron/pas_chap_2' },
   { id: 'll1', fdi: 31, src: 'kamron/pas_chap_1' },
+  { id: 'll2', fdi: 32, src: 'kamron/pas_chap_2' },
+  { id: 'll3', fdi: 33, src: 'kamron/pas_chap_3' },
+  { id: 'll4', fdi: 34, src: 'kamron/pas_chap_4' },
+  { id: 'll5', fdi: 35, src: 'kamron/pas_chap_5' },
+  { id: 'll6', fdi: 36, src: 'kamron/pas_chap_6' },
+  { id: 'll7', fdi: 37, src: 'kamron/pas_chap_7' },
+  { id: 'll8', fdi: 38, src: 'kamron/pas_chap_8' },
 ];
 const UPPER_RIGHT_CHILD = [
   { id: 'ur5c', fdi: 55, src: 'kamron/tepa_ong_5' },
@@ -69,18 +69,18 @@ const UPPER_LEFT_CHILD = [
   { id: 'ul5c', fdi: 65, src: 'kamron/tepa_chap_5' },
 ];
 const LOWER_RIGHT_CHILD = [
-  { id: 'lr1c', fdi: 81, src: 'kamron/pas_ong_1' },
-  { id: 'lr2c', fdi: 82, src: 'kamron/pas_ong_2' },
-  { id: 'lr3c', fdi: 83, src: 'kamron/pas_ong_3' },
-  { id: 'lr4c', fdi: 84, src: 'kamron/pas_ong_4' },
   { id: 'lr5c', fdi: 85, src: 'kamron/pas_ong_5' },
+  { id: 'lr4c', fdi: 84, src: 'kamron/pas_ong_4' },
+  { id: 'lr3c', fdi: 83, src: 'kamron/pas_ong_3' },
+  { id: 'lr2c', fdi: 82, src: 'kamron/pas_ong_2' },
+  { id: 'lr1c', fdi: 81, src: 'kamron/pas_ong_1' },
 ];
 const LOWER_LEFT_CHILD = [
-  { id: 'll5c', fdi: 75, src: 'kamron/pas_chap_5' },
-  { id: 'll4c', fdi: 74, src: 'kamron/pas_chap_4' },
-  { id: 'll3c', fdi: 73, src: 'kamron/pas_chap_3' },
-  { id: 'll2c', fdi: 72, src: 'kamron/pas_chap_2' },
   { id: 'll1c', fdi: 71, src: 'kamron/pas_chap_1' },
+  { id: 'll2c', fdi: 72, src: 'kamron/pas_chap_2' },
+  { id: 'll3c', fdi: 73, src: 'kamron/pas_chap_3' },
+  { id: 'll4c', fdi: 74, src: 'kamron/pas_chap_4' },
+  { id: 'll5c', fdi: 75, src: 'kamron/pas_chap_5' },
 ];
 
 const ALL_ADULT = [...UPPER_RIGHT, ...UPPER_LEFT, ...LOWER_RIGHT, ...LOWER_LEFT];
@@ -333,9 +333,9 @@ export default function PatientXraysOdontogram({ patientId }) {
                   <span className="odonto-side odonto-side-r">O‘NG</span>
                   <span className="odonto-side odonto-side-l">CHAP</span>
                   <div className="odonto-jaw odonto-jaw-lower">
-                    {renderHalf(patientType === 'adult' ? LOWER_LEFT : LOWER_LEFT_CHILD)}
-                    <div className="odonto-midline" aria-hidden="true" />
                     {renderHalf(patientType === 'adult' ? LOWER_RIGHT : LOWER_RIGHT_CHILD)}
+                    <div className="odonto-midline" aria-hidden="true" />
+                    {renderHalf(patientType === 'adult' ? LOWER_LEFT : LOWER_LEFT_CHILD)}
                   </div>
                 </div>
               </div>

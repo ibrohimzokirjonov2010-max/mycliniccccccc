@@ -1,9 +1,9 @@
 /**
  * Canonical FDI tooth numbering for odontogram labels.
- * Display order:
- *   Upper (patient's right on screen-left): 18→11 | 21→28
- *   Lower (quadrant 3 on screen-left, 31/71 at the midline): 38→31 | 41→48
- * Primary (child): 55→51 | 61→65  /  75→71 | 81→85
+ * Display order (facing the patient — O'NG left / CHAP right):
+ *   Upper: 18→11 | 21→28
+ *   Lower: 48→41 | 31→38
+ * Primary (child): 55→51 | 61→65  /  85→81 | 71→75
  * Selection APIs still use internal ids (ur1, ul3c, …).
  */
 
@@ -13,15 +13,15 @@ const CHILD_Q = { ur: 5, ul: 6, ll: 7, lr: 8 };
 export const ADULT_FDI_ARCS = {
   upperRight: [18, 17, 16, 15, 14, 13, 12, 11],
   upperLeft: [21, 22, 23, 24, 25, 26, 27, 28],
-  lowerLeft: [38, 37, 36, 35, 34, 33, 32, 31],
-  lowerRight: [41, 42, 43, 44, 45, 46, 47, 48],
+  lowerLeft: [31, 32, 33, 34, 35, 36, 37, 38],
+  lowerRight: [48, 47, 46, 45, 44, 43, 42, 41],
 };
 
 export const CHILD_FDI_ARCS = {
   upperRight: [55, 54, 53, 52, 51],
   upperLeft: [61, 62, 63, 64, 65],
-  lowerLeft: [75, 74, 73, 72, 71],
-  lowerRight: [81, 82, 83, 84, 85],
+  lowerLeft: [71, 72, 73, 74, 75],
+  lowerRight: [85, 84, 83, 82, 81],
 };
 
 const INTERNAL_ID_RE = /^(ur|ul|lr|ll)(\d+)(c)?$/i;
@@ -47,8 +47,8 @@ export function flattenArcs(arcs) {
   return [
     ...arcs.upperRight,
     ...arcs.upperLeft,
-    ...arcs.lowerLeft,
     ...arcs.lowerRight,
+    ...arcs.lowerLeft,
   ];
 }
 
@@ -143,17 +143,16 @@ export function fdiCrownDown(fdi) {
 }
 
 /**
- * Screen side of the mesial surface after the lower row is mirrored.
- * Upper quads 1 and 5 still face right. Lower quads 3 and 7 now sit on
- * the viewer's left, so their mesial faces the midline on the right.
+ * Screen side of the mesial surface (facing the patient).
+ * Quads on the viewer's left (1,4,5,8) have mesial toward the midline on the right.
  */
 export function fdiMesialIsRight(fdi) {
   const q = Math.floor(Number(fdi) / 10);
-  return q === 1 || q === 3 || q === 5 || q === 7;
+  return q === 1 || q === 4 || q === 5 || q === 8;
 }
 
 /**
- * Lower PNGs are the original unmirrored files. The row order is 38–31 | 41–48.
+ * Lower PNGs are the original unmirrored files. The row order is 48–41 | 31–38.
  * Do not scaleX them.
  */
 export function fdiLowerImageFlip() {

@@ -22,15 +22,15 @@ export const TOOTH_STATUS = {
 };
 
 // ── FDI Dental Numbering ─────────────────────────────────────────────────────
-// Upper Right: 18,17,16,15,14,13,12,11
-// Upper Left:  21,22,23,24,25,26,27,28
-// Lower Left:  38→31 on screen-left (31 at the midline)
-// Lower Right: 41→48 on screen-right (41 at the midline)
+// Upper Right: 18,17,16,15,14,13,12,11 (screen-left)
+// Upper Left:  21,22,23,24,25,26,27,28 (screen-right)
+// Lower Right: 48→41 on screen-left (41 at the midline)
+// Lower Left:  31→38 on screen-right (31 at the midline)
 
 const UPPER_RIGHT = [18, 17, 16, 15, 14, 13, 12, 11];
 const UPPER_LEFT  = [21, 22, 23, 24, 25, 26, 27, 28];
 const LOWER_LEFT  = [31, 32, 33, 34, 35, 36, 37, 38];
-const LOWER_RIGHT = [41, 42, 43, 44, 45, 46, 47, 48];
+const LOWER_RIGHT = [48, 47, 46, 45, 44, 43, 42, 41];
 
 // Tooth type determination for shape
 const getToothType = (num) => {
@@ -489,17 +489,17 @@ export default function DentalChart({ teethData = {}, onStatusChange, readOnly =
           {/* ═══ LOWER JAW ═══ */}
           <div>
             <div className="flex justify-center gap-1">
-              {/* Lower left quadrant, mirrored so 31 meets the midline */}
+              {/* Patient's right (48→41) on screen-left */}
               <div className="flex gap-0.5 items-start">
-                {renderRow(LOWER_LEFT, false, true)}
+                {renderRow(LOWER_RIGHT, false)}
               </div>
 
               {/* Midline */}
               <div className="w-px bg-gradient-to-b from-transparent via-blue-200 to-transparent mx-0.5 self-stretch" />
 
-              {/* Lower right quadrant, 41 at the midline */}
+              {/* Patient's left (31→38) on screen-right */}
               <div className="flex gap-0.5 items-start">
-                {renderRow(LOWER_RIGHT, false)}
+                {renderRow(LOWER_LEFT, false)}
               </div>
             </div>
             <QuadrantLabel label="Pastki jag'" />
@@ -524,7 +524,7 @@ export default function DentalChart({ teethData = {}, onStatusChange, readOnly =
 // ── Compact Mini Chart (for patient cards) ────────────────────────────────────
 export function MiniDentalChart({ teethData = {}, className }) {
   const getStatus = (num) => teethData[num] || 'healthy';
-  const allTeeth = [...UPPER_RIGHT, ...UPPER_LEFT, ...LOWER_LEFT.slice().reverse(), ...LOWER_RIGHT];
+  const allTeeth = [...UPPER_RIGHT, ...UPPER_LEFT, ...LOWER_RIGHT, ...LOWER_LEFT];
 
   return (
     <div className={cn('flex flex-wrap gap-0.5 max-w-[200px]', className)}>
