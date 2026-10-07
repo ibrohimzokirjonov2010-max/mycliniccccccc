@@ -7,6 +7,7 @@ import { Building2, UserPlus, Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
@@ -335,8 +336,7 @@ export default function Register() {
                   </div>
                   <div className="space-y-1">
                     <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Parol</Label>
-                    <Input 
-                      type="password"
+                    <PasswordInput
                       placeholder="••••••" 
                       value={adminForm.password}
                       onChange={e => setAdminForm({...adminForm, password: e.target.value})}
@@ -403,8 +403,7 @@ export default function Register() {
                   </div>
                   <div className="space-y-1">
                     <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Parol</Label>
-                    <Input 
-                      type="password"
+                    <PasswordInput
                       placeholder="••••••" 
                       value={doctorForm.password}
                       onChange={e => setDoctorForm({...doctorForm, password: e.target.value})}

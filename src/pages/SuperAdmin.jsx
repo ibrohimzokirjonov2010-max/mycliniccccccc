@@ -12,6 +12,7 @@ import { base44 } from '@/api/base44Client';
 import { applyClinicSession, resolveClinicPlan } from '@/lib/clinicPlan';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -1075,8 +1076,7 @@ export default function SuperAdmin() {
                 <Label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">Parol</Label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <Input 
-                    type="password" 
+                  <PasswordInput
                     value={loginForm.password} 
                     onChange={e => setLoginForm({...loginForm, password: e.target.value})} 
                     placeholder="••••••••" 
@@ -2340,8 +2340,7 @@ export default function SuperAdmin() {
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[9px] font-bold text-slate-400 uppercase">Admin Paroli</Label>
-                    <Input 
-                      type="password"
+                    <PasswordInput
                       autoComplete="new-password"
                       value={form.admin_password || ''} 
                       onChange={e => setForm({...form, admin_password: e.target.value})} 
@@ -2531,8 +2530,7 @@ export default function SuperAdmin() {
                     Avto-generatsiya
                   </button>
                 </div>
-                <Input 
-                  type="password"
+                <PasswordInput
                   autoComplete="new-password"
                   value={userForm.password} 
                   onChange={e => setUserForm({...userForm, password: e.target.value})} 

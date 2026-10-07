@@ -10,6 +10,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -486,8 +487,7 @@ export default function MobileSettings() {
             <div className="grid grid-cols-2 gap-2 pt-1">
               <div className="space-y-1">
                 <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">Yangi parol</Label>
-                <Input 
-                  type="password"
+                <PasswordInput
                   placeholder="Yangi parol"
                   value={myProfileForm.password}
                   onChange={e => setMyProfileForm({ ...myProfileForm, password: e.target.value })}
@@ -496,8 +496,7 @@ export default function MobileSettings() {
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">Tasdiqlash</Label>
-                <Input 
-                  type="password"
+                <PasswordInput
                   placeholder="Qayta kiriting"
                   value={myProfileForm.confirmPassword}
                   onChange={e => setMyProfileForm({ ...myProfileForm, confirmPassword: e.target.value })}
@@ -826,8 +825,7 @@ export default function MobileSettings() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Parol</Label>
-                      <Input 
-                        type="password"
+                      <PasswordInput
                         placeholder="••••••••" 
                         autoComplete="new-password"
                         value={newStaff.password}

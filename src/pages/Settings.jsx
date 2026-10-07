@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { 
   Settings as SettingsIcon, User, Plus, Trash2, 
@@ -634,8 +635,7 @@ export default function Settings() {
                       <label className="text-[10px] font-black uppercase text-slate-500 tracking-wider font-mono">
                         {t('settings.staff.passwordLogin') || "Parol"} *
                       </label>
-                      <Input 
-                        type="password"
+                      <PasswordInput
                         placeholder="••••••••"
                         autoComplete="new-password"
                         value={newStaff.password}
@@ -1041,8 +1041,7 @@ export default function Settings() {
                     </div>
                   </div>
                   <div className="col-span-7 p-2">
-                    <Input 
-                      type="password"
+                    <PasswordInput
                       placeholder="Kamida 4 ta belgi" 
                       value={myProfileForm.password}
                       onChange={e => setMyProfileForm({ ...myProfileForm, password: e.target.value })}
@@ -1061,8 +1060,7 @@ export default function Settings() {
                     <span className="font-bold text-slate-800">Parolni tasdiqlash</span>
                   </div>
                   <div className="col-span-7 p-2">
-                    <Input 
-                      type="password"
+                    <PasswordInput
                       placeholder="Parolni qayta kiriting" 
                       value={myProfileForm.confirmPassword}
                       onChange={e => setMyProfileForm({ ...myProfileForm, confirmPassword: e.target.value })}

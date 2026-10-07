@@ -12,6 +12,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
@@ -989,7 +990,7 @@ export default function Staff() {
             </div>
             <div className="space-y-2">
               <Label>{t('staff.password')}</Label>
-              <Input type="password" placeholder="••••••" value={newStaff.password} onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })} className="rounded-xl" />
+              <PasswordInput placeholder="••••••" value={newStaff.password} onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })} className="rounded-xl" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -1069,7 +1070,7 @@ export default function Staff() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-600">{t('staff.password')}</Label>
-                <Input type="password" autoComplete="new-password" placeholder={t('staff.passwordUnchanged')} value={editStaffForm.password} onChange={(e) => setEditStaffForm({ ...editStaffForm, password: e.target.value })} className="rounded-xl h-11" />
+                <PasswordInput autoComplete="new-password" placeholder={t('staff.passwordUnchanged')} value={editStaffForm.password} onChange={(e) => setEditStaffForm({ ...editStaffForm, password: e.target.value })} className="rounded-xl h-11" />
                 <p className="text-[10px] text-slate-400">{t('staff.passwordHint')}</p>
               </div>
             </div>

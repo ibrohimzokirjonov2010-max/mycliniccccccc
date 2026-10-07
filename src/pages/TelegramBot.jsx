@@ -12,6 +12,7 @@ import { formatDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -398,7 +399,7 @@ export default function TelegramBot() {
               <CardContent className="space-y-4">
                 <div>
                   <Label>Bot token</Label>
-                  <Input type="password" value={config.botToken} onChange={(e) => handleConfigChange('botToken', e.target.value)} placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" />
+                  <PasswordInput value={config.botToken} onChange={(e) => handleConfigChange('botToken', e.target.value)} placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" />
                   <p className="text-xs text-muted-foreground mt-1">@BotFather dan olingan bot token</p>
                 </div>
                 <div>
