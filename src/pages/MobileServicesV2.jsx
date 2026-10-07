@@ -623,7 +623,7 @@ export default function MobileServicesV2() {
                     </div>
 
                     <div className="flex justify-center items-center gap-1 min-w-max pt-1 border-t border-slate-100">
-                      {[48,47,46,45,44,43,42,41].map(n => {
+                      {[38,37,36,35,34,33,32,31].map(n => {
                         const sel = (form.tooth_numbers || []).map(Number).includes(Number(n));
                         return (
                           <button
@@ -643,7 +643,7 @@ export default function MobileServicesV2() {
                         );
                       })}
                       <div className="w-px h-6 bg-slate-300 mx-1" />
-                      {[31,32,33,34,35,36,37,38].map(n => {
+                      {[41,42,43,44,45,46,47,48].map(n => {
                         const sel = (form.tooth_numbers || []).map(Number).includes(Number(n));
                         return (
                           <button
