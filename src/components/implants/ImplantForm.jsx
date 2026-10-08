@@ -35,6 +35,7 @@ import {
   IMPLANT_WIZARD_FACTURA_MARKER,
   isImplantLine,
   printImplantFactura,
+  isQtyStepperService,
 } from './implantFactura';
 import { buildLinkedServiceModel, persistedServicesList } from './linkedImplantServices';
 import { cn } from '@/lib/utils';
@@ -202,12 +203,17 @@ function wizardToothPrices(selectedFdis, toothDataMap) {
   return prices;
 }
 
-/** Crowns default to one per implant; every other step-2 service starts at 1 (the doctor sets soni). */
-const PER_TOOTH_DEFAULT_IDS = new Set(['zirkon_crown', 'zircon_crown', 'metal_crown', 'emax_crown', 'veneer']);
-function wizardDefaultQty(serviceId, teethCount) {
-  const id = normalizeServiceId(serviceId);
-  if (PER_TOOTH_DEFAULT_IDS.has(id)) return Math.max(1, Number(teethCount) || 0);
-  return 1;
+/** Step-2 soni limits for the whitelisted services (QTY_STEPPER_SERVICES). */
+const SERVICE_QTY_MIN = 1;
+const SERVICE_QTY_MAX = 32;
+
+/**
+ * Whitelisted services (crowns, abutments, zaglushka, vaqtinchalik toj, vinir) start at
+ * one per selected tooth; every other step-2 service is a plain toggle with soni 1.
+ */
+function wizardDefaultQty(service, teethCount) {
+  if (!isQtyStepperService(service)) return 1;
+  return Math.max(SERVICE_QTY_MIN, Math.min(SERVICE_QTY_MAX, Number(teethCount) || 0));
 }
 
 function omitEmptySizeFields(data) {
@@ -638,7 +644,8 @@ export default function ImplantForm({
           }
         } else {
           const teeth = uniqueFdis(formRef.current?.tooth_numbers).length;
-          next[nid] = { ...(next[nid] || {}), qty: wizardDefaultQty(nid, teeth) };
+          const service = (extraServicesList || []).find((row) => normalizeServiceId(row.id) === nid) || { id: nid };
+          next[nid] = { ...(next[nid] || {}), qty: wizardDefaultQty(service, teeth) };
         }
         return next;
       });
@@ -1428,7 +1435,7 @@ export default function ImplantForm({
 
   const setServiceQty = useCallback((serviceId, qty) => {
     const id = normalizeServiceId(serviceId);
-    const n = Math.max(1, Math.min(99, Math.round(Number(qty) || 0)));
+    const n = Math.max(SERVICE_QTY_MIN, Math.min(SERVICE_QTY_MAX, Math.round(Number(qty) || 0)));
     setFacturaEdits((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), qty: n } }));
   }, []);
 

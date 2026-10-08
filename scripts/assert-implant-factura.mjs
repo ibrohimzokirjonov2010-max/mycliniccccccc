@@ -17,6 +17,7 @@ import {
   facturaFromImplantRecord,
   IMPLANT_WIZARD_FACTURA_MARKER,
   isImplantLine,
+  isQtyStepperService,
 } from '../src/components/implants/implantFactura.js';
 import { buildLinkedServiceModel, implantCasePrice } from '../src/components/implants/linkedImplantServices.js';
 
@@ -339,5 +340,29 @@ const custom = buildFacturaDocument({
 });
 assert(custom.stage2.find((line) => line.id === 'zirkon_crown')?.qty === 1, 'custom crown price keeps an explicit full set');
 assert(custom.grandTotal > 1500000 + 800000 + 1700000 + 1800000 - 1, 'custom full set is summed');
+
+// Step-2 soni stepper: only the whitelisted services (by id or by name, spelling-tolerant).
+[
+  'Zirkon koronka', 'E-Max Press Karonka', 'Standart Abutment', 'Multi-unit Abatment', 'Zaglushka (Cover screw)',
+  'Vaqtinchalik toj (Provisional)', 'Metallokeramika Karonka', 'Vinir (E-Max Press)',
+].forEach((name) => assert(isQtyStepperService({ id: 'extra_x', name }), `qty stepper for ${name}`));
+[
+  'Individual Zirkon Abutment', 'Formik (Healing Abutment)', 'Jarrohlik shabloni', 'Ochiq sinus-lifting',
+  'Atravmatik tish olish', 'Bone graft', 'PRF / A-PRF', 'Titan karkas',
+].forEach((name) => assert(!isQtyStepperService({ id: 'extra_x', name }), `no qty stepper for ${name}`));
+assert(isQtyStepperService('zirkon_crown') && isQtyStepperService('cover_screw') && !isQtyStepperService('healing_abutment'), 'qty stepper ids');
+// price × soni once: a whitelisted line with an edited soni is not multiplied again.
+const qtyDoc = buildFacturaDocument({
+  selectedFdis: ['11', '24'],
+  toothLines: [{ fdi: '11', brand: 'Straumann' }, { fdi: '24', brand: 'Neodent' }],
+  toothPrices: { 11: 9000000, 24: 4000000 },
+  extraServicesList: [{ id: 'standard_abutment', label: 'Standart abutment', defaultPrice: 300000 }, { id: 'surgical_guide', label: 'Jarrohlik shabloni', defaultPrice: 500000 }],
+  selectedServiceIds: ['standard_abutment', 'surgical_guide'],
+  extraServicePrices: {},
+  edits: { standard_abutment: { qty: 3 }, surgical_guide: { qty: 1 } },
+});
+const abut = qtyDoc.stage1.find((line) => line.id === 'standard_abutment');
+assert(abut && abut.qty === 3 && abut.total === 900000, `abutment soni ${abut?.qty} ${abut?.total}`);
+assert(qtyDoc.stage1.find((line) => line.id === 'surgical_guide')?.total === 500000, 'plain service soni 1');
 
 console.log('assert-implant-factura: ok');

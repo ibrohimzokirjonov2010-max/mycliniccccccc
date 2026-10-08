@@ -46,6 +46,60 @@ const PER_TOOTH_IDS = new Set([
   'zircon_pre',
 ]);
 
+/**
+ * Step-2 services that get a "soni" (− n +) stepper. Every other service is a
+ * plain toggle with soni 1. Matched by catalog id or by name (case-, diacritic-
+ * and spelling-tolerant: karonka/koronka, abatment/abutment, E-Max/Emax ...).
+ */
+export const QTY_STEPPER_SERVICES = [
+  { key: 'zirkon_crown', label: 'Zirkon koronka', ids: ['zirkon_crown', 'zircon_crown'] },
+  { key: 'emax_crown', label: 'E-Max koronka', ids: ['emax_crown'] },
+  { key: 'standard_abutment', label: 'Standart abutment', ids: ['standard_abutment'] },
+  { key: 'multi_unit', label: 'Multi-unit abutment', ids: ['multi_unit'] },
+  { key: 'cover_screw', label: 'Zaglushka', ids: ['cover_screw'] },
+  { key: 'temp_crown', label: 'Vaqtinchalik toj', ids: ['temp_crown'] },
+  { key: 'metal_crown', label: 'Metallokeramika koronka', ids: ['metal_crown'] },
+  { key: 'veneer', label: 'Vinir', ids: ['veneer'] },
+];
+
+const QTY_STEPPER_IDS = new Set(QTY_STEPPER_SERVICES.flatMap((row) => row.ids));
+
+function foldServiceName(value) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[‘’ʻʼ`'"]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/** Which whitelisted service a name stands for (null when it is not one of them). */
+export function qtyStepperKeyFromName(name) {
+  const s = foldServiceName(name);
+  if (!s) return null;
+  if (/\b(vinir|viner|veneer)/.test(s)) return 'veneer';
+  if (/\bmulti ?unit/.test(s)) return 'multi_unit';
+  if (/\b(zaglush|zagloosh|cover ?screw)/.test(s)) return 'cover_screw';
+  if (/\b(vaqtinch|vaktinch|vremen|provisional|temporary)/.test(s)) return 'temp_crown';
+  if (/\bab[ua]tment/.test(s)) {
+    return /\bstand[ae]rt|\bstandard/.test(s) ? 'standard_abutment' : null;
+  }
+  const crown = /\b(k[ao]r[ao]nk|crown|toj|koron)/.test(s);
+  if (/\bmetall? ?o? ?keramik|\bmetal ?ceramic/.test(s)) return 'metal_crown';
+  if (/\be ?max/.test(s)) return 'emax_crown';
+  if (/\bzi?rk?[ao]n|\bzircon/.test(s) && crown) return 'zirkon_crown';
+  return null;
+}
+
+/** True for the whitelisted step-2 services that carry a soni stepper. */
+export function isQtyStepperService(serviceOrId) {
+  const service = serviceOrId && typeof serviceOrId === 'object' ? serviceOrId : { id: serviceOrId };
+  const id = normalizeServiceId(service.id || service.service_id);
+  if (id && QTY_STEPPER_IDS.has(id)) return true;
+  return Boolean(qtyStepperKeyFromName(service.name || service.label || service.service_name || ''));
+}
+
 const GENERIC_CLINIC = /^(shifocrm|my clinic|myclinic|dentacrm|denta crm|demo clinic)$/i;
 
 export function formatSom(n) {

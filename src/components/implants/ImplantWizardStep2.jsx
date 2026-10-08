@@ -2,6 +2,10 @@ import { Check, Pencil, Search, Droplets, X, Minus, Plus } from 'lucide-react';
 import { Tooth, CrownIcon, FormerIcon, AbutmentIcon, BoneGraftIcon, SinusLiftIcon } from '@/components/ui/Icons';
 import { cn } from '@/lib/utils';
 import { getServiceLabel, IMPLANT_WIZARD_STEP2_MARKER, normalizeServiceId } from './implantWizardLabels';
+import { isQtyStepperService } from './implantFactura';
+
+const QTY_MIN = 1;
+const QTY_MAX = 32;
 import './implantWizard.css';
 import './implantFactura.css';
 
@@ -173,7 +177,9 @@ export default function ImplantWizardStep2({
               : service.defaultPrice;
             const isEditing = editingPriceId === service.id;
             const label = getServiceLabel(service, t);
-            const qty = Number(serviceQty[normalizeServiceId(service.id)]) || 1;
+            const hasQty = isQtyStepperService(service);
+            const qty = Math.max(QTY_MIN, Number(serviceQty[normalizeServiceId(service.id)]) || 1);
+            const stop = (e) => e.stopPropagation();
             return (
               <div
                 key={service.id}
@@ -227,14 +233,19 @@ export default function ImplantWizardStep2({
                     )}
                   </div>
                 </div>
-                {isSelected && onSetQty ? (
-                  <div className="implant-wizard-qty-row" data-testid="implant-service-qty">
+                {isSelected && hasQty && onSetQty ? (
+                  <div
+                    className="implant-wizard-qty-row"
+                    data-testid="implant-service-qty"
+                    onClick={stop}
+                    onPointerDown={stop}
+                  >
                     <span className="implant-wizard-qty-label">{tw('qty', 'Soni')}</span>
                     <div className="implant-wizard-qty" role="group" aria-label={`${label} ${tw('qty', 'soni')}`}>
                       <button
                         type="button"
-                        onClick={() => onSetQty(service.id, qty - 1)}
-                        disabled={qty <= 1}
+                        onClick={(e) => { e.stopPropagation(); onSetQty(service.id, qty - 1); }}
+                        disabled={qty <= QTY_MIN}
                         aria-label={tw('qtyMinus', 'Kamaytirish')}
                       >
                         <Minus className="w-3 h-3" strokeWidth={3} />
@@ -244,14 +255,16 @@ export default function ImplantWizardStep2({
                         inputMode="numeric"
                         value={qty}
                         onChange={(e) => {
-                          const digits = e.target.value.replace(/\D/g, '');
+                          const digits = e.target.value.replace(/\D/g, '').slice(0, 2);
                           if (digits !== '') onSetQty(service.id, Number(digits));
                         }}
+                        onFocus={(e) => e.target.select()}
                         aria-label={`${label} ${tw('qty', 'soni')}`}
                       />
                       <button
                         type="button"
-                        onClick={() => onSetQty(service.id, qty + 1)}
+                        onClick={(e) => { e.stopPropagation(); onSetQty(service.id, qty + 1); }}
+                        disabled={qty >= QTY_MAX}
                         aria-label={tw('qtyPlus', "Ko'paytirish")}
                       >
                         <Plus className="w-3 h-3" strokeWidth={3} />
