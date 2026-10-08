@@ -59,6 +59,7 @@ import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
 import TreatmentPlanInvoice from '../components/treatments/TreatmentPlanInvoice';
 import ImplantForm from '../components/implants/ImplantForm';
 // To'lov qo'shish: the Payments page's add-payment modal (same design + save logic), patient preselected.
+// Payment row click / after save: the same page's payment detail modal (embeddedDetail mode).
 const PaymentsAddModal = lazy(() => import('./Payments'));
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -405,6 +406,7 @@ export default function PatientProfile() {
   const [apptModalOpen, setApptModalOpen] = useState(false);
   const [payModalOpen, setPayModalOpen] = useState(false); // legacy modal: only "+ Avans" uses it now
   const [sharedPay, setSharedPay] = useState(null); // { patient, planId, amount, key } -> Payments add modal
+  const [sharedDetail, setSharedDetail] = useState(null); // { payment, patient, key } -> Payments detail modal
   const [treatmentModalOpen, setTreatmentModalOpen] = useState(false);
   const [implantModalOpen, setImplantModalOpen] = useState(false);
   const [invoiceModalPlan, setInvoiceModalPlan] = useState(null);
@@ -1936,6 +1938,13 @@ export default function PatientProfile() {
     setSharedPay({ patient, planId, amount, key: Date.now() });
   };
 
+  // Payment row click (and the popup right after "To'lov qo'shish" saves) shows the Payments section's
+  // detail modal: same design, Tahrirlash / Chop etish, no delete.
+  const openPaymentDetail = useCallback((payment) => {
+    if (!patient?.id || !payment?.id || String(payment.id).startsWith('temp_')) return;
+    setSharedDetail({ payment, patient, key: `${payment.id}-${Date.now()}` });
+  }, [patient]);
+
   const openAdvanceModal = () => {
     const assignedDocId = resolveDoctorId(patient, plans, doctors, user, isDoctor);
     setPayForm({ 
@@ -3215,6 +3224,7 @@ export default function PatientProfile() {
               onOpenPayModal={openPayModal}
               onOpenPlanInvoice={(plan) => setInvoiceModalPlan(plan)}
               onPayInstallment={handlePayInstallment}
+              onOpenPaymentDetail={openPaymentDetail}
             />
           )}
         </TabsContent>
@@ -4091,6 +4101,17 @@ export default function PatientProfile() {
             key={sharedPay.key}
             embeddedPay={sharedPay}
             onEmbeddedClose={() => setSharedPay(null)}
+            onEmbeddedSaved={(newPayment) => { load(); openPaymentDetail(newPayment); }}
+          />
+        </Suspense>
+      )}
+
+      {sharedDetail && (
+        <Suspense fallback={null}>
+          <PaymentsAddModal
+            key={sharedDetail.key}
+            embeddedDetail={sharedDetail}
+            onEmbeddedClose={() => setSharedDetail(null)}
             onEmbeddedSaved={() => load()}
           />
         </Suspense>

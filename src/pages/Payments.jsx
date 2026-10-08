@@ -166,11 +166,14 @@ const extractPaymentProcedures = (payment) => {
  * - Mobile Card Feed with native feel
  * - Advanced Multi-step Modal for adding payments logic
  */
-export default function Payments({ embeddedPay = null, onEmbeddedClose, onEmbeddedSaved } = {}) {
+export default function Payments({ embeddedPay = null, embeddedDetail = null, onEmbeddedClose, onEmbeddedSaved } = {}) {
   // Embedded mode: PatientProfile renders this page's "Yangi to'lov" modal (same design + save logic)
   // for one preselected patient. Only the modal is shown; list/stats queries are skipped.
   const embeddedPatient = embeddedPay?.patient?.id ? embeddedPay.patient : null;
-  const embedded = !!embeddedPatient;
+  // Detail-only mode: PatientProfile shows this page's payment detail modal (row click / after save).
+  const detailOnly = !!embeddedDetail?.payment?.id;
+  const detailPatient = detailOnly && embeddedDetail.patient?.id ? embeddedDetail.patient : null;
+  const embedded = !!embeddedPatient || detailOnly;
   const { t, language } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -181,7 +184,7 @@ export default function Payments({ embeddedPay = null, onEmbeddedClose, onEmbedd
   // ── States ───────────────────────────────────────────────────────────
   const [payments, setPayments] = useState([]);
   const [patients, setPatients] = useState(() => {
-    if (embeddedPatient) return [embeddedPatient];
+    if (embeddedPatient || detailPatient) return [embeddedPatient || detailPatient];
     try {
       const cached = queryClient.getQueryData(['patients', isDoctor, user?.id]) ||
                      queryClient.getQueryData(QUERY_KEYS.patients) ||
@@ -1237,6 +1240,7 @@ export default function Payments({ embeddedPay = null, onEmbeddedClose, onEmbedd
       }
 
       setSelectedPayment(updated);
+      if (detailOnly) onEmbeddedSaved?.(updated);
       setPaymentEdit(null);
       toast.success("To'lov yangilandi va qarz qayta hisoblandi");
       invalidatePayments();
@@ -1399,8 +1403,8 @@ export default function Payments({ embeddedPay = null, onEmbeddedClose, onEmbedd
         totalDebts: totalDebts > 0 ? totalDebts : totalPlansPrice,
       });
 
-      // DB bilan sinxronlash
-      if (p.patient_id) {
+      // DB bilan sinxronlash (profildan ochilganda yozilmaydi: profil o'z hisobini sinxronlaydi)
+      if (p.patient_id && !detailOnly) {
         base44.entities.Patient.update(p.patient_id, {
           total_paid: totalIncomes,
           total_debt: currentDebt,
@@ -2141,6 +2145,19 @@ export default function Payments({ embeddedPay = null, onEmbeddedClose, onEmbedd
       setForm(prev => ({ ...prev, amount: Number(embeddedPay.amount) }));
     }
   }, [embedded, embeddedPay, payRows, plansLoading]);
+  // ── Embedded detail (PatientProfile): open the detail modal once; closing it unmounts this page ──
+  const detailOpenedRef = useRef(false);
+  const detailShownRef = useRef(false);
+  useEffect(() => {
+    if (!detailOnly || detailOpenedRef.current) return;
+    detailOpenedRef.current = true;
+    openPaymentDetail(embeddedDetail.payment);
+  }, [detailOnly, embeddedDetail]);
+  useEffect(() => {
+    if (!detailOnly) return;
+    if (selectedPayment) { detailShownRef.current = true; return; }
+    if (detailShownRef.current) onEmbeddedClose?.();
+  }, [detailOnly, selectedPayment]);
 
   return (
     <div className={embedded ? 'hidden' : 'space-y-3 pb-4 h-full'} data-payments-embedded={embedded ? 'true' : undefined}>
@@ -2783,7 +2800,7 @@ export default function Payments({ embeddedPay = null, onEmbeddedClose, onEmbedd
                           + {t('patients.addNew')}
                         </button>}
                      </div>
-                     {embedded ? (
+                     {embedded && embeddedPatient ? (
                        <div
                          className="h-12 rounded-xl border-2 border-emerald-300 bg-emerald-50/50 pl-3 pr-3 flex items-center gap-2.5 shadow-sm"
                          data-payment-fixed-patient="true"
@@ -3481,7 +3498,7 @@ export default function Payments({ embeddedPay = null, onEmbeddedClose, onEmbedd
                             onClick={() => {
                               if (sp.patient_id) {
                                 setSelectedPayment(null);
-                                navigate(`/patients/${sp.patient_id}`, { state: profileState() });
+                                if (!detailOnly) navigate(`/patients/${sp.patient_id}`, { state: profileState() });
                               }
                             }}
                             className="hover:text-[#1499AD] hover:underline cursor-pointer"
