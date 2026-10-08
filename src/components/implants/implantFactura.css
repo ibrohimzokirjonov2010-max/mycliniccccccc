@@ -566,6 +566,12 @@
   color: var(--ifc-text);
 }
 
+/* Service cards grow with the soni stepper: in the height-capped scroll list the
+   auto rows were stuck at the cards' 44px min-height and the stepper overflowed. */
+.implant-wizard-service-list {
+  grid-auto-rows: max-content;
+  align-items: start;
+}
 .implant-wizard-qty-row {
   display: flex;
   align-items: center;
@@ -582,14 +588,15 @@
 .implant-wizard-qty {
   display: inline-flex;
   align-items: center;
-  height: 28px;
+  height: 32px;
   border: 1px solid #99f6e4;
   border-radius: 8px;
   overflow: hidden;
   background: #fff;
 }
 .implant-wizard-qty button {
-  width: 28px;
+  width: 32px;
+  touch-action: manipulation;
   height: 100%;
   border: 0;
   background: #f0fdfa;
@@ -599,9 +606,24 @@
   justify-content: center;
   cursor: pointer;
 }
+.implant-wizard-qty button:not(:disabled):hover {
+  background: #ccfbf1;
+}
 .implant-wizard-qty button:disabled {
   color: #cbd5e1;
+  background: #f8fafc;
   cursor: default;
+}
+@media (max-width: 767px) {
+  .implant-wizard-qty {
+    height: 36px;
+  }
+  .implant-wizard-qty button {
+    width: 36px;
+  }
+  .implant-wizard-qty input {
+    font-size: 16px;
+  }
 }
 .implant-wizard-qty input {
   width: 34px;
