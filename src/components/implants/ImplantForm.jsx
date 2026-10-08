@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { BackClose } from '@/hooks/useBackClose';
 import { createPortal } from 'react-dom';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Plus, FileText, X, Check, ArrowLeft, ArrowRight,
-  Search, Image as ImageIcon, Printer,
+  Search, Image as ImageIcon, Printer, Pencil,
 } from 'lucide-react';
 import { Tooth } from '@/components/ui/Icons';
 import PatientModal from '../patients/PatientModal';
@@ -32,6 +33,7 @@ import {
   stripFacturaFromNotes,
   parseFacturaSnapshot,
   IMPLANT_WIZARD_FACTURA_MARKER,
+  isImplantLine,
   printImplantFactura,
 } from './implantFactura';
 import { buildLinkedServiceModel, persistedServicesList } from './linkedImplantServices';
@@ -188,6 +190,26 @@ function wizardToothLines(selectedFdis, toothDataMap, form) {
   });
 }
 
+/** Per-tooth implant price map for the factura (step 1 "Narx" of each tooth). */
+function wizardToothPrices(selectedFdis, toothDataMap) {
+  const prices = {};
+  (selectedFdis || []).forEach((fdi) => {
+    const entry = toothDataMap?.[fdi] || toothDataMap?.[String(fdi)] || {};
+    if (entry.price !== undefined && entry.price !== null && entry.price !== '') {
+      prices[fdi] = Number(entry.price) || 0;
+    }
+  });
+  return prices;
+}
+
+/** Crowns default to one per implant; every other step-2 service starts at 1 (the doctor sets soni). */
+const PER_TOOTH_DEFAULT_IDS = new Set(['zirkon_crown', 'zircon_crown', 'metal_crown', 'emax_crown', 'veneer']);
+function wizardDefaultQty(serviceId, teethCount) {
+  const id = normalizeServiceId(serviceId);
+  if (PER_TOOTH_DEFAULT_IDS.has(id)) return Math.max(1, Number(teethCount) || 0);
+  return 1;
+}
+
 function omitEmptySizeFields(data) {
   const next = { ...data };
   SIZE_FIELDS.forEach((key) => {
@@ -314,6 +336,8 @@ export default function ImplantForm({
   formRef.current = form;
   const activeFdiRef = useRef(activeFdi);
   activeFdiRef.current = activeFdi;
+  const toothDataMapRef = useRef(toothDataMap);
+  toothDataMapRef.current = toothDataMap;
 
   useEffect(() => {
     setLocalPatients(patients);
@@ -599,6 +623,26 @@ export default function ImplantForm({
         return next;
       });
     }
+    const nid = normalizeServiceId(serviceId);
+    const wasSelected = (formRef.current?.extra_services || []).includes(serviceId);
+    const paidTeeth = Object.values(toothDataMapRef.current || {}).some((row) => row?.extraction === 'paid');
+    if (nid === 'extraction' && !wasSelected && !paidTeeth) {
+      setFacturaEdits((prev) => ({ ...prev, extraction: { ...(prev.extraction || {}), qty: 1 } }));
+    } else if (nid !== 'extraction') {
+      setFacturaEdits((prev) => {
+        const next = { ...prev };
+        if (wasSelected) {
+          if (next[nid]) {
+            const { qty: _qty, ...rest } = next[nid];
+            next[nid] = rest;
+          }
+        } else {
+          const teeth = uniqueFdis(formRef.current?.tooth_numbers).length;
+          next[nid] = { ...(next[nid] || {}), qty: wizardDefaultQty(nid, teeth) };
+        }
+        return next;
+      });
+    }
     setForm((prev) => {
       const current = prev.extra_services || [];
       if (current.includes(serviceId)) {
@@ -765,8 +809,23 @@ export default function ImplantForm({
   const [patientChart, setPatientChart] = useState({ records: [], plans: [], loadedFor: '' });
   const [extractPrompt, setExtractPrompt] = useState(null); // { fdi, stage: 1 | 2 }
   const [extractionService, setExtractionService] = useState(null); // { name, price } from Services catalog
+  const [extractPriceDraft, setExtractPriceDraft] = useState(null); // edited "Tish olish" price in the prompt
   const autoExtractionRef = useRef(false);
+  const extractPriceInputRef = useRef(null);
   useEffect(() => { if (!open) setExtractPrompt(null); }, [open]);
+  useEffect(() => { if (!extractPrompt) setExtractPriceDraft(null); }, [extractPrompt]);
+  // "To'lov olamizmi?" bosqichi ochilganda narx maydoni darhol tahrirga tayyor (fokus + belgilangan).
+  const extractStage = extractPrompt?.stage;
+  useEffect(() => {
+    if (extractStage !== 2) return undefined;
+    const raf = requestAnimationFrame(() => {
+      const el = extractPriceInputRef.current;
+      if (!el) return;
+      el.focus({ preventScroll: true });
+      el.select();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [extractStage, extractPrompt?.fdi]);
 
   useEffect(() => {
     if (!open || !form.patient_id) {
@@ -850,8 +909,18 @@ export default function ImplantForm({
     setExtractPrompt({ fdi: id, stage: 1 });
   }, [hasNaturalTooth, focusTooth]);
 
+  const extractionDefaultPrice = extraServicePrices.extraction !== undefined
+    ? Number(extraServicePrices.extraction) || 0
+    : (extractionService?.price > 0
+      ? extractionService.price
+      : (Number((extraServicesList || []).find((s) => normalizeServiceId(s.id) === 'extraction')?.defaultPrice) || 0));
+  // '' = foydalanuvchi maydonni tozalagan (hali raqam yozmagan).
+  const extractPriceValue = extractPriceDraft != null ? extractPriceDraft : extractionDefaultPrice;
+  const extractPriceValid = extractPriceValue !== '' && Number(extractPriceValue) > 0;
+
   const resolveExtractPrompt = useCallback((mode) => {
     const id = extractPrompt?.fdi;
+    if (mode === 'paid' && !(Number(extractPriceValue) > 0)) return; // narxsiz "Ha" yo'q
     setExtractPrompt(null);
     if (!id) return;
     focusTooth(id);
@@ -864,10 +933,11 @@ export default function ImplantForm({
       autoExtractionRef.current = true;
       return { ...prev, extra_services: [...current, 'extraction'] };
     });
-    if (extractionService?.price > 0) {
-      setExtraServicePrices((prev) => (prev.extraction !== undefined ? prev : { ...prev, extraction: extractionService.price }));
-    }
-  }, [extractPrompt, focusTooth, extractionService]);
+    // The price shown (and maybe edited) in the prompt is the one charged.
+    const price = Math.max(0, Number(extractPriceValue) || 0);
+    setExtraServicePrices((prev) => ({ ...prev, extraction: price }));
+    setFacturaEdits((prev) => (prev.extraction ? { ...prev, extraction: { ...prev.extraction, unitPrice: price } } : prev));
+  }, [extractPrompt, focusTooth, extractPriceValue]);
 
 
   const handlePatientSelect = useCallback((patientId, patientRecord) => {
@@ -1061,6 +1131,7 @@ export default function ImplantForm({
         extraServicePrices,
         extractionFdis: fdiNumbers.filter((fdi) => cleanedToothMap[fdi]?.extraction === 'paid'),
         edits: facturaEdits,
+        toothPrices: wizardToothPrices(fdiNumbers, cleanedToothMap),
         toothLines: wizardToothLines(fdiNumbers, cleanedToothMap, {
           firma: finalFirma,
           firma_custom: finalFirmaCustom,
@@ -1258,14 +1329,6 @@ export default function ImplantForm({
     }));
   }, [extractionPaidFdis]);
 
-  const extraTotal = useMemo(() => (form.extra_services || []).reduce((acc, sid) => {
-    const preset = (extraServicesList || []).find((s) => s.id === sid);
-    const customPrice = extraServicePrices[sid];
-    const unit = customPrice !== undefined ? Number(customPrice) : (preset?.defaultPrice || 0);
-    const qty = normalizeServiceId(sid) === 'extraction' && extractionPaidFdis.length > 0 ? extractionPaidFdis.length : 1;
-    return acc + unit * qty;
-  }, 0), [form.extra_services, extraServicesList, extraServicePrices, extractionPaidFdis]);
-
   const facturaDoc = useMemo(() => buildFacturaDocument({
     date: form.placement_date || today,
     patientName: form.patient_name,
@@ -1278,6 +1341,7 @@ export default function ImplantForm({
     extraServicePrices,
     extractionFdis: extractionPaidFdis,
     edits: facturaEdits,
+    toothPrices: wizardToothPrices(selectedFdis, toothDataMap),
     toothLines: wizardToothLines(selectedFdis, toothDataMap, form),
     t,
   }), [
@@ -1285,6 +1349,30 @@ export default function ImplantForm({
     brandLabel, implantUnitPrice, extraServicesList, form.extra_services,
     extraServicePrices, extractionPaidFdis, facturaEdits, t,
   ]);
+
+  // Step-2 footer: the same lines (price × soni) the factura prints.
+  const extraTotal = useMemo(() => [...(facturaDoc.stage1 || []), ...(facturaDoc.stage2 || [])]
+    .filter((line) => line && line.source === 'extra')
+    .reduce((sum, line) => sum + (Number(line.total) || 0), 0), [facturaDoc]);
+
+  const serviceQty = useMemo(() => {
+    const map = {};
+    [...(facturaDoc.stage1 || []), ...(facturaDoc.stage2 || [])].forEach((line) => {
+      if (line && line.source === 'extra') map[normalizeServiceId(line.id)] = Number(line.qty) || 0;
+    });
+    return map;
+  }, [facturaDoc]);
+
+  const facturaDocRef = useRef(facturaDoc);
+  facturaDocRef.current = facturaDoc;
+  const brandSummary = useMemo(() => {
+    const seen = [];
+    (facturaDoc.toothLines || []).forEach((row) => {
+      const b = String(row.brand || '').trim();
+      if (b && !seen.includes(b)) seen.push(b);
+    });
+    return seen.join(', ');
+  }, [facturaDoc]);
 
   // Reja summasi (qarz): saqlangandan keyin implant tafsilotidagi "Xizmatlar (bog'langan)" jadvali bilan bir xil.
   const planTotalPreview = useMemo(() => {
@@ -1303,15 +1391,45 @@ export default function ImplantForm({
   }, [form, implant?.id, selectedFdis, toothDataMap, facturaDoc]);
 
   const handleFacturaEdit = useCallback((id, field, value) => {
+    if (isImplantLine(id)) {
+      // A brand row's price is the step-1 price of each of its teeth; soni = number of teeth.
+      if (field !== 'unitPrice') return;
+      const line = (facturaDocRef.current?.stage1 || []).find((row) => row.id === id);
+      const fdis = Array.isArray(line?.fdis) ? line.fdis.map(String) : [];
+      if (!fdis.length) return;
+      const price = Number(value) || 0;
+      setToothDataMap((prev) => {
+        const next = { ...prev };
+        fdis.forEach((fdi) => {
+          next[fdi] = { ...(next[fdi] || {}), price };
+        });
+        return next;
+      });
+      if (fdis.includes(String(activeFdiRef.current)) || fdis.length === uniqueFdis(formRef.current?.tooth_numbers).length) {
+        setForm((prev) => ({ ...prev, price }));
+      }
+      return;
+    }
     setFacturaEdits((prev) => ({
       ...prev,
       [id]: { ...(prev[id] || {}), [field]: value },
     }));
-    if (id === 'implant' && field === 'unitPrice') {
-      setForm((prev) => ({ ...prev, price: Number(value) || 0 }));
-    } else if (field === 'unitPrice' && !['implant', 'operation_fee', 'titan_frame', 'zircon_std', 'zircon_est', 'zircon_pre'].includes(id)) {
+    if (field === 'unitPrice' && !['operation_fee', 'titan_frame', 'zircon_std', 'zircon_est', 'zircon_pre'].includes(id)) {
       setExtraServicePrices((prev) => ({ ...prev, [id]: Number(value) || 0 }));
     }
+  }, []);
+
+  /** Step-2 price: also replaces a price kept from the saved factura, otherwise the old one wins. */
+  const setServicePrice = useCallback((serviceId, price) => {
+    const id = normalizeServiceId(serviceId);
+    setExtraServicePrices((prev) => ({ ...prev, [serviceId]: price, [id]: price }));
+    setFacturaEdits((prev) => (prev[id] ? { ...prev, [id]: { ...prev[id], unitPrice: price } } : prev));
+  }, []);
+
+  const setServiceQty = useCallback((serviceId, qty) => {
+    const id = normalizeServiceId(serviceId);
+    const n = Math.max(1, Math.min(99, Math.round(Number(qty) || 0)));
+    setFacturaEdits((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), qty: n } }));
   }, []);
 
   const openFactura = useCallback(() => {
@@ -1620,7 +1738,9 @@ export default function ImplantForm({
       editingPriceId={editingPriceId}
       setEditingPriceId={setEditingPriceId}
       onToggleService={toggleExtraService}
-      onSetPrice={(id, price) => setExtraServicePrices((prev) => ({ ...prev, [id]: price }))}
+      onSetPrice={setServicePrice}
+      serviceQty={serviceQty}
+      onSetQty={setServiceQty}
       onBackToStep1={() => setStep(1)}
       tw={tw}
       t={t}
@@ -1641,16 +1761,19 @@ export default function ImplantForm({
             <strong>{tf('title', 'Faktura / davolash rejasi')}</strong>
             <span>
               {facturaDoc.patient_name || tw('noPatient', 'Bemor tanlanmagan')}
-              {brandLabel ? ` · ${brandLabel}` : ''}
-              {(primaryTooth.diameter || primaryTooth.length || form.diameter || form.length)
-                ? ` · Ø${primaryTooth.diameter || form.diameter || '—'}×${primaryTooth.length || form.length || '—'} mm`
-                : ''}
+              {(brandSummary || brandLabel) ? ` · ${brandSummary || brandLabel}` : ''}
+              {selectedFdis.length ? ` · ${selectedFdis.length} ${tw('implantUnit', 'implant')}` : ''}
               {facturaDoc.date ? ` · ${toDMY(facturaDoc.date)}` : ''}
             </span>
+            {brandChosen ? (
+              <span className="implant-wizard-factura-teaser-stages">
+                1-bosqich {formatSom(facturaDoc.stage1Total)} · 2-bosqich {formatSom(facturaDoc.stage2Total)}
+              </span>
+            ) : null}
           </span>
           <span className="implant-wizard-factura-teaser-meta">
             <strong>
-              {brandChosen ? formatSom(facturaDoc.stage1Total) : '—'}
+              {brandChosen ? formatSom(facturaDoc.grandTotal) : '—'}
               <span> so&apos;m</span>
             </strong>
             <em>{tw('getInvoice', 'Faktura olish')}</em>
@@ -1791,7 +1914,7 @@ export default function ImplantForm({
       <div className="implant-wizard-footer-total">
         <span className="implant-wizard-footer-total-label">{tw('total', 'Jami:')}</span>
         <strong className="implant-wizard-footer-total-amount">
-          {brandChosen ? formatSom(facturaDoc.stage1Total) : '—'}
+          {brandChosen ? formatSom(facturaDoc.grandTotal) : '—'}
           <span className="implant-wizard-footer-currency"> so&apos;m</span>
         </strong>
       </div>
@@ -1941,73 +2064,109 @@ export default function ImplantForm({
       </Dialog>
 
       <BackClose open={!!extractPrompt} onClose={() => setExtractPrompt(null)} />
-      {extractPrompt && createPortal(
-        <div
-          className="implant-wizard-confirm-overlay"
-          role="alertdialog"
-          aria-modal="true"
-          aria-label={extractPrompt.stage === 1
-            ? tw('extractToothConfirm', "Bu o'rinda bemorning tishi bor. Tishni olib tashlaysizmi?")
-            : tw('extractPayConfirm', "To'lov olamizmi?")}
-          data-testid="implant-extract-tooth-confirm"
-          style={{ pointerEvents: 'auto' }}
-          onClick={() => setExtractPrompt(null)}
-        >
-          <div className="implant-wizard-confirm" onClick={(e) => e.stopPropagation()}>
-            {extractPrompt.stage === 1 ? (
-              <>
-                <p className="implant-wizard-confirm-title">
-                  {tw('extractToothConfirm', "Bu o'rinda bemorning tishi bor. Tishni olib tashlaysizmi?")}
-                </p>
-                <p className="implant-wizard-confirm-text">#{extractPrompt.fdi}</p>
-                <div className="implant-wizard-confirm-actions">
-                  <button type="button" autoFocus onClick={() => resolveExtractPrompt('none')} data-testid="implant-extract-no">
-                    {tw('extractNo', "Yo'q")}
-                  </button>
-                  <button
-                    type="button"
-                    className="is-danger"
-                    onClick={() => setExtractPrompt({ fdi: extractPrompt.fdi, stage: 2 })}
-                    data-testid="implant-extract-yes"
+      {/* Ichki Radix dialog: tashqi wizard dialogining fokus-tuzog'i narx maydonini bloklamasligi uchun
+          (oddiy portalda input fokus ololmasdi — narxni yozib bo'lmasdi). */}
+      <DialogPrimitive.Root
+        open={!!extractPrompt}
+        onOpenChange={(next) => { if (!next) setExtractPrompt(null); }}
+      >
+        <DialogPrimitive.Portal>
+          <div
+            className="implant-wizard-confirm-overlay"
+            data-testid="implant-extract-tooth-confirm"
+            style={{ pointerEvents: 'auto' }}
+            onClick={() => setExtractPrompt(null)}
+          >
+            {extractPrompt ? (
+              <DialogPrimitive.Content
+                role="alertdialog"
+                aria-describedby={undefined}
+                className="implant-wizard-confirm"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDownOutside={(e) => e.preventDefault()}
+                onOpenAutoFocus={(e) => {
+                  if (extractPrompt.stage !== 1) return;
+                  e.preventDefault();
+                  e.currentTarget?.querySelector?.('[data-testid="implant-extract-no"]')?.focus();
+                }}
+                onCloseAutoFocus={(e) => e.preventDefault()}
+              >
+                {extractPrompt.stage === 1 ? (
+                  <>
+                    <DialogPrimitive.Title className="implant-wizard-confirm-title">
+                      {tw('extractToothConfirm', "Bu o'rinda bemorning tishi bor. Tishni olib tashlaysizmi?")}
+                    </DialogPrimitive.Title>
+                    <p className="implant-wizard-confirm-text">#{extractPrompt.fdi}</p>
+                    <div className="implant-wizard-confirm-actions">
+                      <button type="button" onClick={() => resolveExtractPrompt('none')} data-testid="implant-extract-no">
+                        {tw('extractNo', "Yo'q")}
+                      </button>
+                      <button
+                        type="button"
+                        className="is-danger"
+                        onClick={() => setExtractPrompt({ fdi: extractPrompt.fdi, stage: 2 })}
+                        data-testid="implant-extract-yes"
+                      >
+                        {tw('extractYes', 'Ha')}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      resolveExtractPrompt('paid');
+                    }}
                   >
-                    {tw('extractYes', 'Ha')}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="implant-wizard-confirm-title">{tw('extractPayConfirm', "To'lov olamizmi?")}</p>
-                <p className="implant-wizard-confirm-text">
-                  #{extractPrompt.fdi} — {extractionService?.name || tw('extractServiceName', 'Tish olish')}
-                  {': '}
-                  {formatSom(
-                    extraServicePrices.extraction !== undefined
-                      ? extraServicePrices.extraction
-                      : (extractionService?.price > 0
-                        ? extractionService.price
-                        : ((extraServicesList || []).find((s) => normalizeServiceId(s.id) === 'extraction')?.defaultPrice || 0)),
-                  )} so&apos;m
-                </p>
-                <div className="implant-wizard-confirm-actions">
-                  <button type="button" onClick={() => resolveExtractPrompt('free')} data-testid="implant-extract-free">
-                    {tw('extractFree', "Yo'q, to'lovsiz")}
-                  </button>
-                  <button
-                    type="button"
-                    className="is-danger"
-                    autoFocus
-                    onClick={() => resolveExtractPrompt('paid')}
-                    data-testid="implant-extract-paid"
-                  >
-                    {tw('extractPaid', "Ha, to'lov olish")}
-                  </button>
-                </div>
-              </>
-            )}
+                    <DialogPrimitive.Title className="implant-wizard-confirm-title">
+                      {tw('extractPayConfirm', "To'lov olamizmi?")}
+                    </DialogPrimitive.Title>
+                    <p className="implant-wizard-confirm-text">
+                      #{extractPrompt.fdi} — {extractionService?.name || tw('extractServiceName', 'Tish olish')}
+                    </p>
+                    <label className="implant-wizard-confirm-price" data-testid="implant-extract-price">
+                      <span>{tw('extractPrice', 'Narxi')}</span>
+                      <span className="implant-wizard-confirm-price-field">
+                        <Pencil className="implant-wizard-confirm-price-icon" aria-hidden="true" />
+                        <input
+                          ref={extractPriceInputRef}
+                          type="text"
+                          inputMode="numeric"
+                          enterKeyHint="done"
+                          autoComplete="off"
+                          placeholder="0"
+                          value={extractPriceValue === '' ? '' : formatSom(extractPriceValue)}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '').slice(0, 12);
+                            setExtractPriceDraft(digits === '' ? '' : Number(digits));
+                          }}
+                          onFocus={(e) => e.target.select()}
+                          aria-label={tw('extractPriceAria', 'Tish olish narxi')}
+                          data-testid="implant-extract-price-input"
+                        />
+                        <em>so&apos;m</em>
+                      </span>
+                    </label>
+                    <div className="implant-wizard-confirm-actions">
+                      <button type="button" onClick={() => resolveExtractPrompt('free')} data-testid="implant-extract-free">
+                        {tw('extractFree', "Yo'q, to'lovsiz")}
+                      </button>
+                      <button
+                        type="submit"
+                        className="is-danger"
+                        disabled={!extractPriceValid}
+                        data-testid="implant-extract-paid"
+                      >
+                        {tw('extractPaid', "Ha, to'lov olish")}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </DialogPrimitive.Content>
+            ) : null}
           </div>
-        </div>,
-        document.body
-      )}
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
 
       <BackClose open={!!pendingRemoveFdi} onClose={() => setPendingRemoveFdi(null)} />
       {pendingRemoveFdi && createPortal(

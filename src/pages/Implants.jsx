@@ -29,6 +29,7 @@ import { IMPLANT_STATUS_ORDER, implantStatusClass, implantStatusLabel, normalize
 import { cn } from '@/lib/utils';
 import { implantRecordFdis } from '@/lib/fdiNotation';
 import { implantCasePrice } from '@/components/implants/linkedImplantServices';
+import { implantBrandNames } from '@/components/implants/implantFactura';
 import { toast } from 'sonner';
 import { autoSyncImplantPlan, backfillImplantPlans, removeImplantPlan } from '@/lib/implantPlan';
 
@@ -339,6 +340,14 @@ export default function Implants() {
     });
   }, [implants]);
 
+  // All brands per record (multi-brand cases list every tooth brand)
+  const brandNamesById = useMemo(() => {
+    const map = new Map();
+    implants.forEach((i) => map.set(i.id, implantBrandNames(i)));
+    return map;
+  }, [implants]);
+  const brandNamesOf = useCallback((i) => brandNamesById.get(i.id) || implantBrandNames(i), [brandNamesById]);
+
   // Unique brand firms for filter
   const brandFirmOptions = useMemo(() => {
     const set = new Set();
@@ -346,9 +355,10 @@ export default function Implants() {
       const f = i.firma;
       if (f && f !== 'Boshqa') set.add(f);
       if (i.firma_custom) set.add(i.firma_custom);
+      brandNamesOf(i).forEach((b) => set.add(b));
     });
     return Array.from(set);
-  }, [implants]);
+  }, [implants, brandNamesOf]);
 
   // Filtered implants
   const filteredImplants = useMemo(() => {
@@ -376,7 +386,7 @@ export default function Implants() {
       // Brand firma filter
       if (filterFirma !== 'all') {
         const itemFirm = i.firma === 'Boshqa' ? (i.firma_custom || '') : (i.firma || '');
-        if (itemFirm !== filterFirma) return false;
+        if (itemFirm !== filterFirma && !brandNamesOf(i).includes(filterFirma)) return false;
       }
 
       // Search
@@ -387,13 +397,13 @@ export default function Implants() {
       const pPhone = (i.patient_phone || '').toLowerCase();
       const firma = (i.firma || '').toLowerCase();
       const firmaCustom = (i.firma_custom || '').toLowerCase();
-      const brend = (i.brend || '').toLowerCase();
+      const brend = `${i.brend || ''} ${brandNamesOf(i).join(' ')}`.toLowerCase();
       const svcName = resolveService(i).toLowerCase();
       const teeth = (i.tooth_numbers || (i.tooth_number ? [i.tooth_number] : [])).join(' ');
 
       return pName.includes(q) || pPhone.includes(q) || firma.includes(q) || firmaCustom.includes(q) || brend.includes(q) || teeth.includes(q) || svcName.includes(q);
     });
-  }, [implants, activeTab, filterFirma, search, today]);
+  }, [implants, activeTab, filterFirma, search, today, brandNamesOf]);
 
   // Sorted implants
   const sortedImplants = useMemo(() => {
@@ -410,8 +420,8 @@ export default function Implants() {
           valB = (b.tooth_number || (b.tooth_numbers && b.tooth_numbers[0]) || '').toString();
           return sortOrder === 'asc' ? valA.localeCompare(valB, undefined, { numeric: true }) : valB.localeCompare(valA, undefined, { numeric: true });
         case 'brand':
-          valA = (a.firma === 'Boshqa' ? a.firma_custom : a.firma || '').toLowerCase();
-          valB = (b.firma === 'Boshqa' ? b.firma_custom : b.firma || '').toLowerCase();
+          valA = (brandNamesOf(a).join(' ') || (a.firma === 'Boshqa' ? a.firma_custom : a.firma) || '').toLowerCase();
+          valB = (brandNamesOf(b).join(' ') || (b.firma === 'Boshqa' ? b.firma_custom : b.firma) || '').toLowerCase();
           return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
         case 'price':
           valA = resolvePrice(a);
@@ -438,7 +448,7 @@ export default function Implants() {
       }
     });
     return list;
-  }, [filteredImplants, sortField, sortOrder]);
+  }, [filteredImplants, sortField, sortOrder, brandNamesOf]);
 
   const updateImplantStatus = async (id, newVal) => {
     const statusLabel = Object.keys(LIFECYCLE_MAPPING).find(key => LIFECYCLE_MAPPING[key] === newVal) || newVal;
@@ -504,7 +514,7 @@ export default function Implants() {
         const teeth = implantRecordFdis(i).join(', ');
         const svc = resolveService(i);
         const price = resolvePrice(i);
-        const firma = i.firma === 'Boshqa' ? (i.firma_custom || 'Boshqa') : (i.firma || 'Dentium');
+        const firma = brandNamesOf(i).join(', ') || (i.firma === 'Boshqa' ? (i.firma_custom || 'Boshqa') : (i.firma || 'Dentium'));
         const date = formatDate(i.placement_date);
         const statusText = i.lifecycle_status || 'O\'rnatildi';
 
@@ -536,7 +546,7 @@ export default function Implants() {
       console.error(err);
       toast.error("Eksportda xatolik yuz berdi");
     }
-  }, [sortedImplants]);
+  }, [sortedImplants, brandNamesOf]);
 
   return (
     <div className="space-y-3.5 pb-6 min-w-0 max-w-full" data-implant-registry="notebook-scroll-v1">
@@ -981,7 +991,9 @@ export default function Implants() {
                     const serviceName = resolveService(i);
                     const serviceCfg = SERVICE_CONFIG[serviceName] || { label: serviceName, emoji: '⚡', badge: 'bg-slate-100 text-slate-700 border-slate-200' };
                     const priceVal = resolvePrice(i);
-                    const firmaName = i.firma === 'Boshqa' ? (i.firma_custom || 'Boshqa') : (i.firma || 'Dentium');
+                    const brandNames = brandNamesOf(i);
+                    const isMultiBrand = brandNames.length > 1;
+                    const firmaName = brandNames.join(' · ') || (i.firma === 'Boshqa' ? (i.firma_custom || 'Boshqa') : (i.firma || 'Dentium'));
                     const statusCode = normalizeImplantStatus(i.lifecycle_status || i.status);
                     const statusClass = implantStatusClass(statusCode);
 
@@ -1032,9 +1044,9 @@ export default function Implants() {
                               {teethList.map((fdi) => {
                                 const size = getToothSizeLabel(i, fdi);
                                 return (
-                                  <span key={fdi} className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-slate-900 text-white shadow-xs inline-flex flex-col items-center leading-tight">
+                                  <span key={fdi} className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-teal-50 text-teal-800 border border-teal-200 inline-flex flex-col items-center leading-tight dark:bg-teal-500/10 dark:text-teal-200 dark:border-teal-500/30">
                                     <span>#{fdi}</span>
-                                    {size ? <span className="text-[8px] font-bold text-teal-200">{size}</span> : null}
+                                    {size ? <span className="text-[8px] font-semibold text-slate-500 dark:text-slate-400">{size}</span> : null}
                                   </span>
                                 );
                               })}
@@ -1054,7 +1066,11 @@ export default function Implants() {
                               </span>
                             ) : (
                               <>
-                                <span className="font-black text-slate-900 group-hover:text-[#1499AD] transition-colors truncate block text-xs">
+                                <span
+                                  className={`font-black text-slate-900 group-hover:text-[#1499AD] transition-colors block text-xs ${isMultiBrand ? 'leading-snug break-words' : 'truncate'}`}
+                                  title={firmaName}
+                                  data-testid="implant-row-brands"
+                                >
                                   {firmaName}
                                 </span>
                                 {(() => {
@@ -1065,6 +1081,13 @@ export default function Implants() {
                                   const d = entry.diameter || i.diameter;
                                   const l = entry.length || i.length;
                                   const toothCount = teethList.length;
+                                  if (isMultiBrand) {
+                                    return (
+                                      <span className="text-[10px] font-semibold text-slate-500 block truncate mt-0.5">
+                                        {`${brandNames.length} firma · ${toothCount} tish`}
+                                      </span>
+                                    );
+                                  }
                                   if (!model && !d && toothCount <= 1) return null;
                                   return (
                                     <span className="text-[10px] font-semibold text-slate-500 block truncate mt-0.5">

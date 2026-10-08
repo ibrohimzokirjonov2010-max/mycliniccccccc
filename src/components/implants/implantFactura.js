@@ -53,6 +53,115 @@ export function formatSom(n) {
   return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
+/** Factura implant rows are one per brand (+ unit price). Ids look like `implant:osstem`. */
+export const IMPLANT_LINE_PREFIX = 'implant:';
+
+export function isImplantLine(lineOrId) {
+  if (lineOrId && typeof lineOrId === 'object' && lineOrId.kind === 'implant') return true;
+  const id = String((lineOrId && typeof lineOrId === 'object' ? lineOrId.id : lineOrId) || '');
+  return id === 'implant' || id.startsWith(IMPLANT_LINE_PREFIX);
+}
+
+function brandSlug(brand) {
+  return String(brand || '').toLowerCase().replace(/[^a-z0-9]+/g, '') || 'implant';
+}
+
+function fdiSortKey(fdi) {
+  const n = Number(String(fdi).replace(/^#/, ''));
+  return Number.isFinite(n) ? n : 999;
+}
+
+function readPriceValue(value) {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function toothMapEntry(record, fdi, key) {
+  const map = record?.tooth_data_map && typeof record.tooth_data_map === 'object' ? record.tooth_data_map : {};
+  if (key != null && key !== '' && map[key]) return map[key];
+  if (map[fdi]) return map[fdi];
+  if (map[String(fdi)]) return map[String(fdi)];
+  const hit = Object.keys(map).find((k) => String(toImplantFdi(k) || k) === String(fdi));
+  return hit ? map[hit] : {};
+}
+
+/** Unit price a saved factura already carried for this tooth (new brand rows, then the legacy single row). */
+function savedFacturaToothPrice(factura, fdi) {
+  if (!factura) return null;
+  const lines = (factura.stage1 || []).filter((line) => isImplantLine(line));
+  const own = lines.find((line) => Array.isArray(line.fdis) && line.fdis.map(String).includes(String(fdi)));
+  if (own) return readPriceValue(own.unitPrice);
+  const unit = readPriceValue(factura.implant_unit_price);
+  if (unit != null && unit > 0) return unit;
+  const legacy = lines.find((line) => line.id === 'implant');
+  return legacy ? readPriceValue(legacy.unitPrice) : null;
+}
+
+/**
+ * Price of one implant tooth. The registry list, the passport "Jami", the patient plan
+ * and the factura all call this, so the four totals cannot drift apart.
+ */
+export function implantToothPrice(record, fdi, { key, teethCount, factura } = {}) {
+  const entry = toothMapEntry(record, fdi, key);
+  let price = readPriceValue(entry?.price);
+  const count = teethCount != null ? teethCount : 1;
+  if (price == null && count <= 1) {
+    price = readPriceValue(record?.price) ?? readPriceValue(record?.narxi) ?? 1500000;
+  }
+  if (price == null) price = savedFacturaToothPrice(factura, fdi) ?? 0;
+  return price;
+}
+
+/** Group teeth into one factura row per brand (and unit price), ordered by FDI number. */
+export function implantBrandGroups(teeth, toothLines, priceFor) {
+  const lines = summarizeToothLines(toothLines);
+  const sorted = [...new Set((teeth || []).map((n) => String(n).replace(/^#/, '')).filter(Boolean))]
+    .sort((a, b) => fdiSortKey(a) - fdiSortKey(b));
+  const groups = [];
+  sorted.forEach((fdi) => {
+    const row = lines.find((item) => String(item.fdi) === fdi) || { fdi, brand: '', size: '' };
+    const brand = String(row.brand || '').trim();
+    const slug = brandSlug(brand);
+    const unit = Math.max(0, Math.round(Number(typeof priceFor === 'function' ? priceFor(fdi) : 0) || 0));
+    let group = groups.find((g) => g.slug === slug && g.unitPrice === unit);
+    if (!group) {
+      const sameBrand = groups.filter((g) => g.slug === slug).length;
+      group = {
+        slug,
+        id: `${IMPLANT_LINE_PREFIX}${slug}${sameBrand ? `-${unit}` : ''}`,
+        brand,
+        unitPrice: unit,
+        teeth: [],
+      };
+      groups.push(group);
+    }
+    group.teeth.push({ fdi, size: row.size || '' });
+  });
+  return groups;
+}
+
+function implantLineFromGroup(group) {
+  const qty = group.teeth.length;
+  return {
+    id: group.id,
+    kind: 'implant',
+    label: group.brand || 'Implant',
+    brand: group.brand || '',
+    fdis: group.teeth.map((tooth) => tooth.fdi),
+    teeth: group.teeth,
+    unitPrice: group.unitPrice,
+    qty,
+    total: lineTotal(group.unitPrice, qty),
+    stage: 1,
+    source: 'implant',
+  };
+}
+
+function distinctBrands(toothLines) {
+  return [...new Set((toothLines || []).map((row) => String(row.brand || '').trim()).filter(Boolean))];
+}
+
 export function formatImplantSize(diameter, length) {
   const d = String(diameter ?? '').trim().replace(/^[Øø]\s*/u, '');
   const l = String(length ?? '').trim().replace(/^[Ll]\s*/, '');
@@ -76,14 +185,6 @@ export function summarizeToothLines(rows = []) {
       size: formatImplantSize(diameter, length),
     };
   }).filter((row) => row.fdi);
-}
-
-function implantLineLabel(brandLabel, lines) {
-  const brands = [...new Set((lines || []).map((row) => row.brand).filter(Boolean))];
-  const sizes = [...new Set((lines || []).map((row) => row.size).filter(Boolean))];
-  const brand = brands.length <= 1 ? (brands[0] || brandLabel || 'Implant') : (brandLabel || brands[0] || 'Implant');
-  if (sizes.length === 1) return `${brand} · ${sizes[0]}`;
-  return brand || 'Implant';
 }
 
 export function toDMY(iso) {
@@ -215,7 +316,7 @@ function makeLine({ id, label, unitPrice, qty, stage, source }) {
 
 export function mapLineToExtraId(lineId) {
   const id = normalizeServiceId(lineId);
-  if (!id || id === 'implant' || id === 'operation_fee' || id === 'titan_frame') return null;
+  if (!id || isImplantLine(id) || id === 'operation_fee' || id === 'titan_frame') return null;
   if (id === 'zircon_std' || id === 'zircon_est' || id === 'zircon_pre' || id === 'zircon_crown') {
     return 'zirkon_crown';
   }
@@ -252,11 +353,14 @@ export function buildFacturaDocument({
   extraServicePrices = {},
   edits = {},
   toothLines = [],
+  toothPrices,
   extractionFdis,
   t,
 } = {}) {
-  const teeth = [...new Set((selectedFdis || []).map((n) => String(n).replace(/^#/, '')).filter(Boolean))];
-  const lines = summarizeToothLines(toothLines);
+  const teeth = [...new Set((selectedFdis || []).map((n) => String(n).replace(/^#/, '')).filter(Boolean))]
+    .sort((a, b) => fdiSortKey(a) - fdiSortKey(b));
+  const lines = summarizeToothLines(toothLines)
+    .sort((a, b) => fdiSortKey(a.fdi) - fdiSortKey(b.fdi));
   const teethCount = teeth.length;
   const selected = new Set((selectedServiceIds || []).map(normalizeServiceId).filter(Boolean));
   const used = new Set();
@@ -267,19 +371,19 @@ export function buildFacturaDocument({
     return fallback;
   };
 
-  const stage1 = [];
-  const implantLine = applyEdit(
-    makeLine({
-      id: 'implant',
-      label: implantLineLabel(brandLabel, lines),
-      unitPrice: Number(implantUnitPrice) || 0,
-      qty: defaultLineQty('implant', teethCount, { selected: true }),
-      stage: 1,
-      source: 'implant',
-    }),
-    edits.implant
-  );
-  stage1.push(implantLine);
+  // One row per implant brand, priced per tooth (step 1). Never one brand × all teeth.
+  const fallbackUnit = Number(implantUnitPrice) || 0;
+  const priceFor = (fdi) => {
+    const own = toothPrices && typeof toothPrices === 'object'
+      ? readPriceValue(toothPrices[fdi] ?? toothPrices[String(fdi)])
+      : null;
+    return own != null ? own : fallbackUnit;
+  };
+  const brandRows = lines.length ? lines : teeth.map((fdi) => ({ fdi, brand: brandLabel || '' }));
+  const implantLines = implantBrandGroups(teeth, brandRows, priceFor).map(implantLineFromGroup);
+  const stage1 = [...implantLines];
+  const implantTotal = implantLines.reduce((sum, line) => sum + line.total, 0);
+  const implantUnits = [...new Set(implantLines.map((line) => line.unitPrice))];
 
   (selectedServiceIds || []).forEach((rawId) => {
     const id = normalizeServiceId(rawId);
@@ -410,15 +514,17 @@ export function buildFacturaDocument({
   const stage1Total = stage1.reduce((sum, line) => sum + (Number(line.total) || 0), 0);
   const stage2Total = stage2.reduce((sum, line) => sum + (Number(line.total) || 0), 0);
   return blankUnchosenCatalogCrowns({
-    v: 1,
+    v: 2,
     date: date || '',
     patient_name: patientName || '',
     clinic: resolveClinicTitle(clinicName),
     teeth,
     toothLines: lines,
-    brand: brandLabel || '',
-    implant_unit_price: Number(implantLine.unitPrice) || 0,
-    implant_qty: Number(implantLine.qty) || 0,
+    extraction_fdis: (Array.isArray(extractionFdis) ? extractionFdis : []).map(String),
+    brand: distinctBrands(lines).join(', ') || brandLabel || '',
+    implant_unit_price: implantUnits.length === 1 ? implantUnits[0] : 0,
+    implant_qty: teethCount,
+    implant_total: implantTotal,
     stage1,
     stage2,
     stage1Total,
@@ -443,7 +549,8 @@ export function extraIdsFromFactura(snapshot) {
 export function snapshotToEdits(snapshot) {
   const edits = {};
   [...(snapshot?.stage1 || []), ...(snapshot?.stage2 || [])].forEach((line) => {
-    if (!line?.id) return;
+    // Implant rows come from the per-tooth brand/price on step 1, not from a saved edit.
+    if (!line?.id || isImplantLine(line)) return;
     edits[line.id] = {
       qty: Number(line.qty) || 0,
       unitPrice: Number(line.unitPrice) || 0,
@@ -469,7 +576,10 @@ export function formatFacturaText(snapshot) {
   ];
   (snapshot.stage1 || []).forEach((line) => {
     if (!line) return;
-    lines.push(`  - ${line.label}: ${formatSom(line.unitPrice)} × ${line.qty} = ${formatSom(line.total)} so'm`);
+    const teeth = isImplantLine(line) && Array.isArray(line.fdis) && line.fdis.length
+      ? ` (${line.fdis.map((n) => `#${n}`).join(', ')})`
+      : '';
+    lines.push(`  - ${line.label}${teeth}: ${formatSom(line.unitPrice)} × ${line.qty} = ${formatSom(line.total)} so'm`);
   });
   lines.push(`  Jami 1-bosqich: ${formatSom(snapshot.stage1Total)} so'm`);
   lines.push("2-bosqich (2–3 oydan so'ng, narx aniqlashtiriladi):");
@@ -478,6 +588,7 @@ export function formatFacturaText(snapshot) {
     lines.push(`  - ${line.label}: ${formatSom(line.unitPrice)} × ${line.qty} = ${formatSom(line.total)} so'm`);
   });
   lines.push(`  Jami 2-bosqich: ${formatSom(snapshot.stage2Total)} so'm`);
+  lines.push(`Umumiy: ${formatSom(snapshot.grandTotal ?? ((Number(snapshot.stage1Total) || 0) + (Number(snapshot.stage2Total) || 0)))} so'm`);
   lines.push("Eslatma: 1-bosqichdagi hisob 3 oy amal qiladi; 2-bosqich narxi implantatsiyadan so'ng 2–3 oy o'tib ish boshlanayotganda maslahatlashib aniqlanadi.");
   lines.push(FAKTURA_TEXT_END);
   return lines.join('\n');
@@ -613,15 +724,62 @@ function toothLinesFromRecord(record, teeth) {
   });
 }
 
-function implantUnitFromRecord(record, teeth) {
-  const map = record?.tooth_data_map || {};
-  const perTooth = teeth.map((fdi) => {
-    const entry = map[fdi] || map[String(fdi)] || {};
-    return positivePrice(entry.price);
-  }).filter((n) => n != null);
-  if (perTooth.length && perTooth.every((n) => n === perTooth[0])) return perTooth[0];
-  if (teeth.length <= 1) return positivePrice(record?.price) || positivePrice(record?.narxi) || 0;
-  return 0;
+function recordToothPrices(record, teeth, factura) {
+  const prices = {};
+  teeth.forEach((fdi) => {
+    prices[fdi] = implantToothPrice(record, fdi, { teethCount: teeth.length, factura });
+  });
+  return prices;
+}
+
+function recordExtractionFdis(record, teeth) {
+  if (Array.isArray(record?.extraction_fdis) && record.extraction_fdis.length) return record.extraction_fdis.map(String);
+  return teeth.filter((fdi) => toothMapEntry(record, fdi)?.extraction === 'paid');
+}
+
+function recalcLine(line) {
+  if (!line) return line;
+  const unitPrice = Number(line.unitPrice) || 0;
+  const qty = Math.max(0, Number(line.qty) || 0);
+  return { ...line, unitPrice, qty, total: lineTotal(unitPrice, qty) };
+}
+
+function withTotals(snapshot) {
+  const stage1Total = (snapshot.stage1 || []).reduce((sum, line) => sum + (Number(line?.total) || 0), 0);
+  const stage2Total = (snapshot.stage2 || []).reduce((sum, line) => sum + (Number(line?.total) || 0), 0);
+  return { ...snapshot, stage1Total, stage2Total, grandTotal: stage1Total + stage2Total };
+}
+
+/**
+ * Saved facturas (incl. the old single "implant" row that billed every tooth at the
+ * first brand's price) get their implant rows rebuilt from the record's teeth, so the
+ * print matches the registry price. Line totals are recomputed from price × qty.
+ */
+export function refreshSavedFactura(snapshot, record) {
+  if (!snapshot) return snapshot;
+  const teeth = record ? fdisFromRecord(record) : [];
+  const stage1 = Array.isArray(snapshot.stage1) ? snapshot.stage1 : [];
+  const others = stage1.filter((line) => line && !isImplantLine(line)).map(recalcLine);
+  let implantLines = stage1.filter((line) => line && isImplantLine(line)).map(recalcLine);
+  let toothLines = snapshot.toothLines || [];
+  if (teeth.length) {
+    toothLines = summarizeToothLines(toothLinesFromRecord(record, teeth))
+      .sort((a, b) => fdiSortKey(a.fdi) - fdiSortKey(b.fdi));
+    const prices = recordToothPrices(record, teeth, snapshot);
+    implantLines = implantBrandGroups(teeth, toothLines, (fdi) => prices[fdi]).map(implantLineFromGroup);
+  }
+  const units = [...new Set(implantLines.map((line) => line.unitPrice))];
+  return withTotals({
+    ...snapshot,
+    teeth: teeth.length ? [...teeth].sort((a, b) => fdiSortKey(a) - fdiSortKey(b)) : (snapshot.teeth || []),
+    toothLines,
+    brand: distinctBrands(toothLines).join(', ') || snapshot.brand || '',
+    implant_unit_price: units.length === 1 ? units[0] : 0,
+    implant_qty: implantLines.reduce((sum, line) => sum + (Number(line.qty) || 0), 0),
+    implant_total: implantLines.reduce((sum, line) => sum + (Number(line.total) || 0), 0),
+    stage1: [...implantLines, ...others],
+    stage2: (snapshot.stage2 || []).map(recalcLine),
+  });
 }
 
 function servicesFromRecord(record) {
@@ -663,7 +821,13 @@ function servicesFromRecord(record) {
 export function facturaFromImplantRecord(record, { clinicName } = {}) {
   if (!record) return null;
   const saved = parseFacturaSnapshot(record);
-  if (saved) return stripInventedPlaceholderPrices(blankUnchosenCatalogCrowns(saved));
+  if (saved) {
+    const doc = withTotals(stripInventedPlaceholderPrices(blankUnchosenCatalogCrowns(refreshSavedFactura(saved, record))));
+    if (doc && !(Array.isArray(doc.extraction_fdis) && doc.extraction_fdis.length)) {
+      doc.extraction_fdis = recordExtractionFdis(record, fdisFromRecord(record));
+    }
+    return doc;
+  }
   const teeth = fdisFromRecord(record);
   const firma = record.firma === 'Boshqa' ? (record.firma_custom || '') : (record.firma || '');
   const brandLabel = String(firma || record.brend || '').trim();
@@ -674,13 +838,45 @@ export function facturaFromImplantRecord(record, { clinicName } = {}) {
     clinicName: clinicName || '',
     selectedFdis: teeth,
     brandLabel,
-    implantUnitPrice: implantUnitFromRecord(record, teeth),
+    implantUnitPrice: 0,
+    toothPrices: recordToothPrices(record, teeth, null),
     extraServicesList: services.list,
     selectedServiceIds: services.ids,
     extraServicePrices: services.prices,
     toothLines: toothLinesFromRecord(record, teeth),
-    extractionFdis: Array.isArray(record.extraction_fdis) ? record.extraction_fdis : undefined,
+    extractionFdis: recordExtractionFdis(record, teeth),
   });
+}
+
+/** Distinct implant brands of a record, each with its teeth and sizes (registry "Firma nomi"). */
+export function implantBrandSummary(record) {
+  if (!record) return [];
+  const teeth = fdisFromRecord(record);
+  if (!teeth.length) {
+    const firma = record.firma === 'Boshqa' ? (record.firma_custom || '') : (record.firma || record.brend || '');
+    return firma ? [{ brand: firma, teeth: [] }] : [];
+  }
+  const lines = summarizeToothLines(toothLinesFromRecord(record, teeth));
+  const groups = implantBrandGroups(teeth, lines, () => 0);
+  return groups.map((group) => ({ brand: group.brand, teeth: group.teeth }));
+}
+
+/** Distinct implant brand names on a record (FDI order); legacy rows fall back to firma. */
+export function implantBrandNames(record) {
+  if (!record) return [];
+  const names = [];
+  const push = (value) => {
+    const b = String(value || '').trim();
+    if (!b || b === 'Boshqa' || names.some((n) => n.toLowerCase() === b.toLowerCase())) return;
+    names.push(b);
+  };
+  try {
+    implantBrandSummary(record).forEach(({ brand }) => push(brand));
+  } catch {
+    /* malformed tooth map: fall back to the record firma */
+  }
+  if (!names.length) push(record.firma === 'Boshqa' ? record.firma_custom : record.firma);
+  return names;
 }
 
 let printCleanupTimer = 0;

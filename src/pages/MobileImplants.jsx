@@ -26,6 +26,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { autoSyncImplantPlan, backfillImplantPlans } from '@/lib/implantPlan';
 import { implantStatusClass, implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
 import { implantCasePrice } from '@/components/implants/linkedImplantServices';
+import { implantBrandNames } from '@/components/implants/implantFactura';
 import { 
   ImplantIcon, CrownIcon, FormerIcon, AbutmentIcon, 
   BoneGraftIcon, SinusLiftIcon, DentalSurgicalIcon, 
@@ -155,7 +156,7 @@ const ImplantCard = ({ implant, onStatusChange, onNavigate, today }) => {
   const serviceName = resolveService(implant);
   const SvcIcon = getServiceIcon(serviceName);
   const priceVal = resolvePrice(implant);
-  const firmaName = implant.firma === 'Boshqa' ? (implant.firma_custom || 'Boshqa') : (implant.firma || 'Dentium');
+  const firmaName = implantBrandNames(implant).join(' · ') || (implant.firma === 'Boshqa' ? (implant.firma_custom || 'Boshqa') : (implant.firma || 'Dentium'));
 
   return (
     <motion.div
@@ -177,7 +178,7 @@ const ImplantCard = ({ implant, onStatusChange, onNavigate, today }) => {
                 <SvcIcon className="w-6 h-6" />
               </div>
               {teeth.length > 0 && (
-                <div className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1 bg-slate-900 text-white rounded-lg text-[9px] font-black border-2 border-white flex items-center justify-center">
+                <div className="absolute -top-1.5 -right-1.5 min-w-[22px] h-[22px] px-1 bg-teal-50 text-teal-800 rounded-lg text-[9px] font-bold border border-teal-200 ring-2 ring-white flex items-center justify-center dark:bg-teal-900 dark:text-teal-100 dark:border-teal-700 dark:ring-slate-900">
                   #{toothIdToFdi(teeth[0])}{teeth.length > 1 ? `+${teeth.length - 1}` : ''}
                 </div>
               )}
@@ -574,7 +575,7 @@ export default function MobileImplants() {
         teeth.some(n => String(n).includes(search));
       const matchStatus = !filterStatus ||
         getLifecycleKey(i.lifecycle_status) === filterStatus;
-      const matchFirma = !filterFirma || i.firma === filterFirma;
+      const matchFirma = !filterFirma || i.firma === filterFirma || implantBrandNames(i).includes(filterFirma);
       return matchSearch && matchStatus && matchFirma;
     });
   }, [implants, search, filterStatus, filterFirma]);
