@@ -1,0 +1,811 @@
+/* Implant Center paper factura (A4). Mirrors the clinic's printed sheet:
+   grey Sana/Bemor box, flat jaw diagram, brown "Bosqich" bars, two-column price
+   tables with light-grey write-in fields; data is written in blue "pen" ink. */
+.implant-factura.ifc-sheet {
+  --ifc-brown: #5b4636;
+  --ifc-ink: #1f3fa6;
+  --ifc-paper: #ffffff;
+  --ifc-box: #efefed;
+  --ifc-field: #f0f0ee;
+  --ifc-line: #d6d3ce;
+  --ifc-text: #1f1d1b;
+  --ifc-muted: #8a8580;
+  --ifc-pad: 26px;
+  position: relative;
+  background: var(--ifc-paper);
+  color: var(--ifc-text);
+  border: 1px solid #e7e3dd;
+  border-radius: 4px;
+  padding: 22px var(--ifc-pad) 18px;
+  overflow: hidden;
+  max-width: 100%;
+  font-family: "Montserrat", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.3;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.ifc-sheet *,
+.ifc-sheet *::before,
+.ifc-sheet *::after {
+  box-sizing: border-box;
+}
+.ifc-sheet p,
+.ifc-sheet h4,
+.ifc-sheet ul {
+  margin: 0;
+}
+.ifc-ink {
+  color: var(--ifc-ink);
+  font-weight: 600;
+}
+
+/* ── Header ── */
+.ifc-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.ifc-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: min(250px, 46%);
+  padding: 8px 14px;
+  background: var(--ifc-box);
+  border-radius: 10px;
+}
+.ifc-field {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-height: 20px;
+}
+.ifc-field > span {
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-size: 12.5px;
+}
+.ifc-field > strong {
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ifc-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.ifc-brand-mark {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.ifc-logo {
+  flex: 0 0 auto;
+}
+.ifc-clinic {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #6d6662;
+  line-height: 1.1;
+}
+.ifc-subtitle {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ifc-muted);
+}
+.ifc-print {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid #d6d3d1;
+  border-radius: 999px;
+  background: #fff;
+  color: #44403c;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Tooth formula + jaw ── */
+.ifc-formula {
+  display: grid;
+  grid-template-columns: minmax(0, 36fr) minmax(0, 64fr);
+  gap: 12px;
+  align-items: start;
+  margin-top: 6px;
+}
+.ifc-formula-copy {
+  padding-top: 18px;
+  min-width: 0;
+}
+.ifc-formula-copy h4 {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.15;
+  max-width: 9em;
+}
+.ifc-overall-label {
+  margin-top: 22px !important;
+  font-size: 13px;
+  font-weight: 700;
+}
+.ifc-overall {
+  margin-top: 6px;
+  padding: 8px 10px 7px;
+  background: var(--ifc-field);
+  border-radius: 9px;
+}
+.ifc-teeth {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ifc-teeth li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 11.5px;
+}
+.ifc-teeth b {
+  font-weight: 700;
+}
+.ifc-teeth span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ifc-teeth em {
+  font-style: normal;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.ifc-teeth-plain {
+  font-size: 12px;
+}
+.ifc-overall-sum {
+  display: block;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px dashed #c9c6c1;
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ifc-overall-sum small {
+  font-size: 10.5px;
+}
+.ifc-overall-split {
+  margin-top: 2px !important;
+  font-size: 9.5px;
+  color: var(--ifc-muted);
+  line-height: 1.3;
+}
+.ifc-jaw-wrap {
+  min-width: 0;
+}
+.ifc-jaw {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.ifc-jaw-bone {
+  fill: #d6d6d4;
+  stroke: #9e9b97;
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+}
+.ifc-jaw-gap {
+  fill: #f7f7f6;
+  stroke: none;
+}
+.ifc-jaw-process {
+  fill: none;
+  stroke: #b9b7b3;
+  stroke-width: 0.8;
+}
+.ifc-jaw-tick {
+  stroke: #b3b0ab;
+  stroke-width: 0.9;
+  stroke-linecap: round;
+}
+.ifc-jaw-num {
+  fill: #a3a09b;
+  font-size: 6.6px;
+  font-weight: 600;
+  font-family: inherit;
+}
+.ifc-jaw-num.is-implant {
+  fill: var(--ifc-ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+.ifc-jaw-fixture-body {
+  fill: rgba(31, 63, 166, 0.1);
+  stroke: var(--ifc-ink);
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+}
+.ifc-jaw-fixture-threads {
+  fill: none;
+  stroke: var(--ifc-ink);
+  stroke-width: 0.95;
+  stroke-linecap: round;
+}
+.ifc-jaw-fixture-axis {
+  fill: none;
+  stroke: var(--ifc-ink);
+  stroke-width: 0.6;
+  opacity: 0.55;
+}
+.ifc-jaw-collar {
+  fill: #fff;
+  stroke: var(--ifc-ink);
+  stroke-width: 1.1;
+}
+.ifc-jaw-extract {
+  fill: none;
+  stroke: var(--ifc-ink);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* ── Bosqich bars ── */
+.ifc-stage {
+  margin-top: 14px;
+}
+.ifc-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  margin: 0 calc(-1 * var(--ifc-pad));
+  padding: 5px var(--ifc-pad);
+  background: var(--ifc-brown);
+  color: #fff;
+}
+.ifc-bar h4 {
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+}
+.ifc-bar-mid {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ifc-total-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.ifc-total-box strong {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  min-width: 136px;
+  min-height: 26px;
+  padding: 3px 12px;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ifc-ink);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ifc-total-box strong small {
+  font-size: 10px;
+}
+
+/* ── Two-column tables ── */
+.ifc-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 22px;
+  padding-top: 2px;
+}
+.ifc-col {
+  min-width: 0;
+}
+.ifc-col + .ifc-col {
+  position: relative;
+}
+.ifc-col + .ifc-col::before {
+  content: "";
+  position: absolute;
+  left: -11px;
+  top: 8px;
+  bottom: 4px;
+  border-left: 1px solid #8f8a84;
+}
+.ifc-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 9.8ch 1.3ch 4.4ch 3.8ch 11ch;
+  column-gap: 3px;
+  align-items: center;
+  min-height: 31px;
+  padding: 2px 0;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.ifc-colhead {
+  min-height: 18px;
+  padding: 3px 0 0;
+  color: var(--ifc-muted);
+  font-size: 9.5px;
+  font-weight: 500;
+}
+.ifc-colhead span:nth-child(2) {
+  text-align: right;
+}
+.ifc-colhead span:nth-child(4),
+.ifc-colhead span:nth-child(6) {
+  text-align: center;
+}
+.ifc-row.is-flat {
+  grid-template-columns: minmax(0, 1fr) 1.3ch 11ch;
+}
+.ifc-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.ifc-label-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.ifc-label-main {
+  font-weight: 700;
+  font-size: 11.5px;
+  line-height: 1.15;
+  color: var(--ifc-text);
+  overflow-wrap: break-word;
+}
+.ifc-label.has-icon .ifc-label-main {
+  font-size: 12.5px;
+}
+.ifc-label small {
+  font-size: 8.5px;
+  font-weight: 500;
+  color: #57534e;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
+.ifc-row.is-filled .ifc-label small {
+  color: var(--ifc-ink);
+  font-weight: 600;
+}
+.ifc-per {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  font-weight: 500;
+  color: #3f3b37;
+  white-space: nowrap;
+}
+.ifc-icon {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 22px;
+}
+.ifc-icon-unit {
+  width: 18px;
+  height: 22px;
+}
+.ifc-icon-mini {
+  width: 11px;
+  height: 14px;
+}
+.ifc-price {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.ifc-op {
+  color: #3f3b37;
+  font-size: 11px;
+  text-align: center;
+}
+.ifc-unit {
+  color: #3f3b37;
+  font-size: 10px;
+  font-style: italic;
+  white-space: nowrap;
+  text-align: center;
+}
+.ifc-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 21px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--ifc-field);
+}
+.ifc-box-sum {
+  justify-content: flex-end;
+}
+.ifc-num {
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  text-align: right;
+}
+.ifc-num-price {
+  color: #2a2724;
+  font-weight: 600;
+}
+.ifc-num-qty,
+.ifc-num-total {
+  color: var(--ifc-ink);
+  font-weight: 700;
+}
+.ifc-num-qty {
+  text-align: center;
+}
+.ifc-dash {
+  display: inline-block;
+  width: 70%;
+  height: 1px;
+  background: #d8d5d0;
+}
+.ifc-input {
+  width: 100%;
+  min-width: 0;
+  height: 19px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ifc-ink);
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+.ifc-price .ifc-input {
+  border-bottom: 1px solid #b8b0a6;
+  color: #2a2724;
+}
+.ifc-input:focus {
+  background: #f0fdfa;
+  box-shadow: inset 0 -1px 0 #0d9488;
+}
+.ifc-input-money {
+  text-align: right;
+}
+.ifc-input-qty {
+  text-align: center;
+}
+.ifc-rule-line {
+  height: 24px;
+  border-bottom: 1px solid #e3e1dd;
+}
+
+/* Sirkoniy koronka group: rows inside a rounded bordered box. */
+.ifc-family {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  padding: 3px 0;
+}
+.ifc-family-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.ifc-family-box {
+  border: 1px solid #d3d0cb;
+  border-radius: 9px;
+  padding: 2px 5px;
+}
+.ifc-subrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 9.8ch 1.3ch 4.4ch 3.8ch 11ch;
+  column-gap: 3px;
+  align-items: center;
+  min-height: 27px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.ifc-sublabel {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+.ifc-sublabel small {
+  font-size: 7.5px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: #44403c;
+  overflow-wrap: normal;
+  min-width: 0;
+}
+
+/* ── Eslatma ── */
+.ifc-note {
+  margin-top: 16px;
+}
+.ifc-note strong {
+  display: block;
+  color: #c8102e;
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 3px;
+}
+.ifc-note p {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ifc-text);
+}
+
+.implant-wizard-qty-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #d1fae5;
+  font-size: 12px;
+}
+.implant-wizard-qty-label {
+  color: #6b7280;
+  font-weight: 600;
+}
+.implant-wizard-qty {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+.implant-wizard-qty button {
+  width: 28px;
+  height: 100%;
+  border: 0;
+  background: #f0fdfa;
+  color: #0f766e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.implant-wizard-qty button:disabled {
+  color: #cbd5e1;
+  cursor: default;
+}
+.implant-wizard-qty input {
+  width: 34px;
+  height: 100%;
+  border: 0;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13px;
+  color: #111827;
+  outline: none;
+}
+.implant-wizard-qty-ta {
+  color: #6b7280;
+}
+.implant-wizard-qty-total {
+  margin-left: auto;
+  color: #0f766e;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.implant-wizard-confirm-price {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #6b7280;
+}
+.implant-wizard-confirm-price > span:first-child {
+  flex: none;
+  font-weight: 600;
+}
+/* Narx maydoni: aniq ko'rinadigan tahrirlanadigan input (qalam belgisi + teal ramka). */
+.implant-wizard-confirm-price-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1.5px solid #99f6e4;
+  border-radius: 10px;
+  background: #f0fdfa;
+  cursor: text;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.implant-wizard-confirm-price-field:hover {
+  border-color: #5eead4;
+}
+.implant-wizard-confirm-price-field:focus-within {
+  border-color: #0d9488;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+}
+.implant-wizard-confirm-price-icon {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: #0d9488;
+}
+.implant-wizard-confirm-price input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  text-align: right;
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  box-shadow: none;
+}
+.implant-wizard-confirm-price input::placeholder {
+  color: #9ca3af;
+  font-weight: 600;
+}
+.implant-wizard-confirm-price em {
+  flex: none;
+  font-style: normal;
+  font-size: 12px;
+  color: #6b7280;
+}
+.implant-wizard-confirm-actions button.is-danger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (max-width: 767px) {
+  /* iOS: 16px+ bo'lsa input fokusda sahifa zoom qilinmaydi */
+  .implant-wizard-confirm-price input {
+    font-size: 16px;
+  }
+}
+
+.implant-wizard-factura-teaser-stages {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+
+
+@media (max-width: 767px) {
+  .implant-factura.ifc-sheet {
+    --ifc-pad: 14px;
+    padding: 14px var(--ifc-pad);
+  }
+  .ifc-head {
+    flex-direction: column;
+  }
+  .ifc-fields {
+    width: 100%;
+  }
+  .ifc-brand {
+    align-items: flex-start;
+  }
+  .ifc-formula {
+    grid-template-columns: 1fr;
+  }
+  .ifc-cols {
+    grid-template-columns: 1fr;
+  }
+  .ifc-col + .ifc-col::before {
+    display: none;
+  }
+  .ifc-bar {
+    flex-wrap: wrap;
+  }
+  .ifc-bar-mid {
+    position: static;
+    transform: none;
+  }
+}
+
+@media print {
+  html.printing-implant-factura .implant-factura.ifc-sheet {
+    --ifc-pad: 0px;
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    overflow: visible !important;
+  }
+  html.printing-implant-factura .ifc-head {
+    display: flex;
+    flex-direction: row;
+  }
+  html.printing-implant-factura .ifc-formula {
+    display: grid;
+    grid-template-columns: minmax(0, 36fr) minmax(0, 64fr);
+  }
+  html.printing-implant-factura .ifc-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  html.printing-implant-factura .ifc-bar {
+    padding: 1.4mm 3.5mm;
+    margin: 0;
+  }
+  html.printing-implant-factura .ifc-row {
+    min-height: 10.4mm;
+  }
+  html.printing-implant-factura .ifc-colhead {
+    min-height: 5mm;
+  }
+  html.printing-implant-factura .ifc-subrow {
+    min-height: 9mm;
+  }
+  html.printing-implant-factura .ifc-rule-line {
+    height: 10.4mm;
+  }
+  html.printing-implant-factura .ifc-formula {
+    margin-top: 3mm;
+  }
+  html.printing-implant-factura .ifc-note {
+    margin-top: 9mm;
+  }
+  html.printing-implant-factura .ifc-note p {
+    font-size: 12px;
+  }
+  html.printing-implant-factura .ifc-input {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    height: auto;
+  }
+  html.printing-implant-factura .ifc-print {
+    display: none !important;
+  }
+  html.printing-implant-factura .ifc-stage {
+    break-inside: avoid;
+    margin-top: 8mm;
+  }
+  html.printing-implant-factura .ifc-bar,
+  html.printing-implant-factura .ifc-total-box strong,
+  html.printing-implant-factura .ifc-fields,
+  html.printing-implant-factura .ifc-overall,
+  html.printing-implant-factura .ifc-box,
+  html.printing-implant-factura .ifc-jaw {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

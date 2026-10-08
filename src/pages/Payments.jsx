@@ -166,7 +166,11 @@ const extractPaymentProcedures = (payment) => {
  * - Mobile Card Feed with native feel
  * - Advanced Multi-step Modal for adding payments logic
  */
-export default function Payments() {
+export default function Payments({ embeddedPay = null, onEmbeddedClose, onEmbeddedSaved } = {}) {
+  // Embedded mode: PatientProfile renders this page's "Yangi to'lov" modal (same design + save logic)
+  // for one preselected patient. Only the modal is shown; list/stats queries are skipped.
+  const embeddedPatient = embeddedPay?.patient?.id ? embeddedPay.patient : null;
+  const embedded = !!embeddedPatient;
   const { t, language } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -177,6 +181,7 @@ export default function Payments() {
   // ── States ───────────────────────────────────────────────────────────
   const [payments, setPayments] = useState([]);
   const [patients, setPatients] = useState(() => {
+    if (embeddedPatient) return [embeddedPatient];
     try {
       const cached = queryClient.getQueryData(['patients', isDoctor, user?.id]) ||
                      queryClient.getQueryData(QUERY_KEYS.patients) ||
@@ -290,7 +295,7 @@ export default function Payments() {
       }
       return await base44.entities.Patient.list('full_name', 300);
     },
-    enabled: !!user,
+    enabled: !!user && !embedded,
     staleTime: 5 * 60 * 1000,
   });
   const { data: initialDoctors = [] } = useQuery({
@@ -310,13 +315,13 @@ export default function Payments() {
   const { data: allTreatmentPlans = [] } = useQuery({
     queryKey: ['allTreatmentPlansForPayments'],
     queryFn: () => base44.entities.TreatmentPlan.list('-created_date', 500),
-    enabled: !!user,
+    enabled: !!user && !embedded,
     staleTime: 3 * 60 * 1000,
   });
   const { data: balancePayments = [] } = useQuery({
     queryKey: ['payment-balance-source'],
     queryFn: () => base44.entities.Payment.list('-created_date', 1000),
-    enabled: !!user,
+    enabled: !!user && !embedded,
     staleTime: 60 * 1000,
   });
 
@@ -354,6 +359,7 @@ export default function Payments() {
 
   // ── Open and prefill modal from location.state (e.g. from Debts or Appointments) ──
   useEffect(() => {
+    if (embedded) return;
     if (location.state?.openAddModal) {
       const pId = location.state.prefillPatient || '';
       const pName = location.state.prefillPatientName || '';
@@ -420,7 +426,7 @@ export default function Payments() {
         : await base44.entities.Payment.list('-date', PAGE_SIZE, offset);
       return pays || [];
     },
-    enabled: !!user,
+    enabled: !!user && !embedded,
     staleTime: 3 * 60 * 1000,
     placeholderData: (prev) => prev, // Eski ma'lumot search paytida ko'rinib turadi
   });
@@ -487,7 +493,7 @@ export default function Payments() {
       const allPays = await base44.entities.Payment.list('-date', 500, 0);
       return allPays || [];
     },
-    enabled: !!user,
+    enabled: !!user && !embedded,
     staleTime: 10 * 60 * 1000, // 10 daqiqa — statsni har search da qayta yuklamaslik
   });
 
@@ -868,6 +874,7 @@ export default function Payments() {
   const resetModal = () => {
     // Avval modalOpen=false qo'yamiz - boshqa state lar keyinroq tozalanadi
     setModalOpen(false);
+    if (embedded) onEmbeddedClose?.();
     setSaving(false);
     setRealPatientDebt(null);
     setLoadingDebt(false);
@@ -1092,6 +1099,8 @@ export default function Payments() {
           invalidatePayments();
         } catch (bgErr) {
           console.error('Background update error:', bgErr);
+        } finally {
+          if (embedded) onEmbeddedSaved?.(newPayment);
         }
       });
 
@@ -1102,6 +1111,9 @@ export default function Payments() {
     }
   };
 
+  // Payment deletion is intentionally disabled in the UI (owner request): to'lov yozuvlari o'chirilmaydi.
+  // Handler kept (unused) so the debt-recalc logic is not lost if it is ever re-enabled.
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const handleDelete = async (id, patientId) => {
     if (!window.confirm('Haqiqatan ham ushbu to\'lovni o\'chirmoqchimisiz?')) return false;
     try {
@@ -2095,8 +2107,44 @@ export default function Payments() {
     }
   }, [form.patient_id]);
 
+  // ── Embedded (PatientProfile): open the modal once with the patient preselected ──
+  const embeddedOpenedRef = useRef(false);
+  const embeddedPlanAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!embeddedPatient || embeddedOpenedRef.current) return;
+    embeddedOpenedRef.current = true;
+    const assignedDocId = resolveDoctorId(embeddedPatient, [], doctors, user, isDoctor);
+    const presetAmount = embeddedPay?.amount != null && embeddedPay.amount !== '' ? Number(embeddedPay.amount) || '' : '';
+    setForm({
+      patient_id: embeddedPatient.id,
+      patient_name: embeddedPatient.full_name || '',
+      service_name: '',
+      amount: presetAmount,
+      notes: '',
+      type: 'Income',
+      method: 'Cash',
+      doctor_id: isDoctor ? user?.id : (assignedDocId || ''),
+      created_at: formatClinicDateTime(new Date()),
+      date: tashkentToday(),
+      receipt_url: '',
+    });
+    setFormError('');
+    setModalOpen(true);
+  }, [embeddedPatient, embeddedPay, doctors, user, isDoctor]);
+  useEffect(() => {
+    if (!embedded || embeddedPlanAppliedRef.current || !embeddedPay?.planId || plansLoading) return;
+    const row = payRows.find(r => String(r.plan.id) === String(embeddedPay.planId));
+    if (!row) return;
+    embeddedPlanAppliedRef.current = true;
+    togglePlanSelect(row);
+    if (embeddedPay.amount != null && embeddedPay.amount !== '' && Number(embeddedPay.amount) > 0) {
+      setForm(prev => ({ ...prev, amount: Number(embeddedPay.amount) }));
+    }
+  }, [embedded, embeddedPay, payRows, plansLoading]);
+
   return (
-    <div className="space-y-3 pb-4 h-full">
+    <div className={embedded ? 'hidden' : 'space-y-3 pb-4 h-full'} data-payments-embedded={embedded ? 'true' : undefined}>
+      {!embedded && (<>
       {/* Premium Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
@@ -2524,13 +2572,6 @@ export default function Payments() {
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </button>
-                            <button 
-                              onClick={() => handleDelete(p.id, p.patient_id)}
-                              className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all"
-                              title="To'lovni o'chirish"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
                           </div>
                         </td>
 
@@ -2639,12 +2680,6 @@ export default function Payments() {
                       </div>
                     );
                   })()}
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleDelete(p.id, p.patient_id); }}
-                    className="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300 active:text-rose-500 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
                 </div>
               </div>
               
@@ -2688,6 +2723,7 @@ export default function Payments() {
           )}
         </div>
       )}
+      </>)}
 
       {/* Enhanced Multi-step Payment Modal */}
       <Dialog open={modalOpen} onOpenChange={(open) => {
@@ -2740,13 +2776,27 @@ export default function Payments() {
                    <div className="space-y-1.5 relative z-50">
                      <div className="flex items-center justify-between ml-4">
                         <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('patients.title')}</Label>
-                        <button 
+                        {!embedded && <button 
                           onClick={() => setNewPatientOpen(true)}
                           className="text-[9px] font-black text-[#0d9488] uppercase tracking-widest hover:underline"
                         >
                           + {t('patients.addNew')}
-                        </button>
+                        </button>}
                      </div>
+                     {embedded ? (
+                       <div
+                         className="h-12 rounded-xl border-2 border-emerald-300 bg-emerald-50/50 pl-3 pr-3 flex items-center gap-2.5 shadow-sm"
+                         data-payment-fixed-patient="true"
+                       >
+                         <span className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-[11px] font-black uppercase shrink-0">
+                           {(embeddedPatient.full_name || '?').trim().charAt(0)}
+                         </span>
+                         <span className="text-sm font-semibold text-slate-900 truncate">{embeddedPatient.full_name || '—'}</span>
+                         {embeddedPatient.phone && (
+                           <span className="ml-auto text-[11px] font-bold text-slate-500 tabular-nums shrink-0">{formatPhone(embeddedPatient.phone)}</span>
+                         )}
+                       </div>
+                     ) : (
                      <PatientSelect 
                        patients={patients}
                        loading={patientsLoading && patients.length === 0}
@@ -2781,6 +2831,7 @@ export default function Payments() {
                        }} 
                        inputClassName={`h-12 rounded-xl border-2 pl-10 pr-9 text-sm font-semibold text-slate-900 shadow-sm placeholder:text-slate-400 placeholder:font-normal focus:border-[#1499AD] focus:ring-2 focus:ring-[#1499AD]/25 focus-visible:ring-2 focus-visible:ring-[#1499AD]/25 focus-visible:ring-offset-0 ${form.patient_id ? 'border-emerald-300 bg-emerald-50/50' : 'border-slate-300 bg-white hover:border-slate-400'}`}
                      />
+                     )}
                    </div>
 
 
@@ -3730,13 +3781,6 @@ export default function Payments() {
               {/* ─── Modal Footer ─── */}
               <div className="bg-slate-100/90 px-5 py-3 border-t border-slate-200 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                <button
-                  onClick={async () => { const deleted = await handleDelete(sp.id, sp.patient_id); if (deleted) setSelectedPayment(null); }}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-rose-600 hover:bg-rose-100/80 text-xs font-bold transition-all border border-rose-200 bg-white"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>O'chirish</span>
-                </button>
                 <button
                   type="button"
                   onClick={() => setPaymentEdit({ amount: String(Math.abs(Number(sp.amount) || 0)), method: sp.method || 'Cash', notes: stripHiddenTags(sp.notes) || '' })}

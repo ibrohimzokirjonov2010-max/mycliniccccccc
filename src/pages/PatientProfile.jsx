@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from 'react';
 import { BackClose } from '@/hooks/useBackClose';
 import { useRestorableState, useUrlState } from '@/hooks/useRestorableState';
 import { useProfileBack } from '@/hooks/useBack';
@@ -58,6 +58,8 @@ import { findPlanForImplant } from '../lib/implantPlanModel';
 import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
 import TreatmentPlanInvoice from '../components/treatments/TreatmentPlanInvoice';
 import ImplantForm from '../components/implants/ImplantForm';
+// To'lov qo'shish: the Payments page's add-payment modal (same design + save logic), patient preselected.
+const PaymentsAddModal = lazy(() => import('./Payments'));
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
@@ -401,7 +403,8 @@ export default function PatientProfile() {
 
   // Modals
   const [apptModalOpen, setApptModalOpen] = useState(false);
-  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [payModalOpen, setPayModalOpen] = useState(false); // legacy modal: only "+ Avans" uses it now
+  const [sharedPay, setSharedPay] = useState(null); // { patient, planId, amount, key } -> Payments add modal
   const [treatmentModalOpen, setTreatmentModalOpen] = useState(false);
   const [implantModalOpen, setImplantModalOpen] = useState(false);
   const [invoiceModalPlan, setInvoiceModalPlan] = useState(null);
@@ -1924,41 +1927,13 @@ export default function PatientProfile() {
 
   const { totalPaid, totalDebt, totalPrepayment, totalDiscount, discountPercent } = financialData;
 
+  // "To'lov qo'shish" opens the Payments section's add-payment modal (plan / services table,
+  // whole plan, individual services or a free amount) with this patient preselected.
   const openPayModal = (opts = {}) => {
-    const assignedDocId = resolveDoctorId(patient, plans, doctors, user, isDoctor);
-    const plansWithRemaining = (plans || [])
-      .map((p) => ({
-        plan: p,
-        remaining: Math.max(0, (Number(p.total_price) || 0) - (Number(p.paid_amount) || 0)),
-      }))
-      .filter((x) => x.remaining > 0 && !['cancelled', 'canceled'].includes(String(x.plan.status || '').toLowerCase()));
-
-    const requested = opts?.planId
-      ? plansWithRemaining.find((x) => String(x.plan.id) === String(opts.planId))
-      : null;
-
-    const debtPrefill = Number(totalDebt) > 0 ? Number(totalDebt) : 0;
-    const prefillAmount =
-      opts?.amount != null && opts.amount !== ''
-        ? Number(opts.amount)
-        : requested
-          ? requested.remaining
-          : debtPrefill > 0
-            ? debtPrefill
-            : '';
-
-    setPayForm({ 
-      type: 'Income', 
-      amount: prefillAmount === '' ? '' : Number(prefillAmount) || 0,
-      method: 'Cash', 
-      category: requested ? (requested.plan.name || 'Treatment') : 'Treatment',
-      date: getLocalDateTimeValue(), 
-      notes: requested ? `Reja to'lov: ${requested.plan.name || requested.plan.id}` : '',
-      doctor_id: assignedDocId || doctors[0]?.id || '', 
-      planId: requested?.plan?.id || '',
-      selectedServiceIds: [] 
-    });
-    setPayModalOpen(true);
+    if (!patient?.id) return;
+    const planId = opts?.planId || '';
+    const amount = opts?.amount != null && opts.amount !== '' ? Number(opts.amount) || '' : '';
+    setSharedPay({ patient, planId, amount, key: Date.now() });
   };
 
   const openAdvanceModal = () => {
@@ -2718,6 +2693,8 @@ export default function PatientProfile() {
     }
   };
 
+  // Payment deletion is intentionally disabled in the UI (owner request); handler kept unused.
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const handleDeletePayment = async (paymentId) => {
     if (!window.confirm("Haqiqatan ham ushbu to'lov yozuvini o'chirmoqchimisiz?")) return;
     try {
@@ -3238,7 +3215,6 @@ export default function PatientProfile() {
               onOpenPayModal={openPayModal}
               onOpenPlanInvoice={(plan) => setInvoiceModalPlan(plan)}
               onPayInstallment={handlePayInstallment}
-              onDeletePayment={handleDeletePayment}
             />
           )}
         </TabsContent>
@@ -4108,6 +4084,17 @@ export default function PatientProfile() {
           })()}
         </DialogContent>
       </Dialog>
+
+      {sharedPay && (
+        <Suspense fallback={null}>
+          <PaymentsAddModal
+            key={sharedPay.key}
+            embeddedPay={sharedPay}
+            onEmbeddedClose={() => setSharedPay(null)}
+            onEmbeddedSaved={() => load()}
+          />
+        </Suspense>
+      )}
 
       <Dialog open={payModalOpen} onOpenChange={setPayModalOpen}>
         <DialogContent className="w-[92%] sm:max-w-md rounded-2xl sm:rounded-3xl p-0 overflow-hidden border-none shadow-2xl max-h-[88vh] flex flex-col">

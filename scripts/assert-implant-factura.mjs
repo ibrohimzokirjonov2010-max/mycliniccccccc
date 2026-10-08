@@ -16,6 +16,7 @@ import {
   isDesktopViewport,
   facturaFromImplantRecord,
   IMPLANT_WIZARD_FACTURA_MARKER,
+  isImplantLine,
 } from '../src/components/implants/implantFactura.js';
 import { buildLinkedServiceModel, implantCasePrice } from '../src/components/implants/linkedImplantServices.js';
 
@@ -46,7 +47,7 @@ const doc = buildFacturaDocument({
 assert(doc.clinic === 'Implant Center', `clinic title: ${doc.clinic}`);
 assert(doc.patient_name === 'Malika Murodova', 'patient');
 assert(doc.teeth.length === 5, `teeth ${doc.teeth.length}`);
-assert(doc.stage1[0].id === 'implant', 'implant first');
+assert(isImplantLine(doc.stage1[0]) && doc.stage1[0].id === 'implant:anyridge', `implant first ${doc.stage1[0].id}`);
 assert(doc.stage1[0].label === 'AnyRidge', 'brand label');
 assert(doc.stage1[0].qty === 5, `implant qty ${doc.stage1[0].qty}`);
 assert(doc.stage1[0].total === 3900000 * 5, `implant total ${doc.stage1[0].total}`);
@@ -78,7 +79,7 @@ const edited = buildFacturaDocument({
     edits: { implant: { qty: 4, unitPrice: 1500000 }, zircon_est: { qty: 4, unitPrice: 1500000 } },
   },
 });
-assert(edited.stage1[0].qty === 4, 'edited implant qty');
+assert(edited.stage1[0].qty === 2, 'implant qty follows the selected teeth (a saved edit cannot multiply it)');
 assert(edited.stage2.find((l) => l.id === 'zircon_est')?.qty === 4, 'edited zircon tier');
 assert(edited.stage2.some((l) => l.id === 'metal_crown' && l.qty === 0), 'metal placeholder');
 
@@ -92,7 +93,8 @@ assert(notes.includes('[FAKTURA_JSON]'), 'json marker');
 assert(stripFacturaFromNotes(notes) === 'Shifokor izohi', `stripped: ${stripFacturaFromNotes(notes)}`);
 const parsed = parseFacturaSnapshot({ notes });
 assert(parsed && parsed.patient_name === 'Malika Murodova', 'parse notes');
-assert(snapshotToEdits(parsed).implant.qty === 5, 'edits from snapshot');
+assert(snapshotToEdits(parsed)['implant:anyridge'] === undefined, 'implant rows are not stored as edits');
+assert(snapshotToEdits(parsed).bone_graft.qty === 1, 'edits from snapshot');
 assert(resolveClinicTitle('My Clinic') === 'Implant Center', 'generic clinic');
 assert(formatSom(1500000) === '1 500 000', `format ${formatSom(1500000)}`);
 
@@ -107,7 +109,7 @@ const empty = buildFacturaDocument({
   selectedServiceIds: [],
 });
 assert(empty.clinic === 'DentaNova', 'custom clinic kept');
-assert(empty.stage1[0].qty === 0, 'zero teeth implant qty');
+assert(!empty.stage1.some(isImplantLine), 'zero teeth: no implant row');
 
 const sized = buildFacturaDocument({
   date: '2026-09-22',
@@ -123,7 +125,8 @@ const sized = buildFacturaDocument({
     { fdi: '26', brand: 'Straumann', diameter: '4.0', length: '8' },
   ],
 });
-assert(sized.stage1[0].label === 'Osstem', `mixed sizes keep brand label: ${sized.stage1[0].label}`);
+assert(sized.stage1[0].label === 'Osstem', `brand row 1: ${sized.stage1[0].label}`);
+assert(sized.stage1[1].label === 'Straumann' && isImplantLine(sized.stage1[1]), `brand row 2: ${sized.stage1[1].label}`);
 assert(sized.toothLines[0].size === 'Ø4.5×L10', `size 16 ${sized.toothLines[0].size}`);
 assert(sized.toothLines[1].size === 'Ø4.0×L8', `size 26 ${sized.toothLines[1].size}`);
 assert(sized.toothLines[1].brand === 'Straumann', 'per-tooth brand');
@@ -136,7 +139,8 @@ const sameSize = buildFacturaDocument({
   implantUnitPrice: 1500000,
   toothLines: [{ fdi: '16', brand: 'Osstem', diameter: '4.5', length: '10' }],
 });
-assert(sameSize.stage1[0].label === 'Osstem · Ø4.5×L10', `uniform size label ${sameSize.stage1[0].label}`);
+assert(sameSize.stage1[0].label === 'Osstem', `brand row label ${sameSize.stage1[0].label}`);
+assert(sameSize.stage1[0].teeth[0].size === 'Ø4.5×L10', 'brand row keeps the tooth size');
 assert(formatImplantSize('4.5', '') === 'Ø4.5', 'diameter only');
 assert(summarizeToothLines([{ fdi: '#36', diameter: '5', length: '11.5' }])[0].size === 'Ø5×L11.5', 'summarize');
 const sizedNotes = encodeFacturaNotes('', sameSize);
@@ -207,7 +211,8 @@ assert(toothSrc.includes('data-testid="implant-tooth-diameter"'), 'per-tooth dia
 assert(toothSrc.includes('data-testid="implant-tooth-length"'), 'per-tooth length stays on the tooth panel');
 assert(!step3Src.includes('implant-tooth-diameter'), 'diameter input is not on step 3');
 
-const facturaSrc = fs.readFileSync(path.join(here, '../src/components/implants/ImplantWizardFactura.jsx'), 'utf8');
+const facturaSrc = fs.readFileSync(path.join(here, '../src/components/implants/ImplantWizardFactura.jsx'), 'utf8')
+  + fs.readFileSync(path.join(here, '../src/components/implants/ImplantFacturaJaw.jsx'), 'utf8');
 assert(facturaSrc.includes('data-factura-layout="implant-center-paper"'), 'paper factura layout marker');
 assert(facturaSrc.includes('IMPLANT CENTER'), 'paper masthead');
 assert(facturaSrc.includes('Tish qatori formulasi'), 'tooth formula title');

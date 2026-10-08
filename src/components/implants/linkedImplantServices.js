@@ -8,6 +8,8 @@
 import {
   defaultLineQty,
   exclusiveCrownId,
+  implantToothPrice,
+  isImplantLine,
   mapLineToExtraId,
   parseFacturaSnapshot,
   unchosenCatalogCrownIds,
@@ -68,7 +70,8 @@ function facturaLines(factura) {
   return [...(factura.stage1 || []), ...(factura.stage2 || [])].filter((line) => {
     if (!line) return false;
     const id = normalizeServiceId(line.id);
-    if (!id || id === 'implant') return false;
+    // Implant rows are billed per tooth from tooth_data_map (primary rows below).
+    if (!id || isImplantLine(line)) return false;
     const qty = Number(line.qty) || 0;
     const total = Number(line.total) || 0;
     const unit = Number(line.unitPrice) || 0;
@@ -187,13 +190,7 @@ export function buildLinkedServiceModel(implant) {
 
   const addPrimary = (fdi, key) => {
     const tData = (key && implant.tooth_data_map?.[key]) || implant.tooth_data_map?.[fdi] || {};
-    let price = readPrice(tData.price);
-    if (price == null && teethCount <= 1) {
-      price = readPrice(implant.price) ?? readPrice(implant.narxi) ?? 1500000;
-    }
-    if (price == null) {
-      price = readPrice(factura?.implant_unit_price) ?? 0;
-    }
+    const price = implantToothPrice(implant, fdi, { key, teethCount, factura });
     const name = tData.service_name || implant.service_name || implant.hizmat_turi || 'Implant';
     pushRow(rows, seen, {
       id: `primary-${fdi || 'implant'}`,

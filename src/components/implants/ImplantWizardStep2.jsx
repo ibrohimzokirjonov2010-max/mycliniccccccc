@@ -1,8 +1,9 @@
-import { Check, Pencil, Search, Droplets, X } from 'lucide-react';
+import { Check, Pencil, Search, Droplets, X, Minus, Plus } from 'lucide-react';
 import { Tooth, CrownIcon, FormerIcon, AbutmentIcon, BoneGraftIcon, SinusLiftIcon } from '@/components/ui/Icons';
 import { cn } from '@/lib/utils';
-import { getServiceLabel, IMPLANT_WIZARD_STEP2_MARKER } from './implantWizardLabels';
+import { getServiceLabel, IMPLANT_WIZARD_STEP2_MARKER, normalizeServiceId } from './implantWizardLabels';
 import './implantWizard.css';
+import './implantFactura.css';
 
 function formatSom(n) {
   const v = Math.round(Number(n) || 0);
@@ -53,6 +54,8 @@ export default function ImplantWizardStep2({
   setEditingPriceId,
   onToggleService,
   onSetPrice,
+  serviceQty = {},
+  onSetQty,
   onBackToStep1,
   tw,
   t,
@@ -170,64 +173,96 @@ export default function ImplantWizardStep2({
               : service.defaultPrice;
             const isEditing = editingPriceId === service.id;
             const label = getServiceLabel(service, t);
+            const qty = Number(serviceQty[normalizeServiceId(service.id)]) || 1;
             return (
               <div
                 key={service.id}
-                className="flex items-center gap-2 px-3 py-2 rounded-[10px] border min-h-[44px] bg-white"
+                className={cn('implant-wizard-service-row px-3 py-2 rounded-[10px] border min-h-[44px] bg-white', isSelected && 'is-selected')}
                 style={isSelected ? { borderColor: '#0d9488' } : { borderColor: '#e5e7eb' }}
+                data-service-id={service.id}
               >
-                <button
-                  type="button"
-                  onClick={() => onToggleService(service.id)}
-                  className="flex items-center gap-2 flex-1 min-w-0 bg-transparent border-0 p-0 cursor-pointer text-left"
-                >
-                  <ServiceGlyph service={service} />
-                  <span className="text-sm font-medium truncate text-[#111827]">{label}</span>
-                  {isSelected && (
-                    <span
-                      className="w-4 h-4 rounded-full text-white flex items-center justify-center shrink-0"
-                      style={{ background: '#0d9488' }}
-                    >
-                      <Check className="w-2.5 h-2.5" strokeWidth={3} />
-                    </span>
-                  )}
-                </button>
-                <div className="flex items-center gap-1 shrink-0">
-                  {isEditing ? (
-                    <input
-                      autoFocus
-                      type="text"
-                      inputMode="numeric"
-                      value={formatSom(currentPrice)}
-                      onChange={(e) => {
-                        const digits = e.target.value.replace(/\D/g, '');
-                        onSetPrice(service.id, digits === '' ? 0 : Number(digits));
-                      }}
-                      onBlur={() => setEditingPriceId(null)}
-                      className="w-[100px] h-8 text-right text-sm font-semibold rounded-md px-1.5 outline-none"
-                      style={{ border: '1px solid #0d9488' }}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setEditingPriceId(service.id)}
-                      className="flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
-                    >
-                      <span className={cn('text-xs font-semibold whitespace-nowrap', isSelected ? 'text-[#111827]' : 'text-[#6b7280]')}>
-                        {formatSom(currentPrice)} so&apos;m
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onToggleService(service.id)}
+                    className="flex items-center gap-2 flex-1 min-w-0 bg-transparent border-0 p-0 cursor-pointer text-left"
+                  >
+                    <ServiceGlyph service={service} />
+                    <span className="text-sm font-medium truncate text-[#111827]">{label}</span>
+                    {isSelected && (
+                      <span
+                        className="w-4 h-4 rounded-full text-white flex items-center justify-center shrink-0"
+                        style={{ background: '#0d9488' }}
+                      >
+                        <Check className="w-2.5 h-2.5" strokeWidth={3} />
                       </span>
-                      <Pencil className="w-3 h-3 text-[#9ca3af]" />
-                    </button>
-                  )}
-                  {isSelected && (
-                    <span
-                      className="w-4 h-4 rounded-full text-white flex items-center justify-center"
-                      style={{ background: '#0d9488' }}
-                    >
-                      <Check className="w-2.5 h-2.5" strokeWidth={3} />
-                    </span>
-                  )}
+                    )}
+                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isEditing ? (
+                      <input
+                        autoFocus
+                        type="text"
+                        inputMode="numeric"
+                        value={formatSom(currentPrice)}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '');
+                          onSetPrice(service.id, digits === '' ? 0 : Number(digits));
+                        }}
+                        onBlur={() => setEditingPriceId(null)}
+                        className="w-[100px] h-8 text-right text-sm font-semibold rounded-md px-1.5 outline-none"
+                        style={{ border: '1px solid #0d9488' }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setEditingPriceId(service.id)}
+                        className="flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer"
+                      >
+                        <span className={cn('text-xs font-semibold whitespace-nowrap', isSelected ? 'text-[#111827]' : 'text-[#6b7280]')}>
+                          {formatSom(currentPrice)} so&apos;m
+                        </span>
+                        <Pencil className="w-3 h-3 text-[#9ca3af]" />
+                      </button>
+                    )}
+                  </div>
                 </div>
+                {isSelected && onSetQty ? (
+                  <div className="implant-wizard-qty-row" data-testid="implant-service-qty">
+                    <span className="implant-wizard-qty-label">{tw('qty', 'Soni')}</span>
+                    <div className="implant-wizard-qty" role="group" aria-label={`${label} ${tw('qty', 'soni')}`}>
+                      <button
+                        type="button"
+                        onClick={() => onSetQty(service.id, qty - 1)}
+                        disabled={qty <= 1}
+                        aria-label={tw('qtyMinus', 'Kamaytirish')}
+                      >
+                        <Minus className="w-3 h-3" strokeWidth={3} />
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={qty}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '');
+                          if (digits !== '') onSetQty(service.id, Number(digits));
+                        }}
+                        aria-label={`${label} ${tw('qty', 'soni')}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => onSetQty(service.id, qty + 1)}
+                        aria-label={tw('qtyPlus', "Ko'paytirish")}
+                      >
+                        <Plus className="w-3 h-3" strokeWidth={3} />
+                      </button>
+                    </div>
+                    <span className="implant-wizard-qty-ta">{tw('qtyUnit', 'ta')}</span>
+                    <strong className="implant-wizard-qty-total">
+                      = {formatSom((Number(currentPrice) || 0) * qty)} so&apos;m
+                    </strong>
+                  </div>
+                ) : null}
               </div>
             );
           })}
