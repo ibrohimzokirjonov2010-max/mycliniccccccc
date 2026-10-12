@@ -2467,32 +2467,6 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       <button type="button" onClick={() => setStep(1)} className="h-11 px-3 rounded-xl border border-slate-200 bg-white text-[13px] font-medium text-slate-600 inline-flex items-center gap-1 shrink-0">O'zgartirish<ChevronRight className="w-4 h-4" /></button>
                     </section>
 
-                    {(() => {
-                      const QUICK = [['ko\'rik', "Ko'rik"], ['karies', 'Karies davolash'], ['plomba', 'Plomba'], ['anestez', 'Anesteziya'], ['tozala', 'Professional tozalash'], ['olish', "Tish sug'urish"], ['implant', 'Implantatsiya']];
-                      const quick = QUICK.map(([k, label]) => [label, (services || []).find((sv) => sv.is_active !== false && String(sv.name || '').toLowerCase().includes(k) && !jawFamily(sv.name) && isServiceCompatibleWithTooth(sv, activeTooth))]).filter(([, sv]) => sv);
-                      if (!quick.length) return null;
-                      return (
-                        <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3" data-testid="wizard-quick-services">
-                          <div className="flex items-center gap-2 mb-2.5">
-                            <Stethoscope className="w-5 h-5 text-emerald-500" />
-                            <h3 className="flex-1 text-[15px] font-bold text-slate-900">Tezkor xizmatlar</h3>
-                            <button type="button" onClick={() => document.querySelector('[data-testid="wizard-service-list"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="text-[13px] font-semibold text-blue-600 inline-flex items-center gap-0.5 min-h-[44px]">Barchasini ko'rish<ChevronRight className="w-4 h-4" /></button>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {quick.map(([label, sv]) => {
-                              const on = activeTooth !== null && (toothData[activeTooth]?.services || []).some((x) => x.service_id === sv.id);
-                              return (
-                                <button key={sv.id} type="button" onClick={activeTooth ? () => toggleToothService(sv) : () => toast.error('Avval tishni tanlang!')}
-                                  className={cn('min-h-[44px] px-3 rounded-xl border text-[13px] font-medium inline-flex items-center gap-1.5', on ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-700')}>
-                                  <img src={getToothIllustrationSrc(thumbFdi, thumbKind(sv.name))} alt="" className="h-6 w-5 object-contain" />{label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </section>
-                      );
-                    })()}
-
                     <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3 wizard-phone-arch select-none">
                       <div className="flex items-center gap-2 mb-2.5">
                         <span className="text-emerald-500 text-[16px]">🦷</span>
@@ -2555,10 +2529,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                           const isAdded = activeTooth !== null && (toothData[activeTooth]?.services || []).some(s => s.service_id === svc.id);
                           return (
                             <div key={svc.id} onClick={activeTooth ? () => toggleToothService(svc) : () => toast.error("Avval tish xaritasidan tishni tanlang!")}
-                              className={cn('flex items-center gap-2.5 rounded-xl border px-2 py-1.5 cursor-pointer active:scale-[0.99]', isAdded ? 'border-emerald-300 bg-emerald-50/50' : 'border-slate-100 bg-white')}>
-                              <span className="w-11 h-11 rounded-lg bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden">
-                                <img src={getToothIllustrationSrc(thumbFdi, thumbKind(svc.name))} alt="" className="h-10 object-contain" />
-                              </span>
+                              className={cn('flex items-center gap-2.5 rounded-xl border px-3 py-2 min-h-[52px] cursor-pointer active:scale-[0.99]', isAdded ? 'border-emerald-300 bg-emerald-50/50' : 'border-slate-100 bg-white')}>
                               <span className="flex-1 min-w-0">
                                 <span className="block text-[12.5px] font-bold text-slate-900 leading-tight line-clamp-2">{svc.name}</span>
                                 <span className="block text-[11px] text-slate-500">{getCategoryName(svc.category || autoCategorize(svc.name))}</span>
