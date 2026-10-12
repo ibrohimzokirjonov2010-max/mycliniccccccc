@@ -2411,9 +2411,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                 {/* === PHONE / NARROW (< lg): design cards (wizard-1012) === */}
                 {(() => {
-                  const isUpper = wizardQuad === 'ur' || wizardQuad === 'ul';
-                  const rowRight = isUpper ? upperRight : [...lowerRight].reverse();
-                  const rowLeft = isUpper ? upperLeft : [...lowerLeft].reverse();
+                  const isRightSide = wizardQuad !== 'ul' && wizardQuad !== 'll';
                   const thumbFdi = activeTooth ? idToFdi(activeTooth) : '36';
                   const thumbKind = (name) => {
                     const n = String(name || '').toLowerCase();
@@ -2426,7 +2424,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     if (n.includes('plomba') || n.includes('restavr') || n.includes('kariyes') || n.includes('karies')) return 'plomba';
                     return 'healthy';
                   };
-                  const PhoneTooth = ({ fdi }) => {
+                  const PhoneTooth = ({ fdi, lower }) => {
                     const internalId = fdiToInternal(String(fdi));
                     const isSelected = planForm.tooth_numbers.includes(internalId);
                     const isActive = activeTooth === internalId;
@@ -2440,10 +2438,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                           handleTeethChange(next);
                           setActiveTooth(next.includes(internalId) ? internalId : null);
                         }}
-                        className={cn('wizard-tooth-hit relative flex min-w-0 flex-col items-center rounded-lg border px-px pt-0.5 pb-0.5 touch-manipulation',
+                        className={cn('wizard-tooth-hit relative flex min-w-0 min-h-[72px] flex-col items-center justify-end rounded-lg border-2 px-px pt-0.5 pb-0.5 touch-manipulation',
                           isActive ? 'border-emerald-500 bg-emerald-50' : jawMarked ? 'border-pink-300 bg-pink-50/50' : isSelected ? 'border-emerald-300 bg-emerald-50/40' : 'border-transparent bg-transparent')}>
-                        <img src={getToothIllustrationSrc(fdi, 'healthy')} alt="" draggable={false} className={cn('h-[46px] w-full object-contain pointer-events-none', !isUpper && 'rotate-180')} />
-                        <span className={cn('text-[10.5px] font-medium leading-none mt-0.5', isActive || isSelected ? 'text-emerald-600 font-bold' : 'text-slate-600')}>{fdi}</span>
+                        <img src={getToothIllustrationSrc(fdi, 'healthy')} alt="" draggable={false} className={cn('h-[48px] w-full object-contain pointer-events-none', lower && 'rotate-180')} />
+                        <span className={cn('text-[13px] font-semibold leading-none mt-1 tabular-nums', isActive || isSelected ? 'text-emerald-600 font-bold' : 'text-slate-700')}>{fdi}</span>
                       </button>
                     );
                   };
@@ -2460,28 +2458,60 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   return (
                 <div className="flex lg:hidden flex-col h-full min-h-0 w-full overflow-hidden bg-[#f4f7f9]" data-wizard-mobile="step2">
                   <div className="flex-1 min-h-0 overflow-y-auto px-2.5 py-2.5 space-y-2.5">
+                    <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3 flex items-center gap-3" data-testid="wizard-patient-card">
+                      <span className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 grid place-items-center text-[15px] font-bold shrink-0">{(normalizedPatientName || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[16px] font-bold text-slate-900 truncate">{normalizedPatientName || '—'}</p>
+                        <p className="text-[13px] text-slate-500 truncate">{patientForm.phone || ''}</p>
+                      </div>
+                      <button type="button" onClick={() => setStep(1)} className="h-11 px-3 rounded-xl border border-slate-200 bg-white text-[13px] font-medium text-slate-600 inline-flex items-center gap-1 shrink-0">O'zgartirish<ChevronRight className="w-4 h-4" /></button>
+                    </section>
+
+                    {(() => {
+                      const QUICK = [['ko\'rik', "Ko'rik"], ['karies', 'Karies davolash'], ['plomba', 'Plomba'], ['anestez', 'Anesteziya'], ['tozala', 'Professional tozalash'], ['olish', "Tish sug'urish"], ['implant', 'Implantatsiya']];
+                      const quick = QUICK.map(([k, label]) => [label, (services || []).find((sv) => String(sv.name || '').toLowerCase().includes(k))]).filter(([, sv]) => sv);
+                      if (!quick.length) return null;
+                      return (
+                        <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3" data-testid="wizard-quick-services">
+                          <div className="flex items-center gap-2 mb-2.5">
+                            <Stethoscope className="w-5 h-5 text-emerald-500" />
+                            <h3 className="flex-1 text-[15px] font-bold text-slate-900">Tezkor xizmatlar</h3>
+                            <button type="button" onClick={() => document.querySelector('[data-testid="wizard-service-list"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="text-[13px] font-semibold text-blue-600 inline-flex items-center gap-0.5 min-h-[44px]">Barchasini ko'rish<ChevronRight className="w-4 h-4" /></button>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {quick.map(([label, sv]) => {
+                              const on = activeTooth !== null && (toothData[activeTooth]?.services || []).some((x) => x.service_id === sv.id);
+                              return (
+                                <button key={sv.id} type="button" onClick={activeTooth ? () => toggleToothService(sv) : () => toast.error('Avval tishni tanlang!')}
+                                  className={cn('min-h-[44px] px-3 rounded-xl border text-[13px] font-medium inline-flex items-center gap-1.5', on ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-700')}>
+                                  <img src={getToothIllustrationSrc(thumbFdi, thumbKind(sv.name))} alt="" className="h-6 w-5 object-contain" />{label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </section>
+                      );
+                    })()}
+
                     <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3 wizard-phone-arch select-none">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-emerald-500 text-[15px]">🦷</span>
-                        <h3 className="flex-1 text-[14px] font-bold text-slate-900">Tish tanlash (FDI)</h3>
-                        <div className="inline-flex rounded-full border border-slate-200 p-0.5 bg-white" data-testid="wizard-jaw-toggle">
-                          {[['ur', "Yuqori jag'", isUpper], ['lr', "Pastki jag'", !isUpper]].map(([id, label, on]) => (
-                            <button key={id} type="button" onClick={() => setWizardQuad(id)}
-                              className={cn('h-7 px-3 rounded-full text-[11.5px] font-semibold', on ? 'bg-slate-900 text-white' : 'text-slate-600')}>{label}</button>
-                          ))}
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <span className="text-emerald-500 text-[16px]">🦷</span>
+                        <h3 className="flex-1 text-[15px] font-bold text-slate-900">Tish tanlash</h3>
+                        <span className="text-[13px] font-medium text-rose-500">{isRightSide ? 'Chap tomon →' : '← O\'ng tomon'}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mb-2.5" data-testid="wizard-jaw-toggle">
+                        {[['ur', "O'ng tomondagi tishlar (18–11)", isRightSide], ['ul', 'Chap tomondagi tishlar (21–28)', !isRightSide]].map(([id, label, on]) => (
+                          <button key={id} type="button" onClick={() => setWizardQuad(id)}
+                            className={cn('min-h-[44px] px-2 rounded-xl text-[13px] font-semibold leading-tight border', on ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-600')}>{label}</button>
+                        ))}
+                      </div>
+                      {[[isRightSide ? upperRight : upperLeft, 'Yuqori', false], [isRightSide ? lowerLeft : lowerRight, 'Pastki', true]].map(([list, label, lower]) => (
+                        <div key={label} className="flex items-stretch gap-1.5 mb-1.5">
+                          <div className="w-[56px] shrink-0 rounded-xl bg-emerald-50 text-emerald-800 text-[13px] font-semibold flex items-center justify-center text-center leading-tight px-1">{label}<br />({isRightSide ? "o'ng" : 'chap'})</div>
+                          <div className="flex-1 min-w-0 grid grid-cols-8 gap-0.5 rounded-xl bg-slate-50 px-1 py-1">{list.map((n) => <PhoneTooth key={n} fdi={n} lower={lower} />)}</div>
                         </div>
-                      </div>
-                      <div className="flex items-stretch gap-0.5">
-                        <div className="grid grid-cols-8 gap-px flex-1 min-w-0">{rowRight.map((n) => <PhoneTooth key={n} fdi={n} />)}</div>
-                        <span className="w-px bg-slate-400 my-1 shrink-0" aria-hidden />
-                        <div className="grid grid-cols-8 gap-px flex-1 min-w-0">{rowLeft.map((n) => <PhoneTooth key={n} fdi={n} />)}</div>
-                      </div>
-                      <div className="mt-2 flex items-center gap-3 text-[10.5px] text-slate-600 flex-wrap">
-                        <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full bg-emerald-500" />Tanlangan</span>
-                        <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full border border-slate-300 bg-white" />Tabiiy tish</span>
-                        <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full bg-pink-400" />Jag' xizmati</span>
-                        {activeTooth && <span className="ml-auto text-[10.5px] font-semibold text-blue-600">#{idToFdi(activeTooth)} · {(toothData[activeTooth]?.services || []).length} ta xizmat</span>}
-                      </div>
+                      ))}
+                      {activeTooth && <p className="mt-1 text-[13px] font-semibold text-blue-600 text-right">#{idToFdi(activeTooth)} · {(toothData[activeTooth]?.services || []).length} ta xizmat</p>}
                     </section>
 
                     <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3">
@@ -2542,28 +2572,41 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     </section>
 
                     {allSelectedServices.length > 0 && (
-                      <section className="bg-emerald-50/60 rounded-[18px] border border-emerald-100 p-3" data-testid="wizard-selected-services">
+                      <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3" data-testid="wizard-selected-services">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="w-6 h-6 rounded-md bg-emerald-500 text-white text-[12px] flex items-center justify-center">🦷</span>
-                          <h3 className="flex-1 text-[13.5px] font-bold text-slate-900">Tanlangan xizmatlar ({allSelectedServices.length})</h3>
-                          <button type="button" onClick={() => { handleTeethChange([]); setActiveTooth(null); }} className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-[11.5px] font-semibold text-slate-700 inline-flex items-center gap-1">
-                            <Trash2 className="w-3.5 h-3.5" />Barchasini tozalash
+                          <ClipboardList className="w-5 h-5 text-emerald-500" />
+                          <h3 className="flex-1 text-[15px] font-bold text-slate-900">Tanlangan xizmatlar ({allSelectedServices.length})</h3>
+                          <button type="button" onClick={() => { handleTeethChange([]); setActiveTooth(null); }} className="h-11 px-3 rounded-xl border border-slate-200 bg-white text-[13px] font-medium text-slate-700 inline-flex items-center gap-1">
+                            <Trash2 className="w-4 h-4" />Tozalash
                           </button>
                         </div>
-                        <div className="space-y-1.5">
+                        <div className="rounded-xl border border-slate-100 divide-y divide-slate-100">
                           {allSelectedServices.map((s) => (
-                            <div key={s.key} className="flex items-center gap-2 bg-white rounded-lg border border-slate-100 px-2 py-1.5">
-                              <span className="text-slate-300 text-[12px]">⋮⋮</span>
-                              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md shrink-0">{toothSlotLabel(s.toothId) || `#${idToFdi(s.toothId)}`}</span>
-                              <span className="flex-1 min-w-0 text-[12px] font-semibold text-slate-800 truncate">{s.service_name}</span>
-                              <span className="text-[12px] font-bold text-slate-900 whitespace-nowrap tabular-nums">{formatCurrency(s.price || 0)}</span>
+                            <div key={s.key} className="flex items-center gap-2 px-2.5 py-2 min-h-[56px]">
+                              <span className="text-slate-300 text-[13px]">⋮⋮</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[14px] font-semibold text-slate-900 truncate">{s.service_name}</p>
+                                <p className="text-[13px] text-slate-500">{toothSlotLabel(s.toothId) || `Tish #${idToFdi(s.toothId)}`}</p>
+                              </div>
+                              <span className="text-[14px] font-bold text-slate-900 whitespace-nowrap tabular-nums">{formatCurrency(s.price || 0)}</span>
                               <button type="button" onClick={() => toggleToothService({ id: s.service_id, name: s.service_name, price: s.price }, s.toothId)} aria-label="O'chirish"
-                                className="w-7 h-7 rounded-md bg-rose-50 text-rose-500 flex items-center justify-center shrink-0 border-none"><Trash2 className="w-3.5 h-3.5" /></button>
+                                className="w-11 h-11 rounded-lg text-rose-500 flex items-center justify-center shrink-0 border-none bg-transparent"><Trash2 className="w-4 h-4" /></button>
                             </div>
                           ))}
                         </div>
                       </section>
+
                     )}
+                    <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3 space-y-2" data-testid="wizard-plan-name">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-emerald-500" />
+                        <h3 className="text-[15px] font-bold text-slate-900">Reja nomi va izoh</h3>
+                      </div>
+                      <input type="text" value={planForm.name} onChange={(e) => setPlanForm((p) => ({ ...p, name: e.target.value }))} placeholder="Reja nomi (ixtiyoriy)"
+                        className="w-full h-12 rounded-xl border border-slate-200 bg-white px-3 text-[14px] text-slate-900 outline-none focus:border-emerald-400" />
+                      <textarea value={planForm.notes} onChange={(e) => setPlanForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Izoh (ixtiyoriy)..." rows={2}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[14px] text-slate-900 outline-none focus:border-emerald-400 resize-none" />
+                    </section>
 
                     <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-2.5" data-testid="wizard-discount">
                       <div className="flex items-center gap-1.5">
@@ -2608,13 +2651,17 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                   <div className="shrink-0 bg-white border-t border-slate-100 px-3 pt-2.5 space-y-2" style={{ paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))' }}>
                     {savingError && <div className="bg-rose-50 border border-rose-100 rounded-xl p-2 text-xs font-bold text-rose-600 break-all">{t('patients.wizard.saveError')}: {savingError}</div>}
-                    <div className="grid grid-cols-[0.8fr_1.25fr] gap-2.5">
-                      <button type="button" onClick={() => setStep(1)} className="h-12 rounded-xl bg-white border border-slate-200 text-slate-800 text-[13.5px] font-semibold inline-flex items-center justify-center gap-1.5">
-                        <ChevronLeft className="w-4 h-4" />Oldingi bosqich
+                    <div className="flex items-center gap-2.5">
+                      <button type="button" onClick={() => setStep(1)} aria-label="Oldingi bosqich" className="w-12 h-12 rounded-xl bg-white border border-slate-200 text-slate-700 grid place-items-center shrink-0">
+                        <ChevronLeft className="w-5 h-5" />
                       </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-bold text-slate-500 uppercase truncate">Rejada: {allSelectedServices.length} ta xizmat</p>
+                        <p className="text-[18px] font-extrabold text-slate-900 whitespace-nowrap tabular-nums">{formatCurrency(discountedGrandTotal)}</p>
+                      </div>
                       <button type="button" onClick={handleSavePlan} disabled={saving || allSelectedServices.length === 0} data-testid="wizard-save-plan"
-                        className="h-12 rounded-xl text-white text-[13.5px] font-semibold inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-500 to-emerald-700 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400">
-                        {saving ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <>Saqlash va keyingi bosqich <ArrowRight className="w-4 h-4" /></>}
+                        className="h-12 px-4 rounded-xl text-white text-[14px] font-semibold inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-500 to-emerald-700 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 shrink-0">
+                        {saving ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <><Check className="w-4 h-4" />Keyingi: Yakunlash<ChevronRight className="w-4 h-4" /></>}
                       </button>
                     </div>
                   </div>
