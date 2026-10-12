@@ -5,7 +5,7 @@ import { useRestorableState } from '@/hooks/useRestorableState';
 import { 
   Wrench, Plus, Search, Calendar, User, Clock, 
   CheckCircle2, Send, 
-  UserPlus, Phone, Briefcase, X, PackageCheck, Truck, MessageCircle, Camera
+  UserPlus, Phone, Briefcase, X, PackageCheck, Truck, MessageCircle, Camera, Package, Home, ChevronRight, ArrowRight
 } from 'lucide-react';
 import { Tooth } from '@/components/ui/Icons';
 import { base44 } from '@/api/base44Client';
@@ -222,7 +222,7 @@ export default function Technicians() {
             Laboratoriya
           </h1>
           <p className="text-[12px] md:text-sm font-semibold text-slate-500 mt-1">
-            Lab buyurtmalari
+            Lab buyurtmalari<span className="md:hidden"> va texniklar</span>
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -288,7 +288,7 @@ export default function Technicians() {
                 type="button"
                 onClick={() => setStatusFilter('active')}
                 className={cn(
-                  'shrink-0 h-8 px-3 rounded-full text-[12px] font-bold border transition-all flex items-center gap-1.5',
+                  'shrink-0 h-8 max-md:h-11 px-3 max-md:px-4 rounded-full max-md:rounded-xl text-[12px] max-md:text-[13px] font-bold border transition-all flex items-center gap-1.5',
                   statusFilter === 'active'
                     ? 'bg-slate-900 text-white border-slate-900'
                     : 'bg-white text-slate-500 border-slate-200'
@@ -307,7 +307,7 @@ export default function Technicians() {
                 key={chip.key}
                 onClick={() => setStatusFilter(chip.key)}
                 className={cn(
-                  'shrink-0 h-8 px-3 rounded-full text-[12px] font-bold border transition-all flex items-center gap-1.5',
+                  'shrink-0 h-8 max-md:h-11 px-3 max-md:px-4 rounded-full max-md:rounded-xl text-[12px] max-md:text-[13px] font-bold border transition-all flex items-center gap-1.5',
                   statusFilter === chip.key
                     ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-600/20'
                     : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
@@ -324,12 +324,30 @@ export default function Technicians() {
             ))}
           </div>
 
+          {/* Phone KPI tiles (design extra-13) */}
+          <div className="grid grid-cols-2 gap-2 md:hidden" data-testid="lab-kpis">
+            {[
+              ['Jami ishlar', statusCounts.all, 'bg-blue-50 border-blue-100 text-blue-700', Package],
+              ['Texnikda', statusCounts['In Progress'], 'bg-amber-50 border-amber-100 text-amber-700', Clock],
+              ['Yuborildi', statusCounts.Sent, 'bg-emerald-50 border-emerald-100 text-emerald-700', CheckCircle2],
+              ['Klinikada', statusCounts.Received, 'bg-violet-50 border-violet-100 text-violet-700', Home],
+            ].map(([label, val, tone, Icon]) => (
+              <div key={label} className={cn('rounded-2xl border p-3 flex items-center gap-3', tone)}>
+                <span className="w-11 h-11 rounded-xl bg-white/80 grid place-items-center shrink-0"><Icon className="w-5 h-5" /></span>
+                <div className="min-w-0">
+                  <p className="text-[12px] font-bold uppercase truncate">{label}</p>
+                  <p className="text-[20px] font-extrabold text-slate-900 leading-tight">{val} <small className="text-[13px] font-semibold opacity-70">ta</small></p>
+                </div>
+              </div>
+            ))}
+          </div>
+
           {/* Sticky search */}
           <div className="sticky top-0 z-20 -mx-0.5 px-0.5 py-0.5 md:static md:p-0 bg-[#F4F6F9]/95 md:bg-transparent backdrop-blur-sm md:backdrop-blur-none">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
-                placeholder="Bemor, tish, material..."
+                placeholder="Bemor, tish, material, texnik..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="pl-10 h-11 rounded-xl border-slate-200 bg-white shadow-sm font-medium text-sm"
@@ -723,9 +741,29 @@ Sizni kutib qolamiz! 🏥`;
                         setJobForm({...jobForm, patient_id: id, patient_name: p?.full_name || ''});
                         if (id) setTimeout(() => setJobStep(2), 300);
                       }}
-                      inputClassName="h-11 rounded-xl bg-white border-slate-200 shadow-lg shadow-emerald-500/5 font-semibold text-xs text-emerald-600"
+                      inputClassName="h-11 max-md:h-12 rounded-xl bg-white border-slate-200 shadow-lg shadow-emerald-500/5 font-semibold text-xs max-md:text-[14px] text-emerald-600"
                     />
                   </div>
+                  {!jobForm.patient_id && patients.length > 0 && (
+                    <div className="w-full max-w-sm px-2 md:hidden" data-testid="lab-recent-patients">
+                      <p className="text-[13px] font-bold uppercase tracking-wide text-slate-400 mb-2">Oxirgi bemorlar</p>
+                      <div className="space-y-2">
+                        {[...patients].sort((a, b) => String(b.updated_date || b.created_date || '').localeCompare(String(a.updated_date || a.created_date || ''))).slice(0, 4).map((p, i) => (
+                          <button key={p.id} type="button" onClick={() => { setJobForm({ ...jobForm, patient_id: p.id, patient_name: p.full_name || '' }); setTimeout(() => setJobStep(2), 200); }}
+                            className="w-full min-h-[64px] rounded-2xl border border-slate-200 bg-white px-3 flex items-center gap-3 text-left">
+                            <span className={cn('w-11 h-11 rounded-full grid place-items-center text-[14px] font-bold shrink-0', ['bg-sky-50 text-sky-600', 'bg-emerald-50 text-emerald-600', 'bg-violet-50 text-violet-600', 'bg-amber-50 text-amber-600'][i % 4])}>
+                              {String(p.full_name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
+                            </span>
+                            <span className="flex-1 min-w-0">
+                              <span className="block text-[15px] font-bold text-slate-900 truncate">{p.full_name}</span>
+                              <span className="block text-[13px] text-slate-500">{p.phone || '—'}</span>
+                            </span>
+                            <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               )}
 
@@ -946,6 +984,14 @@ Sizni kutib qolamiz! 🏥`;
               )}
             </AnimatePresence>
           </div>
+
+          {/* Phone step-1 footer (design extra-14) */}
+          {jobStep === 1 && (
+            <div className="md:hidden border-t border-slate-100 bg-white px-4 py-3 grid grid-cols-2 gap-3 shrink-0">
+              <button type="button" onClick={() => setJobModalOpen(false)} className="h-12 rounded-xl border border-slate-200 bg-slate-50 font-bold text-[13px] uppercase tracking-wider text-slate-500">Bekor</button>
+              <button type="button" disabled={!jobForm.patient_id} onClick={() => setJobStep(2)} className="h-12 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 text-white font-bold text-[13px] uppercase tracking-wider inline-flex items-center justify-center gap-2">Davom etish <ArrowRight className="w-4 h-4" /></button>
+            </div>
+          )}
 
           {/* Sticky Footer Navigation */}
           {jobStep > 1 && (
