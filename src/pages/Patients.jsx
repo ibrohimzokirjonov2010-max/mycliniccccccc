@@ -239,7 +239,16 @@ export default function Patients() {
 
   // ─── Mutations ──────────────────────────────────────────────────────────
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Patient.delete(id),
+    mutationFn: async (id) => {
+      // Remove the patient's own records too, so no orphan payments/plans/implants remain
+      for (const ent of ['Payment', 'Implant', 'TreatmentPlan']) {
+        try {
+          const rows = await base44.entities[ent].filter({ patient_id: id }, '-created_date', 1000);
+          for (const r of rows || []) { if (r?.id && r.patient_id === id) await base44.entities[ent].delete(r.id); }
+        } catch (err) { console.error(`cascade delete ${ent} failed`, err); }
+      }
+      return base44.entities.Patient.delete(id);
+    },
     onSuccess: () => {
       setPage(0);
       queryClient.invalidateQueries({ queryKey: ['patients'] });

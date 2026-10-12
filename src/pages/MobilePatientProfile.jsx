@@ -575,6 +575,25 @@ export default function MobilePatientProfile() {
     try {
       const amount = Number(String(payForm.amount).replace(/\D/g, ''));
       const txId = payTxRef.current || (payTxRef.current = `pay_${id}_${Date.now()}`);
+      // Same patient total_paid / total_debt bookkeeping as the To'lovlar page save
+      let statsPatch = null;
+      try {
+        const [fPlans, fPays, fPat] = await Promise.all([
+          base44.entities.TreatmentPlan.filter({ patient_id: id }, '-created_date', 50),
+          base44.entities.Payment.filter({ patient_id: id }, '-date', 500),
+          base44.entities.Patient.filter({ id }),
+        ]);
+        const sum = (tp) => (fPays || []).filter(p => p.type?.toLowerCase() === tp).reduce((acc, p) => acc + Math.abs(Number(p.amount) || 0), 0);
+        const inc = sum('income'), dbt = sum('debt'), ref = sum('refund'), dis = sum('discount');
+        let cur = 0;
+        if (dbt > 0) { const net = inc + dis - dbt - ref; cur = net < 0 ? -net : 0; }
+        else if ((fPlans || []).length) { const net = inc + dis - fPlans.reduce((acc, pl) => acc + (Number(pl.total_price) || 0), 0); cur = net < 0 ? -net : 0; }
+        else { const net = inc - ref; cur = net < 0 ? -net : 0; }
+        const dbPaid = Number(fPat?.[0]?.total_paid) || 0;
+        const tp = (payForm.type || 'Income').toLowerCase();
+        if (tp === 'income') statsPatch = { total_paid: dbPaid + amount, total_debt: Math.max(0, cur - amount) };
+        else if (tp === 'refund') statsPatch = { total_paid: Math.max(0, dbPaid - amount), total_debt: cur + amount };
+      } catch (e) { console.error('patient stats calc failed', e); }
       await base44.entities.Payment.create({
         id: txId, patient_id: id, patient_name: patient?.full_name,
         type: payForm.type, amount,
@@ -593,6 +612,10 @@ export default function MobilePatientProfile() {
           }
           await base44.entities.TreatmentPlan.update(slice.id, patch);
         }
+      }
+      if (statsPatch) {
+        await base44.entities.Patient.update(id, statsPatch);
+        setPatient(prev => prev ? { ...prev, ...statsPatch } : prev);
       }
       payTxRef.current = '';
       toast.success("To'lov saqlandi");
