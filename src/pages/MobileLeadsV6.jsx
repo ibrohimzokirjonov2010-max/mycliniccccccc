@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   Plus, Search, MoreVertical, Phone, MessageCircle, ChevronRight, 
   CheckCircle2,
-  Settings2, Palette, Copy, UserPlus, X
+  SlidersHorizontal, Settings2, Palette, Copy, UserPlus, X, Calendar, FileText, MessageSquareText
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -104,7 +104,7 @@ export default function MobileLeadsV6() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', '');
-  const [filterStatus, setFilterStatus] = useRestorableState('filterStatus', 'new');
+  const [filterStatus, setFilterStatus] = useRestorableState('filterStatus', 'all');
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [statusSelectionLead, setStatusSelectionLead] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -293,107 +293,49 @@ export default function MobileLeadsV6() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: Math.min(index, 6) * 0.02 }}
-        className="mx-3 mb-2 bg-white rounded-2xl p-3 shadow-sm border border-slate-100 flex flex-col gap-2 active:scale-[0.99] hover:border-slate-200 transition-all duration-200 content-visibility-auto"
+        className="mx-3 mb-2.5 bg-white rounded-2xl p-3 shadow-sm border border-slate-200/70 flex flex-col gap-2.5 active:scale-[0.99] hover:border-slate-200 transition-all duration-200 content-visibility-auto"
         onClick={() => setSelectedLead(lead)}
       >
-        {/* Top Row: Avatar + Name + Source Badge + Dropdown Action */}
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {/* Brand source avatar */}
-            <LeadSourceIcon source={lead.source} className="w-9 h-9 rounded-xl shadow-sm" size={36} />
-            <div className="min-w-0">
-              <h3 className="font-extrabold text-slate-800 text-sm leading-snug truncate max-w-[130px]">
-                {lead.name || lead.full_name || 'Ismsiz'}
-              </h3>
-              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                {/* Source badge */}
-                <span className={`inline-flex items-center gap-1 pl-0.5 pr-1.5 py-0.5 rounded-md text-[9px] font-bold ${sourceInfo.bg}`}>
-                  <LeadSourceIcon source={lead.source} className="w-3.5 h-3.5 rounded-[5px] shadow-none ring-0" size={14} />
-                  <span>{sourceInfo.label}</span>
-                </span>
-                {timeAgo && (
-                  <span className="text-[9px] font-medium text-slate-400">
-                    • {timeAgo}
-                  </span>
-                )}
-              </div>
-            </div>
+        <div className="flex items-start gap-3">
+          <div className={`w-12 h-12 rounded-full grid place-items-center text-[15px] font-bold shrink-0 ${['bg-emerald-50 text-emerald-700','bg-violet-50 text-violet-700','bg-amber-50 text-amber-700','bg-blue-50 text-blue-700'][index % 4]}`}>
+            {String(lead.name || lead.full_name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
           </div>
-          
-          {/* Status Clickable Badge + Dropdown actions */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-slate-900 text-[16px] leading-snug truncate">{lead.name || lead.full_name || 'Ismsiz'}</h3>
+            <button type="button" onClick={(e) => copyPhoneNumber(e, lead.phone)} className="block text-[14px] text-slate-700 tabular-nums">{lead.phone}</button>
+            {(lead.created_date || lead.created_at) && (
+              <p className="text-[13px] text-slate-400 inline-flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{new Date(lead.created_date || lead.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '')}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-0.5 shrink-0">
             <button
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                setStatusSelectionLead(lead); 
-                setShowStatusModal(true); 
-              }}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full border text-[9px] font-extrabold uppercase tracking-wider transition-all duration-200 active:scale-95 ${badgeStyle.bg}`}
-            >
-              <div className={`w-1.5 h-1.5 rounded-full ${badgeStyle.dot}`} />
+              onClick={(e) => { e.stopPropagation(); setStatusSelectionLead(lead); setShowStatusModal(true); }}
+              className={`flex items-center gap-1.5 px-2.5 h-8 rounded-full border text-[12px] font-bold uppercase ${badgeStyle.bg}`}>
+              <span className={`w-2 h-2 rounded-full ${badgeStyle.dot}`} />
               <span>{status.label}</span>
-              <ChevronRight className="w-3 h-3 opacity-60 ml-0.5" />
             </button>
-            
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                 <button className="w-7 h-7 hover:bg-slate-50 rounded-lg flex items-center justify-center text-slate-400 active:scale-90 transition-transform">
-                    <MoreVertical className="w-4 h-4" />
-                 </button>
+                <button aria-label="Amallar" className="w-9 h-11 rounded-lg flex items-center justify-center text-slate-400"><ChevronRight className="w-5 h-5" /></button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="rounded-xl border border-slate-100 shadow-xl bg-white p-1">
-                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditInit(lead); }} className="font-bold px-4 py-2.5 text-xs rounded-lg cursor-pointer">
-                    Tahrirlash
-                 </DropdownMenuItem>
-                 <DropdownMenuItem onClick={async (e) => { e.stopPropagation(); if(confirm("O'chirishni tasdiqlaysizmi?")) { await base44.entities.Lead.delete(lead.id); loadLeads(); toast.success("O'chirildi"); } }} className="text-red-500 font-bold px-4 py-2.5 text-xs rounded-lg cursor-pointer">
-                    O'chirish
-                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedLead(lead); }} className="font-semibold px-4 py-3 text-[14px] rounded-lg cursor-pointer">Batafsil</DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditInit(lead); }} className="font-semibold px-4 py-3 text-[14px] rounded-lg cursor-pointer">Tahrirlash</DropdownMenuItem>
+                <DropdownMenuItem onClick={async (e) => { e.stopPropagation(); if(confirm("O'chirishni tasdiqlaysizmi?")) { await base44.entities.Lead.delete(lead.id); loadLeads(); toast.success("O'chirildi"); } }} className="text-red-500 font-semibold px-4 py-3 text-[14px] rounded-lg cursor-pointer">O'chirish</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
-
-        {/* Middle Row: Phone Number + Call & Telegram Buttons */}
-        <div className="flex items-center justify-between border-t border-slate-50 pt-2">
-          <div 
-            onClick={(e) => copyPhoneNumber(e, lead.phone)}
-            className="flex items-center gap-1.5 hover:text-slate-900 text-slate-700 transition-colors cursor-pointer active:opacity-75"
-          >
-            <span className="text-sm font-black tracking-tight select-all">{lead.phone}</span>
-            <Copy className="w-3.5 h-3.5 text-slate-300" />
+        <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0 h-11 rounded-xl bg-slate-50 px-3 flex items-center gap-2 text-[13px] text-slate-500">
+            <FileText className="w-4 h-4 shrink-0 text-slate-400" />
+            <span className="truncate">{lead.notes || sourceInfo.label || '—'}</span>
           </div>
-          
-          <div className="flex gap-1.5">
-            <button 
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                window.open(`tel:${lead.phone}`, '_self'); 
-              }} 
-              className="w-7 h-7 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center active:scale-90 transition-all border border-emerald-100/30"
-            >
-               <Phone className="w-3.5 h-3.5" />
-            </button>
-            <button 
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                const phoneClean = lead.phone?.replace(/\D/g, '');
-                window.open(`https://t.me/+${phoneClean}`, '_blank'); 
-              }} 
-              className="w-7 h-7 bg-sky-50 text-sky-600 rounded-lg flex items-center justify-center active:scale-90 transition-all border border-sky-100/30"
-            >
-               <MessageCircle className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          <button aria-label="Qo'ng'iroq" onClick={(e) => { e.stopPropagation(); window.open(`tel:${lead.phone}`, '_self'); }}
+            className="w-12 h-11 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center"><Phone className="w-5 h-5" /></button>
+          <button aria-label="Xabar" onClick={(e) => { e.stopPropagation(); const phoneClean = lead.phone?.replace(/\D/g, ''); window.open(`https://t.me/+${phoneClean}`, '_blank'); }}
+            className="w-12 h-11 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center"><MessageSquareText className="w-5 h-5" /></button>
         </div>
-
-        {/* Bottom Notes Row (if notes exist) */}
-        {lead.notes && (
-           <div className="bg-slate-50/60 px-2.5 py-1.5 rounded-xl border border-slate-100/50 text-[10px] text-slate-500 font-medium leading-relaxed italic flex items-start gap-1">
-             <span className="text-slate-300 select-none">“</span>
-             <span className="flex-1 line-clamp-2">{lead.notes}</span>
-             <span className="text-slate-300 select-none">”</span>
-           </div>
-        )}
       </motion.div>
     );
   };
@@ -405,19 +347,19 @@ export default function MobileLeadsV6() {
         <div className="bg-white px-4 pt-4 pb-3 sticky top-0 z-20 border-b border-slate-100/60 shadow-sm shadow-slate-100/5">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight">Leadlar</h1>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5 opacity-70">Potensial Bemorlar</p>
+              <h1 className="text-[24px] font-extrabold text-slate-900 tracking-tight">Leadlar</h1>
+              <p className="text-[13px] font-semibold text-slate-400 uppercase tracking-[0.15em] mt-0.5">Potensial Bemorlar</p>
             </div>
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => setShowSettingsModal(true)}
-                className="w-9 h-9 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-xl flex items-center justify-center border border-slate-100 shadow-sm active:scale-95 transition-all"
+                className="w-12 h-12 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center border border-slate-100 shadow-sm active:scale-95 transition-all"
               >
-                <Settings2 className="w-4.5 h-4.5" />
+                <SlidersHorizontal className="w-5 h-5" />
               </button>
               <button 
                 onClick={() => { resetForm(); setShowAddModal(true); }}
-                className="w-10 h-10 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-all"
+                className="w-12 h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-all"
               >
                 <Plus className="w-5 h-5" />
               </button>
@@ -426,26 +368,26 @@ export default function MobileLeadsV6() {
 
           {/* Redesigned Stats Header */}
           <div className="grid grid-cols-3 gap-2 mb-3">
-             <div className="bg-gradient-to-br from-white to-slate-50/50 border border-slate-100 p-2.5 rounded-2xl shadow-sm flex flex-col justify-between h-14">
+             <div className="bg-gradient-to-br from-white to-slate-50/50 border border-slate-100 p-2.5 rounded-2xl shadow-sm flex flex-col justify-between h-16">
                 <div className="flex justify-between items-start">
-                   <span className="text-xl font-black text-slate-900 leading-none">{stats.total}</span>
+                   <span className="text-[22px] font-black text-slate-900 leading-none">{stats.total}</span>
                    <span className="text-sm select-none">🎯</span>
                 </div>
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider leading-none">Jami</p>
+                <p className="text-[12px] font-black text-slate-400 uppercase tracking-wider leading-none">Jami</p>
              </div>
-             <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 rounded-2xl shadow-md shadow-emerald-500/10 flex flex-col justify-between h-14 text-white border border-emerald-600/30">
+             <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-2.5 rounded-2xl shadow-md shadow-emerald-500/10 flex flex-col justify-between h-16 text-white border border-emerald-600/30">
                 <div className="flex justify-between items-start">
-                   <span className="text-xl font-black leading-none">{stats.new}</span>
+                   <span className="text-[22px] font-black leading-none">{stats.new}</span>
                    <span className="text-sm select-none">🔥</span>
                 </div>
-                <p className="text-[8px] font-black text-white/80 uppercase tracking-wider leading-none font-bold">Yangi</p>
+                <p className="text-[12px] font-black text-white/80 uppercase tracking-wider leading-none font-bold">Yangi</p>
              </div>
-             <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-2.5 rounded-2xl shadow-md shadow-slate-950/10 flex flex-col justify-between h-14 text-white border border-slate-800">
+             <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-2.5 rounded-2xl shadow-md shadow-slate-950/10 flex flex-col justify-between h-16 text-white border border-slate-800">
                 <div className="flex justify-between items-start">
-                   <span className="text-xl font-black leading-none">{stats.conversion}%</span>
+                   <span className="text-[22px] font-black leading-none">{stats.conversion}%</span>
                    <span className="text-sm select-none">📈</span>
                 </div>
-                <p className="text-[8px] font-black text-white/60 uppercase tracking-wider leading-none">Konversiya</p>
+                <p className="text-[12px] font-black text-white/60 uppercase tracking-wider leading-none">Konversiya</p>
              </div>
           </div>
 
@@ -457,7 +399,7 @@ export default function MobileLeadsV6() {
               placeholder="Izlash..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-9 pl-10 pr-4 rounded-xl bg-slate-50 border border-slate-100 text-xs font-bold focus:bg-white focus:border-slate-300 focus:ring-4 focus:ring-slate-900/5 transition-all placeholder:text-slate-400"
+              className="w-full h-12 pl-10 pr-4 rounded-xl bg-slate-50 border border-slate-100 text-[14px] font-medium focus:bg-white focus:border-slate-300 focus:ring-4 focus:ring-slate-900/5 transition-all placeholder:text-slate-400"
             />
           </div>
 
@@ -466,13 +408,13 @@ export default function MobileLeadsV6() {
             <button
               onClick={() => setFilterStatus('all')}
               className={`
-                px-3 py-1.5 rounded-xl whitespace-nowrap transition-all border shrink-0 flex items-center gap-1.5
+                h-10 px-3.5 rounded-xl whitespace-nowrap transition-all border shrink-0 flex items-center gap-1.5
                 ${filterStatus === 'all'
                   ? 'bg-slate-900 border-slate-900 text-white shadow-md' 
                   : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}
               `}
             >
-              <span className="text-[9px] font-black uppercase tracking-wider">Hamma</span>
+              <span className="text-[13px] font-bold uppercase">Hamma</span>
             </button>
             {[...pipeline, 'lost'].map((s) => {
               const isActive = filterStatus === s;
@@ -482,14 +424,14 @@ export default function MobileLeadsV6() {
                   key={s}
                   onClick={() => setFilterStatus(s)}
                   className={`
-                    px-3 py-1.5 rounded-xl whitespace-nowrap transition-all border shrink-0 flex items-center gap-1.5
+                    h-10 px-3.5 rounded-xl whitespace-nowrap transition-all border shrink-0 flex items-center gap-1.5
                     ${isActive 
                       ? 'bg-slate-900 border-slate-900 text-white shadow-md' 
                       : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'}
                   `}
                 >
                   <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : config.dot}`} />
-                  <span className="text-[9px] font-black uppercase tracking-wider">{config.label}</span>
+                  <span className="text-[13px] font-bold uppercase">{config.label}</span>
                 </button>
               );
             })}
