@@ -4,6 +4,7 @@ import { BackClose } from '@/hooks/useBackClose';
 import { createPortal } from 'react-dom';
 import {
   Check, Layers, Plus, Printer, X,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
@@ -365,6 +366,7 @@ export default function ToothChartCard({
   const [dentition, setDentition] = useState(() => dentitionForAge(patientAgeYears(patient)));
   const [filter, setFilter] = useState('all');
   const [multi, setMulti] = useState(false);
+  const [fullTools, setFullTools] = useState(false);
   const [selected, setSelected] = useState([]);
   const [active, setActive] = useState(null);
   const [surfaces, setSurfaces] = useState([]);
@@ -1046,7 +1048,7 @@ export default function ToothChartCard({
                 setDentition(id);
               }}
               options={[
-                { id: 'adult', label: 'Doimiy' },
+                { id: 'adult', label: full ? 'Doimiy tishlar (FDI)' : 'Doimiy' },
                 { id: 'child', label: 'Sut tishlari' },
               ]}
             />
@@ -1085,8 +1087,8 @@ export default function ToothChartCard({
             )}
           </div>
 
-          {phone && (
-            <div className="mt-2 min-w-0 max-w-full overflow-x-auto">
+          {phone && (!full || fullTools) && (
+            <div className={cn('mt-2 min-w-0 max-w-full overflow-x-auto', full && 'tooth-full-tools')} data-testid="chart-more-tools">
               <div className="flex w-max items-center gap-2">
                 <Seg
                   value={filter}
@@ -1104,15 +1106,21 @@ export default function ToothChartCard({
             </div>
           )}
 
-          <div className={cn('tooth-legend mt-2', phone && 'chip-rail')}>
-            <div className={cn(phone ? 'chip-rail-scroll' : 'tooth-legend-row flex flex-wrap gap-1.5')}>
+          <div className={cn('tooth-legend mt-2', phone && !full && 'chip-rail', full && 'tooth-legend-full flex items-center gap-1.5')}>
+            <div className={cn(full ? 'flex min-w-0 flex-1 gap-1.5 overflow-x-auto no-scrollbar' : phone ? 'chip-rail-scroll' : 'tooth-legend-row flex flex-wrap gap-1.5')}>
               {LEGEND.map((k) => (
-                <span key={k.id} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-solid border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600">
-                  <i className="h-2 w-2 rounded-sm" style={{ background: k.color }} />
+                <span key={k.id} className={cn('inline-flex shrink-0 items-center gap-1.5 rounded-full border border-solid border-slate-200 bg-white text-slate-600', full ? 'h-8 px-2.5 text-[12px] font-medium' : 'px-2 py-1 text-[11px] font-semibold')}>
+                  <i className={cn(full ? 'h-2.5 w-2.5 rounded-full' : 'h-2 w-2 rounded-sm')} style={{ background: k.color }} />
                   {k.label}
                 </span>
               ))}
             </div>
+            {full && (
+              <button type="button" onClick={() => setFullTools((v) => !v)} aria-expanded={fullTools} aria-label="Filtr, chop etish va statistika" data-testid="chart-more-toggle"
+                className="compact-hit grid h-8 w-8 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-blue-600">
+                <ChevronRight className={cn('h-4 w-4 transition-transform', fullTools && 'rotate-90')} />
+              </button>
+            )}
           </div>
           </div>
 
@@ -1201,6 +1209,7 @@ export default function ToothChartCard({
                 </div>
               </div>
           </div>
+          {(!full || fullTools) && (<>
           {phone && (summary.planned > 0 || summary.done > 0) && (
             <p className="mt-1 px-1 text-[11px] text-slate-500">
               {summary.planned > 0 && <b className="text-rose-600">{summary.planned} reja</b>}
@@ -1238,6 +1247,7 @@ export default function ToothChartCard({
           {!plannedItem && (
             <p className="mt-2 rounded-xl border border-dashed border-slate-200 px-3 py-2 text-xs font-semibold text-slate-400">Rejadagi ish yo‘q</p>
           )}
+          </>)}
 
           {multi && selected.length > 0 && (
             <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-white">
@@ -1471,6 +1481,7 @@ function Seg({ value, onChange, options, testid }) {
           key={o.id}
           type="button"
           data-testid={testid ? `${testid}-${o.id}` : undefined}
+          aria-pressed={value === o.id}
           onClick={() => onChange(o.id)}
           className={cn('compact-hit h-7 shrink-0 rounded-md px-2 text-[11px] font-bold whitespace-nowrap', value === o.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500')}
         >

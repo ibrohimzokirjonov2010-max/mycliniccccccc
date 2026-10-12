@@ -22,12 +22,31 @@ import ConsentForm from './ConsentForm';
 
 const TEAL = '#14b8a6';
 
-export function ChairsideClinicalTabBar({ activeTab, onChange, language = 'uz', className }) {
+export function ChairsideClinicalTabBar({ activeTab, onChange, language = 'uz', className, design = false, counts = null }) {
   const tabs = [
     { id: 'tashxis', label: language === 'ru' ? 'Диагноз' : 'Tashxis', icon: Activity },
     { id: 'rvg', label: 'RVG', icon: ImageIcon },
     { id: 'rozilik', label: language === 'ru' ? 'Согласие' : 'Rozilik', icon: FileText },
   ];
+  if (design) {
+    return (
+      <div className="chairside-tool-tabs grid grid-cols-3 gap-2 p-2 rounded-[20px] border border-slate-100 bg-white shadow-[0_2px_10px_rgba(15,23,42,0.05)]" data-clinical-tabs="true">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          const n = counts?.[tab.id];
+          return (
+            <button key={tab.id} type="button" onClick={() => onChange?.(tab.id)} aria-pressed={isActive}
+              className={cn('flex items-center justify-center gap-1.5 h-[46px] px-1 rounded-xl border text-[12px] font-bold uppercase tracking-wide', isActive ? 'bg-teal-50/80 border-teal-200 text-teal-700' : 'bg-white border-slate-100 text-slate-600')}>
+              <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-[#14b8a6]' : 'text-slate-500')} />
+              <span>{tab.label}</span>
+              {n != null && <span className="ml-0.5 min-w-[20px] h-5 px-1.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold flex items-center justify-center">{n}</span>}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
   return (
     <div className={cn('chairside-tool-tabs flex w-full min-w-0 max-w-full flex-wrap gap-1', className)} data-clinical-tabs="true">
       {tabs.map((tab) => {
@@ -73,6 +92,7 @@ export default function ChairsideClinicalTools({
   onTabChange,
   doctorName = '',
   doctors = [],
+  design = false,
 }) {
   const patientId = patient?.id;
   const [internalTab, setInternalTab] = useState('tashxis');
@@ -213,6 +233,12 @@ export default function ChairsideClinicalTools({
   const showRozilik = showAll || activeTab === 'rozilik';
   const tashxisOnly = tabbed && activeTab === 'tashxis';
 
+  const designCounts = {
+    tashxis: (clinical?.entries || []).length,
+    rvg: xrays.length,
+    rozilik: consent?.given ? 1 : 0,
+  };
+
   if (tashxisOnly && hideTabBar) {
     return <div id="chairside-clinical-tools" className="hidden" />;
   }
@@ -224,6 +250,8 @@ export default function ChairsideClinicalTools({
           activeTab={activeTab}
           onChange={setActiveTab}
           language={language}
+          design={design}
+          counts={design ? designCounts : null}
           className="relative top-auto z-0 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-[0_1px_3px_rgba(15,23,42,0.06)]"
         />
       )}

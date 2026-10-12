@@ -1172,3 +1172,26 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
   .tooth-chart-root.tooth-chart-full .odonto-quad { align-items: stretch !important; }
   .tooth-chart-root.tooth-chart-full .odonto-quad .compact-hit { justify-content: space-between; }
 }
+
+/* profile-exact-1012: design chart card (mobile full arch only) */
+.tooth-chart-full .tooth-chart-main {
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  border-color: #eef2f7;
+  padding: 12px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+}
+.tooth-chart-full .tooth-chart-toolbar { display: contents; }
+.tooth-chart-full .odonto-fit-frame { order: 10; }
+.tooth-chart-full .tooth-legend-full { order: 20; margin-top: 10px; }
+.tooth-chart-full .tooth-full-tools { order: 21; }
+.tooth-chart-full .odonto-fit-frame ~ * { order: 30; }
+.tooth-chart-root.tooth-chart-full .odonto-cross { border: 0; padding-top: 2px; padding-bottom: 2px; }
+.tooth-chart-full .odonto-cross::before { background: #cbd5e1; top: 4px; bottom: 4px; }
+.tooth-chart-full .odonto-bite-line { background: transparent; margin: 4px 0; }
+.tooth-chart-full [data-testid="arch-full-sides"] { display: none; }
+.tooth-chart-full [data-testid="dentition-toggle"] { border: 0; background: transparent; padding: 0; gap: 8px; }
+.tooth-chart-full [data-testid="dentition-toggle"] button { height: 36px; padding: 0 12px; font-size: 13px; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; font-weight: 500; box-shadow: none; }
+.tooth-chart-full [data-testid="dentition-toggle"] button[aria-pressed="true"] { background: #dbeafe; border-color: #bfdbfe; color: #1d6ff2; font-weight: 700; }
+.tooth-chart-full .tooth-chart-toolbar > div > button.ml-auto { height: 36px; border-radius: 12px; font-size: 13px; font-weight: 600; }

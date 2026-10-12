@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Check, CalendarDays, Stethoscope, ClipboardList, ChevronDown } from 'lucide-react';
+import { Check, CalendarDays, Stethoscope, ClipboardList, ChevronDown, ChevronRight, MoreHorizontal, Wallet, CreditCard, ArrowRight } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import { groupProgress, findNextSavedPlanStep } from './planStepperModel';
 
@@ -11,7 +11,7 @@ function stepCaption(step) {
   return `${step.title || ''}${tooth}`;
 }
 
-function StepTrack({ steps, focusId }) {
+function StepTrack({ steps, focusId, design = false }) {
   const trackRef = useRef(null);
   useEffect(() => {
     if (focusId == null || !trackRef.current) return;
@@ -25,6 +25,31 @@ function StepTrack({ steps, focusId }) {
       <p className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
         Barcha bosqichlar bajarilgan
       </p>
+    );
+  }
+  if (design) {
+    const shown = visible.slice(0, 4);
+    return (
+      <div ref={trackRef} className="pb-1" data-testid="plan-stepper-scroll">
+        <div className="flex items-start">
+          {shown.map((step, idx) => {
+            const isActive = step.state === 'active';
+            const faded = idx === 3;
+            return (
+              <div key={step.id || idx} data-step-id={step.id} className={cn('relative flex-1 min-w-0 flex flex-col items-center text-center px-0.5', faded && 'opacity-40')}>
+                {idx < shown.length - 1 && <span className="absolute top-[15px] left-[calc(50%+22px)] right-[calc(-50%+22px)] h-px bg-slate-300" aria-hidden />}
+                <div className={cn('w-[30px] h-[30px] rounded-full flex items-center justify-center text-[12px] font-bold', isActive ? 'bg-[#14b8a6] text-white ring-4 ring-teal-100' : 'bg-white border-[1.5px] border-slate-300 text-slate-600')}>
+                  {step.number || idx + 1}
+                </div>
+                <p className="mt-2 text-[11.5px] font-semibold text-slate-900 leading-[1.3] line-clamp-2 break-words">{stepCaption(step).replace(/\s*\((#\d+)\)/, ' $1')}</p>
+                <p className={cn('mt-0.5 text-[10.5px] font-medium', isActive ? 'text-[#0d9488]' : 'text-slate-400')}>
+                  <span data-testid="plan-step-status">{step.statusLabel || (isActive ? 'Jarayonda' : 'Kutilmoqda')}</span>
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     );
   }
   return (
@@ -86,6 +111,7 @@ export default function TodayPlanBar({
   plans = null,
   implants = [],
   part = 'all',
+  design = false,
 }) {
   const planGroups = useMemo(() => {
     if (Array.isArray(groups) && groups.length) return groups;
@@ -135,14 +161,15 @@ export default function TodayPlanBar({
   const badge = progress.total > 0 ? `${progress.done}/${progress.total}` : "Reja yo'q";
 
   const stepperCard = (
-      <div data-plan-stepper="true" className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] px-4 sm:px-5 py-3.5 min-w-0">
+      <div data-plan-stepper="true" className={cn('bg-white min-w-0', design ? 'rounded-[20px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.05)] px-3.5 py-3.5' : 'rounded-2xl border border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.06)] px-4 sm:px-5 py-3.5')}>
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-2 min-w-0">
-            <CalendarDays className="w-4 h-4 shrink-0" style={{ color: TEAL }} />
-            <h3 className="text-sm font-black text-slate-900 truncate">{title}</h3>
+            {design ? <ClipboardList className="w-5 h-5 shrink-0 text-[#14b8a6]" /> : <CalendarDays className="w-4 h-4 shrink-0" style={{ color: TEAL }} />}
+            <h3 className={cn('text-slate-900 truncate', design ? 'text-[15px] font-bold' : 'text-sm font-black')}>{title}</h3>
           </div>
           <span className={cn(
-            'px-2.5 py-1 rounded-full text-[10px] font-black border shrink-0',
+            'px-2.5 py-1 rounded-full border shrink-0',
+            design ? 'text-[11px] font-bold' : 'text-[10px] font-black',
             progress.total > 0 && progress.done === progress.total
               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
               : progress.total > 0
@@ -184,7 +211,31 @@ export default function TodayPlanBar({
           </div>
         ) : (
           <>
-            {planGroups.length > 1 && (
+            {design && planGroups.length > 0 && (
+              <div className="flex gap-2 mb-3" data-testid="plan-stepper-tabs">
+                {planGroups.slice(0, 2).map((group) => {
+                  const item = groupProgress(group);
+                  const on = group.id === selected?.id;
+                  return (
+                    <button key={group.id} type="button" aria-pressed={on}
+                      onClick={() => { setSelectedId(group.id); setDoneOpen(false); }}
+                      className={cn('flex-1 min-w-0 rounded-xl border px-2.5 py-2 text-left flex items-center gap-1', on ? 'border-teal-300 bg-teal-50/70' : 'border-slate-200 bg-white')}>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[11.5px] font-semibold text-slate-900">{group.title}</span>
+                        <span className={cn('block text-[11px] font-medium', on ? 'text-teal-700' : 'text-slate-500')}>{item.done}/{item.total}</span>
+                      </span>
+                      <ChevronRight className={cn('w-4 h-4 shrink-0', on ? 'text-teal-700' : 'text-slate-400')} />
+                    </button>
+                  );
+                })}
+                {typeof onOpenPlan === 'function' && (
+                  <button type="button" onClick={onOpenPlan} aria-label="Rejalar" className="w-10 shrink-0 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-500">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )}
+            {!design && planGroups.length > 1 && (
               <div className="flex gap-2 overflow-x-auto pb-2 mb-1" data-testid="plan-stepper-tabs">
                 {planGroups.map((group) => {
                   const item = groupProgress(group);
@@ -210,11 +261,11 @@ export default function TodayPlanBar({
               </div>
             )}
 
-            {planGroups.length === 1 && selected?.title && selected.title !== title && (
+            {!design && planGroups.length === 1 && selected?.title && selected.title !== title && (
               <p className="mb-2 text-xs font-black text-slate-700 truncate">{selected.title}</p>
             )}
 
-            <StepTrack steps={displaySteps} focusId={focusId} />
+            <StepTrack steps={displaySteps} focusId={focusId} design={design} />
 
             {doneSteps.length > 0 && (
               <div className="mt-2">
@@ -244,7 +295,7 @@ export default function TodayPlanBar({
               </div>
             )}
 
-            <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+            <div className={cn('flex flex-wrap items-center gap-2', design ? 'mt-3 [&>[data-testid=plan-next-step]]:w-full' : 'mt-3.5 border-t border-slate-100 pt-3')}>
               {typeof onNextClinical === 'function' && (() => {
                 const planSteps = (selected?.steps || []).filter((step) => step.planId != null);
                 if (typeof onAdvanceStep === 'function' && planSteps.length > 0) {
@@ -282,11 +333,12 @@ export default function TodayPlanBar({
                         setFocusId(nextStep.id);
                         onNextClinical(nextStep, { advanced: true });
                       }}
-                      className="inline-flex max-w-full items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-[11px] font-black shadow-sm cursor-pointer hover:opacity-95 disabled:opacity-60 disabled:cursor-wait"
-                      style={{ backgroundColor: TEAL }}
+                      className={cn('inline-flex max-w-full items-center gap-1.5 text-white shadow-sm cursor-pointer hover:opacity-95 disabled:opacity-60 disabled:cursor-wait', design ? 'h-11 px-3.5 rounded-xl text-[13px] font-semibold' : 'px-3.5 py-2 rounded-xl text-[11px] font-black')}
+                      style={{ backgroundColor: design ? '#2f7cf6' : TEAL }}
                     >
-                      <Stethoscope className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{`Keyingi: ${stepCaption(nextStep)}`}</span>
+                      <Stethoscope className={cn('shrink-0', design ? 'w-4.5 h-4.5' : 'w-3.5 h-3.5')} />
+                      <span className="truncate flex-1 text-left">{`Keyingi: ${stepCaption(nextStep)}`}</span>
+                      {design && <ChevronRight className="w-4 h-4 shrink-0" />}
                     </button>
                   );
                 }
@@ -317,17 +369,17 @@ export default function TodayPlanBar({
                       toast.info(activeStep ? `Keyingi bosqich: ${stepCaption(activeStep)}` : "Tashxis / muolaja bo'limi");
                       onNextClinical(activeStep);
                     }}
-                    className="inline-flex max-w-full items-center gap-1.5 px-3.5 py-2 rounded-xl text-white text-[11px] font-black shadow-sm cursor-pointer hover:opacity-95 disabled:opacity-60 disabled:cursor-wait"
-                    style={{ backgroundColor: TEAL }}
+                    className={cn('inline-flex max-w-full items-center gap-1.5 text-white shadow-sm cursor-pointer hover:opacity-95 disabled:opacity-60 disabled:cursor-wait', design ? 'h-11 px-3.5 rounded-xl text-[13px] font-semibold' : 'px-3.5 py-2 rounded-xl text-[11px] font-black')}
+                    style={{ backgroundColor: design ? '#2f7cf6' : TEAL }}
                   >
                     <Stethoscope className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">
+                    <span className="truncate flex-1 text-left">
                       {activeStep ? `Keyingi: ${stepCaption(activeStep)}` : 'Tashxis / muolaja'}
                     </span>
                   </button>
                 );
               })()}
-              {typeof onPay === 'function' && (
+              {!design && typeof onPay === 'function' && (
                 <button
                   type="button"
                   onClick={onPay}
@@ -374,6 +426,21 @@ export default function TodayPlanBar({
       </div>
   );
 
+  const payCardDesign = (
+      <div data-tez-tolov="true" className="bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.05)] px-3.5 py-3.5 flex items-center gap-3">
+        <Wallet className="w-6 h-6 text-[#14b8a6] shrink-0 self-start mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-medium text-slate-500">Tez to&apos;lov</p>
+          <p className={cn('text-[18px] font-extrabold leading-tight tabular-nums whitespace-nowrap', payTarget > 0 ? 'text-slate-900' : 'text-slate-500')}>{formatCurrency(payTarget || 0)}</p>
+          <p className={cn('text-[12px] font-semibold', payTarget > 0 ? 'text-rose-600' : 'text-emerald-600')}>{remainingLabel}</p>
+        </div>
+        <button type="button" onClick={onPay} className="shrink-0 h-12 px-3 rounded-xl bg-[#0f8f63] text-white text-[13px] font-semibold inline-flex items-center gap-2 active:scale-[0.98]">
+          <CreditCard className="w-4 h-4" />To&apos;lovga o&apos;tish<ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
+  );
+
+  if (design && part === 'pay') return payCardDesign;
   if (part === 'stepper') return stepperCard;
   if (part === 'pay') return payCard;
   return (
