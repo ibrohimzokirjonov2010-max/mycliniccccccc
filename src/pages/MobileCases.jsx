@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { useBackClose } from '@/hooks/useBackClose';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Search, Image as ImageIcon, Sparkles, X, ChevronRight, ChevronLeft, ArrowLeft, Pen, Trash2, AlertCircle } from 'lucide-react';
+import { Camera, Search, Image as ImageIcon, Sparkles, X, ChevronRight, ChevronLeft, ArrowLeft, Pen, Trash2, AlertCircle, Plus, UserRound, Stethoscope, LayoutGrid, AlignLeft, Info } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -154,13 +154,10 @@ export default function MobileCases() {
     <div className="min-h-screen bg-slate-50/50 text-slate-900 pb-32">
       
       {/* HEADER */}
-      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-4 pt-6 pb-4">
-        <div className="flex items-center justify-between mb-4">
-           <button onClick={() => navigate(-1)} className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">
-             <ArrowLeft className="w-5 h-5" />
-           </button>
-           <h1 className="text-xl font-black uppercase tracking-widest text-[#1499AD]">Keyslar</h1>
-           <div className="w-10" />
+      <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl px-4 pt-4 pb-3">
+        <div className="mb-3">
+           <h1 className="text-[24px] font-extrabold tracking-tight text-slate-900">Mening keyslarim</h1>
+           <p className="text-[14px] font-medium text-[#1499AD]/80">Klinik keyslar va bemor ishlari</p>
         </div>
 
         <div className="relative">
@@ -179,7 +176,7 @@ export default function MobileCases() {
         <div className="w-7 h-7 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
           <AlertCircle className="w-4 h-4" />
         </div>
-        <p className="text-[11px] font-black text-rose-600 tracking-tight leading-snug">
+        <p className="text-[13px] font-bold text-rose-600 tracking-tight leading-snug">
           Iltimos xotira to'lmasligi uchun sifatli rasmlarni yuklang
         </p>
       </div>
@@ -191,7 +188,7 @@ export default function MobileCases() {
               <button
                 key={tag}
                 onClick={() => setActiveTag(tag)}
-                className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all duration-300 ${
+                className={`shrink-0 h-12 px-5 rounded-xl text-[13px] font-black uppercase tracking-wider whitespace-nowrap transition-all duration-300 ${
                   activeTag === tag 
                     ? 'bg-[#1499AD] text-white shadow-lg shadow-[#1499AD]/20' 
                     : 'text-slate-500 bg-white border border-slate-100'
@@ -202,9 +199,9 @@ export default function MobileCases() {
             ))}
             <button
               onClick={() => setIsTagModalOpen(true)}
-              className="shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap bg-white border border-dashed border-[#1499AD] text-[#1499AD] flex items-center gap-1 active:scale-95 transition-transform"
+              className="shrink-0 h-12 px-5 rounded-xl text-[13px] font-black uppercase tracking-wider whitespace-nowrap bg-white border border-dashed border-[#1499AD] text-[#1499AD] flex items-center gap-1 active:scale-95 transition-transform"
             >
-              <Sparkles className="w-3 h-3" />
+              <Sparkles className="w-4 h-4" />
               <span>Qo'shish</span>
             </button>
          </div>
@@ -249,9 +246,13 @@ export default function MobileCases() {
           ))}
 
           {filteredCases.length === 0 && (
-             <div className="py-20 flex flex-col items-center justify-center text-slate-500">
-               <ImageIcon className="w-12 h-12 mb-3 opacity-30" />
-               <p className="font-bold text-sm">Keyslar topilmadi</p>
+             <div className="py-16 flex flex-col items-center justify-center text-center px-6">
+               <div className="relative w-28 h-28 rounded-full bg-[#1499AD]/10 grid place-items-center mb-4">
+                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 flex gap-2 text-[#1499AD]/60"><i className="block w-0.5 h-3 bg-current rounded -rotate-45" /><i className="block w-0.5 h-3.5 bg-current rounded" /><i className="block w-0.5 h-3 bg-current rounded rotate-45" /></span>
+                 <ImageIcon className="w-14 h-14 text-[#1499AD]/70" />
+               </div>
+               <p className="font-bold text-[16px] text-slate-900">Keyslar topilmadi</p>
+               <p className="text-[14px] text-slate-500 mt-1 max-w-[290px]">Hozircha hech qanday klinik keys mavjud emas. Yangi keys qo'shib, o'z ishlaringizni saqlang.</p>
              </div>
           )}
         </AnimatePresence>
@@ -699,189 +700,113 @@ function MobileUploadModal({ isOpen, onClose, onSave, existingTags = [], patient
     return nameStr.includes(searchStr) || phoneStr.includes(searchStr);
   });
 
+  const Lbl = ({ icon: Icon, children, right }) => (
+    <div className="flex items-center gap-2 mb-2">
+      <Icon className="w-4 h-4 text-slate-500" />
+      <span className="flex-1 text-[13px] font-bold uppercase tracking-wide text-slate-500">{children}</span>
+      {right}
+    </div>
+  );
+  const UploadTile = ({ img, type, title }) => (
+    <label className="h-36 w-full rounded-2xl border-2 border-dashed border-[#1499AD]/40 bg-[#1499AD]/[0.04] flex flex-col items-center justify-center gap-1.5 relative overflow-hidden cursor-pointer">
+      <input type="file" accept="image/*" className="hidden" capture="environment" onChange={(e) => handleImageUpload(e, type)} />
+      {img ? <img src={img} alt="" className="absolute inset-0 w-full h-full object-cover" /> : (
+        <>
+          <span className="relative text-[#1499AD]"><ImageIcon className="w-9 h-9" /><Plus className="absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-[#1499AD] text-white p-0.5" /></span>
+          <span className="text-[14px] font-bold text-[#1499AD]">{title}</span>
+          <span className="text-[13px] text-slate-500">Rasm tanlang yoki kameradan oling</span>
+        </>
+      )}
+    </label>
+  );
+  const countPill = (img) => <span className="px-2.5 py-1 rounded-full bg-slate-100 text-[12px] font-semibold text-slate-500">{img ? 1 : 0} ta rasm</span>;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-md w-[92vw] max-h-[85vh] p-0 border-none rounded-[2rem] bg-white outline-none overflow-hidden flex flex-col shadow-2xl !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
-        {/* Green Gradient Header */}
-        <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-4 flex items-center justify-between shrink-0 text-white rounded-t-[2rem]">
-           <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm">
-                 <Camera className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                 <h2 className="text-[15px] font-black text-white uppercase leading-none tracking-tight">Yangi Keys Qo'shish</h2>
-                 <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">{t('navigation.systemName')}</p>
-              </div>
-           </div>
-           <button 
-              onClick={onClose} 
-              className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center active:scale-90 transition-all border-none cursor-pointer"
-           >
-              <X className="w-4 h-4" />
-           </button>
+      <DialogContent className="w-screen max-w-none h-[100dvh] max-h-[100dvh] p-0 border-none rounded-none bg-white outline-none overflow-hidden flex flex-col !left-0 !top-0 !translate-x-0 !translate-y-0 [&>button]:hidden" aria-describedby={undefined} data-testid="case-add-sheet">
+        <div className="shrink-0 px-4 pt-4 pb-2 text-center relative">
+          <button onClick={onClose} aria-label="Yopish" className="absolute right-3 top-3 w-11 h-11 rounded-full bg-slate-100 text-slate-600 grid place-items-center"><X className="w-5 h-5" /></button>
+          <DialogTitle className="text-[22px] font-extrabold text-slate-900">Yangi klinik keys</DialogTitle>
+          <p className="text-[14px] font-medium text-slate-400">Klinik keysni qo'shish va bo'lishish</p>
         </div>
 
-        {/* Form Body */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50/30 no-scrollbar">
-          
-          {/* Upload Buttons */}
-          <div className="grid grid-cols-2 gap-4">
-            <label className="h-32 bg-white border-2 border-dashed border-slate-200 rounded-[1.5rem] flex flex-col items-center justify-center gap-2 relative overflow-hidden transition-colors hover:border-[#1499AD] cursor-pointer">
-               <input type="file" accept="image/*" className="hidden" capture="environment" onChange={(e) => handleImageUpload(e, 'before')} />
-               {beforeImg ? (
-                  <img src={beforeImg} alt="Before" className="w-full h-full object-cover" />
-               ) : (
-                 <>
-                   <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-300">
-                     <Camera className="w-5 h-5" />
-                   </div>
-                   <div className="text-center">
-                     <div className="text-slate-400 font-black text-[9px] uppercase tracking-widest">"Oldin" rasm</div>
-                   </div>
-                 </>
-               )}
-            </label>
-
-            <label className="h-32 bg-white border-2 border-dashed border-emerald-200 rounded-[1.5rem] flex flex-col items-center justify-center gap-2 relative overflow-hidden transition-colors hover:border-emerald-500 cursor-pointer">
-               <input type="file" accept="image/*" className="hidden" capture="environment" onChange={(e) => handleImageUpload(e, 'after')} />
-               {afterImg ? (
-                  <img src={afterImg} alt="After" className="w-full h-full object-cover" />
-               ) : (
-                 <>
-                   <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-400">
-                     <Sparkles className="w-5 h-5" />
-                   </div>
-                   <div className="text-center">
-                     <div className="text-emerald-500 font-black text-[9px] uppercase tracking-widest">"Keyin" rasm</div>
-                   </div>
-                 </>
-               )}
-            </label>
-          </div>
-
-          {/* Shifokor */}
-          <div>
-             <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-2 block">Davolovchi Shifokor</label>
-             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-               {doctors.length > 0 ? doctors.map(doc => (
-                 <button 
-                   key={doc}
-                   onClick={() => setSelectedDoctor(doc)}
-                   className={`shrink-0 px-4 py-2.5 rounded-xl text-[10px] font-black whitespace-nowrap transition-all border ${selectedDoctor === doc ? 'bg-[#1499AD] border-[#1499AD] text-white shadow-md' : 'bg-white border-slate-200 text-slate-400'}`}
-                 >
-                   {doc}
-                 </button>
-               )) : (
-                   <span className="text-slate-500 text-[9px] py-1 block italic">Shifokorlar mavjud emas</span>
-               )}
-             </div>
-          </div>
-
-          {/* Bemor */}
+        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5 no-scrollbar">
           <div className="relative">
-             <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-2 block">Bemorni tanlash</label>
-             
-             {selectedPatient ? (
-                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 p-4 rounded-[1.5rem]">
-                  <div className="flex items-center gap-3">
-                     <div className="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center font-black text-sm shadow-md">
-                        { (selectedPatient.full_name || selectedPatient.name)[0] }
-                     </div>
-                     <div>
-                       <div className="text-slate-800 font-black text-xs leading-none">{selectedPatient.full_name || selectedPatient.name}</div>
-                       <div className="text-emerald-600 text-[10px] font-bold mt-1">{selectedPatient.phone || "Telefon kiritilmagan"}</div>
-                     </div>
+            <Lbl icon={UserRound}>Bemor tanlash</Lbl>
+            {selectedPatient ? (
+              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 p-3 rounded-2xl">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-11 h-11 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-[15px] shrink-0">{(selectedPatient.full_name || selectedPatient.name || '?')[0]}</div>
+                  <div className="min-w-0">
+                    <div className="text-slate-900 font-bold text-[14px] truncate">{selectedPatient.full_name || selectedPatient.name}</div>
+                    <div className="text-emerald-700 text-[13px]">{selectedPatient.phone || "Telefon kiritilmagan"}</div>
                   </div>
-                  <button onClick={() => setSelectedPatient(null)} className="text-slate-350 bg-white p-1.5 rounded-lg shadow-sm border border-slate-100 cursor-pointer">
-                    <X className="w-4 h-4" />
-                  </button>
                 </div>
-             ) : (
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                  <Input 
-                    value={patientSearch}
-                    onChange={e => {
-                      setPatientSearch(e.target.value);
-                      setShowPatientDropdown(true);
-                    }}
-                    onFocus={() => setShowPatientDropdown(true)}
-                    placeholder="Bemorning ismi yoki raqami..." 
-                    className="bg-white border-slate-200 text-slate-800 placeholder:text-slate-300 h-12 pl-11 rounded-xl text-xs focus:ring-0 focus:border-[#1499AD]" 
-                  />
-                  
-                  {showPatientDropdown && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-xl shadow-2xl max-h-48 overflow-y-auto no-scrollbar z-20">
-                      {filteredPatients.length > 0 ? (
-                        filteredPatients.map(p => (
-                          <div 
-                            key={p.id} 
-                            onClick={() => {
-                              setSelectedPatient(p);
-                              setShowPatientDropdown(false);
-                            }}
-                            className="p-3.5 border-b border-slate-50 cursor-pointer flex justify-between items-center active:bg-slate-50"
-                          >
-                            <div className="flex flex-col">
-                               <span className="text-slate-800 text-xs font-black">{p.full_name || p.name}</span>
-                               <span className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mt-0.5">{p.phone || "—"}</span>
-                            </div>
-                            <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-8 text-slate-400 text-xs text-center font-bold">Bemor topilmadi...</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-             )}
-          </div>
-
-          {/* Kategoriyalar (Tags) */}
-          <div>
-             <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-2 block">Kategoriya / Teglar</label>
-             <div className="flex flex-wrap gap-1.5">
-               {existingTags.length > 0 ? existingTags.map(tag => (
-                 <button
-                   key={tag}
-                   onClick={() => toggleTag(tag)}
-                   className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border ${selectedTags.includes(tag) ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-200 text-slate-400'}`}
-                 >
-                   {tag}
-                 </button>
-               )) : (
-                 <span className="text-slate-400 text-[10px] italic">Kategoriyalar mavjud emas</span>
-               )}
-             </div>
+                <button onClick={() => setSelectedPatient(null)} aria-label="Bekor" className="w-11 h-11 grid place-items-center text-slate-500 bg-white rounded-xl border border-slate-100"><X className="w-4 h-4" /></button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input value={patientSearch} onChange={e => { setPatientSearch(e.target.value); setShowPatientDropdown(true); }} onFocus={() => setShowPatientDropdown(true)}
+                  placeholder="Ism yoki telefon orqali qidiring..." className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 h-12 pl-11 rounded-xl text-[14px] focus:ring-0 focus:border-[#1499AD]" />
+                {showPatientDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 rounded-xl shadow-2xl max-h-56 overflow-y-auto no-scrollbar z-20">
+                    {filteredPatients.length > 0 ? filteredPatients.map(p => (
+                      <div key={p.id} onClick={() => { setSelectedPatient(p); setShowPatientDropdown(false); }} className="px-3.5 min-h-[52px] border-b border-slate-50 cursor-pointer flex justify-between items-center active:bg-slate-50">
+                        <div className="flex flex-col"><span className="text-slate-900 text-[14px] font-semibold">{p.full_name || p.name}</span><span className="text-slate-400 text-[13px]">{p.phone || "—"}</span></div>
+                        <ChevronRight className="w-4 h-4 text-slate-300" />
+                      </div>
+                    )) : <div className="p-6 text-slate-400 text-[13px] text-center font-semibold">Bemor topilmadi...</div>}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
-            <label className="text-slate-400 text-[9px] font-black uppercase tracking-[0.1em] ml-1 mb-2 block">Batafsil Izoh (ixtiyoriy)</label>
-            <textarea 
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              className="w-full bg-white border border-slate-200 p-3.5 rounded-[1.5rem] text-slate-800 placeholder:text-slate-300 min-h-[90px] outline-none focus:border-[#1499AD] text-xs leading-relaxed resize-none" 
-              placeholder="Bajarilgan ishlar haqida batafsil ma'lumot..."
-            />
+            <Lbl icon={Stethoscope}>Davolovchi shifokor</Lbl>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+              {doctors.length > 0 ? doctors.map(doc => (
+                <button key={doc} onClick={() => setSelectedDoctor(doc)}
+                  className={`shrink-0 h-11 px-4 rounded-xl text-[13px] font-semibold whitespace-nowrap border ${selectedDoctor === doc ? 'bg-[#1499AD] border-[#1499AD] text-white' : 'bg-white border-slate-200 text-slate-600'}`}>{doc}</button>
+              )) : <span className="text-slate-500 text-[13px] italic">Shifokorlar mavjud emas</span>}
+            </div>
           </div>
 
+          <div>
+            <Lbl icon={LayoutGrid}>Kategoriya</Lbl>
+            <div className="flex flex-wrap gap-2">
+              {existingTags.length > 0 ? existingTags.map(tag => (
+                <button key={tag} onClick={() => toggleTag(tag)}
+                  className={`h-11 px-4 rounded-xl text-[13px] font-semibold border ${selectedTags.includes(tag) ? 'bg-slate-900 border-slate-900 text-white' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>{tag}</button>
+              )) : <span className="text-slate-400 text-[13px] italic">Kategoriyalar mavjud emas — "Qo'shish" tugmasi orqali yarating</span>}
+            </div>
+          </div>
+
+          <div>
+            <Lbl icon={Camera} right={countPill(beforeImg)}>Oldin rasmlari</Lbl>
+            <UploadTile img={beforeImg} type="before" title="Oldin rasmlarni yuklash" />
+          </div>
+          <div>
+            <Lbl icon={Camera} right={countPill(afterImg)}>Keyin rasmlari</Lbl>
+            <UploadTile img={afterImg} type="after" title="Keyin rasmlarni yuklash" />
+          </div>
+
+          <div>
+            <Lbl icon={AlignLeft}>Tavsif</Lbl>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Keys haqida qisqacha tavsif yozing..."
+              className="w-full bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-slate-900 placeholder:text-slate-400 min-h-[96px] outline-none focus:border-[#1499AD] text-[14px] leading-relaxed resize-none" />
+          </div>
+
+          <div className="flex items-start gap-3 rounded-xl border border-[#1499AD]/20 bg-[#1499AD]/[0.06] p-3">
+            <Info className="w-5 h-5 text-[#1499AD] shrink-0 mt-0.5" />
+            <div><p className="text-[13px] font-bold text-[#0f6b78] uppercase">Maslahat</p><p className="text-[13px] text-slate-600">Sifatli rasmlar va batafsil tavsif keysning samaradorligini oshiradi.</p></div>
+          </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="px-5 py-4 bg-slate-50 border-t border-slate-100 flex gap-3 shrink-0">
-           <button 
-              onClick={onClose} 
-              className="flex-1 h-11 rounded-xl border border-slate-200 font-bold text-xs uppercase tracking-wider text-slate-500 bg-white cursor-pointer"
-           >
-              Bekor qilish
-           </button>
-           <button 
-              onClick={handleSave} 
-              className="flex-1 h-11 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black uppercase tracking-wider text-xs shadow-md border-none transition-all cursor-pointer"
-           >
-              Saqlash
-           </button>
+        <div className="px-4 pt-3 bg-white border-t border-slate-100 grid grid-cols-2 gap-3 shrink-0" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}>
+          <button onClick={onClose} className="h-12 rounded-xl border border-slate-200 font-semibold text-[15px] text-slate-700 bg-white">Bekor qilish</button>
+          <button onClick={handleSave} className="h-12 rounded-xl bg-[#1499AD] text-white font-bold text-[15px]">Qo'shish</button>
         </div>
       </DialogContent>
     </Dialog>
