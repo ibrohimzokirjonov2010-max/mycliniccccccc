@@ -22,6 +22,15 @@ import { useAuth } from '@/lib/AuthContext';
  * Premium SaaS Mobile Patients List
  * Modern healthcare CRM design with strong hierarchy
  */
+function compactSom(n) {
+  const v = Number(n) || 0;
+  const fmt = (x) => (Math.floor(x * 10) / 10).toFixed(1).replace(/\.0$/, '').replace('.', ',');
+  if (v >= 1e9) return `${fmt(v / 1e9)} mlrd so'm`;
+  if (v >= 1e6) return `${fmt(v / 1e6)} mln so'm`;
+  if (v >= 1e3) return `${fmt(v / 1e3)} ming so'm`;
+  return `${Math.round(v)} so'm`;
+}
+
 export default function MobilePatientsV2() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -173,8 +182,8 @@ export default function MobilePatientsV2() {
     <PullToRefresh onRefresh={loadPatients}>
       <div className="min-h-screen bg-slate-50">
         <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
-          <div className="px-5 pt-5 pb-4">
-            <div className="flex items-center justify-between mb-5">
+          <div className="px-5 pt-3 pb-3">
+            <div className="flex items-center justify-between mb-3">
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">{t('patients.title')}</h1>
                 <p className="text-sm text-slate-500 mt-0.5">
@@ -191,20 +200,17 @@ export default function MobilePatientsV2() {
               </Button>
             </div>
             
-            <div className="flex gap-3 mb-5">
-              <div className="flex-1 bg-emerald-50 rounded-xl p-3">
-                <p className="text-2xl font-bold text-emerald-700">{activeCount}</p>
-                <p className="text-xs font-medium text-emerald-600/70">{t('patients.activeTreatment') || 'Faol davolanish'}</p>
-              </div>
-              <div className="flex-1 bg-blue-50 rounded-xl p-3">
-                <p className="text-2xl font-bold text-blue-700">{newCount}</p>
-                <p className="text-xs font-medium text-blue-600/70">{t('patients.new')}</p>
-              </div>
+            <div className="flex items-center gap-1.5 mb-3 h-8 overflow-hidden" data-testid="patients-stat-pills">
+              <span className="shrink-0 inline-flex items-center h-7 px-2.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold whitespace-nowrap">
+                {activeCount} faol
+              </span>
+              <span className="shrink-0 inline-flex items-center h-7 px-2.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold whitespace-nowrap">
+                {newCount} {String(t('patients.new') || 'yangi').toLowerCase()}
+              </span>
               {totalDebt > 0 && (
-                <div className="flex-1 bg-rose-50 rounded-xl p-3">
-                  <p className="text-2xl font-bold text-rose-700">{formatCurrency(totalDebt)}</p>
-                  <p className="text-xs font-medium text-rose-600/70">{t('payments.debt')}</p>
-                </div>
+                <span className="min-w-0 inline-flex items-center h-7 px-2.5 rounded-full bg-rose-50 text-rose-700 text-xs font-bold whitespace-nowrap truncate">
+                  {compactSom(totalDebt)} qarz
+                </span>
               )}
             </div>
 
@@ -221,18 +227,18 @@ export default function MobilePatientsV2() {
               </div>
             )}
 
-            <div className="relative mb-3">
+            <div className="relative mb-2">
               <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder={t('patients.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 h-12 bg-slate-50 border-0 rounded-2xl font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900 outline-none text-sm transition-all"
+                className="w-full pl-12 pr-4 h-11 bg-slate-50 border-0 rounded-2xl font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900 outline-none text-sm transition-all"
               />
             </div>
 
-            <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar py-0.5">
               {[
                 { id: 'all', label: t('common.all') },
                 { id: 'Active', label: t('patients.active') },
@@ -255,7 +261,7 @@ export default function MobilePatientsV2() {
           </div>
         </div>
 
-        <div className="p-4">
+        <div className="px-4 pt-3 pb-4">
           {loading ? (
             <>
               <SkeletonCard />
