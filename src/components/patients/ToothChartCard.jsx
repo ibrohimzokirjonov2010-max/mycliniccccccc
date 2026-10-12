@@ -1507,6 +1507,7 @@ function ToothCell({ fdi, isUpper, entry, active, picked, dim, onClick }) {
       className={cn('compact-hit flex w-full min-w-0 max-w-full flex-col', isUpper ? 'justify-end' : 'justify-start', dim && 'opacity-30')}
       style={{ '--fdi-len': fdiLengthWeight(fdi) }}
     >
+      {isUpper && <span className="tooth-fdi-num" aria-hidden="true">{fdi}</span>}
       <span
         className="tooth-face relative flex w-full max-w-full items-center justify-center overflow-hidden rounded-md"
         style={{
@@ -1537,6 +1538,7 @@ function ToothCell({ fdi, isUpper, entry, active, picked, dim, onClick }) {
           <X className="absolute h-5 w-5 text-slate-500" strokeWidth={2.5} />
         )}
       </span>
+      {!isUpper && <span className="tooth-fdi-num" aria-hidden="true">{fdi}</span>}
     </button>
   );
 }
