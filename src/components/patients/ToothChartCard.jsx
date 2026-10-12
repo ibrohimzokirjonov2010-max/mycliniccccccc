@@ -353,6 +353,7 @@ export default function ToothChartCard({
   onReload,
   onBookAppointment,
   sheetOffset = 0,
+  fullArch = false,
   search = '',
   sideRailId = '',
 }) {
@@ -993,12 +994,13 @@ export default function ToothChartCard({
     window.print();
   };
 
+  const full = phone && fullArch;
   const renderHalf = (fdis, isUpper) => (
     <div
       className="odonto-quad"
       style={{
         gridTemplateColumns: phone
-          ? fdis.map((n) => `minmax(40px, ${fdiWidthWeight(n)}fr)`).join(' ')
+          ? fdis.map((n) => `minmax(${full ? 0 : 40}px, ${fdiWidthWeight(n)}fr)`).join(' ')
           : fdiGridTemplate(fdis),
       }}
     >
@@ -1030,7 +1032,7 @@ export default function ToothChartCard({
     : catalogPrice(item.service, item.id));
 
   return (
-    <div id="tooth-chart-print" className={cn('tooth-chart-root min-w-0 max-w-full overflow-x-hidden', showSheet && 'is-sheet-open')}>
+    <div id="tooth-chart-print" className={cn('tooth-chart-root min-w-0 max-w-full overflow-x-hidden', full && 'tooth-chart-full', showSheet && 'is-sheet-open')}>
       <div className={cn('tooth-chart-grid min-w-0', phone && 'grid gap-3', railNode && 'tooth-chart-grid--solo')}>
         <div className="tooth-chart-main min-w-0 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:p-3">
           <div className="tooth-chart-toolbar">
@@ -1048,7 +1050,7 @@ export default function ToothChartCard({
                 { id: 'child', label: 'Sut tishlari' },
               ]}
             />
-            {dentitionHint(ageYears) && (
+            {!full && dentitionHint(ageYears) && (
               <p className="basis-full text-[11px] font-semibold text-slate-500" data-testid="dentition-age-hint">
                 {dentitionHint(ageYears)}
               </p>
@@ -1058,6 +1060,7 @@ export default function ToothChartCard({
               onClick={() => { setMulti((v) => !v); setSelected([]); }}
               className={cn(
                 'compact-hit inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold',
+                full && 'ml-auto',
                 multi ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700',
               )}
             >
@@ -1114,8 +1117,8 @@ export default function ToothChartCard({
           </div>
 
           <div className="odonto-fit-frame mt-2" data-compact={phone ? 'true' : 'false'}>
-              <div className={cn('odonto-scroll-shell', phone && 'is-hint')}>
-                {phone && (
+              <div className={cn('odonto-scroll-shell', phone && !full && 'is-hint')}>
+                {phone && !full && (
                   <>
                     <div className="mb-2 grid grid-cols-2 gap-1.5" data-testid="arch-half-tabs">
                       <button
@@ -1168,6 +1171,12 @@ export default function ToothChartCard({
                     setArchHalf(node.scrollLeft > max / 2 ? 'left' : 'right');
                   }}
                 >
+                  {full && (
+                    <div className="mb-1 flex items-center justify-between px-1 text-[10px] font-extrabold tracking-wide text-rose-600" data-testid="arch-full-sides">
+                      <span>← O‘NG</span>
+                      <span>CHAP →</span>
+                    </div>
+                  )}
                   <div className="odonto-cross">
                     <div className="odonto-jaw-band">
                       <span className="odonto-side odonto-side-r">O‘NG</span>

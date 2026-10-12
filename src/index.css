@@ -994,7 +994,7 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
 }
 @container tootharch (max-width: 640px) {
   .odonto-cross {
-    --odonto-pad: 16px;
+    --odonto-pad: 6px;
     --odonto-label-inset: 2px;
     padding-left: 16px;
     padding-right: 16px;
@@ -1150,3 +1150,14 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
   border: 2px solid #f8fafc;
 }
 .doc-grid-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* profile-redesign-1012: phone profile shows all 16 teeth per jaw at once */
+@media (max-width: 767px) {
+  .tooth-chart-root.tooth-chart-full .odonto-scroll { overflow-x: hidden !important; scroll-snap-type: none; padding-bottom: 0; }
+  .tooth-chart-root.tooth-chart-full .odonto-cross { width: 100% !important; min-width: 0 !important; --odonto-pad: 6px; --odonto-label-inset: 2px; padding: 4px var(--odonto-pad) 6px; }
+  .tooth-chart-root.tooth-chart-full .odonto-side { display: none; }
+  .tooth-chart-root.tooth-chart-full .compact-hit.odontogram-tooth,
+  .tooth-chart-root.tooth-chart-full .odontogram-tooth { min-width: 0 !important; }
+  .tooth-chart-root.tooth-chart-full .odonto-lateral { height: calc(52px * var(--fdi-len, 1)); }
+  .tooth-chart-root.tooth-chart-full .fdi-on-crown { font-size: 9px; }
+}
