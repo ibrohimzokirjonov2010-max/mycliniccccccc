@@ -279,7 +279,7 @@ export default function MobileServicesV2() {
       </div>
 
       {/* Sticky search + category chips */}
-      <div className="sticky top-0 z-20 -mx-4 px-4 pt-1 pb-3 mb-3 bg-[#F8FAFC]/95 backdrop-blur-md border-b border-slate-100/80">
+      <div className="z-20 -mx-4 px-4 pt-1 pb-3 mb-3 bg-[#F8FAFC]/95 backdrop-blur-md border-b border-slate-100/80">
       {/* Search Input */}
       <div className="relative mb-3">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />

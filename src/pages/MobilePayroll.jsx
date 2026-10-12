@@ -691,7 +691,7 @@ export default function MobilePayroll() {
       <div className="min-h-screen bg-slate-50 pb-24">
         
         {/* ── HEADER & TOP CONTROLS ── */}
-        <div className="bg-white border-b border-slate-200/80 sticky top-0 z-20 px-4 pt-4 pb-3 space-y-3 shadow-xs">
+        <div className="bg-white border-b border-slate-200/80 z-20 px-4 pt-4 pb-3 space-y-3 shadow-xs">
           
           {/* Top Title Row + Actions */}
           <div className="flex items-center justify-between gap-2">

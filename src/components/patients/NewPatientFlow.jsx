@@ -1761,7 +1761,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       <p className="wiz-label">{t('common.doctor')} <span className="text-red-500">*</span></p>
                       <Select value={patientForm.main_treatment_provider} onValueChange={v => { setPatientForm({ ...patientForm, main_treatment_provider: v }); setDoctorError(''); }}>
                         <SelectTrigger aria-invalid={doctorError ? true : undefined} className={cn('h-12 rounded-xl text-[14px] w-full bg-white pl-3', doctorError ? 'border-rose-400' : 'border-slate-200')}>
-                          <span className="flex items-center gap-2.5 min-w-0"><Stethoscope className="w-4.5 h-4.5 text-slate-500 shrink-0" /><SelectValue placeholder="Tanlang" /></span>
+                          <SelectValue placeholder="Tanlang" />
                         </SelectTrigger>
                         <SelectContent position="popper" side="top" className="z-[220] max-h-72 overflow-y-auto" data-patient-doctor-select>
                           {doctors.map(d => (

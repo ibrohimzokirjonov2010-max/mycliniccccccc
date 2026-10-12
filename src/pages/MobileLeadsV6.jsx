@@ -344,7 +344,7 @@ export default function MobileLeadsV6() {
     <PullToRefresh onRefresh={loadLeads}>
       <div className="min-h-screen bg-slate-50/20 pb-24">
         {/* Top Header */}
-        <div className="bg-white px-4 pt-4 pb-3 sticky top-0 z-20 border-b border-slate-100/60 shadow-sm shadow-slate-100/5">
+        <div className="bg-white px-4 pt-4 pb-3 z-20 border-b border-slate-100/60 shadow-sm shadow-slate-100/5">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h1 className="text-[24px] font-extrabold text-slate-900 tracking-tight">Leadlar</h1>

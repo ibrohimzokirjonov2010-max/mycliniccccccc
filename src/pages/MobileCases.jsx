@@ -154,7 +154,7 @@ export default function MobileCases() {
     <div className="min-h-screen bg-slate-50/50 text-slate-900 pb-32">
       
       {/* HEADER */}
-      <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl px-4 pt-4 pb-3">
+      <div className="z-40 bg-white/90 backdrop-blur-xl px-4 pt-4 pb-3">
         <div className="mb-3">
            <h1 className="text-[24px] font-extrabold tracking-tight text-slate-900">Mening keyslarim</h1>
            <p className="text-[14px] font-medium text-[#1499AD]/80">Klinik keyslar va bemor ishlari</p>
