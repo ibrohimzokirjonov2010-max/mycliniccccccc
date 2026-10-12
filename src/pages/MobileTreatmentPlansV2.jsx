@@ -4,14 +4,14 @@ import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { 
   Plus, Search, Check, X, ArrowLeft, User, Sparkles, Shield, Trash2, ClipboardList, Info,
-  Activity, Scissors, Layers, TrendingUp, Syringe, Baby, CheckCircle2, Lock
+  Activity, Scissors, Layers, TrendingUp, Syringe, Baby, CheckCircle2, Lock, SlidersHorizontal, FileText, ChevronRight
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { isPlanLocked, PLAN_LOCKED_BADGE, PLAN_LOCKED_TOOLTIP } from '@/lib/planLock';
 import { Button } from '@/components/ui/button';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import ProfessionalOdontogram from '@/components/patients/ProfessionalOdontogram';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatPhone } from '@/lib/utils';
 import { deleteTreatmentPlan, planAllocatedPaid } from '@/lib/treatmentDelete';
 import { formatClinicDate } from '@/lib/clinicTime';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -337,70 +337,65 @@ export default function MobileTreatmentPlansV2() {
     return 'PLAN-' + Math.random().toString(36).substr(2, 6).toUpperCase();
   }, [formData.patient_id, formData.total_price]);
 
+  const openNewPlan = () => {
+    setFormData({ patient_id: '', name: '', status: 'Planned', total_price: '' });
+    setToothServices({});
+    setSelectedTeeth([]);
+    setFocusedTooth(null);
+    setShowAddModal(true);
+    setStep(1);
+  };
+
   return (
     <PullToRefresh onRefresh={loadData}>
       <div className="min-h-screen bg-[#F4F6F9] pb-32">
         
-        {/* Page Header */}
-        <div className="px-4 pt-5 pb-3">
-           <div className="flex items-center justify-between mb-4">
-              <div>
-                <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-1">Davolash Rejalari</h1>
-                <p className="text-[9px] font-bold text-[#1499AD] uppercase tracking-wider opacity-85">{t('navigation.systemName')}</p>
+        {/* Page Header (design extra-06) */}
+        <div className="px-4 pt-4 pb-3">
+           <div className="flex items-center justify-between mb-3 gap-2">
+              <div className="min-w-0">
+                <h1 className="text-[24px] font-extrabold text-slate-900 leading-tight">Davolash Rejalari</h1>
+                <p className="text-[13px] font-semibold text-slate-400 uppercase tracking-widest">{t('navigation.systemName')}</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button type="button" aria-label="Filtr" onClick={() => setStatusFilter(statusFilter === 'all' ? 'In Progress' : 'all')} className="w-12 h-12 rounded-2xl bg-white border border-slate-200 text-[#1499AD] flex items-center justify-center"><SlidersHorizontal className="w-5 h-5" /></button>
+                <button type="button" aria-label="Yangi reja" onClick={openNewPlan} className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-md"><Plus className="w-6 h-6" /></button>
               </div>
            </div>
-           
-           <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Qidiruv..." 
-                value={searchQuery} 
-                onChange={(e) => setSearchQuery(e.target.value)} 
-                className="w-full h-11 pl-10 pr-4 rounded-2xl border border-slate-100 bg-white text-xs font-semibold text-slate-800 shadow-sm outline-none placeholder:text-slate-400 focus:border-[#1499AD]/30 transition-all" 
-              />
+
+           <div className="grid grid-cols-3 gap-2 mb-3">
+              {[
+                { icon: FileText, cls: 'bg-blue-50/70 border-blue-100', ic: 'bg-blue-100 text-blue-600', v: plans.length, l: 'Jami rejalar' },
+                { icon: Activity, cls: 'bg-emerald-50/70 border-emerald-100', ic: 'bg-emerald-100 text-emerald-600', v: plans.filter(p => p.status === 'In Progress').length, l: 'Jarayonda' },
+                { icon: CheckCircle2, cls: 'bg-violet-50/70 border-violet-100', ic: 'bg-violet-100 text-violet-600', v: formatCompactCurrency(plans.reduce((sum, p) => sum + (p.total_price || 0), 0)), l: 'Jami smeta' },
+              ].map((k) => (
+                <div key={k.l} className={`rounded-2xl border ${k.cls} p-2 flex items-center gap-1.5 min-w-0`}>
+                  <span className={`w-8 h-8 rounded-full ${k.ic} flex items-center justify-center shrink-0`}><k.icon className="w-4 h-4" /></span>
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-extrabold text-slate-900 leading-tight whitespace-nowrap">{k.v}</span>
+                    <span className="block text-[11px] font-bold text-slate-500 uppercase leading-tight">{k.l}</span>
+                  </span>
+                </div>
+              ))}
+           </div>
+
+           <div className="flex gap-2">
+             <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Qidiruv (bemor, tashxis, tish raqami...)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-12 pl-11 pr-3 rounded-2xl border border-slate-200 bg-white text-[15px] font-medium text-slate-800 outline-none placeholder:text-slate-400 focus:border-[#1499AD]/40"
+                />
+             </div>
+             <button type="button" aria-label="Tozalash" onClick={() => { setSearchQuery(''); setStatusFilter('all'); }} className="w-12 h-12 rounded-2xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center shrink-0"><SlidersHorizontal className="w-5 h-5" /></button>
            </div>
         </div>
 
-        {/* KPI Stats Block */}
-        <div className="grid grid-cols-3 gap-2 px-4 mb-4">
-           <div className="bg-white rounded-2xl p-3 border border-slate-100 shadow-sm flex flex-col justify-between h-[72px] relative overflow-hidden">
-              <div className="absolute -right-2 -bottom-2 w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center opacity-70">
-                 <ClipboardList className="w-5 h-5 text-slate-300" />
-              </div>
-              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider leading-none">Jami rejalar</span>
-              <div>
-                 <span className="text-sm font-black text-slate-800 leading-none">{plans.length}</span>
-                 <span className="text-[8px] font-bold text-slate-455 ml-1">ta</span>
-              </div>
-           </div>
-           <div className="bg-white rounded-2xl p-3 border border-slate-100 shadow-sm flex flex-col justify-between h-[72px] relative overflow-hidden">
-              <div className="absolute -right-2 -bottom-2 w-10 h-10 bg-sky-50 rounded-full flex items-center justify-center opacity-70">
-                 <Activity className="w-5 h-5 text-[#1499AD]/25" />
-              </div>
-              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider leading-none">Jarayonda</span>
-              <div>
-                 <span className="text-sm font-black text-[#1499AD] leading-none">
-                    {plans.filter(p => p.status === 'In Progress').length}
-                 </span>
-                 <span className="text-[8px] font-bold text-[#1499AD]/65 ml-1">ta</span>
-              </div>
-           </div>
-           <div className="bg-white rounded-2xl p-3 border border-slate-100 shadow-sm flex flex-col justify-between h-[72px] relative overflow-hidden">
-              <div className="absolute -right-2 -bottom-2 w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center opacity-70">
-                 <CheckCircle2 className="w-5 h-5 text-emerald-500/20" />
-              </div>
-              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider leading-none">Jami smeta</span>
-              <div>
-                 <span className="text-xs font-black text-emerald-600 leading-none truncate block">
-                    {formatCompactCurrency(plans.reduce((sum, p) => sum + (p.total_price || 0), 0))}
-                 </span>
-              </div>
-           </div>
-        </div>
-
-        {/* Status Filters Carousel */}
-        <div className="flex gap-2 overflow-x-auto px-4 pb-4 no-scrollbar items-center">
+        {/* Status Filters */}
+        <div className="flex gap-2 overflow-x-auto px-4 pb-3 no-scrollbar items-center">
            {[
               { id: 'all', label: 'Barchasi', count: plans.length },
               { id: 'Planned', label: 'Rejalangan', count: plans.filter(p => p.status === 'Planned').length },
@@ -410,117 +405,73 @@ export default function MobileTreatmentPlansV2() {
               <button
                  key={f.id}
                  onClick={() => setStatusFilter(f.id)}
-                 className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all border ${
-                    statusFilter === f.id
-                    ? 'bg-slate-900 border-slate-900 text-white shadow-md'
-                    : 'bg-white border-slate-100 text-slate-500 shadow-sm hover:border-slate-200'
+                 className={`shrink-0 flex items-center gap-1.5 h-11 px-3.5 rounded-2xl text-[14px] font-bold transition-all border ${
+                    statusFilter === f.id ? 'bg-slate-900 border-slate-900 text-white shadow-md' : 'bg-white border-slate-200 text-slate-600'
                  }`}
               >
                  <span>{f.label}</span>
-                 <span className={`px-1.5 py-0.5 rounded-md text-[8px] font-black ${
-                    statusFilter === f.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-450'
-                 }`}>{f.count}</span>
+                 <span className={`px-1.5 py-0.5 rounded-full text-[12px] font-bold ${statusFilter === f.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{f.count}</span>
               </button>
            ))}
         </div>
 
         {/* Treatment Plans List */}
-        <div className="px-4 space-y-3">
-           {loading ? [1,2,3,4].map(i => <div key={i} className="h-24 bg-white rounded-2xl animate-pulse border border-slate-55" />) : filteredPlans.length > 0 ? (
+        <div className="px-3 space-y-2.5">
+           {loading ? [1,2,3,4].map(i => <div key={i} className="h-24 bg-white rounded-2xl animate-pulse" />) : filteredPlans.length > 0 ? (
               filteredPlans.map((plan) => {
                  const svcs = (plan.services || []).flatMap(s => s.items || [s]);
                  const progress = Math.round((svcs.filter(s => s.status === 'completed').length / (svcs.length || 1)) * 100);
                  const initials = getInitials(plan.patient_name);
-                 
-                 // Extract unique tooth numbers
                  const teethSet = new Set();
                  (plan.services || []).forEach(s => {
                     const tId = s.tooth_id || s.tooth || s.tooth_number || 'general';
-                    if (tId && tId !== 'general') {
-                       teethSet.add(idToFdi(tId));
-                    }
+                    if (tId && tId !== 'general') teethSet.add(idToFdi(tId));
                  });
                  const teethList = Array.from(teethSet);
-                 
                  const statusColors = {
-                    'Planned': { bg: 'bg-amber-500', text: 'text-amber-600', badgeBg: 'bg-amber-50', label: 'Rejalangan' },
-                    'In Progress': { bg: 'bg-[#1499AD]', text: 'text-[#1499AD]', badgeBg: 'bg-sky-50', label: 'Jarayonda' },
-                    'Completed': { bg: 'bg-emerald-500', text: 'text-emerald-600', badgeBg: 'bg-emerald-50', label: 'Yakunlangan' }
+                    'Planned': { bar: 'bg-amber-400', pill: 'bg-amber-50 text-amber-600', dot: 'bg-amber-500', av: 'bg-amber-50 text-amber-700', label: 'Rejalangan' },
+                    'In Progress': { bar: 'bg-[#1499AD]', pill: 'bg-sky-50 text-[#1172a3]', dot: 'bg-[#1499AD]', av: 'bg-sky-50 text-[#1172a3]', label: 'Jarayonda' },
+                    'Completed': { bar: 'bg-emerald-500', pill: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500', av: 'bg-emerald-50 text-emerald-700', label: 'Yakunlangan' }
                  };
-                 const currentStatus = statusColors[plan.status] || statusColors['Planned'];
-                 
+                 const st = statusColors[plan.status] || statusColors['Planned'];
+                 const pat = patients.find((p) => String(p.id) === String(plan.patient_id));
                  return (
-                    <motion.div 
-                      key={plan.id} 
-                      initial={{ opacity: 0, y: 10 }} 
-                      animate={{ opacity: 1, y: 0 }} 
-                      onClick={() => { setSelectedPlan(plan); setShowDetailModal(true); }} 
-                      className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm relative overflow-hidden active:scale-[0.98] transition-all hover:shadow-md cursor-pointer"
+                    <motion.div
+                      key={plan.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={() => { setSelectedPlan(plan); setShowDetailModal(true); }}
+                      className="bg-white rounded-2xl pl-4 pr-3 py-3 border border-slate-100 shadow-sm relative overflow-hidden active:scale-[0.99] transition-all cursor-pointer"
                     >
-                       <div className={`absolute top-0 left-0 w-1.5 h-full ${currentStatus.bg}`} />
-                       
-                       <div className="flex gap-3">
-                          {/* Initials Circle */}
-                          <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
-                             <span className="text-xs font-black text-slate-500 tracking-tight">{initials}</span>
-                          </div>
-                          
-                          {/* Plan Details */}
+                       <div className={`absolute top-0 left-0 w-1.5 h-full ${st.bar}`} />
+                       <div className="flex gap-3 items-start">
+                          <div className={`w-12 h-12 rounded-full ${st.av} flex items-center justify-center shrink-0 text-[16px] font-bold`}>{initials}</div>
                           <div className="flex-1 min-w-0">
-                             <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                                <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${currentStatus.badgeBg} ${currentStatus.text}`}>
-                                   {currentStatus.label}
-                                </span>
-                                {plan.created_date && (
-                                   <span className="text-[9px] font-semibold text-slate-400">
-                                      {formatDate(plan.created_date)}
-                                   </span>
-                                )}
+                             <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-[16px] font-extrabold text-slate-900 truncate">{plan.patient_name || 'Bemor'}</p>
+                                  {pat?.phone && <p className="text-[13px] text-slate-500 truncate">{formatPhone(pat.phone)}</p>}
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <span className={`inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-[12px] font-bold uppercase ${st.pill}`}><span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />{st.label}</span>
+                                  {plan.created_date && <p className="text-[13px] text-slate-500 mt-0.5">{formatDate(plan.created_date)}</p>}
+                                </div>
                              </div>
-                             
-                             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-tight leading-tight mb-1 truncate">
+                             <p className="mt-1 text-[13px] font-bold text-slate-800 uppercase truncate flex items-center gap-1">
                                 {isPlanLocked(plan) && (
-                                  <span data-testid="plan-locked-icon" title={PLAN_LOCKED_TOOLTIP} aria-label={PLAN_LOCKED_BADGE} className="inline-flex mr-1 align-middle text-amber-600">
-                                    <Lock className="w-3 h-3" />
-                                  </span>
+                                  <span data-testid="plan-locked-icon" title={PLAN_LOCKED_TOOLTIP} aria-label={PLAN_LOCKED_BADGE} className="inline-flex text-amber-600 shrink-0"><Lock className="w-3.5 h-3.5" /></span>
                                 )}
-                                {plan.name || (t ? t('patientProfile.treatmentPlanSingular') : 'Davolash rejasi')}
-                             </h3>
-                             
-                             <p className="text-[10px] font-bold text-slate-500 mb-2.5 leading-none">
-                                {plan.patient_name || 'Bemor ismi'}
+                                <span className="truncate">{plan.name || (t ? t('patientProfile.treatmentPlanSingular') : 'Davolash rejasi')}</span>
                              </p>
-                             
-                             {/* Tooth numbers and services */}
-                             <div className="flex items-center gap-2 mb-3">
-                                <div className="flex items-center gap-1 text-[9px] font-bold text-[#1499AD] bg-blue-50/60 border border-blue-100/50 px-2 py-0.5 rounded-lg">
-                                   <span>{t('common.teeth') || 'Tishlar'}:</span>
-                                   <span className="font-black">
-                                      {teethList.length > 0 ? `#${teethList.join(', #')}` : (t ? t('common.general') : 'Umumiy')}
-                                   </span>
+                             <p className="text-[13px] text-slate-500 truncate">{svcs.length} ta xizmat · {teethList.length > 0 ? `Tishlar: #${teethList.join(', #')}` : 'Umumiy'} · <b className="text-slate-700">{formatCurrency(plan.total_price || 0)}</b></p>
+                             <div className="flex items-center gap-2 mt-1.5">
+                                <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                   <div className={`h-full rounded-full ${progress === 100 ? 'bg-emerald-500' : 'bg-[#1499AD]'}`} style={{ width: `${progress}%` }} />
                                 </div>
-                                <div className="text-[9px] font-semibold text-slate-400">
-                                   {svcs.length} ta xizmat
-                                </div>
-                             </div>
-
-                             {/* Pricing & Progress Meter */}
-                             <div className="flex items-center justify-between gap-4 border-t border-slate-50 pt-2.5">
-                                <div className="text-sm font-black text-slate-800 leading-none">
-                                   {formatCurrency(plan.total_price || 0)}
-                                </div>
-                                
-                                <div className="flex items-center gap-2 shrink-0">
-                                   <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                      <div 
-                                         className={`h-full rounded-full transition-all duration-500 ${progress === 100 ? 'bg-emerald-500' : 'bg-[#1499AD]'}`}
-                                         style={{ width: `${progress}%` }}
-                                      />
-                                   </div>
-                                   <span className="text-[9px] font-black text-slate-600">{progress}%</span>
-                                </div>
+                                <span className="text-[13px] font-bold text-slate-700 w-10 text-right">{progress}%</span>
                              </div>
                           </div>
+                          <ChevronRight className="w-5 h-5 text-slate-400 shrink-0 self-center" />
                        </div>
                     </motion.div>
                  );
@@ -536,14 +487,7 @@ export default function MobileTreatmentPlansV2() {
 
         {/* Floating Action Button (FAB) */}
         <button
-          onClick={() => {
-            setFormData({ patient_id: '', name: '', status: 'Planned', total_price: '' });
-            setToothServices({});
-            setSelectedTeeth([]);
-            setFocusedTooth(null);
-            setShowAddModal(true);
-            setStep(1);
-          }}
+          onClick={openNewPlan}
           className="fixed bottom-24 right-5 w-14 h-14 bg-[#1499AD] text-white rounded-full flex items-center justify-center shadow-lg shadow-[#1499AD]/30 z-40 active:scale-90 active:bg-[#118091] transition-all duration-200"
         >
           <Plus className="w-7 h-7" />
