@@ -13,7 +13,7 @@ import {
   ArrowLeft, Phone, Calendar, ChevronLeft, MoreHorizontal, Pencil, ShieldAlert, AlertCircle, Wallet, CalendarDays, FilePlus2, Eye, Play, CreditCard, ClipboardList, Plus, Lock, Search,
   AlertTriangle, FileText,
   CheckCircle2, Clock, XCircle, ChevronRight,
-  Stethoscope, Receipt, X, Check, Camera, Activity, SlidersHorizontal, ArrowUpDown, Bell, User, Image as ImageIcon, ChevronDown
+  Stethoscope, Receipt, X, Send, Copy, MapPin, ShieldCheck, Smile, Droplet, StickyNote, Check, Camera, Activity, SlidersHorizontal, ArrowUpDown, Bell, User, Image as ImageIcon, ChevronDown
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
@@ -508,8 +508,9 @@ export default function MobilePatientProfile() {
   }, [toothStatuses, selectedTooth]);
 
   const tabs = useMemo(() => ([
-    { id: 'tarix',    label: t('patientProfile.tabs.historyShort', 'Tarix') },
+    { id: 'main',     label: 'Tish kartasi' },
     { id: 'plan',     label: t('patientProfile.tabs.planShort', 'Reja') },
+    { id: 'tarix',    label: t('patientProfile.tabs.historyShort', 'Tarix') },
     { id: 'payments', label: t('patientProfile.tabs.payShort', "To'lov") },
     ...(canImplants ? [{ id: 'implant', label: t('patientProfile.tabs.implantShort', 'Implant') }] : []),
   ]), [t, canImplants]);
@@ -988,265 +989,245 @@ export default function MobilePatientProfile() {
 
       {isMain ? (
       <>
-      {/* COMPACT STICKY PROFILE BAR (profile-redesign-1012) */}
+      {/* TOP BAR (design-impl-1012 / audit 03) */}
       <div
         data-patient-header="true"
-        className="sticky top-0 z-30 bg-[#F3F6F8]/95 backdrop-blur-md border-b border-slate-200/60"
+        className="sticky top-0 z-30 bg-[#F3F6F8]/95 backdrop-blur-md"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
-        <div className="flex items-center gap-2 px-3 h-[52px]">
-          <button
-            type="button"
-            onClick={handleBack}
-            aria-label={t('patientProfile.backToList', 'Orqaga')}
-            className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 active:scale-95"
-          >
-            <ChevronLeft className="w-5 h-5" />
+        <div className="flex items-center gap-2 px-3 h-[60px]">
+          <button type="button" onClick={handleBack} aria-label={t('patientProfile.backToList', 'Orqaga')}
+            className="w-11 h-11 rounded-xl bg-white border border-slate-100 text-slate-800 flex items-center justify-center shrink-0 active:scale-95">
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <p className="flex-1 min-w-0 truncate text-[15px] font-black text-[#1e3a8a]" data-testid="profile-bar-name">{patient.full_name}</p>
+          <p className="flex-1 min-w-0 truncate text-[17px] font-extrabold text-slate-900" data-testid="profile-bar-name">{patient.full_name}</p>
           {phoneHref ? (
-            <a href={phoneHref} aria-label={t('patientProfile.call', "Qo'ng'iroq qilish")} className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-blue-600/30 active:scale-95">
-              <Phone className="w-4 h-4" />
+            <a href={phoneHref} aria-label={t('patientProfile.call', "Qo'ng'iroq qilish")} className="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-blue-600/30 active:scale-95">
+              <Phone className="w-5 h-5" />
             </a>
           ) : null}
-          <button
-            type="button"
-            onClick={() => setPatientModalOpen(true)}
-            aria-label={t('common.edit', 'Tahrirlash')}
-            className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 active:scale-95"
-          >
+          {patient.phone ? (
+            <a href={`https://t.me/+${(() => { const d = String(patient.phone).replace(/\D/g, ''); return d.startsWith('998') ? d : '998' + d; })()}`} target="_blank" rel="noreferrer" aria-label="Telegram"
+              className="w-11 h-11 rounded-xl bg-sky-50 border border-sky-100 text-sky-600 flex items-center justify-center shrink-0 active:scale-95">
+              <Send className="w-5 h-5" />
+            </a>
+          ) : null}
+          <button type="button" onClick={() => setPatientModalOpen(true)} aria-label={t('common.edit', 'Tahrirlash')}
+            className="w-11 h-11 rounded-xl bg-white border border-slate-100 text-blue-600 flex items-center justify-center shrink-0 active:scale-95">
             <MoreHorizontal className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* IDENTITY */}
-      <div className="px-4 pt-3">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => document.getElementById('mob-avatar-input')?.click()}
-            className="w-14 h-14 rounded-2xl bg-blue-100/70 text-[#1e40af] flex items-center justify-center text-base font-black shrink-0 overflow-hidden"
-            title={t('patientProfile.uploadPhoto', 'Rasm yuklash')}
-          >
-            {patient.photo_url
-              ? <img src={patient.photo_url} alt="" className="w-full h-full object-cover" />
-              : (photoUploading ? <Camera className="w-5 h-5" /> : getInitials(patient.full_name))}
-          </button>
-          <input id="mob-avatar-input" data-testid="profile-photo-input" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-          <button type="button" onClick={() => setPatientModalOpen(true)} className="min-w-0 flex-1 text-left">
-            <h1 className="text-[19px] font-black leading-tight text-[#1e3a8a] break-words">{patient.full_name}</h1>
-            <p className="mt-0.5 text-[12px] font-semibold text-slate-500 break-words">
-              {[
-                patientGenderLabel(patient.gender, language),
-                age != null ? `${age} yosh` : null,
-                clinicLabel,
-              ].filter(Boolean).join(' · ')}
-            </p>
-          </button>
-        </div>
-
-        <div className="mt-3 -mx-4 px-4 flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar text-[12px] whitespace-nowrap" data-testid="patient-card-header-meta">
-          {patient.phone ? (
-            <a href={phoneHref} className="shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-xl bg-white border border-slate-100 font-bold text-blue-700 tabular-nums">
-              <Phone className="w-3.5 h-3.5 text-blue-500" />{formatPhone(patient.phone)}
-            </a>
-          ) : (
-            <span className="shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-xl bg-white border border-slate-100 font-bold text-slate-400"><Phone className="w-3.5 h-3.5" />Telefon yo'q</span>
-          )}
-          <span className="shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-xl bg-white border border-slate-100 font-semibold text-slate-600">
-            <Calendar className="w-3.5 h-3.5 text-blue-500" />
-            {formatBirthDate(patient.birth_date) || 'Tug‘ilgan sana yo‘q'}
-          </span>
-          {patientGenderLabel(patient.gender, language) && (
-            <span className="shrink-0 inline-flex items-center h-7 px-2.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-black">{patientGenderLabel(patient.gender, language)}</span>
-          )}
-          {age != null && (
-            <span className="shrink-0 inline-flex items-center h-7 px-2.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-black">{age} yosh</span>
-          )}
-        </div>
-
-        <div className="mt-2 flex items-center gap-2">
-          <div className={cn('flex-1 min-w-0 flex items-center gap-2 h-10 px-3 rounded-xl border text-[12px] font-semibold',
-            medicalAlerts.length || patient.important_info ? 'bg-rose-50 border-rose-100 text-rose-700' : 'bg-white border-slate-100 text-slate-600')}
-            data-testid="profile-allergy-row"
-          >
-            <ShieldAlert className={cn('w-4 h-4 shrink-0', medicalAlerts.length || patient.important_info ? 'text-rose-500' : 'text-blue-500')} />
-            <span className="truncate">
-              {medicalAlerts.length
-                ? `Allergiya: ${medicalAlerts.join(', ')}`
-                : (patient.important_info ? `Allergiya: ${patient.important_info}` : 'Allergiya yo‘q')}
-            </span>
+      {/* IDENTITY CARD */}
+      <div className="px-3 pt-1">
+        <div className="bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.05)] p-3.5">
+          <div className="flex items-start gap-3">
+            <button type="button" onClick={() => document.getElementById('mob-avatar-input')?.click()}
+              className="w-16 h-16 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center text-[20px] font-bold shrink-0 overflow-hidden"
+              title={t('patientProfile.uploadPhoto', 'Rasm yuklash')}>
+              {patient.photo_url
+                ? <img src={patient.photo_url} alt="" className="w-full h-full object-cover" />
+                : (photoUploading ? <Camera className="w-5 h-5" /> : getInitials(patient.full_name))}
+            </button>
+            <input id="mob-avatar-input" data-testid="profile-photo-input" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+            <button type="button" onClick={() => setPatientModalOpen(true)} className="min-w-0 flex-1 text-left pt-0.5">
+              <h1 className="text-[18px] font-extrabold leading-tight text-slate-900 break-words">{patient.full_name}</h1>
+              <p className="mt-0.5 text-[13px] font-medium text-slate-500 break-words" data-testid="patient-card-header-meta">
+                {[patientGenderLabel(patient.gender, language), age != null ? `${age} yosh` : null, formatBirthDate(patient.birth_date) || null].filter(Boolean).join(' · ') || "Ma'lumot kiritilmagan"}
+              </p>
+            </button>
+            {financials.debt > 0 && (
+              <button type="button" data-testid="profile-debt-banner"
+                onClick={() => { setActiveTab('payments'); requestAnimationFrame(() => tabPanelRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })); }}
+                className="shrink-0 max-w-[46%] flex items-center gap-1.5 rounded-2xl bg-rose-50 border border-rose-100 px-2 py-2 text-left active:scale-[0.98]">
+                <span className="w-7 h-7 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0"><AlertCircle className="w-4 h-4" /></span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-semibold text-rose-600">{t('patientProfile.mobile.debt', 'Qarzdorlik')}</span>
+                  <span className="block text-[15px] font-extrabold text-rose-700 tabular-nums leading-tight whitespace-nowrap">{formatCurrency(financials.debt)}</span>
+                </span>
+              </button>
+            )}
           </div>
-          <button type="button" onClick={() => setPatientModalOpen(true)} aria-label="Allergiyani tahrirlash" className="w-10 h-10 rounded-xl bg-white border border-slate-100 text-blue-600 flex items-center justify-center shrink-0 active:scale-95">
-            <Pencil className="w-4 h-4" />
-          </button>
+          <div className="mt-2.5 flex items-center gap-3 text-[13px] min-w-0">
+            {patient.phone ? (
+              <span className="inline-flex items-center gap-1.5 font-bold text-blue-700 tabular-nums shrink-0">
+                <a href={phoneHref} className="inline-flex items-center gap-1.5 min-h-[32px]"><Phone className="w-4 h-4" />{formatPhone(patient.phone)}</a>
+                <button type="button" aria-label="Nusxa olish" onClick={() => { try { navigator.clipboard.writeText(patient.phone); toast.success('Nusxa olindi'); } catch { /* ignore */ } }} className="w-8 h-8 -ml-1 flex items-center justify-center text-slate-400"><Copy className="w-4 h-4" /></button>
+              </span>
+            ) : <span className="inline-flex items-center gap-1.5 font-semibold text-slate-400 shrink-0"><Phone className="w-4 h-4" />Telefon yo'q</span>}
+            {clinicLabel && <span className="inline-flex items-center gap-1.5 text-slate-500 min-w-0 border-l border-slate-200 pl-3"><MapPin className="w-4 h-4 shrink-0" /><span className="truncate">{clinicLabel}</span></span>}
+          </div>
+          <div className="mt-2.5 grid grid-cols-4 gap-1.5" data-testid="profile-allergy-row">
+            {(() => {
+              const allergy = medicalAlerts.length ? medicalAlerts.join(', ') : (patient.important_info || '');
+              const noteCount = String(patient.notes || '').split('\n\n').filter((x) => x.trim()).length;
+              const blood = patient.blood_group || patient.blood_type || '';
+              const chip = 'rounded-xl px-1.5 py-2 min-h-[56px] flex flex-col items-center justify-center gap-1 text-center active:scale-[0.98]';
+              return (
+                <>
+                  <button type="button" onClick={() => setPatientModalOpen(true)} className={cn(chip, allergy ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-800')}>
+                    {allergy ? <ShieldAlert className="w-4 h-4 shrink-0" /> : <ShieldCheck className="w-4 h-4 shrink-0" />}
+                    <span className="text-[13px] font-semibold leading-tight line-clamp-2">{allergy ? allergy : "Allergiya yo'q"}</span>
+                  </button>
+                  <div className={cn(chip, 'bg-slate-50 text-slate-600')}>
+                    <Smile className="w-4 h-4 shrink-0" />
+                    <span className="text-[13px] font-medium leading-tight">Doimiy (FDI)</span>
+                  </div>
+                  <button type="button" onClick={() => setPatientModalOpen(true)} className={cn(chip, 'bg-slate-50 text-slate-600')}>
+                    <Droplet className="w-4 h-4 shrink-0 text-rose-500" />
+                    <span className="leading-tight min-w-0"><span className="block text-[13px]">Qon guruhi</span><span className="block text-[13px] font-bold text-slate-800 truncate">{blood || '—'}</span></span>
+                  </button>
+                  <button type="button" onClick={() => setMainSub(mainSub === 'notes' ? 'chart' : 'notes')} className={cn(chip, 'bg-slate-50 text-slate-600')}>
+                    <StickyNote className="w-4 h-4 shrink-0 text-blue-500" />
+                    <span className="leading-tight"><span className="block text-[13px]">Eslatma</span><span className="block text-[13px] font-bold text-slate-800">{noteCount ? `${noteCount} ta` : "Yo'q"}</span></span>
+                  </button>
+                </>
+              );
+            })()}
+          </div>
         </div>
-
-        {financials.debt > 0 && (
-          <button
-            type="button"
-            data-testid="profile-debt-banner"
-            onClick={() => {
-              setActiveTab('payments');
-              requestAnimationFrame(() => tabPanelRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
-            }}
-            className="mt-3 w-full flex items-center gap-3 rounded-2xl bg-rose-50 border border-rose-100 px-3.5 py-3 text-left active:scale-[0.99]"
-          >
-            <span className="w-8 h-8 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0"><AlertCircle className="w-5 h-5" /></span>
-            <span className="flex-1 min-w-0">
-              <span className="block text-[12px] font-bold text-rose-600">{t('patientProfile.mobile.debt', 'Qarzdorlik')}</span>
-              <span className="block text-[20px] font-black text-rose-700 tabular-nums leading-tight">{formatCurrency(financials.debt)}</span>
-            </span>
-            <span className="w-8 h-8 rounded-xl bg-white/70 text-rose-600 flex items-center justify-center shrink-0"><ChevronRight className="w-4 h-4" /></span>
-          </button>
-        )}
       </div>
 
       {/* PILL TABS */}
-      <div className={cn('shrink-0 px-3', isMain ? 'pt-3 pb-0' : 'sticky top-0 z-30 pt-3 pb-2 bg-[#F3F6F8]')}>
+      <div className="shrink-0 px-3 pt-3">
         <div className="bg-white rounded-[22px] p-1.5 shadow-[0_6px_20px_rgba(15,23,42,0.06)] border border-slate-100 flex min-w-0 overflow-hidden" data-testid="profile-pill-tabs">
           {tabs.map(tab => {
             const isActive = activeTab === tab.id;
             return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  requestAnimationFrame(() => { const m = document.querySelector('main'); if (m) m.scrollTop = 0; });
-                }}
-                className={cn(
-                  'flex-1 min-w-0 px-1 h-10 text-[13px] leading-tight font-semibold rounded-2xl transition-colors truncate',
-                  isActive ? 'bg-[#cdf5ec] text-[#0f766e]' : 'text-slate-500'
-                )}
-              >
+              <button key={tab.id} type="button"
+                onClick={() => { setActiveTab(tab.id); requestAnimationFrame(() => { const m = document.querySelector('main'); if (m) m.scrollTop = 0; }); }}
+                className={cn('flex-1 min-w-0 px-0.5 h-11 text-[13px] leading-tight font-semibold rounded-2xl transition-colors whitespace-nowrap', isActive ? 'bg-[#d6f5ea] text-[#0f6b55]' : 'text-slate-500')}>
                 {tab.label}
               </button>
             );
           })}
         </div>
       </div>
-      {/* ACTION CARDS */}
-      <div className="px-4 mt-3 grid grid-cols-3 gap-2 relative z-10">
-        <button type="button" onClick={() => openPayModal()} data-testid="profile-action-pay"
-          className="rounded-2xl bg-emerald-50 border border-emerald-100 py-3 px-2 flex flex-col items-center gap-1.5 active:scale-[0.97] transition-transform">
-          <Wallet className="w-6 h-6 text-emerald-600" />
-          <span className="text-[12px] font-black text-emerald-800">{t('patientProfile.mobile.payAction', "To'lov")}</span>
-        </button>
-        <button type="button" onClick={() => { setSelectedAppt(null); setApptModalOpen(true); }} data-testid="profile-action-appt"
-          className="rounded-2xl bg-blue-50 border border-blue-100 py-3 px-2 flex flex-col items-center gap-1.5 active:scale-[0.97] transition-transform">
-          <CalendarDays className="w-6 h-6 text-blue-600" />
-          <span className="text-[12px] font-black text-blue-800">{t('patientProfile.mobile.apptAction', 'Uchrashuv')}</span>
-        </button>
-        <button type="button" onClick={() => setTreatModalOpen(true)} data-testid="profile-action-plan"
-          className="rounded-2xl bg-orange-50 border border-orange-100 py-3 px-2 flex flex-col items-center gap-1.5 active:scale-[0.97] transition-transform">
-          <FilePlus2 className="w-6 h-6 text-orange-500" />
-          <span className="text-[12px] font-black text-orange-700">{t('patientProfile.mobile.newPlanAction', 'Yangi reja')}</span>
-        </button>
-      </div>
       {nextAppointment && (
-        <p className="px-4 mt-1.5 text-[11px] font-semibold text-slate-500">
+        <p className="px-4 mt-2 text-[13px] font-semibold text-slate-500">
           Keyingi uchrashuv: <b className="text-blue-700">{formatStandardDate(nextAppointment.date || nextAppointment.appointment_date)}{formatAppointmentTime(nextAppointment) ? ` · ${formatAppointmentTime(nextAppointment)}` : ''}</b>
         </p>
       )}
 
-      {/* MAIN SUB-TABS (profile-exact-1012) */}
-      <div className="px-3 mt-3">
-        <div className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.05)] grid grid-cols-4 h-12 px-1" data-testid="profile-main-subtabs">
-          {[
-            ['chart', 'Tish kartasi'],
-            ['reja', 'Davolash rejasi'],
-            ['docs', 'Hujjatlar'],
-            ['notes', 'Eslatmalar'],
-          ].map(([id, label]) => (
-            <button key={id} type="button" onClick={() => setMainSub(id)} aria-pressed={mainSub === id}
-              className={cn('relative text-[12.5px] font-bold whitespace-nowrap', mainSub === id ? 'text-[#1d6ff2]' : 'text-slate-400')}>
-              {label}
-              {mainSub === id && <span className="absolute left-3 right-3 bottom-0 h-[3px] rounded-full bg-[#1d6ff2]" />}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="px-3 pt-3 pb-3 space-y-3">
-        {mainSub === 'chart' && (
-          <>
-            <ToothChartCard
-              patient={patient}
-              plans={plans}
-              payments={payments}
-              appointments={appointments}
-              doctors={doctors}
-              services={services}
-              implants={implants}
-              toothRecords={toothRecords}
-              onReload={load}
-              onBookAppointment={() => { setSelectedAppt(null); setApptModalOpen(true); }}
-              onOpenPlan={() => setTreatModalOpen(true)}
-              sheetOffset={84}
-              fullArch
-            />
-            <TodayPlanBar
-              design
-              part="stepper"
-              groups={planStepper.groups}
-              title={`Davolash rejasi: ${plans.length} ta`}
-              totalDebt={financials.debt}
-              planRemaining={planRemainingTotal}
-              plans={plans}
-              implants={implants}
-              onPay={() => openPayModal()}
-              onAdvanceStep={advanceStep}
-              onNextClinical={(step, opts) => {
-                if (opts?.advanced) return;
-                document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
-              onOpenPlan={() => setActiveTab('plan')}
-            />
-            <ChairsideClinicalTools
-              patient={patient}
-              doctors={doctors}
-              onPatientUpdated={(updated) => {
-                if (updated) setPatient((prev) => ({ ...(prev || {}), ...updated }));
-              }}
-              language={language}
-              compact
-              tabbed
-              design
-              activeTab={clinicalTab}
-              onTabChange={setClinicalTab}
-            />
-            <TodayPlanBar
-              design
-              part="pay"
-              groups={planStepper.groups}
-              title={planStepper.title}
-              totalDebt={financials.debt}
-              planRemaining={planRemainingTotal}
-              plans={plans}
-              implants={implants}
-              onPay={() => openPayModal()}
-            />
-          </>
-        )}
-        {mainSub === 'reja' && planTabJsx}
-        {mainSub === 'docs' && (
-          <ChairsideClinicalTools
-            patient={patient}
-            doctors={doctors}
-            onPatientUpdated={(updated) => {
-              if (updated) setPatient((prev) => ({ ...(prev || {}), ...updated }));
-            }}
-            language={language}
-            compact
-            tabbed
-            design
-            activeTab={clinicalTab === 'rozilik' ? 'rozilik' : 'rvg'}
-            onTabChange={setClinicalTab}
-          />
-        )}
+        <ToothChartCard
+          patient={patient}
+          plans={plans}
+          payments={payments}
+          appointments={appointments}
+          doctors={doctors}
+          services={services}
+          implants={implants}
+          toothRecords={toothRecords}
+          onReload={load}
+          onBookAppointment={() => { setSelectedAppt(null); setApptModalOpen(true); }}
+          onOpenPlan={() => setTreatModalOpen(true)}
+          sheetOffset={84}
+          fullArch
+        />
+
+        {/* Davolash rejasi summary */}
+        <div className="bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.05)] p-3.5" data-testid="profile-plans-summary">
+          <div className="flex items-center justify-between mb-2.5">
+            <h2 className="text-[17px] font-extrabold text-slate-900">Davolash rejasi ({plans.length})</h2>
+            <button type="button" onClick={() => setTreatModalOpen(true)} className="h-11 px-4 rounded-xl bg-[#13A57E] text-white text-[14px] font-bold flex items-center gap-1.5 active:scale-95"><Plus className="w-5 h-5" />Yangi reja</button>
+          </div>
+          {plans.length === 0 ? (
+            <div className="py-5 text-center"><ClipboardList className="w-9 h-9 text-slate-300 mx-auto mb-1.5" /><p className="text-[14px] font-semibold text-slate-500">{t('patientProfile.mobile.emptyPlans', "Davolash rejalari yo'q")}</p></div>
+          ) : (
+            <div className="space-y-2">
+              {(() => {
+                const numberOf = numberPlans(plans);
+                return plans.slice(0, 4).map((plan, idx) => {
+                  const n = numberOf(plan, idx);
+                  const sk = planStatusKey(plan);
+                  const st = sk === 'completed' ? ['Tugallangan', 'bg-emerald-100 text-emerald-700'] : sk === 'in_progress' ? ['Jarayonda', 'bg-teal-50 text-teal-700'] : ['Rejalashtirilgan', 'bg-blue-50 text-blue-700'];
+                  const svcs = plan.services || [];
+                  const done = svcs.filter((s) => isDoneStatus(s.status) || s.completed === true).length;
+                  const teeth = Array.from(new Set(svcs.map((s) => s.tooth_number).concat(plan.tooth_number ? String(plan.tooth_number).split(/[,\s]+/) : []).filter((x) => /^\d{2}$/.test(String(x).replace('#', ''))))).slice(0, 4);
+                  const name = String(plan.name || svcs[0]?.service_name || '').trim();
+                  return (
+                    <button key={plan.id} type="button" onClick={() => setActiveTab('plan')} className="w-full text-left rounded-2xl border border-slate-200 p-3 active:bg-slate-50">
+                      <div className="flex items-center gap-2">
+                        <p className="flex-1 min-w-0 text-[14px] font-bold text-slate-900 truncate">Reja {n}{name ? ` · ${name}` : ''}</p>
+                        <span className={cn('shrink-0 px-2.5 py-1 rounded-full text-[13px] font-semibold', st[1])}>{st[0]}</span>
+                        <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                      </div>
+                      <div className="mt-1.5 flex items-end justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="flex items-center gap-1.5 text-[13px] text-slate-500"><Calendar className="w-3.5 h-3.5" />{formatStandardDate(plan.created_date || plan.date)}</p>
+                          <div className="mt-1 flex items-center gap-2">
+                            {teeth.length > 0 && <span className="text-[13px] font-semibold text-slate-700">#{teeth.join(', #')}</span>}
+                            {svcs.length > 0 && <span className="flex gap-1">{svcs.slice(0, 6).map((s, i) => <span key={i} className={cn('w-2 h-2 rounded-full', i < done ? 'bg-emerald-500' : 'bg-slate-200')} />)}</span>}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-[13px] text-slate-500">{svcs.length} ta xizmat</p>
+                          <p className="text-[15px] font-extrabold text-slate-900">{formatCurrency(planTotal(plan))}</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                });
+              })()}
+              {plans.length > 4 && <button type="button" onClick={() => setActiveTab('plan')} className="w-full h-11 text-[14px] font-bold text-blue-700">Barchasini ko'rish ({plans.length})</button>}
+            </div>
+          )}
+        </div>
+
+        {/* Tezkor amallar */}
+        <div className="bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.05)] p-3.5">
+          <h2 className="text-[17px] font-extrabold text-slate-900 mb-2.5">Tezkor amallar</h2>
+          <div className="grid grid-cols-4 gap-2">
+            <button type="button" onClick={() => openPayModal()} data-testid="profile-action-pay" className="rounded-2xl bg-emerald-50 border border-emerald-100 py-3 px-1 flex flex-col items-center gap-1.5 active:scale-[0.97]">
+              <Wallet className="w-6 h-6 text-emerald-600" /><span className="text-[13px] font-semibold text-emerald-800 text-center leading-tight">To'lov qo'shish</span>
+            </button>
+            <button type="button" onClick={() => { setSelectedAppt(null); setApptModalOpen(true); }} data-testid="profile-action-appt" className="rounded-2xl bg-blue-50 border border-blue-100 py-3 px-1 flex flex-col items-center gap-1.5 active:scale-[0.97]">
+              <CalendarDays className="w-6 h-6 text-blue-600" /><span className="text-[13px] font-semibold text-blue-800">Uchrashuv</span>
+            </button>
+            <button type="button" onClick={() => setTreatModalOpen(true)} data-testid="profile-action-plan" className="rounded-2xl bg-orange-50 border border-orange-100 py-3 px-1 flex flex-col items-center gap-1.5 active:scale-[0.97]">
+              <FilePlus2 className="w-6 h-6 text-orange-500" /><span className="text-[13px] font-semibold text-orange-700">Yangi reja</span>
+            </button>
+            <button type="button" onClick={() => { setMainSub('notes'); requestAnimationFrame(() => document.getElementById('profile-notes-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="rounded-2xl bg-violet-50 border border-violet-100 py-3 px-1 flex flex-col items-center gap-1.5 active:scale-[0.97]">
+              <FileText className="w-6 h-6 text-violet-600" /><span className="text-[13px] font-semibold text-violet-700">Eslatma</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="profile-notes-anchor" />
         {mainSub === 'notes' && notesJsx}
+
+        <TodayPlanBar
+          design
+          part="stepper"
+          groups={planStepper.groups}
+          title={`Davolash rejasi: ${plans.length} ta`}
+          totalDebt={financials.debt}
+          planRemaining={planRemainingTotal}
+          plans={plans}
+          implants={implants}
+          onPay={() => openPayModal()}
+          onAdvanceStep={advanceStep}
+          onNextClinical={(step, opts) => {
+            if (opts?.advanced) return;
+            document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+          onOpenPlan={() => setActiveTab('plan')}
+        />
+        <ChairsideClinicalTools
+          patient={patient}
+          doctors={doctors}
+          onPatientUpdated={(updated) => {
+            if (updated) setPatient((prev) => ({ ...(prev || {}), ...updated }));
+          }}
+          language={language}
+          compact
+          tabbed
+          design
+          activeTab={clinicalTab}
+          onTabChange={setClinicalTab}
+        />
       </div>
       </>
       ) : (
