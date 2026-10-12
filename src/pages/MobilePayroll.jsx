@@ -5,7 +5,8 @@ import {
   DollarSign, Users, TrendingUp, Calendar, 
   Plus, Search, Trash2, Edit2, Shield, Percent,
   Camera, Upload, Download, Eye, Printer, X,
-  Receipt, Layers, ChevronDown, ChevronRight, Activity, Check, Copy
+  Receipt, Layers, ChevronDown, ChevronRight, Activity, Check, Copy,
+  CalendarDays, Wallet, PieChart, ClipboardList
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { compressImage } from '@/utils/imageUpload';
@@ -730,25 +731,28 @@ export default function MobilePayroll() {
           {/* Month Selector & Search Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {/* Month Picker */}
+            <div className="relative">
+            <CalendarDays className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" />
             <select
               value={selectedMonth}
               onChange={e => setSelectedMonth(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-100/90 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1499AD]/30"
+              className="w-full h-12 pl-11 pr-3 bg-slate-100/90 border border-slate-200 rounded-xl text-[14px] font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1499AD]/30"
             >
               {monthOptions.map(m => (
                 <option key={m.value} value={m.value}>{m.label}</option>
               ))}
             </select>
+            </div>
 
             {/* Search Input */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Shifokor ismi, mutaxassislik..."
-                className="w-full pl-8 pr-7 py-2 bg-slate-100/90 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1499AD]/30 transition-all"
+                className="w-full h-12 pl-10 pr-8 bg-slate-100/90 border border-slate-200 rounded-xl text-[14px] font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1499AD]/30 transition-all"
               />
               {searchQuery && (
                 <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">✕</button>
@@ -766,7 +770,7 @@ export default function MobilePayroll() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTypeFilter(tab.id)}
-                className={`px-3 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all ${
+                className={`h-11 px-4 rounded-xl text-[13px] font-bold whitespace-nowrap transition-all ${
                   activeTypeFilter === tab.id
                     ? 'bg-slate-900 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -778,30 +782,34 @@ export default function MobilePayroll() {
           </div>
 
           {/* ── 4 KPI STATS GRID (Clean 2x2) ── */}
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="bg-emerald-50/90 border border-emerald-100 rounded-xl p-2.5">
-              <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider">Jami Maosh</p>
-              <p className="text-sm font-black text-emerald-800 font-mono mt-0.5">
+          <div className="grid grid-cols-2 gap-2 pt-1 [&_span.w-10]:w-9 [&_span.w-10]:h-9">
+            <div className="bg-emerald-50/90 border border-emerald-100 rounded-2xl p-3 flex items-center gap-2.5 min-w-0">
+              <span className="w-10 h-10 rounded-xl bg-white/80 text-emerald-600 grid place-items-center shrink-0"><Wallet className="w-5 h-5" /></span>
+              <div className="min-w-0"><p className="text-[12px] font-bold text-emerald-600 uppercase truncate">Jami Maosh</p>
+              <p className="text-[14px] font-extrabold text-emerald-800 mt-0.5 whitespace-nowrap tracking-tight tabular-nums">
                 {formatCurrency(totals.salary)}
-              </p>
+              </p></div>
             </div>
-            <div className="bg-blue-50/90 border border-blue-100 rounded-xl p-2.5">
-              <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider">Klinika Tushumi</p>
-              <p className="text-sm font-black text-blue-800 font-mono mt-0.5">
+            <div className="bg-blue-50/90 border border-blue-100 rounded-2xl p-3 flex items-center gap-2.5 min-w-0">
+              <span className="w-10 h-10 rounded-xl bg-white/80 text-blue-600 grid place-items-center shrink-0"><PieChart className="w-5 h-5" /></span>
+              <div className="min-w-0"><p className="text-[12px] font-bold text-blue-600 uppercase truncate">Klinika Tushumi</p>
+              <p className="text-[14px] font-extrabold text-blue-800 mt-0.5 whitespace-nowrap tracking-tight tabular-nums">
                 {formatCurrency(totals.revenue)}
-              </p>
+              </p></div>
             </div>
-            <div className="bg-purple-50/90 border border-purple-100 rounded-xl p-2.5">
-              <p className="text-[9px] font-black text-purple-600 uppercase tracking-wider">Amallar / Ishlar</p>
-              <p className="text-sm font-black text-purple-800 font-mono mt-0.5">
+            <div className="bg-purple-50/90 border border-purple-100 rounded-2xl p-3 flex items-center gap-2.5 min-w-0">
+              <span className="w-10 h-10 rounded-xl bg-white/80 text-purple-600 grid place-items-center shrink-0"><ClipboardList className="w-5 h-5" /></span>
+              <div className="min-w-0"><p className="text-[12px] font-bold text-purple-600 uppercase truncate">Amallar / Ishlar</p>
+              <p className="text-[15px] font-extrabold text-purple-800 mt-0.5 whitespace-nowrap tabular-nums">
                 {totals.treatments} ta muolaja
-              </p>
+              </p></div>
             </div>
-            <div className="bg-slate-100 border border-slate-200 rounded-xl p-2.5">
-              <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Bemorlar Soni</p>
-              <p className="text-sm font-black text-slate-800 font-mono mt-0.5">
+            <div className="bg-slate-100 border border-slate-200 rounded-2xl p-3 flex items-center gap-2.5 min-w-0">
+              <span className="w-10 h-10 rounded-xl bg-white/80 text-slate-600 grid place-items-center shrink-0"><Users className="w-5 h-5" /></span>
+              <div className="min-w-0"><p className="text-[12px] font-bold text-slate-500 uppercase truncate">Bemorlar Soni</p>
+              <p className="text-[15px] font-extrabold text-slate-800 mt-0.5 whitespace-nowrap">
                 {totals.patients} ta bemor
-              </p>
+              </p></div>
             </div>
           </div>
         </div>
@@ -881,12 +889,12 @@ export default function MobilePayroll() {
                         </div>
 
                         {/* Stats Row */}
-                        <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-100">
+                        <div className="flex items-center justify-between mt-2">
                           <div className="flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
                             <Activity className="w-3 h-3 text-blue-500" />
                             <span>{doctor.patientCount || doctor.treatments || 0} ta ish</span>
                           </div>
-                          <p className="text-sm font-black text-emerald-600 font-mono tabular-nums">
+                          <p className="text-[16px] font-extrabold text-emerald-600 tabular-nums">
                             {formatCurrency(doctor.totalSalary)}
                           </p>
                         </div>
@@ -901,7 +909,7 @@ export default function MobilePayroll() {
                         className="px-3.5 pb-3.5 pt-1 bg-slate-50/60 border-t border-slate-100 space-y-2.5"
                       >
                         {/* Financial Mini Grid */}
-                        <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div className="grid grid-cols-2 gap-2 pt-1 [&_span.w-10]:w-9 [&_span.w-10]:h-9">
                           <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
                             <p className="text-[8.5px] font-black text-slate-400 uppercase tracking-widest leading-none">Klinikaga Tushum</p>
                             <p className="text-xs font-black text-slate-800 font-mono mt-1">{formatCurrency(doctor.totalRevenue)}</p>
@@ -1314,7 +1322,7 @@ export default function MobilePayroll() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="grid grid-cols-2 gap-2 pt-1 [&_span.w-10]:w-9 [&_span.w-10]:h-9">
                   <Button 
                     type="button" 
                     variant="outline" 
