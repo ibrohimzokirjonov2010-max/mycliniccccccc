@@ -1,4 +1,5 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { toast } from 'sonner';
 import { createPortal } from 'react-dom';
 import {
   ArrowLeft, ChevronRight, CalendarDays, Folder, Clock, Check, Lock, Banknote,
@@ -117,6 +118,7 @@ export default function MobilePayView({
   saving, disabled, onSubmit, submitLabel,
 }) {
   const fileRef = useRef(null);
+  useEffect(() => { if (open) toast.dismiss('implant-incomplete-notification'); }, [open]);
   const { rows, totalCount, paidCount } = useMemo(() => deriveServices(plans, doctorsById), [plans, doctorsById]);
   const amt = Number(String(amount ?? '').replace(/\D/g, '')) || 0;
   const selectedRows = rows.filter((r) => selectedKeys.includes(r.key));
