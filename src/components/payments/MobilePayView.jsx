@@ -170,6 +170,7 @@ export default function MobilePayView({
             </>
           ) : patientPicker}
         </div>
+        {!patient && <div className="h-[300px]" aria-hidden="true" />}
 
         {patient && (
           <>
