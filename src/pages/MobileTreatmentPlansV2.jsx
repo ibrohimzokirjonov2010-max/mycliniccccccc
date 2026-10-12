@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { 
   Plus, Search, Check, X, ArrowLeft, User, Sparkles, Shield, Trash2, ClipboardList, Info,
-  Activity, Scissors, Layers, TrendingUp, Syringe, Baby, CheckCircle2, Lock, SlidersHorizontal, FileText, ChevronRight
+  Activity, Scissors, Layers, TrendingUp, Syringe, Baby, CheckCircle2, Lock, SlidersHorizontal, FileText, ChevronRight, FilePlus2, ArrowRight
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { isPlanLocked, PLAN_LOCKED_BADGE, PLAN_LOCKED_TOOLTIP } from '@/lib/planLock';
@@ -496,83 +496,71 @@ export default function MobileTreatmentPlansV2() {
         {/* Dialog for Adding New Treatment Plan */}
         <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
            <DialogContent className="max-w-md w-full h-[95vh] p-0 border-none rounded-t-2xl bg-white outline-none overflow-hidden flex flex-col">
-              {/* Add Modal Header */}
-              <div className="px-5 pt-6 pb-3 shrink-0 border-b border-slate-50 bg-white">
-                 <div className="flex items-center justify-between mb-4">
+              {/* Add Modal Header (design extra-07) */}
+              <div className="shrink-0 bg-white">
+                 <div className="flex items-center gap-3 px-4 py-4 bg-gradient-to-r from-[#0F8F86] to-[#14A39A] text-white">
                     {step > 1 ? (
-                       <button onClick={() => setStep(step - 1)} className="w-8.5 h-8.5 bg-slate-50 hover:bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 active:scale-90 transition-all"><ArrowLeft className="w-4 h-4" /></button>
+                       <button aria-label="Orqaga" onClick={() => setStep(step - 1)} className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center shrink-0 active:scale-95"><ArrowLeft className="w-5 h-5" /></button>
                     ) : (
-                       <div className="w-8.5 h-8.5" />
+                       <span className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center shrink-0"><FilePlus2 className="w-6 h-6" /></span>
                     )}
-                    <h2 className="text-base font-bold text-slate-900 uppercase tracking-tight">Yangi Davolash Rejasi</h2>
-                    <button onClick={() => setShowAddModal(false)} className="w-8.5 h-8.5 bg-slate-50 hover:bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 active:scale-90 transition-all"><X className="w-4 h-4" /></button>
+                    <div className="flex-1 min-w-0">
+                       <h2 className="text-[19px] font-extrabold leading-tight">Yangi davolash rejasi</h2>
+                       <p className="text-[13px] text-white/80">Yangi reja qo'shish</p>
+                    </div>
+                    <button aria-label="Yopish" onClick={() => setShowAddModal(false)} className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center shrink-0 active:scale-95"><X className="w-5 h-5" /></button>
                  </div>
-                 
-                 {/* Progress Steps Indicators */}
-                 <div className="relative px-6 pb-1">
-                    <div className="flex items-center justify-between relative z-10">
+                 <div className="relative px-8 pt-4 pb-3 border-b border-slate-100">
+                    <div className="flex items-start justify-between relative z-10">
                        {[1, 2, 3].map(s => {
                           const isActive = step >= s;
                           return (
-                              <div key={s} className="flex flex-col items-center gap-1">
+                              <div key={s} className="flex flex-col items-center gap-1.5 w-20">
                                  <button
                                     onClick={() => step >= s && setStep(s)}
-                                    className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${
-                                       isActive 
-                                       ? 'bg-[#1499AD] border-[#1499AD] text-white shadow-md shadow-[#1499AD]/20 scale-105' 
-                                       : 'bg-white border-slate-100 text-slate-300 shadow-sm'
-                                    }`}
+                                    className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${isActive ? 'bg-[#0F8F86] border-[#0F8F86] text-white shadow-md shadow-teal-700/20' : 'bg-white border-slate-200 text-slate-400'}`}
                                  >
-                                    {s === 1 ? <User className="w-4 h-4" /> : s === 2 ? <Sparkles className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+                                    {s === 1 ? <User className="w-5 h-5" /> : s === 2 ? <Sparkles className="w-5 h-5" /> : <Shield className="w-5 h-5" />}
                                  </button>
-                                 <span className={`text-[8px] font-black uppercase tracking-wider ${
-                                    isActive ? 'text-[#1499AD]' : 'text-slate-400'
-                                 }`}>
+                                 <span className={`text-[14px] font-semibold ${isActive ? 'text-[#0F8F86]' : 'text-slate-400'}`}>
                                     {s === 1 ? 'Bemor' : s === 2 ? 'Xizmatlar' : 'Yakunlash'}
                                  </span>
                               </div>
                           );
                        })}
                     </div>
-                    <div className="absolute h-0.5 bg-slate-100 rounded-full left-14 right-14 top-4 -z-10">
-                       <div 
-                          className="h-full bg-[#1499AD] transition-all duration-300 rounded-full"
-                          style={{ width: `${(step - 1) * 50}%` }}
-                       />
+                    <div className="absolute h-0.5 bg-slate-200 rounded-full left-[4.5rem] right-[4.5rem] top-[2.45rem]">
+                       <div className="h-full bg-[#0F8F86] transition-all duration-300 rounded-full" style={{ width: `${(step - 1) * 50}%` }} />
                     </div>
                  </div>
               </div>
 
               {/* Step Contents */}
-              <div className="flex-1 overflow-y-auto px-4 py-5 bg-[#F9FAFB] no-scrollbar">
+              <div className="flex-1 overflow-y-auto px-4 py-4 bg-[#F6F8FA] no-scrollbar">
                  {step === 1 && (
-                    <div className="space-y-4">
-                       <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-5">
-                          <div className="relative z-20">
-                             <Label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1 mb-2 block flex items-center gap-1.5">
-                                <User className="w-3.5 h-3.5 text-slate-400" /> Bemor tanlash
-                             </Label>
-                             <PatientSelect patients={patients} value={formData.patient_id} onChange={id => setFormData({...formData, patient_id: id})} inputClassName="h-12 rounded-xl text-sm border-slate-100 bg-slate-50 focus:border-[#1499AD] transition-all" />
-                          </div>
-                          
-                          <div className="relative z-10">
-                             <Label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] ml-1 mb-2 block flex items-center gap-1.5">
-                                <ClipboardList className="w-3.5 h-3.5 text-slate-400" /> Reja nomi
-                             </Label>
-                             <Input 
-                                placeholder="Masalan: Kompleks plomba davolash..." 
-                                value={formData.name} 
-                                onChange={e => setFormData({...formData, name: e.target.value})} 
-                                className="h-12 rounded-xl font-bold bg-slate-55 border-slate-100 focus:border-[#1499AD] px-4 text-sm transition-all focus:ring-4 focus:ring-[#1499AD]/5" 
-                             />
-                          </div>
+                    <div className="space-y-3">
+                       <div className="p-4 bg-white rounded-2xl border border-slate-200 relative z-20">
+                          <Label className="text-[16px] font-bold text-slate-900 mb-3 flex items-center gap-2">
+                             <User className="w-5 h-5 text-slate-600" /> Bemor tanlash
+                          </Label>
+                          <PatientSelect patients={patients} value={formData.patient_id} onChange={id => setFormData({...formData, patient_id: id})} placeholder="Ism yoki telefon orqali qidiring..." inputClassName="h-12 rounded-xl text-[15px] border-slate-200 bg-white focus:border-[#0F8F86] transition-all" />
                        </div>
-                       
-                       <div className="bg-sky-50/40 p-4 rounded-xl border border-sky-100/50 flex items-start gap-3">
-                          <Info className="w-4 h-4 text-[#1499AD] mt-0.5 shrink-0" />
+                       <div className="p-4 bg-white rounded-2xl border border-slate-200 relative z-10">
+                          <Label className="text-[16px] font-bold text-slate-900 mb-3 flex items-center gap-2">
+                             <ClipboardList className="w-5 h-5 text-slate-600" /> Reja nomi
+                          </Label>
+                          <Input
+                             placeholder="Masalan: Kompleks plomba davolash..."
+                             value={formData.name}
+                             onChange={e => setFormData({...formData, name: e.target.value})}
+                             className="h-12 rounded-xl font-medium bg-white border-slate-200 focus:border-[#0F8F86] px-4 text-[15px] placeholder:text-slate-400"
+                          />
+                       </div>
+                       <div className="bg-sky-50/60 p-4 rounded-2xl border border-sky-100 flex items-start gap-3">
+                          <Info className="w-5 h-5 text-[#1172a3] mt-0.5 shrink-0" />
                           <div>
-                             <h5 className="text-[10px] font-black text-sky-900 uppercase tracking-wider mb-0.5">Yordamchi yo'riqnoma</h5>
-                             <p className="text-[10px] font-semibold text-sky-800 leading-normal">
+                             <h5 className="text-[15px] font-bold text-sky-900 mb-1">Yordamchi yo'riqnoma</h5>
+                             <p className="text-[14px] text-slate-600 leading-relaxed">
                                 Bemor va davolash rejasining nomini kiriting. Davom etish tugmasini bosib, keyingi bosqichda tish formulasi orqali tishlarni belgilashingiz va tegishli tish xizmatlarini biriktirishingiz mumkin.
                              </p>
                           </div>
@@ -813,23 +801,24 @@ export default function MobileTreatmentPlansV2() {
                     <Button 
                        variant="outline" 
                        onClick={() => setShowAddModal(false)} 
-                       className="h-11 px-5 rounded-xl border border-slate-200 text-slate-500 font-bold uppercase text-xs tracking-wider active:scale-95 transition-all"
+                       className="flex-1 h-12 px-5 rounded-2xl border border-slate-200 text-slate-700 font-bold text-[15px] active:scale-95 transition-all"
                     >
                        Bekor qilish
                     </Button>
                  ) : (
                     <button 
                        onClick={() => setStep(step - 1)} 
-                       className="w-11 h-11 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500 border border-slate-150 active:scale-95 transition-all shrink-0"
+                       aria-label="Orqaga"
+                       className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-500 border border-slate-200 active:scale-95 transition-all shrink-0"
                     >
                        <ArrowLeft className="w-5 h-5" />
                     </button>
                  )}
                  <Button 
                     onClick={() => { if(step === 2) setStep(3); else if(step === 3) handleSaveInternal(); else setStep(step+1); }} 
-                    className="flex-1 h-11 rounded-xl bg-slate-900 text-white font-bold uppercase text-xs tracking-wider shadow-md active:scale-95 transition-all"
+                    className="flex-1 h-12 rounded-2xl bg-[#0F8F86] hover:bg-[#0c7d75] text-white font-bold text-[15px] shadow-md active:scale-95 transition-all gap-2"
                  >
-                    {saving ? '...' : (step === 3 ? 'YAKUNLASH' : 'DAVOM ETISH')}
+                    {saving ? '...' : (step === 3 ? 'Yakunlash' : <>Davom etish <ArrowRight className="w-5 h-5" /></>)}
                  </Button>
               </div>
            </DialogContent>
