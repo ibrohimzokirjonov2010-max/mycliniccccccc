@@ -79,6 +79,8 @@ export default function ImplantToothChart({
   onSelectTooth,
   language = 'uz',
   className,
+  jaw,
+  hideLegend = false,
 }) {
   const t = COPY[language] || COPY.uz;
   const scope = useRef(`ifc-${Math.random().toString(36).slice(2, 8)}`).current;
@@ -142,7 +144,7 @@ export default function ImplantToothChart({
 
   return (
     <div ref={frameRef} className={cn(scope, 'w-full min-w-0', className)} data-testid="implant-tooth-chart">
-      <style>{css}</style>
+      <style>{css + (jaw === 'upper' ? `.${scope} .odonto-jaw-lower{display:none!important}` : jaw === 'lower' ? `.${scope} .odonto-jaw-upper{display:none!important}` : '')}</style>
       <div className="mx-auto w-full max-w-3xl min-w-0">
         <ProfessionalOdontogram
           toothStatuses={statuses}
@@ -157,6 +159,7 @@ export default function ImplantToothChart({
       </div>
 
       {/* Legend */}
+      {!hideLegend && <>
       <div className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-slate-100 px-1 pt-3 text-[11px] font-bold">
         <div className="flex items-center gap-1.5">
           <span
@@ -175,6 +178,7 @@ export default function ImplantToothChart({
         </div>
       </div>
       <p className="mt-1.5 text-center text-[10px] font-semibold text-slate-400">{t.hint}</p>
+      </>}
     </div>
   );
 }

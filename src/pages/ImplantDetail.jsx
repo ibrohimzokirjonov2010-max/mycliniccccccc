@@ -8,7 +8,7 @@ import {
   Clock, FileText, Camera, Activity, Phone,
   Building2, Layers, Settings2, Hash, UserRound, CalendarDays,
   BellRing, Receipt, Table as TableIcon,
-  FileSpreadsheet, Sparkles, Check, ExternalLink, Calendar, PlusCircle
+  FileSpreadsheet, Sparkles, Check, ExternalLink, Calendar, PlusCircle, Send, ChevronRight as ChevronRightIcon
 } from 'lucide-react';
 import { 
   Tooth, ImplantIcon, CrownIcon, FormerIcon, AbutmentIcon, 
@@ -40,12 +40,15 @@ import {
   toothServicesTotal,
 } from '../components/implants/linkedImplantServices';
 import ClinicalStepper, {
+  CLINICAL_STEPS,
+  getStatusRank,
   LIFECYCLE_COLORS,
   normalizeLifecycleStatus,
   SHORT_STATUS_LABEL,
 } from '../components/implants/ClinicalStepper';
 import {
   PassportSpecsCard,
+  formatImplantSize,
   MiniFdiChart,
   StageMediaRail,
   ClinicalTimeline,
@@ -53,6 +56,8 @@ import {
 } from '../components/implants/ClinicalPassportCards';
 import ImplantToothChart from '../components/implants/ImplantToothChart';
 import jsPDF from 'jspdf';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { formatClinicDate } from '@/lib/clinicTime';
 
 // Defensive rendering helper
 const safeRender = (val, fallback = '—') => {
@@ -95,6 +100,8 @@ export default function ImplantDetail() {
   const navigate = useNavigate();
 
   const [implant, setImplant] = useState(null);
+  const isPhone = useIsMobile(769);
+  const [phoneJaw, setPhoneJaw] = useState('upper');
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('excel'); // 'excel' | 'clinical' | 'docs' | 'timeline'
@@ -964,6 +971,174 @@ export default function ImplantDetail() {
   return (
     <div className="implant-profile space-y-4 pb-24 sm:pb-12 max-w-7xl mx-auto w-full min-w-0 max-w-full overflow-x-clip">
 
+      {isPhone ? (() => {
+        const formatTimelineDate = (v) => formatClinicDate(v);
+        const patientRow = (patients || []).find((p) => String(p.id) === String(activeTooth?.patient_id));
+        const phoneDigits = String(activeTooth.patient_phone || patientRow?.phone || '').replace(/\D/g, '');
+        const phoneIntl = phoneDigits ? (phoneDigits.startsWith('998') ? phoneDigits : '998' + phoneDigits) : '';
+        const rank = getStatusRank(activeTooth?.lifecycle_status || activeTooth?.status || 'Rejalashtirilgan');
+        const tl = Array.isArray(activeTooth?.timeline) ? activeTooth.timeline : [];
+        const stepDate = (step) => {
+          const ev = [...tl].reverse().find((e) => e && (e.status === step.label || e.status === step.lifecycleValue || (step.enumKeys || []).includes(e.status)));
+          if (ev?.date) return formatTimelineDate(ev.date);
+          if (step.id === 'joylandi' && activeTooth?.placement_date) return formatTimelineDate(activeTooth.placement_date);
+          if (step.id === 'reja' && (implant?.created_date || implant?.created_at)) return formatTimelineDate(implant.created_date || implant.created_at);
+          return '';
+        };
+        const brand = (activeTooth?.firma === 'Boshqa' ? activeTooth?.firma_custom : activeTooth?.firma) || activeTooth?.brend || '';
+        const model = activeTooth?.model || activeTooth?.implant_model || '';
+        const size = formatImplantSize(activeTooth?.diameter, activeTooth?.length, { withUnits: false });
+        const debt = Number(patientRow?.total_debt || 0);
+        const card = 'bg-white rounded-[20px] border border-slate-200 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3.5';
+        const field = 'w-full h-11 rounded-xl border border-slate-200 bg-white px-3 text-[15px] font-semibold text-slate-900';
+        const label = 'block text-[13px] text-slate-500 mb-1';
+        return (
+          <div className="space-y-3 -mx-1">
+            {/* Patient */}
+            <div className="rounded-[20px] border border-slate-200 bg-[#F3F7FC] p-3.5">
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-full bg-teal-50 border border-teal-100 text-[#0f766e] flex items-center justify-center text-[17px] font-bold shrink-0">{patientInitials}</div>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-[18px] font-extrabold text-slate-900 truncate">{patientName}</h1>
+                  <p className="text-[13px] text-slate-500 truncate">BEMOR{phoneDigits ? ` · +${phoneIntl.replace(/^(\d{3})(\d{2})(\d{3})(\d{2})(\d{2})$/, '$1 $2 $3 $4 $5')}` : ''}</p>
+                </div>
+                <span className="shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-emerald-50 text-emerald-700 text-[13px] font-bold"><span className="w-2 h-2 rounded-full bg-emerald-500" />{SHORT_STATUS_LABEL[normalizeLifecycleStatus(activeTooth?.lifecycle_status || activeTooth?.status)] || 'Faol'}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                <a href={phoneIntl ? `tel:+${phoneIntl}` : undefined} onClick={(e) => { if (!phoneIntl) { e.preventDefault(); toast.error("Raqam yo'q"); } }} className="h-11 rounded-xl bg-white border border-blue-200 text-blue-700 text-[14px] font-bold flex items-center justify-center gap-1.5"><Phone className="w-4 h-4" />Qo'ng'iroq</a>
+                <a href={phoneIntl ? `https://t.me/+${phoneIntl}` : undefined} target="_blank" rel="noreferrer" onClick={(e) => { if (!phoneIntl) { e.preventDefault(); toast.error("Raqam yo'q"); } }} className="h-11 rounded-xl bg-white border border-blue-200 text-blue-700 text-[14px] font-bold flex items-center justify-center gap-1.5"><Send className="w-4 h-4" />Telegram</a>
+                {activeTooth.patient_id ? (
+                  <Link to={`/patients/${activeTooth.patient_id}`} state={profileState()} className="h-11 rounded-xl bg-white border border-slate-200 text-slate-700 text-[14px] font-bold flex items-center justify-center gap-1.5"><UserRound className="w-4 h-4" />Bemor profili</Link>
+                ) : <span />}
+              </div>
+            </div>
+
+            {/* Tooth chart */}
+            <div className={card}>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-[16px] font-extrabold text-slate-900">Tish joyi (FDI)</h3>
+                <div className="flex bg-slate-100 rounded-xl p-1">
+                  {[['upper', "Yuqori jag'"], ['lower', "Pastki jag'"]].map(([k, l]) => (
+                    <button key={k} type="button" onClick={() => setPhoneJaw(k)} className={cn('h-9 px-3 rounded-lg text-[13px] font-bold', phoneJaw === k ? 'bg-[#14b8a6] text-white' : 'text-slate-500')}>{l}</button>
+                  ))}
+                </div>
+              </div>
+              <ImplantToothChart
+                patientId={implant?.patient_id}
+                implants={relatedTeeth.length > 0 ? relatedTeeth : [implant]}
+                caseFdis={caseFdis}
+                selectableFdis={switcherItems.length > 1 ? switcherItems.map(switcherItemFdi).filter(Boolean) : []}
+                activeFdi={activeToothNumberFdi}
+                language={language}
+                jaw={phoneJaw}
+                hideLegend
+                onSelectTooth={(fdi) => {
+                  const found = switcherItems.find((it) => switcherItemFdi(it) === String(fdi))
+                    || switcherItems.find((it) => {
+                      const raw = it.tooth_numbers || (it.tooth_number ? [it.tooth_number] : []);
+                      return raw.map(toothIdToFdi).includes(String(fdi));
+                    });
+                  if (found) selectCaseTooth(found);
+                }}
+              />
+              {switcherItems.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto no-scrollbar mt-2">
+                  {switcherItems.map((imp) => {
+                    const fdi = switcherItemFdi(imp) || '—';
+                    const sel = imp.id === activeTooth?.id;
+                    return (
+                      <button key={imp.id} type="button" onClick={() => selectCaseTooth(imp)} className={cn('shrink-0 h-10 px-3 rounded-xl border text-[14px] font-bold', sel ? 'bg-[#14b8a6] border-[#14b8a6] text-white' : 'bg-white border-slate-200 text-slate-800')}>#{fdi}</button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Implant data */}
+            <div className={card}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="flex items-center gap-2 text-[16px] font-extrabold text-slate-900"><span className="w-9 h-9 rounded-xl bg-teal-50 text-[#14b8a6] flex items-center justify-center"><ImplantIcon className="w-5 h-5" /></span>Implant ma'lumotlari</h3>
+                <button type="button" onClick={() => setEditOpen(true)} className="h-10 px-3 rounded-xl border border-blue-200 text-blue-700 text-[13px] font-bold flex items-center gap-1.5"><Edit2 className="w-4 h-4" />O'zgartirish</button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div><span className={label}>Brend <span className="text-rose-500">*</span></span><div className={cn(field, 'flex items-center truncate')}>{brand || '—'}</div></div>
+                <div><span className={label}>Model</span><div className={cn(field, 'flex items-center truncate')}>{model || '—'}</div></div>
+                <div><span className={label}>O'lcham (mm)</span><div className={cn(field, 'flex items-center truncate')}>{size || '—'}</div></div>
+                {[['lot_number', 'Lot / Seriya', 'L24091'], ['torque', 'Torque (Ncm)', '35'], ['isq', 'ISQ', '70']].map(([k, l, ph]) => (
+                  <label key={`${activeTooth?.id}-${k}`} className="block">
+                    <span className={label}>{l}</span>
+                    <input defaultValue={activeTooth?.[k] || ''} placeholder={ph} onBlur={(e) => { const v = e.target.value.trim(); if (v !== String(activeTooth?.[k] || '')) saveClinicalField(k, v); }} className={cn(field, 'bg-slate-50 placeholder:text-slate-300 placeholder:font-normal')} />
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Stages */}
+            <div className={card}>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="flex items-center gap-2 text-[16px] font-extrabold text-slate-900"><span className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><UserRound className="w-5 h-5" /></span>Davolash bosqichlari</h3>
+                <button type="button" onClick={() => setAddMilestoneOpen(true)} className="h-10 px-3 rounded-xl bg-emerald-50 text-emerald-700 text-[13px] font-bold flex items-center gap-1"><Plus className="w-4 h-4" />Bosqich qo'shish</button>
+              </div>
+              <div className="relative">
+                {CLINICAL_STEPS.filter((s) => s.id !== 'protez' || rank >= 5).map((step, i, arr) => {
+                  const reached = rank >= step.rank;
+                  const current = rank + 1 === step.rank;
+                  const d = stepDate(step);
+                  return (
+                    <div key={step.id} className="flex items-center gap-2.5 relative">
+                      {i < arr.length - 1 && <span className={cn('absolute left-[13px] top-[34px] w-0.5 h-[22px]', reached ? 'bg-emerald-400' : 'bg-slate-200')} />}
+                      <span className={cn('w-7 h-7 rounded-full shrink-0 flex items-center justify-center', reached ? 'bg-emerald-500 text-white' : 'border-2 border-slate-300 bg-white')}>{reached && <Check className="w-4 h-4" />}</span>
+                      <button type="button" onClick={() => handleStepChange(step)} className="flex-1 min-w-0 my-1 h-11 rounded-xl border border-slate-200 bg-white px-3 flex items-center gap-2 text-left active:bg-slate-50">
+                        <span className="w-[124px] shrink-0 text-[14px] font-bold text-slate-900 truncate">{step.label}</span>
+                        <span className="flex-1 min-w-0 flex items-center gap-1.5 text-[13px] text-slate-500 truncate"><CalendarDays className="w-4 h-4 shrink-0" />{d || '—'}</span>
+                        <span className={cn('shrink-0 h-7 px-2 rounded-full text-[12px] font-bold flex items-center', reached ? 'bg-emerald-50 text-emerald-700' : current ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500')}>{reached ? 'Bajarilgan' : current ? 'Joriy' : 'Kutilmoqda'}</span>
+                        <ChevronRightIcon className="w-4 h-4 text-slate-400 shrink-0" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Stage media (existing upload logic) */}
+            <StageMediaRail
+              implant={activeTooth}
+              language={language}
+              onZoom={setZoomImg}
+              onOpenPassport={() => setFacturaOpen(true)}
+              onUpload={handleStagePhotoUpload}
+              uploadingSlot={uploadingSlot}
+            />
+
+            {/* Payment info */}
+            <div className={card}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="flex items-center gap-2 text-[16px] font-extrabold text-slate-900"><span className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><Receipt className="w-5 h-5" /></span>To'lov ma'lumotlari</h3>
+                <button type="button" onClick={() => navigate('/payments', { state: { openAddModal: true, prefillPatient: activeTooth.patient_id, prefillPatientName: patientName } })} className="h-10 px-3 rounded-xl border border-blue-200 text-blue-700 text-[13px] font-bold flex items-center gap-1"><Plus className="w-4 h-4" />To'lov qo'shish</button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl border border-slate-200 p-3"><p className="text-[13px] text-slate-500">Jami narxi</p><p className="text-[17px] font-extrabold text-slate-900">{Number(caseServicesSum || 0).toLocaleString('ru-RU').replace(/,/g, ' ')} so'm</p></div>
+                <div className="rounded-xl border border-rose-100 bg-rose-50/40 p-3"><p className="text-[13px] text-rose-500">Bemor qarzi</p><p className="text-[17px] font-extrabold text-rose-600">{debt.toLocaleString('ru-RU').replace(/,/g, ' ')} so'm</p></div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <button type="button" onClick={() => setFacturaOpen(true)} className="h-11 rounded-xl border border-slate-200 text-[14px] font-bold text-slate-700 flex items-center justify-center gap-1.5"><Printer className="w-4 h-4 text-[#14b8a6]" />Chop etish</button>
+                <button type="button" onClick={exportPDF} className="h-11 rounded-xl border border-slate-200 text-[14px] font-bold text-slate-700 flex items-center justify-center gap-1.5"><FileText className="w-4 h-4" />Xizmatlar kartasi</button>
+              </div>
+            </div>
+
+            <LinkedServicesCard
+              services={toothServices}
+              total={toothServicesSum}
+              caseTotal={caseServicesSum}
+              language={language}
+              onAdd={handleOpenAddService}
+              onDelete={handleDeleteService}
+              onEdit={() => setEditOpen(true)}
+              onEditPrimary={() => setEditOpen(true)}
+            />
+          </div>
+        );
+      })() : (<>
       {/* 1) Header row — mockup exact */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <BackButton fallback="/implants" />
@@ -1151,6 +1326,8 @@ export default function ImplantDetail() {
           onEditPrimary={() => setEditOpen(true)}
         />
       </div>
+
+      </>)}
 
       {/* ─── Xray Zoom Lightbox Dialog ──────────────────────────────── */}
       <Dialog open={!!zoomImg} onOpenChange={() => setZoomImg(null)}>
