@@ -558,8 +558,8 @@ export default function MobileAppointmentsV2() {
   return (
     <PullToRefresh onRefresh={loadData}>
       <div className="min-h-screen bg-slate-50 pb-20">
-        <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
-          <div className="px-5 pt-4 pb-2">
+        <div className="bg-white border-b border-slate-100">
+          <div className="px-5 pt-3 pb-3">
             <div className="flex items-center justify-between mb-3">
               <button onClick={() => setShowMonthView(!showMonthView)} className="flex flex-col items-start text-left active:opacity-60 transition-opacity">
                 <div className="flex items-center gap-2">
@@ -588,12 +588,12 @@ export default function MobileAppointmentsV2() {
                   </div>
                 </motion.div>
               ) : !showMonthView ? (
-                <motion.div key="week-view" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex items-center justify-between mb-5">
+                <motion.div key="week-view" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex items-center justify-between mb-2">
                   <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate()-7); setSelectedDate(d); }} className="p-2"><ChevronLeft className="w-5 h-5" /></button>
                   <div className="flex-1 flex justify-center gap-1">
                     {getWeekDays().map((day, idx) => (
-                      <button key={idx} onClick={() => setSelectedDate(day)} className={`flex flex-col items-center justify-center w-11 h-16 rounded-2xl transition-all ${isSelected(day) ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' : isToday(day) ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-50 text-slate-500'}`}>
-                        <span className="text-[10px] font-bold uppercase mb-1">{weekDaysShort[idx]}</span>
+                      <button key={idx} onClick={() => setSelectedDate(day)} className={`flex flex-col items-center justify-center w-11 h-[52px] rounded-xl transition-all ${isSelected(day) ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' : isToday(day) ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-50 text-slate-500'}`}>
+                        <span className="text-[10px] font-bold uppercase mb-0.5">{weekDaysShort[idx]}</span>
                         <span className="text-lg font-black">{day.getDate()}</span>
                       </button>
                     ))}
@@ -642,9 +642,10 @@ export default function MobileAppointmentsV2() {
             </AnimatePresence>
 
             {/* Doctors Selection Strip — wrap + horizontal scroll so long names are never clipped */}
-            <div className="mt-4 pb-2 -mx-5 px-5">
+            <div className="mt-2 -mx-5 px-5">
               <div
-                className="flex flex-wrap items-center gap-2.5 overflow-x-auto no-scrollbar overscroll-x-contain pb-2 px-1"
+                className="flex flex-nowrap items-center gap-2 overflow-x-auto no-scrollbar overscroll-x-contain py-0.5 px-1"
+                data-testid="mobile-cal-doctor-chips"
                 style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}
               >
                 {doctors.map((doc) => (
@@ -652,21 +653,21 @@ export default function MobileAppointmentsV2() {
                     key={doc.id}
                     type="button"
                     onClick={() => setSelectedDoctorId(doc.id)}
-                    className={`flex items-center gap-2 px-4 min-h-[44px] py-2.5 rounded-2xl whitespace-nowrap transition-all border shrink-0 max-w-full ${
+                    className={`flex items-center gap-2 px-3 h-8 rounded-xl whitespace-nowrap transition-all border shrink-0 ${
                       String(selectedDoctorId) === String(doc.id)
-                        ? 'bg-slate-900 border-slate-900 text-white shadow-lg shadow-slate-200 z-10'
+                        ? 'bg-slate-900 border-slate-900 text-white shadow-sm z-10'
                         : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50 shadow-sm'
                     }`}
                   >
-                    <span className="text-sm font-bold truncate max-w-[11rem]">{doc.name}</span>
+                    <span className="text-[13px] font-bold truncate max-w-[11rem]">{doc.name}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Search System - Modern Floating Input */}
-            <div className="mt-3 relative">
-              <div className={`flex items-center gap-3 bg-slate-50/50 rounded-xl px-4 h-11 border transition-all ${searchQuery ? 'border-[#1499AD] ring-4 ring-[#1499AD]/5' : 'border-slate-100 shadow-sm'}`}>
+            <div className="mt-2 relative">
+              <div className={`flex items-center gap-3 bg-slate-50/50 rounded-xl px-4 h-10 border transition-all ${searchQuery ? 'border-[#1499AD] ring-4 ring-[#1499AD]/5' : 'border-slate-100 shadow-sm'}`}>
                 <Search className={`w-4 h-4 ${searchQuery ? 'text-[#1499AD]' : 'text-slate-300'}`} />
                 <input 
                   type="text" 
