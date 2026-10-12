@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useRestorableState, useRestorableDate } from '@/hooks/useRestorableState';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, User, Phone, ChevronLeft, ChevronRight,
-  Plus, CheckCircle2, XCircle, Clock4, Pencil, UserSquare, MessageCircle, Search
+  Plus, CheckCircle2, XCircle, Clock4, Pencil, UserSquare, MessageCircle, Search, MoreVertical, Send, Play, ChevronDown, SlidersHorizontal
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,9 @@ import { isCancelledStatus } from '@/utils/clinicMetrics';
  * Premium SaaS Mobile Appointments
  * Modern healthcare CRM design with timeline view
  */
+const UZ_DAYS_SHORT = ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'];
+const UZ_DAYS_LONG = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
+
 export default function MobileAppointmentsV2() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -63,6 +66,7 @@ export default function MobileAppointmentsV2() {
     time: '09:00'
   });
   const [prefillPat, setPrefillPat] = useState(null);
+  const [menuFor, setMenuFor] = useState(null);
 
   const openAddAppointmentModal = useCallback(() => {
     setFormData((prev) => ({
@@ -418,133 +422,63 @@ export default function MobileAppointmentsV2() {
   const AppointmentCard = ({ app, index, isContinuing, displayTime, onCardClick, isSearchMode }) => {
     const style = getStatusStyle(app.status);
     const StatusIcon = style.icon;
-    
-    // Find doctor name for 'All Doctors' view
-    const docName = doctors.find(d => String(d.id) === String(app.doctor_id))?.name;
-    
-    // Premium colors for buttons
-    const btnBase = "flex items-center justify-center transition-all active:scale-90 shadow-sm border border-slate-100";
-    
+    const docName = doctors.find(d => String(d.id) === String(app.doctor_id))?.name || app.doctor_name;
+    const isOpen = menuFor === `${app.id}-${displayTime || ''}`;
+    const dotCls = app.status === 'Completed' ? 'bg-emerald-500' : app.status === 'Cancelled' || app.status === 'No-Show' ? 'bg-slate-300' : 'bg-blue-600';
+    const cardBg = app.status === 'Completed' ? 'bg-white border-slate-200' : app.status === 'Cancelled' || app.status === 'No-Show' ? 'bg-slate-50 border-slate-200' : 'bg-[#EEF4FF] border-[#D6E3FB]';
+    const tg = () => { const p = app.patient_phone?.replace(/\D/g, ''); if (p) window.open(`https://t.me/+${p}`, '_blank'); else toast.error("Raqam kiritilmagan"); };
+    const call = () => { if (app.patient_phone) window.open(`tel:${app.patient_phone}`, '_self'); else toast.error("Raqam yo'q"); };
     return (
-      <motion.div 
-        initial={{ opacity: 0, x: -20 }} 
-        animate={{ opacity: 1, x: 0 }} 
-        transition={{ delay: isSearchMode ? 0 : Math.min(index, 6) * 0.02 }} 
+      <motion.div
+        initial={{ opacity: 0, x: -12 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: isSearchMode ? 0 : Math.min(index, 6) * 0.02 }}
         className="flex gap-2 mb-2 content-visibility-auto"
       >
-        <div className="flex flex-col items-center w-12 flex-shrink-0">
-          <span className={`text-slate-900 ${isContinuing ? 'text-[9px] font-semibold opacity-40' : 'text-sm font-black'}`}>
+        <div className="flex items-start w-[58px] flex-shrink-0 pt-3 gap-1.5 justify-end">
+          <span className={`tabular-nums ${isContinuing ? 'text-[13px] font-semibold text-slate-400' : 'text-[15px] font-extrabold text-slate-900'}`}>
             {isContinuing ? displayTime : formatTime(app.time)}
           </span>
-          <div className={`w-0.5 flex-1 ${isContinuing ? 'bg-slate-100' : 'bg-slate-200'} mt-1.5 min-h-[40px]`} />
+          <span className={`mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${dotCls}`} />
         </div>
-        
-        <div 
+        <div
           onClick={() => onCardClick && onCardClick(app)}
-          className={`flex-1 ${style.bg} rounded-2xl p-3 border ${style.border} shadow-sm relative overflow-hidden group ${onCardClick ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}`}
+          className={`flex-1 min-w-0 rounded-2xl px-3 py-2.5 border ${cardBg} relative ${onCardClick ? 'cursor-pointer active:scale-[0.99] transition-transform' : ''}`}
         >
-          {isContinuing && (
-            <div className="absolute top-0 right-0 px-2 py-0.5 bg-slate-100 text-[7px] font-black uppercase text-slate-400 rounded-bl-lg tracking-widest">
-              Davomi
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-extrabold text-slate-900 text-[15px] leading-tight truncate">{app.patient_name}{isContinuing ? <span className="text-[13px] font-medium text-slate-400"> (davomi)</span> : null}</h3>
+              <p className="text-[13px] text-slate-600 truncate mt-0.5">{app.service_name || "Xizmat ko'rsatilmagan"}</p>
+              <div className="flex items-center gap-3 mt-1 text-[13px] text-slate-500">
+                <span className="flex items-center gap-1 shrink-0"><Clock4 className="w-3.5 h-3.5" />{app.duration || 30} min</span>
+                {docName && <span className="flex items-center gap-1 min-w-0 truncate"><User className="w-3.5 h-3.5 shrink-0" />{docName}</span>}
+              </div>
+              <div className="mt-1"><AppointmentConfirmationBadge appointment={app} size="sm" /></div>
+            </div>
+            <div className="flex items-center gap-0.5 shrink-0">
+              <span className={`flex items-center gap-1 px-2 py-1 rounded-full bg-white border ${style.border}`}>
+                <StatusIcon className={`w-3.5 h-3.5 ${style.text}`} />
+                <span className={`text-[12px] font-bold uppercase ${style.text}`}>{style.label}</span>
+              </span>
+              <button type="button" aria-label="Amallar" onClick={(e) => { e.stopPropagation(); setMenuFor(isOpen ? null : `${app.id}-${displayTime || ''}`); }} className="w-9 h-11 -mr-1.5 flex items-center justify-center text-slate-500">
+                <MoreVertical className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          {isOpen && (
+            <div onClick={(e) => e.stopPropagation()} className="mt-2 pt-2 border-t border-slate-200/70 grid grid-cols-2 gap-1.5">
+              <button onClick={call} className="h-11 rounded-xl bg-emerald-50 text-emerald-700 text-[13px] font-bold flex items-center justify-center gap-1"><Phone className="w-4 h-4" />Qo'ng'iroq</button>
+              <button onClick={tg} className="h-11 rounded-xl bg-sky-50 text-sky-700 text-[13px] font-bold flex items-center justify-center gap-1"><Send className="w-4 h-4" />Telegram</button>
+              <button onClick={() => { setMenuFor(null); openEditModal(app); }} className="h-11 rounded-xl bg-white border border-slate-200 text-slate-700 text-[13px] font-bold flex items-center justify-center gap-1"><Pencil className="w-4 h-4" />Tahrir</button>
+              {app.status === 'Scheduled' || app.status === 'Waiting' ? (
+                <button onClick={() => handleStartAppointment(app)} className="h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold flex items-center justify-center gap-1"><Play className="w-4 h-4" />{t('common.start')}</button>
+              ) : app.status === 'In Progress' ? (
+                <button onClick={() => handleCompleteAppointment(app.id)} className="h-11 rounded-xl bg-emerald-500 text-white text-[13px] font-bold flex items-center justify-center">{t('common.finish')}</button>
+              ) : (
+                <span className="h-11 rounded-xl bg-slate-50 text-slate-800 text-[13px] font-bold flex items-center justify-center">{app.price ? formatCurrency(app.price) : '0'}</span>
+              )}
             </div>
           )}
-          
-          <div className="flex items-start justify-between mb-2">
-            <div className="flex-1">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <h3 className="font-extrabold text-slate-900 text-[13.5px] leading-tight">
-                  {app.patient_name}
-                </h3>
-                {isContinuing && <span className="text-[9px] text-slate-400 font-medium">(Davomi)</span>}
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">
-                  {app.service_name || 'Xizmat turi ko\'rsatilmagan'}
-                </p>
-                <div className="flex items-center gap-0.5 text-[8px] font-black text-slate-400 bg-white/40 px-1 py-0.25 rounded border border-slate-100/50">
-                  <Clock4 className="w-2 h-2" />
-                  {app.duration || 30} MIN
-                </div>
-              </div>
-
-              {(isSearchMode || (!selectedDoctorId && docName)) && (
-                <div className="flex items-center gap-1 mt-1">
-                  <div className="w-3.5 h-3.5 rounded-full bg-slate-900/5 flex items-center justify-center">
-                    <UserSquare className="w-2 h-2 text-slate-400" />
-                  </div>
-                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate max-w-[110px]">
-                    {docName || 'Shifokor'}
-                  </span>
-                </div>
-              )}
-
-              <div className="mt-1.5">
-                <AppointmentConfirmationBadge appointment={app} size="sm" />
-              </div>
-            </div>
-            
-            <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-white/80 border ${style.border}`}>
-              <StatusIcon className={`w-2.5 h-2.5 ${style.text}`} />
-              <span className={`text-[8px] font-black uppercase tracking-tight ${style.text}`}>{style.label}</span>
-            </div>
-          </div>
-
-          <div className="pt-2 mt-1.5 border-t border-slate-100/40 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (app.patient_phone) window.open(`tel:${app.patient_phone}`, '_self');
-                  else toast.error("Raqam yo'q");
-                }}
-                className={`${btnBase} w-8 h-8 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl`}
-              >
-                <Phone className="w-3.5 h-3.5 fill-emerald-100" />
-              </button>
-              
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const phone = app.patient_phone?.replace(/\D/g, '');
-                  if (phone) window.open(`https://t.me/+${phone}`, '_blank');
-                  else toast.error("Raqam kiritilmagan");
-                }}
-                className={`${btnBase} w-8 h-8 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl`}
-              >
-                <MessageCircle className="w-3.5 h-3.5 fill-blue-100" />
-              </button>
-              
-              <button 
-                onClick={(e) => { e.stopPropagation(); openEditModal(app); }} 
-                className={`${btnBase} w-8 h-8 bg-slate-50 text-slate-500 hover:bg-slate-100 rounded-xl`}
-              >
-                <Pencil className="w-3 h-3" />
-              </button>
-            </div>
-
-            <div className="flex-1 flex justify-end">
-              {app.status === 'Scheduled' || app.status === 'Waiting' ? (
-                 <button 
-                  onClick={(e) => { e.stopPropagation(); handleStartAppointment(app); }} 
-                  className="h-8 px-3.5 bg-slate-900 text-white rounded-xl text-[8px] font-black uppercase tracking-[0.1em] shadow-lg shadow-slate-200 active:scale-95 transition-all"
-                 >
-                   {t('common.start')}
-                 </button>
-              ) : app.status === 'In Progress' ? (
-                 <button 
-                  onClick={(e) => { e.stopPropagation(); handleCompleteAppointment(app.id); }} 
-                  className="h-8 px-3.5 bg-emerald-500 text-white rounded-xl text-[8px] font-black uppercase tracking-[0.1em] shadow-lg shadow-emerald-100 active:scale-95 transition-all"
-                 >
-                   {t('common.finish')}
-                 </button>
-              ) : (
-                 <div className="text-right">
-                   <span className="text-xs font-black text-slate-900">{app.price ? formatCurrency(app.price) : '0'}</span>
-                 </div>
-              )}
-            </div>
-          </div>
         </div>
       </motion.div>
     );
@@ -559,19 +493,19 @@ export default function MobileAppointmentsV2() {
 
   return (
     <PullToRefresh onRefresh={loadData}>
-      <div className="min-h-screen bg-slate-50 pb-20">
-        <div className="bg-white border-b border-slate-100">
-          <div className="px-5 pt-3 pb-3">
-            <div className="flex items-center justify-between mb-3">
-              <button onClick={() => setShowMonthView(!showMonthView)} className="flex flex-col items-start text-left active:opacity-60 transition-opacity">
+      <div className="min-h-screen bg-[#F4F7F9] pb-20">
+        <div className="bg-[#F4F7F9]">
+          <div className="px-4 pt-3 pb-3">
+            <div className="flex items-center justify-between mb-3 gap-3">
+              <button onClick={() => setShowMonthView(!showMonthView)} className="flex flex-col items-start text-left active:opacity-60 transition-opacity min-w-0">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold text-slate-900">{t('appointments.calendar')}</h1>
-                  <motion.div animate={{ rotate: showMonthView ? 180 : 0 }} transition={{ duration: 0.3 }}><ChevronRight className="w-4 h-4 text-slate-400 rotate-90" /></motion.div>
+                  <h1 className="text-[26px] font-extrabold text-slate-900 leading-tight">{t('appointments.calendar')}</h1>
+                  <motion.div animate={{ rotate: showMonthView ? 180 : 0 }} transition={{ duration: 0.3 }}><ChevronDown className="w-5 h-5 text-slate-500" /></motion.div>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-0.5 font-bold uppercase tracking-widest">{selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}</p>
+                <p className="text-[13px] text-slate-500 font-bold uppercase tracking-wide truncate">{selectedDate.getDate()} {monthNames[selectedDate.getMonth()]} {selectedDate.getFullYear()}, {UZ_DAYS_LONG[selectedDate.getDay()]}</p>
               </button>
-              <Button onClick={openAddAppointmentModal} className="bg-slate-900 hover:bg-slate-800 text-white rounded-[1rem] px-4 h-10 text-xs shadow-lg shadow-slate-200">
-                <Plus className="w-4 h-4 mr-1" />{t('appointments.addNew')}
+              <Button onClick={openAddAppointmentModal} className="bg-slate-900 hover:bg-slate-800 text-white rounded-2xl px-4 h-12 text-[15px] font-bold shadow-lg shadow-slate-300 shrink-0">
+                <Plus className="w-5 h-5 mr-1.5" />{t('appointments.addNew')}
               </Button>
             </div>
             <AnimatePresence mode="wait">
@@ -590,17 +524,18 @@ export default function MobileAppointmentsV2() {
                   </div>
                 </motion.div>
               ) : !showMonthView ? (
-                <motion.div key="week-view" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex items-center justify-between mb-2">
-                  <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate()-7); setSelectedDate(d); }} className="p-2"><ChevronLeft className="w-5 h-5" /></button>
-                  <div className="flex-1 flex justify-center gap-1">
+                <motion.div key="week-view" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex items-center gap-1.5 mb-3">
+                  <button aria-label="Oldingi hafta" onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate()-7); setSelectedDate(d); }} className="w-9 h-[60px] rounded-xl bg-white border border-slate-200 flex items-center justify-center text-blue-600 shrink-0"><ChevronLeft className="w-5 h-5" /></button>
+                  <div className="flex-1 grid grid-cols-7 gap-1">
                     {getWeekDays().map((day, idx) => (
-                      <button key={idx} onClick={() => setSelectedDate(day)} className={`flex flex-col items-center justify-center w-11 h-[52px] rounded-xl transition-all ${isSelected(day) ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' : isToday(day) ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-50 text-slate-500'}`}>
-                        <span className="text-[10px] font-bold uppercase mb-0.5">{weekDaysShort[idx]}</span>
-                        <span className="text-lg font-black">{day.getDate()}</span>
+                      <button key={idx} onClick={() => setSelectedDate(day)} className={`relative flex flex-col items-center justify-center h-[60px] rounded-xl transition-all ${isSelected(day) ? 'bg-[#13A08F] text-white shadow-md shadow-teal-600/25' : 'bg-white border border-slate-200 text-slate-800'}`}>
+                        <span className="text-[16px] font-bold leading-tight">{String(day.getDate()).padStart(2, '0')}</span>
+                        <span className={`text-[12px] font-medium ${isSelected(day) ? 'text-white/90' : 'text-slate-500'}`}>{UZ_DAYS_SHORT[day.getDay()]}</span>
+                        {isToday(day) && <span className={`absolute bottom-1 w-1 h-1 rounded-full ${isSelected(day) ? 'bg-white' : 'bg-[#13A08F]'}`} />}
                       </button>
                     ))}
                   </div>
-                  <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate()+7); setSelectedDate(d); }} className="p-2"><ChevronRight className="w-5 h-5" /></button>
+                  <button aria-label="Keyingi hafta" onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate()+7); setSelectedDate(d); }} className="w-9 h-[60px] rounded-xl bg-white border border-slate-200 flex items-center justify-center text-blue-600 shrink-0"><ChevronRight className="w-5 h-5" /></button>
                 </motion.div>
               ) : (
                 <motion.div key="month-view" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mb-6 bg-slate-50/50 rounded-3xl p-4 border border-slate-100">
@@ -643,50 +578,46 @@ export default function MobileAppointmentsV2() {
               )}
             </AnimatePresence>
 
-            {/* Doctors Selection Strip — wrap + horizontal scroll so long names are never clipped */}
-            <div className="mt-2 -mx-5 px-5">
+            <div className="mt-1 flex items-center gap-2">
               <div
-                className="flex flex-nowrap items-center gap-2 overflow-x-auto no-scrollbar overscroll-x-contain py-0.5 px-1"
+                className="flex-1 min-w-0 flex flex-nowrap items-center gap-2 overflow-x-auto no-scrollbar overscroll-x-contain py-0.5"
                 data-testid="mobile-cal-doctor-chips"
                 style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}
               >
-                {doctors.map((doc) => (
-                  <button
-                    key={doc.id}
-                    type="button"
-                    onClick={() => setSelectedDoctorId(doc.id)}
-                    className={`flex items-center gap-2 px-3 h-8 rounded-xl whitespace-nowrap transition-all border shrink-0 ${
-                      String(selectedDoctorId) === String(doc.id)
-                        ? 'bg-slate-900 border-slate-900 text-white shadow-sm z-10'
-                        : 'bg-white border-slate-100 text-slate-500 hover:bg-slate-50 shadow-sm'
-                    }`}
-                  >
-                    <span className="text-[13px] font-bold truncate max-w-[11rem]">{doc.name}</span>
-                  </button>
-                ))}
+                {[{ id: null, name: 'Barcha' }, ...doctors].map((doc) => {
+                  const on = doc.id == null ? !selectedDoctorId : String(selectedDoctorId) === String(doc.id);
+                  return (
+                    <button key={doc.id ?? 'all'} type="button" onClick={() => setSelectedDoctorId(doc.id)}
+                      className={`px-4 h-11 rounded-xl whitespace-nowrap transition-all border shrink-0 text-[14px] font-bold ${on ? 'bg-slate-900 border-slate-900 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-600'}`}>
+                      <span className="truncate max-w-[11rem] inline-block align-middle">{doc.name}</span>
+                    </button>
+                  );
+                })}
               </div>
+              <button type="button" aria-label="Oylik ko'rinish" onClick={() => setShowMonthView(!showMonthView)} className={`w-11 h-11 shrink-0 rounded-xl border flex items-center justify-center ${showMonthView ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-200 text-slate-600'}`}>
+                <SlidersHorizontal className="w-5 h-5" />
+              </button>
             </div>
 
-            {/* Search System - Modern Floating Input */}
-            <div className="mt-2 relative">
-              <div className={`flex items-center gap-3 bg-slate-50/50 rounded-xl px-4 h-10 border transition-all ${searchQuery ? 'border-[#1499AD] ring-4 ring-[#1499AD]/5' : 'border-slate-100 shadow-sm'}`}>
-                <Search className={`w-4 h-4 ${searchQuery ? 'text-[#1499AD]' : 'text-slate-300'}`} />
-                <input 
-                  type="text" 
-                  placeholder="Bemor yoki xizmat turi..."
+            <div className="mt-3 relative">
+              <div className={`flex items-center gap-3 bg-white rounded-2xl px-4 h-12 border transition-all ${searchQuery ? 'border-[#13A08F] ring-4 ring-[#13A08F]/10' : 'border-slate-200'}`}>
+                <Search className={`w-5 h-5 ${searchQuery ? 'text-[#13A08F]' : 'text-slate-400'}`} />
+                <input
+                  type="text"
+                  placeholder="Bemor yoki xizmat bo'yicha qidirish..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 bg-transparent border-none text-[13px] font-bold text-slate-800 placeholder:text-slate-300 outline-none"
+                  className="flex-1 bg-transparent border-none text-[15px] font-medium text-slate-800 placeholder:text-slate-400 outline-none"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 active:scale-90 transition-all font-black text-xs">×</button>
+                  <button aria-label="Tozalash" onClick={() => setSearchQuery('')} className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-500"><XCircle className="w-4 h-4" /></button>
                 )}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="p-4">
+        <div className="px-3 pt-1 pb-4">
           {loading ? [1,2,3].map(i => <div key={i} className="h-20 bg-slate-100 rounded-2xl animate-pulse mb-4" />) : (
             <div className="space-y-1">
               {searchQuery.trim() || listAll ? (
@@ -726,27 +657,24 @@ export default function MobileAppointmentsV2() {
                     return (
                       <div key={hour}>
                         {isEmpty ? (
-                          // Empty slot row — clickable to add new appointment
-                          <button
-                            onClick={() => {
-                              setFormData(prev => ({ ...prev, date: toLocalDateStr(selectedDate), time: hour }));
-                              setShowAddModal(true);
-                            }}
-                            className="w-full flex items-center gap-3 group transition-colors py-2 hover:bg-emerald-50/50"
-                          >
-                            {/* Time label */}
-                            <span className="w-14 text-right shrink-0 text-xs font-bold text-slate-400 tabular-nums">
-                              {hour}
-                            </span>
-
-                            {/* Divider line */}
-                            <div className="flex-1 border-t border-slate-200 group-hover:border-emerald-300 transition-colors" />
-
-                            {/* Plus hint on hover */}
-                            <span className="text-[10px] font-black text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity pr-1 whitespace-nowrap">
-                              + Qo'shish
-                            </span>
-                          </button>
+                          // Empty slot row
+                          <div className="flex gap-2 mb-2">
+                            <div className="flex items-start w-[58px] flex-shrink-0 pt-4 gap-1.5 justify-end">
+                              <span className="text-[15px] font-extrabold text-slate-900 tabular-nums">{hour}</span>
+                              <span className="mt-1.5 w-2.5 h-2.5 rounded-full bg-slate-300 shrink-0" />
+                            </div>
+                            <button
+                              onClick={() => {
+                                setFormData(prev => ({ ...prev, date: toLocalDateStr(selectedDate), time: hour }));
+                                setShowAddModal(true);
+                              }}
+                              className="flex-1 min-w-0 flex items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white/60 px-3 h-[60px] text-left active:bg-emerald-50"
+                            >
+                              <span className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0"><Plus className="w-5 h-5" /></span>
+                              <span className="flex-1 min-w-0"><span className="block text-[14px] font-bold text-slate-800">Bo'sh vaqt</span><span className="block text-[13px] text-slate-500">Uchrashuv qo'shish</span></span>
+                              <ChevronRight className="w-5 h-5 text-slate-400" />
+                            </button>
+                          </div>
                         ) : (
                           // Slot has appointments — render cards
                           <div className="pt-1 pb-2">
