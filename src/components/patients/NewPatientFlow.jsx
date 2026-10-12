@@ -829,7 +829,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       rows.push({
         key: i,
         name: cleanName || s.service_name,
-        tooth: s.tooth_number ? t('patients.fdiTooth', { number: s.tooth_number }) : null,
+        tooth: s.tooth_number ? (/^\d+$/.test(String(s.tooth_number)) ? t('patients.fdiTooth', { number: s.tooth_number }) : String(s.tooth_number)) : null,
         price: Number(s.price) || 0,
       });
     });
@@ -1235,7 +1235,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
           allServices.push({
             service_name: s.service_name,
             price: s.price,
-            tooth: tooth === 'general' ? 'Umumiy' : tooth
+            tooth: tooth === 'general' ? 'Umumiy' : tooth,
+            tooth_number: tooth === 'general' ? '' : String(fdiNum || tooth || '')
           });
 
           // Check if this service is an implant service
@@ -1254,7 +1255,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
         allServices.push({
           service_name: row.service_name,
           price: row.price,
-          tooth: row.tooth_number,
+          tooth: row.tooth_number, tooth_number: row.tooth_number,
         });
       });
 
@@ -1549,7 +1550,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       
       if (onSaved) onSaved();
       
-      toast.success(val === 0 && mode === 'pct' ? t('patients.wizard.discountRemoved') : t('patients.wizard.discountApplied', { label }));
+      toast.success(val === 0 && mode === 'pct' ? t('patients.wizard.discountRemoved') : t('patients.wizard.discountApplied', { label }), isPhone ? { position: 'top-center', duration: 2500 } : undefined);
     } catch (error) {
       console.error('Chegirma tizimida xatolik:', error);
       toast.error(t('patients.wizard.discountError'));
@@ -2812,7 +2813,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                 <div className="px-3 divide-y divide-slate-100" data-testid="wizard-done-rows">
                   {(createdPlan?.services?.length ? createdPlan.services : []).map((s, i) => (
                     <div key={i} className="flex items-center gap-2 py-1.5">
-                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md shrink-0 min-w-[42px] text-center">{s.tooth_number ? `#${s.tooth_number}` : '—'}</span>
+                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md shrink-0 min-w-[42px] text-center">{s.tooth_number ? (/^\d+$/.test(String(s.tooth_number)) ? `#${s.tooth_number}` : String(s.tooth_number)) : '—'}</span>
                       <span className="flex-1 min-w-0 text-[12.5px] text-slate-800 truncate">{(s.service_name || '').replace(/^#general/i, '').trim()}</span>
                       <span className="text-[12.5px] font-bold text-slate-900 whitespace-nowrap tabular-nums">{formatCurrency(Number(s.price) || 0)}</span>
                     </div>
