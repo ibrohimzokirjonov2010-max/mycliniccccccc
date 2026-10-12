@@ -9,7 +9,9 @@ import {
   CheckCircle2, Clock, 
   Target, TrendingUp, Search,
   Table as TableIcon, LayoutGrid, FileSpreadsheet, X,
-  ArrowUp, ArrowDown, ArrowUpDown, User, Layers, Check, ExternalLink
+  ArrowUp, ArrowDown, ArrowUpDown, User, Layers, Check, ExternalLink,
+  ChevronRight as TtChevron,
+  Smile as TtTooth,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -330,18 +332,19 @@ export default function TreatmentTracking() {
   return (
     <div className="space-y-3 pb-6 md:space-y-3.5 md:pb-4">
       {/* ─── Compact Header ────────────────────────────────────────── */}
-      <div className="bg-white p-3 md:p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
-        <div className="flex items-start justify-between gap-3">
+      <div className="bg-white p-3 md:p-3.5 rounded-2xl border border-slate-200/90 shadow-xs max-md:bg-transparent max-md:border-0 max-md:shadow-none max-md:p-0 max-md:pt-1">
+        <div className="flex items-start justify-between gap-3 max-md:items-center max-md:justify-start">
+          <span className="md:hidden w-12 h-12 rounded-2xl bg-[#0F8F86] text-white inline-flex items-center justify-center shrink-0"><TtTooth className="w-6 h-6" /></span>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tight">
+              <h1 className="text-lg max-md:text-[21px] md:text-xl font-black text-slate-900 tracking-tight">
                 {t('treatmentTracking.title') || "Davolash Kuzatuvi"}
               </h1>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black tabular-nums bg-slate-100 text-slate-600 border border-slate-200/80">
+              <span className="px-2 py-0.5 max-md:px-2.5 max-md:py-1 rounded-full text-[10px] max-md:text-[12px] font-black tabular-nums bg-slate-100 text-slate-600 border border-slate-200/80">
                 {language === 'ru' ? `Всего ${plans.length}` : language === 'en' ? `Total ${plans.length}` : `Jami ${plans.length}`}
               </span>
             </div>
-            <p className="text-[11px] font-semibold text-slate-400 mt-0.5 line-clamp-1 md:line-clamp-none">
+            <p className="text-[11px] max-md:text-[12px] font-semibold text-slate-400 mt-0.5 line-clamp-1 md:line-clamp-none">
               {t('treatmentTracking.subtitle') || (language === 'ru'
                 ? 'Мониторинг исполнения процедур и клинической эффективности'
                 : 'Muolajalar ijrosi va klinik samaradorlik monitoringi')}
@@ -388,22 +391,22 @@ export default function TreatmentTracking() {
         ].map((s) => (
           <div
             key={s.label}
-            className="bg-white border border-slate-100 rounded-2xl p-3 shadow-sm flex items-center justify-between gap-2 min-h-[68px]"
+            className="bg-white border border-slate-100 rounded-2xl p-3 shadow-sm flex items-center justify-start gap-3 min-h-[76px]"
           >
             <div className="min-w-0">
-              <span className="text-[8px] font-black uppercase tracking-wider text-slate-400 block mb-1 leading-none">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400 block mb-1.5 leading-none">
                 {s.label}
               </span>
-              <div className="text-base font-black font-mono tracking-tight text-slate-900 tabular-nums leading-none">
+              <div className="text-[19px] font-black tracking-tight text-slate-900 tabular-nums leading-none">
                 {s.isPercent ? (
                 <span>{s.value}%</span>
               ) : (
-                <span>{s.value}{language !== 'ru' && <span className="text-[10px] font-bold text-slate-400 ml-0.5">ta</span>}</span>
+                <span>{s.value}{language !== 'ru' && <span className="text-[13px] font-bold text-slate-400 ml-0.5">ta</span>}</span>
               )}
               </div>
             </div>
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center border shadow-xs shrink-0 ${s.bg}`}>
-              <s.icon className={`w-4 h-4 ${s.color}`} />
+            <div className={`order-first w-11 h-11 rounded-xl flex items-center justify-center border-0 shrink-0 ${s.bg}`}>
+              <s.icon className={`w-5 h-5 ${s.color}`} />
             </div>
           </div>
         ))}
@@ -486,8 +489,8 @@ export default function TreatmentTracking() {
       </div>
 
       {/* ─── Search + Filter chips (sticky on mobile) ──────────────── */}
-      <div className="sticky top-0 z-20 -mx-0.5 px-0.5 py-0.5 md:static md:p-0 bg-[#F4F6F9]/95 md:bg-transparent backdrop-blur-sm md:backdrop-blur-none">
-        <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs space-y-2.5">
+      <div className="md:static md:p-0 md:bg-transparent">
+        <div className="bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs space-y-2.5 max-md:bg-transparent max-md:border-0 max-md:shadow-none max-md:p-0 max-md:space-y-3">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
             <div className="relative flex-1 group">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#1499AD] transition-colors" />
@@ -496,7 +499,7 @@ export default function TreatmentTracking() {
                 placeholder={t('treatmentTracking.searchPlaceholder') || (language === 'ru' ? "Поиск по имени пациента, названию плана или врачу..." : "Bemor ismi, reja nomi yoki shifokor bo'yicha qidiruv...")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full h-10 md:h-9 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
+                className="w-full h-10 max-md:h-12 max-md:bg-white max-md:text-[13px] max-md:pl-10 md:h-9 pl-9 pr-8 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-[#1499AD] font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#1499AD]/10 transition-all outline-none"
               />
               {search && (
                 <button
@@ -521,15 +524,15 @@ export default function TreatmentTracking() {
                     key={tab.id}
                     onClick={() => setActiveStatusFilter(tab.id)}
                     className={cn(
-                      "flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-xl md:rounded-lg text-[10px] md:text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+                      "flex items-center gap-1.5 px-3 py-2 max-md:min-h-[44px] max-md:text-[13px] max-md:border max-md:border-slate-200 md:py-1.5 rounded-xl md:rounded-lg text-[10px] md:text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
                       isActive
                         ? "bg-slate-900 text-white shadow-xs font-black"
-                        : "bg-slate-100/70 text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
+                        : "bg-slate-100/70 max-md:bg-white text-slate-600 hover:bg-slate-200/60 hover:text-slate-900"
                     )}
                   >
                     <span>{tab.label}</span>
                     <span className={cn(
-                      "px-1.5 py-0.5 rounded-full text-[9px] font-black",
+                      "px-1.5 py-0.5 rounded-full text-[9px] max-md:text-[12px] font-black",
                       isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
                     )}>
                       {tab.count}
@@ -587,32 +590,32 @@ export default function TreatmentTracking() {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="text-sm font-black text-slate-900 leading-tight truncate">
+                      <h3 className="text-[15px] font-black text-slate-900 leading-tight truncate">
                         {p.patient_name || "Noma'lum bemor"}
                       </h3>
                       <span className={cn(
-                        "shrink-0 px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider border",
+                        "shrink-0 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border",
                         meta.pill
                       )}>
                         {meta.label}
                       </span>
                     </div>
 
-                    <p className="text-[11px] font-bold text-slate-600 truncate mb-0.5">
+                    <p className="text-[13px] font-bold text-slate-600 truncate mb-0.5">
                       {planDisplayName(p.name) || 'Davolash rejasi'}
                     </p>
 
                     {p.doctor_name && (
-                      <p className="text-[10px] font-semibold text-slate-400 truncate mb-2">
+                      <p className="text-[13px] font-medium text-slate-400 truncate mb-1">
                         {language === 'ru' ? 'Врач: ' : 'Shifokor: '}{p.doctor_name}
                       </p>
                     )}
 
                     {totalSrv > 0 && (
-                      <div className="space-y-1 pt-1 border-t border-slate-50">
-                        <div className="flex items-center justify-between text-[10px] font-bold">
+                      <div className="space-y-1 pt-1">
+                        <div className="flex items-center justify-between text-[12px] font-bold">
                           <span className="text-slate-500">{doneSrv}/{totalSrv} {language === 'ru' ? 'услуг' : 'xizmat'}</span>
-                          <span className="font-mono text-slate-700 tabular-nums">{pct}%</span>
+                          <span className="text-slate-700 tabular-nums">{pct}%</span>
                         </div>
                         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                           <div
@@ -626,6 +629,7 @@ export default function TreatmentTracking() {
                       </div>
                     )}
                   </div>
+                  <TtChevron className="w-5 h-5 text-slate-400 self-center shrink-0" />
                 </div>
               </motion.button>
             );

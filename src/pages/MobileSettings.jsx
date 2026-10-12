@@ -5,7 +5,7 @@ import {
   User, Globe, LogOut, 
   Building2, Users, Bell,
   Clock, CheckCircle2, ChevronDown, ChevronUp, Layout as LayoutIcon,
-  Trash2, KeyRound, Phone, X, ShieldCheck, Camera, ImagePlus
+  Trash2, KeyRound, Phone, X, ShieldCheck, Camera, ImagePlus, ChevronRight
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -59,6 +59,7 @@ export default function MobileSettings() {
   });
   const [savingMySchedule, setSavingMySchedule] = useState(false);
   const [showMySchedule, setShowMySchedule] = useState(false);
+  const [showClinicForm, setShowClinicForm] = useState(false);
 
   // Admin states
   const [showStaffForm, setShowStaffForm] = useState(false);
@@ -365,25 +366,25 @@ export default function MobileSettings() {
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
       {/* Header */}
-      <div className="bg-white border-b px-4 py-4 sticky top-0 z-10 flex items-center justify-between">
+      <div className="px-4 pt-4 pb-1 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">{t('settings.title') || "Sozlamalar"}</h1>
-          <p className="text-xs text-slate-500 font-medium">
+          <h1 className="text-[22px] font-black text-slate-900">{t('settings.title') || "Sozlamalar"}</h1>
+          <p className="text-[13px] text-slate-500 font-medium">
             {isDoctor ? "Shaxsiy kabinet va ish jadvali" : "Tizim sozlamalari va boshqaruv"}
           </p>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleLogout} className="text-rose-600 font-bold hover:bg-rose-50 rounded-xl">
+        <Button variant="ghost" size="sm" onClick={handleLogout} className="text-rose-600 font-bold hover:bg-rose-50 rounded-xl h-11 text-[14px]">
           <LogOut className="w-4 h-4 mr-1" /> Chiqish
         </Button>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="p-4 pt-3 space-y-3">
         <TariffCard />
         {/* User Profile Card */}
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100"
+          className="bg-white rounded-3xl p-4 shadow-sm border border-slate-100"
         >
           <div className="flex items-center gap-4">
             
@@ -429,7 +430,7 @@ export default function MobileSettings() {
             <div className="flex-1 min-w-0">
               <h3 className="font-black text-lg text-slate-900 truncate">{currentUser?.name || currentUser?.full_name}</h3>
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                <span className="inline-block px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase rounded-full">
+                <span className="inline-block px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[12px] font-black uppercase rounded-full">
                   {isDoctor ? "Shifokor" : "Administrator"}
                 </span>
                 {currentUser?.specialty && (
@@ -445,12 +446,13 @@ export default function MobileSettings() {
               </div>
               <label 
                 htmlFor="mobile-avatar-upload"
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 active:underline mt-1 cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-[13px] font-bold text-indigo-600 active:underline mt-1.5 min-h-[28px] cursor-pointer"
               >
-                <ImagePlus className="w-3 h-3" />
+                <ImagePlus className="w-4 h-4" />
                 {avatarSource ? "Rasmni almashtirish" : "Rasm yuklash"}
               </label>
             </div>
+            <ChevronRight className="w-5 h-5 text-slate-300 shrink-0" />
           </div>
         </motion.div>
 
@@ -459,16 +461,17 @@ export default function MobileSettings() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 space-y-4"
+          className="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 space-y-3"
         >
-          <div className="flex items-center gap-2 pb-2 border-b border-slate-50">
-            <KeyRound className="w-4 h-4 text-indigo-600" />
-            <h3 className="font-bold text-sm text-slate-900">Profil & Xavfsizlik</h3>
+          <div className="flex items-center gap-2.5 pb-2 border-b border-slate-50">
+            <KeyRound className="w-5 h-5 text-indigo-600" />
+            <h3 className="font-bold text-[15px] text-slate-900 flex-1">Profil & Xavfsizlik</h3>
+            <ChevronRight className="w-5 h-5 text-slate-300" />
           </div>
 
           <form onSubmit={handleSaveMyProfile} className="space-y-3">
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">To'liq ism *</Label>
+              <Label className="text-[11px] uppercase font-black text-slate-400 tracking-widest ml-1 block">To'liq ism *</Label>
               <Input 
                 value={myProfileForm.name} 
                 onChange={e => setMyProfileForm({ ...myProfileForm, name: e.target.value })}
@@ -476,7 +479,7 @@ export default function MobileSettings() {
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">Telefon raqam</Label>
+              <Label className="text-[11px] uppercase font-black text-slate-400 tracking-widest ml-1 block">Telefon raqam</Label>
               <Input 
                 value={myProfileForm.phone} 
                 onChange={e => setMyProfileForm({ ...myProfileForm, phone: e.target.value })}
@@ -486,28 +489,28 @@ export default function MobileSettings() {
             </div>
             <div className="grid grid-cols-2 gap-2 pt-1">
               <div className="space-y-1">
-                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">Yangi parol</Label>
+                <Label className="text-[11px] uppercase font-black text-slate-400 tracking-widest ml-1 block">Yangi parol</Label>
                 <PasswordInput
                   placeholder="Yangi parol"
                   value={myProfileForm.password}
                   onChange={e => setMyProfileForm({ ...myProfileForm, password: e.target.value })}
-                  className="h-11 rounded-xl font-mono text-xs bg-slate-50 border-slate-100" 
+                  className="h-11 rounded-xl text-[14px] bg-slate-50 border-slate-100" 
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest ml-1 block">Tasdiqlash</Label>
+                <Label className="text-[11px] uppercase font-black text-slate-400 tracking-widest ml-1 block">Tasdiqlash</Label>
                 <PasswordInput
                   placeholder="Qayta kiriting"
                   value={myProfileForm.confirmPassword}
                   onChange={e => setMyProfileForm({ ...myProfileForm, confirmPassword: e.target.value })}
-                  className="h-11 rounded-xl font-mono text-xs bg-slate-50 border-slate-100" 
+                  className="h-11 rounded-xl text-[14px] bg-slate-50 border-slate-100" 
                 />
               </div>
             </div>
             <Button 
               type="submit" 
               disabled={savingMyProfile}
-              className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs uppercase tracking-wider mt-2"
+              className="w-full h-12 bg-gradient-to-r from-emerald-500 to-teal-700 hover:opacity-95 text-white rounded-xl font-bold text-[14px] mt-2"
             >
               {savingMyProfile ? 'Saqlanmoqda...' : 'Profil va parolni saqlash'}
             </Button>
@@ -620,148 +623,85 @@ export default function MobileSettings() {
           </motion.div>
         )}
 
-        {/* Language Settings */}
-        <motion.div 
+        {/* Settings list (grouped) */}
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.12 }}
-          className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100"
+          className="bg-white rounded-3xl shadow-sm border border-slate-100 divide-y divide-slate-100 overflow-hidden"
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
-                <Globe className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm">Til / Язык / Language</h3>
-                <p className="text-[11px] text-slate-400">Interfeys tilini tanlang</p>
-              </div>
+          <div className="flex items-center gap-3 px-4 py-3 min-h-[64px]">
+            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shrink-0"><Globe className="w-5 h-5" /></div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-slate-900 text-[14px]">Til / Язык / Language</h3>
+              <p className="text-[13px] text-slate-400 truncate">Interfeys tilini tanlang</p>
             </div>
             <LanguageSwitcher />
           </div>
-        </motion.div>
-
-        {/* Notifications */}
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.14 }}
-          className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600">
-                <Bell className="w-5 h-5" />
+          <div className="flex items-center gap-3 px-4 py-3 min-h-[64px]">
+            <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 shrink-0"><Bell className="w-5 h-5" /></div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-slate-900 text-[14px]">Bildirishnomalar</h3>
+              <p className="text-[13px] text-slate-400 truncate">Eslatmalarni tekshirish</p>
+            </div>
+            <button type="button" onClick={testNotification} className="shrink-0 min-h-[40px] px-3 rounded-xl bg-slate-100 text-slate-700 text-[12px] font-bold leading-tight max-w-[150px]">
+              Test bildirishnomasini yuborish
+            </button>
+          </div>
+          {isAdmin && (
+            <>
+              <button type="button" onClick={() => navigate('/sms-settings')} className="w-full text-left flex items-center gap-3 px-4 py-3 min-h-[64px] active:bg-slate-50">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center shrink-0"><Bell className="w-5 h-5 text-purple-600" /></div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-slate-900 text-[14px]">SMS Sozlamalari</h3>
+                  <p className="text-[13px] text-slate-400 truncate">Avtomatik xabar yuborish sozlamalari</p>
+                </div>
+                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                <ChevronRight className="w-5 h-5 text-slate-300 shrink-0" />
+              </button>
+              <div className="flex items-center gap-3 px-4 py-3 min-h-[64px]">
+                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0"><LayoutIcon className="w-5 h-5" /></div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-slate-900 text-[14px]">Professional sahifa</h3>
+                  <p className="text-[13px] text-slate-400 truncate">Online tashrif qog'ozi</p>
+                </div>
+                <Button size="sm" className="rounded-xl h-10 bg-indigo-600 hover:bg-indigo-700 text-[13px] font-bold shrink-0" onClick={() => navigate('/public-page')}>Sozlash</Button>
+                <ChevronRight className="w-5 h-5 text-slate-300 shrink-0" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-sm">Bildirishnomalar</h3>
-                <p className="text-[11px] text-slate-400">Eslatmalarni tekshirish</p>
+                <div className="flex items-center gap-3 px-4 py-3 min-h-[64px]">
+                  <button type="button" onClick={() => setShowClinicForm(v => !v)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                    <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white shrink-0"><Building2 className="w-5 h-5" /></div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-slate-900 text-[14px]">Klinika sozlamalari</h3>
+                      <p className="text-[13px] text-slate-400 truncate">Klinika ma'lumotlari va aloqa</p>
+                    </div>
+                  </button>
+                  <Button size="sm" onClick={saveClinicSettings} className="rounded-xl h-10 bg-emerald-600 hover:bg-emerald-700 font-bold text-[13px] shrink-0">Saqlash</Button>
+                  <button type="button" aria-label="Ochish" onClick={() => setShowClinicForm(v => !v)} className="w-8 h-10 -mr-2 flex items-center justify-center text-slate-300 shrink-0">
+                    <ChevronRight className={`w-5 h-5 transition-transform ${showClinicForm ? 'rotate-90' : ''}`} />
+                  </button>
+                </div>
+                {showClinicForm && (
+                  <div className="px-4 pb-4 space-y-3">
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Klinika nomi</Label>
+                      <Input value={clinicData.name} onChange={e => setClinicData({...clinicData, name: e.target.value})} className="h-11 rounded-xl bg-slate-50 border-none font-bold text-slate-900" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Telefon</Label>
+                      <Input value={clinicData.phone} onChange={e => setClinicData({...clinicData, phone: e.target.value})} placeholder="+998..." className="h-11 rounded-xl bg-slate-50 border-none font-bold text-slate-900" />
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
-          <Button 
-            variant="outline" 
-            className="w-full h-11 rounded-xl border-slate-200 font-bold text-xs mt-2"
-            onClick={testNotification}
-          >
-            Test bildirishnomasini yuborish
-          </Button>
+            </>
+          )}
         </motion.div>
 
         {/* ADMIN EXCLUSIVE SECTIONS */}
         {isAdmin && (
           <>
-            {/* SMS Sozlamalari */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.16 }}
-              className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden"
-            >
-              <button
-                onClick={() => navigate('/sms-settings')}
-                className="w-full flex items-center justify-between p-4 active:bg-slate-50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-                    <Bell className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="font-bold text-slate-800 text-sm">SMS Sozlamalari</h3>
-                    <p className="text-xs text-slate-400">Avtomatik xabar yuborish sozlamalari</p>
-                  </div>
-                </div>
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              </button>
-            </motion.div>
-
-            {/* Professional Public Page Link */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.18 }}
-              className="bg-white rounded-3xl p-5 shadow-sm border border-indigo-100"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-                    <LayoutIcon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-sm">Professional sahifa</h3>
-                    <p className="text-xs text-slate-400">Online tashrif qog'ozi</p>
-                  </div>
-                </div>
-                <Button 
-                  size="sm" 
-                  className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold"
-                  onClick={() => navigate('/public-page')}
-                >
-                  Sozlash
-                </Button>
-              </div>
-            </motion.div>
-
-            {/* Clinic Settings */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white">
-                    <Building2 className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-sm">Klinika sozlamalari</h3>
-                </div>
-                <Button size="sm" onClick={saveClinicSettings} className="rounded-xl h-9 bg-emerald-600 hover:bg-emerald-700 font-bold text-xs">
-                  Saqlash
-                </Button>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Klinika nomi</Label>
-                  <Input 
-                    value={clinicData.name} 
-                    onChange={e => setClinicData({...clinicData, name: e.target.value})}
-                    className="h-11 rounded-xl bg-slate-50 border-none font-bold text-slate-900" 
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Telefon</Label>
-                  <Input 
-                    value={clinicData.phone} 
-                    onChange={e => setClinicData({...clinicData, phone: e.target.value})}
-                    placeholder="+998..." 
-                    className="h-11 rounded-xl bg-slate-50 border-none font-bold text-slate-900" 
-                  />
-                </div>
-              </div>
-            </motion.div>
-
             {/* Staff Management (Admin Only) */}
             <motion.div 
               initial={{ opacity: 0, y: 10 }}

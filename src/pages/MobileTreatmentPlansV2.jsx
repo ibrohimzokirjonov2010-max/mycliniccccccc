@@ -541,16 +541,16 @@ export default function MobileTreatmentPlansV2() {
                     <div className="space-y-3">
                        <div className="p-4 bg-white rounded-2xl border border-slate-200 relative z-20">
                           <Label className="text-[16px] font-bold text-slate-900 mb-3 flex items-center gap-2">
-                             <User className="w-5 h-5 text-slate-600" /> Bemor tanlash
+                             <span className="w-10 h-10 rounded-xl bg-teal-50 text-[#0F8F86] inline-flex items-center justify-center shrink-0"><User className="w-5 h-5" /></span> Bemor tanlash <span className="text-rose-500">*</span>
                           </Label>
                           <PatientSelect patients={patients} value={formData.patient_id} onChange={id => setFormData({...formData, patient_id: id})} placeholder="Ism yoki telefon orqali qidiring..." inputClassName="h-12 rounded-xl text-[15px] border-slate-200 bg-white focus:border-[#0F8F86] transition-all" />
                        </div>
                        <div className="p-4 bg-white rounded-2xl border border-slate-200 relative z-10">
                           <Label className="text-[16px] font-bold text-slate-900 mb-3 flex items-center gap-2">
-                             <ClipboardList className="w-5 h-5 text-slate-600" /> Reja nomi
+                             <span className="w-10 h-10 rounded-xl bg-teal-50 text-[#0F8F86] inline-flex items-center justify-center shrink-0"><FileText className="w-5 h-5" /></span> Reja nomi <span className="text-rose-500">*</span>
                           </Label>
                           <Input
-                             placeholder="Masalan: Kompleks plomba davolash..."
+                             placeholder="Masalan: Kompleks plomba davolash, Implant rejasi..."
                              value={formData.name}
                              onChange={e => setFormData({...formData, name: e.target.value})}
                              className="h-12 rounded-xl font-medium bg-white border-slate-200 focus:border-[#0F8F86] px-4 text-[15px] placeholder:text-slate-400"

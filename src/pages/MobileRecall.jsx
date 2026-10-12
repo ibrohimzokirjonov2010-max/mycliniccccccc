@@ -6,7 +6,7 @@ import {
   Bell, Phone, CheckCircle2,
   Plus, Search, ArrowLeft, Clock,
   ChevronRight, Sparkles, Activity,
-  Stethoscope, Heart, ArrowUpRight
+  Stethoscope, Heart, ArrowUpRight, CalendarDays, CalendarCheck, SlidersHorizontal, MoreVertical, X
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -43,6 +43,7 @@ export default function MobileRecall() {
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [search, setSearch] = useRestorableState('search', '');
+  const [statusFilter, setStatusFilter] = useRestorableState('statusFilter', 'all');
   const getTodayStr = () => tashkentToday();
   const calcDate = (months, baseDate = getTodayStr()) => {
     const d = new Date(baseDate || new Date());
@@ -160,10 +161,13 @@ export default function MobileRecall() {
     }
   };
 
+  const recallStatus = (r) => String(r.status || 'pending').toLowerCase();
   const filteredRecalls = recalls.filter(r => 
-    r.patient_name?.toLowerCase().includes(search.toLowerCase()) ||
-    r.type_label?.toLowerCase().includes(search.toLowerCase())
+    (r.patient_name?.toLowerCase().includes(search.toLowerCase()) ||
+    r.type_label?.toLowerCase().includes(search.toLowerCase())) &&
+    (statusFilter === 'all' || recallStatus(r) === statusFilter)
   );
+  const sentCount = recalls.filter(r => recallStatus(r) === 'sent').length;
 
   const pendingCount = recalls.filter(r => String(r.status || 'pending').toLowerCase() === 'pending').length;
   const todayCount = recalls.filter(r => {
@@ -176,54 +180,86 @@ export default function MobileRecall() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24">
       {/* Premium Header */}
-      <div className="bg-white px-5 pt-8 pb-4.5 rounded-b-2xl shadow-md shadow-slate-100 relative z-20">
+      <div className="bg-white px-4 pt-5 pb-4 rounded-b-3xl shadow-md shadow-slate-100 relative z-20">
          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-               <button onClick={() => navigate(-1)} className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500 active:scale-90 transition-all border-none">
-                  <ArrowLeft className="w-5 h-5" />
-               </button>
-               <div>
-                  <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-1">Recall</h1>
-                  <div className="flex items-center gap-1">
-                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">Eslatmalar Tizimi</span>
+            <div className="flex items-center gap-3 min-w-0">
+               <span className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Bell className="w-6 h-6" />
+               </span>
+               <div className="min-w-0">
+                  <h1 className="text-[22px] font-black text-slate-900 tracking-tight leading-none mb-1.5">Eslatmalar</h1>
+                  <div className="flex items-center gap-1.5">
+                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                     <span className="text-[13px] font-semibold text-slate-500 leading-none truncate">Bemorlar bilan qayta aloqa</span>
                   </div>
                </div>
             </div>
             <button 
               onClick={() => setShowAddForm(!showAddForm)}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all active:scale-95 border-none shadow ${
-                showAddForm ? 'bg-rose-500 text-white rotate-45' : 'bg-slate-900 text-white'
+              className={`h-12 px-4 rounded-2xl flex items-center justify-center gap-1.5 transition-all active:scale-95 border-none shadow-md text-[14px] font-black uppercase tracking-wide shrink-0 ${
+                showAddForm ? 'bg-rose-500 text-white shadow-rose-500/20' : 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/25'
               }`}
             >
-               <Plus className="w-6 h-6" />
+               {showAddForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+               {showAddForm ? 'Yopish' : 'Yangi'}
             </button>
          </div>
 
          {!showAddForm ? (
             <div className="space-y-4">
                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-900 rounded-xl p-4 shadow-sm relative overflow-hidden group">
-                     <div className="absolute top-0 right-0 w-16 h-16 bg-white/5 rounded-full -mr-8 -mt-8 blur-xl" />
-                     <p className="text-2xl font-black text-white tracking-tight mb-0.5">{pendingCount}</p>
-                     <p className="text-[9px] font-bold text-white/50 uppercase tracking-wider">Kutilmoqda</p>
+                  <div className="bg-slate-900 rounded-2xl p-4 shadow-sm relative overflow-hidden min-h-[104px]">
+                     <CalendarDays className="absolute -right-3 top-4 w-20 h-20 text-white/[0.07]" strokeWidth={1.5} />
+                     <span className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center mb-2"><CalendarDays className="w-5 h-5" /></span>
+                     <p className="text-[24px] font-black text-white tracking-tight leading-none mb-1">{pendingCount}</p>
+                     <p className="text-[13px] font-bold text-white/60 uppercase tracking-wide">Kutilmoqda</p>
                   </div>
-                  <div className="bg-emerald-500 rounded-xl p-4 shadow-sm relative overflow-hidden group text-white">
-                     <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full -mr-8 -mt-8 blur-xl" />
-                     <p className="text-2xl font-black text-white tracking-tight mb-0.5">{todayCount}</p>
-                     <p className="text-[9px] font-bold text-white/60 uppercase tracking-wider">Bugun</p>
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 shadow-sm relative overflow-hidden min-h-[104px]">
+                     <CalendarDays className="absolute -right-3 top-4 w-20 h-20 text-emerald-500/10" strokeWidth={1.5} />
+                     <span className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-2"><CalendarCheck className="w-5 h-5" /></span>
+                     <p className="text-[24px] font-black text-emerald-800 tracking-tight leading-none mb-1">{todayCount}</p>
+                     <p className="text-[13px] font-bold text-emerald-700 uppercase tracking-wide">Bugun</p>
                   </div>
                </div>
 
-               <div className="relative group">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+               <div className="flex gap-2">
+               <div className="relative group flex-1 min-w-0">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
                   <input 
                     type="text"
                     placeholder="Bemor yoki turini izlash..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="w-full h-11 pl-11 pr-4 rounded-xl bg-slate-50 border-none text-sm font-semibold text-slate-850 placeholder:text-slate-400 transition-all outline-none"
+                    className="w-full h-12 pl-11 pr-4 rounded-xl bg-white border border-slate-200 text-[14px] font-medium text-slate-850 placeholder:text-slate-400 transition-all outline-none"
                   />
+               </div>
+               <button
+                 type="button"
+                 aria-label="Filtr"
+                 onClick={() => setStatusFilter(statusFilter === 'all' ? 'pending' : statusFilter === 'pending' ? 'sent' : 'all')}
+                 className="w-12 h-12 shrink-0 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-600"
+               >
+                 <SlidersHorizontal className="w-5 h-5" />
+               </button>
+               </div>
+               <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
+                 {[
+                   { k: 'all', label: 'Barchasi', count: null },
+                   { k: 'pending', label: 'Kutilmoqda', count: pendingCount },
+                   { k: 'sent', label: 'Yuborildi', count: sentCount },
+                 ].map(f => (
+                   <button
+                     key={f.k}
+                     type="button"
+                     onClick={() => setStatusFilter(f.k)}
+                     className={`shrink-0 min-h-[44px] px-4 rounded-full inline-flex items-center gap-2 text-[13px] font-black uppercase tracking-wide border transition-all ${
+                       statusFilter === f.k ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-transparent shadow-md shadow-emerald-500/20' : 'bg-white text-slate-500 border-slate-200'
+                     }`}
+                   >
+                     {f.label}
+                     {f.count != null && <span className={`px-1.5 rounded-full text-[12px] ${statusFilter === f.k ? 'bg-white/20' : 'bg-slate-100'}`}>{f.count}</span>}
+                   </button>
+                 ))}
                </div>
             </div>
          ) : (
@@ -375,57 +411,65 @@ export default function MobileRecall() {
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: Math.min(index, 6) * 0.02 }}
-                              className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-100 relative overflow-hidden group content-visibility-auto"
+                              className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 relative overflow-hidden group content-visibility-auto"
                             >
-                               <div className="flex items-start justify-between mb-4">
-                                  <div className="flex items-center gap-3">
-                                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${typeConfig.lightColor}`}>
+                               <div className="flex items-start justify-between mb-3 gap-2">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${typeConfig.lightColor}`}>
                                         {typeConfig.icon}
                                      </div>
-                                     <div>
-                                        <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
+                                     <div className="min-w-0">
+                                        <h3 className="text-[16px] font-black text-slate-900 tracking-tight flex items-center gap-1.5 truncate">
                                            {recall.patient_name}
-                                           <ChevronRight className="w-3 h-3 text-slate-300" />
+                                           <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
                                         </h3>
-                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{typeConfig.label}</p>
+                                        <p className="text-[13px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">{typeConfig.label}</p>
                                      </div>
                                   </div>
-                                  <div className={`px-2.5 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-wider border ${status.color}`}>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                  <div className={`px-3 py-1 rounded-full text-[12px] font-black uppercase tracking-wide border ${status.color}`}>
                                      {status.label}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    aria-label="Bemor profili"
+                                    onClick={() => recall.patient_id && navigate(`/patients/${recall.patient_id}`)}
+                                    className="w-8 h-11 -mr-2 flex items-center justify-center text-slate-500"
+                                  >
+                                    <MoreVertical className="w-5 h-5" />
+                                  </button>
                                   </div>
                                </div>
 
-                               <div className="flex items-center justify-between mb-4 bg-slate-50 rounded-xl p-3">
-                                  <div className="flex items-center gap-2">
-                                     <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                     <span className="text-[12px] font-semibold text-slate-800">
+                               <div className="flex items-center gap-3 mb-3 bg-slate-50 rounded-xl p-3 min-h-[48px]">
+                                  <div className="flex items-center gap-2.5 shrink-0">
+                                     <Clock className="w-4.5 h-4.5 text-slate-400" />
+                                     <span className="text-[14px] font-bold text-slate-800">
                                         {formatClinicDate(recall.recall_date)}
                                      </span>
                                   </div>
                                   {recall.notes && (
-                                     <span className="text-[9.5px] font-medium text-slate-400 italic truncate max-w-[120px]">"{recall.notes}"</span>
+                                     <span className="text-[13px] font-medium text-slate-500 truncate border-l border-slate-200 pl-3 min-w-0">{recall.notes}</span>
                                   )}
                                 </div>
 
                                <div className="grid grid-cols-2 gap-2">
                                   <button 
                                     onClick={() => handleSendNotification(recall, 'call')}
-                                    className="h-10 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center gap-1.5 font-bold text-[9.5px] uppercase tracking-wider transition-all active:scale-[0.98] border-none cursor-pointer"
+                                    className="h-12 bg-emerald-50 text-emerald-700 rounded-xl flex items-center justify-center gap-2 font-black text-[13px] uppercase tracking-wider transition-all active:scale-[0.98] border-none cursor-pointer"
                                   >
-                                     <Phone className="w-3.5 h-3.5" /> QO'NG'IROQ
+                                     <Phone className="w-4.5 h-4.5" /> QO'NG'IROQ
                                   </button>
                                   <button 
                                     onClick={() => handleComplete(recall.id)}
-                                    className="h-10 bg-slate-900 text-white rounded-lg flex items-center justify-center gap-1.5 font-bold text-[9.5px] uppercase tracking-wider transition-all active:scale-[0.98] border-none cursor-pointer"
+                                    className="h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center gap-2 font-black text-[13px] uppercase tracking-wider transition-all active:scale-[0.98] border-none cursor-pointer"
                                   >
-                                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> BAJARILDI
+                                     <CheckCircle2 className="w-4.5 h-4.5 text-emerald-400" /> BAJARILDI
                                   </button>
                                 </div>
 
                                {/* Link Icon for Details */}
-                               <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <ArrowUpRight className="w-3.5 h-3.5 text-slate-300" />
-                                </div>
+
                             </motion.div>
                          );
                       })

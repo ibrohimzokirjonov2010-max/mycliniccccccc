@@ -3,7 +3,7 @@ import { useRestorableState } from '@/hooks/useRestorableState';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Package, AlertTriangle, Plus, Search, Archive, TrendingDown, Boxes,
-  ShoppingCart, X, Check, Trash2
+  ShoppingCart, X, Check, Trash2, ShoppingBasket, Tag, MoreVertical, SlidersHorizontal, Coins
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -211,35 +211,59 @@ export default function MobileInventoryV2() {
         animate={{ opacity: 1 }}
         transition={{ delay: Math.min(index, 6) * 0.02 }}
         onClick={() => startEdit(item)}
-        className="px-4 py-3 flex items-center gap-3.5 active:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 relative content-visibility-auto cursor-pointer"
+        className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3.5 active:bg-slate-50 transition-colors relative content-visibility-auto cursor-pointer"
       >
+       <div className="flex items-center gap-3.5">
         {/* Left: Icon Avatar */}
-        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${style.color} flex items-center justify-center text-white shrink-0 shadow-sm`}>
-          <CategoryIcon className="w-4.5 h-4.5" />
+        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${style.color} flex items-center justify-center text-white shrink-0 shadow-sm`}>
+          <CategoryIcon className="w-6 h-6" />
         </div>
 
         {/* Middle: Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="font-bold text-[14px] text-slate-800 truncate leading-tight">
+            <h3 className="font-black text-[15px] text-slate-900 truncate leading-tight">
               {item.name}
             </h3>
             {isLowStock && (
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
             )}
           </div>
-          <p className="text-[10px] font-bold text-slate-450 mt-0.5 uppercase tracking-wide">{item.category}</p>
+          <p className="text-[13px] font-bold text-slate-700 mt-1 uppercase tracking-wide truncate">{item.category}</p>
         </div>
 
         {/* Right: Stock */}
         <div className="flex items-center gap-2">
           <div className="text-right">
-             <p className={`text-[13px] font-black ${isLowStock ? 'text-rose-500' : 'text-slate-850'}`}>
-               {item.quantity} <span className="text-[10px] font-bold text-slate-500 uppercase">{formatItemUnit(item.unit)}</span>
+             <p className={`text-[15px] font-black ${isLowStock ? 'text-rose-500' : 'text-slate-850'}`}>
+               {item.quantity} <span className="text-[13px] font-bold text-slate-500 uppercase">{formatItemUnit(item.unit)}</span>
              </p>
-             <p className="text-[9px] font-bold text-slate-400 mt-0.5">{item.price ? `${item.price.toLocaleString()} so'm` : 'Narxsiz'}</p>
+             <p className="text-[13px] font-bold text-slate-400 mt-0.5">{item.price ? `${item.price.toLocaleString()} so'm` : 'Narxsiz'}</p>
           </div>
+          <button
+            type="button"
+            aria-label="Tahrirlash"
+            onClick={(e) => { e.stopPropagation(); startEdit(item); }}
+            className="w-9 h-11 -mr-1.5 border-l border-slate-100 flex items-center justify-center text-slate-500"
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
         </div>
+       </div>
+       <div className="grid grid-cols-3 gap-2 mt-3">
+         <div className="rounded-xl bg-blue-50/70 px-2 py-2 flex items-center gap-1.5 min-w-0">
+           <span className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-blue-600 shrink-0"><Package className="w-4 h-4" /></span>
+           <span className="min-w-0"><span className="block text-[11px] text-slate-500 leading-tight truncate">Min. miqdor</span><span className="block text-[14px] font-black text-slate-800 leading-tight">{item.min_quantity || 10}</span></span>
+         </div>
+         <div className="rounded-xl bg-emerald-50/70 px-2 py-2 flex items-center gap-1.5 min-w-0">
+           <span className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-emerald-600 shrink-0"><Tag className="w-4 h-4" /></span>
+           <span className="min-w-0"><span className="block text-[14px] font-black text-slate-800 leading-tight truncate">{(item.price || 0).toLocaleString()}</span><span className="block text-[11px] text-slate-500 leading-tight truncate">narxi</span></span>
+         </div>
+         <div className="rounded-xl bg-violet-50/70 px-2 py-2 flex items-center gap-1.5 min-w-0">
+           <span className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-violet-600 shrink-0"><Coins className="w-4 h-4" /></span>
+           <span className="min-w-0"><span className="block text-[13px] font-black text-violet-700 leading-tight truncate">{((item.price || 0) * (item.quantity || 0)).toLocaleString()} so'm</span><span className="block text-[11px] text-slate-500 leading-tight truncate">qiymati</span></span>
+         </div>
+       </div>
       </motion.div>
     );
   };
@@ -264,13 +288,13 @@ export default function MobileInventoryV2() {
     <PullToRefresh onRefresh={loadItems}>
       <div className="min-h-screen bg-[#F8FAFC] pb-32">
         {/* Premium Header */}
-        <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
+        <div className="bg-transparent">
           <div className="px-4 pt-4 pb-4">
             {/* Title Row */}
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-1">Ombor</h1>
-                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-wider">Materiallar boshqaruvi</p>
+                <h1 className="text-[26px] font-black text-slate-900 tracking-tight leading-none mb-1.5">Ombor</h1>
+                <p className="text-[13px] font-black text-emerald-600 uppercase tracking-wider">Materiallar boshqaruvi</p>
               </div>
               
               {/* Primary CTA */}
@@ -280,30 +304,26 @@ export default function MobileInventoryV2() {
                   resetForm();
                   setShowAddModal(true);
                 }}
-                className="bg-gradient-to-br from-emerald-500 to-teal-650 hover:from-emerald-600 hover:to-teal-750 text-white rounded-xl px-4 h-9 shadow-md shadow-emerald-500/10 active:scale-95 transition-all text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 border-none cursor-pointer"
+                className="bg-gradient-to-br from-emerald-500 to-teal-650 hover:from-emerald-600 hover:to-teal-750 text-white rounded-2xl px-5 h-12 shadow-md shadow-emerald-500/20 active:scale-95 transition-all text-[14px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 border-none cursor-pointer"
               >
-                <Plus className="w-4 h-4 stroke-[2.5]" />
+                <Plus className="w-5 h-5 stroke-[2.5]" />
                 Yangi
               </button>
             </div>
 
             {/* Enhanced Stats */}
             <div className="grid grid-cols-3 gap-2.5 mb-4">
-              <div className="bg-white rounded-2xl p-3 border border-slate-100 shadow-sm text-center">
-                <p className="text-xl font-black text-slate-800">{totalItems}</p>
-                <p className="text-[8px] font-black text-slate-450 uppercase tracking-widest mt-1">Jami</p>
+              <div className="bg-white rounded-2xl p-2.5 border border-slate-100 shadow-sm flex items-center gap-2 min-w-0">
+                <span className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><Package className="w-5 h-5" /></span>
+                <span className="min-w-0"><span className="block text-[20px] font-black text-slate-900 leading-none">{totalItems}</span><span className="block text-[11px] font-bold text-slate-500 uppercase mt-1">Jami</span></span>
               </div>
-              <div className={`rounded-2xl p-3 text-center border ${lowStockItems.length > 0 ? 'bg-rose-50 border-rose-100' : 'bg-emerald-50 border-emerald-100'}`}>
-                <p className={`text-xl font-black ${lowStockItems.length > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                  {lowStockItems.length}
-                </p>
-                <p className={`text-[8px] font-black uppercase tracking-widest mt-1 ${lowStockItems.length > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                  Kam qolgan
-                </p>
+              <div className={`rounded-2xl p-2.5 border flex items-center gap-2 min-w-0 ${lowStockItems.length > 0 ? 'bg-rose-50 border-rose-100' : 'bg-amber-50/70 border-amber-100'}`}>
+                <span className={`w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0 ${lowStockItems.length > 0 ? 'text-rose-500' : 'text-amber-500'}`}><ShoppingBasket className="w-5 h-5" /></span>
+                <span className="min-w-0"><span className={`block text-[20px] font-black leading-none ${lowStockItems.length > 0 ? 'text-rose-600' : 'text-slate-900'}`}>{lowStockItems.length}</span><span className="block text-[11px] font-bold text-slate-500 uppercase mt-1 leading-tight">Kam qolgan</span></span>
               </div>
-              <div className="bg-emerald-50/50 rounded-2xl p-3 border border-emerald-100 text-center">
-                <p className="text-[13px] font-black text-emerald-800 leading-tight truncate mt-1">{totalValue.toLocaleString()}</p>
-                <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mt-1 leading-none">Qiymati</p>
+              <div className="bg-emerald-50/50 rounded-2xl p-2.5 border border-emerald-100 flex items-center gap-2 min-w-0">
+                <span className="w-9 h-9 rounded-full bg-white text-emerald-600 flex items-center justify-center shrink-0"><Tag className="w-5 h-5" /></span>
+                <span className="min-w-0"><span className="block text-[11px] font-bold text-slate-500 uppercase leading-tight">Qiymati</span><span className="block text-[13px] font-black text-slate-900 leading-tight truncate mt-0.5">{totalValue.toLocaleString()} so'm</span></span>
               </div>
             </div>
 
@@ -326,34 +346,45 @@ export default function MobileInventoryV2() {
             )}
             
             {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <div className="flex gap-2">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <input
                 type="text"
                 placeholder="Material nomi bo'yicha qidirish..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-10 pr-3 rounded-xl border-none bg-slate-50 text-slate-800 font-bold placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:bg-white transition-all text-xs"
+                className="w-full h-12 pl-11 pr-3 rounded-xl border border-slate-200 bg-white shadow-sm text-slate-800 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 transition-all text-[14px]"
               />
+            </div>
+            <button
+              type="button"
+              aria-label="Filtr"
+              onClick={() => setFilterStatus(filterStatus === 'all' ? 'low' : filterStatus === 'low' ? 'ok' : 'all')}
+              className="w-12 h-12 shrink-0 rounded-xl border border-slate-200 bg-white shadow-sm flex items-center justify-center text-slate-600"
+            >
+              <SlidersHorizontal className="w-5 h-5" />
+            </button>
             </div>
             
             {/* Filter Pills */}
             <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide pb-0.5">
               {[
-                { key: 'all', label: 'Barchasi' },
-                { key: 'low', label: 'Kam qolgan' },
-                { key: 'ok', label: 'Yetarli' }
+                { key: 'all', label: 'Barchasi', count: items.length },
+                { key: 'low', label: 'Kam qolgan', count: lowStockItems.length },
+                { key: 'ok', label: 'Yetarli', count: items.length - lowStockItems.length }
               ].map((filter) => (
                 <button
                   key={filter.key}
                   onClick={() => setFilterStatus(filter.key)}
-                  className={`shrink-0 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all border ${
+                  className={`shrink-0 px-4 min-h-[44px] inline-flex items-center gap-2 rounded-full text-[13px] font-black uppercase tracking-wider whitespace-nowrap transition-all border ${
                     filterStatus === filter.key
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-650 text-white border-none shadow-md shadow-emerald-500/10'
+                      ? 'bg-[#0F6B5F] text-white border-transparent shadow-md shadow-emerald-500/10'
                       : 'bg-white text-slate-500 border-slate-100 hover:border-slate-200 shadow-sm'
                   }`}
                 >
                   {filter.label}
+                  <span className={`px-1.5 rounded-full text-[12px] ${filterStatus === filter.key ? 'bg-white/20' : 'bg-slate-100'}`}>{filter.count}</span>
                 </button>
               ))}
             </div>
@@ -361,7 +392,7 @@ export default function MobileInventoryV2() {
         </div>
 
         {/* Items List */}
-        <div className="bg-white mx-4 mt-4 rounded-[2rem] overflow-hidden border border-slate-100 shadow-sm min-h-[200px]">
+        <div className="mx-4 mt-1 space-y-2.5">
           {loading ? (
              <>
                <SkeletonCard />

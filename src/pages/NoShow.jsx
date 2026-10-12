@@ -7,10 +7,9 @@ import { useAuth } from '@/lib/AuthContext';
 import { 
   AlertTriangle, Calendar, Clock, User, 
   Phone, MessageSquare, ChevronRight, 
-  TrendingDown, History, Search
+  TrendingDown, History, Search, Filter, Smile, Coins, CalendarPlus, CalendarDays, CalendarX2, Plus, UserRound
 } from 'lucide-react';
 import EmptyState from '../components/ui/EmptyState';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +23,7 @@ export default function NoShow() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', '');
   const navigate = useNavigate();
+  const [period, setPeriod] = useRestorableState('period', 'all');
 
   const load = async () => {
     try {
@@ -82,23 +82,77 @@ export default function NoShow() {
     a.patient_name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Phone-only period filter (Hammasi / Bu hafta / Bu oy / Muddat o'tgan)
+  const daysAgo = (a) => {
+    const d = new Date(String(a.date || '').split('T')[0] + 'T00:00:00');
+    if (isNaN(d.getTime())) return null;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return Math.round((today - d) / 86400000);
+  };
+  const PERIODS = [
+    { k: 'all', label: 'Hammasi' },
+    { k: 'week', label: 'Bu hafta' },
+    { k: 'month', label: 'Bu oy' },
+    { k: 'overdue', label: "Muddat o'tgan" },
+  ];
+  const mobileAppointments = filteredAppointments.filter(a => {
+    if (period === 'all') return true;
+    const n = daysAgo(a);
+    if (period === 'week') return n != null && n >= 0 && n < 7;
+    if (period === 'month') return a.date?.startsWith(thisMonth);
+    if (period === 'overdue') return n != null && n > 30;
+    return true;
+  });
+  const fmtPhone = (ph) => {
+    const d = String(ph || '').replace(/\D/g, '');
+    if (d.length === 12 && d.startsWith('998')) return `+998 ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10)}`;
+    if (d.length === 9) return `+998 ${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 7)} ${d.slice(7)}`;
+    return ph;
+  };
+  const fmtDate = (v) => {
+    const s = String(v || '').split('T')[0];
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    return m ? `${m[3]}.${m[2]}.${m[1]}` : s;
+  };
+  const initialsOf = (n) => String(n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || '').join('') || '?';
+  const AVATAR_TONES = ['bg-blue-50 text-blue-600', 'bg-emerald-50 text-emerald-600', 'bg-orange-50 text-orange-600', 'bg-violet-50 text-violet-600'];
+  const fmtSom = (v) => `${Number(v || 0).toLocaleString('ru-RU').replace(/[\s,\u00a0]/g, ' ')} so'm`;
+
   return (
     <div className="space-y-4.5 pb-24 sm:pb-10 bg-slate-50/30 min-h-screen -m-4 p-4 sm:m-0 sm:p-0">
       {/* Premium Header */}
       <div className="px-1 sm:px-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight text-red-600 flex items-center gap-2.5">
+          <h1 className="text-xl max-sm:text-[21px] font-black tracking-tight text-red-600 max-sm:text-slate-900 flex items-center gap-2.5">
             <AlertTriangle className="w-6 h-6 stroke-[2.5px]" />
             {t('noShow.title')}
           </h1>
-          <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">
+          <p className="text-[10px] max-sm:text-[12px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">
             {t('noShow.subtitle') || "Kelmagan bemorlar va yo'qotilgan daromad tahlili"}
           </p>
         </div>
       </div>
 
       {/* Dynamic Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 px-1 sm:px-0">
+      <div className="sm:hidden bg-white rounded-2xl border border-slate-100 shadow-sm grid grid-cols-[1fr_0.8fr_1.25fr] divide-x divide-slate-100 py-3.5">
+        <div className="px-3">
+          <span className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-2"><History className="w-5 h-5" /></span>
+          <p className="text-[11px] font-bold text-slate-400 uppercase leading-tight">{t('noShow.stats.total')}</p>
+          <p className="text-[19px] font-black text-slate-900 mt-1 leading-none">{appointments.length}</p>
+        </div>
+        <div className="px-3">
+          <span className="w-9 h-9 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center mb-2"><CalendarDays className="w-5 h-5" /></span>
+          <p className="text-[11px] font-bold text-slate-400 uppercase leading-tight">{t('noShow.stats.thisMonth') || 'Shu oyda'}</p>
+          <p className="text-[19px] font-black text-slate-900 mt-1 leading-none">{monthlyNoShows.length}</p>
+        </div>
+        <div className="px-3 min-w-0">
+          <span className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-2"><TrendingDown className="w-5 h-5" /></span>
+          <p className="text-[11px] font-bold text-slate-400 uppercase leading-tight">{t('noShow.stats.lostRevenue') || "Yo'qotilgan"}</p>
+          <p className="text-[16px] font-black text-rose-600 mt-1 leading-none truncate">{fmtSom(totalLostRevenue)}</p>
+        </div>
+      </div>
+
+      <div className="max-sm:hidden grid grid-cols-1 sm:grid-cols-3 gap-4 px-1 sm:px-0">
         {/* Card 1 */}
         <div className="bg-white border border-slate-100 rounded-xl p-3.5 flex items-center gap-3.5 shadow-sm">
           <div className="w-9.5 h-9.5 rounded-lg bg-slate-50 text-slate-650 flex items-center justify-center shrink-0">
@@ -136,16 +190,36 @@ export default function NoShow() {
       </div>
 
       {/* Search Bar */}
-      <div className="px-1 sm:px-0">
-        <div className="relative group">
+      <div className="px-1 sm:px-0 max-sm:flex max-sm:gap-2">
+        <div className="relative group max-sm:flex-1 max-sm:min-w-0">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-red-500 transition-colors pointer-events-none" />
           <Input 
             placeholder={t('noShow.searchPlaceholder') || 'Bemor ismini qidirish...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-10 pl-10 pr-4 rounded-xl border-slate-200 bg-white placeholder:text-slate-400 text-sm font-semibold focus-visible:ring-1 focus-visible:ring-slate-350"
+            className="h-10 max-sm:h-12 max-sm:text-[14px] max-sm:font-medium pl-10 pr-4 rounded-xl border-slate-200 bg-white placeholder:text-slate-400 text-sm font-semibold focus-visible:ring-1 focus-visible:ring-slate-350"
           />
         </div>
+        <button
+          type="button"
+          onClick={() => setPeriod(PERIODS[(PERIODS.findIndex(x => x.k === period) + 1) % PERIODS.length].k)}
+          className="sm:hidden h-12 px-4 shrink-0 rounded-xl border border-slate-200 bg-white inline-flex items-center gap-2 text-[14px] font-bold text-slate-700"
+        >
+          <Filter className="w-4.5 h-4.5" /> Filtr
+        </button>
+      </div>
+
+      <div className="sm:hidden flex gap-2 overflow-x-auto no-scrollbar px-1">
+        {PERIODS.map(f => (
+          <button
+            key={f.k}
+            type="button"
+            onClick={() => setPeriod(f.k)}
+            className={`shrink-0 min-h-[44px] px-4 rounded-full text-[13px] font-bold border transition-all ${period === f.k ? 'bg-[#0F8F86] text-white border-transparent' : 'bg-slate-100 text-slate-600 border-slate-100'}`}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
       {/* Bemorlar Ro'yxati */}
@@ -260,89 +334,55 @@ export default function NoShow() {
             </div>
 
             {/* Mobile View - Sleek Cards */}
-            <div className="sm:hidden space-y-3.5">
-              <AnimatePresence mode="popLayout">
-                {filteredAppointments.map((appt, index) => (
-                  <motion.div 
-                    key={appt.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: Math.min(index, 6) * 0.02 }}
-                    className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group content-visibility-auto"
-                  >
-                    <div className="p-3.5">
-                      <div className="flex items-start justify-between mb-3 gap-2">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
-                            <User className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-bold text-slate-800 tracking-tight truncate max-w-[150px]">
-                              {appt.patient_name}
-                            </h3>
-                            <p className="text-[10px] text-slate-400 font-mono mt-0.5">{appt.phone || t('noShow.noPhone') || "Telefon yo'q"}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{t('noShow.table.lost') || 'Yo\'qotilgan'}</p>
-                          <p className="text-sm font-bold text-rose-600 tracking-tight">
-                            -{appt.price ? formatCurrency(appt.price) : '0 UZS'}
-                          </p>
-                        </div>
+            <div className="sm:hidden space-y-3">
+              {mobileAppointments.map((appt, index) => {
+                const n = daysAgo(appt);
+                return (
+                  <div key={appt.id} className="bg-white border border-slate-100 rounded-2xl shadow-sm p-3.5 content-visibility-auto">
+                    <div className="flex items-start gap-3">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-[16px] font-black ${AVATAR_TONES[index % AVATAR_TONES.length]}`}>
+                        {initialsOf(appt.patient_name)}
                       </div>
-
-                      {appt.service_name && (
-                        <div className="mb-3 px-2.5 py-1 bg-slate-50 rounded-lg inline-block border border-slate-100/50">
-                          <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                            <span className="w-1 h-1 rounded-full bg-blue-500" />
-                            {appt.service_name}
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between items-center pt-2.5 border-t border-slate-50 text-[11px] text-slate-400">
-                        <div className="flex items-center gap-1.5 font-semibold text-slate-500">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{appt.date?.split('T')[0] || appt.date}</span>
-                          <span className="text-slate-300">•</span>
-                          <Clock className="w-3 h-3 text-slate-400" />
-                          <span>{appt.time}</span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleCall(appt.phone)}
-                            className="h-8 w-8 rounded-lg bg-blue-50 text-blue-600 p-0 hover:bg-blue-100"
-                          >
-                            <Phone className="w-3 h-3" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleSMS(appt.phone, appt.patient_name)}
-                            className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 p-0 hover:bg-emerald-100"
-                          >
-                            <MessageSquare className="w-3 h-3" />
-                          </Button>
-                          {appt.patient_id && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => navigate(`/patients/${appt.patient_id}`, { state: profileState() })}
-                              className="h-8 w-8 rounded-lg bg-slate-50 text-slate-450 p-0 hover:bg-slate-100"
-                            >
-                              <ChevronRight className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
-                        </div>
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <h3 className="text-[16px] font-black text-slate-900 truncate">{appt.patient_name}</h3>
+                        <p className="text-[13px] text-slate-500 mt-0.5 truncate">{appt.phone ? fmtPhone(appt.phone) : (t('noShow.noPhone') || "Telefon yo'q")}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="inline-block px-2 py-0.5 rounded-md bg-rose-50 text-rose-600 text-[12px] font-bold">Kelmagan</span>
+                        <p className="mt-1 text-[13px] text-slate-700 flex items-center justify-end gap-1"><Calendar className="w-3.5 h-3.5" />{fmtDate(appt.date)}{appt.time ? `, ${appt.time}` : ''}</p>
+                        {n != null && n >= 0 && (
+                          <p className="text-[12px] text-rose-500 flex items-center justify-end gap-1"><Clock className="w-3 h-3" />{n === 0 ? 'bugun' : `${n} kun oldin`}</p>
+                        )}
                       </div>
                     </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+                    <div className="mt-2.5 flex items-center gap-3 text-[13px] text-slate-500 min-w-0">
+                      <span className="flex items-center gap-1.5 min-w-0 truncate"><UserRound className="w-4 h-4 shrink-0" />{appt.doctor_name || '—'}</span>
+                      {appt.service_name && <span className="flex items-center gap-1.5 min-w-0 truncate"><Smile className="w-4 h-4 shrink-0" />{appt.service_name}</span>}
+                      <span className="ml-auto flex items-center gap-1 text-rose-600 font-bold shrink-0"><Coins className="w-4 h-4" />{fmtSom(appt.price)}</span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => handleCall(appt.phone)} className="h-12 rounded-xl border border-[#0F8F86]/40 text-[#0F8F86] text-[14px] font-bold inline-flex items-center justify-center gap-2">
+                        <Phone className="w-4.5 h-4.5" /> Qo'ng'iroq qilish
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/appointments', { state: { openAddModal: true, prefillPatient: appt.patient_id, prefillPatientName: appt.patient_name } })}
+                        className="h-12 rounded-xl bg-[#0F8F86] text-white text-[14px] font-bold inline-flex items-center justify-center gap-2"
+                      >
+                        <CalendarPlus className="w-4.5 h-4.5" /> Qayta yozish
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm py-7 flex flex-col items-center text-center">
+                <div className="relative w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center">
+                  <CalendarX2 className="w-8 h-8 text-[#0F8F86]" />
+                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center"><Plus className="w-3.5 h-3.5" /></span>
+                </div>
+                <p className="mt-3 text-[15px] font-black text-slate-900">{mobileAppointments.length ? "Boshqa kelmagan uchrashuvlar yo'q" : "Kelmagan uchrashuvlar yo'q"}</p>
+                <p className="mt-1 text-[13px] text-slate-500">Hozircha kelmagan bemorlar ro'yxati bo'sh</p>
+              </div>
             </div>
           </div>
         )}
