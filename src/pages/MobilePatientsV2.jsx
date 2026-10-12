@@ -5,7 +5,7 @@ import { useRestorableState } from '@/hooks/useRestorableState';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Plus, X,
-  User, Calendar, Phone, ChevronRight
+  User, Calendar, Phone, ChevronRight, Users, SlidersHorizontal, Send, Wallet, AlarmClock, BadgeCheck
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -117,7 +117,7 @@ export default function MobilePatientsV2() {
     const matchesSearch = p.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          p.phone?.includes(searchQuery);
     const fresh = isNewPatient(p, visitIndex);
-    const matchesStatus = filterStatus === 'all'
+    const matchesStatus = filterStatus === 'all' || (filterStatus === 'Debt' && (p.total_debt || 0) > 0)
       || (filterStatus === 'New' ? fresh : filterStatus === 'Active' ? isActiveTreatmentPatient(p) : p.status === filterStatus);
     return matchesSearch && matchesStatus;
   });
@@ -180,62 +180,62 @@ export default function MobilePatientsV2() {
 
   return (
     <PullToRefresh onRefresh={loadPatients}>
-      <div className="min-h-screen bg-slate-50">
-        <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
-          <div className="px-5 pt-3 pb-3">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">{t('patients.title')}</h1>
-                <p className="text-sm text-slate-500 mt-0.5">
-                  <span className="font-semibold text-slate-700">{doctorFilter ? scopedPatients.length : (totalCount || patients.length)}</span> {t('patients.patientList')}
-                </p>
+      <div className="min-h-screen bg-[#F4F7F9]">
+        <div className="bg-[#F4F7F9] sticky top-0 z-10">
+          <div className="px-4 pt-3 pb-3">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#1FB59A] to-[#13917C] text-white flex items-center justify-center shadow-md shadow-emerald-600/20 shrink-0">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-[24px] font-extrabold text-slate-900 leading-tight">{t('patients.title')}</h1>
+                  <p className="text-[14px] text-slate-500 leading-tight">
+                    <span className="font-bold text-slate-800">{doctorFilter ? scopedPatients.length : (totalCount || patients.length)}</span> Bemorlar ro'yxati
+                  </p>
+                </div>
               </div>
-              
-              <Button 
+              <button
                 onClick={() => setShowFlow(true)}
-                className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-5 h-11 shadow-lg shadow-slate-200"
+                className="shrink-0 h-12 px-4 rounded-2xl bg-gradient-to-r from-[#1FB59A] to-[#13917C] text-white text-[15px] font-bold flex items-center gap-1.5 shadow-lg shadow-emerald-600/25 active:scale-[0.98]"
               >
-                <Plus className="w-5 h-5 mr-1.5" />
-                {t('common.add')}
-              </Button>
-            </div>
-            
-            <div className="flex items-center gap-1.5 mb-3 h-8 overflow-hidden" data-testid="patients-stat-pills">
-              <span className="shrink-0 inline-flex items-center h-7 px-2.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold whitespace-nowrap">
-                {activeCount} faol
-              </span>
-              <span className="shrink-0 inline-flex items-center h-7 px-2.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold whitespace-nowrap">
-                {newCount} {String(t('patients.new') || 'yangi').toLowerCase()}
-              </span>
-              {totalDebt > 0 && (
-                <span className="min-w-0 inline-flex items-center h-7 px-2.5 rounded-full bg-rose-50 text-rose-700 text-xs font-bold whitespace-nowrap truncate">
-                  {compactSom(totalDebt)} qarz
-                </span>
-              )}
+                <Plus className="w-5 h-5" />
+                Bemor qo'shish
+              </button>
             </div>
 
             {doctorFilter && (
               <div className="mb-3 flex items-center justify-between gap-2 bg-[#1499AD]/10 border border-[#1499AD]/20 rounded-2xl px-4 py-2.5">
-                <span className="text-xs font-black text-[#1499AD] truncate">Shifokor: {doctorFilter.name}</span>
+                <span className="text-[13px] font-black text-[#1499AD] truncate">Shifokor: {doctorFilter.name}</span>
                 <button
                   type="button"
                   onClick={() => setDoctorFilter(null)}
-                  className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 bg-white rounded-lg text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-100 shadow-sm"
+                  className="shrink-0 inline-flex items-center gap-1 h-9 px-3 bg-white rounded-lg text-[13px] font-bold text-slate-500 border border-slate-100 shadow-sm"
                 >
-                  <X className="w-3 h-3" /> Tozalash
+                  <X className="w-3.5 h-3.5" /> Tozalash
                 </button>
               </div>
             )}
 
-            <div className="relative mb-2">
-              <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder={t('patients.searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 h-11 bg-slate-50 border-0 rounded-2xl font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900 outline-none text-sm transition-all"
-              />
+            <div className="flex gap-2 mb-3">
+              <div className="relative flex-1">
+                <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Bemor ismi, telefon yoki ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 h-12 bg-white border border-slate-200 rounded-2xl font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500 outline-none text-[15px]"
+                />
+              </div>
+              <button
+                type="button"
+                aria-label="Faqat qarzdorlar"
+                onClick={() => setFilterStatus(filterStatus === 'Debt' ? 'all' : 'Debt')}
+                className={`w-12 h-12 shrink-0 rounded-2xl border flex items-center justify-center ${filterStatus === 'Debt' ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-white border-slate-200 text-slate-600'}`}
+              >
+                <SlidersHorizontal className="w-5 h-5" />
+              </button>
             </div>
 
             <div className="flex gap-2 overflow-x-auto no-scrollbar py-0.5">
@@ -243,15 +243,16 @@ export default function MobilePatientsV2() {
                 { id: 'all', label: t('common.all') },
                 { id: 'Active', label: t('patients.active') },
                 { id: 'New', label: t('patients.new') },
-                { id: 'Inactive', label: t('patients.inactive') }
+                { id: 'Inactive', label: t('patients.inactive') },
+                ...(filterStatus === 'Debt' ? [{ id: 'Debt', label: `Qarzdorlar · ${compactSom(totalDebt)}` }] : []),
               ].map(filter => (
                 <button
                   key={filter.id}
                   onClick={() => setFilterStatus(filter.id)}
-                  className={`shrink-0 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  className={`shrink-0 h-11 px-5 rounded-2xl text-[14px] font-bold whitespace-nowrap transition-all ${
                     filterStatus === filter.id
-                      ? 'bg-slate-900 text-white shadow-md shadow-slate-200'
-                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                      ? 'bg-slate-900 text-white shadow-md shadow-slate-300'
+                      : 'bg-white text-slate-600 border border-slate-200'
                   }`}
                 >
                   {filter.label}
@@ -283,49 +284,42 @@ export default function MobilePatientsV2() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: searchQuery ? 0 : Math.min(index, 6) * 0.02 }}
                     onClick={() => navigate(`/patients/${patient.id}`, { state: profileState() })}
-                    className="bg-white rounded-2xl p-3.5 mb-2.5 shadow-sm border border-slate-100 flex items-center gap-3 relative active:scale-[0.98] transition-transform content-visibility-auto"
+                    className="bg-white rounded-[20px] p-3.5 mb-3 shadow-[0_2px_10px_rgba(15,23,42,0.05)] border border-slate-100 active:scale-[0.99] transition-transform content-visibility-auto"
                   >
-                    {/* Avatar */}
-                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden shrink-0 border border-slate-200/50">
-                      {(patient.photo_url || patient.photo) ? (
-                        <img src={patient.photo_url || patient.photo} alt={capitalizeName(patient.full_name)} className="w-full h-full object-cover" />
-                      ) : (
-                        <User className="w-5 h-5 text-slate-400" />
-                      )}
-                    </div>
-
-                    {/* Info Area */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-[15px] text-slate-800 truncate leading-snug group-active:text-[#1499AD]">
-                          {capitalizeName(patient.full_name)}
-                        </h3>
-                        {hasDebt && (
-                          <div className="px-1.5 py-0.5 rounded-md bg-rose-50 text-[10px] font-bold text-rose-500 border border-rose-100/50">
-                            Qarz
-                          </div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 text-[16px] font-bold overflow-hidden shrink-0">
+                        {(patient.photo_url || patient.photo) ? (
+                          <img src={patient.photo_url || patient.photo} alt={capitalizeName(patient.full_name)} className="w-full h-full object-cover" />
+                        ) : (
+                          (patient.full_name || '?').trim().split(/\s+/).map((x) => x[0]).join('').slice(0, 2).toUpperCase()
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className={`w-1 h-1 rounded-full ${status.dot}`} />
-                        <p className="text-[10px] font-medium text-slate-500 truncate">{patient.phone ? formatPhone(patient.phone) : "Noma'lum"}</p>
-                        <span className={`text-[10px] font-bold uppercase tracking-tight ${status.text} opacity-80`}>
-                          {status.label}
-                        </span>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-extrabold text-[16px] text-slate-900 truncate leading-snug">{capitalizeName(patient.full_name)}</h3>
+                        <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                          <Phone className="w-3 h-3 text-slate-500 shrink-0" />
+                          <span className="text-[13px] font-semibold text-slate-600 whitespace-nowrap">{patient.phone ? formatPhone(patient.phone) : "Raqam yo'q"}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="text-[13px] text-slate-500 whitespace-nowrap">{lastVisit ? formatDate(lastVisit) : "Tashrif yo'q"}</span>
+                          {hasDebt ? (
+                            <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-rose-50 text-[13px] font-bold text-rose-500">Qarz</span>
+                          ) : (
+                            <span className={`shrink-0 px-1.5 py-0.5 rounded-md text-[13px] font-bold uppercase ${status.bg} ${status.text}`}>{status.label}</span>
+                          )}
+                        </div>
                       </div>
-                      {/* Registration Date & Time */}
-                      <div className="flex items-center gap-1 mt-1">
-                         <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-50 rounded border border-slate-100">
-                            <Calendar className="w-2.5 h-2.5 text-slate-400" />
-                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
-                              {lastVisit ? formatDate(lastVisit) : 'Tashrif yo\'q'}
-                            </span>
-                         </div>
+                      <div className={`shrink-0 rounded-xl px-2 py-1.5 flex items-center gap-1 ${hasDebt ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-700'}`}>
+                        {hasDebt ? <AlarmClock className="w-4 h-4 shrink-0" /> : <BadgeCheck className="w-4 h-4 shrink-0" />}
+                        <div className="leading-tight">
+                          <p className="text-[12px] font-semibold">{hasDebt ? 'Qarz' : 'Qarzsiz'}</p>
+                          <p className="text-[13px] font-extrabold whitespace-nowrap">{hasDebt ? formatCurrency(patient.total_debt) : "0 so'm"}</p>
+                        </div>
                       </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 -ml-1.5 -mr-1" />
                     </div>
-
-                    {/* Right: Quick Action Icons */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="grid grid-cols-[1.15fr_1.1fr_1.1fr_0.85fr] gap-1.5 mt-3">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -336,11 +330,10 @@ export default function MobilePatientsV2() {
                             toast.error("Raqam yo'q");
                           }
                         }}
-                        className="w-9 h-9 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-full flex items-center justify-center active:scale-90 transition-all border border-emerald-100/50 shadow-sm"
+                        className="h-11 rounded-xl bg-[#17A588] text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:scale-95"
                       >
-                        <Phone className="w-4 h-4" />
+                        <Phone className="w-4 h-4" /> Qo'ng'iroq
                       </button>
-                      
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -351,17 +344,22 @@ export default function MobilePatientsV2() {
                             toast.error("Raqam kiritilmagan");
                           }
                         }}
-                        className="w-9 h-9 bg-sky-50 text-sky-500 hover:bg-sky-500 hover:text-white rounded-full flex items-center justify-center active:scale-90 transition-all border border-sky-100/50 shadow-sm"
+                        className="h-11 rounded-xl bg-sky-50 text-sky-700 border border-sky-100 text-[13px] font-bold flex items-center justify-center gap-1.5 active:scale-95"
                       >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="translate-x-[-1px] translate-y-[0px]">
-                          <line x1="22" y1="2" x2="11" y2="13"></line>
-                          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                        </svg>
+                        <Send className="w-4 h-4" /> Telegram
                       </button>
-
-                      <div className="w-6 h-6 rounded-md bg-slate-50 flex items-center justify-center text-slate-300 ml-0.5">
-                         <ChevronRight className="w-3.5 h-3.5" />
-                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate('/appointments', { state: { openAddModal: true, prefillPatient: patient.id, prefillPatientName: patient.full_name } }); }}
+                        className="h-11 rounded-xl bg-white border border-slate-200 text-slate-700 text-[13px] font-bold flex items-center justify-center gap-1.5 active:scale-95"
+                      >
+                        <Calendar className="w-4 h-4" /> Uchrashuv
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate('/payments', { state: { openAddModal: true, prefillPatient: patient.id, prefillPatientName: patient.full_name, prefillAmount: hasDebt ? patient.total_debt : undefined, prefillDoctor: patient.main_treatment_provider || '' } }); }}
+                        className="h-11 rounded-xl bg-white border border-slate-200 text-slate-700 text-[13px] font-bold flex items-center justify-center gap-1 active:scale-95"
+                      >
+                        <Wallet className="w-4 h-4" /> To'lov
+                      </button>
                     </div>
                   </motion.div>
                 );

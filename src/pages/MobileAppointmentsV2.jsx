@@ -62,6 +62,7 @@ export default function MobileAppointmentsV2() {
     date: toLocalDateStr(),
     time: '09:00'
   });
+  const [prefillPat, setPrefillPat] = useState(null);
 
   const openAddAppointmentModal = useCallback(() => {
     setFormData((prev) => ({
@@ -116,6 +117,7 @@ export default function MobileAppointmentsV2() {
       setSelectedDoctorId(incomingId);
     }
     if (location.state?.openAddModal) {
+      if (location.state?.prefillPatient) setPrefillPat({ id: location.state.prefillPatient, name: location.state.prefillPatientName || '' });
       openAddAppointmentModal();
       window.history.replaceState({ ...(window.history.state || {}), usr: null }, document.title);
     }
@@ -776,7 +778,7 @@ export default function MobileAppointmentsV2() {
         </div>
         <AppointmentModal
           open={showAddModal || showEditModal}
-          onClose={() => { setShowAddModal(false); setShowEditModal(false); setEditingAppointment(null); }}
+          onClose={() => { setShowAddModal(false); setShowEditModal(false); setEditingAppointment(null); setPrefillPat(null); }}
           appointment={editingAppointment}
           patients={patients}
           services={services}
@@ -784,6 +786,8 @@ export default function MobileAppointmentsV2() {
           prefillDate={formData.date}
           prefillTime={formData.time}
           prefillDoctorId={selectedDoctorId}
+          prefillPatientId={prefillPat?.id}
+          prefillPatientName={prefillPat?.name}
           onSaved={loadData}
         />
 
