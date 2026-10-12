@@ -626,6 +626,7 @@ function MobileCaseViewer({ data, onClose, onDelete }) {
 /*                          MOBILE UPLOAD MODAL                               */
 /* -------------------------------------------------------------------------- */
 function MobileUploadModal({ isOpen, onClose, onSave, existingTags = [], patients = [], doctors = [] }) {
+  const { t } = useTranslation();
   const [beforeImg, setBeforeImg] = useState(null);
   const [afterImg, setAfterImg] = useState(null);
   const [description, setDescription] = useState("");
