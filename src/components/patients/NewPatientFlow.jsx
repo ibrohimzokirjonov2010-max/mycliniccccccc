@@ -2471,20 +2471,20 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                       <div className="flex items-center gap-2 mb-2.5">
                         <span className="text-emerald-500 text-[16px]">🦷</span>
                         <h3 className="flex-1 text-[15px] font-bold text-slate-900">Tish tanlash</h3>
-                        <span className="text-[13px] font-medium text-rose-500">{isRightSide ? 'Chap tomon →' : '← O\'ng tomon'}</span>
+                        <span className="text-[13px] font-medium text-slate-400">← surib ko'ring →</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 mb-2.5" data-testid="wizard-jaw-toggle">
-                        {[['ur', "O'ng tomondagi tishlar (18–11)", isRightSide], ['ul', 'Chap tomondagi tishlar (21–28)', !isRightSide]].map(([id, label, on]) => (
-                          <button key={id} type="button" onClick={() => setWizardQuad(id)}
-                            className={cn('min-h-[44px] px-2 rounded-xl text-[13px] font-semibold leading-tight border', on ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-600')}>{label}</button>
-                        ))}
-                      </div>
-                      {[[isRightSide ? upperRight : upperLeft, 'Yuqori', false], [isRightSide ? lowerLeft : lowerRight, 'Pastki', true]].map(([list, label, lower]) => (
-                        <div key={label} className="flex items-stretch gap-1.5 mb-1.5">
-                          <div className="w-[56px] shrink-0 rounded-xl bg-emerald-50 text-emerald-800 text-[13px] font-semibold flex items-center justify-center text-center leading-tight px-1">{label}<br />({isRightSide ? "o'ng" : 'chap'})</div>
-                          <div className="flex-1 min-w-0 grid grid-cols-8 gap-0.5 rounded-xl bg-slate-50 px-1 py-1">{list.map((n) => <PhoneTooth key={n} fdi={n} lower={lower} />)}</div>
+                      {/* One swipeable strip: upper 18–11 | 21–28, lower 48–41 | 31–38 (aligned columns) */}
+                      <div className="overflow-x-auto no-scrollbar snap-x snap-mandatory rounded-xl bg-slate-50 touch-pan-x overscroll-x-contain" data-testid="wizard-tooth-strip">
+                        <div className="flex w-max px-1 py-1">
+                          {[[18, 48], [17, 47], [16, 46], [15, 45], [14, 44], [13, 43], [12, 42], [11, 41], [21, 31], [22, 32], [23, 33], [24, 34], [25, 35], [26, 36], [27, 37], [28, 38]].map(([up, low]) => (
+                            <div key={up} className={cn('w-[44px] shrink-0 snap-start flex flex-col gap-1', up === 21 && 'border-l-2 border-rose-300 ml-0.5 pl-0.5')}>
+                              <PhoneTooth fdi={up} />
+                              <div className="h-px bg-slate-200 mx-0.5" />
+                              <PhoneTooth fdi={low} lower />
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      </div>
                       {activeTooth && <p className="mt-1 text-[13px] font-semibold text-blue-600 text-right">#{idToFdi(activeTooth)} · {(toothData[activeTooth]?.services || []).length} ta xizmat</p>}
                     </section>
 
