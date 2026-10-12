@@ -7,8 +7,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Plus, FileText, X, Check, ArrowLeft, ArrowRight,
-  Search, Image as ImageIcon, Printer, Pencil, CalendarDays, Smile, UserRound, Trash2,
+  Search, Image as ImageIcon, Printer, Pencil, CalendarDays, Smile, UserRound, Trash2, Bell, Paperclip,
 } from 'lucide-react';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { Tooth } from '@/components/ui/Icons';
 import PatientModal from '../patients/PatientModal';
 import PatientSelect from '../patients/PatientSelect';
@@ -315,6 +316,7 @@ export default function ImplantForm({
   const [saving, setSaving] = useState(false);
   const [step, setStep] = useState(1);
   const [newPatientOpen, setNewPatientOpen] = useState(false);
+  const isPhoneWizard = useIsMobile(768);
   const [localPatients, setLocalPatients] = useState(patients);
   const [doctors, setDoctors] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -1622,8 +1624,9 @@ export default function ImplantForm({
   const renderStep1 = () => (
     <div className="flex flex-col lg:flex-row gap-4 min-h-0">
       <aside className="implant-wizard-step1-patient w-full lg:w-[220px] shrink-0 bg-white rounded-xl border border-[#e5e7eb] p-3 sm:p-4 flex flex-col gap-3 relative z-20">
+        <div className="implant-wizard-step1-pcard md:contents">
         <div className="implant-wizard-step1-heading">
-          <h3 className="text-[15px] font-bold text-[#111827] flex items-center gap-2"><span className="md:hidden w-9 h-9 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center"><UserRound className="w-5 h-5" /></span><span className="md:hidden">Bemor tanlash <span className="text-rose-500">*</span></span><span className="hidden md:inline">{tw('stepPatient', 'Bemor')}</span></h3>
+          <h3 className="text-[15px] font-bold text-[#111827] flex items-center gap-2"><span className="md:hidden w-10 h-10 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center"><UserRound className="w-5 h-5" /></span><span className="md:hidden">{tw('stepPatient', 'Bemor')} <span className="text-rose-500">*</span></span><span className="hidden md:inline">{tw('stepPatient', 'Bemor')}</span></h3>
           <div className="mt-1 h-[3px] w-10 rounded-full bg-[#0d9488] hidden md:block" />
         </div>
         <div className="implant-wizard-step1-search">
@@ -1643,10 +1646,12 @@ export default function ImplantForm({
         >
           <Plus className="w-4 h-4" /> {tw('newPatient', 'Yangi bemor')}
         </button>
+        </div>
         {renderSelectedStack('implant-wizard-selected-teeth')}
         {(form.patient_id || form.patient_name) && (
           <div className="implant-wizard-patient-implants" data-testid="implant-wizard-patient-implants">
             <p className="implant-wizard-patient-implants-title">
+              <span className="md:hidden w-10 h-10 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center shrink-0"><Tooth className="w-5 h-5" /></span>
               {tw('existingImplants', 'Mavjud implantlar')}
               {patientImplantsStatus === 'ready' ? ` (${patientImplants.length})` : ''}
             </p>
@@ -1657,7 +1662,7 @@ export default function ImplantForm({
               <p className="implant-wizard-patient-implants-empty">{tw('implantsLoadError', "Implantlarni yuklab bo'lmadi")}</p>
             )}
             {patientImplantsStatus === 'ready' && patientImplants.length === 0 && (
-              <p className="implant-wizard-patient-implants-empty">{tw('noImplants', "Bu bemorda implant yo'q")}</p>
+              <p className="implant-wizard-patient-implants-empty"><Plus className="w-4 h-4 md:hidden" />{tw('noImplants', "Bu bemorda implant yo'q")}</p>
             )}
             {patientImplantsStatus === 'ready' && patientImplants.length > 0 && (
               <ul className="implant-wizard-patient-implants-list">
@@ -1686,14 +1691,14 @@ export default function ImplantForm({
 
       <div className="flex-1 min-w-0 flex flex-col gap-4">
         <section className={cardClass}>
-          <h3 className="implant-wizard-date-label text-[15px] font-bold text-[#111827] mb-3 flex items-center gap-2"><span className="md:hidden w-9 h-9 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center"><CalendarDays className="w-5 h-5" /></span>{tw('placementDate', "O'rnatilgan sana")}<span className="md:hidden text-rose-500">*</span></h3>
-          <div className="max-w-[240px]">
+          <h3 className="implant-wizard-date-label text-[15px] font-bold text-[#111827] mb-3 flex items-center gap-2"><span className="md:hidden w-10 h-10 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center"><CalendarDays className="w-5 h-5" /></span>{tw('placementDate', "O'rnatilgan sana")}<span className="md:hidden text-rose-500">*</span></h3>
+          <div className="max-w-[240px] max-md:max-w-none">
             <DateField value={form.placement_date} onChange={handleDateChange} />
           </div>
         </section>
 
         <section className={cn(cardClass, 'flex-1 implant-wizard-arch-card min-w-0')}>
-          <h3 className="text-[15px] font-bold text-[#111827] mb-1 flex items-center gap-2"><span className="md:hidden w-9 h-9 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center"><Smile className="w-5 h-5" /></span>{tw('selectTeeth', 'Tishlarni belgilang')}<span className="md:hidden text-rose-500">*</span></h3>
+          <h3 className="text-[15px] font-bold text-[#111827] mb-1 flex items-center gap-2"><span className="md:hidden w-10 h-10 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center"><Tooth className="w-5 h-5" /></span>{tw('selectTeeth', 'Tishlarni belgilang')}<span className="md:hidden text-rose-500">*</span></h3>
           <ImplantWizardArch
             selectedFdis={selectedFdis}
             activeFdi={activeFdi}
@@ -1749,6 +1754,7 @@ export default function ImplantForm({
       serviceQty={serviceQty}
       onSetQty={setServiceQty}
       onBackToStep1={() => setStep(1)}
+      onClearTeeth={() => { setField('tooth_numbers', []); setToothDataMap({}); setActiveFdi(null); setFormError(''); setPromptSizes(false); setStep(1); }}
       tw={tw}
       t={t}
     />
@@ -1783,7 +1789,7 @@ export default function ImplantForm({
               {brandChosen ? formatSom(facturaDoc.grandTotal) : '—'}
               <span> so&apos;m</span>
             </strong>
-            <em>{tw('getInvoice', 'Faktura olish')}</em>
+            <em><Printer className="w-4 h-4 md:hidden" />{tw('getInvoice', 'Faktura olish')}</em>
           </span>
         </button>
       </div>
@@ -1791,7 +1797,7 @@ export default function ImplantForm({
       {/* implant-plan-auto-v1: "Davolash rejasi va qarz" section removed; price always goes to the "Implantlar" plan/debt. */}
 
       <section className={cardClass}>
-        <h3 className="text-[15px] font-bold text-[#111827] mb-3">{tw('dateStatus', 'Sana va holat')}</h3>
+        <h3 className="text-[15px] font-bold text-[#111827] mb-3 flex items-center gap-2.5"><span className="md:hidden w-10 h-10 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center shrink-0"><CalendarDays className="w-5 h-5" /></span>{tw('dateStatus', 'Sana va holat')}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <DateField value={form.placement_date} onChange={handleDateChange} />
           <div className="relative">
@@ -1811,8 +1817,8 @@ export default function ImplantForm({
       </section>
 
       <section className={cardClass}>
-        <h3 className="text-[15px] font-bold text-[#111827] mb-3">{tw('followUp', 'Nazorat eslatmasi')}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+        <h3 className="text-[15px] font-bold text-[#111827] mb-3 flex items-center gap-2.5"><span className="md:hidden w-10 h-10 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center shrink-0"><Bell className="w-5 h-5" /></span>{tw('followUp', 'Nazorat eslatmasi')}</h3>
+        <div className="grid grid-cols-1 max-md:grid-cols-4 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           {REMINDER_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -1853,18 +1859,19 @@ export default function ImplantForm({
       </section>
 
       <section className={cardClass}>
-        <h3 className="text-[15px] font-bold text-[#111827] mb-3">{tw('docs', 'Hujjatlar')}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-2.5">
+        <h3 className="text-[15px] font-bold text-[#111827] mb-3 flex items-center gap-2.5"><span className="md:hidden w-10 h-10 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center shrink-0"><Paperclip className="w-5 h-5" /></span>{tw('docs', 'Hujjatlar')}</h3>
+        <div className="grid grid-cols-1 max-md:grid-cols-2 sm:grid-cols-2 gap-2.5 mb-2.5 implant-wizard-docs">
           <label className="flex items-center justify-center h-11 rounded-[10px] border border-dashed border-[#d1d5db] text-sm text-[#6b7280] cursor-pointer hover:border-[#0d9488] hover:text-[#0d9488] hover:bg-[#f0fdfa] transition-colors">
             <input type="file" className="hidden" onChange={handlePassportUpload} />
             <FileText className="w-4 h-4 mr-1.5" />
-            {tw('passport', 'Pasport')}
-            {uploading ? '…' : ''}
+            <span>{tw('passport', 'Pasport')}{uploading ? '…' : ''}</span>
+            <small className="md:hidden">Rasm yoki PDF yuklash</small>
           </label>
           <label className="flex items-center justify-center h-11 rounded-[10px] border border-dashed border-[#d1d5db] text-sm text-[#6b7280] cursor-pointer hover:border-[#0d9488] hover:text-[#0d9488] hover:bg-[#f0fdfa] transition-colors">
             <input type="file" className="hidden" multiple onChange={handleXrayUpload} />
             <ImageIcon className="w-4 h-4 mr-1.5" />
-            {tw('xray', 'Rentgen')}
+            <span>{tw('xray', 'Rentgen')}</span>
+            <small className="md:hidden">Rasm yoki PDF yuklash</small>
           </label>
         </div>
         {form.passport_url && (
@@ -1890,8 +1897,8 @@ export default function ImplantForm({
         <input
           value={form.notes || ''}
           onChange={(e) => setField('notes', e.target.value)}
-          placeholder={tw('notes', 'Izoh')}
-          className="w-full h-10 rounded-[10px] border border-[#e5e7eb] bg-white px-3 text-sm outline-none focus:border-[#0d9488]"
+          placeholder={isPhoneWizard ? 'Izoh (ixtiyoriy)...' : tw('notes', 'Izoh')}
+          className="implant-wizard-notes w-full h-10 rounded-[10px] border border-[#e5e7eb] bg-white px-3 text-sm outline-none focus:border-[#0d9488]"
         />
       </section>
     </div>
@@ -1969,6 +1976,14 @@ export default function ImplantForm({
         >
           <DialogHeader className="shrink-0 space-y-0">
             <div className="implant-wizard-header h-14 px-5 flex items-center justify-between text-white" style={{ background: '#0d9488' }}>
+              <button
+                type="button"
+                onClick={() => { setFormError(''); if (step === 1) onClose(); else setStep(step - 1); }}
+                className="implant-wizard-header-back md:hidden"
+                aria-label={tw('back', 'Orqaga')}
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
               <div className="implant-wizard-header-titles min-w-0">
                 <DialogTitle className="text-[15px] font-bold tracking-wide text-white">
                   {implant ? t('common.edit') : tw('title', 'Yangi implant')}
@@ -2026,9 +2041,9 @@ export default function ImplantForm({
                 }}
                 className="implant-wizard-ghost implant-wizard-back"
                 // implant-step1-no-back: hidden on step 1 only; space kept so "Keyingisi" stays in place
-                style={step === 1 ? { visibility: 'hidden' } : undefined}
-                aria-hidden={step === 1 || undefined}
-                tabIndex={step === 1 ? -1 : undefined}
+                style={step === 1 && !isPhoneWizard ? { visibility: 'hidden' } : undefined}
+                aria-hidden={(step === 1 && !isPhoneWizard) || undefined}
+                tabIndex={step === 1 && !isPhoneWizard ? -1 : undefined}
               >
                 <ArrowLeft className="w-4 h-4" /> {tw('back', 'Orqaga')}
               </button>

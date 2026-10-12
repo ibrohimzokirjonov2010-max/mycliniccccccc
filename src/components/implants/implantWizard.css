@@ -2359,3 +2359,48 @@
   background: #e11d48;
   color: #fff;
 }
+
+/* ===== Phone redesign (<=767px) — implant wizard 1012 ===== */
+@media (max-width: 767px) {
+  .implant-wizard-dialog .implant-wizard-header-back { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; margin-left:-8px; border-radius:12px; color:inherit; flex-shrink:0; }
+  .implant-wizard-dialog .implant-wizard-header-titles { text-align:left; flex:1; }
+  .implant-wizard-dialog .implant-wizard-step-label-short { display:none !important; }
+  .implant-wizard-dialog .implant-wizard-step-label-full { display:inline !important; font-size:13px; }
+  .implant-wizard-dialog .implant-wizard-step1-pcard { display:flex; flex-wrap:wrap; gap:10px; align-items:center; background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:16px; }
+  .implant-wizard-dialog .implant-wizard-step1-pcard > .implant-wizard-step1-heading { flex-basis:100%; }
+  .implant-wizard-dialog .implant-wizard-step1-pcard > :not(.implant-wizard-step1-heading):not(button) { flex:1 1 0; min-width:0; }
+  .implant-wizard-dialog .implant-wizard-step1-pcard > button { flex:0 0 auto; min-height:44px; }
+  .implant-wizard-dialog .implant-wizard-selected-teeth { display:none !important; }
+  .implant-wizard-dialog .implant-wizard-patient-implants { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:16px; margin-top:12px; }
+  .implant-wizard-dialog .implant-wizard-patient-implants-title { display:flex; align-items:center; gap:10px; font-size:15px; font-weight:700; color:#111827; text-transform:none; letter-spacing:0; margin-bottom:12px; }
+  .implant-wizard-dialog .implant-wizard-patient-implants-empty { display:flex; align-items:center; justify-content:center; gap:6px; min-height:52px; border:1.5px dashed #cbd5e1; border-radius:12px; color:#6b7280; font-size:14px; }
+  .implant-wizard-dialog .implant-wizard-card { border-radius:16px; }
+  .implant-wizard-dialog .implant-wizard-tooth-entry-head h4 { display:flex; align-items:center; gap:8px; font-size:15px; }
+  .implant-wizard-dialog .implant-wizard-te-icon { width:18px; height:18px; color:#0d9488; }
+  .implant-wizard-dialog .implant-wizard-tooth-entry-remove { display:inline-flex; align-items:center; gap:6px; min-height:40px; padding:0 12px; border:1px solid #fecaca; border-radius:10px; color:#e11d48; background:#fff; font-size:13px; }
+  .implant-wizard-dialog .implant-wizard-tooth-entry-grid,
+  .implant-wizard-dialog .implant-wizard-tooth-entry .implant-wizard-size-grid { display:grid !important; grid-template-columns:1fr 1fr !important; gap:10px; }
+  .implant-wizard-dialog .implant-wizard-p-icon { width:40px; height:40px; border-radius:12px; background:#f0fdfa; color:#0d9488; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .implant-wizard-dialog .implant-wizard-teeth { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:16px; }
+  .implant-wizard-dialog .implant-wizard-teeth-title { display:flex; align-items:center; gap:10px; font-size:15px; text-transform:none; letter-spacing:0; }
+  .implant-wizard-dialog .implant-wizard-teeth-clear { margin-left:auto; display:inline-flex; align-items:center; gap:6px; min-height:40px; padding:0 10px; border:1px solid #fecaca; border-radius:10px; color:#e11d48; font-size:13px; font-weight:600; }
+  .implant-wizard-dialog .implant-wizard-teeth-hint,
+  .implant-wizard-dialog .implant-wizard-teeth-back,
+  .implant-wizard-dialog .implant-wizard-teeth-foot { display:none !important; }
+  .implant-wizard-dialog .implant-wizard-svc-add { width:40px; height:40px; border-radius:12px; background:#0d9488; color:#fff; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; margin-left:8px; }
+  .implant-wizard-dialog .implant-wizard-svc-add.is-on { background:#ccfbf1; color:#0f766e; }
+  .implant-wizard-dialog .implant-wizard-factura-teaser em { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:999px; background:#0d9488; color:#fff; font-style:normal; font-weight:600; min-height:40px; }
+  .implant-wizard-dialog .implant-wizard-docs label { flex-direction:column; height:auto !important; min-height:92px; border:1.5px dashed #cbd5e1 !important; gap:4px; }
+  .implant-wizard-dialog .implant-wizard-docs label small { font-size:13px; color:#6b7280; font-weight:400; }
+  .implant-wizard-dialog .implant-wizard-notes { height:80px !important; }
+}
+@media (max-width: 767px) {
+  .implant-wizard-dialog .implant-wizard-footer .implant-wizard-factura-btn.implant-wizard-twin { display:none !important; }
+  .implant-wizard-dialog .implant-wizard-footer .implant-wizard-footer-actions { display:grid !important; grid-template-columns:1fr 1fr !important; gap:10px; }
+  .implant-wizard-dialog .implant-wizard-footer .implant-wizard-footer-actions > * { grid-column:auto !important; width:100% !important; min-height:48px; }
+}
+@media (max-width: 767px) {
+  .implant-wizard-dialog .implant-wizard-teeth, .implant-wizard-dialog .implant-wizard-teeth * { min-height:0; }
+  .implant-wizard-dialog .implant-wizard-teeth { height:auto !important; max-height:none !important; flex:0 0 auto !important; }
+  .implant-wizard-dialog .implant-wizard-teeth-clear { white-space:nowrap; min-height:40px; }
+}

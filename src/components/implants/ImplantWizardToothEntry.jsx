@@ -1,4 +1,5 @@
 import { Input } from '@/components/ui/input';
+import { FileText, Trash2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatSom } from './implantFactura';
 import { toothSizeIssue } from './implantSize';
@@ -42,9 +43,9 @@ export default function ImplantWizardToothEntry({
       aria-live="polite"
     >
       <div className="implant-wizard-tooth-entry-head">
-        <h4>{title}</h4>
+        <h4><FileText className="implant-wizard-te-icon md:hidden" />{title}</h4>
         <button type="button" className="implant-wizard-tooth-entry-remove" onClick={onRemove}>
-          {tw('removeTooth', 'Olib tashlash')}
+          <Trash2 className="w-4 h-4 md:hidden" />{tw('removeTooth', 'Olib tashlash')}
         </button>
       </div>
 

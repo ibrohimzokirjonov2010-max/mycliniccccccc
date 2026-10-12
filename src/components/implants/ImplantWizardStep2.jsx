@@ -1,4 +1,4 @@
-import { Check, Pencil, Search, Droplets, X, Minus, Plus } from 'lucide-react';
+import { Check, Pencil, Search, Droplets, X, Minus, Plus, Trash2, FilePlus2 } from 'lucide-react';
 import { Tooth, CrownIcon, FormerIcon, AbutmentIcon, BoneGraftIcon, SinusLiftIcon } from '@/components/ui/Icons';
 import { cn } from '@/lib/utils';
 import { getServiceLabel, IMPLANT_WIZARD_STEP2_MARKER, normalizeServiceId } from './implantWizardLabels';
@@ -61,6 +61,7 @@ export default function ImplantWizardStep2({
   serviceQty = {},
   onSetQty,
   onBackToStep1,
+  onClearTeeth,
   tw,
   t,
 }) {
@@ -73,8 +74,12 @@ export default function ImplantWizardStep2({
       <aside className="implant-wizard-teeth">
         <div className="implant-wizard-teeth-head mb-3">
           <h3 className="implant-wizard-teeth-title text-[13px] font-bold uppercase tracking-wide text-[#111827]">
-            {tw('selectedTeeth', 'Tanlangan tishlar')}
-            {selectedFdis.length > 0 ? ` (${selectedFdis.length})` : ''}
+            <span className="implant-wizard-p-icon md:hidden"><Tooth className="w-5 h-5" /></span>
+            <span>{tw('selectedTeeth', 'Tanlangan tishlar')}
+            {selectedFdis.length > 0 ? ` (${selectedFdis.length})` : ''}</span>
+            {onClearTeeth && selectedFdis.length > 0 ? (
+              <button type="button" onClick={onClearTeeth} className="implant-wizard-teeth-clear md:hidden"><Trash2 className="w-4 h-4" />Barchasini tozalash</button>
+            ) : null}
           </h3>
           <div className="implant-wizard-teeth-sub mt-1 h-[3px] w-10 rounded-full" style={{ background: '#0d9488' }} />
         </div>
@@ -142,7 +147,7 @@ export default function ImplantWizardStep2({
       </aside>
 
       <section className="implant-wizard-services">
-        <h3 className="text-[15px] font-bold text-[#111827] mb-3">{tw('extraServices', "Qo'shimcha xizmatlar")}</h3>
+        <h3 className="text-[15px] font-bold text-[#111827] mb-3 flex items-center gap-2.5"><span className="implant-wizard-p-icon md:hidden"><FilePlus2 className="w-5 h-5" /></span>{tw('extraServices', "Qo'shimcha xizmatlar")}</h3>
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9ca3af]" />
           <input
@@ -228,9 +233,18 @@ export default function ImplantWizardStep2({
                         <span className={cn('text-xs font-semibold whitespace-nowrap', isSelected ? 'text-[#111827]' : 'text-[#6b7280]')}>
                           {formatSom(currentPrice)} so&apos;m
                         </span>
-                        <Pencil className="w-3 h-3 text-[#9ca3af]" />
+                        <Pencil className="w-3 h-3 text-[#9ca3af] max-md:hidden" />
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => onToggleService(service.id)}
+                      className={cn('implant-wizard-svc-add md:hidden', isSelected && 'is-on')}
+                      aria-label={isSelected ? 'Olib tashlash' : "Qo'shish"}
+                      aria-pressed={isSelected}
+                    >
+                      {isSelected ? <Check className="w-4 h-4" strokeWidth={3} /> : <Plus className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
                 {isSelected && hasQty && onSetQty ? (
