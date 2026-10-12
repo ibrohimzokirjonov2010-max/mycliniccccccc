@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { useFeature } from '@/hooks/useFeature';
 import {
-  ArrowLeft, Phone, Calendar, CreditCard, ClipboardList, Plus, Lock, Search,
+  ArrowLeft, Phone, Calendar, ChevronLeft, MoreHorizontal, Pencil, ShieldAlert, AlertCircle, Wallet, CalendarDays, FilePlus2, Eye, Play, CreditCard, ClipboardList, Plus, Lock, Search,
   AlertTriangle, FileText,
   CheckCircle2, Clock, XCircle, ChevronRight,
   Stethoscope, Receipt, X, Check, Camera, Activity
@@ -619,6 +619,63 @@ export default function MobilePatientProfile() {
 
   const phoneHref = patient.phone ? `tel:${String(patient.phone).replace(/\D/g, '')}` : null;
 
+  /* profile-redesign-1012 helpers (plain values; computed after loading guards) */
+  const isSvcDone = (svc) => svc?.status === 'completed' || isDoneStatus(svc?.status);
+  const dateBlock = (raw) => {
+    const d = parseSafeDate(raw);
+    if (!d) return null;
+    const months = language === 'ru' ? RU_SHORT_MONTHS : language === 'en' ? EN_SHORT_MONTHS : UZ_SHORT_MONTHS;
+    return { day: String(d.getDate()).padStart(2, '0'), month: months[d.getMonth()], year: d.getFullYear() };
+  };
+  const DateBlock = ({ raw }) => {
+    const b = dateBlock(raw);
+    return (
+      <div className="w-12 shrink-0 rounded-xl bg-slate-50 border border-slate-100 py-1.5 text-center leading-tight">
+        {b ? (<><p className="text-[16px] font-black text-slate-900">{b.day}</p><p className="text-[10px] font-semibold text-slate-500">{b.month}</p><p className="text-[10px] font-semibold text-slate-400">{b.year}</p></>) : <p className="text-[11px] text-slate-400 py-2">—</p>}
+      </div>
+    );
+  };
+  const historyItems = [
+    ...appointments.map((a) => ({
+      key: `a-${a.id}`, kind: 'appt', raw: a, date: a.date || a.appointment_date,
+      title: a.service_name || a.type || t('patientProfile.mobile.apptAction', 'Uchrashuv'),
+      doctor: a.doctor_name || a.doctor, note: a.notes && a.notes !== a.service_name ? a.notes : '',
+      tooth: a.tooth_number, time: formatAppointmentTime(a), price: Number(a.price) || 0, status: a.status,
+    })),
+    ...(plans || []).flatMap((pl) => (pl.services || []).filter(isSvcDone).map((svc, i) => ({
+      key: `d-${pl.id}-${i}`, kind: 'done', date: svc.completed_date || svc.completed_at || svc.date || pl.updated_date || pl.created_date,
+      title: svc.service_name || svc.name || 'Muolaja', doctor: svc.doctor || pl.doctor_name, note: svc.notes || '',
+      tooth: svc.tooth_number, price: Number(svc.price) || 0, status: 'Completed',
+    }))),
+  ].sort((x, y) => (parseSafeDate(y.date)?.getTime() || 0) - (parseSafeDate(x.date)?.getTime() || 0));
+  const startPlanStep = async (plan, idx) => {
+    try {
+      await setPlanStepInProgress(plan, idx);
+      toast.success('Davolash bosqichi boshlandi');
+      await load();
+    } catch (error) {
+      console.error('Start plan step error:', error);
+      toast.error('Bosqichni yangilashda xatolik yuz berdi');
+    }
+  };
+  const payTotal = (Number(financials.incomes) || 0) + (Number(financials.debt) || 0);
+  const payPct = payTotal > 0 ? Math.min(100, Math.round(((Number(financials.incomes) || 0) / payTotal) * 100)) : 0;
+  const compactMln = (n) => {
+    const v = Number(n) || 0;
+    if (v >= 1e6) return `${(Math.round(v / 1e5) / 10).toString()}M`;
+    if (v >= 1e3) return `${Math.round(v / 1e3)}K`;
+    return String(Math.round(v));
+  };
+  const IMPLANT_STATUS = {
+    planned: { label: 'Rejalashtirilgan', cls: 'bg-blue-50 text-blue-700' },
+    placed: { label: "O'rnatilgan", cls: 'bg-emerald-50 text-emerald-700' },
+    healing: { label: 'Bitish davri', cls: 'bg-amber-50 text-amber-700' },
+    osseointegration: { label: 'Bitish davri', cls: 'bg-amber-50 text-amber-700' },
+    loaded: { label: 'Koronka qo‘yilgan', cls: 'bg-emerald-50 text-emerald-700' },
+    completed: { label: 'Yakunlangan', cls: 'bg-emerald-50 text-emerald-700' },
+    failed: { label: 'Muvaffaqiyatsiz', cls: 'bg-rose-50 text-rose-700' },
+  };
+
   /* ── RENDER ── */
   return (
     <div
@@ -626,160 +683,147 @@ export default function MobilePatientProfile() {
       style={{ minHeight: 'calc(100dvh - 54px - env(safe-area-inset-bottom, 0px))' }}
     >
 
-      {/* TEAL GRADIENT HEADER */}
+      {/* COMPACT STICKY PROFILE BAR (profile-redesign-1012) */}
       <div
         data-patient-header="true"
-        className="relative z-10 text-white"
-        style={{
-          background: 'linear-gradient(165deg, #0f766e 0%, #14b8a6 55%, #0d9488 100%)',
-          paddingTop: 'max(12px, env(safe-area-inset-top, 12px))',
-        }}
+        className="sticky top-0 z-30 bg-[#F3F6F8]/95 backdrop-blur-md border-b border-slate-200/60"
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
-        <div className="flex items-start px-3 pt-1 pb-2 gap-2">
+        <div className="flex items-center gap-2 px-3 h-[52px]">
           <button
             type="button"
             onClick={handleBack}
             aria-label={t('patientProfile.backToList', 'Orqaga')}
-            className="w-10 h-10 rounded-full bg-white/18 border border-white/25 flex items-center justify-center shrink-0 active:scale-95 transition-transform"
+            className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 active:scale-95"
           >
-            <ArrowLeft className="w-5 h-5 text-white" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
-
+          <p className="flex-1 min-w-0 truncate text-[15px] font-black text-[#1e3a8a]" data-testid="profile-bar-name">{patient.full_name}</p>
+          {phoneHref ? (
+            <a href={phoneHref} aria-label={t('patientProfile.call', "Qo'ng'iroq qilish")} className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-blue-600/30 active:scale-95">
+              <Phone className="w-4 h-4" />
+            </a>
+          ) : null}
           <button
             type="button"
             onClick={() => setPatientModalOpen(true)}
-            className="min-w-0 flex-1 px-0.5 text-left"
+            aria-label={t('common.edit', 'Tahrirlash')}
+            className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 active:scale-95"
           >
-            <h1 className="text-[18px] font-black leading-tight break-words drop-shadow-sm">{patient.full_name}</h1>
-            <p className="mt-0.5 text-[11px] font-semibold leading-snug text-white/80 break-words">
-              {[
-                patientGenderLabel(patient.gender, language),
-                age != null ? t('patientProfile.mobile.ageClinic', { age, clinic: clinicLabel }) : clinicLabel,
-              ].filter(Boolean).join(' · ')}
-            </p>
+            <MoreHorizontal className="w-5 h-5" />
           </button>
+        </div>
+      </div>
+
+      {/* IDENTITY */}
+      <div className="px-4 pt-3">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => document.getElementById('mob-avatar-input')?.click()}
-            className="w-9 h-9 rounded-full bg-white/20 border border-white/35 flex items-center justify-center text-[11px] font-black shrink-0 overflow-hidden"
+            className="w-14 h-14 rounded-2xl bg-blue-100/70 text-[#1e40af] flex items-center justify-center text-base font-black shrink-0 overflow-hidden"
             title={t('patientProfile.uploadPhoto', 'Rasm yuklash')}
           >
             {patient.photo_url
               ? <img src={patient.photo_url} alt="" className="w-full h-full object-cover" />
-              : (photoUploading ? <Camera className="w-4 h-4" /> : getInitials(patient.full_name))}
+              : (photoUploading ? <Camera className="w-5 h-5" /> : getInitials(patient.full_name))}
           </button>
           <input id="mob-avatar-input" data-testid="profile-photo-input" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+          <button type="button" onClick={() => setPatientModalOpen(true)} className="min-w-0 flex-1 text-left">
+            <h1 className="text-[19px] font-black leading-tight text-[#1e3a8a] break-words">{patient.full_name}</h1>
+            <p className="mt-0.5 text-[12px] font-semibold text-slate-500 break-words">
+              {[
+                patientGenderLabel(patient.gender, language),
+                age != null ? `${age} yosh` : null,
+                clinicLabel,
+              ].filter(Boolean).join(' · ')}
+            </p>
+          </button>
+        </div>
 
-          {phoneHref ? (
-            <a
-              href={phoneHref}
-              className="w-10 h-10 rounded-full bg-white/18 border border-white/25 flex items-center justify-center shrink-0 active:scale-95 transition-transform"
-              aria-label={t('patientProfile.call', "Qo'ng'iroq qilish")}
-            >
-              <Phone className="w-5 h-5 text-white" />
+        <div className="mt-3 -mx-4 px-4 flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar text-[12px] whitespace-nowrap" data-testid="patient-card-header-meta">
+          {patient.phone ? (
+            <a href={phoneHref} className="shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-xl bg-white border border-slate-100 font-bold text-blue-700 tabular-nums">
+              <Phone className="w-3.5 h-3.5 text-blue-500" />{formatPhone(patient.phone)}
             </a>
           ) : (
-            <span className="w-10 h-10 rounded-full bg-white/10 border border-white/15 flex items-center justify-center shrink-0 opacity-50">
-              <Phone className="w-4 h-4 text-white" />
-            </span>
+            <span className="shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-xl bg-white border border-slate-100 font-bold text-slate-400"><Phone className="w-3.5 h-3.5" />Telefon yo'q</span>
+          )}
+          <span className="shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 rounded-xl bg-white border border-slate-100 font-semibold text-slate-600">
+            <Calendar className="w-3.5 h-3.5 text-blue-500" />
+            {formatBirthDate(patient.birth_date) || 'Tug‘ilgan sana yo‘q'}
+          </span>
+          {patientGenderLabel(patient.gender, language) && (
+            <span className="shrink-0 inline-flex items-center h-7 px-2.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-black">{patientGenderLabel(patient.gender, language)}</span>
+          )}
+          {age != null && (
+            <span className="shrink-0 inline-flex items-center h-7 px-2.5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-black">{age} yosh</span>
           )}
         </div>
 
-        {financials.debt > 0 && (
-          <div className="mx-3 mb-2 flex flex-col gap-0.5 rounded-xl bg-black/20 border border-white/10 px-3 py-2">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-white/90">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-300" />
-              {t('patientProfile.mobile.debt', 'Qarzdorlik')}
-            </span>
-            <span className="text-[16px] font-black tabular-nums leading-tight text-amber-200">
-              {formatCurrency(financials.debt)}
-            </span>
-          </div>
-        )}
-        {financials.debt <= 0 && <div className="h-2" />}
-      </div>
-
-      {/* IDENTITY STRIP */}
-      <div className="px-3 pt-3">
-        <div className="bg-white rounded-[18px] border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.05)] px-3.5 py-3 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => document.getElementById('mob-avatar-input')?.click()}
-            className="w-12 h-12 rounded-2xl overflow-hidden bg-gradient-to-br from-teal-400 to-teal-600 text-white flex items-center justify-center text-sm font-black shrink-0 shadow-sm"
+        <div className="mt-2 flex items-center gap-2">
+          <div className={cn('flex-1 min-w-0 flex items-center gap-2 h-10 px-3 rounded-xl border text-[12px] font-semibold',
+            medicalAlerts.length || patient.important_info ? 'bg-rose-50 border-rose-100 text-rose-700' : 'bg-white border-slate-100 text-slate-600')}
+            data-testid="profile-allergy-row"
           >
-            {patient.photo_url
-              ? <img src={patient.photo_url} alt="" className="w-full h-full object-cover" />
-              : getInitials(patient.full_name)}
-          </button>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-black text-[#0f172a] break-words">{patient.full_name}</p>
-            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-              {patient.phone ? (
-                <a href={phoneHref} className="text-[11px] font-bold text-[#0d9488] font-mono truncate">{formatPhone(patient.phone)}</a>
-              ) : (
-                <span className="text-[11px] font-bold text-slate-400">Telefon yo'q</span>
-              )}
-              {patientGenderLabel(patient.gender, language) && (
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-100">
-                  {patientGenderLabel(patient.gender, language)}
-                </span>
-              )}
-              {age != null && (
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{age} yosh</span>
-              )}
-            </div>
-            <p data-testid="patient-card-header-meta" className="mt-1 text-[11px] font-semibold leading-snug text-slate-600">
-              <span className={medicalAlerts.length || patient.important_info ? 'font-black text-rose-600' : 'text-slate-400'}>
-                {medicalAlerts.length
-                  ? `Allergiya: ${medicalAlerts.join(', ')}`
-                  : (patient.important_info ? `Allergiya: ${patient.important_info}` : 'Allergiya yo‘q')}
-              </span>
-              {' · '}
-              {formatBirthDate(patient.birth_date) || (age != null ? `${age} yosh` : 'Tug‘ilgan sana yo‘q')}
-              {' · '}
-              {patient.address || 'Manzil yo‘q'}
-            </p>
+            <ShieldAlert className={cn('w-4 h-4 shrink-0', medicalAlerts.length || patient.important_info ? 'text-rose-500' : 'text-blue-500')} />
+            <span className="truncate">
+              {medicalAlerts.length
+                ? `Allergiya: ${medicalAlerts.join(', ')}`
+                : (patient.important_info ? `Allergiya: ${patient.important_info}` : 'Allergiya yo‘q')}
+            </span>
           </div>
-          <button type="button" onClick={() => setPatientModalOpen(true)} className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center active:scale-95">
-            <FileText className="w-4 h-4 text-slate-500" />
+          <button type="button" onClick={() => setPatientModalOpen(true)} aria-label="Allergiyani tahrirlash" className="w-10 h-10 rounded-xl bg-white border border-slate-100 text-blue-600 flex items-center justify-center shrink-0 active:scale-95">
+            <Pencil className="w-4 h-4" />
           </button>
         </div>
+
+        {financials.debt > 0 && (
+          <button
+            type="button"
+            data-testid="profile-debt-banner"
+            onClick={() => {
+              setActiveTab('payments');
+              requestAnimationFrame(() => tabPanelRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+            }}
+            className="mt-3 w-full flex items-center gap-3 rounded-2xl bg-rose-50 border border-rose-100 px-3.5 py-3 text-left active:scale-[0.99]"
+          >
+            <span className="w-8 h-8 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0"><AlertCircle className="w-5 h-5" /></span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[12px] font-bold text-rose-600">{t('patientProfile.mobile.debt', 'Qarzdorlik')}</span>
+              <span className="block text-[20px] font-black text-rose-700 tabular-nums leading-tight">{formatCurrency(financials.debt)}</span>
+            </span>
+            <span className="w-8 h-8 rounded-xl bg-white/70 text-rose-600 flex items-center justify-center shrink-0"><ChevronRight className="w-4 h-4" /></span>
+          </button>
+        )}
       </div>
 
       {/* ACTION CARDS */}
-      <div className="px-3 mt-2.5 grid grid-cols-3 gap-2 relative z-10">
-        <button
-          type="button"
-          onClick={() => openPayModal()}
-          className="bg-white rounded-[18px] shadow-[0_8px_24px_rgba(15,23,42,0.06)] border border-white py-3 px-2 flex flex-col items-center gap-1.5 active:scale-[0.97] transition-transform"
-        >
-          <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center">
-            <CreditCard className="w-5 h-5 text-amber-500" />
-          </div>
-          <span className="text-[11px] font-black text-slate-800">{t('patientProfile.mobile.payAction', "To'lov")}</span>
+      <div className="px-4 mt-3 grid grid-cols-3 gap-2 relative z-10">
+        <button type="button" onClick={() => openPayModal()} data-testid="profile-action-pay"
+          className="rounded-2xl bg-emerald-50 border border-emerald-100 py-3 px-2 flex flex-col items-center gap-1.5 active:scale-[0.97] transition-transform">
+          <Wallet className="w-6 h-6 text-emerald-600" />
+          <span className="text-[12px] font-black text-emerald-800">{t('patientProfile.mobile.payAction', "To'lov")}</span>
         </button>
-        <button
-          type="button"
-          onClick={() => { setSelectedAppt(null); setApptModalOpen(true); }}
-          className="bg-white rounded-[18px] shadow-[0_8px_24px_rgba(15,23,42,0.06)] border border-white py-3 px-2 flex flex-col items-center gap-1.5 active:scale-[0.97] transition-transform"
-        >
-          <MiniCalendarMark date={nextAppointment?.date || nextAppointment?.appointment_date} language={language} />
-          <span className="text-[11px] font-black text-slate-800">{t('patientProfile.mobile.apptAction', 'Uchrashuv')}</span>
+        <button type="button" onClick={() => { setSelectedAppt(null); setApptModalOpen(true); }} data-testid="profile-action-appt"
+          className="rounded-2xl bg-blue-50 border border-blue-100 py-3 px-2 flex flex-col items-center gap-1.5 active:scale-[0.97] transition-transform">
+          <CalendarDays className="w-6 h-6 text-blue-600" />
+          <span className="text-[12px] font-black text-blue-800">{t('patientProfile.mobile.apptAction', 'Uchrashuv')}</span>
         </button>
-        <button
-          type="button"
-          onClick={() => setTreatModalOpen(true)}
-          className="bg-white rounded-[18px] shadow-[0_8px_24px_rgba(15,23,42,0.06)] border border-white py-3 px-2 flex flex-col items-center gap-1.5 active:scale-[0.97] transition-transform"
-        >
-          <div className="w-11 h-11 rounded-2xl bg-cyan-50 border border-cyan-100 flex items-center justify-center">
-            <ClipboardList className="w-5 h-5 text-[#14b8a6]" />
-          </div>
-          <span className="text-[11px] font-black text-slate-800">{t('patientProfile.mobile.newPlanAction', 'Yangi reja')}</span>
+        <button type="button" onClick={() => setTreatModalOpen(true)} data-testid="profile-action-plan"
+          className="rounded-2xl bg-orange-50 border border-orange-100 py-3 px-2 flex flex-col items-center gap-1.5 active:scale-[0.97] transition-transform">
+          <FilePlus2 className="w-6 h-6 text-orange-500" />
+          <span className="text-[12px] font-black text-orange-700">{t('patientProfile.mobile.newPlanAction', 'Yangi reja')}</span>
         </button>
       </div>
+      {nextAppointment && (
+        <p className="px-4 mt-1.5 text-[11px] font-semibold text-slate-500">
+          Keyingi uchrashuv: <b className="text-blue-700">{formatStandardDate(nextAppointment.date || nextAppointment.appointment_date)}{formatAppointmentTime(nextAppointment) ? ` · ${formatAppointmentTime(nextAppointment)}` : ''}</b>
+        </p>
+      )}
 
       {/* Tooth chart first, then RVG/Rozilik, then today's plan. */}
-      <div className="px-3 pt-3 pb-24 space-y-3">
+      <div className="px-3 pt-3 pb-3 space-y-3">
                 <ToothChartCard
                   patient={patient}
                   plans={plans}
@@ -793,6 +837,7 @@ export default function MobilePatientProfile() {
                   onBookAppointment={() => { setSelectedAppt(null); setApptModalOpen(true); }}
                   onOpenPlan={() => setTreatModalOpen(true)}
                   sheetOffset={84}
+                  fullArch
                 />
                 <ChairsideClinicalTools
                   patient={patient}
@@ -838,7 +883,7 @@ export default function MobilePatientProfile() {
       </div>
 
       {/* PILL TABS */}
-      <div className="shrink-0 px-3 pb-3 pt-1 mt-auto">
+      <div className="shrink-0 px-3 pb-1 pt-1">
         <div className="bg-white rounded-full p-1 shadow-[0_8px_24px_rgba(15,23,42,0.08)] border border-slate-100 flex min-w-0 overflow-hidden">
           {tabs.map(tab => {
             const isActive = activeTab === tab.id;
@@ -872,13 +917,13 @@ export default function MobilePatientProfile() {
             {activeTab === 'tarix' && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-black text-slate-800">{t('patientProfile.mobile.apptsTitle', 'Uchrashuvlar')} ({appointments.length})</h2>
+                  <div><h2 className="text-[17px] font-black text-[#1e3a8a]">Davolanish tarixi</h2><p className="text-[11px] font-semibold text-slate-500">Tashriflar va bajarilgan muolajalar ({historyItems.length})</p></div>
                   <button onClick={() => { setSelectedAppt(null); setApptModalOpen(true); }} className="flex items-center gap-1.5 px-3 py-2 text-white rounded-xl text-xs font-bold active:scale-95 transition-transform" style={{ background: TEAL }}>
                     <Plus className="w-3.5 h-3.5" />{t('patientProfile.mobile.apptAction', 'Uchrashuv')}
                   </button>
                 </div>
 
-                {appointments.length === 0 ? (
+                {historyItems.length === 0 ? (
                   <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center shadow-xs">
                     <Calendar className="w-10 h-10 text-slate-200 mx-auto mb-2" />
                     <p className="text-slate-500 font-bold text-sm">{t('patientProfile.mobile.emptyAppts', "Uchrashuvlar yo'q")}</p>
@@ -886,39 +931,41 @@ export default function MobilePatientProfile() {
                       + {t('patientProfile.mobile.addAppt', "Uchrashuv qo'shish")}
                     </button>
                   </div>
-                ) : appointments.map(appt => (
-                  <div
-                    key={appt.id}
-                    onClick={() => { setSelectedAppt(appt); setApptModalOpen(true); }}
-                    className="bg-white rounded-2xl border border-slate-100 shadow-xs p-4 flex items-start gap-3 active:scale-[0.99] transition-transform cursor-pointer"
-                  >
-                    <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
-                      appt.status === 'Completed' ? 'bg-emerald-50 border border-emerald-200' :
-                      appt.status === 'No-Show' ? 'bg-rose-50 border border-rose-200' :
-                      appt.status === 'Cancelled' ? 'bg-slate-50 border border-slate-200' :
-                      'bg-cyan-50 border border-cyan-100')}>
-                      {appt.status === 'Completed' ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> :
-                       appt.status === 'No-Show' || appt.status === 'Cancelled' ? <XCircle className="w-5 h-5 text-rose-500" /> :
-                       <Clock className="w-5 h-5 text-[#14b8a6]" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-black text-slate-900 font-mono">
-                            {formatStandardDate(appt.date || appt.appointment_date)}
-                          </p>
-                          {formatAppointmentTime(appt) && (
-                            <span className="text-[10px] font-black text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded-md font-mono">
-                              {formatAppointmentTime(appt)}
-                            </span>
-                          )}
+                ) : (
+                  <div className="space-y-2.5" data-testid="profile-history-timeline">
+                    {historyItems.map((item) => {
+                      const done = item.status === 'Completed';
+                      const dot = done ? 'bg-emerald-500' : (item.status === 'Cancelled' || item.status === 'No-Show') ? 'bg-rose-500' : 'bg-blue-500';
+                      return (
+                        <div
+                          key={item.key}
+                          onClick={item.kind === 'appt' ? () => { setSelectedAppt(item.raw); setApptModalOpen(true); } : undefined}
+                          className={cn('bg-white rounded-2xl border border-slate-100 shadow-xs p-3 flex gap-3', item.kind === 'appt' && 'cursor-pointer active:scale-[0.99] transition-transform')}
+                        >
+                          <DateBlock raw={item.date} />
+                          <div className="flex flex-col items-center pt-1.5">
+                            <span className={cn('w-2 h-2 rounded-full', dot)} />
+                            <span className="flex-1 w-px bg-slate-200 mt-1" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start gap-1.5 flex-wrap">
+                              <p className="text-[13px] font-black text-slate-900 break-words">{item.title}</p>
+                              {item.tooth ? <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md">#{item.tooth}</span> : null}
+                            </div>
+                            <p className="text-[11px] font-semibold text-slate-500 mt-0.5">
+                              {[item.doctor ? formatDoctorName(item.doctor) : null, item.time || null].filter(Boolean).join(' · ') || '—'}
+                            </p>
+                            {item.note ? <p className="text-[11px] text-slate-600 mt-1 line-clamp-2">{item.note}</p> : null}
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                              {item.kind === 'appt' ? <ApptBadge status={item.status} /> : <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">Bajarilgan</span>}
+                              {item.price > 0 ? <span className="text-[13px] font-black text-slate-900 tabular-nums">{formatCurrency(item.price)}</span> : null}
+                            </div>
+                          </div>
                         </div>
-                        <ApptBadge status={appt.status} />
-                      </div>
-                      <p className="text-[11px] font-bold text-slate-500 mt-1 truncate">{appt.service_name || appt.notes || appt.type || 'Uchrashuv'}</p>
-                    </div>
+                      );
+                    })}
                   </div>
-                ))}
+                )}
 
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-4 space-y-3">
                   <p className="text-xs font-bold text-slate-500">{t('patientProfile.tabs.notes', 'Eslatmalar')}</p>
@@ -953,8 +1000,8 @@ export default function MobilePatientProfile() {
             {activeTab === 'plan' && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-black text-slate-800">{t('patientProfile.mobile.plansTitle', 'Davolash rejalari')} ({plans.length})</h2>
-                  <button onClick={() => setTreatModalOpen(true)} className="flex items-center gap-1 px-3 py-2 text-white rounded-xl text-xs font-bold active:scale-95 transition-transform" style={{ background: TEAL }}>
+                  <div><h2 className="text-[17px] font-black text-[#1e3a8a]">{t('patientProfile.mobile.plansTitle', 'Davolash rejalari')} ({plans.length})</h2><p className="text-[11px] font-semibold text-slate-500">Bemor uchun tuzilgan barcha davolash rejalari</p></div>
+                  <button onClick={() => setTreatModalOpen(true)} className="flex items-center gap-1 px-3 py-2.5 text-white rounded-xl text-xs font-black active:scale-95 transition-transform bg-emerald-600 shrink-0">
                     <Plus className="w-3.5 h-3.5" />{t('patientProfile.mobile.newPlanAction', 'Yangi reja')}
                   </button>
                 </div>
@@ -1050,6 +1097,43 @@ export default function MobilePatientProfile() {
                         </div>
                       </button>
 
+                      {services.length > 0 && (
+                        <div className="px-4 pb-2" data-testid="plan-main-services">
+                          <p className="text-[11px] font-bold text-slate-500 mb-1.5">Rejadagi asosiy xizmatlar:</p>
+                          <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                            {services.slice(0, 3).map((svc, i) => (
+                              <span key={svc.id || i} className={cn('shrink-0 inline-flex items-center gap-1.5 h-9 px-2.5 rounded-xl border text-[11px]', isSvcDone(svc) ? 'border-emerald-100 bg-emerald-50' : 'border-slate-100 bg-white')}>
+                                <b className="text-slate-900">{svc.tooth_number ? `#${svc.tooth_number}` : '—'}</b>
+                                <span className="text-slate-500 max-w-[7.5rem] truncate">{svc.service_name || svc.name}</span>
+                              </span>
+                            ))}
+                            {services.length > 3 && (
+                              <button type="button" onClick={() => setExpandedPlan(plan.id)} className="shrink-0 inline-flex items-center h-9 px-2.5 rounded-xl bg-blue-50 text-blue-600 text-[11px] font-bold">+{services.length - 3} ta xizmat</button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {(() => {
+                        const nextIdx = services.findIndex((svc) => !isSvcDone(svc) && svc.status !== 'in_progress');
+                        const inProgress = services.some((svc) => svc.status === 'in_progress');
+                        return (
+                          <div className="px-4 pb-4 pt-1 grid grid-cols-2 gap-2">
+                            <button type="button" onClick={() => setExpandedPlan(isExpanded ? null : plan.id)} className="h-11 rounded-xl bg-slate-100 text-slate-600 text-[12px] font-black inline-flex items-center justify-center gap-1.5 active:scale-[0.98]">
+                              <Eye className="w-4 h-4" />{isExpanded ? 'Yopish' : 'Batafsil ko‘rish'}
+                            </button>
+                            {nextIdx >= 0 ? (
+                              <button type="button" data-testid="plan-start-step" onClick={() => startPlanStep(plan, nextIdx)} className="h-11 rounded-xl bg-emerald-600 text-white text-[12px] font-black inline-flex items-center justify-center gap-1.5 active:scale-[0.98]">
+                                <Play className="w-4 h-4 fill-white" />{inProgress ? 'Keyingi bosqich' : 'Davolashni boshlash'}
+                              </button>
+                            ) : (
+                              <button type="button" onClick={() => openPayModal()} className="h-11 rounded-xl bg-emerald-600 text-white text-[12px] font-black inline-flex items-center justify-center gap-1.5 active:scale-[0.98]">
+                                <CreditCard className="w-4 h-4" />{t('patientProfile.mobile.payAction', "To'lov")}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       <AnimatePresence>
                         {isExpanded && (
                           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden border-t border-slate-100">
@@ -1119,9 +1203,9 @@ export default function MobilePatientProfile() {
             {activeTab === 'payments' && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-black text-slate-800">{t('patientProfile.tabs.payments', "To'lovlar")} ({payments.length})</h2>
-                  <button onClick={() => openPayModal()} className="flex items-center gap-1 px-3 py-2 text-white rounded-xl text-xs font-bold active:scale-95 transition-transform" style={{ background: TEAL }}>
-                    <Plus className="w-3.5 h-3.5" />{t('patientProfile.mobile.payAction', "To'lov")}
+                  <div><h2 className="text-[17px] font-black text-[#1e3a8a]">To'lovlar &amp; Qarz</h2><p className="text-[11px] font-semibold text-slate-500">Bemorning barcha to'lovlari va qarz holati</p></div>
+                  <button onClick={() => openPayModal()} className="flex items-center gap-1 px-3 py-2.5 text-white rounded-xl text-xs font-black active:scale-95 transition-transform bg-emerald-600 shrink-0">
+                    <Plus className="w-3.5 h-3.5" />To'lov qo'shish
                   </button>
                 </div>
 
@@ -1138,6 +1222,31 @@ export default function MobilePatientProfile() {
                   </div>
                 </div>
 
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-3.5 flex items-center gap-3" data-testid="profile-pay-summary">
+                  <div className="flex-1 min-w-0 flex items-center gap-2.5">
+                    <span className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0"><Calendar className="w-5 h-5 text-slate-500" /></span>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black text-slate-500 uppercase">Umumiy summa</p>
+                      <p className="text-[15px] font-black text-slate-900 tabular-nums truncate">{formatCurrency(payTotal)}</p>
+                      <p className="text-[10px] font-semibold text-slate-400">Bemor bo'yicha jami hisob</p>
+                    </div>
+                  </div>
+                  <div className="w-px self-stretch bg-slate-100" />
+                  <div className="flex items-center gap-2 shrink-0">
+                    <svg viewBox="0 0 36 36" className="w-12 h-12 -rotate-90">
+                      <circle cx="18" cy="18" r="15" fill="none" stroke="#e2e8f0" strokeWidth="4" />
+                      <circle cx="18" cy="18" r="15" fill="none" stroke="#059669" strokeWidth="4" strokeLinecap="round" strokeDasharray={`${(payPct / 100) * 94.25} 94.25`} />
+                      <text x="18" y="18" transform="rotate(90 18 18)" textAnchor="middle" dominantBaseline="central" className="fill-slate-900" style={{ fontSize: 9, fontWeight: 900 }}>{payPct}%</text>
+                    </svg>
+                    <div className="w-[76px]">
+                      <p className="text-[9px] font-black text-slate-500 uppercase">To'lov foizi</p>
+                      <p className="text-[11px] font-black text-slate-900">{compactMln(financials.incomes)} / {compactMln(payTotal)}</p>
+                      <div className="mt-1 h-1.5 rounded-full bg-slate-100 overflow-hidden"><div className="h-full bg-emerald-600 rounded-full" style={{ width: `${payPct}%` }} /></div>
+                    </div>
+                  </div>
+                </div>
+
+                {payments.length > 0 && <h3 className="text-[14px] font-black text-slate-800 pt-1">To'lovlar tarixi ({payments.length})</h3>}
                 {payments.length === 0 ? (
                   <div className="bg-white rounded-2xl border border-slate-100 p-10 text-center shadow-xs">
                     <Receipt className="w-12 h-12 text-slate-200 mx-auto mb-3" />
@@ -1156,7 +1265,7 @@ export default function MobilePatientProfile() {
 
                   return (
                     <div key={pay.id} className="bg-white rounded-2xl border border-slate-100 shadow-xs p-4 flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border text-base ${bgColor}`}>{icon}</div>
+                      <DateBlock raw={pay.date} /><span className="sr-only">{icon}{bgColor}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-black text-slate-900">{label}</p>
                         {pay.category && <p className="text-[10px] text-slate-400 font-bold">{pay.category === 'Treatment' ? t('patientProfile.treatmentPlanSingular', 'Davolash') : pay.category}</p>}
@@ -1169,13 +1278,26 @@ export default function MobilePatientProfile() {
                     </div>
                   );
                 })}
+                <div className="grid grid-cols-[1.4fr_1fr] gap-2 pt-1">
+                  <button type="button" onClick={() => openPayModal()} className="h-12 rounded-2xl bg-emerald-600 text-white text-[13px] font-black inline-flex items-center justify-center gap-1.5 active:scale-[0.98]">
+                    <Plus className="w-4 h-4" />To'lov qo'shish
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!planCards.length}
+                    onClick={() => { const c = planCards[0]; if (c) setInvoicePlan({ ...c.plan, paid_amount: c.paid }); }}
+                    className="h-12 rounded-2xl bg-white border border-slate-200 text-slate-700 text-[12px] font-black inline-flex items-center justify-center gap-1.5 disabled:opacity-40 active:scale-[0.98]"
+                  >
+                    <FileText className="w-4 h-4" />Hisobot (PDF)
+                  </button>
+                </div>
               </div>
             )}
 
             {activeTab === 'implant' && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-black text-slate-800">{t('patientProfile.tabs.implants', 'Implantlar')} ({countImplantTeeth(implants)})</h2>
+                  <div><h2 className="text-[17px] font-black text-[#1e3a8a]">{t('patientProfile.tabs.implants', 'Implantlar')} ({countImplantTeeth(implants)})</h2><p className="text-[11px] font-semibold text-slate-500">O'rnatilgan implantlar va kuzatuv ma'lumotlari</p></div>
                   <button
                     type="button"
                     onClick={() => { setSelectedImplant(null); setImplantModalOpen(true); }}
@@ -1199,31 +1321,67 @@ export default function MobilePatientProfile() {
                       + {t('patientProfile.mobile.addImplant', "Implant qo'shish")}
                     </button>
                   </div>
-                ) : implants.map((imp) => {
+                ) : implants.flatMap((imp) => {
                   const teeth = implantRecordFdis(imp);
-                  return (
-                    <button
-                      key={imp.id}
-                      type="button"
-                      onClick={() => { setSelectedImplant(imp); setImplantModalOpen(true); }}
-                      className="w-full bg-white rounded-2xl border border-slate-100 shadow-xs p-4 flex items-start gap-3 text-left active:scale-[0.99] transition-transform cursor-pointer"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0">
-                        <Activity className="w-5 h-5 text-[#14b8a6]" />
+                  const list = teeth.length ? teeth : [null];
+                  return list.map((fdi) => {
+                    const td = (fdi && imp.tooth_data_map && (imp.tooth_data_map[fdi] || imp.tooth_data_map[String(fdi)])) || {};
+                    const brand = (td.firma === 'Boshqa' ? td.firma_custom : td.firma) || td.brend || (imp.firma === 'Boshqa' ? imp.firma_custom : imp.firma) || imp.brend || '—';
+                    const dia = td.diameter ?? imp.diameter; const len = td.length ?? imp.length;
+                    const size = dia && len ? `Ø${dia} × ${len} mm` : dia ? `Ø${dia} mm` : len ? `L ${len} mm` : '—';
+                    const st = IMPLANT_STATUS[String(imp.lifecycle_status || imp.status || '').toLowerCase()] || { label: imp.lifecycle_status || imp.status || '—', cls: 'bg-slate-100 text-slate-600' };
+                    const imgs = [...(Array.isArray(imp.xray_urls) ? imp.xray_urls : []), ...(Array.isArray(imp.images) ? imp.images : [])].map((u) => (typeof u === 'string' ? u : u?.url)).filter(Boolean);
+                    const rows = [
+                      ['Tizim / Brend', brand],
+                      ["O'lcham", size],
+                      ['Turi', td.implant_type || imp.implant_type || '—'],
+                      ['Joylashuv (FDI)', fdi || '—'],
+                      ["O'rnatilgan sana", imp.placement_date ? formatStandardDate(imp.placement_date) : '—'],
+                      ['Shifokor', imp.doctor ? formatDoctorName(imp.doctor) : '—'],
+                    ];
+                    return (
+                      <div key={`${imp.id}-${fdi || 'x'}`} className="bg-white rounded-2xl border border-slate-100 shadow-xs p-3.5" data-testid="profile-implant-card">
+                        <button type="button" onClick={() => { setSelectedImplant(imp); setImplantModalOpen(true); }} className="w-full flex items-start gap-3 text-left">
+                          <span className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0"><Activity className="w-5 h-5 text-blue-600" /></span>
+                          <span className="flex-1 min-w-0">
+                            <span className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[14px] font-black text-[#1e3a8a]">Implant {fdi ? `#${fdi}` : ''}</span>
+                              <span className={cn('text-[10px] font-black px-2 py-0.5 rounded-full', st.cls)}>{st.label}</span>
+                            </span>
+                            <span className="block text-[12px] font-semibold text-slate-600 truncate">{brand}</span>
+                            <span className="block text-[10px] font-semibold text-slate-400">
+                              {imp.placement_date ? `O'rnatilgan sana: ${formatStandardDate(imp.placement_date)}` : ''}{imp.doctor ? ` · ${formatDoctorName(imp.doctor)}` : ''}
+                            </span>
+                          </span>
+                          <ChevronRight className="w-4 h-4 text-slate-300 mt-1 shrink-0" />
+                        </button>
+                        <div className="mt-3 rounded-xl border border-slate-100 divide-y divide-slate-100">
+                          {rows.map(([k, v]) => (
+                            <div key={k} className="flex items-center justify-between gap-3 px-3 py-1.5 text-[11px]">
+                              <span className="text-slate-500 font-semibold">{k}</span>
+                              <span className="text-slate-900 font-bold text-right truncate">{v}</span>
+                            </div>
+                          ))}
+                          <div className="flex items-center justify-between gap-3 px-3 py-1.5 text-[11px]">
+                            <span className="text-slate-500 font-semibold">Holat</span>
+                            <span className={cn('font-black', st.cls.split(' ').find((c) => c.startsWith('text-')))}>{st.label}</span>
+                          </div>
+                        </div>
+                        {imgs.length > 0 && (
+                          <div className="mt-3 flex gap-2 overflow-x-auto no-scrollbar">
+                            {imgs.slice(0, 6).map((u, i) => (
+                              <a key={i} href={u} target="_blank" rel="noreferrer" className="shrink-0 w-20 h-16 rounded-lg overflow-hidden bg-slate-100 border border-slate-100">
+                                <img src={u} alt="" className="w-full h-full object-cover" />
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                        <button type="button" onClick={() => navigate(`/implants/${imp.id}`)} className="mt-3 w-full h-10 rounded-xl bg-emerald-50 text-emerald-700 text-[12px] font-black inline-flex items-center justify-center gap-1.5">
+                          Implant pasporti <ChevronRight className="w-4 h-4" />
+                        </button>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-black text-slate-900 truncate">{imp.firma || imp.brend || imp.service_name || 'Implant'}</p>
-                        <p className="text-[11px] font-bold text-slate-500 mt-0.5">
-                          {teeth.length ? teeth.map((tn) => '#' + tn).join(' · ') : ''}
-                          {imp.placement_date ? (teeth.length ? ' · ' : '') + formatStandardDate(imp.placement_date) : ''}
-                        </p>
-                        {imp.lifecycle_status ? (
-                          <span className="inline-flex mt-1.5 text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{imp.lifecycle_status}</span>
-                        ) : null}
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-slate-300 mt-1 shrink-0" />
-                    </button>
-                  );
+                    );
+                  });
                 })}
               </div>
             )}
