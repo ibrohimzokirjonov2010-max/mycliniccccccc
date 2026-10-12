@@ -104,6 +104,68 @@ export function NewPatientReceiptTeaser({
   );
 }
 
+function ReceiptPaperMobile({ t, clinicInfo, patientName, patientPhone, dateLabel, timeLabel, receiptNo, rows, treatmentName, servicesTotal, discountAmount, discountPercent, advanceTotal, dueTotal, doctorName }) {
+  return (
+    <div id="new-patient-receipt" className="bg-white" data-receipt-variant="mobile">
+      <div className="px-4 pt-4 pb-3 flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2.5 min-w-0">
+          {clinicInfo?.logo ? <img src={clinicInfo.logo} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" /> : <span className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-[20px] shrink-0">🦷</span>}
+          <div className="min-w-0">
+            <p className="text-[15px] font-bold text-slate-900 truncate">{clinicInfo?.name || 'DentaCRM'}</p>
+            <p className="text-[10.5px] font-semibold text-emerald-600 uppercase tracking-wide truncate">{t('patients.wizard.invoice')}</p>
+          </div>
+        </div>
+        <div className="text-right text-[11px] text-slate-600 shrink-0 max-w-[48%]">
+          {clinicInfo?.phone ? <p className="truncate">📞 {clinicInfo.phone}</p> : null}
+          {clinicInfo?.address ? <p className="truncate">📍 {clinicInfo.address}</p> : null}
+        </div>
+      </div>
+      <div className="text-center pb-3">
+        <h3 className="text-[16px] font-extrabold text-slate-900 tracking-wide uppercase">{t('patients.wizard.invoice')}</h3>
+        <span className="inline-block mt-1 text-[11.5px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full" data-testid="receipt-no">№ {receiptNo}</span>
+      </div>
+      <div className="px-4 py-3 grid grid-cols-2 gap-x-3 gap-y-3 border-y border-slate-100">
+        <div><p className="text-[10.5px] text-slate-500">{t('common.date')}:</p><p className="text-[13px] font-bold text-slate-900">{dateLabel} {timeLabel}</p></div>
+        <div className="min-w-0"><p className="text-[10.5px] text-slate-500">Bemor:</p><p className="text-[13px] font-bold text-slate-900 truncate">{patientName}</p>{patientPhone ? <p className="text-[11.5px] text-slate-500">{patientPhone}</p> : null}</div>
+        <div className="min-w-0"><p className="text-[10.5px] text-slate-500">{t('implants.doctor')}:</p><p className="text-[13px] font-bold text-slate-900 truncate" data-testid="invoice-doctor">{doctorName || '—'}</p></div>
+        <div className="min-w-0"><p className="text-[10.5px] text-slate-500">{t('patients.wizard.treatmentPlan')}:</p><p className="text-[13px] font-bold text-slate-900 truncate">{treatmentName}</p></div>
+      </div>
+      <div className="px-3 pt-2">
+        <table className="w-full text-left text-[12px]">
+          <thead><tr className="bg-slate-50 text-slate-600"><th className="py-1.5 pl-2 w-6 font-semibold">#</th><th className="py-1.5 font-semibold">Xizmat nomi</th><th className="py-1.5 font-semibold">Tish</th><th className="py-1.5 pr-2 font-semibold text-right">Narxi</th></tr></thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={row.key} className="border-b border-slate-100">
+                <td className="py-1.5 pl-2 text-slate-500">{i + 1}</td>
+                <td className="py-1.5 text-slate-800">{row.name}</td>
+                <td className="py-1.5 text-slate-700 whitespace-nowrap">{row.tooth ? `#${String(row.tooth).match(/\d+/)?.[0] || row.tooth}` : '—'}</td>
+                <td className="py-1.5 pr-2 text-right font-semibold text-slate-900 whitespace-nowrap tabular-nums">{formatCurrency(row.price || 0)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="px-4 pt-3 space-y-1.5 text-[12.5px]">
+        <div className="flex justify-between"><span className="text-slate-600">{t('patients.wizard.services')} jami:</span><span className="font-bold text-slate-900 tabular-nums" data-testid="receipt-services-total">{formatCurrency(servicesTotal || 0)}</span></div>
+        <div className="flex justify-between"><span className="text-slate-600">{t('patients.wizard.discount')}{discountPercent > 0 ? ` (${discountPercent}%)` : ''}:</span><span className="font-bold text-slate-900 tabular-nums" data-testid="receipt-discount">{discountAmount > 0 ? `-${formatCurrency(discountAmount)}` : formatCurrency(0)}</span></div>
+        <div className="flex justify-between"><span className="text-slate-600">To'langan:</span><span className="font-bold text-slate-900 tabular-nums">{formatCurrency(advanceTotal || 0)}</span></div>
+      </div>
+      <div className="mx-3 mt-2 rounded-xl bg-emerald-50 px-3 py-2.5 flex items-center justify-between receipt-total-bar-mobile">
+        <span className="text-[13px] font-bold text-slate-900">Jami to'lov (qarz):</span>
+        <span className="text-[18px] font-extrabold text-emerald-700 tabular-nums" data-testid="receipt-due">{formatCurrency(dueTotal || 0)}</span>
+      </div>
+      <div className="px-3 pt-3 grid grid-cols-2 gap-2.5 border-t border-dashed border-slate-200 mt-3">
+        <div className="h-16 rounded-xl border border-slate-200 px-2.5 pt-1.5 text-[10.5px] text-slate-500">{t('patients.wizard.doctorSignature')}</div>
+        <div className="h-16 rounded-xl border border-slate-200 px-2.5 pt-1.5 text-[10.5px] text-slate-500">{t('patients.wizard.patientSignature')}</div>
+      </div>
+      <div className="m-3 rounded-xl bg-blue-50 px-3 py-2.5 text-[11px] text-slate-600 flex gap-2">
+        <span className="w-4 h-4 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">i</span>
+        <span>Ushbu hujjat elektron shaklda yaratildi.<br />{dateLabel} {timeLabel}{clinicInfo?.name ? `, ${clinicInfo.name}` : ''}</span>
+      </div>
+    </div>
+  );
+}
+
 function ReceiptPaper({
   t,
   clinicInfo,
@@ -337,6 +399,7 @@ export function NewPatientReceiptOverlay({
   onClose,
   onDownload,
   t,
+  mobile = false,
   ...paperProps
 }) {
   useEffect(() => {
@@ -393,7 +456,7 @@ export function NewPatientReceiptOverlay({
             {t('common.print')}
           </button>
         </div>
-        <ReceiptPaper t={t} {...paperProps} />
+        {mobile && !paperProps.isInstallment ? <ReceiptPaperMobile t={t} {...paperProps} /> : <ReceiptPaper t={t} {...paperProps} />}
       </div>
     </div>,
     document.body

@@ -20,7 +20,7 @@ import AllergyChips from '@/components/patients/AllergyChips';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle2, User, ClipboardList, ArrowLeft, Printer, X, Check, MessageCircle, Copy, Share2, Calendar, QrCode, Phone, AlertTriangle, Search } from 'lucide-react';
+import { CheckCircle2, User, ClipboardList, ArrowLeft, Printer, X, Check, MessageCircle, Copy, Share2, Calendar, QrCode, Phone, AlertTriangle, Search, Camera, Stethoscope, FileText, ChevronDown, ChevronLeft, ChevronRight, ArrowRight, SlidersHorizontal, Plus, Trash2, Receipt, UserPlus, Send, Pencil } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { applyPhoneMask, cn, capitalizeName, validateAddress, capitalizeAsYouType, formatCurrency, formatMoneyAmount } from '@/lib/utils';
 import { getPatientDoctorRequiredError } from '@/lib/patientDoctorValidation';
@@ -40,6 +40,30 @@ import {
   jawsCoveringFdi,
   toothSlotLabel,
 } from '@/lib/jawServices';
+
+function useIsPhone() {
+  const q = '(max-width: 767px)';
+  const [m, setM] = useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(q);
+    const on = () => setM(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return m;
+}
+
+function WizField({ label, required, icon: Icon, iconClass = '', children }) {
+  return (
+    <div>
+      {label ? <p className="wiz-label">{label}{required ? <span className="text-red-500"> *</span> : null}</p> : null}
+      <div className="relative">
+        {Icon ? <Icon className={cn('absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 pointer-events-none', iconClass)} /> : null}
+        {children}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Wizard steps configuration
@@ -312,6 +336,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const isPhone = useIsPhone();
   const [saving, setSaving] = useState(false);
   const [savingError, setSavingError] = useState(null);
   const [doctorError, setDoctorError] = useState('');
@@ -1578,15 +1603,15 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
                 </button>
               ) : (
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm shrink-0">
-                  <User className="w-5 h-5 stroke-[2.5]" />
+                <div className={cn("w-10 h-10 bg-white/20 flex items-center justify-center text-white backdrop-blur-sm shadow-sm shrink-0", isPhone ? "rounded-full w-11 h-11" : "rounded-xl")}>
+                  {isPhone ? <UserPlus className="w-5 h-5" /> : <User className="w-5 h-5 stroke-[2.5]" />}
                 </div>
               )}
               <div className="min-w-0">
-                <DialogTitle className="text-base font-black text-white uppercase tracking-tight truncate">
-                  {t('patients.addNew')}
+                <DialogTitle className={cn("text-base font-black text-white tracking-tight truncate", isPhone && step === 1 ? "text-[18px] font-bold normal-case" : "uppercase")}>
+                  {isPhone && step === 1 ? "Yangi bemor qo'shish" : t('patients.addNew')}
                 </DialogTitle>
-                <DialogDescription className="wizard-subtitle text-[9px] font-bold text-white/80 uppercase tracking-widest mt-0.5">{t('patients.wizard.registrationTitle')}</DialogDescription>
+                <DialogDescription className={cn("wizard-subtitle text-white/80 mt-0.5", isPhone && step === 1 ? "text-[12.5px] font-medium" : "text-[9px] font-bold uppercase tracking-widest")}>{t('patients.wizard.registrationTitle')}</DialogDescription>
               </div>
             </div>
             <div className="wizard-stepper-inline items-center justify-center gap-0 shrink-0">
@@ -1651,10 +1676,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300
                        ${done ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100' :
                          active ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100' :
-                         'bg-slate-100 border-slate-200 text-slate-400'}`}>
-                       {done && !active ? <Check className="w-4 h-4 stroke-[3px]" /> : <Icon className="w-3.5 h-3.5 sm:w-5 sm:h-5" />}
+                         isPhone ? 'bg-white border-slate-300 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
+                       {done && !active ? <Check className="w-4 h-4 stroke-[3px]" /> : isPhone ? (s.id === 3 && step === 4 ? <Check className="w-4 h-4 stroke-[3px]" /> : <span className="text-[13px] font-bold">{s.id}</span>) : <Icon className="w-3.5 h-3.5 sm:w-5 sm:h-5" />}
                      </div>
-                     <span className={`text-[9px] sm:text-[11px] font-bold uppercase tracking-wider ${active || done ? 'text-emerald-600' : 'text-slate-400'}`}>
+                     <span className={`${isPhone && step === 1 ? 'text-[12px] font-semibold' : 'text-[9px] sm:text-[11px] font-bold uppercase tracking-wider'} ${active || done ? 'text-emerald-600' : 'text-slate-400'}`}>
                        {t(s.label)}
                      </span>
                    </button>
@@ -1669,8 +1694,153 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
         <div className="flex-1 min-h-0 overflow-hidden bg-white sm:bg-slate-50/50 flex flex-col">
 
+          {step === 1 && isPhone && (
+            <div className="flex flex-col h-full min-h-0 bg-[#f4f7f9]" data-wizard-mobile="step1">
+              <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 overflow-x-hidden">
+                <section className="bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-[16px] font-bold text-[#0f1f4b]">Asosiy ma'lumotlar</h3>
+                      <p className="text-[11.5px] text-slate-500">Bemor haqida umumiy ma'lumotlarni kiriting</p>
+                    </div>
+                    <label className="relative w-[84px] h-[84px] -mt-1 rounded-full border-2 border-dashed border-emerald-300 bg-emerald-50/60 flex flex-col items-center justify-center text-emerald-600 cursor-pointer shrink-0 overflow-hidden">
+                      {patientForm.photo_url
+                        ? <img src={patientForm.photo_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                        : <><Camera className="w-5 h-5" /><span className="text-[9.5px] font-medium mt-1 text-emerald-700">Rasm qo'shish</span></>}
+                      <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+                    </label>
+                  </div>
+                  <div className="space-y-3 -mt-4">
+                    <div className="pr-[92px]" />
+                    <WizField label={t('patients.wizard.lastName')} required icon={User}>
+                      <input value={patientForm.last_name} onChange={e => setPatientForm({ ...patientForm, last_name: capitalizeAsYouType(e.target.value) })}
+                        onBlur={e => setPatientForm(prev => ({ ...prev, last_name: capitalizeName(e.target.value) }))}
+                        placeholder={t('patients.wizard.lastName')} className="wiz-input" autoFocus />
+                    </WizField>
+                    <WizField label={t('patients.wizard.firstName')} required icon={User}>
+                      <input value={patientForm.first_name} onChange={e => setPatientForm({ ...patientForm, first_name: capitalizeAsYouType(e.target.value) })}
+                        onBlur={e => setPatientForm(prev => ({ ...prev, first_name: capitalizeName(e.target.value) }))}
+                        placeholder={t('patients.wizard.firstName')} className="wiz-input" />
+                    </WizField>
+                    <WizField label={t('common.phone')} required icon={Phone}>
+                      <input type="tel" inputMode="tel" value={patientForm.phone}
+                        onChange={e => setPatientForm({ ...patientForm, phone: applyPhoneMask(e.target.value) })}
+                        placeholder="+998 (__) ___-__-__" maxLength={19} className="wiz-input" />
+                    </WizField>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <p className="wiz-label">{t('patients.gender')} <span className="text-red-500">*</span></p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {[['male', t('patients.male'), '♂'], ['female', t('patients.female'), '♀']].map(([g, label, sym]) => {
+                            const on = normalizePatientGender(patientForm.gender) === g;
+                            return (
+                              <button key={g} type="button" onClick={() => setPatientForm({ ...patientForm, gender: g })}
+                                className={cn('h-11 rounded-xl border text-[13px] font-semibold inline-flex items-center justify-center gap-1', on ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600')}>
+                                <span className="text-[16px] leading-none">{sym}</span>{label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="wiz-label">{t('patients.birthDate')}</p>
+                        <ClinicDateField
+                          id="new_patient_birth_date"
+                          value={(patientForm.birth_year && patientForm.birth_month && patientForm.birth_day)
+                            ? `${patientForm.birth_year}-${String(patientForm.birth_month).padStart(2, '0')}-${String(patientForm.birth_day).padStart(2, '0')}`
+                            : ''}
+                          onChange={(e) => {
+                            const match = String(e?.target?.value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+                            setPatientForm((prev) => ({ ...prev, birth_year: match ? match[1] : '', birth_month: match ? String(Number(match[2])) : '', birth_day: match ? String(Number(match[3])) : '' }));
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div data-patient-doctor-field>
+                      <p className="wiz-label">{t('common.doctor')} <span className="text-red-500">*</span></p>
+                      <Select value={patientForm.main_treatment_provider} onValueChange={v => { setPatientForm({ ...patientForm, main_treatment_provider: v }); setDoctorError(''); }}>
+                        <SelectTrigger aria-invalid={doctorError ? true : undefined} className={cn('h-12 rounded-xl text-[14px] w-full bg-white pl-3', doctorError ? 'border-rose-400' : 'border-slate-200')}>
+                          <span className="flex items-center gap-2.5 min-w-0"><Stethoscope className="w-4.5 h-4.5 text-slate-500 shrink-0" /><SelectValue placeholder="Tanlang" /></span>
+                        </SelectTrigger>
+                        <SelectContent position="popper" side="top" className="z-[220] max-h-72 overflow-y-auto" data-patient-doctor-select>
+                          {doctors.map(d => (
+                            <SelectItem key={d.id || d.name || d.full_name} value={String(d.id || d.name || d.full_name)}>{clinicianDisplayName(d) || d.username}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {doctorError && <p role="alert" data-patient-doctor-error className="mt-1 text-[11px] font-bold text-rose-600">{doctorError}</p>}
+                    </div>
+                  </div>
+                </section>
+
+                <section className="bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-4 space-y-3">
+                  <div>
+                    <h3 className="text-[16px] font-bold text-[#0f1f4b] flex items-center gap-1.5">Muhim ma'lumot <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold flex items-center justify-center">i</span></h3>
+                    <p className="text-[11.5px] text-slate-500">Allergiya, kasalliklar, xavf omillarini ko'rsating</p>
+                  </div>
+                  <WizField icon={patientForm.important_info ? AlertTriangle : FileText} iconClass={patientForm.important_info ? 'text-rose-500' : ''}>
+                    <input value={patientForm.important_info} onChange={e => setPatientForm({ ...patientForm, important_info: e.target.value })}
+                      placeholder="Masalan: Lidokain allergiyasi, qandli diabet, gipertoniya"
+                      className={cn('wiz-input', patientForm.important_info && 'text-rose-700 font-medium')} />
+                  </WizField>
+                  <AllergyChips value={patientForm.important_info} onChange={(next) => setPatientForm((prev) => ({ ...prev, important_info: next }))} />
+                  <div>
+                    <p className="wiz-label flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />{t('common.note')}</p>
+                    <textarea value={patientForm.comment} onChange={e => setPatientForm({ ...patientForm, comment: e.target.value })}
+                      placeholder="Batafsil ma'lumot yoki qo'shimcha eslatmalar..."
+                      className="w-full min-h-[76px] p-3 rounded-xl text-[14px] border border-slate-200 focus:border-emerald-400 outline-none resize-y" />
+                  </div>
+                </section>
+
+                <details className="bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-4 group" data-testid="wizard-extra-fields">
+                  <summary className="list-none flex items-center justify-between cursor-pointer">
+                    <span className="text-[14px] font-bold text-[#0f1f4b]">Qo'shimcha ma'lumotlar</span>
+                    <ChevronDown className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="space-y-3 mt-3">
+                    <WizField label={t('patients.wizard.registrationDate')} required icon={Calendar}>
+                      <input value={asDisplayDate(patientForm.registration_date)} onChange={e => setPatientForm({ ...patientForm, registration_date: e.target.value })} placeholder="kk.oo.yyyy" className="wiz-input" />
+                    </WizField>
+                    <WizField label={t('patients.wizard.phone2')} icon={Phone}>
+                      <input type="tel" inputMode="tel" value={patientForm.phone_secondary} onChange={e => setPatientForm({ ...patientForm, phone_secondary: applyPhoneMask(e.target.value) })} placeholder="+998 (__) ___-__-__" maxLength={19} className="wiz-input" />
+                    </WizField>
+                    <WizField label={t('common.address')}>
+                      <input value={patientForm.address} onChange={e => setPatientForm({ ...patientForm, address: e.target.value })} placeholder={t('patients.addressPlaceholder')} className="wiz-input !pl-3" />
+                    </WizField>
+                    <div>
+                      <p className="wiz-label">{t('patients.sourceLabel')}</p>
+                      <Select value={patientForm.contact} onValueChange={v => setPatientForm({ ...patientForm, contact: v })}>
+                        <SelectTrigger className="h-12 rounded-xl border-slate-200 text-[14px] w-full"><SelectValue placeholder={t('common.select')} /></SelectTrigger>
+                        <SelectContent position="popper" className="z-[110]">
+                          {WIZARD_SOURCES.map(s => (<SelectItem key={s.value} value={s.value}>{t(`patients.sources.${s.labelKey}`)}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <WizField label={t('patients.wizard.cardNumber')}>
+                      <input value={patientForm.card_number} onChange={e => setPatientForm({ ...patientForm, card_number: e.target.value })} placeholder={t('patients.wizard.cardNumberPlaceholder')} className="wiz-input !pl-3" />
+                    </WizField>
+                  </div>
+                </details>
+              </div>
+
+              <div className="shrink-0 bg-white border-t border-slate-100 px-3 pt-3 space-y-2" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}>
+                {savingError && (
+                  <div className="bg-rose-50 border border-rose-100 rounded-xl p-2.5 text-xs font-bold text-rose-600 break-all">{t('patients.wizard.saveError')}: {savingError}</div>
+                )}
+                <div className="grid grid-cols-[0.8fr_1.2fr] gap-2.5">
+                  <button type="button" onClick={handleClose} className="h-12 rounded-xl bg-slate-100 text-slate-800 text-[14px] font-semibold inline-flex items-center justify-center gap-2">
+                    <ChevronLeft className="w-4 h-4" />{t('common.cancel')}
+                  </button>
+                  <button type="button" onClick={handleSavePatient} disabled={saving || !canProceedPatientStep} data-testid="wizard-step1-next"
+                    className="h-12 rounded-xl text-white text-[14px] font-semibold inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-700 disabled:opacity-50">
+                    {saving ? t('common.saving') : <>Keyingi bosqich <ArrowRight className="w-4 h-4" /></>}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {/* STEP 1: Patient */}
-          {step === 1 && (
+          {step === 1 && !isPhone && (
             <div className="flex flex-col h-full min-h-0 bg-white">
 
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 max-w-5xl mx-auto w-full max-md:overflow-x-hidden">
@@ -2238,379 +2408,218 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                   </div>
                 </div>
 
-                {/* === PHONE / NARROW (< lg): stacked single column — full-width teeth === */}
-                <div className="flex lg:hidden flex-col h-full min-h-0 w-full overflow-hidden bg-white">
-                  {/* Top: 2-row anatomical tooth selector – fully fits phone screen */}
-                  <div className="wizard-phone-arch py-2 px-2 shrink-0 select-none bg-slate-50 border-b border-slate-100 min-w-0">
-                    <div className="grid grid-cols-2 gap-1 pb-1.5">
-                      {WIZARD_QUADS.map((quad) => (
-                        <button
-                          key={quad.id}
-                          type="button"
-                          onClick={() => setWizardQuad(quad.id)}
-                          className={cn(
-                            "w-full min-w-0 px-2 py-1 rounded-full text-[11px] font-black border cursor-pointer whitespace-nowrap",
-                            wizardQuad === quad.id
-                              ? "bg-slate-900 text-white border-slate-900"
-                              : "bg-white text-slate-600 border-slate-200"
-                          )}
-                        >
-                          {quad.title}
+                {/* === PHONE / NARROW (< lg): design cards (wizard-1012) === */}
+                {(() => {
+                  const isUpper = wizardQuad === 'ur' || wizardQuad === 'ul';
+                  const rowRight = isUpper ? upperRight : [...lowerRight].reverse();
+                  const rowLeft = isUpper ? upperLeft : [...lowerLeft].reverse();
+                  const thumbFdi = activeTooth ? idToFdi(activeTooth) : '36';
+                  const thumbKind = (name) => {
+                    const n = String(name || '').toLowerCase();
+                    if (n.includes('implant')) return 'implant';
+                    if (n.includes('kanal') || n.includes('endo') || n.includes('pulp')) return 'endo';
+                    if (n.includes('sirkon') || n.includes('zircon')) return 'sirkon';
+                    if (n.includes('koronka') || n.includes('keramik') || n.includes('toj')) return 'metal-keramika';
+                    if (n.includes('breket')) return 'breket';
+                    if (n.includes('olish') || n.includes('ekstrak')) return 'missing';
+                    if (n.includes('plomba') || n.includes('restavr') || n.includes('kariyes') || n.includes('karies')) return 'plomba';
+                    return 'healthy';
+                  };
+                  const PhoneTooth = ({ fdi }) => {
+                    const internalId = fdiToInternal(String(fdi));
+                    const isSelected = planForm.tooth_numbers.includes(internalId);
+                    const isActive = activeTooth === internalId;
+                    const jawMarked = jawsCoveringFdi(toothData, fdi).length > 0;
+                    return (
+                      <button type="button" data-fdi={fdi} aria-label={`${fdi}-tish`} aria-pressed={isActive}
+                        onClick={() => {
+                          const next = isActive
+                            ? planForm.tooth_numbers.filter((tooth) => tooth !== internalId)
+                            : (planForm.tooth_numbers.includes(internalId) ? planForm.tooth_numbers : [...planForm.tooth_numbers, internalId]);
+                          handleTeethChange(next);
+                          setActiveTooth(next.includes(internalId) ? internalId : null);
+                        }}
+                        className={cn('wizard-tooth-hit relative flex min-w-0 flex-col items-center rounded-lg border px-px pt-0.5 pb-0.5 touch-manipulation',
+                          isActive ? 'border-emerald-500 bg-emerald-50' : jawMarked ? 'border-pink-300 bg-pink-50/50' : isSelected ? 'border-emerald-300 bg-emerald-50/40' : 'border-transparent bg-transparent')}>
+                        <img src={getToothIllustrationSrc(fdi, 'healthy')} alt="" draggable={false} className={cn('h-[46px] w-full object-contain pointer-events-none', !isUpper && 'rotate-180')} />
+                        <span className={cn('text-[10.5px] font-medium leading-none mt-0.5', isActive || isSelected ? 'text-emerald-600 font-bold' : 'text-slate-600')}>{fdi}</span>
+                      </button>
+                    );
+                  };
+                  const filtered = (services || []).filter(s => {
+                    const q = serviceSearch.trim().toLowerCase();
+                    if (q && !(s.name || '').toLowerCase().includes(q)) return false;
+                    if (!isServiceCompatibleWithTooth(s, activeTooth)) return false;
+                    if (!selectedCategory || selectedCategory === "all" || selectedCategory === "barchasi") return true;
+                    const cat = (s.category || autoCategorize(s.name)).toLowerCase().trim();
+                    const sel = selectedCategory.toLowerCase().trim();
+                    const selName = getCategoryName(selectedCategory).toLowerCase().trim();
+                    return cat === sel || cat === selName || (cat.includes(sel) && sel.length > 3) || (sel.includes(cat) && cat.length > 3);
+                  });
+                  return (
+                <div className="flex lg:hidden flex-col h-full min-h-0 w-full overflow-hidden bg-[#f4f7f9]" data-wizard-mobile="step2">
+                  <div className="flex-1 min-h-0 overflow-y-auto px-2.5 py-2.5 space-y-2.5">
+                    <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3 wizard-phone-arch select-none">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-emerald-500 text-[15px]">🦷</span>
+                        <h3 className="flex-1 text-[14px] font-bold text-slate-900">Tish tanlash (FDI)</h3>
+                        <div className="inline-flex rounded-full border border-slate-200 p-0.5 bg-white" data-testid="wizard-jaw-toggle">
+                          {[['ur', "Yuqori jag'", isUpper], ['lr', "Pastki jag'", !isUpper]].map(([id, label, on]) => (
+                            <button key={id} type="button" onClick={() => setWizardQuad(id)}
+                              className={cn('h-7 px-3 rounded-full text-[11.5px] font-semibold', on ? 'bg-slate-900 text-white' : 'text-slate-600')}>{label}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex items-stretch gap-0.5">
+                        <div className="grid grid-cols-8 gap-px flex-1 min-w-0">{rowRight.map((n) => <PhoneTooth key={n} fdi={n} />)}</div>
+                        <span className="w-px bg-slate-400 my-1 shrink-0" aria-hidden />
+                        <div className="grid grid-cols-8 gap-px flex-1 min-w-0">{rowLeft.map((n) => <PhoneTooth key={n} fdi={n} />)}</div>
+                      </div>
+                      <div className="mt-2 flex items-center gap-3 text-[10.5px] text-slate-600 flex-wrap">
+                        <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full bg-emerald-500" />Tanlangan</span>
+                        <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full border border-slate-300 bg-white" />Tabiiy tish</span>
+                        <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full bg-pink-400" />Jag' xizmati</span>
+                        {activeTooth && <span className="ml-auto text-[10.5px] font-semibold text-blue-600">#{idToFdi(activeTooth)} · {(toothData[activeTooth]?.services || []).length} ta xizmat</span>}
+                      </div>
+                    </section>
+
+                    <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3">
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <ClipboardList className="w-5 h-5 text-emerald-500" />
+                        <h3 className="text-[14px] font-bold text-slate-900">Xizmatlar katalogi</h3>
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="flex-1 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 h-10 min-w-0">
+                          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                          <input type="text" value={serviceSearch} onChange={e => setServiceSearch(e.target.value)} placeholder="Xizmat qidirish... (masalan: plomba, endo...)"
+                            className="flex-1 min-w-0 bg-transparent border-none text-[12.5px] text-slate-800 placeholder:text-slate-400 outline-none" />
+                          {serviceSearch && <button type="button" onClick={() => setServiceSearch('')} className="text-slate-400 p-0 bg-transparent border-none"><X className="w-3.5 h-3.5" /></button>}
+                        </div>
+                        <button type="button" onClick={() => { setSelectedCategory(''); setServiceSearch(''); }} aria-label="Filtrni tozalash" className="w-10 h-10 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-600 shrink-0">
+                          <SlidersHorizontal className="w-4 h-4" />
                         </button>
-                      ))}
-                    </div>
-                    <div
-                      className="grid grid-cols-8 gap-1 w-full min-w-0"
-                      onTouchStart={(event) => { event.currentTarget.dataset.x = String(event.changedTouches[0].clientX); }}
-                      onTouchEnd={(event) => {
-                        const start = Number(event.currentTarget.dataset.x || 0);
-                        const delta = event.changedTouches[0].clientX - start;
-                        if (Math.abs(delta) < 40) return;
-                        const index = WIZARD_QUADS.findIndex((quad) => quad.id === activeQuad.id);
-                        const next = delta < 0 ? Math.min(WIZARD_QUADS.length - 1, index + 1) : Math.max(0, index - 1);
-                        setWizardQuad(WIZARD_QUADS[next].id);
-                      }}
-                    >
-                      {activeQuad.teeth.map((fdi) => {
-                        const internalId = fdiToInternal(String(fdi));
-                        const isSelected = planForm.tooth_numbers.includes(internalId);
-                        const isActive = activeTooth === internalId;
-                        const jawMarked = jawsCoveringFdi(toothData, fdi).length > 0;
-                        const mark = isActive ? '#1499AD' : jawMarked ? '#db2777' : isSelected ? '#10b981' : null;
-                        return (
-                          <button
-                            key={fdi}
-                            type="button"
-                            data-fdi={fdi}
-                            aria-label={`${fdi}-tish`}
-                            title={`${fdi}-tish`}
-                            onClick={() => {
-                              const next = isActive
-                                ? planForm.tooth_numbers.filter((tooth) => tooth !== internalId)
-                                : (planForm.tooth_numbers.includes(internalId) ? planForm.tooth_numbers : [...planForm.tooth_numbers, internalId]);
-                              handleTeethChange(next);
-                              setActiveTooth(next.includes(internalId) ? internalId : null);
-                            }}
-                            className={cn(
-                              "wizard-tooth-hit relative flex w-full min-w-0 items-end justify-center overflow-hidden rounded-lg border p-0.5 cursor-pointer touch-manipulation bg-white",
-                              isActive ? "border-[#1499AD]" :
-                              jawMarked ? "border-pink-400" :
-                              isSelected ? "border-emerald-500" :
-                              "border-slate-200"
-                            )}
-                          >
-                            <img
-                              src={getToothIllustrationSrc(fdi, 'healthy')}
-                              alt=""
-                              draggable={false}
-                              className="h-full w-full object-contain pointer-events-none"
-                            />
-                            {mark && (
-                              <span aria-hidden="true" className="absolute bottom-0.5 left-0.5 right-0.5 h-[3px] rounded-full" style={{ background: mark }} />
-                            )}
+                      </div>
+                      <div className="flex gap-1.5 overflow-x-auto no-scrollbar mt-2.5 -mx-1 px-1">
+                        {['', ...availableCategories].map(cat => {
+                          const on = (selectedCategory || '').toLowerCase() === cat;
+                          return (
+                            <button key={cat || 'all'} type="button" onClick={() => setSelectedCategory(cat)}
+                              className={cn('h-8 px-3.5 rounded-lg text-[12px] font-semibold whitespace-nowrap border shrink-0', on ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-600')}>
+                              {cat ? getCategoryName(cat) : 'Barchasi'}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {jawPrompt && (
+                        <div className="mt-2">
+                          <JawChoice title={jawPrompt.title} preset={jawPrompt.preset} family={jawPrompt.family} services={services} onChoose={confirmJawChoice} onClose={() => setJawPrompt(null)} />
+                        </div>
+                      )}
+                      <div className="mt-2.5 space-y-1.5" data-testid="wizard-service-list">
+                        {filtered.length === 0 ? (
+                          <p className="text-center py-8 text-slate-400 text-xs">Xizmatlar topilmadi</p>
+                        ) : filtered.map(svc => {
+                          const isAdded = activeTooth !== null && (toothData[activeTooth]?.services || []).some(s => s.service_id === svc.id);
+                          return (
+                            <div key={svc.id} onClick={activeTooth ? () => toggleToothService(svc) : () => toast.error("Avval tish xaritasidan tishni tanlang!")}
+                              className={cn('flex items-center gap-2.5 rounded-xl border px-2 py-1.5 cursor-pointer active:scale-[0.99]', isAdded ? 'border-emerald-300 bg-emerald-50/50' : 'border-slate-100 bg-white')}>
+                              <span className="w-11 h-11 rounded-lg bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden">
+                                <img src={getToothIllustrationSrc(thumbFdi, thumbKind(svc.name))} alt="" className="h-10 object-contain" />
+                              </span>
+                              <span className="flex-1 min-w-0">
+                                <span className="block text-[12.5px] font-bold text-slate-900 leading-tight line-clamp-2">{svc.name}</span>
+                                <span className="block text-[11px] text-slate-500">{getCategoryName(svc.category || autoCategorize(svc.name))}</span>
+                              </span>
+                              <span className="text-[12.5px] font-bold text-slate-900 whitespace-nowrap tabular-nums">{formatCurrency(svc.price || 0)}</span>
+                              <span className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0', isAdded ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-600')}>
+                                {isAdded ? <Check className="w-4 h-4 stroke-[3px]" /> : <Plus className="w-4 h-4" />}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+
+                    {allSelectedServices.length > 0 && (
+                      <section className="bg-emerald-50/60 rounded-[18px] border border-emerald-100 p-3" data-testid="wizard-selected-services">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="w-6 h-6 rounded-md bg-emerald-500 text-white text-[12px] flex items-center justify-center">🦷</span>
+                          <h3 className="flex-1 text-[13.5px] font-bold text-slate-900">Tanlangan xizmatlar ({allSelectedServices.length})</h3>
+                          <button type="button" onClick={() => { handleTeethChange([]); setActiveTooth(null); }} className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-[11.5px] font-semibold text-slate-700 inline-flex items-center gap-1">
+                            <Trash2 className="w-3.5 h-3.5" />Barchasini tozalash
                           </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Active Tooth Info Status Bar */}
-                  <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex justify-between items-center shrink-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs">🦷</span>
-                      <span className="text-[11px] font-black uppercase tracking-tight text-slate-700">
-                        {activeTooth ? t('patients.wizard.toothSelected', { number: idToFdi(activeTooth) }) : t('patients.wizard.noToothSelected')}
-                      </span>
-                    </div>
-                    {activeTooth && (
-                      <span className="text-[9px] bg-blue-50 text-blue-600 font-black px-2 py-0.5 rounded-full border border-blue-100">
-                        {t('patients.wizard.servicesCount', { count: (toothData[activeTooth]?.services || []).length })}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Collapsible active treatments summary list */}
-                  {allSelectedServices.length > 0 && (
-                    <div className="px-4 py-2 bg-slate-50/80 border-b border-slate-100 shrink-0">
-                      <details className="group">
-                        <summary className="list-none flex items-center justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest cursor-pointer select-none">
-                          <span className="flex items-center gap-1.5">
-                            {t('patients.wizard.selectedServices', { count: allSelectedServices.length })}
-                          </span>
-                          <svg 
-                            className="w-3 h-3 text-slate-400 transition-transform group-open:rotate-180" 
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                          >
-                            <polyline points="6 9 12 15 18 9" />
-                          </svg>
-                        </summary>
-                        <div className="mt-2 space-y-1 max-h-[140px] overflow-y-auto pr-1 no-scrollbar pb-1">
-                          {allSelectedServices.map((s, idx) => (
-                            <div key={idx} className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-100 shadow-sm text-left gap-2">
-                              <div className="min-w-0 flex-1">
-                                <span className="text-[9px] font-black text-blue-500 uppercase mr-1.5">{toothSlotLabel(s.toothId) || `Tish #${idToFdi(s.toothId)}`}</span>
-                                <span className="text-[10px] font-bold text-slate-700 uppercase tracking-tight truncate block sm:inline">{s.service_name}</span>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-[10px] font-black text-emerald-600">{formatCurrency(s.price || 0)}</span>
-                                <button 
-                                  type="button"
-                                  onClick={() => toggleToothService({ id: s.service_id, name: s.service_name, price: s.price }, s.toothId)}
-                                  className="w-6 h-6 rounded-lg bg-red-50 text-red-500 flex items-center justify-center border-none cursor-pointer active:bg-red-100 transition-all shrink-0 p-0"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          {allSelectedServices.map((s) => (
+                            <div key={s.key} className="flex items-center gap-2 bg-white rounded-lg border border-slate-100 px-2 py-1.5">
+                              <span className="text-slate-300 text-[12px]">⋮⋮</span>
+                              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md shrink-0">{toothSlotLabel(s.toothId) || `#${idToFdi(s.toothId)}`}</span>
+                              <span className="flex-1 min-w-0 text-[12px] font-semibold text-slate-800 truncate">{s.service_name}</span>
+                              <span className="text-[12px] font-bold text-slate-900 whitespace-nowrap tabular-nums">{formatCurrency(s.price || 0)}</span>
+                              <button type="button" onClick={() => toggleToothService({ id: s.service_id, name: s.service_name, price: s.price }, s.toothId)} aria-label="O'chirish"
+                                className="w-7 h-7 rounded-md bg-rose-50 text-rose-500 flex items-center justify-center shrink-0 border-none"><Trash2 className="w-3.5 h-3.5" /></button>
                             </div>
                           ))}
                         </div>
-                      </details>
-                    </div>
-                  )}
-
-                  {/* Search Input */}
-                  <div className="px-4 py-2 bg-white border-b border-slate-100 shrink-0">
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/70 rounded-xl px-3 h-9">
-                      <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <input 
-                        type="text" 
-                        value={serviceSearch} 
-                        onChange={e => setServiceSearch(e.target.value)}
-                        placeholder="Xizmatlarni qidirish..."
-                        className="flex-1 bg-transparent border-none text-[11px] text-slate-800 placeholder:text-slate-400 outline-none font-semibold" 
-                      />
-                      {serviceSearch && (
-                        <button 
-                          type="button" 
-                          onClick={() => setServiceSearch('')} 
-                          className="text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer p-0 shrink-0"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Categories scroll chips */}
-                  <div className="flex flex-wrap gap-1.5 py-2 px-4 bg-white border-b border-slate-100 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCategory("")}
-                      className={cn(
-                        "px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all border shrink-0 cursor-pointer",
-                        selectedCategory === "" 
-                          ? "bg-slate-900 border-slate-900 text-white shadow-sm"
-                          : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
-                      )}
-                    >
-                      Barchasi
-                    </button>
-                    {availableCategories.map(cat => {
-                      const displayName = getCategoryName(cat);
-                      const isSelected = selectedCategory.toLowerCase() === cat.toLowerCase();
-                      return (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => setSelectedCategory(cat)}
-                          className={cn(
-                            "px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all border shrink-0 cursor-pointer",
-                            isSelected 
-                              ? "bg-slate-900 border-slate-900 text-white shadow-sm"
-                              : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
-                          )}
-                        >
-                          {displayName}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Middle: Service cards list */}
-                  <div className="flex-1 overflow-y-auto px-4 py-3 bg-[#f8fafc] space-y-2.5 min-h-0">
-                    {jawPrompt && (
-                      <JawChoice
-                        title={jawPrompt.title}
-                        preset={jawPrompt.preset} family={jawPrompt.family} services={services}
-                        onChoose={confirmJawChoice}
-                        onClose={() => setJawPrompt(null)}
-                      />
+                      </section>
                     )}
-                    {(() => {
-                      const filtered = (services || []).filter(s => {
-                        const q = serviceSearch.trim().toLowerCase();
-                        const qMatch = !q || (s.name || '').toLowerCase().includes(q);
-                        if (!qMatch) return false;
-                        if (!isServiceCompatibleWithTooth(s, activeTooth)) return false;
-                        
-                        if (!selectedCategory || selectedCategory === "" || selectedCategory === "all" || selectedCategory === "barchasi") {
-                          return true;
-                        }
-                        
-                        const cat = (s.category || autoCategorize(s.name)).toLowerCase().trim();
-                        const sel = selectedCategory.toLowerCase().trim();
-                        const selName = getCategoryName(selectedCategory).toLowerCase().trim();
-                        return cat === sel || cat === selName || (cat.includes(sel) && sel.length > 3) || (sel.includes(cat) && cat.length > 3);
-                      });
-                      
-                      if (filtered.length === 0) {
-                        return (
-                          <div className="text-center py-10 text-slate-400 text-xs italic uppercase tracking-wider">
-                            Xizmatlar topilmadi
-                          </div>
-                        );
-                      }
-                      
-                      return filtered.map(svc => {
-                        const isAdded = activeTooth !== null && (toothData[activeTooth]?.services || []).some(s => s.service_id === svc.id);
-                        return (
-                          <div
-                            key={svc.id}
-                            onClick={
-                              activeTooth 
-                                ? () => toggleToothService(svc)
-                                : () => toast.error("Avval tish xaritasidan tishni tanlang!")
-                            }
-                            className={cn(
-                              "p-3 px-3.5 bg-white rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 shadow-sm cursor-pointer select-none active:scale-[0.99]",
-                              isAdded 
-                                ? "border-emerald-500 bg-emerald-50/15 shadow-emerald-500/5" 
-                                : "border-slate-100 hover:border-slate-350 hover:bg-slate-50/30"
-                            )}
-                          >
-                            <div className="min-w-0 flex-1">
-                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">
-                                {getCategoryName(svc.category || autoCategorize(svc.name))}
-                              </span>
-                              <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight leading-snug">
-                                {svc.name}
-                              </h4>
-                            </div>
-                            
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-xs font-extrabold text-slate-900 whitespace-nowrap">
-                                {formatCurrency(svc.price || 0)}
-                              </span>
-                              {isAdded && (
-                                <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 animate-in zoom-in-50 duration-150">
-                                  <Check className="w-3 h-3 stroke-[3px]" />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      });
-                    })()}
+
+                    <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-2.5" data-testid="wizard-discount">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11.5px] font-bold text-slate-600 shrink-0 pr-0.5">% Chegirma:</span>
+                        <div className="grid grid-cols-5 gap-1 flex-1">
+                          {[0, 10, 20, 30].map(val => (
+                            <button key={val} type="button" onClick={() => { handleApplyDiscount(val); setShowCustomDiscount(false); setCustomDiscountAmount(''); }}
+                              className={cn('h-9 rounded-lg text-[12px] font-semibold', discountPercent === val && !showCustomDiscount ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600')}>
+                              {val === 0 ? "Yo'q" : `${val}%`}
+                            </button>
+                          ))}
+                          <button type="button" onClick={() => setShowCustomDiscount(!showCustomDiscount)}
+                            className={cn('h-9 rounded-lg text-[12px] font-semibold', showCustomDiscount || (discountPercent > 0 && ![10, 20, 30].includes(discountPercent)) ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600')}>Boshqa</button>
+                        </div>
+                      </div>
+                      {showCustomDiscount && (
+                        <div className="flex items-center gap-1.5 mt-2 justify-end">
+                          <input type="text" inputMode="numeric" value={customDiscountAmount} onChange={e => setCustomDiscountAmount(e.target.value.replace(/\D/g, ''))} placeholder="%"
+                            className="w-16 h-9 rounded-lg border border-slate-200 text-center text-sm font-bold outline-none focus:border-emerald-400" />
+                          <button type="button" onClick={() => { const v = parseInt(customDiscountAmount); if (v >= 0 && v <= 100) { handleApplyDiscount(v); setShowCustomDiscount(false); } }}
+                            className="h-9 px-3 rounded-lg bg-slate-900 text-white text-[12px] font-bold border-none">OK</button>
+                        </div>
+                      )}
+                    </section>
+
+                    <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3 flex items-center gap-2.5" data-testid="wizard-totals">
+                      <span className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0"><Receipt className="w-5 h-5 text-slate-600" /></span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">Reja summasi</p>
+                        <p className="text-[15px] font-extrabold text-slate-900 whitespace-nowrap tabular-nums" data-testid="wizard-total-base">{formatCurrency(grandTotal)}</p>
+                      </div>
+                      <div className="text-left shrink-0 border-l border-slate-100 pl-2.5">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">Chegirma</p>
+                        <p className="text-[12px] font-bold text-slate-700 whitespace-nowrap tabular-nums" data-testid="wizard-total-discount">{discountSum > 0 ? `-${formatCurrency(discountSum)}` : formatCurrency(0)}</p>
+                      </div>
+                      <div className="text-left shrink-0 border-l border-slate-100 pl-2.5">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">Jami</p>
+                        <p className="text-[13px] font-extrabold text-emerald-600 whitespace-nowrap tabular-nums" data-testid="wizard-total-due">{formatCurrency(discountedGrandTotal)}</p>
+                      </div>
+                    </section>
                   </div>
 
-
-                  {/* ── BOTTOM STICKY BAR ── */}
-                  <div
-                    className="shrink-0 bg-white border-t border-slate-100 px-4 pt-3 pb-4 space-y-3 shadow-[0_-8px_24px_rgba(0,0,0,0.08)]"
-                    style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
-                  >
-                    {/* Discount row */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider shrink-0">Chegirma:</span>
-                      <div className="flex gap-1.5 flex-wrap">
-                        {[0, 10, 20, 30].map(val => (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => { handleApplyDiscount(val); setShowCustomDiscount(false); setCustomDiscountAmount(''); }}
-                            className={cn(
-                              "px-3 py-1.5 rounded-xl text-[11px] font-black transition-all border cursor-pointer",
-                              discountPercent === val && !showCustomDiscount
-                                ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-200"
-                                : "bg-slate-100 border-slate-100 text-slate-500"
-                            )}
-                          >
-                            {val === 0 ? "Yo'q" : `${val}%`}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => setShowCustomDiscount(!showCustomDiscount)}
-                          className={cn(
-                            "px-3 py-1.5 rounded-xl text-[11px] font-black transition-all border cursor-pointer",
-                            showCustomDiscount
-                              ? "bg-emerald-500 border-emerald-500 text-white shadow-sm"
-                              : "bg-slate-100 border-slate-100 text-slate-500"
-                          )}
-                        >
-                          Boshqa
-                        </button>
-                        {showCustomDiscount && (
-                          <div className="flex items-center gap-1.5">
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              value={customDiscountAmount}
-                              onChange={e => setCustomDiscountAmount(e.target.value.replace(/\D/g, ''))}
-                              placeholder="%"
-                              className="w-14 h-8 rounded-xl border border-slate-200 text-center text-sm font-black outline-none focus:border-blue-400"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => { const v = parseInt(customDiscountAmount); if (v >= 0 && v <= 100) { handleApplyDiscount(v); setShowCustomDiscount(false); } }}
-                              className="h-8 px-3 rounded-xl bg-slate-900 text-white text-[11px] font-black border-none cursor-pointer"
-                            >
-                              OK
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Summary + Action */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <p className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider leading-none mb-0.5">
-                          {t('patients.wizard.planTreatmentsCount', { count: allSelectedServices.length })} · Jami
-                        </p>
-                        <div className="flex items-baseline gap-1.5">
-                          <span className="text-xl font-black text-slate-900 leading-none tabular-nums">
-                            {formatCurrency(discountedGrandTotal)}
-                          </span>
-                          {discountPercent > 0 && (
-                            <span className="text-[10px] text-slate-400 line-through font-medium tabular-nums">
-                              {formatMoneyAmount(grandTotal)}
-                            </span>
-                          )}
-                        </div>
-                        {discountPercent > 0 && (
-                          <span className="text-[10px] font-black text-emerald-600">
-                            {discountPercent}% chegirma — -{formatCurrency(discountSum)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setStep(1)}
-                          className="w-11 h-11 rounded-xl border border-slate-200 bg-white flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
-                        >
-                          <ArrowLeft className="w-4 h-4 text-slate-600" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleSavePlan}
-                          disabled={saving || allSelectedServices.length === 0}
-                          className={cn(
-                            "h-11 px-5 rounded-xl font-black text-xs tracking-wider border-none flex items-center justify-center gap-2 cursor-pointer transition-all",
-                            allSelectedServices.length > 0
-                              ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 active:scale-[0.98]"
-                              : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                          )}
-                        >
-                          {saving
-                            ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                            : t('patients.wizard.saveAndFinish')}
-                        </button>
-                      </div>
+                  <div className="shrink-0 bg-white border-t border-slate-100 px-3 pt-2.5 space-y-2" style={{ paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))' }}>
+                    {savingError && <div className="bg-rose-50 border border-rose-100 rounded-xl p-2 text-xs font-bold text-rose-600 break-all">{t('patients.wizard.saveError')}: {savingError}</div>}
+                    <div className="grid grid-cols-[0.8fr_1.25fr] gap-2.5">
+                      <button type="button" onClick={() => setStep(1)} className="h-12 rounded-xl bg-white border border-slate-200 text-slate-800 text-[13.5px] font-semibold inline-flex items-center justify-center gap-1.5">
+                        <ChevronLeft className="w-4 h-4" />Oldingi bosqich
+                      </button>
+                      <button type="button" onClick={handleSavePlan} disabled={saving || allSelectedServices.length === 0} data-testid="wizard-save-plan"
+                        className="h-12 rounded-xl text-white text-[13.5px] font-semibold inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-500 to-emerald-700 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400">
+                        {saving ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <>Saqlash va keyingi bosqich <ArrowRight className="w-4 h-4" /></>}
+                      </button>
                     </div>
                   </div>
                 </div>
+                  );
+                })()}
 
                 {/* Bottom Navigation buttons (Desktop / notebook) */}
 
@@ -2739,8 +2748,130 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
           </div>
         )}
 
+        {step === 4 && isPhone && (() => {
+          const link = getTelegramDeepLink(createdPatient?.id);
+          const pid = createdPatient?.id;
+          const tel = String(createdPatient?.phone || '').replace(/\D/g, '');
+          const initials = String(createdPatient?.full_name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+          const openPatient = () => { if (!pid) return; handleClose(); navigate(`/patients/${pid}`); };
+          const actions = [
+            ['Qo\u2018ng\u2018iroq', Phone, () => { if (tel) window.location.href = `tel:+${tel}`; }, !tel],
+            ['Telegram', Send, () => { if (link) window.open(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(t('patients.wizard.botPrompt'))}`, '_blank'); }, !link],
+            ['Tahrirlash', Pencil, openPatient, !pid],
+            ['Profil', User, openPatient, !pid],
+          ];
+          return (
+          <div className="flex flex-col h-full min-h-0 bg-[#f4f7f9]" data-new-patient-receipt="compact-v1" data-wizard-mobile="step3">
+            <div className="flex-1 min-h-0 overflow-y-auto px-2.5 py-2.5 space-y-2.5">
+              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-3 py-2.5 flex items-center gap-3">
+                <span className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0"><CheckCircle2 className="w-5 h-5" /></span>
+                <div className="min-w-0">
+                  <p className="text-[12px] font-extrabold text-emerald-800 uppercase">{t('common.success')}</p>
+                  <p className="text-[11.5px] text-emerald-700">Yangi bemor muvaffaqiyatli qo'shildi va davolash rejasi saqlandi.</p>
+                </div>
+              </div>
+
+              <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3">
+                <div className="flex items-start gap-3">
+                  <span className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[15px] font-bold flex items-center justify-center shrink-0">{initials || '—'}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[16px] font-bold text-slate-900 truncate" data-testid="wizard-done-name">{createdPatient?.full_name}</p>
+                    <p className="text-[12.5px] text-slate-500">{createdPatient?.phone || '—'}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {createdPatient?.card_number ? <span className="inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">#{createdPatient.card_number}</span> : null}
+                    <p className="text-[11px] text-slate-500 mt-1 inline-flex items-center gap-1"><Calendar className="w-3 h-3" />{receiptDateLabel}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 gap-1 mt-3 pt-2 border-t border-slate-100">
+                  {actions.map(([label, Icon, fn, dis]) => (
+                    <button key={label} type="button" onClick={fn} disabled={dis} className="flex flex-col items-center gap-1 py-1 disabled:opacity-40">
+                      <span className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center"><Icon className={cn('w-4.5 h-4.5', label === 'Telegram' ? 'text-blue-500' : label === 'Profil' || label === 'Tahrirlash' ? 'text-slate-600' : 'text-emerald-600')} /></span>
+                      <span className="text-[11px] text-slate-600">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <button type="button" onClick={() => setReceiptOpen(true)} data-testid="new-patient-receipt-open"
+                className="w-full bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3 flex items-center gap-3 text-left">
+                <span className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0"><FileText className="w-5 h-5" /></span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[13px] font-bold text-slate-900 uppercase">{t('patients.wizard.invoice')}</span>
+                  <span className="block text-[11.5px] text-slate-500">{receiptDateLabel} · № {receiptNo}</span>
+                </span>
+                <ChevronRight className="w-5 h-5 text-slate-400" />
+              </button>
+
+              <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] overflow-hidden">
+                <div className="flex items-center gap-2 px-3 pt-3 pb-2">
+                  <ClipboardList className="w-4 h-4 text-emerald-600" />
+                  <p className="flex-1 text-[12.5px] font-bold text-slate-700 uppercase">{t('patients.wizard.treatmentPlan')}</p>
+                  <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{receiptRows.length} ta xizmat</span>
+                </div>
+                <div className="px-3 divide-y divide-slate-100" data-testid="wizard-done-rows">
+                  {(createdPlan?.services?.length ? createdPlan.services : []).map((s, i) => (
+                    <div key={i} className="flex items-center gap-2 py-1.5">
+                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md shrink-0 min-w-[42px] text-center">{s.tooth_number ? `#${s.tooth_number}` : '—'}</span>
+                      <span className="flex-1 min-w-0 text-[12.5px] text-slate-800 truncate">{(s.service_name || '').replace(/^#general/i, '').trim()}</span>
+                      <span className="text-[12.5px] font-bold text-slate-900 whitespace-nowrap tabular-nums">{formatCurrency(Number(s.price) || 0)}</span>
+                    </div>
+                  ))}
+                  {!createdPlan?.services?.length && receiptRows.map((r) => (
+                    <div key={r.key} className="flex items-center gap-2 py-1.5">
+                      <span className="flex-1 min-w-0 text-[12.5px] text-slate-800 truncate">{r.name}</span>
+                      <span className="text-[12.5px] font-bold text-slate-900 tabular-nums">{formatCurrency(r.price)}</span>
+                    </div>
+                  ))}
+                </div>
+                {appliedDiscountAmount > 0 && (
+                  <div className="flex items-center justify-between px-3 py-1.5 text-[12px] border-t border-slate-100">
+                    <span className="text-rose-500 font-semibold">{t('patients.wizard.discount')}{discountPercent > 0 ? ` (${discountPercent}%)` : ''}</span>
+                    <span className="text-rose-500 font-bold tabular-nums">-{formatCurrency(appliedDiscountAmount)}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 bg-emerald-50 px-3 py-2.5 mt-1">
+                  <Receipt className="w-4 h-4 text-slate-600" />
+                  <span className="flex-1 text-[12.5px] font-semibold text-slate-800">Jami to'lov (qarz)</span>
+                  <span className="text-[17px] font-extrabold text-emerald-700 tabular-nums" data-testid="wizard-done-due">{formatCurrency(receiptDueTotal)}</span>
+                </div>
+              </section>
+
+              <section className="rounded-[18px] border border-blue-100 bg-blue-50/70 p-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white shrink-0"><MessageCircle className="w-4 h-4" /></span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-extrabold text-blue-900 uppercase">{t('patients.wizard.reminderSystem')}</p>
+                    <p className="text-[11px] text-blue-700 leading-snug">{t('patients.wizard.connectBot')}</p>
+                  </div>
+                  <button type="button" disabled={!link} onClick={() => { if (link) window.open(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(t('patients.wizard.botPrompt'))}`, '_blank'); }}
+                    className="h-10 px-3 rounded-xl bg-white border border-blue-200 text-blue-600 text-[12px] font-bold inline-flex items-center gap-1.5 shrink-0 disabled:opacity-40">
+                    <Send className="w-3.5 h-3.5" />{t('patients.wizard.sendToTelegram')}
+                  </button>
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="flex-1 min-w-0 truncate text-[11px] font-mono text-blue-600">{link || "Bot havolasi topilmadi (Telegram Bot sozlamasida token/username tekshiring)"}</span>
+                  <button type="button" disabled={!link} onClick={() => { if (!link) return; navigator.clipboard.writeText(link); toast.success(t('patients.wizard.linkCopied')); }} className="w-8 h-8 rounded-lg text-blue-500 bg-white flex items-center justify-center"><Copy className="w-4 h-4" /></button>
+                  <button type="button" disabled={!link} onClick={() => setShowQr(v => !v)} className="w-8 h-8 rounded-lg text-blue-500 bg-white flex items-center justify-center" aria-label="QR"><QrCode className="w-4 h-4" /></button>
+                </div>
+                {showQr && link && (
+                  <div className="flex justify-center pt-2"><div className="bg-white p-2 rounded-xl border border-blue-100"><QRCodeSVG id="flow-qr-svg" value={link} size={128} level="M" includeMargin={false} /></div></div>
+                )}
+              </section>
+            </div>
+            <div className="shrink-0 bg-white border-t border-slate-100 px-3 pt-2.5 grid grid-cols-[0.8fr_1.2fr] gap-2.5" style={{ paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))' }}>
+              <button type="button" onClick={() => setReceiptOpen(true)} className="h-12 rounded-xl bg-slate-100 text-slate-800 text-[13.5px] font-semibold inline-flex items-center justify-center gap-2">
+                <Printer className="w-4 h-4" />{t('patients.wizard.viewReceipt')}
+              </button>
+              <button type="button" onClick={handleClose} className="h-12 rounded-xl bg-slate-900 text-white text-[13.5px] font-semibold inline-flex items-center justify-center gap-2">
+                <Check className="w-4 h-4" />{t('common.finish')}
+              </button>
+            </div>
+          </div>
+          );
+        })()}
         {/* STEP 4: compact hisob-faktura. Full paper opens in NewPatientReceiptOverlay. */}
-        {step === 4 && (
+        {step === 4 && !isPhone && (
           <div className="flex-1 overflow-y-auto w-full p-3 sm:p-4 bg-slate-50/50" data-new-patient-receipt="compact-v1">
             <div className="max-w-lg mx-auto space-y-3">
               <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2.5 flex items-center gap-3">
@@ -2861,6 +2992,8 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       onClose={closeReceipt}
       onDownload={handleDownloadImage}
       t={t}
+      mobile={isPhone}
+      patientPhone={createdPatient?.phone || ''}
       clinicInfo={clinicInfo}
       patientName={createdPatient?.full_name}
       dateLabel={receiptDateLabel}
