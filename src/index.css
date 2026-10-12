@@ -1205,3 +1205,4 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
   .new-patient-dialog [data-wizard-mobile="step1"] input#new_patient_birth_date,
   .new-patient-dialog [data-wizard-mobile="step1"] .clinic-date-field input { height: 44px; border-radius: 12px; }
 }
+.new-patient-dialog [data-wizard-mobile="step2"] .wizard-phone-arch .wizard-tooth-hit { height: auto !important; min-height: 0 !important; aspect-ratio: auto !important; padding: 2px 0 !important; }
