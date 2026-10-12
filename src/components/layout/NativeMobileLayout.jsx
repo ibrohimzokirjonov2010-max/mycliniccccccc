@@ -201,7 +201,7 @@ export default function NativeMobileLayout({ children }) {
   }, [isDoctor, user, t, plan]);
 
   const tabs = useMemo(() => [
-    { path: '/chairside', icon: CalendarClock, label: t('navigation.chairsideToday') || 'Navbat', color: '#1499AD' },
+    { path: '/', icon: Home, label: 'Bosh sahifa', color: '#1499AD', match: ['/', '/admin/dashboard', '/doctor/dashboard'] },
     { path: '/patients', icon: Users, label: t('navigation.patients'), color: '#1499AD' },
     { path: '/appointments', icon: Calendar, label: t('appointments.calendar'), color: '#1499AD' },
     { path: '/payments', icon: Wallet, label: t('navigation.payments'), color: '#1499AD' },
@@ -345,7 +345,7 @@ export default function NativeMobileLayout({ children }) {
       >
         <div className="flex items-center justify-around h-[50px] px-2 relative">
           {tabs.map((tab) => {
-            const isActive = location.pathname === tab.path;
+            const isActive = tab.match ? tab.match.includes(location.pathname) : location.pathname === tab.path;
             const Icon = tab.icon;
             
             return (

@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import PatientSelect from '@/components/patients/PatientSelect';
 import { useTranslation } from '@/i18n/LanguageContext';
 import PullToRefresh from '@/components/ui/PullToRefresh';
+import MobilePayView from '@/components/payments/MobilePayView';
 import '@/components/payments/paymentAddModal.css';
 
 const PAYMENT_ADD_MARKER = 'payment-add-teal-v5-single-center';
@@ -282,6 +283,8 @@ export default function MobilePaymentsV2() {
   const [patientPayments, setPatientPayments] = useState([]);
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [selectedPlanServiceIds, setSelectedPlanServiceIds] = useState([]);
+  const [payMode, setPayMode] = useState('services');
+  const [paySelKeys, setPaySelKeys] = useState([]);
   const [patientServices, setPatientServices] = useState([]);
   const [selectedPlanForInvoice, setSelectedPlanForInvoice] = useState(null);
   const [showPlanInvoiceModal, setShowPlanInvoiceModal] = useState(false);
@@ -315,6 +318,8 @@ export default function MobilePaymentsV2() {
         notes: prefillNotes,
         receipt_url: ''
       });
+      setPayMode('services');
+      setPaySelKeys([]);
       setSelectedPlanId('');
       setSelectedPlanServiceIds([]);
       setPatientPlans([]);
@@ -533,7 +538,7 @@ export default function MobilePaymentsV2() {
             const net = incomes - refunds;
             openedDebt = net < 0 ? Math.abs(net) : 0;
           }
-          if (openedDebt > 0) {
+          if (false && openedDebt > 0) { // audit: never prefill the whole debt
             setFormData(prev => {
               if (String(prev.patient_id) !== String(formData.patient_id)) return prev;
               if (selectedPlanId) return prev;
@@ -629,6 +634,30 @@ export default function MobilePaymentsV2() {
       amount: String(Math.round(total)),
       category: serviceCategory,
       notes: `${t('payments.planSelect')} (${plan.name}): ${selectedNames}`
+    }));
+  };
+
+  const doctorsById = useMemo(() => Object.fromEntries((doctors || []).map(d => [d.id, d])), [doctors]);
+
+  // Services mode: amount = sum of selected open services. Explicit service marking
+  // (payment_status) only within one plan, as before; across plans the payment is
+  // distributed by allocateInvoicePayment.
+  const applyServiceSelection = (keys, rows) => {
+    setPaySelKeys(keys);
+    setFormError('');
+    const picked = rows.filter(r => keys.includes(r.key));
+    const total = picked.reduce((s, r) => s + r.amount, 0);
+    const planIds = [...new Set(picked.map(r => r.planId))];
+    const onePlan = planIds.length === 1 ? patientAllPlans.find(p => p.id === planIds[0]) : null;
+    setSelectedPlanId(onePlan ? onePlan.id : '');
+    setSelectedPlanServiceIds(onePlan ? picked.map(r => r.idx) : []);
+    const names = picked.map(r => r.name).join(', ');
+    setFormData(prev => ({
+      ...prev,
+      amount: total > 0 ? String(Math.round(total)) : '',
+      category: picked.length ? (onePlan?.tooth_number ? `${names} (#${onePlan.tooth_number})` : names) : 'Treatment',
+      notes: picked.length ? `${t('payments.planSelect')}${onePlan ? ` (${onePlan.name})` : ''}: ${names}` : '',
+      doctor_id: onePlan ? (resolveDoctorId(null, [onePlan], doctors, user, isDoctor) || prev.doctor_id || '') : prev.doctor_id,
     }));
   };
 
@@ -1046,508 +1075,139 @@ export default function MobilePaymentsV2() {
         {/* Bottom spacing */}
         <div className="h-8" />
 
-        {/* Add Payment Modal */}
-        <Dialog open={showAddModal} onOpenChange={(open) => {
-          setShowAddModal(open);
-          if (open) toast.dismiss('implant-incomplete-notification');
-        }}>
-          <DialogContent
-            className="payment-add-dialog !flex !flex-col !p-0 !gap-0 overflow-hidden border border-[#e5e7eb] shadow-2xl"
-            style={paymentAddDialogStyle}
-            data-payment-add={PAYMENT_ADD_MARKER}
-          >
-            {(() => {
-              const currentType = formData.type || 'Income';
-              const headerTone = currentType === 'Expense' ? 'is-expense' : currentType === 'Debt' ? 'is-debt' : '';
-              const HeaderIcon = currentType === 'Income' ? Wallet :
-                                 currentType === 'Expense' ? TrendingDown :
-                                 AlertTriangle;
-              const patient = patients.find(p => p.id === formData.patient_id);
-
-              return (
-                <>
-                  <DialogHeader className="shrink-0 space-y-0">
-                    <div className={`payment-add-header ${headerTone}`}>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
-                          <HeaderIcon className="w-5 h-5 stroke-[2.5]" />
-                        </div>
-                        <div className="payment-add-header-titles">
-                          <DialogTitle className="payment-add-header-title">
-                            {t('payments.addNew')}
-                          </DialogTitle>
-                          <DialogDescription className="sr-only">
-                            {patient ? patient.full_name : (t('payments.receiveAmount') || t('payments.type'))}
-                          </DialogDescription>
-                          <p className="payment-add-header-sub">
-                            {patient ? patient.full_name : (t('payments.receiveAmount') || t('payments.type'))}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddModal(false)}
-                        className="payment-add-close compact-hit"
-                        aria-label={t('common.close')}
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </DialogHeader>
-
-                  {formError ? (
-                    <div className="payment-add-banner" role="alert">
-                      <p>{formError}</p>
-                      <button
-                        type="button"
-                        className="payment-add-banner-dismiss compact-hit"
-                        onClick={() => setFormError('')}
-                        aria-label={t('common.close')}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ) : null}
-
-                  <div className="payment-add-body space-y-4 no-scrollbar">
-                    
-                    {(formData.type === 'Income' || formData.type === 'Debt') && (
-                      <div className="space-y-4 relative z-50">
-                        <div className="space-y-2 relative z-50">
-                          <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('payments.patient')}</Label>
-                          <PatientSelect 
-                            patients={patients}
-                            value={formData.patient_id}
-                            initialName={location.state?.prefillPatientName || ''}
-                            onChange={(id, pat) => {
-                              if (!id) {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  patient_id: '',
-                                  doctor_id: isDoctor ? user?.id : ''
-                                }));
-                                setSelectedPlanId('');
-                                return;
-                              }
-                              const p = pat || patients.find(x => x.id === id);
-                              const assignedDocId = resolveDoctorId(p, patientPlans, doctors, user, isDoctor);
-                              setFormData(prev => ({
-                                ...prev, 
-                                patient_id: id, 
-                                doctor_id: assignedDocId || prev.doctor_id || ''
-                              }));
-                              setSelectedPlanId('');
-                            }}
-                            inputClassName="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold text-xs"
-                          />
-                        </div>
-
-                        {formData.patient_id && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedPlanId('');
-                              setSelectedPlanServiceIds([]);
-                              if (selectedPatientDebt > 0) {
-                                setFormData(prev => ({ ...prev, amount: String(selectedPatientDebt), category: 'Treatment', notes: '' }));
-                              }
-                            }}
-                            className={cn(
-                            "w-full text-left rounded-2xl border px-4 py-3 flex items-center justify-between shadow-sm transition-colors relative z-40",
-                            selectedPatientDebt > 0 ? "border-amber-100 bg-amber-50/50" : "border-emerald-100 bg-emerald-50/50"
-                          )}>
-                            <div className="flex items-center gap-2">
-                              <div className={cn(
-                                "w-2 h-2 rounded-full",
-                                selectedPatientDebt > 0 ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
-                              )} />
-                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                Umumiy qarz
-                              </span>
-                            </div>
-                            <span className={cn(
-                              "text-sm font-black tracking-tight",
-                              selectedPatientDebt > 0 ? "text-amber-700" : "text-emerald-700"
-                            )}>
-                              {selectedPatientDebt > 0 ? `${selectedPatientDebt.toLocaleString('ru-RU')} so'm` : "Qarz yo'q"}
-                            </span>
-                          </button>
-                        )}
-                        
-                        {isIncomeBlockedForPatient && (
-                          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-100 text-[10px] font-black text-emerald-800 uppercase tracking-wide text-center relative z-40">
-                            Bemorda faol qarz yo'q. To'lov qabul qilib bo'lmaydi.
-                          </div>
-                        )}
-
-                        {/* Davolash rejalari */}
-                        {patientPlans.length > 0 && (
-                          <div className="space-y-2 relative z-30">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-[#0d9488] ml-1 flex items-center gap-1.5">
-                              <FileText className="w-3.5 h-3.5" /> {t('patientProfile.treatmentPlanSingular') || 'Davolash rejasi'}
-                            </Label>
-                            <div className="flex flex-col gap-2.5">
-                              {patientPlans.map(plan => {
-                                const paid = Number(plan.paid_amount) || 0;
-                                const total = Number(plan.total_price) || 0;
-                                const remaining = Math.max(0, total - paid);
-                                const isSelected = selectedPlanId === plan.id;
-                                
-                                return (
-                                  <div 
-                                    key={plan.id} 
-                                    onClick={() => handlePlanSelect(isSelected ? '' : plan.id)}
-                                    className={cn(
-                                      "flex items-center justify-between rounded-2xl border p-3.5 shadow-sm cursor-pointer transition-all active:scale-[0.98]",
-                                      isSelected 
-                                        ? "border-[#0d9488] bg-teal-50/40 ring-1 ring-[#0d9488]/20" 
-                                        : "border-slate-100 bg-white hover:border-slate-200"
-                                    )}
-                                  >
-                                    <div className="min-w-0 flex-1 mr-2">
-                                      <div className="flex items-center gap-1.5">
-                                        {isSelected && <Check className="w-3.5 h-3.5 text-[#0d9488] stroke-[3]" />}
-                                        <p className="text-[12px] font-black text-slate-800 truncate">{plan.name || (t ? t('patientProfile.treatmentPlanSingular') : 'Davolash rejasi')}</p>
-                                      </div>
-                                      <p className="text-[10px] text-slate-500 font-bold mt-0.5">
-                                        Muolaja narhi to'liq:&nbsp;
-                                        <span className="text-slate-700 font-extrabold">{total.toLocaleString()} {t('common.currency') || "so'm"}</span>
-                                      </p>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); setSelectedPlanForInvoice(plan); setShowPlanInvoiceModal(true); }}
-                                      className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-teal-50 border border-teal-100 text-[#0d9488] text-[9px] font-black uppercase hover:bg-teal-100 active:scale-95 transition-all"
-                                    >
-                                      Faktura
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Responsible Doctor */}
-                        <div className="space-y-2 relative z-20">
-                          <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('payments.doctor')}</Label>
-                          <Select 
-                            disabled={isDoctor}
-                            value={isDoctor ? String(user?.id) : (formData.doctor_id ? String(formData.doctor_id) : '')} 
-                            onValueChange={(v) => setFormData(prev => ({ ...prev, doctor_id: v }))}
-                          >
-                            <SelectTrigger className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold">
-                              <SelectValue placeholder={t('payments.doctor')} />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-2xl border-slate-100 z-[110]">
-                              {isDoctor ? (
-                                <SelectItem value={String(user?.id)} className="rounded-xl font-bold">{user?.name}</SelectItem>
-                              ) : (
-                                <>
-                                  {doctors.map(d => (
-                                    <SelectItem key={d.id} value={String(d.id)} className="rounded-xl font-bold">{d.name || d.full_name}</SelectItem>
-                                  ))}
-                                  {formData.doctor_id && !doctors.some(d => String(d.id) === String(formData.doctor_id)) && (
-                                    <SelectItem value={String(formData.doctor_id)} className="rounded-xl font-bold">
-                                      {doctors.find(d => (d.name || d.full_name) === formData.doctor_id)?.name || formData.doctor_id}
-                                    </SelectItem>
-                                  )}
-                                </>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Fintech Summa Input */}
-                    <div className="space-y-2">
-                      <Label className="payment-add-label">{t('payments.amount')}</Label>
-                      <div className="relative flex items-center justify-center bg-slate-50 rounded-2xl border border-slate-100 px-6 py-3">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          value={formData.amount === '' || Number(formData.amount) === 0 ? '' : Number(formData.amount).toLocaleString('uz-UZ')}
-                          onChange={e => {
-                            const raw = e.target.value.replace(/\s/g, '').replace(/,/g, '').replace(/\./g, '').replace(/'/g, '');
-                            setFormError('');
-                            if (raw === '') setFormData({ ...formData, amount: '' });
-                            else if (/^\d+$/.test(raw)) setFormData({ ...formData, amount: raw });
-                          }}
-                          onKeyDown={e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                          onWheel={e => e.target.blur()}
-                          placeholder="0"
-                          className="w-full text-center bg-transparent text-3xl font-[1000] text-slate-900 outline-none placeholder-slate-300"
-                        />
-                        <span className="absolute right-6 text-xs font-bold text-slate-400 uppercase tracking-widest pointer-events-none">{t('common.currency') || 'so\'m'}</span>
-                      </div>
-                      
-                      <div className="payment-add-chips" data-payment-quick-chips="true">
-                        {PAYMENT_QUICK_AMOUNTS.map(val => (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => {
-                              setFormError('');
-                              setFormData(prev => ({ ...prev, amount: String((Number(prev.amount) || 0) + val) }));
-                            }}
-                            className="payment-add-chip compact-hit"
-                          >
-                            +{val.toLocaleString()}
-                          </button>
-                        ))}
-                        {selectedPatientDebt > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setFormError('');
-                              setFormData({ ...formData, amount: String(selectedPatientDebt) });
-                            }}
-                            className="payment-add-chip is-debt compact-hit"
-                          >
-                            {t('payments.fillDebt')} ({selectedPatientDebt.toLocaleString()})
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFormError('');
-                            setFormData({ ...formData, amount: '' });
-                          }}
-                          className="payment-add-chip is-clear compact-hit"
-                        >
-                          {t('common.clear')}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Category Select (Dynamic based on type) */}
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('payments.category')}</Label>
-                      <Select 
-                        value={formData.category} 
-                        onValueChange={(v) => setFormData({...formData, category: v})}
-                        disabled={!!selectedPlanId && (formData.type === 'Income' || formData.type === 'Debt')}
-                      >
-                        <SelectTrigger className={cn(
-                          "h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold",
-                          selectedPlanId && (formData.type === 'Income' || formData.type === 'Debt') && "bg-slate-100 border-transparent opacity-70"
-                        )}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl border-slate-100 z-[110]">
-                          {formData.type === 'Income' || formData.type === 'Debt' ? (
-                            <>
-                              <SelectItem value="Treatment" className="rounded-xl font-bold">{t('appointments.service')}</SelectItem>
-                              <SelectItem value="Consultation" className="rounded-xl font-bold">{t('navigation.recalls') || 'Konsultatsiya'}</SelectItem>
-                              <SelectItem value="Other" className="rounded-xl font-bold">{t('expenses.categories.other')}</SelectItem>
-                            </>
-                          ) : (
-                            <>
-                              <SelectItem value="Rent" className="rounded-xl font-bold">{t('expenses.categories.rent')}</SelectItem>
-                              <SelectItem value="Salary" className="rounded-xl font-bold">{t('expenses.categories.salary')}</SelectItem>
-                              <SelectItem value="Materials" className="rounded-xl font-bold">{t('expenses.categories.materials')}</SelectItem>
-                              <SelectItem value="Equipment" className="rounded-xl font-bold">{t('expenses.categories.equipment')}</SelectItem>
-                              <SelectItem value="Utilities" className="rounded-xl font-bold">{t('expenses.categories.utilities')}</SelectItem>
-                              <SelectItem value="Transport" className="rounded-xl font-bold">{t('expenses.categories.transport')}</SelectItem>
-                              <SelectItem value="Other" className="rounded-xl font-bold">{t('expenses.categories.other')}</SelectItem>
-                            </>
+        {/* Add Payment — mobile "To'lov qilish" screen */}
+        <MobilePayView
+          open={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          patient={selectedPatient}
+          patientPicker={(
+            <div className="space-y-2 relative z-50">
+              <Label className="text-[12px] font-semibold text-slate-500">{t('payments.patient')}</Label>
+              <PatientSelect
+                patients={patients}
+                value={formData.patient_id}
+                initialName={location.state?.prefillPatientName || ''}
+                onChange={(id, pat) => {
+                  if (!id) {
+                    setFormData(prev => ({ ...prev, patient_id: '', doctor_id: isDoctor ? user?.id : '' }));
+                    setSelectedPlanId(''); setSelectedPlanServiceIds([]); setPaySelKeys([]);
+                    return;
+                  }
+                  const p = pat || patients.find(x => x.id === id);
+                  if (p && !patients.some(x => x.id === p.id)) setPatients(prev => [p, ...prev]);
+                  const assignedDocId = resolveDoctorId(p, patientPlans, doctors, user, isDoctor);
+                  setFormData(prev => ({ ...prev, patient_id: id, doctor_id: assignedDocId || prev.doctor_id || '' }));
+                  setSelectedPlanId(''); setSelectedPlanServiceIds([]); setPaySelKeys([]);
+                }}
+                inputClassName="h-12 rounded-2xl border-slate-200 bg-slate-50 font-semibold text-sm"
+              />
+            </div>
+          )}
+          plansCount={patientAllPlans.length}
+          onOpenProfile={() => { setShowAddModal(false); navigate(`/patients/${formData.patient_id}`); }}
+          onOpenPlans={() => { setShowAddModal(false); navigate(`/patients/${formData.patient_id}?tab=plan`); }}
+          onOpenCard={() => { setShowAddModal(false); navigate(`/patients/${formData.patient_id}`); }}
+          onOpenHistory={() => { setShowAddModal(false); navigate(`/patients/${formData.patient_id}?tab=tarix`); }}
+          mode={payMode}
+          onModeChange={(m) => {
+            setPayMode(m); setPaySelKeys([]); setSelectedPlanServiceIds([]); setSelectedPlanId('');
+            setFormError('');
+            setFormData(prev => ({ ...prev, amount: '', category: 'Treatment', notes: '' }));
+          }}
+          plans={patientAllPlans}
+          doctorsById={doctorsById}
+          selectedKeys={paySelKeys}
+          onToggleService={(row, rows) => applyServiceSelection(
+            paySelKeys.includes(row.key) ? paySelKeys.filter(k => k !== row.key) : [...paySelKeys, row.key], rows)}
+          onToggleAll={(rows) => applyServiceSelection(paySelKeys.length === rows.length ? [] : rows.map(r => r.key), rows)}
+          selectedPlanId={selectedPlanId}
+          onSelectPlan={(planId) => {
+            setSelectedPlanId(planId);
+            setSelectedPlanServiceIds([]);
+            const plan = patientAllPlans.find(p => p.id === planId);
+            setFormData(prev => ({
+              ...prev,
+              category: plan ? (plan.tooth_number ? `${plan.name} (#${plan.tooth_number})` : plan.name) : 'Treatment',
+              notes: plan ? t('payments.planSelect') + `: ${plan.name}` : '',
+              doctor_id: plan ? (resolveDoctorId(null, [plan], doctors, user, isDoctor) || prev.doctor_id || '') : prev.doctor_id,
+            }));
+          }}
+          onOpenPlanDetail={() => {
+            const plan = patientAllPlans.find(p => p.id === selectedPlanId) || patientPlans[0] || patientAllPlans[0];
+            if (plan) { setSelectedPlanForInvoice(plan); setShowPlanInvoiceModal(true); }
+          }}
+          amount={formData.amount}
+          onAmountChange={(v) => { setFormError(''); setFormData(prev => ({ ...prev, amount: v })); }}
+          debt={selectedPatientDebt}
+          method={formData.method}
+          onMethodChange={(m) => setFormData(prev => ({ ...prev, method: m }))}
+          receiptUrl={formData.receipt_url}
+          receiptUploading={uploadingReceipt}
+          onReceiptClear={() => setFormData(prev => ({ ...prev, receipt_url: '' }))}
+          onReceiptPick={async (file) => {
+            const validation = validateImage(file, { maxSizeMB: 10 });
+            if (!validation.valid) { toast.error(validation.error); return; }
+            try {
+              setUploadingReceipt(true);
+              const compressed = await compressImage(file, { maxWidth: 1200, maxHeight: 1600, quality: 0.8 });
+              setFormData(prev => ({ ...prev, receipt_url: compressed }));
+              toast.success("Chek rasmi yuklandi!");
+            } catch (err) {
+              console.error('Receipt upload error:', err);
+              toast.error('Chek yuklashda xatolik yuz berdi');
+            } finally { setUploadingReceipt(false); }
+          }}
+          error={formError || (isIncomeBlockedForPatient ? "Bemorda faol qarz yo'q. To'lov qabul qilib bo'lmaydi." : '')}
+          onDismissError={formError ? () => setFormError('') : undefined}
+          extra={(
+            <details className="mt-3 rounded-[20px] bg-white border border-slate-200 shadow-sm group" data-testid="mobile-pay-extra">
+              <summary className="list-none cursor-pointer px-4 h-12 flex items-center justify-between text-[14px] font-semibold text-slate-700">
+                Qo'shimcha: shifokor, sana, izoh
+                <span className="text-slate-400 group-open:rotate-180 transition-transform">⌄</span>
+              </summary>
+              <div className="px-4 pb-4 space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-[12px] font-semibold text-slate-500">{t('payments.doctor')}</Label>
+                  <Select
+                    disabled={isDoctor}
+                    value={isDoctor ? String(user?.id) : (formData.doctor_id ? String(formData.doctor_id) : '')}
+                    onValueChange={(v) => setFormData(prev => ({ ...prev, doctor_id: v }))}
+                  >
+                    <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-slate-50 font-semibold"><SelectValue placeholder={t('payments.doctor')} /></SelectTrigger>
+                    <SelectContent className="rounded-2xl border-slate-100 z-[200]">
+                      {isDoctor ? (
+                        <SelectItem value={String(user?.id)}>{user?.name}</SelectItem>
+                      ) : (
+                        <>
+                          {doctors.map(d => <SelectItem key={d.id} value={String(d.id)}>{d.name || d.full_name}</SelectItem>)}
+                          {formData.doctor_id && !doctors.some(d => String(d.id) === String(formData.doctor_id)) && (
+                            <SelectItem value={String(formData.doctor_id)}>{formData.doctor_id}</SelectItem>
                           )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* To'lov usuli (Cards UI) */}
-                    <div className="space-y-2">
-                      <Label className="payment-add-label">{t('payments.method')}</Label>
-                      <div className="payment-add-methods">
-                        {[
-                          { value: 'Cash', label: t('payments.methods.Cash') || 'Naqd', icon: Wallet },
-                          { value: 'Card', label: t('payments.methods.Card') || 'Plastik', icon: CreditCard },
-                          { value: 'Click', label: 'Click', icon: ArrowUpRight },
-                          { value: 'Payme', label: 'Payme', icon: ArrowDownRight }
-                        ].map(m => {
-                          const isActive = formData.method === m.value;
-                          const Icon = m.icon;
-                          return (
-                            <button
-                              key={m.value}
-                              type="button"
-                              onClick={() => setFormData({ ...formData, method: m.value })}
-                              className={cn('payment-add-method compact-hit', isActive && 'is-active')}
-                            >
-                              <Icon className="w-5 h-5" />
-                              <span className="text-[13px] font-bold tracking-tight">{m.label}</span>
-                              {isActive && (
-                                <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-white text-[#0d9488] flex items-center justify-center">
-                                  <Check className="w-2 h-2 stroke-[4]" />
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Date picker */}
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('payments.date')}</Label>
-                      <ClinicDateTimeField
-                        value={formData.date}
-                        onChange={(e) => setFormData({...formData, date: e.target.value})}
-                        className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-bold"
-                      />
-                    </div>
-
-                    {/* Agar Karta, Click yoki Payme tanlansa — Chek yuklash joyi chiqadi */}
-                    {['Card', 'Click', 'Payme'].includes(formData.method) ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1 flex items-center gap-1.5">
-                            <Receipt className="w-3.5 h-3.5 text-emerald-600" />
-                            Chek / Kvitansiya rasmi (ixtiyoriy)
-                          </Label>
-                          {formData.receipt_url && (
-                            <button
-                              type="button"
-                              onClick={() => setFormData({ ...formData, receipt_url: '' })}
-                              className="text-[10px] font-bold text-rose-500 hover:underline flex items-center gap-0.5 cursor-pointer"
-                            >
-                              <Trash2 className="w-3 h-3" /> O'chirish
-                            </button>
-                          )}
-                        </div>
-
-                        <input
-                          type="file"
-                          ref={receiptFileInputRef}
-                          accept="image/*"
-                          className="hidden"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            const validation = validateImage(file, { maxSizeMB: 10 });
-                            if (!validation.valid) {
-                              toast.error(validation.error);
-                              return;
-                            }
-                            try {
-                              setUploadingReceipt(true);
-                              const compressed = await compressImage(file, { maxWidth: 1200, maxHeight: 1600, quality: 0.8 });
-                              setFormData(prev => ({ ...prev, receipt_url: compressed }));
-                              toast.success("Chek rasmi yuklandi!");
-                            } catch (err) {
-                              console.error('Receipt upload error:', err);
-                              toast.error('Chek yuklashda xatolik yuz berdi');
-                            } finally {
-                              setUploadingReceipt(false);
-                              if (receiptFileInputRef.current) receiptFileInputRef.current.value = '';
-                            }
-                          }}
-                        />
-
-                        {formData.receipt_url ? (
-                          <div className="relative rounded-2xl border border-emerald-200 bg-emerald-50/50 p-2.5 flex items-center gap-3">
-                            <div 
-                              onClick={() => setPreviewReceiptUrl(formData.receipt_url)}
-                              className="w-14 h-14 rounded-xl overflow-hidden bg-slate-200 cursor-pointer shrink-0 border border-emerald-300 relative group"
-                            >
-                              <img src={formData.receipt_url} alt="Chek" className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                <Eye className="w-4 h-4 text-white" />
-                              </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-emerald-900 truncate">Chek rasmi biriktirildi ✓</p>
-                              <p className="text-[10px] text-emerald-600 font-medium mt-0.5">Ustiga bosib ko'rishingiz mumkin</p>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => receiptFileInputRef.current?.click()}
-                              className="h-8 rounded-xl text-[10px] font-bold border-emerald-200 text-emerald-700 bg-white"
-                            >
-                              Almashtirish
-                            </Button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => receiptFileInputRef.current?.click()}
-                            disabled={uploadingReceipt}
-                            className="w-full py-4 px-4 rounded-2xl border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/30 transition-all flex flex-col items-center justify-center gap-1.5 text-slate-500 group cursor-pointer"
-                          >
-                            <div className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-slate-400 group-hover:text-emerald-600 transition-colors">
-                              {uploadingReceipt ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
-                            </div>
-                            <span className="text-xs font-bold text-slate-700 group-hover:text-emerald-700">
-                              {uploadingReceipt ? "Yuklanmoqda..." : "Chek yoki skrinshot yuklash"}
-                            </span>
-                            <span className="text-[10px] font-medium text-slate-400">
-                              Galereyadan tanlash yoki rasmga olish (ixtiyoriy)
-                            </span>
-                          </button>
-                        )}
-
-                        {/* Qo'shimcha ixtiyoriy izoh */}
-                        <div className="pt-1">
-                          <Input
-                            placeholder="Qo'shimcha izoh (ixtiyoriy)..."
-                            value={formData.notes}
-                            onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                            className="h-11 rounded-2xl border-slate-100 bg-slate-50 font-medium text-xs px-3.5"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      /* Notes (Naqd uchun) */
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('payments.notes')}</Label>
-                        <Input
-                          placeholder={t('payments.notes') + "..."}
-                          value={formData.notes}
-                          onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                          className="h-12 rounded-2xl border-slate-100 bg-slate-50 font-medium text-xs px-4"
-                        />
-                      </div>
-                    )}
-
-                  </div>
-
-                  <div className="payment-add-footer">
-                    <button
-                      type="button"
-                      onClick={() => setShowAddModal(false)}
-                      className="payment-add-footer-cancel"
-                    >
-                      {t('common.cancel')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAddPayment}
-                      disabled={
-                        saving ||
-                        isIncomeBlockedForPatient ||
-                        parseAmountInput(formData.amount) <= 0 ||
-                        ((formData.type === 'Income' || formData.type === 'Debt') && !formData.patient_id) ||
-                        (formData.type === 'Income' && parseAmountInput(formData.amount) > selectedPatientDebt)
-                      }
-                      className="payment-add-footer-cta"
-                      data-payment-cta-guard="amount-gt-zero"
-                    >
-                      {saving
-                        ? t('common.loading')
-                        : formData.type === 'Income'
-                          ? t('payments.submitPay')
-                          : t('common.save')}
-                    </button>
-                  </div>
-                </>
-              );
-            })()}
-          </DialogContent>
-        </Dialog>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[12px] font-semibold text-slate-500">{t('payments.date')}</Label>
+                  <ClinicDateTimeField value={formData.date} onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))} className="h-12 rounded-2xl border-slate-200 bg-slate-50 font-semibold" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[12px] font-semibold text-slate-500">{t('payments.notes')}</Label>
+                  <Input placeholder={t('payments.notes') + '...'} value={formData.notes} onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))} className="h-12 rounded-2xl border-slate-200 bg-slate-50 text-sm" />
+                </div>
+              </div>
+            </details>
+          )}
+          saving={saving}
+          onSubmit={handleAddPayment}
+          disabled={
+            isIncomeBlockedForPatient ||
+            parseAmountInput(formData.amount) <= 0 ||
+            !formData.patient_id ||
+            parseAmountInput(formData.amount) > selectedPatientDebt
+          }
+        />
 
         {/* Standalone TreatmentPlanInvoice Modal */}
         {selectedPlanForInvoice && (

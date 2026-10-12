@@ -1,374 +1,254 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Users, Calendar, TrendingUp, ArrowRight,
-  UserPlus, CalendarPlus, Phone, Clock, ChevronRight, DollarSign, Activity, Heart
+import {
+  Heart, Clock, ChevronRight, Play, CreditCard, Calendar, DollarSign, Users,
+  UserPlus, CalendarPlus, ArrowRight, Activity, Stethoscope, CalendarDays,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import { formatCurrency, getTreatmentTypeLabel } from '@/lib/utils';
-import { formatClinicDate, paymentStamp } from '@/lib/clinicTime';
+import { formatClinicDate, formatClinicDateWithWeekday, paymentStamp, tashkentToday, displayDoctorName } from '@/lib/clinicTime';
 import { useAuth } from '@/lib/AuthContext';
-import { useTranslation } from '@/i18n/LanguageContext';
+import { base44 } from '@/api/base44Client';
 import { fetchDashboardStats } from '../utils/dashboardUtils';
 
-/**
- * Premium SaaS Mobile Dashboard
- * Modern healthcare CRM overview with actionable insights
- */
+/** Mobile home ("Bosh sahifa") — design audit-1012/01. Real data only. */
+const hhmm = (t) => (t ? String(t).slice(0, 5) : '--:--');
+const addMin = (t, m) => {
+  if (!t) return '';
+  const [h, mi] = String(t).split(':').map(Number);
+  if (!Number.isFinite(h)) return '';
+  const tot = h * 60 + (mi || 0) + (Number(m) || 30);
+  return `${String(Math.floor(tot / 60) % 24).padStart(2, '0')}:${String(tot % 60).padStart(2, '0')}`;
+};
+const initials = (n) => n?.trim().split(/\s+/).map((x) => x[0]).join('').slice(0, 2).toUpperCase() || '?';
+const nowHHMM = () => new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Tashkent', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+const statusLabel = (s) => {
+  const v = String(s || '').toLowerCase();
+  if (v === 'completed') return 'Yakunlandi';
+  if (v === 'cancelled' || v === 'canceled') return 'Bekor';
+  if (v.startsWith('no')) return 'Kelmadi';
+  if (v === 'in_progress' || v === 'in-progress' || v === 'arrived') return 'Jarayonda';
+  return 'Soatida';
+};
+const isDone = (a) => ['completed', 'cancelled', 'canceled', 'no-show', 'noshow', 'no_show'].includes(String(a?.status || '').toLowerCase());
+
 export default function MobileDashboardV2() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    patients: 0,
-    appointments: 0,
-    todayRevenue: 0,
-    growthLabel: '—',
-    clinicDay: null,
-  });
-  const [todayAppointments, setTodayAppointments] = useState([]);
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [loading, setLoading] = useState(true); // true until first real stats - no zero flash
-  const loadingTimerRef = useRef(null);
-  const hasLoadedInitial = useRef(false);
   const { user, isDoctor } = useAuth();
-  const { t } = useTranslation();
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(null);
+  const [debt, setDebt] = useState({ count: 0, total: 0 });
 
   const loadData = useCallback(async () => {
     if (!user) return;
     try {
-      if (!hasLoadedInitial.current) setLoading(true);
-      const data = await fetchDashboardStats(user, isDoctor, false);
-      
-      setStats({
-        patients: data.totalPatients,
-        appointments: data.stats?.todayAppts ?? (data.todayApptsList || []).length,
-        weekRevenue: data.stats?.weekRevenue || 0,
-        todayRevenue: data.stats.todayRevenue,
-        // Real day-over-day revenue trend (never demo +12%)
-        growthLabel: data.stats?.todayRevenueTrend || '—',
-        clinicDay: data.clinicDayLabel ? formatClinicDate(data.clinicDayLabel) : null,
-      });
-      
-      setTodayAppointments(data.todayApptsList);
-      
-      const activity = [
-        ...data.appointments.slice(0, 3).map(a => ({ ...a, type: 'appointment' })),
-        ...data.payments.slice(0, 3).map(p => ({ ...p, type: 'payment' }))
-      ].sort((a, b) => new Date(b.created_date || b.date) - new Date(a.created_date || a.date))
-       .slice(0, 5);
-       
-      setRecentActivity(activity);
-      hasLoadedInitial.current = true;
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
+      const [d, pats] = await Promise.all([
+        fetchDashboardStats(user, isDoctor, false),
+        base44.entities.Patient.list('full_name', 1000).catch(() => []),
+      ]);
+      setData(d);
+      let list = pats || [];
+      if (isDoctor && user?.id) {
+        list = list.filter((p) => [String(user.id), String(user.name)].includes(String(p.main_treatment_provider)) || String(p.created_by_id) === String(user.id));
+      }
+      const debtors = list.filter((p) => (Number(p.total_debt) || 0) > 0);
+      setDebt({ count: debtors.length, total: debtors.reduce((s, p) => s + (Number(p.total_debt) || 0), 0) });
+    } catch (e) {
+      console.error('Failed to load dashboard data:', e);
     } finally {
-      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
       setLoading(false);
     }
   }, [user, isDoctor]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // Get initials
-  const getInitials = (name) => {
-    return name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
-  };
+  const today = useMemo(() => {
+    const l = [...(data?.todayApptsList || [])];
+    return l.sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')));
+  }, [data]);
+  const next = useMemo(() => {
+    const now = nowHHMM();
+    const open = today.filter((a) => !isDone(a));
+    return open.find((a) => hhmm(a.time) >= now) || open[0] || null;
+  }, [today]);
 
-  // Avatar gradient
-  const getAvatarGradient = (name) => {
-    const gradients = [
-      'from-violet-500 to-purple-600',
-      'from-blue-500 to-indigo-600',
-      'from-emerald-500 to-teal-600',
-      'from-orange-500 to-red-500',
-      'from-pink-500 to-rose-500',
-      'from-cyan-500 to-blue-600'
-    ];
-    const index = name?.charCodeAt(0) % gradients.length || 0;
-    return gradients[index];
-  };
+  const activity = useMemo(() => {
+    if (!data) return [];
+    return [
+      ...(data.payments || []).slice(0, 4).map((p) => ({ ...p, _t: 'payment' })),
+      ...(data.appointments || []).slice(0, 4).map((a) => ({ ...a, _t: 'appt' })),
+    ].sort((a, b) => new Date(b.created_date || b.date) - new Date(a.created_date || a.date)).slice(0, 4);
+  }, [data]);
 
-  // Format time
-  const formatTime = (time) => {
-    if (!time) return '--:--';
-    const [hours, minutes] = time.split(':');
-    return `${hours}:${minutes}`;
-  };
+  const dayLabel = formatClinicDateWithWeekday(tashkentToday(), 'uz');
+  const dayShort = formatClinicDate(tashkentToday());
+  const nm = user?.full_name || user?.name || '';
+  const greetName = nm ? (isDoctor ? `Dr. ${displayDoctorName(nm).split(' ')[0]}` : nm.split(' ')[0]) : '';
+  const trend = data?.stats?.todayRevenueTrend;
+  const openPatient = (a) => a?.patient_id ? navigate(`/patients/${a.patient_id}`) : navigate('/appointments');
+  const takePayment = (a) => navigate('/payments', {
+    state: a?.patient_id
+      ? { openAddModal: true, prefillPatient: a.patient_id, prefillPatientName: a.patient_name, prefillDoctor: a.doctor_id || a.doctor_name || '' }
+      : { openAddModal: true },
+  });
 
-  const formatActivityWhen = (item) => {
-    if (item?.type === 'payment') return paymentStamp(item).dateTime;
-    const date = formatClinicDate(item?.date || item?.created_date);
-    const time = item?.time ? String(item.time).slice(0, 5) : '';
-    if (date && date !== '—' && time) return `${date} ${time}`;
-    return date && date !== '—' ? date : time;
-  };
-
-  // Stat Card Component
-  const StatCard = ({ title, value, subtitle, icon: Icon, color, onClick }) => (
-    <motion.div
-      whileTap={{ scale: 0.98 }}
-      onClick={onClick}
-      className={`${color} rounded-2xl p-3.5 cursor-pointer relative overflow-hidden group`}
-    >
-      <div className="flex items-start justify-between relative z-10">
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-widest opacity-70 leading-none">{title}</p>
-          <p className="text-xl font-black mt-1.5 tracking-tight">{value}</p>
-          {subtitle && <p className="text-[8px] font-bold opacity-60 mt-0.5 uppercase tracking-tight">{subtitle}</p>}
-        </div>
-        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shadow-sm shrink-0", color.includes('bg-white') ? "bg-slate-50 text-[#1499AD]" : "bg-white/20 text-white")}>
-          <Icon className="w-4.5 h-4.5" />
-        </div>
-      </div>
-      {/* Decorative BG element */}
-      <div className="absolute -right-4 -bottom-4 w-12 h-12 bg-current opacity-[0.03] rounded-full group-hover:scale-150 transition-transform duration-700" />
-    </motion.div>
-  );
-
-  // Appointment Card
-  const AppointmentCard = ({ app, index }) => (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: Math.min(index, 6) * 0.02 }}
-      onClick={() => navigate('/appointments')}
-      className="flex items-center gap-3 bg-white rounded-xl p-3 mb-2 shadow-[0_2px_8px_rgba(0,0,0,0.04)] active:scale-[0.98] transition-transform content-visibility-auto"
-    >
-      {/* Avatar */}
-      <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getAvatarGradient(app.patient_name)} flex items-center justify-center text-white text-sm font-semibold flex-shrink-0`}>
-        {getInitials(app.patient_name)}
-      </div>
-      
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-slate-900 text-xs truncate leading-tight">{app.patient_name}</h3>
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <Clock className="w-3 h-3 text-slate-400" />
-          <span className="text-[11px] text-slate-500 font-semibold">{formatTime(app.time)}</span>
-          <span className="text-slate-300">•</span>
-          <span className="text-[11px] text-slate-500 truncate">{app.service_name}</span>
-        </div>
-      </div>
-      
-      {/* Arrow */}
-      <ChevronRight className="w-4 h-4 text-slate-300" />
-    </motion.div>
-  );
-
-  // Quick Action Button
-  const QuickAction = ({ icon: Icon, label, color, onClick }) => (
-    <motion.button
-      whileTap={{ scale: 0.95 }}
-      onClick={onClick}
-      className="flex flex-col items-center gap-1.5 p-3.5 bg-white rounded-xl shadow-sm border border-slate-50 active:scale-[0.98] transition-transform"
-    >
-      <div className={`w-10 h-10 ${color} rounded-lg flex items-center justify-center`}>
-        <Icon className={cn("w-5 h-5", color.includes('bg-[#1499AD]') && !color.includes('/10') ? "text-white" : "text-[#1499AD]")} />
-      </div>
-      <span className="text-[9px] font-black uppercase tracking-tight text-slate-700 leading-none">{label}</span>
-    </motion.button>
-  );
-
-  // Skeleton
-  const SkeletonCard = () => (
-    <div className="bg-white rounded-2xl p-4 mb-3 animate-pulse">
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-slate-200" />
-        <div className="flex-1 space-y-2">
-          <div className="w-32 h-5 bg-slate-200 rounded" />
-          <div className="w-24 h-4 bg-slate-200 rounded" />
-        </div>
-      </div>
-    </div>
-  );
+  const card = 'bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)]';
 
   return (
     <PullToRefresh onRefresh={loadData}>
-      <div className="min-h-screen bg-slate-50 pb-28">
-        {/* Premium Header */}
-        <div className="bg-white border-b border-slate-50 shadow-sm">
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-[#1499AD] rounded-2xl flex items-center justify-center shadow-lg shadow-[#1499AD]/20 text-white">
-                  <Heart className="w-7 h-7 fill-current" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('common.welcomeBack')} 👋</h1>
-                  <p className="text-[10px] font-bold text-[#1499AD] uppercase tracking-[0.2em] mt-0.5">
-                    {stats.clinicDay
-                      ? `Bugungi klinika kuni · ${stats.clinicDay}`
-                      : (t('dashboard.overview') || 'Bugungi klinika kuni')}
-                  </p>
-                </div>
-              </div>
+      <div className="min-h-screen bg-[#F4F7F9] px-3.5 pt-3 pb-28 space-y-3">
+        {/* Welcome */}
+        <div className={`${card} flex items-center gap-3.5 p-3.5`}>
+          <div className="w-[60px] h-[60px] rounded-2xl bg-gradient-to-br from-[#1BA0B0] to-[#11808F] flex items-center justify-center text-white shadow-lg shadow-[#1499AD]/25 shrink-0">
+            <Heart className="w-8 h-8 fill-current" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-[19px] font-extrabold text-slate-900 leading-tight truncate">Xush kelibsiz{greetName ? `, ${greetName}` : ''}! 👋</h1>
+            <p className="text-[13px] font-medium text-slate-500 mt-1">Bugun {dayLabel}</p>
+          </div>
+        </div>
+
+        {/* Next patient */}
+        <div className="rounded-[20px] border border-emerald-200 bg-gradient-to-b from-emerald-50 to-[#F2FBF7] p-3.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center"><Clock className="w-4 h-4" /></span>
+              <span className="text-[13px] font-extrabold tracking-wider text-emerald-700 uppercase">Keyingi bemor</span>
             </div>
+            {next && <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[13px] font-bold">{hhmm(next.time)} da</span>}
           </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="px-4 py-3">
-          <div className="grid grid-cols-2 gap-2.5">
-            <StatCard
-              title={t('navigation.patients')}
-              value={stats.patients}
-              subtitle={t('patients.patientList')}
-              icon={Users}
-              color="bg-white border border-slate-100 !text-slate-900 shadow-sm"
-              onClick={() => navigate('/patients')}
-            />
-            <StatCard
-              title={t('dashboard.todayAppointments') || "Bugungi uchrashuvlar"}
-              value={stats.appointments}
-              subtitle={t('navigation.chairsideToday') || "Bugungi navbat"}
-              icon={Calendar}
-              color="bg-[#1499AD] text-white shadow-lg shadow-[#1499AD]/20"
-              onClick={() => navigate('/chairside')}
-            />
-            <StatCard
-              title={t('common.today')}
-              value={formatCurrency(stats.todayRevenue)}
-              subtitle={t('payments.income')}
-              icon={DollarSign}
-              color="bg-white border border-slate-100 !text-slate-900 shadow-sm"
-              onClick={() => navigate('/payments')}
-            />
-            <StatCard
-              title={t('dashboard.todayRevenue') || "Bugungi tushum"}
-              value={stats.growthLabel}
-              subtitle={stats.clinicDay ? `Klinika kuni · ${stats.clinicDay}` : (t('common.today') || 'Bugun')}
-              icon={TrendingUp}
-              color="bg-[#1499AD] text-white shadow-lg shadow-[#1499AD]/20"
-              onClick={() => navigate('/payments')}
-            />
-          </div>
-        </div>
-
-        {/* Today's Appointments */}
-        <div className="px-4 mb-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-[900] text-slate-900 tracking-tight">{t('dashboard.todayAppointments')}</h2>
-            <button 
-              onClick={() => navigate('/chairside')}
-              className="text-[10px] font-black text-[#1499AD] uppercase tracking-widest flex items-center gap-1 bg-[#1499AD]/5 px-2.5 py-1.5 rounded-full"
-            >
-              {t('common.all')}
-              <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
-          
           {loading ? (
+            <div className="h-24 mt-3 rounded-xl bg-white/60 animate-pulse" />
+          ) : next ? (
             <>
-              <SkeletonCard />
-              <SkeletonCard />
-              <SkeletonCard />
+              <button onClick={() => openPatient(next)} className="w-full flex items-center gap-3 mt-3 text-left min-h-[56px]">
+                <div className="w-14 h-14 rounded-full bg-white border-2 border-emerald-200 flex items-center justify-center text-emerald-700 font-bold text-lg shrink-0">{initials(next.patient_name)}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[17px] font-extrabold text-slate-900 truncate">{next.patient_name}</p>
+                  {next.patient_phone && <p className="text-[13px] font-semibold text-slate-600 truncate">{next.patient_phone}</p>}
+                  <div className="flex items-center gap-3 mt-1 text-[13px] text-slate-600">
+                    <span className="flex items-center gap-1 min-w-0 truncate"><Stethoscope className="w-3.5 h-3.5 shrink-0" />{getTreatmentTypeLabel(next.service_name || next.treatment_type, 'uz') || 'Uchrashuv'}</span>
+                    <span className="flex items-center gap-1 shrink-0"><CalendarDays className="w-3.5 h-3.5" />{hhmm(next.time)} – {addMin(next.time, next.duration)}</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+              </button>
+              <div className="grid grid-cols-2 gap-2.5 mt-3">
+                <button onClick={() => openPatient(next)} className="h-12 rounded-2xl bg-emerald-100 text-emerald-800 font-bold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98]"><Play className="w-5 h-5 fill-current" />Boshlash</button>
+                <button onClick={() => takePayment(next)} className="h-12 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold text-[15px] flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 active:scale-[0.98]"><CreditCard className="w-5 h-5" />To'lov olish</button>
+              </div>
             </>
-          ) : todayAppointments.length > 0 ? (
-            <AnimatePresence>
-              {todayAppointments.map((app, index) => (
-                <AppointmentCard key={app.id} app={app} index={index} />
-              ))}
-            </AnimatePresence>
           ) : (
-            <div className="text-center py-6 bg-white rounded-xl">
-              <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs font-semibold text-slate-500">{t('common.noData')}</p>
+            <div className="flex items-center gap-3 mt-3 py-2">
+              <div className="w-12 h-12 rounded-full bg-white border border-emerald-100 flex items-center justify-center"><Calendar className="w-6 h-6 text-emerald-500" /></div>
+              <div><p className="text-[15px] font-bold text-slate-800">Bugun navbatda bemor yo'q</p><p className="text-[13px] text-slate-500">Yangi uchrashuv qo'shishingiz mumkin</p></div>
             </div>
           )}
         </div>
- 
-        {/* Quick Actions */}
-        <div className="px-4 mb-5">
-          <h2 className="text-base font-[900] text-slate-900 tracking-tight mb-3">{t('dashboard.quickActions')}</h2>
-          <div className="grid grid-cols-3 gap-2.5">
-            <QuickAction
-              icon={UserPlus}
-              label={t('patients.addNew')}
-              color="bg-[#1499AD]/10 !text-[#1499AD]"
-              onClick={() => navigate('/patients', { state: { openAddModal: true } })}
-            />
-            <QuickAction
-              icon={CalendarPlus}
-              label={t('appointments.addNew')}
-              color="bg-[#1499AD]"
-              onClick={() => navigate('/appointments', { state: { openAddModal: true } })}
-            />
-            <QuickAction
-              icon={Phone}
-              label={t('navigation.recalls')}
-              color="bg-[#1499AD]/10 !text-[#1499AD]"
-              onClick={() => navigate('/recall')}
-            />
-          </div>
-        </div>
- 
-        {/* Recent Activity */}
-        <div className="px-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-[900] text-slate-900 tracking-tight">{t('dashboard.recentActivity')}</h2>
-            <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center">
-              <Activity className="w-3.5 h-3.5 text-slate-400" />
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-2xl p-1 shadow-sm border border-slate-100/50 overflow-hidden">
-            {recentActivity.length > 0 ? (
-              <div className="divide-y divide-slate-50">
-                {recentActivity.map((item, index) => {
-                  const isPayment = item.type === 'payment';
-                  return (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: Math.min(index, 6) * 0.02 }}
-                      key={index} 
-                      className="flex items-center gap-3 p-3 active:bg-slate-50 transition-colors content-visibility-auto"
-                    >
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        isPayment ? 'bg-emerald-50' : 'bg-blue-50'
-                      }`}>
-                        {isPayment ? (
-                          <DollarSign className="w-4 h-4 text-emerald-600" />
-                        ) : (
-                          <Calendar className="w-4 h-4 text-blue-600" />
-                        )}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-xs font-black text-slate-900 truncate tracking-tight">
-                            {isPayment ? (item.patient_name || "To'lov") : item.patient_name}
-                          </p>
-                          <span className="text-[9px] font-bold text-slate-400 whitespace-nowrap uppercase tracking-widest">
-                            {formatActivityWhen(item)}
-                          </span>
-                        </div>
-                        <p className={`text-[10px] font-bold mt-0.5 tracking-wide ${
-                          isPayment ? 'text-emerald-600' : 'text-slate-500'
-                        }`}>
-                          {isPayment ? formatCurrency(item.amount) : (getTreatmentTypeLabel(item.service_name, 'uz') || 'Navbat')}
-                        </p>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="py-8 text-center">
-                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Activity className="w-6 h-6 text-slate-200" />
-                </div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('common.noData')}</p>
-              </div>
-            )}
-          </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-2">
+          <button onClick={() => navigate('/appointments')} className={`${card} p-3 text-left min-h-[124px]`}>
+            <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><Calendar className="w-[18px] h-[18px]" /></span>
+            <p className="text-[11px] font-bold text-slate-500 uppercase mt-2 leading-tight">Bugungi uchrashuvlar</p>
+            <p className="text-[22px] font-extrabold text-slate-900 leading-tight mt-1">{loading ? '…' : today.length}</p>
+            <p className="text-[11px] text-slate-500">{dayShort}</p>
+          </button>
+          <button onClick={() => navigate('/payments')} className={`${card} p-3 text-left min-h-[124px]`}>
+            <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><DollarSign className="w-[18px] h-[18px]" /></span>
+            <p className="text-[11px] font-bold text-slate-500 uppercase mt-2 leading-tight">Bugungi daromad</p>
+            <p className="text-[17px] font-extrabold text-slate-900 leading-tight mt-1 break-words">{loading ? '…' : formatCurrency(data?.stats?.todayRevenue || 0).replace(/\s*so'm$/i, '')}</p>
+            <div className="flex items-center justify-between gap-1"><span className="text-[11px] text-slate-500">so'm</span>{trend && trend !== '—' && trend !== '0%' && <span className={`text-[11px] font-bold ${trend.startsWith('-') ? 'text-rose-500' : 'text-emerald-600'}`}>{trend}</span>}</div>
+          </button>
+          <button onClick={() => navigate('/debts')} className={`${card} p-3 text-left min-h-[124px] relative`}>
+            <ChevronRight className="w-4 h-4 text-slate-400 absolute right-2 top-3" />
+            <span className="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center"><Users className="w-[18px] h-[18px]" /></span>
+            <p className="text-[11px] font-bold text-slate-500 uppercase mt-2 leading-tight">Qarzdorlar</p>
+            <p className="text-[22px] font-extrabold text-slate-900 leading-tight mt-1">{loading ? '…' : debt.count}</p>
+            <p className="text-[11px] text-slate-500 truncate">{formatCurrency(debt.total)}</p>
+          </button>
         </div>
 
-        {/* Bottom spacing — Tab Bar uchun joy */}
-        <div className="h-24" />
+        {/* Quick actions */}
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { icon: UserPlus, label: 'Yangi bemor', plus: true, cls: 'bg-emerald-50 border-emerald-100 text-emerald-700', go: () => navigate('/patients', { state: { openAddModal: true } }) },
+            { icon: CalendarPlus, label: 'Yangi uchrashuv', plus: true, cls: 'bg-emerald-50 border-emerald-100 text-emerald-700', go: () => navigate('/appointments', { state: { openAddModal: true } }) },
+            { icon: CreditCard, label: "To'lov olish", cls: 'bg-blue-50 border-blue-100 text-blue-700', go: () => takePayment(null) },
+          ].map((q) => (
+            <button key={q.label} onClick={q.go} className={`h-[84px] rounded-[18px] border ${q.cls} flex flex-col items-center justify-center gap-1.5 active:scale-[0.98]`}>
+              <q.icon className="w-6 h-6" />
+              <span className="text-[13px] font-bold leading-tight text-center">{q.plus ? '+ ' : ''}{q.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Today's queue */}
+        <div className={`${card} p-3.5`}>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="flex items-center gap-2 text-[16px] font-extrabold italic text-slate-900"><Calendar className="w-5 h-5 text-slate-700" />Bugungi navbat ({today.length})</h2>
+            <button onClick={() => navigate('/chairside')} className="h-9 px-3.5 rounded-full bg-blue-50 text-blue-700 text-[13px] font-bold flex items-center gap-1">Barchasi <ArrowRight className="w-4 h-4" /></button>
+          </div>
+          {loading ? (
+            <div className="space-y-2">{[0, 1, 2].map((i) => <div key={i} className="h-14 rounded-xl bg-slate-100 animate-pulse" />)}</div>
+          ) : today.length === 0 ? (
+            <div className="py-6 text-center"><Calendar className="w-9 h-9 text-slate-300 mx-auto mb-2" /><p className="text-[14px] font-semibold text-slate-500">Bugun uchrashuv yo'q</p></div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {today.slice(0, 6).map((a) => {
+                const isNext = next && a.id === next.id;
+                return (
+                  <div key={a.id} onClick={() => openPatient(a)} className={`flex items-center gap-2.5 py-2 ${isNext ? 'bg-emerald-50/70 -mx-2 px-2 rounded-xl border-0' : ''}`}>
+                    <div className={`w-[58px] shrink-0 rounded-xl py-1.5 text-center ${isNext ? 'bg-emerald-100' : 'bg-slate-50'}`}>
+                      <p className="text-[14px] font-bold text-slate-900 leading-tight">{hhmm(a.time)}</p>
+                      <p className="text-[12px] text-slate-500 leading-tight">{addMin(a.time, a.duration)}</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-[13px] font-bold flex items-center justify-center shrink-0">{initials(a.patient_name)}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-bold text-slate-900 truncate">{a.patient_name}</p>
+                      <p className="text-[13px] text-slate-500 truncate">{getTreatmentTypeLabel(a.service_name || a.treatment_type, 'uz') || 'Uchrashuv'}</p>
+                    </div>
+                    {isNext ? (
+                      <button onClick={(e) => { e.stopPropagation(); openPatient(a); }} className="h-11 px-3 rounded-xl bg-emerald-600 text-white text-[13px] font-bold flex items-center gap-1 shrink-0"><Play className="w-3.5 h-3.5 fill-current" />Boshlash</button>
+                    ) : (
+                      <span className="h-9 px-3 rounded-xl bg-slate-100 text-slate-600 text-[13px] font-semibold flex items-center shrink-0">{statusLabel(a.status)}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Recent activity */}
+        <div className={`${card} p-3.5`}>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="flex items-center gap-2 text-[16px] font-extrabold text-slate-900"><Activity className="w-5 h-5 text-slate-700" />So'nggi faoliyat</h2>
+            <button onClick={() => navigate('/payments')} className="h-9 px-3.5 rounded-full bg-blue-50 text-blue-700 text-[13px] font-bold flex items-center gap-1">Barchasi <ArrowRight className="w-4 h-4" /></button>
+          </div>
+          {activity.length === 0 ? (
+            <p className="py-5 text-center text-[14px] font-semibold text-slate-500">{loading ? 'Yuklanmoqda…' : "Hozircha faoliyat yo'q"}</p>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {activity.map((it, i) => {
+                const pay = it._t === 'payment';
+                return (
+                  <div key={i} className="flex items-center gap-3 py-2.5">
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${pay ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>{pay ? <DollarSign className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-bold text-slate-900 truncate">{it.patient_name || (pay ? "To'lov" : 'Uchrashuv')}</p>
+                      <p className="text-[13px] text-slate-500 truncate">{pay ? "To'lov qabul qilindi" : (getTreatmentTypeLabel(it.service_name, 'uz') || 'Uchrashuv')}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {pay && <p className="text-[14px] font-extrabold text-emerald-600">{formatCurrency(it.amount)}</p>}
+                      <p className="text-[12px] text-slate-500">{pay ? paymentStamp(it).dateTime : `${formatClinicDate(it.date)} ${hhmm(it.time)}`}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </PullToRefresh>
   );

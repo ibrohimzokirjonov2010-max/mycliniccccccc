@@ -30,6 +30,7 @@ import AppointmentModal from '../components/appointments/AppointmentModal';
 import PatientModal from '../components/patients/PatientModal';
 import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
 import TreatmentPlanInvoice from '../components/treatments/TreatmentPlanInvoice';
+import MobilePayView from '@/components/payments/MobilePayView';
 import { isPlanLocked, PLAN_LOCKED_BADGE, PLAN_LOCKED_TOOLTIP } from '@/lib/planLock';
 import { numberPlans, planTitle, planTotal, planPaid, planStatusKey, isDoneStatus } from '@/lib/planGroups';
 import ImplantForm from '../components/implants/ImplantForm';
@@ -225,6 +226,9 @@ export default function MobilePatientProfile() {
   });
   const [payingSaving, setPayingSaving] = useState(false);
   const [payPlanId, setPayPlanId] = useState('');
+  const [payMode, setPayMode] = useState('services');
+  const [paySelKeys, setPaySelKeys] = useState([]);
+  const [paySvcIdx, setPaySvcIdx] = useState([]);
   const [selectedTooth, setSelectedTooth]       = useState(null);
   const [toothRecords, setToothRecords]         = useState([]);
   const [toothHistoryOpen, setToothHistoryOpen] = useState(false);
@@ -534,9 +538,12 @@ export default function MobilePatientProfile() {
   const openPayModal = useCallback((prefillCategory = 'Treatment', prefillNotes = '', prefillAmount = '') => {
     const docId = resolveDoctorId(patient, plans, doctors, user, isDoctor);
     setPayPlanId('');
+    setPayMode(prefillAmount ? 'plan' : 'services');
+    setPaySelKeys([]);
+    setPaySvcIdx([]);
     setPayForm({
       type: 'Income',
-      amount: prefillAmount ? String(prefillAmount) : (financials.debt > 0 ? String(Math.round(financials.debt)) : ''),
+      amount: prefillAmount ? String(prefillAmount) : '', // audit: don't prefill the whole debt
       method: 'Cash',
       category: prefillCategory,
       date: getLocalDT(),
@@ -545,6 +552,18 @@ export default function MobilePatientProfile() {
     });
     setPayModalOpen(true);
   }, [patient, plans, doctors, user, isDoctor, financials.debt]);
+
+  /* services mode: amount = selected open services; marking only within one plan */
+  const applyPaySelection = (keys, rows) => {
+    setPaySelKeys(keys);
+    const picked = rows.filter(r => keys.includes(r.key));
+    const total = picked.reduce((sum, r) => sum + r.amount, 0);
+    const planIds = [...new Set(picked.map(r => r.planId))];
+    const one = planIds.length === 1 ? planIds[0] : '';
+    setPayPlanId(one);
+    setPaySvcIdx(one ? picked.map(r => r.idx) : []);
+    setPayForm(p => ({ ...p, type: 'Income', amount: total > 0 ? String(Math.round(total)) : '', notes: picked.length ? `To'lov: ${picked.map(r => r.name).join(', ')}` : '' }));
+  };
 
   /* ── save payment ── */
   const handleSavePay = async () => {
@@ -564,7 +583,14 @@ export default function MobilePatientProfile() {
       if ((payForm.type || 'Income').toLowerCase() === 'income') {
         const slices = allocateInvoicePayment(plans, amount, payPlanId);
         for (const slice of slices) {
-          await base44.entities.TreatmentPlan.update(slice.id, { paid_amount: slice.paid_amount });
+          const patch = { paid_amount: slice.paid_amount };
+          const plan = plans.find(p => p.id === slice.id);
+          if (plan && payPlanId && plan.id === payPlanId && paySvcIdx.length) {
+            const svcs = JSON.parse(JSON.stringify(plan.services || []));
+            paySvcIdx.forEach(i => { if (svcs[i]) svcs[i].payment_status = 'paid'; });
+            patch.services = svcs;
+          }
+          await base44.entities.TreatmentPlan.update(slice.id, patch);
         }
       }
       payTxRef.current = '';
@@ -1745,165 +1771,92 @@ export default function MobilePatientProfile() {
       </AnimatePresence>,
       document.body)}
 
-      {/* PAYMENT MODAL — portaled above sticky bottom nav */}
+      {/* PAYMENT — mobile "To'lov qilish" screen */}
       <BackClose open={!!payModalOpen} onClose={() => setPayModalOpen(false)} />
-      {typeof document !== 'undefined' && createPortal(
-      <AnimatePresence>
-        {payModalOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
-              onClick={() => setPayModalOpen(false)}
-            >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.18 }}
-              data-payment-accept="centered"
-              onClick={(e) => e.stopPropagation()}
-              className="pointer-events-auto flex w-full max-w-md flex-col overflow-hidden rounded-[2.5rem] bg-white shadow-2xl"
-              style={{ maxHeight: 'min(86dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 8rem))' }}
-            >
-              <div className="flex shrink-0 items-center justify-between px-5 pb-2 pt-4">
-                <h3 className="text-base font-black text-slate-900">{t('patientProfile.personalCard.acceptPayment', "To'lov qabul qilish")}</h3>
-                <button onClick={() => setPayModalOpen(false)} className="p-2 rounded-xl bg-slate-100 active:scale-95 transition-transform">
-                  <X className="w-4 h-4 text-slate-600" />
-                </button>
+      <MobilePayView
+        open={payModalOpen}
+        onClose={() => setPayModalOpen(false)}
+        patient={patient}
+        plansCount={plans.length}
+        onOpenProfile={() => { setPayModalOpen(false); setActiveTab('main'); }}
+        onOpenPlans={() => { setPayModalOpen(false); setActiveTab('plan'); }}
+        onOpenCard={() => { setPayModalOpen(false); setActiveTab('main'); }}
+        onOpenHistory={() => { setPayModalOpen(false); setActiveTab('tarix'); }}
+        mode={payMode}
+        onModeChange={(m) => {
+          setPayMode(m); setPaySelKeys([]); setPaySvcIdx([]); setPayPlanId('');
+          setPayForm(p => ({ ...p, amount: '', notes: '' }));
+        }}
+        plans={plans}
+        doctorsById={Object.fromEntries((doctors || []).map(d => [d.id, d]))}
+        selectedKeys={paySelKeys}
+        onToggleService={(row, rows) => {
+          const keys = paySelKeys.includes(row.key) ? paySelKeys.filter(k => k !== row.key) : [...paySelKeys, row.key];
+          applyPaySelection(keys, rows);
+        }}
+        onToggleAll={(rows) => applyPaySelection(paySelKeys.length === rows.length ? [] : rows.map(r => r.key), rows)}
+        selectedPlanId={payPlanId}
+        onSelectPlan={(planId) => {
+          setPayPlanId(planId); setPaySvcIdx([]);
+          const plan = plans.find(p => p.id === planId);
+          setPayForm(p => ({ ...p, notes: plan ? `Reja to'lov: ${plan.name || ''}` : '' }));
+        }}
+        onOpenPlanDetail={() => {
+          const plan = plans.find(p => p.id === payPlanId) || plans.find(p => (Number(p.total_price) || 0) > (Number(p.paid_amount) || 0)) || plans[0];
+          if (plan) setInvoicePlan(plan);
+        }}
+        amount={payForm.amount}
+        onAmountChange={(v) => setPayForm(p => ({ ...p, amount: v }))}
+        debt={financials.debt}
+        method={payForm.method}
+        onMethodChange={(m) => setPayForm(p => ({ ...p, method: m }))}
+        showReceipt={false}
+        extra={(
+          <details className="mt-3 rounded-[20px] bg-white border border-slate-200 shadow-sm group" data-testid="mobile-pay-extra">
+            <summary className="list-none cursor-pointer px-4 h-12 flex items-center justify-between text-[14px] font-semibold text-slate-700">
+              Qo'shimcha: turi, shifokor, izoh
+              <span className="text-slate-400 group-open:rotate-180 transition-transform">⌄</span>
+            </summary>
+            <div className="px-4 pb-4 space-y-3">
+              <div className="flex gap-2">
+                {[
+                  { v: 'Income', l: t('patientProfile.mobile.payAction', "To'lov") },
+                  { v: 'Expense', l: t('patientProfile.teeth.statusExpense', 'Xarajat') },
+                  { v: 'Refund', l: t('patientProfile.teeth.statusDiscountRefund', 'Qaytarma') },
+                ].map(({ v, l }) => (
+                  <button key={v} type="button" onClick={() => setPayForm(p => ({ ...p, type: v }))}
+                    className={cn('flex-1 h-10 rounded-xl text-[13px] font-semibold border', payForm.type === v ? 'text-white border-transparent bg-[#0f8f86]' : 'bg-slate-50 border-slate-200 text-slate-600')}>
+                    {l}
+                  </button>
+                ))}
               </div>
-
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-3">
-                <div className="flex gap-2">
-                  {[
-                    { v: 'Income', l: t('patientProfile.mobile.payAction', "To'lov") },
-                    { v: 'Expense', l: t('patientProfile.teeth.statusExpense', 'Xarajat') },
-                    { v: 'Refund', l: t('patientProfile.teeth.statusDiscountRefund', 'Qaytarma') },
-                  ].map(({ v, l }) => (
-                    <button key={v} onClick={() => setPayForm(p => ({ ...p, type: v }))}
-                      className={cn('flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95',
-                        payForm.type === v ? 'text-white border-transparent' : 'bg-slate-50 border-slate-200 text-slate-600')}
-                      style={payForm.type === v ? { background: TEAL } : undefined}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
-
+              {doctors.length > 0 && (
                 <div>
-                  <div className="flex items-center justify-between mb-1 gap-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">
-                      {t('patientProfile.installments.paymentAmount', 'Summa')} ({t('dashboard.currency', "so'm")})
-                    </label>
-                    {financials.debt > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPayPlanId('');
-                          setPayForm(p => ({ ...p, amount: String(Math.round(financials.debt)), notes: '' }));
-                        }}
-                        className="text-[10px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-lg"
-                      >
-                        Umumiy qarz {fmt(financials.debt)}
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={payForm.amount}
-                    onChange={e => setPayForm(p => ({ ...p, amount: e.target.value }))}
-                    placeholder="0"
-                    className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xl font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#14b8a6]/30 focus:border-[#14b8a6] transition-all"
-                  />
+                  <label className="text-[12px] font-semibold text-slate-500 block mb-1">{t('appointments.doctor', 'Shifokor')}</label>
+                  <select value={payForm.doctor_id} onChange={e => setPayForm(p => ({ ...p, doctor_id: e.target.value }))}
+                    className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-2xl text-[14px] font-semibold text-slate-800">
+                    <option value="">{t('common.select', 'Tanlang...')}</option>
+                    {doctors.map(d => <option key={d.id} value={d.id}>{d.name || d.full_name}</option>)}
+                  </select>
                 </div>
-
-                {plans.some(plan => Math.max(0, (Number(plan.total_price) || 0) - (Number(plan.paid_amount) || 0)) > 0) && (
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">Hisob-faktura</p>
-                    {plans.map(plan => {
-                      const remaining = Math.max(0, (Number(plan.total_price) || 0) - (Number(plan.paid_amount) || 0));
-                      if (remaining <= 0) return null;
-                      const selected = String(payPlanId) === String(plan.id);
-                      return (
-                        <button
-                          key={plan.id}
-                          type="button"
-                          onClick={() => {
-                            setPayPlanId(plan.id);
-                            setPayForm(p => ({
-                              ...p,
-                              amount: String(Math.round(remaining)),
-                              notes: `Reja to'lov: ${plan.name || ''}`,
-                            }));
-                          }}
-                          className={cn(
-                            'w-full text-left rounded-xl border px-3 py-2',
-                            selected ? 'border-[#14b8a6] bg-teal-50' : 'border-slate-200 bg-slate-50'
-                          )}
-                        >
-                          <p className="text-xs font-black text-slate-800 leading-snug break-words">{plan.name || 'Davolash rejasi'}</p>
-                          <p className="text-[10px] font-bold text-rose-600 mt-0.5">Qoldiq: {formatCurrency(remaining)}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  {[
-                    { v: 'Cash', l: 'Naqd' },
-                    { v: 'Card', l: 'Karta' },
-                    { v: 'Transfer', l: "O'tkazma" },
-                  ].map(({ v, l }) => (
-                    <button key={v} onClick={() => setPayForm(p => ({ ...p, method: v }))}
-                      className={cn('flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95',
-                        payForm.method === v ? 'bg-cyan-50 border-[#14b8a6] text-[#0d9488]' : 'bg-slate-50 border-slate-200 text-slate-600')}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
-
-                {doctors.length > 0 && (
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
-                      {t('appointments.doctor', 'Shifokor')}
-                    </label>
-                    <select
-                      value={payForm.doctor_id}
-                      onChange={e => setPayForm(p => ({ ...p, doctor_id: e.target.value }))}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#14b8a6]/30 focus:border-[#14b8a6] transition-all"
-                    >
-                      <option value="">{t('common.select', 'Tanlang...')}</option>
-                      {doctors.map(d => (
-                        <option key={d.id} value={d.id}>{d.name || d.full_name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">{t('patientProfile.installments.notes', 'Izoh')} ({t('common.optional', 'ixtiyoriy')})</label>
-                  <input type="text" value={payForm.notes} onChange={e => setPayForm(p => ({ ...p, notes: e.target.value }))}
-                    placeholder={t('patientProfile.installments.notesPlaceholder', 'Izoh...')}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#14b8a6]/30 focus:border-[#14b8a6] transition-all" />
-                </div>
-
+              )}
+              <div>
+                <label className="text-[12px] font-semibold text-slate-500 block mb-1">{t('patientProfile.installments.notes', 'Izoh')} ({t('common.optional', 'ixtiyoriy')})</label>
+                <input type="text" value={payForm.notes} onChange={e => setPayForm(p => ({ ...p, notes: e.target.value }))}
+                  placeholder={t('patientProfile.installments.notesPlaceholder', 'Izoh...')}
+                  className="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-2xl text-[14px] text-slate-800" />
               </div>
-              <div className="payment-accept-footer shrink-0 border-t border-slate-100 bg-white px-5 pt-3" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}>
-                <button onClick={handleSavePay} disabled={payingSaving || !payForm.amount}
-                  className="w-full py-4 disabled:opacity-50 text-white rounded-2xl text-sm font-black flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
-                  style={{ background: TEAL }}>
-                  {payingSaving ? <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <><CreditCard className="w-4 h-4" />{t('patientProfile.installments.savePayment', "To'lovni saqlash")}</>}
-                </button>
-              </div>
-            </motion.div>
-            </motion.div>
-          </>
+            </div>
+          </details>
         )}
-      </AnimatePresence>,
-      document.body)}
+        saving={payingSaving}
+        disabled={!Number(String(payForm.amount || '').replace(/\D/g, ''))}
+        onSubmit={handleSavePay}
+        submitLabel={payForm.type && payForm.type !== 'Income'
+          ? `${Math.round(Number(String(payForm.amount || '').replace(/\D/g, '')) || 0).toLocaleString('ru-RU').replace(/,/g, ' ')} so'm saqlash`
+          : undefined}
+      />
+
 
       {/* MODALS */}
       {apptModalOpen && (
