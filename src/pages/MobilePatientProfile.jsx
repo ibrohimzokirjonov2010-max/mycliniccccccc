@@ -1077,6 +1077,30 @@ export default function MobilePatientProfile() {
         )}
       </div>
 
+      {/* PILL TABS */}
+      <div className={cn('shrink-0 px-3', isMain ? 'pt-3 pb-0' : 'sticky top-0 z-30 pt-3 pb-2 bg-[#F3F6F8]')}>
+        <div className="bg-white rounded-[22px] p-1.5 shadow-[0_6px_20px_rgba(15,23,42,0.06)] border border-slate-100 flex min-w-0 overflow-hidden" data-testid="profile-pill-tabs">
+          {tabs.map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  requestAnimationFrame(() => { const m = document.querySelector('main'); if (m) m.scrollTop = 0; });
+                }}
+                className={cn(
+                  'flex-1 min-w-0 px-1 h-10 text-[13px] leading-tight font-semibold rounded-2xl transition-colors truncate',
+                  isActive ? 'bg-[#cdf5ec] text-[#0f766e]' : 'text-slate-500'
+                )}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
       {/* ACTION CARDS */}
       <div className="px-4 mt-3 grid grid-cols-3 gap-2 relative z-10">
         <button type="button" onClick={() => openPayModal()} data-testid="profile-action-pay"
@@ -1197,30 +1221,6 @@ export default function MobilePatientProfile() {
           />
         )}
         {mainSub === 'notes' && notesJsx}
-      </div>
-      {/* PILL TABS */}
-      <div className={cn('shrink-0 px-3', isMain ? 'pb-3 pt-1' : 'sticky top-0 z-30 pt-3 pb-2 bg-[#F3F6F8]')}>
-        <div className="bg-white rounded-[22px] p-1.5 shadow-[0_6px_20px_rgba(15,23,42,0.06)] border border-slate-100 flex min-w-0 overflow-hidden" data-testid="profile-pill-tabs">
-          {tabs.map(tab => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  requestAnimationFrame(() => { const m = document.querySelector('main'); if (m) m.scrollTop = 0; });
-                }}
-                className={cn(
-                  'flex-1 min-w-0 px-1 h-10 text-[13px] leading-tight font-semibold rounded-2xl transition-colors truncate',
-                  isActive ? 'bg-[#cdf5ec] text-[#0f766e]' : 'text-slate-500'
-                )}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
       </div>
       </>
       ) : (
