@@ -229,22 +229,21 @@ export default function NativeMobileLayout({ children }) {
       {/* iOS-style Premium Header — hidden on patient profile (owns a full-bleed teal header) */}
       {!isPatientProfile && (
       <header 
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-          isScrolled 
-            ? 'bg-white/80 backdrop-blur-2xl shadow-xl shadow-slate-200/20 border-b border-white/40' 
-            : 'bg-transparent'
+        data-testid="mobile-app-header"
+        className={`fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-200/70 transition-shadow duration-300 ${
+          isScrolled ? 'shadow-[0_2px_10px_rgba(15,23,42,0.06)]' : ''
         }`}
-        style={{ paddingTop: 'max(12px, env(safe-area-inset-top, 12px))' }}
+        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
-        <div className="flex items-center justify-between h-14 px-5">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between h-[54px] px-4 gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
             {showBack ? (
               <BackButton
                 fallback={location.pathname.startsWith('/implants/') ? '/implants' : '/'}
-                className="h-11 -ml-1 px-3.5 rounded-2xl bg-white/70 backdrop-blur-md border-white/60"
+                className="h-9 -ml-1 px-3 rounded-xl bg-white border-slate-200"
               />
             ) : (
-                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-xl shadow-[#1499AD]/10 overflow-hidden p-0 ring-1 ring-slate-100">
+                <div className="w-8 h-8 shrink-0 bg-white rounded-xl flex items-center justify-center shadow-sm overflow-hidden p-0 ring-1 ring-slate-100">
                     {currentClinic?.logo ? (
                         <img 
                             src={currentClinic.logo} 
@@ -252,28 +251,28 @@ export default function NativeMobileLayout({ children }) {
                             className="w-full h-full object-cover scale-110"
                         />
                     ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-[#1499AD] to-[#0E7A8A] rounded-2xl flex items-center justify-center">
-                            <Stethoscope className="w-5 h-5 text-white" />
+                        <div className="w-full h-full bg-gradient-to-br from-[#1499AD] to-[#0E7A8A] rounded-xl flex items-center justify-center">
+                            <Stethoscope className="w-4 h-4 text-white" />
                         </div>
                     )}
                 </div>
             )}
-            <div className={showBack ? 'hidden' : 'flex flex-col'}>
-              <span className="font-[900] text-lg text-slate-900 tracking-tighter leading-tight">{currentClinic?.name || 'Klinika'}</span>
-              <span className="text-[9px] font-black text-[#1499AD] uppercase tracking-widest opacity-60">{t('navigation.systemName')}</span>
+            <div className={showBack ? 'hidden' : 'flex flex-col min-w-0'}>
+              <span className="font-[900] text-[15px] text-slate-900 tracking-tight leading-[1.15] truncate">{currentClinic?.name || 'Klinika'}</span>
+              <span className="text-[8px] font-black text-[#1499AD] uppercase tracking-widest opacity-60 leading-tight truncate">{t('navigation.systemName')}</span>
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <LanguageSwitcher variant="minimal" />
             <motion.button 
               whileTap={{ scale: 0.9 }}
               onClick={() => setShowNotifications(true)}
-              className="p-3 rounded-2xl bg-white/50 backdrop-blur-md shadow-sm border border-white/60 relative text-slate-600"
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-white shadow-sm border border-slate-200/80 relative text-slate-600"
             >
-              <Bell className="w-5 h-5" />
+              <Bell className="w-[18px] h-[18px]" />
               {unreadCount > 0 && (
-                <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 border-2 border-white rounded-full flex items-center justify-center text-[8px] font-black text-white">
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white rounded-full flex items-center justify-center text-[8px] font-black text-white">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -281,9 +280,9 @@ export default function NativeMobileLayout({ children }) {
             <motion.button 
               whileTap={{ scale: 0.9 }}
               onClick={() => setShowMenu(true)}
-              className="p-3 rounded-2xl bg-slate-900 shadow-xl shadow-slate-900/20 text-white"
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-900 shadow-md shadow-slate-900/20 text-white"
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="w-[18px] h-[18px]" />
             </motion.button>
           </div>
         </div>
@@ -305,7 +304,7 @@ export default function NativeMobileLayout({ children }) {
           overscrollBehavior: 'contain',
           paddingTop: isPatientProfile
             ? 0
-            : 'calc(3.5rem + max(env(safe-area-inset-top, 12px), 12px))',
+            : 'calc(54px + env(safe-area-inset-top, 0px))',
           paddingBottom: 'calc(54px + env(safe-area-inset-bottom, 0px))'
         }}
       >
