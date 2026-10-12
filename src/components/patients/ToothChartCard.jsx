@@ -1087,25 +1087,15 @@ export default function ToothChartCard({
             )}
           </div>
 
-          {phone && (!full || fullTools) && (
-            <div className={cn('mt-2 min-w-0 max-w-full overflow-x-auto', full && 'tooth-full-tools')} data-testid="chart-more-tools">
-              <div className="flex w-max items-center gap-2">
-                <Seg
-                  value={filter}
-                  onChange={setFilter}
-                  options={[
-                    { id: 'all', label: 'Hammasi' },
-                    { id: 'plan', label: 'Reja' },
-                    { id: 'done', label: 'Bajarilgan' },
-                  ]}
-                />
-                <button type="button" onClick={printChart} className="compact-hit grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-600" aria-label="Chop etish">
-                  <Printer className="h-3.5 w-3.5" />
-                </button>
-              </div>
+          {phone && (
+            <div className={cn('mt-2 flex items-center', full && 'tooth-full-tools')} data-testid="chart-more-tools">
+              <button type="button" onClick={printChart} className="compact-hit grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-600" aria-label="Chop etish">
+                <Printer className="h-3.5 w-3.5" />
+              </button>
             </div>
           )}
 
+          {!phone && (
           <div className={cn('tooth-legend mt-2', phone && !full && 'chip-rail', full && 'tooth-legend-full flex items-center gap-1.5')}>
             <div className={cn(full ? 'flex min-w-0 flex-1 gap-1.5 overflow-x-auto no-scrollbar' : phone ? 'chip-rail-scroll' : 'tooth-legend-row flex flex-wrap gap-1.5')}>
               {LEGEND.map((k) => (
@@ -1122,6 +1112,7 @@ export default function ToothChartCard({
               </button>
             )}
           </div>
+          )}
           </div>
 
           <div className="odonto-fit-frame mt-2" data-compact={phone ? 'true' : 'false'}>
@@ -1209,7 +1200,7 @@ export default function ToothChartCard({
                 </div>
               </div>
           </div>
-          {(!full || fullTools) && (<>
+          {(phone || !full || fullTools) && (<>
           {phone && (summary.planned > 0 || summary.done > 0) && (
             <p className="mt-1 px-1 text-[11px] text-slate-500">
               {summary.planned > 0 && <b className="text-rose-600">{summary.planned} reja</b>}
