@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, TrendingDown,
   Plus, Search, FileText, Stethoscope, X, User, Clock, Calendar,
-  Check, CreditCard, AlertTriangle, Receipt, Camera, ImagePlus, Eye, Trash2, Download, Loader2
+  Check, CreditCard, AlertTriangle, Receipt, Camera, ImagePlus, Eye, Trash2, Download, Loader2, CalendarDays, ChevronRight
 } from 'lucide-react';
 import TreatmentPlanInvoice from '@/components/treatments/TreatmentPlanInvoice';
 import { base44 } from '@/api/base44Client';
@@ -865,12 +865,12 @@ export default function MobilePaymentsV2() {
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: searchQuery ? 0 : Math.min(index, 6) * 0.02, duration: 0.18 }}
-        className="bg-white rounded-xl px-3.5 py-2.5 mb-1.5 shadow-[0_1px_4px_rgba(0,0,0,0.06)] active:scale-[0.98] transition-transform content-visibility-auto"
+        className="bg-white rounded-2xl px-3 py-2.5 mb-2 border border-slate-200/70 shadow-[0_1px_4px_rgba(0,0,0,0.04)] active:scale-[0.98] transition-transform content-visibility-auto"
       >
         <div className="flex items-center gap-2.5">
           {/* Colored icon */}
-          <div className={`w-9 h-9 rounded-xl ${style.bg} flex items-center justify-center flex-shrink-0`}>
-            <TypeIcon className={`w-4 h-4 ${style.text}`} />
+          <div className={`w-11 h-11 rounded-full ${style.bg} ${style.text} flex items-center justify-center flex-shrink-0 text-[14px] font-bold`}>
+            {String(payment.patient_name || '').trim() ? String(payment.patient_name).split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() : <TypeIcon className="w-4 h-4" />}
           </div>
 
           {/* Left info block */}
@@ -878,11 +878,8 @@ export default function MobilePaymentsV2() {
 
             {/* Row 1: patient name + type badge + Chek badge */}
             <div className="flex items-start gap-1.5">
-              <span className="flex-1 text-[13px] font-bold text-slate-900 leading-snug line-clamp-2 break-words min-w-0">
+              <span className="flex-1 text-[15px] font-bold text-slate-900 leading-snug line-clamp-1 break-words min-w-0">
                 {payment.patient_name || '—'}
-              </span>
-              <span className={`shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-black tracking-wide ${style.bg} ${style.text}`}>
-                {style.label}
               </span>
               {(payment.receipt_url || payment.receipt_image || payment.check_image) && (
                 <button
@@ -898,10 +895,12 @@ export default function MobilePaymentsV2() {
               )}
             </div>
 
+            <span className={`inline-block px-2 py-0.5 rounded-md text-[12px] font-semibold ${style.bg} ${style.text}`}>{style.label}</span>
+
             {/* Row 2: service / category */}
             {category ? (
               <div className="flex items-center gap-1">
-                <span className="text-[10px] font-medium text-slate-500 leading-tight line-clamp-1">
+                <span className="text-[13px] font-medium text-slate-500 leading-tight line-clamp-1">
                   {category}
                 </span>
               </div>
@@ -910,8 +909,8 @@ export default function MobilePaymentsV2() {
             {/* Row 3: date + time */}
             {dateTime ? (
               <div className="flex items-center gap-1">
-                <span className="text-[10px] text-slate-400 leading-none font-medium">
-                  📅 {dateTime}
+                <span className="text-[13px] text-slate-400 leading-none font-medium inline-flex items-center gap-1">
+                  <CalendarDays className="w-3.5 h-3.5" />{dateTime}
                 </span>
               </div>
             ) : null}
@@ -923,13 +922,14 @@ export default function MobilePaymentsV2() {
               const qarz = bal ? bal.debtAtTime : (payment.debt_amount !== undefined && payment.debt_amount !== null ? Number(payment.debt_amount) : Number(pat?.total_debt || 0));
               return (
                 <>
-                  <p className="text-[14px] font-black leading-none text-emerald-600">
+                  <p className={`text-[16px] font-extrabold leading-none whitespace-nowrap ${Number(payment.amount || 0) < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                     {formatCurrency(payment.amount || 0)}
                   </p>
                 </>
               );
             })()}
           </div>
+          <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
         </div>
       </motion.div>
     );
@@ -967,7 +967,7 @@ export default function MobilePaymentsV2() {
                 className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-4 h-11 shadow-lg shadow-slate-200 flex items-center gap-1.5 active:scale-95 transition-all text-xs font-bold"
               >
                 <Plus className="w-4 h-4 stroke-[2.5]" />
-                <span>{t('common.add') || "Qo'shish"}</span>
+                <span>To'lov qo'shish</span>
               </Button>
             </div>
 

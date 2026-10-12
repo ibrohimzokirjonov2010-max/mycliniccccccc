@@ -2469,7 +2469,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
 
                     {(() => {
                       const QUICK = [['ko\'rik', "Ko'rik"], ['karies', 'Karies davolash'], ['plomba', 'Plomba'], ['anestez', 'Anesteziya'], ['tozala', 'Professional tozalash'], ['olish', "Tish sug'urish"], ['implant', 'Implantatsiya']];
-                      const quick = QUICK.map(([k, label]) => [label, (services || []).find((sv) => String(sv.name || '').toLowerCase().includes(k))]).filter(([, sv]) => sv);
+                      const quick = QUICK.map(([k, label]) => [label, (services || []).find((sv) => sv.is_active !== false && String(sv.name || '').toLowerCase().includes(k) && !jawFamily(sv.name) && isServiceCompatibleWithTooth(sv, activeTooth))]).filter(([, sv]) => sv);
                       if (!quick.length) return null;
                       return (
                         <section className="bg-white rounded-[18px] border border-slate-100 shadow-[0_2px_10px_rgba(15,23,42,0.04)] p-3" data-testid="wizard-quick-services">
@@ -2542,8 +2542,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         })}
                       </div>
                       {jawPrompt && (
-                        <div className="mt-2">
-                          <JawChoice title={jawPrompt.title} preset={jawPrompt.preset} family={jawPrompt.family} services={services} onChoose={confirmJawChoice} onClose={() => setJawPrompt(null)} />
+                        <div className="fixed inset-0 z-[80] bg-slate-900/40 flex items-end" data-testid="wizard-jaw-prompt" onClick={() => setJawPrompt(null)}>
+                          <div className="w-full bg-white rounded-t-[24px] p-3 max-h-[80dvh] overflow-y-auto" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }} onClick={(e) => e.stopPropagation()}>
+                            <JawChoice title={jawPrompt.title} preset={jawPrompt.preset} family={jawPrompt.family} services={services} onChoose={confirmJawChoice} onClose={() => setJawPrompt(null)} />
+                          </div>
                         </div>
                       )}
                       <div className="mt-2.5 space-y-1.5" data-testid="wizard-service-list">

@@ -840,7 +840,7 @@ Sizni kutib qolamiz! 🏥`;
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Konstruksiya turi</Label>
+                      <Label className="text-[10px] max-md:text-[13px] font-black uppercase tracking-widest text-slate-400 ml-1">Konstruksiya turi</Label>
                       <Select onValueChange={(val) => setJobForm({...jobForm, construction_type: val})} value={jobForm.construction_type}>
                         <SelectTrigger className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-bold shadow-sm">
                           <SelectValue placeholder="Karonka, Vinir..." />
@@ -854,7 +854,7 @@ Sizni kutib qolamiz! 🏥`;
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Material</Label>
+                      <Label className="text-[10px] max-md:text-[13px] font-black uppercase tracking-widest text-slate-400 ml-1">Material</Label>
                       <Select onValueChange={(val) => setJobForm({...jobForm, work_type: val})} value={jobForm.work_type}>
                         <SelectTrigger className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-bold shadow-sm text-emerald-600">
                           <SelectValue placeholder="Zirconia, E-Max..." />
@@ -868,7 +868,7 @@ Sizni kutib qolamiz! 🏥`;
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Rangi (Shade)</Label>
+                      <Label className="text-[10px] max-md:text-[13px] font-black uppercase tracking-widest text-slate-400 ml-1">Rangi (Shade)</Label>
                       <Select onValueChange={(val) => setJobForm({...jobForm, shade: val})} value={jobForm.shade}>
                         <SelectTrigger className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-bold shadow-sm">
                           <SelectValue placeholder="A1, A2, B1..." />
@@ -882,7 +882,7 @@ Sizni kutib qolamiz! 🏥`;
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Shifokor</Label>
+                      <Label className="text-[10px] max-md:text-[13px] font-black uppercase tracking-widest text-slate-400 ml-1">Shifokor</Label>
                       <Select onValueChange={(val) => setJobForm({...jobForm, doctor_id: val})} value={jobForm.doctor_id}>
                         <SelectTrigger className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-bold shadow-sm">
                           <SelectValue placeholder="Doktorni tanlang" />
@@ -896,7 +896,7 @@ Sizni kutib qolamiz! 🏥`;
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Texnik</Label>
+                      <Label className="text-[10px] max-md:text-[13px] font-black uppercase tracking-widest text-slate-400 ml-1">Texnik</Label>
                       <Select onValueChange={(val) => setJobForm({...jobForm, technician_id: val})} value={jobForm.technician_id}>
                         <SelectTrigger className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-bold shadow-sm text-emerald-600">
                           <SelectValue placeholder="Texnikni tanlang" />
@@ -909,23 +909,23 @@ Sizni kutib qolamiz! 🏥`;
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Narxi</Label>
+                        <Label className="text-[10px] max-md:text-[13px] font-black uppercase tracking-widest text-slate-400 ml-1">Narxi</Label>
                         <Input type="number" placeholder="0" className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-bold shadow-sm" value={jobForm.cost} onChange={e => setJobForm({...jobForm, cost: e.target.value})} />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Muddat</Label>
+                        <Label className="text-[10px] max-md:text-[13px] font-black uppercase tracking-widest text-slate-400 ml-1">Muddat</Label>
                         <ClinicDateField className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-bold shadow-sm" value={jobForm.deadline} onChange={e => setJobForm({...jobForm, deadline: e.target.value})} />
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Izoh</Label>
+                    <Label className="text-[10px] max-md:text-[13px] font-black uppercase tracking-widest text-slate-400 ml-1">Izoh</Label>
                     <Input placeholder="Qo'shimcha ko'rsatmalar..." className="h-12 sm:h-14 rounded-xl sm:rounded-2xl bg-white border-slate-100 font-medium shadow-sm" value={jobForm.notes} onChange={e => setJobForm({...jobForm, notes: e.target.value})} />
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Tishga tegishli rasmlar (Fotosurat / Rentgen)</Label>
+                    <Label className="text-[10px] max-md:text-[13px] font-black uppercase tracking-widest text-slate-400 ml-1">Tishga tegishli rasmlar (Fotosurat / Rentgen)</Label>
                     <div className="flex flex-wrap gap-2.5 items-center pt-1">
                       {/* Upload Button */}
                       <label className="w-16 h-16 rounded-2xl border-2 border-dashed border-slate-200 hover:border-emerald-500 cursor-pointer flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-emerald-600 transition-colors bg-slate-50/50">
@@ -1054,15 +1054,15 @@ Sizni kutib qolamiz! 🏥`;
 
           <div className="space-y-5 p-6 overflow-y-auto max-h-[60vh]">
             <div className="space-y-2">
-               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">To'liq nomi</Label>
+               <Label className="text-[10px] max-md:text-[13px] font-black uppercase tracking-widest text-slate-400 ml-1">To'liq nomi</Label>
                <Input placeholder="Azizbek Musayev" className="h-12 rounded-2xl bg-slate-50 border-none font-bold" value={techForm.name} onChange={e => setTechForm({...techForm, name: e.target.value})} />
             </div>
             <div className="space-y-2">
-               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Telefon</Label>
+               <Label className="text-[10px] max-md:text-[13px] font-black uppercase tracking-widest text-slate-400 ml-1">Telefon</Label>
                <Input placeholder="+998" className="h-12 rounded-2xl bg-slate-50 border-none font-bold" value={techForm.phone} onChange={e => setTechForm({...techForm, phone: e.target.value})} />
             </div>
             <div className="space-y-2">
-               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Ixtisosligi</Label>
+               <Label className="text-[10px] max-md:text-[13px] font-black uppercase tracking-widest text-slate-400 ml-1">Ixtisosligi</Label>
                <Input placeholder="Zirkon, Ortopediya" className="h-12 rounded-2xl bg-slate-50 border-none font-bold" value={techForm.specialization} onChange={e => setTechForm({...techForm, specialization: e.target.value})} />
             </div>
           </div>
