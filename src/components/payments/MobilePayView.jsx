@@ -13,6 +13,13 @@ import { cn } from '@/lib/utils';
 
 export const fmtSum = (n) => Math.round(Number(n) || 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
+const fmtPhone = (p) => {
+  const d = String(p || '').replace(/\D/g, '');
+  if (d.length === 12 && d.startsWith('998')) return `+998 ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10)}`;
+  if (d.length === 9) return `+998 ${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 7)} ${d.slice(7)}`;
+  return p || '—';
+};
+
 const initials = (name = '') => name.trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '?';
 
 /**
@@ -36,7 +43,7 @@ export function deriveServices(plans = [], doctorsById = {}) {
     services.forEach((svc, idx) => {
       totalCount += 1;
       const due = Math.round((Number(svc.price) || 0) * ratio);
-      if (svc.payment_status === 'paid') { paidCount += 1; return; }
+      if (svc.payment_status === 'paid') { paidCount += 1; paidLeft = Math.max(0, paidLeft - due); return; }
       const covered = Math.min(paidLeft, due);
       paidLeft -= covered;
       const open = due - covered;
@@ -152,18 +159,18 @@ export default function MobilePayView({
                 <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-[17px] font-bold text-slate-600 shrink-0">{initials(patient.full_name)}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[17px] font-bold text-[#0b1f44] truncate">{patient.full_name}</p>
-                  <p className="text-[14px] text-slate-500 truncate">{patient.phone || '—'}</p>
+                  <p className="text-[14px] text-slate-500 truncate">{fmtPhone(patient.phone)}</p>
                 </div>
                 <ChevronRight className="w-5 h-5 text-slate-500 shrink-0" />
               </button>
-              <div className="mt-3 grid grid-cols-[auto_auto_auto] justify-start gap-2 pl-[68px] max-[400px]:pl-0">
-                <button type="button" onClick={onOpenPlans} className="h-9 px-3 rounded-xl bg-emerald-50 text-emerald-700 text-[13px] font-semibold inline-flex items-center gap-1.5">
+              <div className="mt-3 flex flex-wrap gap-2 pl-[68px] max-[440px]:pl-0">
+                <button type="button" onClick={onOpenPlans} className="h-9 px-2.5 rounded-xl whitespace-nowrap bg-emerald-50 text-emerald-700 text-[13px] font-semibold inline-flex items-center gap-1.5">
                   <CalendarDays className="w-4 h-4" /> Rejalar <span className="ml-0.5 min-w-[20px] h-5 px-1 rounded-full bg-emerald-100 text-[11.5px] font-bold inline-flex items-center justify-center">{plansCount}</span>
                 </button>
-                <button type="button" onClick={onOpenCard} className="h-9 px-3 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-semibold inline-flex items-center gap-1.5">
+                <button type="button" onClick={onOpenCard} className="h-9 px-2.5 rounded-xl whitespace-nowrap bg-slate-100 text-slate-700 text-[13px] font-semibold inline-flex items-center gap-1.5">
                   <Folder className="w-4 h-4" /> Klinik karta
                 </button>
-                <button type="button" onClick={onOpenHistory} className="h-9 px-3 rounded-xl bg-slate-100 text-slate-700 text-[13px] font-semibold inline-flex items-center gap-1.5">
+                <button type="button" onClick={onOpenHistory} className="h-9 px-2.5 rounded-xl whitespace-nowrap bg-slate-100 text-slate-700 text-[13px] font-semibold inline-flex items-center gap-1.5">
                   <Clock className="w-4 h-4" /> Tarix
                 </button>
               </div>
@@ -302,7 +309,7 @@ export default function MobilePayView({
                 const on = method === m.value; const Mark = m.mark;
                 return (
                   <button key={m.value} type="button" onClick={() => onMethodChange(m.value)} data-method={m.value}
-                    className={cn('relative h-[74px] rounded-2xl border bg-white flex flex-col items-center justify-center gap-1 shadow-sm', on ? 'border-[#1d6fe0] bg-[#eef5ff] ring-1 ring-[#1d6fe0]' : 'border-slate-200')}>
+                    className={cn('relative h-[78px] rounded-2xl border bg-white flex flex-col items-center justify-end pb-2 gap-1 shadow-sm', on ? 'border-[#1d6fe0] bg-[#eef5ff] ring-1 ring-[#1d6fe0]' : 'border-slate-200')}>
                     <span className="absolute left-2 top-2"><Radio on={on} /></span>
                     {Mark ? <Mark /> : (
                       <span className="inline-flex items-center gap-1.5">
@@ -326,7 +333,7 @@ export default function MobilePayView({
                     className={cn('h-14 rounded-2xl border bg-white flex items-center gap-2.5 px-3 shadow-sm', on ? 'border-[#1d6fe0] bg-[#eef5ff] ring-1 ring-[#1d6fe0]' : 'border-slate-200')}>
                     <Radio on={on} />
                     <Icon className="w-6 h-6 text-slate-600" strokeWidth={1.6} />
-                    <span className="text-[14px] font-medium text-slate-800">{m.label}</span>
+                    <span className="text-[13.5px] font-medium text-slate-800 whitespace-nowrap">{m.label}</span>
                   </button>
                 );
               })}
