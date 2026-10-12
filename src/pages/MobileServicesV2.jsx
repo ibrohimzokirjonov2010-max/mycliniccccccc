@@ -4,8 +4,9 @@ import {
   Plus, Search, Stethoscope, Trash2, Clock, 
   Activity, Scissors, Layers, Baby, 
   ShieldCheck, Syringe, Sparkles, TrendingUp,
-  Pencil, Settings2, Check, ArrowLeft, X
+  Pencil, Settings2, Check, ArrowLeft, X, MoreVertical, FileText, Coins
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
@@ -244,9 +245,9 @@ export default function MobileServicesV2() {
       {/* Header — clinical price catalog */}
       <div className="flex items-center justify-between mb-3">
         <div className="min-w-0">
-          <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-1">Xizmatlar</h1>
-          <p className="text-emerald-600 font-bold text-[9px] uppercase tracking-wider">
-            {showAdminChrome ? 'Katalog boshqaruvi' : 'NARXLAR KATALOGI'}
+          <h1 className="text-[24px] font-extrabold text-slate-900 tracking-tight leading-none mb-1">Xizmatlar</h1>
+          <p className="text-slate-400 font-medium text-[13px] whitespace-nowrap">
+            {showAdminChrome ? 'Katalog boshqaruvi' : 'Xizmatlar va narxlar'}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -255,23 +256,23 @@ export default function MobileServicesV2() {
               type="button"
               onClick={() => setManageMode(v => !v)}
               className={cn(
-                "h-9 px-3 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all active:scale-95",
+                "w-12 h-12 rounded-2xl grid place-items-center border transition-all active:scale-95",
                 manageMode
                   ? "bg-slate-800 border-slate-800 text-white shadow-md"
                   : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
               )}
               title="Katalogni boshqarish"
             >
-              {manageMode ? 'Tayyor' : 'Boshqarish'}
+              {manageMode ? <Check className="w-5 h-5" /> : <Settings2 className="w-5 h-5" />}
             </button>
           )}
-          {showAdminChrome && (
+          {isAdmin && (
             <button
               type="button"
               onClick={() => { setEditService(null); setModalOpen(true); }}
-              className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl flex items-center justify-center shadow-md shadow-emerald-500/20 active:scale-90 transition-all cursor-pointer"
+              className="h-12 px-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-2xl inline-flex items-center gap-2 text-[14px] font-semibold shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
             >
-              <Plus className="w-5 h-5 stroke-[2.5]" />
+              <Plus className="w-5 h-5 stroke-[2.5]" />Xizmat qo'shish
             </button>
           )}
         </div>
@@ -279,10 +280,29 @@ export default function MobileServicesV2() {
 
       {/* Sticky search + category chips */}
       <div className="sticky top-0 z-20 -mx-4 px-4 pt-1 pb-3 mb-3 bg-[#F8FAFC]/95 backdrop-blur-md border-b border-slate-100/80">
+      {/* Search Input */}
+      <div className="relative mb-3">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <Input 
+          placeholder={t('services.sidebar.search')}
+          value={search} 
+          onChange={e => setSearch(e.target.value)} 
+          className="pl-10 pr-9 h-12 rounded-xl bg-white border border-slate-200 shadow-sm font-medium text-slate-700 text-[14px] focus-visible:ring-emerald-400 focus-visible:border-emerald-400 transition-all placeholder:text-slate-350"
+        />
+        {search && (
+          <button 
+            type="button"
+            onClick={() => setSearch('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-650 transition-colors border-none"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        )}
+      </div>
       {/* Categories Bar */}
-      <div className="mb-3">
-        <div className="flex items-center justify-between mb-2.5 px-1">
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Kategoriyalar</span>
+      <div>
+        <div className={cn("flex items-center justify-between px-1", showAdminChrome ? "mb-2.5" : "hidden")}>
+          <span className="text-[13px] font-semibold text-slate-400">{showAdminChrome ? 'Kategoriyalar' : ''}</span>
           {showAdminChrome && (
           <button 
             type="button"
@@ -299,18 +319,17 @@ export default function MobileServicesV2() {
           )}
         </div>
 
-        <div className="flex gap-2.5 overflow-x-auto overscroll-x-contain pb-3 -mx-4 px-4 no-scrollbar items-center snap-x snap-mandatory" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-1 -mx-4 px-4 no-scrollbar items-center snap-x snap-mandatory" style={{ WebkitOverflowScrolling: 'touch' }}>
           <button
             onClick={() => setSelectedCategory('all')}
             className={cn(
-              "shrink-0 snap-start flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2.5 min-h-[44px] rounded-xl font-black text-[11px] uppercase tracking-wider transition-all border",
+              "shrink-0 snap-start flex items-center gap-1.5 whitespace-nowrap px-4 min-h-[44px] rounded-xl font-semibold text-[13px] transition-all border",
               selectedCategory === 'all' 
-                ? "bg-gradient-to-r from-emerald-500 to-teal-650 text-white border-none shadow-md shadow-emerald-500/15" 
+                ? "bg-slate-900 text-white border-slate-900" 
                 : "bg-white text-slate-500 border-slate-100 hover:border-slate-200 shadow-sm",
               isReordering && "opacity-50 grayscale pointer-events-none"
             )}
           >
-            <Stethoscope className="w-3.5 h-3.5" />
             <span>{t('services.sidebar.all')}</span>
           </button>
 
@@ -330,16 +349,15 @@ export default function MobileServicesV2() {
                     <button
                       onClick={() => !isReordering && setSelectedCategory(cat)}
                       className={cn(
-                        "shrink-0 snap-start flex items-center gap-1.5 whitespace-nowrap px-3.5 py-2.5 min-h-[44px] rounded-xl font-black text-[11px] uppercase tracking-wider transition-all border",
+                        "shrink-0 snap-start flex items-center gap-1.5 whitespace-nowrap px-4 min-h-[44px] rounded-xl font-semibold text-[13px] transition-all border",
                         isSelected 
-                          ? "bg-gradient-to-r from-emerald-500 to-teal-650 text-white border-none shadow-md shadow-emerald-500/15" 
+                          ? "bg-slate-900 text-white border-slate-900" 
                           : "bg-white text-slate-500 border-slate-100 hover:border-slate-200 shadow-sm",
                         isReordering 
                           ? "border-emerald-500 bg-emerald-50 text-emerald-700 animate-pulse cursor-move ring-2 ring-emerald-500/10 touch-none"
                           : "touch-pan-x"
                       )}
                     >
-                      <Icon className={cn("w-3.5 h-3.5", isSelected ? "text-white" : catStyle.color)} />
                       <span>{cat}</span>
                     </button>
                     {isReordering && (
@@ -366,124 +384,59 @@ export default function MobileServicesV2() {
         </div>
       </div>
 
-      {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <Input 
-          placeholder={t('services.sidebar.search')}
-          value={search} 
-          onChange={e => setSearch(e.target.value)} 
-          className="pl-10 pr-9 h-10 rounded-xl bg-white border border-slate-200 shadow-sm font-bold text-slate-700 text-xs focus-visible:ring-emerald-400 focus-visible:border-emerald-400 transition-all placeholder:text-slate-350"
-        />
-        {search && (
-          <button 
-            type="button"
-            onClick={() => setSearch('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-650 transition-colors border-none"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        )}
-      </div>
       </div>{/* end sticky search+chips */}
 
-      {/* Services List Grouped */}
-      <div className="space-y-4">
-        {grouped.map(([catName, items]) => {
+      {/* Services List (flat cards) */}
+      <div className="space-y-2" data-testid="services-list">
+        {grouped.flatMap(([catName, items]) => items.map(s => ({ s, catName }))).map(({ s, catName }) => {
           const style = getCategoryStyle(catName);
           const Icon = style.icon || Stethoscope;
           return (
-            <div key={catName} className="space-y-1.5">
-              <div className="flex items-center justify-between px-1.5">
-                <div className="flex items-center gap-1.5">
-                  <div className={cn("w-5.5 h-5.5 rounded-lg flex items-center justify-center", style.bg)}>
-                    <Icon className={cn("w-3.5 h-3.5", style.color)} />
-                  </div>
-                  <span className="text-[9px] font-black text-slate-500 tracking-wider uppercase">{catName}</span>
+            <div key={s.id} className={cn("bg-white rounded-2xl border border-slate-200/70 shadow-sm px-3 py-2.5 flex items-center gap-3", !s.is_active && "opacity-60")}>
+              <span className={cn("w-12 h-12 rounded-xl grid place-items-center shrink-0", style.bg)}><Icon className={cn("w-6 h-6", style.color)} /></span>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2">{s.name}</h4>
+                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span className={cn("px-2 py-0.5 rounded-md text-[12px] font-semibold max-w-full truncate", style.bg, style.color)}>{String(catName).charAt(0).toUpperCase() + String(catName).slice(1).toLowerCase()}</span>
+                  {s.requires_tooth && <span className="px-2 py-0.5 rounded-md text-[12px] font-semibold bg-slate-800 text-white">Tish</span>}
+                  {!s.is_active && <span className="px-2 py-0.5 rounded-md text-[12px] font-semibold bg-slate-100 text-slate-500">Faol emas</span>}
                 </div>
-                <Badge variant="secondary" className="bg-slate-100 text-slate-450 border-none rounded-lg px-2 h-4 text-[8px] font-black">{items.length}</Badge>
               </div>
-              <div className={cn("bg-white rounded-2xl border border-slate-150 shadow-sm overflow-hidden divide-y divide-slate-100 border-l-[3.5px]", style.border)}>
-                <AnimatePresence>
-                  {items.map(s => (
-                    <motion.div
-                      initial={{ opacity: 0, y: 5 }} 
-                      animate={{ opacity: 1, y: 0 }} 
-                      key={s.id}
-                      className="p-3 px-3.5 flex items-center justify-between hover:bg-slate-50/40 active:bg-slate-50/70 transition-colors group"
-                    >
-                      <div className="flex-1 min-w-0 pr-2">
-                        <div className="flex items-start gap-2">
-                          <h4 className="font-bold text-slate-900 text-[13.5px] leading-snug tracking-tight">{s.name}</h4>
-                          {!s.is_active && (
-                            <span className="shrink-0 text-[8px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-widest">Faol emas</span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5">
-                          <span className="font-black text-emerald-700 text-[17px] leading-none font-mono tabular-nums tracking-tight">
-                            {Number(s.price).toLocaleString('uz-UZ')}
-                            <span className="ml-1 text-[10px] font-bold text-emerald-600/80 tracking-wider">so'm</span>
-                          </span>
-                          <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-400">
-                            <Clock className="w-3 h-3 text-slate-400" /> {s.duration || 30} min
-                          </span>
-                          {s.requires_tooth && (
-                            <span className="text-[8px] bg-slate-800 text-white px-1.5 py-0.5 rounded-md font-black uppercase tracking-wider shadow-sm">
-                              TISH RAQAMI
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {showAdminChrome && (
-                      <div className="flex items-center gap-0.5 shrink-0">
-                        <button 
-                          type="button"
-                          onClick={() => { setEditService(s); setModalOpen(true); }} 
-                          className="p-1.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg active:scale-90 transition-all duration-200 cursor-pointer"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => handleDelete(s.id)} 
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg active:scale-90 transition-all duration-200 cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      )}
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
+              <span className="font-extrabold text-emerald-600 text-[15px] whitespace-nowrap tabular-nums">{Number(s.price).toLocaleString('ru-RU').replace(/,/g, ' ')} so'm</span>
+              {isAdmin && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button type="button" aria-label="Amallar" className="w-11 h-11 rounded-xl border border-slate-200 grid place-items-center text-slate-600 shrink-0"><MoreVertical className="w-5 h-5" /></button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="rounded-xl p-1">
+                    <DropdownMenuItem onClick={() => { setEditService(s); setModalOpen(true); }} className="px-4 py-3 text-[14px] font-semibold"><Pencil className="w-4 h-4 mr-2" />Tahrirlash</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDelete(s.id)} className="px-4 py-3 text-[14px] font-semibold text-rose-600"><Trash2 className="w-4 h-4 mr-2" />O'chirish</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           );
         })}
+        {!loading && grouped.length === 0 && (
+          <div className="py-14 text-center text-slate-400"><Stethoscope className="w-10 h-10 mx-auto mb-2 opacity-40" /><p className="text-[14px] font-semibold">Xizmatlar topilmadi</p></div>
+        )}
       </div>
 
       {/* Add / Edit Dialog Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="w-[92vw] max-w-sm max-h-[85vh] p-0 border-none rounded-[2rem] bg-white outline-none overflow-hidden flex flex-col shadow-2xl !left-[50%] !top-[50%] !translate-x-[-50%] !translate-y-[-50%]" aria-describedby={undefined}>
+        <DialogContent className="w-screen max-w-none max-h-[88dvh] p-0 border-none rounded-t-[28px] rounded-b-none bg-white outline-none overflow-hidden flex flex-col shadow-2xl !left-0 !top-auto !bottom-0 !translate-x-0 !translate-y-0 [&>button]:hidden" aria-describedby={undefined} data-testid="service-sheet">
           {/* Green Gradient Header */}
           <DialogHeader className="shrink-0">
-            <div className="bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 px-5 py-4 flex items-center justify-between text-white rounded-t-[2rem]">
+            <div className="px-5 pt-3 pb-2">
+              <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-200" />
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm text-lg">
-                  🩺
+                <span className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-600 grid place-items-center shrink-0"><Sparkles className="w-7 h-7" /></span>
+                <div className="flex-1 min-w-0 text-left">
+                  <DialogTitle className="text-[20px] font-extrabold text-slate-900 leading-tight">{editService ? t('services.modals.editTitle') : "Yangi xizmat qo'shish"}</DialogTitle>
+                  <p className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider mt-0.5">Xizmatlar katalogi</p>
                 </div>
-                <div>
-                  <DialogTitle className="text-[14px] font-black text-white uppercase leading-none tracking-tight">
-                    {editService ? t('services.modals.editTitle') : t('services.modals.addTitle')}
-                  </DialogTitle>
-                  <p className="text-[8px] font-bold text-white/70 uppercase tracking-widest mt-0.5">Xizmatlar katalogi</p>
-                </div>
+                <button onClick={() => setModalOpen(false)} aria-label="Yopish" className="w-11 h-11 rounded-xl bg-slate-100 text-slate-500 grid place-items-center shrink-0"><X className="w-5 h-5" /></button>
               </div>
-              <button 
-                onClick={() => setModalOpen(false)} 
-                className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center active:scale-90 transition-all border-none cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
           </DialogHeader>
 
@@ -491,21 +444,21 @@ export default function MobileServicesV2() {
           <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
             {/* Input: Service Name */}
             <div>
-              <label className="ml-1 text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">
+              <label className="ml-1 text-[13px] font-bold text-slate-500 uppercase tracking-wide mb-2 block">
                 {t('services.modals.name')}
               </label>
               <Input 
                 value={form.name} 
                 onChange={e => setForm({ ...form, name: e.target.value })} 
                 placeholder="Xizmat nomini kiriting..."
-                className="h-10 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-bold text-slate-800 text-xs px-4"
+                className="h-12 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-bold text-slate-800 text-[14px] px-4"
               />
             </div>
 
             {/* Inputs: Price & Duration */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="ml-1 text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">
+                <label className="ml-1 text-[13px] font-bold text-slate-500 uppercase tracking-wide mb-2 block">
                   {t('services.modals.price')}
                 </label>
                 <div className="relative">
@@ -514,14 +467,14 @@ export default function MobileServicesV2() {
                     value={form.price} 
                     onChange={e => setForm({ ...form, price: e.target.value })} 
                     placeholder="0"
-                    className="h-10 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-black text-slate-800 pl-4 pr-12 text-xs"
+                    className="h-12 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-black text-slate-800 pl-4 pr-12 text-[14px]"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 uppercase">so'm</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-semibold text-slate-400">so'm</span>
                 </div>
               </div>
 
               <div>
-                <label className="ml-1 text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">
+                <label className="ml-1 text-[13px] font-bold text-slate-500 uppercase tracking-wide mb-2 block">
                   {t('services.modals.duration')}
                 </label>
                 <div className="relative">
@@ -530,9 +483,9 @@ export default function MobileServicesV2() {
                     value={form.duration} 
                     onChange={e => setForm({ ...form, duration: e.target.value })} 
                     placeholder="30"
-                    className="h-10 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-black text-slate-800 pl-4 pr-10 text-xs"
+                    className="h-12 rounded-xl bg-slate-50 border-none focus-visible:ring-emerald-500/10 font-black text-slate-800 pl-4 pr-10 text-[14px]"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 uppercase">min</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-semibold text-slate-400">min</span>
                 </div>
               </div>
             </div>
@@ -541,12 +494,12 @@ export default function MobileServicesV2() {
             <div className="border border-slate-100 bg-slate-50/50 rounded-2xl overflow-hidden divide-y divide-slate-100">
               <div className="flex items-center justify-between p-3.5 bg-white hover:bg-slate-50/30 transition-colors">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center">
+                  <div className="w-11 h-11 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center">
                     <ShieldCheck className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="font-bold text-[11px] text-slate-800 leading-none">{t('services.modals.active')}</p>
-                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Xizmat faolligi</p>
+                    <p className="font-bold text-[14px] text-slate-800 leading-none">{t('services.modals.active')}</p>
+                    <p className="text-[13px] text-slate-500 mt-1">Xizmat faolligi</p>
                   </div>
                 </div>
                 <Switch checked={form.is_active} onCheckedChange={v => setForm({ ...form, is_active: v })} />
@@ -554,12 +507,12 @@ export default function MobileServicesV2() {
               
               <div className="flex items-center justify-between p-3.5 bg-white hover:bg-slate-50/30 transition-colors">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <div className="w-11 h-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
                     <Layers className="w-4 h-4" />
                   </div>
                   <div>
-                    <p className="font-bold text-[11px] text-slate-800 leading-none">{t('services.modals.tooth')}</p>
-                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-wider font-mono">Tish raqamini kiritish</p>
+                    <p className="font-bold text-[14px] text-slate-800 leading-none">{t('services.modals.tooth')}</p>
+                    <p className="text-[13px] text-slate-500 mt-1 font-mono">Tish raqamini kiritish</p>
                   </div>
                 </div>
                 <Switch 
@@ -716,14 +669,14 @@ export default function MobileServicesV2() {
           </div>
 
           {/* Modal Actions Footer */}
-          <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex gap-2 shrink-0 rounded-b-[2rem]">
-            <Button variant="ghost" onClick={() => setModalOpen(false)} className="h-10 flex-1 rounded-xl font-bold uppercase text-[10px] tracking-wider text-slate-400 hover:bg-slate-100 px-4 border-none">
+          <div className="px-4 pt-3 bg-white border-t border-slate-100 grid grid-cols-[0.8fr_1.2fr] gap-3 shrink-0" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}>
+            <Button variant="ghost" onClick={() => setModalOpen(false)} className="h-14 rounded-2xl font-bold uppercase text-[13px] tracking-wider text-slate-500 bg-slate-50 border border-slate-200 px-4">
               Bekor
             </Button>
             <Button 
               onClick={handleSave} 
               disabled={saving}
-              className="h-10 flex-1 rounded-xl font-black uppercase text-xs tracking-wider border-none shadow-md bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white active:scale-95 transition-all flex items-center justify-center gap-1.5"
+              className="h-14 rounded-2xl font-bold uppercase text-[14px] tracking-wider border-none shadow-md bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white active:scale-95 transition-all flex items-center justify-center gap-1.5"
             >
               {saving ? '...' : <><Check className="w-4 h-4 stroke-[3]" /> Saqlash</>}
             </Button>
