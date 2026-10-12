@@ -97,6 +97,46 @@ export default function ImplantWizardArch({ selectedFdis = [], activeFdi = '', o
   const scrollRef = useRef(null);
   const [archHalf, setArchHalf] = useState('right');
 
+  if (phone) {
+    const right = archHalf === 'right';
+    const up = right ? UPPER_FDI.slice(0, 8) : UPPER_FDI.slice(8);
+    const lo = right ? LOWER_FDI.slice(0, 8) : LOWER_FDI.slice(8);
+    const side = right ? "o'ng" : 'chap';
+    const Row = ({ list, label, upper }) => (
+      <div className="flex items-stretch gap-1.5">
+        <div className="w-[58px] shrink-0 rounded-xl bg-emerald-50 text-emerald-800 text-[13px] font-semibold flex items-center justify-center text-center leading-tight px-1">{label}<br />({side})</div>
+        <div className="flex-1 min-w-0 grid grid-cols-8 gap-0.5 rounded-xl bg-slate-50 px-1 py-1.5">
+          {list.map((n) => {
+            const sel = selectedSet.has(String(n));
+            const act = String(activeFdi || '') === String(n);
+            return (
+              <button key={n} type="button" data-fdi={n} aria-pressed={sel} aria-label={`${n}-tish`} onClick={() => onToggle(String(n))}
+                className={cn('flex flex-col items-center rounded-lg min-h-[72px] pt-0.5', (sel || act) && 'bg-teal-50 ring-2 ring-[#0d9488]')}>
+                <img src={getToothIllustrationSrc(n, 'healthy')} alt="" draggable={false} className="h-[52px] w-full object-contain pointer-events-none" style={{ objectPosition: upper ? 'center bottom' : 'center top' }} />
+                <span className={cn('mt-0.5 text-[13px] font-semibold tabular-nums', sel ? 'text-[#0d9488] font-extrabold' : 'text-slate-700')}>{n}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+    return (
+      <div className="implant-wizard-arch w-full select-none" data-testid="implant-wizard-arch" data-layout="phone-halves">
+        <div className="mb-2 grid grid-cols-2 gap-2" data-testid="arch-half-tabs">
+          <button type="button" data-testid="arch-half-right" onClick={() => setArchHalf('right')}
+            className={cn('h-11 rounded-xl text-[13px] font-bold px-1', right ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-600')}>O‘ng tomondagi tishlar (18–11)</button>
+          <button type="button" data-testid="arch-half-left" onClick={() => setArchHalf('left')}
+            className={cn('h-11 rounded-xl text-[13px] font-bold px-1', !right ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-600')}>Chap tomondagi tishlar (21–28)</button>
+        </div>
+        <p className="text-right text-[13px] font-semibold text-rose-500 mb-2">{right ? 'Chap tomon → yuqoridagi tugma' : '← O‘ng tomon — yuqoridagi tugma'}</p>
+        <div className="rounded-2xl border border-slate-200 p-2 space-y-2">
+          <Row list={up} label="Yuqori" upper />
+          <Row list={lo} label="Pastki" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="implant-wizard-arch tooth-chart-root w-full select-none"

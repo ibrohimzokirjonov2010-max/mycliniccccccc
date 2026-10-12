@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Plus, FileText, X, Check, ArrowLeft, ArrowRight,
-  Search, Image as ImageIcon, Printer, Pencil,
+  Search, Image as ImageIcon, Printer, Pencil, CalendarDays, Smile, UserRound, Trash2,
 } from 'lucide-react';
 import { Tooth } from '@/components/ui/Icons';
 import PatientModal from '../patients/PatientModal';
@@ -1623,8 +1623,8 @@ export default function ImplantForm({
     <div className="flex flex-col lg:flex-row gap-4 min-h-0">
       <aside className="implant-wizard-step1-patient w-full lg:w-[220px] shrink-0 bg-white rounded-xl border border-[#e5e7eb] p-3 sm:p-4 flex flex-col gap-3 relative z-20">
         <div className="implant-wizard-step1-heading">
-          <h3 className="text-[15px] font-bold text-[#111827]">{tw('stepPatient', 'Bemor')}</h3>
-          <div className="mt-1 h-[3px] w-10 rounded-full bg-[#0d9488]" />
+          <h3 className="text-[15px] font-bold text-[#111827] flex items-center gap-2"><span className="md:hidden w-9 h-9 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center"><UserRound className="w-5 h-5" /></span><span className="md:hidden">Bemor tanlash <span className="text-rose-500">*</span></span><span className="hidden md:inline">{tw('stepPatient', 'Bemor')}</span></h3>
+          <div className="mt-1 h-[3px] w-10 rounded-full bg-[#0d9488] hidden md:block" />
         </div>
         <div className="implant-wizard-step1-search">
           <PatientSelect
@@ -1686,14 +1686,14 @@ export default function ImplantForm({
 
       <div className="flex-1 min-w-0 flex flex-col gap-4">
         <section className={cardClass}>
-          <h3 className="implant-wizard-date-label text-[15px] font-bold text-[#111827] mb-3">{tw('placementDate', "O'rnatilgan sana")}</h3>
+          <h3 className="implant-wizard-date-label text-[15px] font-bold text-[#111827] mb-3 flex items-center gap-2"><span className="md:hidden w-9 h-9 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center"><CalendarDays className="w-5 h-5" /></span>{tw('placementDate', "O'rnatilgan sana")}<span className="md:hidden text-rose-500">*</span></h3>
           <div className="max-w-[240px]">
             <DateField value={form.placement_date} onChange={handleDateChange} />
           </div>
         </section>
 
         <section className={cn(cardClass, 'flex-1 implant-wizard-arch-card min-w-0')}>
-          <h3 className="text-[15px] font-bold text-[#111827] mb-1">{tw('selectTeeth', 'Tishlarni belgilang')}</h3>
+          <h3 className="text-[15px] font-bold text-[#111827] mb-1 flex items-center gap-2"><span className="md:hidden w-9 h-9 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center"><Smile className="w-5 h-5" /></span>{tw('selectTeeth', 'Tishlarni belgilang')}<span className="md:hidden text-rose-500">*</span></h3>
           <ImplantWizardArch
             selectedFdis={selectedFdis}
             activeFdi={activeFdi}
@@ -1717,9 +1717,9 @@ export default function ImplantForm({
             <button
               type="button"
               onClick={() => { setField('tooth_numbers', []); setToothDataMap({}); setActiveFdi(null); setFormError(''); setPromptSizes(false); }}
-              className="h-8 px-3 rounded-[10px] border border-[#e5e7eb] bg-white text-sm text-[#6b7280] hover:bg-gray-50 cursor-pointer"
+              className="h-8 max-md:h-11 max-md:px-4 max-md:text-[14px] max-md:font-semibold max-md:inline-flex max-md:items-center max-md:gap-1.5 px-3 rounded-[10px] border border-[#e5e7eb] bg-white text-sm text-[#6b7280] hover:bg-gray-50 cursor-pointer"
             >
-              {tw('clear', 'Tozalash')}
+              <Trash2 className="w-4 h-4 md:hidden" />{tw('clear', 'Tozalash')}
             </button>
           </div>
         </section>
