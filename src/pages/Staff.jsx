@@ -8,7 +8,9 @@ import {
   Users, UserPlus, Trash2, Shield, Search, Pencil, Phone, Send,
   Calendar, Download, LayoutGrid, List, ChevronDown, ChevronRight,
   Award, KeyRound, X, UserCheck, Percent, ShieldCheck,
+  SlidersHorizontal, MoreHorizontal, Settings as SettingsIcon, CreditCard, Database, Bell, LogOut,
 } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -162,6 +164,7 @@ export default function Staff() {
   const queryClient = useQueryClient();
   const phone = useIsMobile(641);
   const inMobileShell = useIsMobile(1024);
+  const { logout } = useAuth();
   const hasStaffAccess = useFeature('staff');
 
   const [users, setUsers] = useState([]);
@@ -344,6 +347,12 @@ export default function Staff() {
   const topEarnerId = useMemo(() => {
     const ranked = cards.filter((c) => c.revenue > 0).sort((a, b) => b.revenue - a.revenue || b.completed - a.completed);
     return ranked[0]?.id || null;
+  }, [cards]);
+
+  const revenueRank = useMemo(() => {
+    const m = new Map();
+    cards.filter((c) => c.revenue > 0).sort((a, b) => b.revenue - a.revenue || b.completed - a.completed).forEach((c, i) => m.set(String(c.id), i + 1));
+    return m;
   }, [cards]);
 
   const counts = useMemo(() => ({
@@ -704,15 +713,20 @@ export default function Staff() {
           </h1>
           <p className="text-xs text-slate-500 mt-0.5 truncate">
             {phone
-              ? `${counts.all} ${tx(language, 'xodim', 'сотр.', 'staff')} · ${doctorCount} ${tx(language, 'shifokor', 'врач', 'doctors')} · ${adminCount} ${tx(language, 'administrator', 'админ', 'admin')}`
+              ? tx(language, 'Klinika jamoasi va kirish huquqlari', 'Команда клиники и доступы', 'Clinic team and access')
               : (t('staff.subtitle') || 'Klinika jamoasi, ish jadvali, komissiya va kirish huquqlari')}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button type="button" onClick={exportCsv} className={cn('h-10 px-3 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold inline-flex items-center gap-1.5 hover:bg-slate-50', phone && 'w-10 px-0 justify-center')}>
+          {phone && (
+            <button type="button" onClick={() => { if (openCreate()) setIsModalOpen(true); }} className="h-11 px-4 rounded-xl bg-emerald-600 text-white text-[14px] font-semibold inline-flex items-center gap-2 shadow-sm">
+              <UserPlus className="w-[18px] h-[18px]" />{tx(language, 'Yangi xodim', 'Новый сотрудник', 'New staff')}
+            </button>
+          )}
+          {!phone && <button type="button" onClick={exportCsv} className={cn('h-10 px-3 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold inline-flex items-center gap-1.5 hover:bg-slate-50', phone && 'w-10 px-0 justify-center')}>
             <Download className="w-4 h-4" />
             {!phone && 'Excel'}
-          </button>
+          </button>}
           {!phone && (
             <Dialog open={isModalOpen} onOpenChange={(open) => { if (open && !openCreate()) return; setIsModalOpen(open); }}>
               <DialogTrigger asChild>
@@ -732,48 +746,33 @@ export default function Staff() {
 
       {phone ? (
         <>
-          <div className="sticky top-0 z-20 -mx-4 px-4 py-2.5 bg-[#F8FAFC]/95 backdrop-blur-md">
+          <div className="sticky top-0 z-20 -mx-4 px-4 py-2.5 bg-[#F8FAFC]/95 backdrop-blur-md space-y-2.5">
+            <div className={cn('grid gap-2', roleTabs.filter((tb) => tb.id === 'all' || tb.count > 0).length > 3 ? 'grid-cols-4' : 'grid-cols-3')}>
+              {roleTabs.filter((tb) => tb.id === 'all' || tb.count > 0).map((tab) => (
+                <button key={tab.id} type="button" onClick={() => setRoleFilter(tab.id)}
+                  className={cn('min-h-[44px] px-1 rounded-xl border text-[13px] font-semibold whitespace-nowrap truncate',
+                    roleFilter === tab.id ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-slate-600 border-slate-200')}>
+                  {tab.id === 'all' ? tx(language, 'Barchasi', 'Все', 'All') : tab.id === 'admin' ? tx(language, 'Administrator', 'Админ', 'Admin') : tab.label} ({tab.count})
+                </button>
+              ))}
+            </div>
             <div className="flex gap-2">
               <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder={tx(language, 'Ism, login yoki telefon…', 'Имя, логин или телефон…', 'Name, login or phone…')}
-                  className="w-full h-11 pl-9 pr-3 rounded-[13px] border border-slate-200 bg-white text-sm outline-none focus:border-[#1499AD]"
-                />
+                <input value={search} onChange={(e) => setSearch(e.target.value)}
+                  placeholder={tx(language, 'Ism, login yoki telefon orqali qidirish…', 'Имя, логин или телефон…', 'Name, login or phone…')}
+                  className="w-full h-12 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-[14px] outline-none focus:border-[#1499AD]" />
               </div>
-              <button type="button" onClick={() => setShowMobileFilters((v) => !v)} className="w-11 h-11 rounded-[13px] border border-slate-200 bg-white grid place-items-center text-slate-600">
-                <ChevronDown className={cn('w-4 h-4 transition', showMobileFilters && 'rotate-180')} />
+              <button type="button" aria-label="Filtr" onClick={() => setShowMobileFilters((v) => !v)} className={cn('w-12 h-12 rounded-xl border grid place-items-center', showMobileFilters ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600')}>
+                <SlidersHorizontal className="w-5 h-5" />
               </button>
             </div>
             {showMobileFilters && (
-              <div className="grid grid-cols-2 gap-2 mt-2">
+              <div className="grid grid-cols-2 gap-2">
                 <FilterSelect label={tx(language, 'Holat', 'Статус', 'Status')} value={statusFilter} onChange={setStatusFilter} options={statusOptions(language)} />
                 <FilterSelect label={tx(language, 'Saralash', 'Сортировка', 'Sort')} value={sortKey} onChange={setSortKey} options={sortOptions(language)} />
               </div>
             )}
-            <div className="flex flex-wrap gap-1.5 mt-2.5">
-              {roleTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setRoleFilter(tab.id)}
-                  className={cn(
-                    'h-8 px-3 rounded-full border text-[12.5px] font-semibold inline-flex items-center gap-1.5 whitespace-nowrap',
-                    roleFilter === tab.id ? 'bg-[#0C1222] text-white border-[#0C1222]' : 'bg-white text-slate-700 border-slate-200'
-                  )}
-                >
-                  {tab.label}
-                  <b className={cn('text-[11px] font-bold', roleFilter === tab.id ? 'text-emerald-200' : 'text-slate-400')}>{tab.count}</b>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-2 py-2">
-            <MiniStat label={tx(language, 'Bugun ishda', 'Сегодня на смене', 'On duty')} value={<><span>{workingToday.length}</span> <small className="text-xs text-slate-400 font-bold">/ {cards.length}</small></>} hint={busyCount ? `${busyCount} ${tx(language, 'tasi qabulda', 'на приёме', 'in a visit')}` : workingHint} />
-            <MiniStat label={tx(language, 'Bugungi qabul', 'Приёмы сегодня', 'Visits today')} value={todayAppointments.length} hint={`${todayDone} ${tx(language, 'yakunlandi', 'завершено', 'done')}`} />
-            <MiniStat label={tx(language, 'Komissiya', 'Комиссия', 'Commission')} value={<>{fmtCompact(totalShare)}</>} hint={tx(language, 'shifokorlar ulushi', 'доля врачей', 'doctors\' share')} />
           </div>
         </>
       ) : (
@@ -881,8 +880,11 @@ export default function Staff() {
       )}
 
       {!loading && filtered.length > 0 && (
-        <div className={cn(phone || view === 'list' ? 'flex flex-col gap-2.5' : 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5', phone && 'pb-32')}>
-          {filtered.map((c) => (
+        <div className={cn(phone || view === 'list' ? 'flex flex-col gap-2.5' : 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5', phone && 'pb-2')}>
+          {phone && filtered.map((c) => (
+            <PhoneStaffRow key={c.id} card={c} rank={revenueRank.get(String(c.id))} language={language} presenceLabel={presenceLabel(c.presence)} onOpen={() => openDetail(c.id)} />
+          ))}
+          {!phone && filtered.map((c) => (
             <StaffCard
               key={c.id}
               card={c}
@@ -908,17 +910,35 @@ export default function Staff() {
         </div>
       )}
 
-      {phone && createPortal(
-        <button
-          type="button"
-          onClick={() => { if (openCreate()) setIsModalOpen(true); }}
-          className="fixed right-4 z-[45] h-[52px] pl-4 pr-5 rounded-2xl bg-emerald-600 text-white font-bold text-sm inline-flex items-center gap-2 shadow-[0_12px_28px_-10px_rgba(5,150,105,0.9)]"
-          style={{ bottom: 'calc(50px + env(safe-area-inset-bottom, 0px) + 16px)' }}
-        >
-          <UserPlus className="w-[18px] h-[18px]" />
-          {tx(language, 'Yangi xodim', 'Новый сотрудник', 'New staff')}
-        </button>,
-        document.body
+      {phone && (
+        <section className="mt-5 pb-28" data-testid="staff-settings">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <h2 className="text-[22px] font-extrabold text-slate-900">{tx(language, 'Sozlamalar', 'Настройки', 'Settings')}</h2>
+              <p className="text-[13px] text-slate-500">{tx(language, 'Tizim sozlamalari va boshqaruv', 'Системные настройки', 'System settings')}</p>
+            </div>
+            <button type="button" onClick={() => logout?.()} className="min-h-[44px] px-2 text-rose-600 text-[14px] font-semibold inline-flex items-center gap-1.5"><LogOut className="w-5 h-5" />{tx(language, 'Chiqish', 'Выход', 'Log out')}</button>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              [SettingsIcon, 'bg-blue-50 text-blue-600', tx(language, 'Klinika sozlamalari', 'Настройки клиники', 'Clinic settings'), tx(language, "Umumiy ma'lumotlar", 'Общие данные', 'General info'), '/settings'],
+              [ShieldCheck, 'bg-indigo-50 text-indigo-600', tx(language, 'Kirish huquqlari', 'Права доступа', 'Access rights'), tx(language, 'Rollar va ruxsatlar', 'Роли и права', 'Roles & permissions'), '/settings'],
+              [CreditCard, 'bg-emerald-50 text-emerald-600', tx(language, "Tarif va to'lov", 'Тариф и оплата', 'Plan & billing'), tx(language, 'Obuna va limitlar', 'Подписка', 'Subscription'), '/settings'],
+              [Users, 'bg-blue-50 text-blue-600', tx(language, "Bo'limlar", 'Отделы', 'Departments'), tx(language, 'Xizmat turlari', 'Виды услуг', 'Service types'), '/services'],
+              [Database, 'bg-violet-50 text-violet-600', tx(language, "Ma'lumotlar zaxirasi", 'Резервная копия', 'Data backup'), 'Import / Export', '/settings'],
+              [Bell, 'bg-amber-50 text-amber-600', tx(language, 'Bildirishnomalar', 'Уведомления', 'Notifications'), 'Telegram, SMS', '/sms-settings'],
+            ].map(([Icon, tone, title, sub, to]) => (
+              <button key={title} type="button" onClick={() => navigate(to)} className="min-h-[64px] bg-white border border-slate-200/80 rounded-2xl px-3 py-2.5 flex items-center gap-2.5 text-left min-w-0">
+                <span className={cn('w-10 h-10 rounded-xl grid place-items-center shrink-0', tone)}><Icon className="w-5 h-5" /></span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[13px] font-bold text-slate-900 leading-tight">{title}</span>
+                  <span className="block text-[13px] text-slate-500 truncate">{sub}</span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+              </button>
+            ))}
+          </div>
+        </section>
       )}
 
       {phone && (
@@ -963,6 +983,49 @@ export default function Staff() {
   );
 
   function renderCreateForm() {
+    if (phone) {
+      const F = ({ icon: Icon, label, children }) => (
+        <div className="space-y-1.5 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 grid place-items-center shrink-0"><Icon className="w-4 h-4" /></span>
+            <span className="text-[13px] font-semibold text-slate-800 truncate">{label} <span className="text-rose-500">*</span></span>
+          </div>
+          {children}
+        </div>
+      );
+      const inp = 'w-full h-12 rounded-xl border border-slate-200 bg-slate-50/60 px-3 text-[14px] text-slate-900 outline-none focus:border-emerald-400 focus:bg-white';
+      return (
+        <DialogContent className="w-[calc(100%-24px)] max-w-[420px] rounded-[28px] p-5 max-h-[90dvh] overflow-y-auto [&>button]:hidden" data-testid="staff-create-phone">
+          <div className="mx-auto -mt-2 mb-1 h-1.5 w-12 rounded-full bg-slate-200" />
+          <div className="flex items-center gap-3">
+            <span className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 grid place-items-center shrink-0"><UserPlus className="w-7 h-7" /></span>
+            <div className="flex-1 min-w-0">
+              <DialogTitle className="text-[20px] font-extrabold text-slate-900">{tx(language, 'Yangi xodim', 'Новый сотрудник', 'New staff')}</DialogTitle>
+              <p className="text-[13px] text-slate-500">{tx(language, "Xodim ma'lumotlarini kiriting", 'Введите данные сотрудника', 'Enter staff details')}</p>
+            </div>
+            <button type="button" onClick={() => setIsModalOpen(false)} aria-label="Yopish" className="w-11 h-11 rounded-full bg-slate-100 text-slate-600 grid place-items-center shrink-0"><X className="w-5 h-5" /></button>
+          </div>
+          <form onSubmit={handleAddStaff} className="space-y-3.5 pt-2">
+            {F({ icon: Users, label: t('staff.full_name'), children: <input placeholder="Dr. Alisher Toshmatov" value={newStaff.full_name} onChange={(e) => setNewStaff({ ...newStaff, full_name: e.target.value })} className={inp} /> })}
+            <div className="grid grid-cols-2 gap-3">
+              {F({ icon: Phone, label: t('staff.phone'), children: <input type="tel" placeholder="+998 90 123 45 67" value={newStaff.phone} onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })} className={inp} /> })}
+              {F({ icon: Award, label: t('staff.specialty'), children: <input placeholder="Stomatolog" value={newStaff.specialty} onChange={(e) => setNewStaff({ ...newStaff, specialty: e.target.value })} className={inp} /> })}
+              {F({ icon: UserCheck, label: t('staff.username'), children: <input placeholder="alisher_dr" autoCapitalize="none" value={newStaff.username} onChange={(e) => setNewStaff({ ...newStaff, username: e.target.value })} className={inp} /> })}
+              {F({ icon: KeyRound, label: t('staff.password'), children: <PasswordInput placeholder="••••••" value={newStaff.password} onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })} className="h-12 rounded-xl bg-slate-50/60 text-[14px]" /> })}
+              {F({ icon: Shield, label: t('staff.role'), children: (
+                <select className={inp} value={newStaff.role} onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })}>
+                  <option value="doctor">{t('staff.roles.doctor')}</option>
+                  <option value="admin">{t('staff.roles.admin')}</option>
+                  <option value="receptionist">{t('staff.roles.receptionist')}</option>
+                </select>
+              ) })}
+              {F({ icon: Percent, label: t('staff.commission_rate'), children: <input type="number" inputMode="numeric" value={newStaff.commission} onChange={(e) => setNewStaff({ ...newStaff, commission: e.target.value })} onWheel={(e) => e.target.blur()} className={inp} /> })}
+            </div>
+            <button type="submit" className="w-full h-14 rounded-2xl bg-[#0d9488] text-white text-[16px] font-bold mt-1">{t('common.save')}</button>
+          </form>
+        </DialogContent>
+      );
+    }
     return (
       <DialogContent className="sm:max-w-[425px] rounded-3xl">
         <DialogHeader>
@@ -1146,6 +1209,32 @@ function sortOptions(language) {
     { value: 'appointments', label: tx(language, 'Qabullar', 'Приёмы', 'Visits') },
     { value: 'commission', label: tx(language, 'Komissiya', 'Комиссия', 'Commission') },
   ];
+}
+
+function PhoneStaffRow({ card, rank, language, presenceLabel, onOpen }) {
+  const inactive = card.inactive || card.presence === 'inactive';
+  return (
+    <article className="bg-white border border-slate-200/80 rounded-2xl p-3 flex items-start gap-3 min-w-0" data-testid="staff-row">
+      <button type="button" onClick={onOpen} className="shrink-0"><Avatar user={card.user} size={46} className="rounded-full" /></button>
+      <button type="button" onClick={onOpen} className="flex-1 min-w-0 text-left">
+        <div className="font-bold text-[16px] text-slate-900 truncate leading-tight">{formatDoctorName(card.name)}</div>
+        <div className="text-[13px] text-slate-500 truncate"><span className="font-mono">@{card.username || '—'}</span>{card.phone ? ` · ${card.phone}` : ''}</div>
+        <div className="flex flex-wrap gap-1.5 mt-1.5">
+          <RoleBadge role={card.role} language={language} />
+          {card.specialty && card.role !== 'admin' && <span className="px-2 py-0.5 rounded-md text-[12px] font-medium bg-slate-100 text-slate-600">{card.specialty}</span>}
+          {card.role === 'admin' && <span className="px-2 py-0.5 rounded-md text-[12px] font-medium bg-slate-100 text-slate-600">{tx(language, 'Boshqaruv', 'Управление', 'Management')}</span>}
+          {rank && card.role !== 'admin' && <span className="px-2 py-0.5 rounded-md text-[12px] font-bold bg-amber-100 text-amber-800">№{rank} {tx(language, 'tushum', 'выручка', 'revenue')}</span>}
+        </div>
+      </button>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className={cn('inline-flex items-center gap-1.5 text-[13px] font-semibold', inactive ? 'text-slate-400' : 'text-emerald-600')}>
+          <span className={cn('w-2 h-2 rounded-full', inactive ? 'bg-slate-300' : 'bg-emerald-500')} />
+          {inactive ? tx(language, 'Nofaol', 'Неактивен', 'Inactive') : tx(language, 'Faol', 'Активен', 'Active')}
+        </span>
+        <button type="button" onClick={onOpen} aria-label={tx(language, 'Batafsil', 'Подробнее', 'Details')} className="w-11 h-11 rounded-xl border border-slate-200 grid place-items-center text-slate-600"><MoreHorizontal className="w-5 h-5" /></button>
+      </div>
+    </article>
+  );
 }
 
 function StaffCard({ card, phone, compact, lead, selected, language, presenceLabel, todayJs, nowMinutes, onOpen, onEdit, onCall, onMessage, onSchedule, onPerms, onToggleDay, onOpenAppointments, onOpenPatients }) {
