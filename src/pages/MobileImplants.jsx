@@ -18,6 +18,12 @@ import ExtraServicesManagerModal from '@/components/implants/ExtraServicesManage
 import ImplantBrandsModal, { getOrSeedImplantBrands, calculateBrandStockStats } from '@/components/implants/ImplantBrandsModal';
 import { useFeature } from '@/hooks/useFeature';
 import { Package } from 'lucide-react';
+
+const ImplantGlyph = ({ className = '' }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M7 3h10l-1 4H8z" /><path d="M8.5 9h7M9 12h6M9.5 15h5M10 18h4M11 21h2" /><path d="M8 7l1.5 14M16 7l-1.5 14" />
+  </svg>
+);
 import Paywall from '@/components/layout/Paywall';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { formatClinicDate } from '@/lib/clinicTime';
@@ -455,6 +461,7 @@ export default function MobileImplants() {
   const hasImplantsAccess = useFeature('implants');
 
   const [implants, setImplants] = useState([]);
+  const [showAllControl, setShowAllControl] = useState(false);
   const [patients, setPatients] = useState([]);
   const [services, setServices] = useState([]);
   const [brands, setBrands] = useState([]);
@@ -718,45 +725,50 @@ export default function MobileImplants() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl p-3"
+                  className="space-y-2"
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-6 h-6 bg-amber-500 rounded-lg flex items-center justify-center">
-                      <AlertTriangle className="w-3.5 h-3.5 text-white" />
-                    </div>
-                    <span className="text-[11px] font-black text-amber-700 uppercase tracking-wider">
-                      {stats.needsControl.length} ta nazorat kerak
+                  <button type="button" onClick={() => setShowAllControl((v) => !v)} className="w-full flex items-center gap-3 bg-[#FFF8E8] border border-amber-200 rounded-2xl px-3 py-3 text-left active:scale-[0.99]">
+                    <span className="w-9 h-9 bg-amber-500 rounded-full flex items-center justify-center shrink-0"><AlertTriangle className="w-5 h-5 text-white" /></span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[16px] font-extrabold text-orange-600 uppercase">{stats.needsControl.length} ta nazorat kerak</span>
+                      <span className="block text-[13px] text-slate-600">Rejaga ko'ra nazorat vaqti yaqinlashgan bemorlar</span>
                     </span>
-                  </div>
-                  <div className="space-y-1.5">
-                    {stats.needsControl.slice(0, 3).map(i => {
-                      const days = formatReminderDays(i.reminder_date);
-                      return (
-                        <button
-                          key={i.id}
-                          onClick={() => navigate(`/implants/${i.id}`)}
-                          className="w-full flex items-center justify-between bg-white/80 rounded-xl px-3 py-2 border border-amber-100/50 active:scale-[0.98] transition-transform"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-lg">
-                              #{(i.tooth_numbers || [i.tooth_number]).map(toothIdToFdi).join(',')}
-                            </span>
-                            <span className="text-[11px] font-bold text-slate-700 truncate max-w-[120px]">{i.patient_name}</span>
-                          </div>
-                          <span className={`text-[10px] font-black ${days < 0 ? 'text-rose-600' : 'text-amber-600'}`}>
-                            {days < 0 ? `${Math.abs(days)}k o'tdi` : days === 0 ? 'BUGUN' : `${days} kun`}
+                    <ChevronRight className={`w-5 h-5 text-orange-500 shrink-0 transition-transform ${showAllControl ? 'rotate-90' : ''}`} />
+                  </button>
+                  {stats.needsControl.slice(0, showAllControl ? 50 : 3).map(i => {
+                    const days = formatReminderDays(i.reminder_date);
+                    const teeth = (i.tooth_numbers || [i.tooth_number]).filter(Boolean).map(toothIdToFdi).join(', ');
+                    const brand = i.firma === 'Boshqa' ? (i.firma_custom || 'Boshqa') : (i.firma || i.brend || '');
+                    const placed = i.placement_date ? formatClinicDate(i.placement_date) : '';
+                    return (
+                      <button
+                        key={i.id}
+                        onClick={() => navigate(`/implants/${i.id}`)}
+                        className="w-full flex items-center gap-3 bg-[#FFFCF3] rounded-2xl px-3 py-3 border border-amber-100 text-left active:scale-[0.99] transition-transform"
+                      >
+                        <span className="min-w-[52px] h-10 px-2 rounded-full bg-amber-100 text-orange-600 text-[15px] font-extrabold flex items-center justify-center shrink-0">#{teeth.replace(/\s/g, '')}</span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[15px] font-extrabold text-slate-900 truncate">{i.patient_name}</span>
+                          <span className="block text-[13px] text-slate-500 truncate">{[brand, implantStatusLabel(i.lifecycle_status)].filter(Boolean).join(' · ') || 'Implant'}</span>
+                          <span className="flex items-center gap-3 mt-0.5 text-[13px] text-slate-600">
+                            {placed && <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{placed}</span>}
+                            {teeth && <span className="flex items-center gap-1">🦷 {teeth}</span>}
                           </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                        </span>
+                        <span className={`shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-full text-[13px] font-bold ${days < 0 ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-orange-600'}`}>
+                          <Clock className="w-3.5 h-3.5" />{days < 0 ? `${Math.abs(days)} kun o'tdi` : days === 0 ? 'Bugun' : `${days} kun`}
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-slate-500 shrink-0" />
+                      </button>
+                    );
+                  })}
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* Results info */}
             {(search || filterStatus || filterFirma) && (
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+              <p className="text-[13px] font-black text-slate-400 uppercase tracking-widest px-1">
                 {filtered.length} ta natija
                 {search && ` · "${search}"`}
               </p>
@@ -771,20 +783,21 @@ export default function MobileImplants() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="py-16 flex flex-col items-center gap-3"
+                className="py-10 flex flex-col items-center gap-2 text-center"
               >
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center">
-                  <Activity className="w-8 h-8 text-slate-300" />
+                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center">
+                  <ImplantGlyph className="w-10 h-10 text-slate-300" />
                 </div>
-                <p className="text-sm font-black text-slate-500 uppercase tracking-tight">
+                <p className="text-[17px] font-extrabold text-slate-700 uppercase">
                   {search ? 'Natija topilmadi' : 'Implantlar yo\'q'}
                 </p>
+                {!search && <p className="text-[14px] text-slate-500 max-w-[240px]">Yangi implant qo'shish orqali ro'yxatni boshlang</p>}
                 {!search && (
                   <button
                     onClick={() => setAddOpen(true)}
-                    className="mt-1 flex items-center gap-1.5 bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider"
+                    className="mt-2 h-12 flex items-center gap-2 bg-indigo-600 text-white px-8 rounded-2xl text-[15px] font-extrabold uppercase shadow-lg shadow-indigo-600/25"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Yangi qo'shish
+                    <Plus className="w-5 h-5" /> Yangi qo'shish
                   </button>
                 )}
               </motion.div>
