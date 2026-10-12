@@ -2379,20 +2379,6 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
                     </div>
                   </th>
 
-                  {/* Remaining Debt */}
-                  <th 
-                    onClick={() => handleSort('debt')}
-                    className="min-w-[8.5rem] px-3 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-rose-50/40 select-none"
-                  >
-                    <div className="flex items-center justify-end gap-1.5 text-rose-600">
-                      <span className="leading-tight text-right">To‘lovdan keyin qoldiq</span>
-                      {sortField === 'debt' ? (
-                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 opacity-40" />
-                      )}
-                    </div>
-                  </th>
 
                   {/* Doctor */}
                   <th 
@@ -2532,20 +2518,6 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
                           </div>
                         </td>
 
-                        {/* Remaining Debt Cell */}
-                        <td className={`text-right border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
-                          <div className="flex flex-col items-end leading-tight">
-                            <span className={`font-mono font-bold text-xs tabular-nums ${debtVal > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
-                              {debtVal > 0 ? (
-                                <>
-                                  {formatCurrency(debtVal)}
-                                </>
-                              ) : (
-                                <span className="text-emerald-600 font-semibold text-[11px]">✓ To'liq</span>
-                              )}
-                            </span>
-                          </div>
-                        </td>
 
                         {/* Doctor Cell */}
                         <td className={`border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
@@ -2597,7 +2569,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
                   })
                 ) : (
                   <tr>
-                    <td colSpan={8} className="py-20 text-center">
+                    <td colSpan={7} className="py-20 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300">
                           <Receipt className="w-6 h-6" />
@@ -2700,7 +2672,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
                 </div>
               </div>
               
-              <div className="grid grid-cols-3 gap-2 bg-slate-50/80 rounded-xl p-3 border border-white/60">
+              <div className="grid grid-cols-2 gap-2 bg-slate-50/80 rounded-xl p-3 border border-white/60">
                 <div>
                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-wide mb-0.5">Xizmat</p>
                   <p className="text-[10px] font-black text-slate-700 uppercase truncate">{p.service_name || '—'}</p>
@@ -2714,12 +2686,6 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
                   <p className="text-[8px] font-black text-emerald-400 uppercase tracking-wide mb-0.5">Toʻlagan</p>
                   <p className="text-[10px] font-black text-emerald-600">
                     {formatCurrency(p.amount || 0)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[8px] font-black text-rose-400 uppercase tracking-wide mb-0.5 leading-tight">To‘lovdan keyin qoldiq</p>
-                  <p className={`text-[10px] font-black ${debtVal > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                    {debtVal > 0 ? formatCurrency(debtVal) : '✓ To\'liq'}
                   </p>
                 </div>
               </div>

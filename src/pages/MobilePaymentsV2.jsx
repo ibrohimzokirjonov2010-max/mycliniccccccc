@@ -897,13 +897,6 @@ export default function MobilePaymentsV2() {
                   <p className="text-[14px] font-black leading-none text-emerald-600">
                     {formatCurrency(payment.amount || 0)}
                   </p>
-                  {pat != null && (
-                    <p className={cn("text-[10px] font-black mt-1 uppercase tracking-tight",
-                      qarz > 0 ? 'text-rose-500' : 'text-emerald-500'
-                    )}>
-                      {qarz > 0 ? `To‘lovdan keyin qoldiq: ${qarz.toLocaleString()}` : '✓ To\'liq'}
-                    </p>
-                  )}
                 </>
               );
             })()}
@@ -1007,7 +1000,6 @@ export default function MobilePaymentsV2() {
               {[
                 { key: 'all', label: t('services.sidebar.all') },
                 { key: 'Income', label: t('payments.income') },
-                { key: 'Expense', label: t('payments.expense') }
               ].map((filter) => (
                 <button
                   key={filter.key}
