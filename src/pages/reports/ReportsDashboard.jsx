@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import {
   Calendar, Printer, FileSpreadsheet, Search, X, LayoutGrid, Award, DollarSign, Layers, ChevronDown,
-  Receipt, ArrowUpRight, ArrowDownRight, AlertTriangle, Info,
+  Receipt, ArrowUpRight, ArrowDownRight, AlertTriangle, Info, FileText, Users,
 } from 'lucide-react';
 import { cn, getTreatmentTypeLabel } from '@/lib/utils';
 import { ClinicDateField } from '@/components/ui/ClinicDateField';
@@ -209,6 +209,7 @@ export default function ReportsDashboard({
           value={<>{appointmentCount} <small>ta</small></>}
           icon={<Calendar className="w-4 h-4" />}
           iconClass="bg-blue-50 text-blue-600"
+          tint="bg-blue-50/60 border-blue-100"
           bar={doneBar}
           barClass="bg-blue-500"
           foot={phone ? `${stats.completedAppts} ${tx(language, 'yakunlangan', 'завершено', 'completed')}` : `${stats.completedAppts} ${tx(language, 'ta yakunlangan', 'завершено', 'completed')} · ${doneBar}%`}
@@ -219,7 +220,9 @@ export default function ReportsDashboard({
         <KpiCard
           compact={phone}
           label={tx(language, 'Umumiy daromad', 'Общий доход', 'Total income')}
-          value={phone ? fmtCompact(stats.totalIncome) : <>{fmtMoney(stats.totalIncome)}</>}
+          value={phone ? fmtMoney(stats.totalIncome).replace(/\s*so['ʻ‘’]m$/i, '') : <>{fmtMoney(stats.totalIncome)}</>}
+          unit={phone ? "so'm" : undefined}
+          tint="bg-emerald-50/60 border-emerald-100"
           icon={<DollarSign className="w-4 h-4" />}
           iconClass="bg-emerald-50 text-emerald-600"
           bar={incomeBar}
@@ -232,7 +235,9 @@ export default function ReportsDashboard({
         <KpiCard
           compact={phone}
           label={phone ? tx(language, 'Chiqimlar', 'Расходы', 'Expenses') : tx(language, 'Chiqimlar / xarajat', 'Расходы', 'Expenses')}
-          value={phone ? fmtCompact(stats.totalExpense) : <>{fmtMoney(stats.totalExpense)}</>}
+          value={phone ? fmtMoney(stats.totalExpense).replace(/\s*so['ʻ‘’]m$/i, '') : <>{fmtMoney(stats.totalExpense)}</>}
+          unit={phone ? "so'm" : undefined}
+          tint="bg-rose-50/60 border-rose-100"
           icon={<ArrowDownRight className="w-4 h-4" />}
           iconClass="bg-rose-50 text-rose-600"
           bar={expenseBar}
@@ -247,7 +252,8 @@ export default function ReportsDashboard({
           compact={phone}
           dark
           label={tx(language, 'Sof foyda', 'Чистая прибыль', 'Net profit')}
-          value={phone ? fmtCompact(stats.netProfit) : <>{fmtMoney(stats.netProfit)}</>}
+          value={phone ? fmtMoney(stats.netProfit).replace(/\s*so['ʻ‘’]m$/i, '') : <>{fmtMoney(stats.netProfit)}</>}
+          unit={phone ? "so'm" : undefined}
           icon={<ArrowUpRight className="w-4 h-4" />}
           bar={profitBar}
           barClass="bg-emerald-400"
@@ -259,9 +265,16 @@ export default function ReportsDashboard({
       </div>
 
       {phone && (
-        <p className="text-[11.5px] text-slate-500 mb-3">
-          {tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')}: <b className="text-slate-900">{stats.avgCheck ? `${fmtMoney(stats.avgCheck)}` : '—'}</b>
-        </p>
+        <div className="mb-3 bg-white border border-slate-200/80 rounded-[18px] p-3 grid grid-cols-2 divide-x divide-slate-100">
+          <div className="flex items-center gap-2.5 pr-2 min-w-0">
+            <span className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 grid place-items-center shrink-0"><FileText className="w-5 h-5" /></span>
+            <div className="min-w-0"><p className="text-[13px] text-slate-500">{tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')}:</p><p className="text-[16px] font-extrabold text-slate-900 whitespace-nowrap">{stats.avgCheck ? fmtMoney(stats.avgCheck) : '—'}</p></div>
+          </div>
+          <div className="flex items-center gap-2.5 pl-3 min-w-0">
+            <span className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 grid place-items-center shrink-0"><Users className="w-5 h-5" /></span>
+            <div className="min-w-0"><p className="text-[13px] text-slate-500">{tx(language, 'Yakunlangan', 'Завершено', 'Completed')}:</p><p className="text-[16px] font-extrabold text-slate-900">{stats.completedAppts} <small className="text-[13px] text-slate-400">ta</small></p></div>
+          </div>
+        </div>
       )}
 
       {phone ? (
@@ -637,7 +650,27 @@ export default function ReportsDashboard({
   );
 }
 
-function KpiCard({ label, value, icon, iconClass, bar, barClass, foot, trend, trendNote, dark, invert, period, compact }) {
+function KpiCard({ label, value, icon, iconClass, bar, barClass, foot, trend, trendNote, dark, invert, period, compact, tint, unit }) {
+  if (compact) {
+    return (
+      <article className={cn('border min-w-0 flex flex-col rounded-[18px] p-3 gap-1.5', dark ? 'bg-gradient-to-br from-[#0E4A44] to-[#0B3B37] border-[#0E4A44] text-white' : (tint || 'bg-white border-slate-200/80'))}>
+        <div className="flex items-start gap-2.5 min-w-0">
+          <span className={cn('w-10 h-10 rounded-xl grid place-items-center shrink-0 [&_svg]:w-5 [&_svg]:h-5', dark ? 'bg-white/15 text-white' : iconClass)}>{icon}</span>
+          <div className="min-w-0 flex-1">
+            <span className={cn('block font-bold uppercase text-[12px] leading-tight truncate', dark ? 'text-white/90' : 'text-slate-500')}>{label}</span>
+            <div className="font-extrabold leading-tight text-[17px] tabular-nums flex flex-wrap items-baseline gap-x-1 [&_small]:text-[13px] [&_small]:font-semibold [&_small]:text-slate-400"><span className="whitespace-nowrap">{value}</span>{unit ? <small className={dark ? '!text-white/70' : ''}>{unit}</small> : null}</div>
+          </div>
+        </div>
+        <div className={cn('h-2 rounded-full overflow-hidden', dark ? 'bg-white/15' : 'bg-white/80')}>
+          <i className={cn('block h-full rounded-full', barClass)} style={{ width: `${bar}%` }} />
+        </div>
+        <div className={cn('flex items-center justify-between gap-1 text-[13px]', dark ? 'text-white/80' : 'text-slate-500')}>
+          <span className="min-w-0 truncate">{foot}</span>
+          {trend && period !== 'all' && <TrendChip trend={trend} note={trendNote} invert={invert} dark={dark} compact showScope={false} />}
+        </div>
+      </article>
+    );
+  }
   return (
     <article className={cn('border min-w-0 shadow-sm flex flex-col', compact ? 'rounded-[15px] p-3 gap-[5px]' : 'rounded-2xl p-3.5 gap-1.5', dark ? 'bg-gradient-to-br from-[#0C1222] to-[#13233a] border-[#0C1222] text-white' : 'bg-white border-slate-200/80')}>
       <div className="flex items-center justify-between gap-2">
