@@ -20,7 +20,7 @@ export function Logo({ tone = "light" }: { tone?: "ink" | "light" | "dark" }) {
         <ToothMark className="h-5 w-5" />
       </span>
       <span className={cn("font-body text-[1.2rem] font-semibold tracking-tight", light ? "text-white" : tone === "dark" ? "text-[#102033]" : "text-ink")}>
-        shifo <span className={tone === "dark" ? "text-[#0f766e]" : "text-[#8eb4ff]"}>crm</span>
+        My <span className={tone === "dark" ? "text-[#0f766e]" : "text-[#8eb4ff]"}>Clinic</span>
       </span>
     </span>
   );

@@ -21,7 +21,7 @@ export function Header({ tone = "dark" }: { tone?: "dark" | "light" }) {
   return (
     <header className={`sticky top-0 z-40 border-b backdrop-blur-md ${tone === "light" ? "border-slate-200 bg-white/90 text-[#102033]" : "border-white/10 bg-[#07090f]/80"}`}>
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
-        <a href="/" aria-label="SHIFO CRM bosh sahifa" className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1760ff]">
+        <a href="/" aria-label="My Clinic bosh sahifa" className="rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1760ff]">
           <Logo tone={tone === "light" ? "dark" : "light"} />
         </a>
         <nav className={`hidden items-center gap-6 text-sm font-medium lg:flex ${tone === "light" ? "text-slate-600" : "text-[#c5d0e0]"}`} aria-label="Asosiy">

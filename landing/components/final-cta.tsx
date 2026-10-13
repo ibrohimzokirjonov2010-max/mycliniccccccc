@@ -1,6 +1,6 @@
 import { TrialButton } from "@/components/auth-forms";
 
-const chips = ["SHIFO CRM", "Stomatologiya klinikalari", "14 kun bepul"];
+const chips = ["My Clinic", "Stomatologiya klinikalari", "14 kun bepul"];
 
 export function FinalCta() {
   return (

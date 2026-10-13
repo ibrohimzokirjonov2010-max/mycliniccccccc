@@ -19,6 +19,27 @@ import { CARD_BINDING_REQUIRED } from '@/config/cardBinding';
 import { attachCard, getBindingStatus } from '@/api/cardBindingClient';
 import CardBindingStep from '@/components/register/CardBindingStep';
 
+const CYR = { а:'a',б:'b',в:'v',г:'g',ғ:'g',д:'d',е:'e',ё:'yo',ж:'j',з:'z',и:'i',й:'y',к:'k',қ:'q',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ў:'o',ф:'f',х:'x',ҳ:'h',ц:'ts',ч:'ch',ш:'sh',щ:'sh',ъ:'',ы:'i',ь:'',э:'e',ю:'yu',я:'ya' };
+// Klinika nomidan havola (slug): lotin, kichik harf, defis.
+export const slugifyClinic = (name = '') => String(name)
+  .toLowerCase()
+  .split('').map((ch) => (CYR[ch] !== undefined ? CYR[ch] : ch)).join('')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .replace(/[ʻʼ'`‘’]/g, '')
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '')
+  .slice(0, 40);
+const cleanSlugInput = (v = '') => String(v).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-{2,}/g, '-');
+const formatUzPhone = (raw = '') => {
+  let d = String(raw).replace(/\D/g, '');
+  if (d.length <= 3 && '998'.startsWith(d)) return '+998';
+  if (d.startsWith('998')) d = d.slice(3);
+  d = d.slice(0, 9);
+  const parts = [d.slice(0, 2), d.slice(2, 5), d.slice(5, 7), d.slice(7, 9)].filter(Boolean);
+  return '+998' + (parts.length ? ' ' + parts.join(' ') : '');
+};
+const uzPhoneDigits = (v = '') => String(v).replace(/\D/g, '').replace(/^998/, '');
+
 export default function Register() {
   const navigate = useNavigate();
   const { setAuthData } = useAuth();
@@ -42,9 +63,11 @@ export default function Register() {
   const [adminForm, setAdminForm] = useState({
     clinicName: '',
     clinicId: '',
+    phone: '+998',
     username: '',
     password: ''
   });
+  const [slugEdited, setSlugEdited] = useState(false);
 
   const [doctorForm, setDoctorForm] = useState({
     clinicId: '',
@@ -62,6 +85,7 @@ export default function Register() {
     plan: selectedPlan.id,
     subscription_status: 'trialing',
     signup_source: fromLanding ? 'landing' : 'manual',
+    phone: formatUzPhone(adminForm.phone),
     ...(provider ? { payment_provider: provider } : {}),
   });
 
@@ -88,6 +112,14 @@ export default function Register() {
     
     if (!adminForm.clinicName || !adminForm.clinicId || !adminForm.username || !adminForm.password) {
       setError('Iltimos, barcha maydonlarni to\'ldiring');
+      return;
+    }
+    if (uzPhoneDigits(adminForm.phone).length !== 9) {
+      setError("Telefon raqamini to'liq kiriting: +998 XX XXX XX XX");
+      return;
+    }
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(adminForm.clinicId)) {
+      setError("Klinika manzili faqat lotin harflari, raqam va defisdan iborat bo'lsin");
       return;
     }
 
@@ -199,14 +231,6 @@ export default function Register() {
             <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
             Ortga qaytish
           </Link>
-          {role && (
-            <button 
-              onClick={() => {setRole(null); setError('');}}
-              className="text-teal-600 font-black text-[9px] uppercase tracking-widest hover:bg-teal-50 px-2.5 py-1 rounded-lg transition-colors"
-            >
-              Rolni o'zgartirish
-            </button>
-          )}
         </div>
 
         <div className="mb-5 flex flex-col items-center gap-2 text-center">
@@ -274,7 +298,7 @@ export default function Register() {
                 }
               </div>
               <h2 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight sm:mt-4">
-                {role === 'admin' ? 'Yangi Klinika Ochish' : 'Shifokor Ro\'yxati'}
+                {role === 'admin' ? 'Klinikangizni 1 daqiqada ulang' : 'Shifokor Ro\'yxati'}
               </h2>
             </div>
 
@@ -311,16 +335,31 @@ export default function Register() {
                   <Input 
                     placeholder="Masalan: Grand Dental" 
                     value={adminForm.clinicName}
-                    onChange={e => setAdminForm({...adminForm, clinicName: e.target.value})}
+                    onChange={e => { const v = e.target.value; setAdminForm(f => ({ ...f, clinicName: v, clinicId: slugEdited ? f.clinicId : slugifyClinic(v) })); }}
                     className="h-10 sm:h-12 border-none bg-slate-50 rounded-xl font-semibold text-sm"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Unikal Klinika ID</Label>
+                  <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Klinika manzili (havola uchun)</Label>
                   <Input 
                     placeholder="grand-dental" 
                     value={adminForm.clinicId}
-                    onChange={e => setAdminForm({...adminForm, clinicId: e.target.value.toLowerCase().replace(/\s+/g, '-')})}
+                    data-testid="register-clinic-slug"
+                    onChange={e => { setSlugEdited(true); setAdminForm({...adminForm, clinicId: cleanSlugInput(e.target.value)}); }}
+                    className="h-10 sm:h-12 border-none bg-slate-50 rounded-xl font-semibold text-sm"
+                  />
+                  <p className="ml-1 text-[11px] font-medium text-slate-400">Masalan: grand-dental. Faqat lotin harflari</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Telefon raqamingiz (yordam uchun)</Label>
+                  <Input 
+                    type="tel"
+                    inputMode="tel"
+                    required
+                    placeholder="+998 90 123 45 67" 
+                    value={adminForm.phone}
+                    data-testid="register-phone"
+                    onChange={e => setAdminForm({...adminForm, phone: formatUzPhone(e.target.value)})}
                     className="h-10 sm:h-12 border-none bg-slate-50 rounded-xl font-semibold text-sm"
                   />
                 </div>
@@ -350,6 +389,11 @@ export default function Register() {
                 >
                   {loading ? <Loader2 className="animate-spin w-4 h-4" /> : (bindingWanted ? 'Davom etish' : `${TRIAL_DAYS} kun bepul boshlash`)}
                 </Button>
+                {!bindingWanted && (
+                  <p className="text-center text-[11.5px] font-medium text-slate-500 leading-snug" data-testid="register-no-card">
+                    Karta so'ralmaydi. {TRIAL_DAYS} kundan keyin avtomatik pul yechilmaydi.
+                  </p>
+                )}
               </form>
             ) : (
               <form onSubmit={handleDoctorRegister} className="space-y-3">
@@ -422,8 +466,15 @@ export default function Register() {
           </div>
         )}
 
-        <p className="mt-5 text-center text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
-          Powered by Dental SaaS Medical Cloud
+        <p className="mt-5 text-center text-[13px] font-medium text-slate-500">
+          Akkauntingiz bormi?{' '}
+          <Link to="/login" className="font-bold text-teal-600 hover:text-teal-700" data-testid="register-login-link">Kirish</Link>
+        </p>
+        <p className="mt-3 text-center text-[11.5px] font-medium text-slate-400">
+          Ma'lumotlaringiz himoyalangan ·{' '}
+          <a href="https://t.me/dentist_shaxin" target="_blank" rel="noopener noreferrer" className="font-semibold text-teal-600 hover:text-teal-700">
+            Yordam: Telegram
+          </a>
         </p>
       </motion.div>
     </div>

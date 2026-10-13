@@ -47,7 +47,7 @@ export const faqs = [
   },
   {
     q: "Bu bemorlar uchun saytmi?",
-    a: "Yo'q. SHIFO CRM stomatologiya klinikasi egalari va shifokorlar uchun boshqaruv tizimi. Bemor bu yerdan navbat olmaydi.",
+    a: "Yo'q. My Clinic stomatologiya klinikasi egalari va shifokorlar uchun boshqaruv tizimi. Bemor bu yerdan navbat olmaydi.",
   },
   {
     q: "To'lovdan keyin tarif qachon ochiladi?",

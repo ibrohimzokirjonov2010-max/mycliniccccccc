@@ -4,7 +4,7 @@ import { Header } from "@/components/header";
 import { Pricing } from "@/components/pricing";
 
 export const metadata: Metadata = {
-  title: "Tariflar — stomatolog klinikasi uchun SHIFO CRM",
+  title: "Tariflar — stomatolog klinikasi uchun My Clinic",
   description: "Basic 99 000, Pro 189 000, Premium 349 000 so'm oyiga. 14 kunlik bepul sinov. Yillik to'lovda 2 oy bepul.",
   alternates: { canonical: "/tariflar" },
 };

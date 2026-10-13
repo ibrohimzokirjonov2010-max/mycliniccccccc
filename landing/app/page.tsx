@@ -5,7 +5,7 @@ export default function HomePage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "SHIFO CRM",
+    name: "My Clinic",
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     inLanguage: "uz",

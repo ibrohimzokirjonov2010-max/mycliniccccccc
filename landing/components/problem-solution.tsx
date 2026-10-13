@@ -29,7 +29,7 @@ export function ProblemSolution() {
     <section id="modullar" className="scroll-mt-24 bg-cream">
       <div className="grid lg:grid-cols-[minmax(280px,0.78fr)_1.22fr]">
         <div className="bg-deep px-6 py-14 text-white sm:px-10 lg:px-12">
-          <p className="text-sm font-bold tracking-wide text-[#9ee8e0]">SHIFO CRM</p>
+          <p className="text-sm font-bold tracking-wide text-[#9ee8e0]">My Clinic</p>
           <h2 className="mt-4 max-w-sm font-display text-4xl leading-[1.05] sm:text-5xl">Stomatologlar nima uchun charchaydi</h2>
           <p className="mt-4 max-w-sm text-lg text-[#d5ebe7]">Klinikangizdagi kundalik muammolar vaqt va daromadni yo&apos;qotadi.</p>
           <ul className="mt-10 space-y-6">
@@ -45,7 +45,7 @@ export function ProblemSolution() {
           </ul>
         </div>
         <div className="bg-[#f6f1e7] px-4 py-12 sm:px-8 lg:px-10">
-          <h2 className="mb-6 text-center font-display text-3xl text-teal-ink sm:text-4xl">SHIFO CRM qanday yechadi</h2>
+          <h2 className="mb-6 text-center font-display text-3xl text-teal-ink sm:text-4xl">My Clinic qanday yechadi</h2>
           <SolutionBoards />
         </div>
       </div>

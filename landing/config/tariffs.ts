@@ -1,5 +1,5 @@
 /**
- * SHIFO CRM tariffs sold to stomatology clinic owners.
+ * My Clinic tariffs sold to stomatology clinic owners.
  * Prices and CRM plan ids live in shifo-tariffs.json.
  * Payme tiyin = UZS × 100. Yearly checkout is 10 months (2 months free).
  */

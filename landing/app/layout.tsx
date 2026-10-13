@@ -12,8 +12,8 @@ const sans = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
   title: {
-    default: "SHIFO CRM — stomatolog klinikasi uchun bemor, implant va to'lov tizimi",
-    template: "%s · SHIFO CRM",
+    default: "My Clinic — stomatolog klinikasi uchun bemor, implant va to'lov tizimi",
+    template: "%s · My Clinic",
   },
   description:
     "Stomatologiya klinikasi uchun operatsion tizim: bemor kartasi, navbat, implant, to'lov va hisobot. 14 kunlik bepul sinov, keyin Payme yoki Click.",
@@ -25,10 +25,10 @@ export const metadata: Metadata = {
     "stomatologiya dasturi",
     "Payme",
     "Click",
-    "SHIFO CRM",
+    "My Clinic",
   ],
   openGraph: {
-    title: "SHIFO CRM — klinika chalkashligi tugadi",
+    title: "My Clinic — klinika chalkashligi tugadi",
     description: "Bemor, implant, to'lov va navbat bitta stomatolog CRM da.",
     locale: "uz_UZ",
     type: "website",

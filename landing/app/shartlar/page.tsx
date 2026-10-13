@@ -12,7 +12,7 @@ export default function TermsPage() {
       <main className="bg-paper px-4 py-16">
         <article className="mx-auto max-w-2xl space-y-4 text-base leading-relaxed">
           <h1 className="font-display text-5xl">Ommaviy oferta</h1>
-          <p>SHIFO CRM oylik litsenziyasi stomatologiya klinikasi uchun dasturiy ta&apos;minotdir. Narxlar so&apos;mda, oyiga:</p>
+          <p>My Clinic oylik litsenziyasi stomatologiya klinikasi uchun dasturiy ta&apos;minotdir. Narxlar so&apos;mda, oyiga:</p>
           <ul className="list-disc pl-5">
             {TARIFFS.map((plan) => (
               <li key={plan.id}>{plan.name} — {formatUzs(plan.priceUzs)} so&apos;m</li>

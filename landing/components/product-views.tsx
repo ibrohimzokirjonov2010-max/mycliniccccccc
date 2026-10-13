@@ -14,8 +14,8 @@ export function LaptopMock() {
         <div className="overflow-hidden rounded-[1.15rem] bg-[#f7f8f6]">
           <div className="flex items-center justify-between border-b border-[#e7ebe8] px-3 py-2">
             <div className="flex items-center gap-1.5 text-[11px] font-bold text-ink">
-              <span className="grid h-5 w-5 place-items-center rounded-md bg-teal text-[10px] text-white">S</span>
-              SHIFO <span className="text-teal">CRM</span>
+              <span className="grid h-5 w-5 place-items-center rounded-md bg-teal text-[10px] text-white">M</span>
+              MY <span className="text-teal">CLINIC</span>
             </div>
             <div className="text-[11px] font-semibold text-ink">Bemorlar</div>
             <div className="flex items-center gap-1.5 text-[10px] text-mute">

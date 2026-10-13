@@ -35,7 +35,7 @@ export function Footer() {
       </div>
       <div className="mx-auto max-w-6xl px-4">
         <Separator className="bg-white/10" />
-        <p className="py-5 text-xs text-mute">© {new Date().getFullYear()} SHIFO CRM. Barcha huquqlar himoyalangan.</p>
+        <p className="py-5 text-xs text-mute">© {new Date().getFullYear()} My Clinic. Barcha huquqlar himoyalangan.</p>
       </div>
     </footer>
   );

@@ -6,7 +6,7 @@ import { Header } from "@/components/header";
 
 export const metadata: Metadata = {
   title: "Ro'yxatdan o'tish — 14 kunlik bepul sinov",
-  description: "SHIFO CRM uchun 14 kunlik bepul sinov. Ism, parol va klinika yoki shifokor nomi.",
+  description: "My Clinic uchun 14 kunlik bepul sinov. Ism, parol va klinika yoki shifokor nomi.",
   alternates: { canonical: "/royxatdan-otish" },
 };
 
