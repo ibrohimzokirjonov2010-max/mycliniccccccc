@@ -290,11 +290,25 @@ export default function MobilePaymentsV2() {
   const [showPlanInvoiceModal, setShowPlanInvoiceModal] = useState(false);
   
   // Automatically open modal if requested in navigation state
+  // Open the pay sheet when navigated here with openAddModal (e.g. from Bosh sahifa).
+  // The page can mount more than once right after navigation, so a request stays
+  // valid for a few seconds (per location.key, in sessionStorage); later reloads of
+  // the same history entry do not reopen it. We no longer navigate() to clear the
+  // state, which remounted the page and closed the sheet.
+  const openRequestKey = location.state?.openAddModal ? `payments-open-consumed:${location.key}` : null;
   useEffect(() => {
-    if (location.state?.openAddModal) {
-      setShowAddModal(true);
-    }
-  }, [location.state]);
+    if (!openRequestKey) return;
+    try {
+      const seen = Number(sessionStorage.getItem(openRequestKey) || 0);
+      if (seen && Date.now() - seen > 4000) return;
+      if (!seen) sessionStorage.setItem(openRequestKey, String(Date.now()));
+    } catch { /* ignore */ }
+    setShowAddModal(true);
+  }, [openRequestKey]);
+  const closeAddModal = () => {
+    if (openRequestKey) { try { sessionStorage.setItem(openRequestKey, '1'); } catch { /* ignore */ } }
+    setShowAddModal(false);
+  };
 
   // Handle modal opening, reset, and prefill
   useEffect(() => {
@@ -327,10 +341,6 @@ export default function MobilePaymentsV2() {
       setPatientServices([]);
       setPatientPayments([]);
 
-      // Clear state to avoid reopening on refresh
-      if (location.state?.openAddModal) {
-        navigate(location.pathname, { replace: true, state: null });
-      }
     }
   }, [showAddModal]);
 
@@ -802,7 +812,7 @@ export default function MobilePaymentsV2() {
         ));
       }
 
-      setShowAddModal(false);
+      closeAddModal();
       setFormData({
         patient_id: '',
         doctor_id: '',
@@ -1078,7 +1088,7 @@ export default function MobilePaymentsV2() {
         {/* Add Payment — mobile "To'lov qilish" screen */}
         <MobilePayView
           open={showAddModal}
-          onClose={() => setShowAddModal(false)}
+          onClose={closeAddModal}
           patient={selectedPatient}
           patientPicker={(
             <div className="space-y-2 relative z-50">
