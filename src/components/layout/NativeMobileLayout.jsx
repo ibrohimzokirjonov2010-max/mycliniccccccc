@@ -15,6 +15,7 @@ import { isPageBlocked, isPageGranted } from '@/lib/pageAccess';
 import { CLINIC_SESSION_EVENT, isPathLocked } from '@/lib/clinicPlan';
 import { useClinicPlan } from '@/hooks/useFeature';
 import { useClinic } from '@/lib/ClinicContext';
+import { toast } from 'sonner';
 import AdBanner from './AdBanner';
 import NotificationPanel from '../notifications/NotificationPanel';
 import { notificationStore } from '@/lib/notificationStore';
@@ -130,6 +131,7 @@ export default function NativeMobileLayout({ children }) {
   const { t } = useTranslation();
   const [currentClinic, setCurrentClinic] = useState({ name: 'Klinika', logo: null });
   const [showMenu, setShowMenu] = useState(false);
+  useEffect(() => { if (showMenu) toast.dismiss('implant-incomplete-notification'); }, [showMenu]);
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
