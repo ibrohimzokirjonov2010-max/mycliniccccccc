@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "crypto";
 import { activateInDb, BillingError } from "../billing";
 import { clickConfigured } from "./config";
-import { updateStore } from "../store";
+import { storeIsDurable, updateStore } from "../store";
 
 export const ClickError = {
   Success: 0,
@@ -113,6 +113,18 @@ export async function handleClick(input: Record<string, string>) {
       merchantTransId,
       error: ClickError.BadRequest,
       note: "merchant_trans_id is required",
+    });
+  }
+
+  // Haqiqiy pul qabul qilinganda buyurtma vaqtinchalik /tmp faylga yozilmasligi kerak (cold start'da yo'qoladi).
+  if (process.env.VERCEL && !storeIsDurable()) {
+    console.error("Click callback rejected: durable store (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY) is not configured");
+    return clickResponse({
+      clickTransId,
+      merchantTransId,
+      error: ClickError.FailedToUpdate,
+      note: "Store not configured",
+      confirm: action === 1,
     });
   }
 
@@ -248,6 +260,29 @@ async function complete(input: Record<string, string>) {
         confirm: true,
       });
     }
+    // Click Shop API: Complete'da error < 0 (masalan -5017 mablag' yetarli emas) => to'lov amalga oshmagan.
+    // Buyurtma bekor qilinadi va javobda error = -9 (Transaction cancelled) qaytariladi.
+    if (!Number.isFinite(clickError) || clickError !== 0) {
+      if (order.status === "active") {
+        return clickResponse({
+          clickTransId,
+          merchantTransId,
+          prepareId,
+          error: ClickError.AlreadyPaid,
+          note: "Already paid",
+          confirm: true,
+        });
+      }
+      order.status = "cancelled";
+      return clickResponse({
+        clickTransId,
+        merchantTransId,
+        prepareId,
+        error: ClickError.TransactionCanceled,
+        note: "Transaction cancelled",
+        confirm: true,
+      });
+    }
     if (!amountsMatch(input.amount ?? "", order.amountUzs)) {
       return clickResponse({
         clickTransId,
@@ -255,17 +290,6 @@ async function complete(input: Record<string, string>) {
         prepareId,
         error: ClickError.InvalidAmount,
         note: "Incorrect amount",
-        confirm: true,
-      });
-    }
-    if (Number.isFinite(clickError) && clickError !== 0) {
-      order.status = "cancelled";
-      return clickResponse({
-        clickTransId,
-        merchantTransId,
-        prepareId,
-        error: ClickError.Success,
-        note: "Cancelled",
         confirm: true,
       });
     }

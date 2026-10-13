@@ -9,7 +9,7 @@ import { bodyOf, guard, send } from '../_lib/http.js';
  * Javob: { ok, mode, card_token, phone_mask }
  */
 export default async function handler(req, res) {
-  if (!guard(req, res, { limit: 8 })) return;
+  if (!(await guard(req, res, { limit: 8 }))) return;
   const parsed = parseCard(bodyOf(req));
   if (parsed.error) return send(res, 400, { ok: false, error: parsed.error });
 

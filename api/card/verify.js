@@ -10,7 +10,7 @@ export const MOCK_SMS_CODE = '123456';
  * (attach shu isbotsiz karta biriktirmaydi).
  */
 export default async function handler(req, res) {
-  if (!guard(req, res, { limit: 12 })) return;
+  if (!(await guard(req, res, { limit: 12 }))) return;
   const body = bodyOf(req);
   const cardToken = String(body.card_token || '').trim();
   const smsCode = String(body.sms_code || '').replace(/\D/g, '');

@@ -40,6 +40,9 @@ export function errorText(code) {
     consent_required: "Avtomatik yechishga rozilik bering",
     clinic_not_eligible: "Klinika uchun karta biriktirib bo'lmadi",
     already_attached: "Bu klinikaga karta allaqachon biriktirilgan",
+    clinic_exists: 'Ushbu Klinika ID band!',
+    invalid_registration_token: "Ro'yxatdan o'tish sessiyasi eskirgan. Sahifani yangilab, qaytadan urinib ko'ring",
+    registration_token_used: "Ro'yxatdan o'tish sessiyasi allaqachon ishlatilgan",
   };
   return map[code] || 'Xatolik yuz berdi. Qayta urinib ko\'ring';
 }
@@ -76,9 +79,21 @@ export async function verifyCard(mode, { cardToken, smsCode, expiry }) {
   return post('/api/card/verify', { card_token: cardToken, sms_code: smsCode, expire_date: expiry });
 }
 
-export async function attachCard(mode, { clinicId, proof, consentVersion }) {
+/**
+ * Bir martalik ro'yxatdan o'tish tokeni: klinika YARATILISHIDAN OLDIN olinadi (server klinika ID band emasligini tekshiradi).
+ * attachCard shu tokensiz kartani biriktirmaydi.
+ */
+export async function getRegistrationToken(mode, clinicId) {
+  if (mode === 'local-mock') return 'local-mock';
+  const r = await post('/api/register/token', { clinic_id: clinicId });
+  return r.registration_token;
+}
+
+export async function attachCard(mode, { clinicId, proof, consentVersion, registrationToken }) {
   if (mode === 'local-mock') return { ok: true, stored: false };
-  return post('/api/card/attach', { clinic_id: clinicId, proof, consent: true, consent_version: consentVersion });
+  return post('/api/card/attach', {
+    clinic_id: clinicId, proof, registration_token: registrationToken, consent: true, consent_version: consentVersion,
+  });
 }
 
 /** Luhn (Uzcard/Humo kartalari uchun ham amal qiladi) — faqat yozuv xatolarini ushlash uchun. */

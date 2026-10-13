@@ -16,7 +16,7 @@ import { MyClinicLogoImage } from '@/components/ui/ShifoCrmLogo';
 import { normalizeClinicBilling } from '@/utils/superAdminBilling';
 import { LANDING_PLANS, TRIAL_DAYS } from '@/config/landingPricing';
 import { CARD_BINDING_REQUIRED } from '@/config/cardBinding';
-import { attachCard, getBindingStatus } from '@/api/cardBindingClient';
+import { attachCard, getBindingStatus, getRegistrationToken } from '@/api/cardBindingClient';
 import CardBindingStep from '@/components/register/CardBindingStep';
 
 export default function Register() {
@@ -37,6 +37,7 @@ export default function Register() {
   const [bindMode, setBindMode] = useState('live'); // live | mock | local-mock
   const [cardError, setCardError] = useState('');
   const createdClinicRef = useRef(null); // klinika yaratilgan bo'lsa (attach xatosida qayta yaratmaslik uchun)
+  const regTokenRef = useRef(null); // /api/register/token bergan bir martalik token (attach uchun)
   
   // Registration Forms
   const [adminForm, setAdminForm] = useState({
@@ -138,13 +139,15 @@ export default function Register() {
     const clinicId = adminForm.clinicId.toLowerCase();
     try {
       if (!createdClinicRef.current) {
+        // Bir martalik token klinika yaratilishidan OLDIN olinadi (server ID band emasligini tekshiradi).
+        regTokenRef.current = await getRegistrationToken(bindMode, clinicId);
         await base44.clinic.createClinic(
           buildClinicPayload(clinicId, bindMode === 'live' ? 'click' : 'mock'),
           { name: 'Admin', username: adminForm.username, password: adminForm.password }
         );
         createdClinicRef.current = clinicId;
       }
-      await attachCard(bindMode, { clinicId, proof, consentVersion });
+      await attachCard(bindMode, { clinicId, proof, consentVersion, registrationToken: regTokenRef.current });
       await finishRegistration(clinicId);
     } catch (err) {
       setCardError(err.message || 'Xatolik yuz berdi. Qayta urinib ko\'ring');
