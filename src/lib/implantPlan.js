@@ -207,7 +207,11 @@ async function syncImplantPlanLocked(implant, { planName, createPlan = true, onl
     lifecycleOf(implant),
   );
   const services = lifecycle.services;
-  const { discount, total } = planTotalAfterDiscount(existing, services);
+  // Chegirma faqat rejaning o'z (avvaldan bor) qatorlariga tegishli: yangi qo'shilgan implant qatorlariga avtomatik o'tmaydi.
+  const before = planTotalAfterDiscount(existing, existing.services);
+  const after = planTotalAfterDiscount(existing, services);
+  const discount = Math.min(after.discount, before.discount);
+  const total = Math.max(0, after.raw - discount);
   const teeth = teethLabel(services);
   const patch = {
     services,

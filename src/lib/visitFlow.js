@@ -30,10 +30,12 @@ export function pendingPlanRows(plans = []) {
 
 /** Discount share of one plan row (percent, or fixed amount pro-rata). */
 export function rowDiscount(plan, price) {
-  const pct = Number(plan?.discount_percent) || 0;
-  if (pct > 0) return Math.floor(price * pct / 100);
+  // Only the discount stored on THIS plan counts (pro-rata by price); percent is a fallback when no amount is stored.
   const amt = Number(plan?.discount_amount) || 0;
-  if (!amt) return 0;
+  if (!amt) {
+    const pct = Number(plan?.discount_percent) || 0;
+    return pct > 0 ? Math.floor(price * pct / 100) : 0;
+  }
   const raw = (plan?.services || []).reduce((s, x) => s + (Array.isArray(x.items) ? x.items.reduce((a, b) => a + svcPrice(b), 0) : svcPrice(x)), 0);
   return raw > 0 ? Math.round(amt * price / raw) : 0;
 }
