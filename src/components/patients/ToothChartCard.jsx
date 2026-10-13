@@ -16,6 +16,7 @@ import { displayServiceName, formatDoctorName } from '@/lib/displayText';
 import { implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
 import { toothGroupBilling, toothGroupCharge, withOncePricing } from '@/lib/toothPlanCharge';
 import { isPlanLocked, PLAN_LOCKED_ADD_PROMPT } from '@/lib/planLock';
+import { isLinkedPlanInternal } from '@/lib/paymentDebt';
 import { findCatalogService, parsePriceInput, PRICE_MISSING_LABEL } from '@/lib/quickAddPricing';
 import JawChoice from '@/components/patients/JawChoice';
 import {
@@ -618,8 +619,9 @@ export default function ToothChartCard({
     const totalDebts = totalOf('debt');
     const totalIncomes = totalOf('income');
     const totalRefunds = totalOf('refund');
+    // Plan-linked discount rows (wizard "Avtomatik chegirma") are already inside that plan's Debt row.
     const totalDiscounts = (allPays || [])
-      .filter((p) => String(p.type || '').toLowerCase() === 'discount')
+      .filter((p) => String(p.type || '').toLowerCase() === 'discount' && !isLinkedPlanInternal(p, 'discount'))
       .reduce((sum, p) => sum + Math.abs(Number(p.amount) || 0), 0);
     await base44.entities.Patient.update(patientId, {
       total_paid: totalIncomes,

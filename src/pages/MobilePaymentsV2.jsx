@@ -13,7 +13,7 @@ import { compressImage, validateImage } from '@/utils/imageUpload';
 import { Button } from '@/components/ui/button';
 import { cn, formatCurrency, resolveDoctorId, getTreatmentTypeLabel } from '@/lib/utils';
 import { paymentStamp, formatClinicDateTime, tashkentToday } from '@/lib/clinicTime';
-import { computePatientBalances, unionPayments } from '@/lib/paymentDebt';
+import { computePatientBalances, unionPayments, isLinkedPlanInternal } from '@/lib/paymentDebt';
 import { Input } from '@/components/ui/input';
 import { ClinicDateTimeField } from '@/components/ui/ClinicDateField';
 import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
@@ -707,8 +707,9 @@ export default function MobilePaymentsV2() {
           .filter(p => p.type?.toLowerCase() === 'refund')
           .reduce((s, p) => s + (Number(p.amount) || 0), 0);
 
+        // Plan-linked discount rows (wizard "Avtomatik chegirma") are already inside that plan's Debt row.
         const totalDiscounts = (patientPays || [])
-          .filter(p => p.type?.toLowerCase() === 'discount')
+          .filter(p => p.type?.toLowerCase() === 'discount' && !isLinkedPlanInternal(p, 'discount'))
           .reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
 
         if (totalDebts > 0) {

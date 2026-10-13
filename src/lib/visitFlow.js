@@ -1,6 +1,6 @@
 import { base44 } from '@/api/base44Client';
 import { allocateInvoicePayment } from '@/lib/invoiceAllocation';
-import { syncPatientBalance } from '@/lib/treatmentDelete';
+import { isLinkedPlanInternal } from '@/lib/paymentDebt';
 import { isDoneStatus } from '@/lib/planGroups';
 
 const LOCKED_PATIENT = 'patient-y2ii8ynf2';
@@ -100,7 +100,7 @@ export async function createDonePlan({ patient, doctor, lines }) {
       date: todayIso(),
       notes: `Linked to Plan: ${plan.id}`,
     });
-    await syncPatientBalance(patient.id);
+    await syncVisitPatientTotals(patient.id);
   }
   return plan;
 }
@@ -113,12 +113,22 @@ export async function currentPatientDebt(patientId) {
   ]);
   const sum = (t) => (pays || []).filter((p) => p.type?.toLowerCase() === t).reduce((s, p) => s + (Number(p.amount) || 0), 0);
   const inc = sum('income'); const debts = sum('debt'); const ref = sum('refund');
-  const disc = (pays || []).filter((p) => p.type?.toLowerCase() === 'discount').reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
+  // Plan-linked discount rows (wizard "Avtomatik chegirma", "Reja:") are already inside the discounted Debt rows.
+  const disc = (pays || []).filter((p) => p.type?.toLowerCase() === 'discount' && !isLinkedPlanInternal(p, 'discount')).reduce((s, p) => s + Math.abs(Number(p.amount) || 0), 0);
   let net;
   if (debts > 0) net = inc + disc - debts - ref;
   else if ((plans || []).length) net = inc + disc - (plans || []).reduce((s, p) => s + (Number(p.total_price) || 0), 0);
   else net = inc - ref;
   return { debt: net < 0 ? Math.abs(net) : 0, plans: plans || [] };
+}
+
+/** Patient totals with the same debt rule as currentPatientDebt (no double-counted plan discounts). */
+export async function syncVisitPatientTotals(patientId) {
+  if (!patientId || patientId === LOCKED_PATIENT) return;
+  const { debt } = await currentPatientDebt(patientId);
+  const pays = await base44.entities.Payment.filter({ patient_id: patientId }, '-date', 500);
+  const paid = (pays || []).filter((p) => p.type?.toLowerCase() === 'income').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  await base44.entities.Patient.update(patientId, { total_paid: paid, total_debt: debt });
 }
 
 /** Income save, mirroring MobilePaymentsV2.handleAddPayment (allocation + patient totals). */
