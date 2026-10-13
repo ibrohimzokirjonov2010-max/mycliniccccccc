@@ -1,5 +1,6 @@
 import { base44 } from '@/api/base44Client';
 import { isPlanLocked } from '@/lib/planLock';
+import { isLinkedPlanInternal } from '@/lib/paymentDebt';
 import { planImplantIds, setPlanOptOut } from '@/lib/implantPlanModel';
 
 const LOCKED_PATIENT = 'patient-y2ii8ynf2';
@@ -74,7 +75,8 @@ export async function syncPatientBalance(patientId) {
   const debts = sum('debt');
   const refunds = sum('refund');
   const discounts = (payments || [])
-    .filter((p) => String(p.type || '').toLowerCase() === 'discount')
+    // Plan-linked discount rows (wizard "Avtomatik chegirma") are already inside that plan's Debt row.
+    .filter((p) => String(p.type || '').toLowerCase() === 'discount' && !isLinkedPlanInternal(p, 'discount'))
     .reduce((total, p) => total + Math.abs(Number(p.amount) || 0), 0);
   const plansPrice = (plans || []).reduce((total, plan) => total + (Number(plan.total_price) || 0), 0);
   let debt = 0;
