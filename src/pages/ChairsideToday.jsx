@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   CalendarClock,
+  Play,
   Phone,
   Clock,
   ChevronRight,
@@ -174,6 +175,12 @@ export default function ChairsideToday() {
     navigate(`/patients/${appt.patient_id}`, { state: profileState() });
   };
 
+  const startVisit = (appt) => {
+    if (!appt.patient_id) return;
+    if (window.matchMedia('(max-width: 768px)').matches) navigate(`/visit/${appt.id}`);
+    else openPatient(appt);
+  };
+
   const formatTodayLabel = () => {
     try {
       return formatClinicDateWithWeekday(today, 'uz');
@@ -293,7 +300,7 @@ export default function ChairsideToday() {
             <button
               key={appt.id}
               type="button"
-              onClick={() => openPatient(appt)}
+              onClick={() => startVisit(appt)}
               disabled={!appt.patient_id}
               className={cn(
                 'w-full text-left bg-white border border-slate-100 rounded-2xl p-3.5 sm:p-4 lg:p-2.5 shadow-sm',
@@ -358,9 +365,9 @@ export default function ChairsideToday() {
                     {appt.service_name}
                   </span>
                 ) : null}
-                <span className="ml-auto inline-flex items-center gap-0.5 text-[14px] font-black text-teal-700 shrink-0">
-                  {t('chairside.openProfile')}
-                  <ChevronRight className="w-4 h-4" />
+                <span className="ml-auto inline-flex items-center gap-1 h-11 px-3 rounded-xl bg-emerald-600 text-white text-[14px] font-bold shrink-0">
+                  <Play className="w-4 h-4 fill-current" />
+                  Boshlash
                 </span>
               </div>
             </button>

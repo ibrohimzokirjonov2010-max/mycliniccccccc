@@ -130,7 +130,7 @@ const buildAppointmentPayload = (form) => {
  * (HTTP 400 - e.g. an optional column with a different type) we retry once with only the core
  * columns and keep the optional values inside the notes so nothing is lost.
  */
-const createAppointmentSafely = async (form) => {
+export const createAppointmentSafely = async (form) => {
   const payload = buildAppointmentPayload(form);
   try {
     return await base44.entities.Appointment.create(payload);
@@ -160,7 +160,7 @@ const createAppointmentSafely = async (form) => {
  * Schedule the morning + 2h Telegram reminders. Entirely best-effort:
  * a missing entity / table or any network error is logged and ignored.
  */
-const scheduleAppointmentNotifications = async (appointmentRecord, form) => {
+export const scheduleAppointmentNotifications = async (appointmentRecord, form) => {
   try {
     const notificationEntity = base44?.entities?.ScheduledNotification;
     if (!notificationEntity || typeof notificationEntity.create !== 'function') return;

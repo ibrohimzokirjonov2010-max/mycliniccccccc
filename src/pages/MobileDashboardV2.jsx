@@ -86,6 +86,8 @@ export default function MobileDashboardV2() {
   const greetName = nm ? (isDoctor ? `Dr. ${displayDoctorName(nm).split(' ')[0]}` : nm.split(' ')[0]) : '';
   const trend = data?.stats?.todayRevenueTrend;
   const openPatient = (a) => a?.patient_id ? navigate(`/patients/${a.patient_id}`) : navigate('/appointments');
+  const isPhone = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+  const startVisit = (a) => (a?.id && a?.patient_id && isPhone() ? navigate(`/visit/${a.id}`) : openPatient(a));
   const takePayment = (a) => navigate('/payments', {
     state: a?.patient_id
       ? { openAddModal: true, prefillPatient: a.patient_id, prefillPatientName: a.patient_name, prefillDoctor: a.doctor_id || a.doctor_name || '' }
@@ -134,7 +136,7 @@ export default function MobileDashboardV2() {
                 <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
               </button>
               <div className="grid grid-cols-2 gap-2.5 mt-3">
-                <button onClick={() => openPatient(next)} className="h-12 rounded-2xl bg-emerald-100 text-emerald-800 font-bold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98]"><Play className="w-5 h-5 fill-current" />Boshlash</button>
+                <button onClick={() => startVisit(next)} className="h-12 rounded-2xl bg-emerald-100 text-emerald-800 font-bold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98]"><Play className="w-5 h-5 fill-current" />Boshlash</button>
                 <button onClick={() => takePayment(next)} className="h-12 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold text-[15px] flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 active:scale-[0.98]"><CreditCard className="w-5 h-5" />To'lov olish</button>
               </div>
             </>
@@ -209,7 +211,7 @@ export default function MobileDashboardV2() {
                       <p className="text-[13px] text-slate-500 truncate">{getTreatmentTypeLabel(a.service_name || a.treatment_type, 'uz') || 'Uchrashuv'}</p>
                     </div>
                     {isNext ? (
-                      <button onClick={(e) => { e.stopPropagation(); openPatient(a); }} className="h-11 px-3 rounded-xl bg-emerald-600 text-white text-[13px] font-bold flex items-center gap-1 shrink-0"><Play className="w-3.5 h-3.5 fill-current" />Boshlash</button>
+                      <button onClick={(e) => { e.stopPropagation(); startVisit(a); }} className="h-11 px-3 rounded-xl bg-emerald-600 text-white text-[13px] font-bold flex items-center gap-1 shrink-0"><Play className="w-3.5 h-3.5 fill-current" />Boshlash</button>
                     ) : (
                       <span className="h-9 px-3 rounded-xl bg-slate-100 text-slate-600 text-[13px] font-semibold flex items-center shrink-0">{statusLabel(a.status)}</span>
                     )}
