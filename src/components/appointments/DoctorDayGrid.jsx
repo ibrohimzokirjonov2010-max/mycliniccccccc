@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useBackClose } from '@/hooks/useBackClose';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Wallet, CheckCircle2, FlaskConical, X, Phone, Calendar, Stethoscope, CreditCard, FileText, History, Receipt, Edit3, UserCircle, Camera, Upload } from 'lucide-react';
+import { Clock, Wallet, FlaskConical, X, ChevronRight, MoreHorizontal, Phone, Calendar, Stethoscope, CreditCard, FileText, History, Receipt, Edit3, UserCircle, Camera, Upload } from 'lucide-react';
 import { cn, formatDateWithWeekday } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
@@ -55,6 +55,13 @@ function useTestReminder() {
 }
 
 // Static base slots to build from (08:00 – 23:00, 23:30, 00:00)
+const tashkentHM = () => new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Tashkent', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+const tashkentDateKey = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(new Date());
+const doctorInitials = (name) => {
+  const words = String(name || '').split(/[\s.]+/).filter(Boolean);
+  return (words.slice(0, 2).map((w) => w[0]).join('') || String(name || '?').charAt(0)).toUpperCase();
+};
+
 const BASE_TIME_SLOTS = [
   ...Array.from({ length: 16 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`),
   '23:30',
@@ -534,6 +541,23 @@ export default function DoctorDayGrid({
   // Quick View popup state
   const [quickView, setQuickView] = useState(null); // { appointment, rect }
 
+  // Desktop: current-time line (Asia/Tashkent) and a "more doctors" scroll arrow.
+  const [nowHM, setNowHM] = useState(() => tashkentHM());
+  useEffect(() => {
+    const id = setInterval(() => setNowHM(tashkentHM()), 60000);
+    return () => clearInterval(id);
+  }, []);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return undefined;
+    const check = () => setCanScrollRight(el.scrollWidth - el.clientWidth - el.scrollLeft > 8);
+    check();
+    el.addEventListener('scroll', check);
+    window.addEventListener('resize', check);
+    return () => { el.removeEventListener('scroll', check); window.removeEventListener('resize', check); };
+  }, [doctors.length, gridMaxH]);
+
   useEffect(() => {
     if (!quickView) return;
 
@@ -620,6 +644,16 @@ export default function DoctorDayGrid({
     return Array.from(slotSet).sort((a, b) => getClinicTimeWeight(a) - getClinicTimeWeight(b));
   }, [appointments, selectedDate]);
 
+  const isTodayView = selectedDate === tashkentDateKey();
+  // Slot that contains "now" and the fraction of an hour inside it.
+  const nowSlot = useMemo(() => {
+    if (!isTodayView || !nowHM) return null;
+    const [h, m] = nowHM.split(':').map(Number);
+    const key = `${String(h).padStart(2, '0')}:00`;
+    if (!displayTimeSlots.includes(key)) return null;
+    return { key, pct: (m / 60) * 100 };
+  }, [isTodayView, nowHM, displayTimeSlots]);
+
   const changeDate = (offset) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + offset);
@@ -658,9 +692,20 @@ export default function DoctorDayGrid({
       )}
 
       {/* Unified Single CSS Grid for 100% straight vertical alignment between header and body */}
+      {canScrollRight && (
+        <button
+          type="button"
+          aria-label="Boshqa shifokorlar"
+          data-testid="doctor-grid-scroll-right"
+          onClick={() => gridRef.current?.scrollBy({ left: 320, behavior: 'smooth' })}
+          className="absolute right-2 top-2 z-50 w-7 h-7 rounded-full bg-white border-2 border-orange-400 text-orange-500 shadow-md flex items-center justify-center hover:bg-orange-50"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      )}
       <div ref={gridRef} data-testid="doctor-day-grid-scroll" className="flex-1 overflow-auto doc-grid-scroll scroll-smooth bg-white" style={gridMaxH ? { maxHeight: gridMaxH } : undefined}>
         <div 
-          className="grid w-full min-w-max [grid-template-columns:56px_repeat(var(--doc-n),minmax(210px,1fr))] lg:[grid-template-columns:44px_repeat(var(--doc-n),minmax(150px,1fr))]"
+          className="grid w-full min-w-max [grid-template-columns:56px_repeat(var(--doc-n),minmax(210px,1fr))] lg:[grid-template-columns:56px_repeat(var(--doc-n),minmax(200px,1fr))]"
           style={{ '--doc-n': Math.max(doctors.length, 1) }}
         >
           {/* ══════════════════════════════════════════════
@@ -668,9 +713,9 @@ export default function DoctorDayGrid({
               ══════════════════════════════════════════════ */}
           <div className="contents">
             {/* Top-Left Corner Cell: Sticky Top & Sticky Left */}
-            <div className="sticky top-0 left-0 z-40 bg-slate-100/95 backdrop-blur-sm border-r-2 border-b-2 border-slate-300 flex flex-col items-center justify-center py-2.5 lg:py-1 shadow-sm">
-              <Clock className="w-4 h-4 lg:w-3 lg:h-3 stroke-[2.5] text-[#1499AD]" />
-              <span className="text-[8px] lg:text-[7px] font-black uppercase tracking-wider text-slate-500 mt-0.5 lg:mt-0 lg:leading-none">Vaqt</span>
+            <div className="sticky top-0 left-0 z-40 bg-white border-r border-b border-slate-200 flex flex-col items-center justify-center py-2.5 lg:py-1.5">
+              <Clock className="w-4 h-4 lg:w-3.5 lg:h-3.5 stroke-[2.25] text-slate-500" />
+              <span className="text-[8px] lg:text-[9px] font-bold uppercase tracking-wider text-slate-500 mt-0.5 lg:leading-none">Vaqt</span>
             </div>
 
             {/* Doctor Column Headers: Sticky Top */}
@@ -682,8 +727,7 @@ export default function DoctorDayGrid({
                 <div 
                   key={`hdr-${doc.id}`} 
                   className={cn(
-                    "sticky top-0 z-30 py-2.5 px-3 lg:py-1 lg:px-1.5 border-r-2 border-b-2 border-slate-300 last:border-r-0 flex items-center justify-between gap-2.5 lg:gap-1.5 group relative overflow-hidden transition-colors border-t-4 lg:border-t-[3px] shadow-sm backdrop-blur-sm",
-                    palette.headerBg
+                    "sticky top-0 z-30 py-2.5 px-3 lg:py-2 lg:px-2.5 border-r border-b border-slate-200 last:border-r-0 flex items-center justify-between gap-2.5 lg:gap-2 group relative overflow-hidden transition-colors border-t-4 lg:border-t-[3px] bg-white"
                   )}
                   style={{ borderTopColor: palette.primary }}
                   title={`${doc.name || ''}${doc.specialty ? ' — ' + doc.specialty : ''}`}
@@ -691,8 +735,8 @@ export default function DoctorDayGrid({
                   <div className="flex items-center gap-2.5 lg:gap-1.5 min-w-0">
                     {/* Doctor Avatar / Photo */}
                     <div 
-                      className="w-9 h-9 lg:w-6 lg:h-6 rounded-xl lg:rounded-lg border-2 shadow-xs flex items-center justify-center overflow-hidden shrink-0 bg-white"
-                      style={{ borderColor: palette.primary }}
+                      className="w-9 h-9 lg:w-8 lg:h-8 rounded-xl lg:rounded-full border-2 lg:border flex items-center justify-center overflow-hidden shrink-0 bg-white"
+                      style={{ borderColor: palette.primary, backgroundColor: `${palette.primary}14` }}
                     >
                       {avatarUrl ? (
                         <img 
@@ -701,17 +745,17 @@ export default function DoctorDayGrid({
                           className="w-full h-full object-cover" 
                         />
                       ) : (
-                        <span className="text-xs lg:text-[10px] font-black uppercase" style={{ color: palette.primary }}>
-                          {(doc.name || doc.full_name)?.charAt(0)}
+                        <span className="text-xs lg:text-[11px] font-black uppercase" style={{ color: palette.primary }}>
+                          {doctorInitials(doc.name || doc.full_name)}
                         </span>
                       )}
                     </div>
 
                     <div className="min-w-0 text-left lg:flex lg:items-baseline lg:gap-1">
-                      <h4 className="text-xs lg:text-[11px] font-black text-slate-900 tracking-tight leading-tight uppercase truncate max-w-[130px] lg:max-w-none lg:min-w-0">
+                      <h4 className="text-xs lg:text-[11px] font-black text-slate-900 tracking-tight leading-tight uppercase truncate max-w-[130px] lg:max-w-none lg:min-w-0 lg:shrink">
                         {doc.name}
                       </h4>
-                      <p className="text-[9px] lg:text-[8px] font-bold uppercase tracking-wider truncate max-w-[130px] lg:max-w-none lg:hidden 2xl:block lg:min-w-0" style={{ color: palette.primary }}>
+                      <p className="text-[9px] lg:text-[8px] font-bold uppercase tracking-wider truncate max-w-[130px] lg:max-w-none lg:min-w-0 lg:shrink-0" style={{ color: palette.primary }}>
                         {doc.specialty || t('staff.roles.doctor') || 'Stomatolog'}
                       </p>
                     </div>
@@ -719,14 +763,14 @@ export default function DoctorDayGrid({
 
                   {/* Today's appointments count badge */}
                   <div 
-                    className="px-2 py-0.5 lg:px-1.5 lg:py-px rounded-full text-[8.5px] lg:text-[8px] font-black uppercase tracking-wider shrink-0 shadow-xs border whitespace-nowrap"
+                    className="px-2 py-0.5 lg:px-1.5 lg:py-0.5 rounded-md text-[8.5px] lg:text-[9px] font-black uppercase tracking-wider shrink-0 border whitespace-nowrap"
                     style={{
                       backgroundColor: apptCount > 0 ? `${palette.primary}18` : '#f1f5f9',
                       color: apptCount > 0 ? palette.primary : '#94a3b8',
                       borderColor: apptCount > 0 ? `${palette.primary}40` : '#e2e8f0'
                     }}
                   >
-                    {apptCount > 0 ? <>{apptCount} ta<span className="lg:hidden 2xl:inline"> qabul</span></> : `Bo'sh`}
+                    {apptCount > 0 ? <>{apptCount} ta<span className="hidden 2xl:inline"> qabul</span></> : `Bo'sh`}
                   </div>
                 </div>
               );
@@ -740,15 +784,19 @@ export default function DoctorDayGrid({
             const isHour = time.endsWith(':00');
             // Bo'sh soat qatori past, uchrashuv bor qator kontentga qarab
             const rowFilled = doctors.some((d) => !!gridData[d.id]?.[time]);
-            const rowH = rowFilled ? "min-h-[80px] lg:min-h-[64px]" : "h-20 lg:h-auto lg:min-h-[64px]";
+            const rowH = rowFilled ? "min-h-[80px] lg:min-h-[48px]" : "h-20 lg:h-auto lg:min-h-[40px]";
+            const nowHere = nowSlot && nowSlot.key === time;
             return (
               <div key={time} className="contents">
                 {/* Time column cell: Sticky Left */}
                 <div className={cn(
-                  rowH, "flex flex-col items-center justify-center border-r-2 border-b-2 border-slate-300 bg-slate-50/95 backdrop-blur-sm sticky left-0 z-20 shadow-[1px_0_3px_rgba(0,0,0,0.04)]",
-                  isHour ? "text-slate-800 font-black text-[11px] lg:text-[13px]" : "text-slate-400 font-bold text-[9.5px] lg:text-[12px]"
+                  rowH, "relative flex flex-col items-center justify-center border-r border-b border-slate-200 bg-white sticky left-0 z-20",
+                  isHour ? "text-slate-700 font-bold text-[11px] lg:text-[12px]" : "text-slate-400 font-bold text-[9.5px] lg:text-[11px]"
                 )}>
                   <span>{time}</span>
+                  {nowHere && (
+                    <span data-testid="grid-now-pill" className="absolute left-1 z-30 px-1.5 py-0.5 rounded-md bg-[#1499AD] text-white text-[10px] font-black tabular-nums -translate-y-1/2" style={{ top: `${nowSlot.pct}%` }}>{nowHM}</span>
+                  )}
                 </div>
 
                 {/* Doctor schedule slots */}
@@ -763,11 +811,16 @@ export default function DoctorDayGrid({
                       onClick={() => !appointment && onSlotClick?.(selectedDate, time, doc.id)}
                       title={!appointment ? `${doc.name} — ${time} ga yangi uchrashuv belgilash` : undefined}
                       className={cn(
-                        rowH, "flex border-r-2 border-b-2 border-slate-300 last:border-r-0 p-1 lg:p-0.5 relative transition-all group/slot",
-                        isEvenCol ? "bg-white" : "bg-slate-50/30",
+                        rowH, "flex border-r border-b border-slate-200 last:border-r-0 p-1 lg:px-1.5 lg:py-1 relative transition-all group/slot",
+                        isEvenCol ? "bg-white" : "bg-white",
                         !appointment && "hover:bg-[#1499AD]/10 cursor-pointer"
                       )}
                     >
+                      {nowHere && (
+                        <div className="absolute inset-x-0 z-20 border-t border-dashed border-[#1499AD] pointer-events-none" style={{ top: `${nowSlot.pct}%` }}>
+                          {docIdx === 0 && <span className="absolute -left-[3px] -top-[3px] w-1.5 h-1.5 rounded-full bg-[#1499AD]" />}
+                        </div>
+                      )}
                       {/* Subtle doctor watermark tag on hover for empty slot */}
                       {!appointment && (
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/slot:opacity-100 transition-opacity pointer-events-none z-10">
@@ -790,7 +843,7 @@ export default function DoctorDayGrid({
                           <div
                             onClick={(e) => handleAppointmentClick(e, appointment)}
                             className={cn(
-                              "flex-1 min-w-0 rounded-xl lg:rounded-lg border-l-[4px] lg:border-l-[3px] p-1.5 lg:px-1.5 lg:py-1 lg:min-h-[60px] flex flex-col justify-between lg:justify-center lg:gap-0.5 shadow-xs transition-all hover:brightness-95 active:scale-[0.98] cursor-pointer group/card relative overflow-hidden",
+                              "flex-1 min-w-0 rounded-xl lg:rounded-lg border-l-[4px] lg:border-l-[3px] p-1.5 lg:px-2.5 lg:py-1.5 lg:min-h-[44px] flex flex-col justify-between lg:justify-center lg:gap-1 lg:shadow-sm transition-all hover:brightness-95 active:scale-[0.98] cursor-pointer group/card relative overflow-hidden",
                               statusColors[appointment.status] || statusColors.Scheduled,
                               isMatch && "ring-2 ring-[#1499AD] ring-offset-1 animate-pulse scale-[1.02] z-10 shadow-lg shadow-[#1499AD]/20"
                             )}
@@ -805,7 +858,7 @@ export default function DoctorDayGrid({
                                     className="w-4 h-4 rounded-full object-cover shrink-0 border border-white/80 shadow-xs" 
                                   />
                                 )}
-                                <span title={appointment.patient_name} className="text-[11px] lg:text-[14px] font-black lg:font-semibold truncate leading-none lg:leading-tight uppercase tracking-tight text-slate-900">
+                                <span title={appointment.patient_name} className="text-[11px] lg:text-[12px] font-black truncate leading-none lg:leading-tight uppercase tracking-tight text-slate-900">
                                   {appointment.patient_name}
                                 </span>
                               </div>
@@ -815,7 +868,7 @@ export default function DoctorDayGrid({
                             </div>
 
                             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 lg:mt-0 min-w-0">
-                              <span className="text-[9px] lg:text-[13px] font-bold opacity-75 whitespace-nowrap">
+                              <span className="text-[9px] lg:text-[11px] font-bold text-slate-600 whitespace-nowrap">
                                 {appointment.time} — {(() => {
                                     const [h, m] = appointment.time.split(':').map(Number);
                                     const dur = appointment.duration || 30;
@@ -823,7 +876,7 @@ export default function DoctorDayGrid({
                                     return `${String(Math.floor(endMin/60)).padStart(2,'0')}:${String(endMin%60).padStart(2,'0')}`;
                                 })()}
                               </span>
-                              <div className="px-2 py-0.5 lg:px-1.5 lg:py-px bg-white/70 rounded-lg text-[8px] lg:text-[12px] font-black lg:font-semibold uppercase tracking-tighter truncate max-w-full border border-black/5 min-w-0">
+                              <div className="px-2 py-0.5 lg:px-2 lg:py-px bg-white/80 rounded-md text-[8px] lg:text-[10px] font-black uppercase tracking-wide truncate max-w-full border border-black/5 min-w-0">
                                   {appointment.tooth_number ? `${appointment.tooth_number}-tish: ` : ''}{appointment.service_name || t('appointments.defaultService') || 'Maslahat'}
                               </div>
                               <AppointmentConfirmationBadge appointment={appointment} size="sm" className="!text-[8px] !px-1.5 !py-0.5 lg:!py-px" />
@@ -843,7 +896,14 @@ export default function DoctorDayGrid({
                                 >
                                   <FlaskConical className="w-2.5 h-2.5" />
                                 </button>
-                                <CheckCircle2 className="w-3 h-3 opacity-10" />
+                                <button
+                                  type="button"
+                                  aria-label="Batafsil"
+                                  onClick={(e) => handleAppointmentClick(e, appointment)}
+                                  className="w-6 h-5 rounded-md bg-white/90 border border-black/5 flex items-center justify-center text-slate-600 hover:bg-white"
+                                >
+                                  <MoreHorizontal className="w-3.5 h-3.5" />
+                                </button>
                               </div>
                             </div>
                           </div>

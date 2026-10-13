@@ -361,7 +361,7 @@ export default function Appointments() {
 
       {/* View Switcher & Date Navigation Unified Header */}
       <div className="bg-white rounded-[2rem] lg:rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-4 lg:mb-0">
-        <div className="flex flex-col lg:flex-row items-center justify-between p-4 lg:px-2.5 lg:py-1.5 gap-4 lg:gap-2">
+        <div className="flex flex-col lg:flex-row items-center justify-between p-4 lg:px-3 lg:py-2 gap-4 lg:gap-3">
           {/* Left: Date Type Navigation */}
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 lg:gap-0.5 bg-slate-50 p-1 lg:p-0.5 rounded-2xl lg:rounded-xl border border-slate-100">
@@ -375,19 +375,19 @@ export default function Appointments() {
                <div className="flex items-center gap-1">
                  <button 
                   onClick={() => setViewDate(addDaysKey(todayKey, -1))}
-                  className={cn("px-4 py-1.5 lg:px-3 lg:py-1 rounded-xl lg:rounded-lg text-[10px] font-black uppercase tracking-tight transition-all", viewDate === addDaysKey(todayKey, -1) ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
+                  className={cn("px-4 py-1.5 lg:px-3.5 lg:py-1.5 rounded-xl lg:rounded-lg text-[10px] lg:text-[11px] font-black uppercase tracking-tight transition-all", viewDate === addDaysKey(todayKey, -1) ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
                  >
                    {t('appointments.yesterday') || 'Kecha'}
                  </button>
                  <button 
                   onClick={() => setViewDate(todayKey)}
-                  className={cn("px-4 py-1.5 lg:px-3 lg:py-1 rounded-xl lg:rounded-lg text-[10px] font-black uppercase tracking-tight transition-all", viewDate === todayKey ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
+                  className={cn("px-4 py-1.5 lg:px-3.5 lg:py-1.5 rounded-xl lg:rounded-lg text-[10px] lg:text-[11px] font-black uppercase tracking-tight transition-all", viewDate === todayKey ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
                  >
                    {t('appointments.today') || 'Bugun'}
                  </button>
                  <button 
                   onClick={() => setViewDate(addDaysKey(todayKey, 1))}
-                  className={cn("px-4 py-1.5 lg:px-3 lg:py-1 rounded-xl lg:rounded-lg text-[10px] font-black uppercase tracking-tight transition-all", viewDate === addDaysKey(todayKey, 1) ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
+                  className={cn("px-4 py-1.5 lg:px-3.5 lg:py-1.5 rounded-xl lg:rounded-lg text-[10px] lg:text-[11px] font-black uppercase tracking-tight transition-all", viewDate === addDaysKey(todayKey, 1) ? "bg-white shadow-sm text-[#1499AD]" : "text-slate-400")}
                  >
                    {t('appointments.tomorrow') || 'Ertaga'}
                  </button>
@@ -405,15 +405,15 @@ export default function Appointments() {
               <ClinicDateField
                 value={viewDate}
                 onChange={(e) => e.target.value && setViewDate(e.target.value)}
-                className="h-10 lg:h-8 w-[9.5rem] lg:w-[8.5rem] px-4 lg:px-3 rounded-2xl lg:rounded-xl border border-slate-100 text-[11px] font-black text-slate-600 shadow-sm bg-white"
+                className="h-10 lg:h-9 w-[9.5rem] lg:w-[9.5rem] px-4 lg:px-3 rounded-2xl lg:rounded-xl border border-slate-200 text-[11px] lg:text-[12px] font-black text-slate-700 shadow-sm bg-white"
               />
-              <span className="text-[11px] font-black text-slate-500 whitespace-nowrap">{weekdayName(viewDate, 'uz')}</span>
+              <span className="text-[11px] lg:text-[12px] font-black text-slate-700 whitespace-nowrap">{weekdayName(viewDate, 'uz')}</span>
             </div>
           </div>
 
           {/* Center: Search (Visible on all views) */}
           <div className={cn(
-            "h-11 lg:h-8 bg-slate-50 border border-slate-100 rounded-[1.25rem] lg:rounded-xl px-5 lg:px-3 flex items-center gap-3 lg:gap-2 transition-all flex-1 max-w-md",
+            "h-11 lg:h-9 bg-slate-50 border border-slate-200 rounded-[1.25rem] lg:rounded-xl px-5 lg:px-3 flex items-center gap-3 lg:gap-2 transition-all flex-1 max-w-md lg:max-w-xl",
             searchQuery ? "ring-2 ring-[#1499AD]/10 border-[#1499AD]/30" : ""
           )}>
             <Search className="w-4 h-4 lg:w-3.5 lg:h-3.5 text-slate-300" />
@@ -427,14 +427,14 @@ export default function Appointments() {
 
           {/* Right: View Switcher Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
-            <TabsList className="bg-slate-50 p-1 lg:p-0.5 rounded-2xl lg:rounded-xl h-11 lg:h-8 border border-slate-100 gap-1 lg:gap-0.5">
-              <TabsTrigger value="grid" className="rounded-xl h-9 lg:h-7 px-6 lg:px-4 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm">
+            <TabsList className="bg-slate-50 p-1 lg:p-1 rounded-2xl lg:rounded-xl h-11 lg:h-9 border border-slate-100 gap-1 lg:gap-0.5">
+              <TabsTrigger value="grid" className="rounded-xl h-9 lg:h-7 px-6 lg:px-4 text-[10px] lg:text-[11px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm lg:data-[state=active]:bg-[#1499AD]/10">
                 {t('appointments.viewGrid') || 'Setka'}
               </TabsTrigger>
-              <TabsTrigger value="calendar" className="rounded-xl h-9 lg:h-7 px-6 lg:px-4 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm">
+              <TabsTrigger value="calendar" className="rounded-xl h-9 lg:h-7 px-6 lg:px-4 text-[10px] lg:text-[11px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm lg:data-[state=active]:bg-[#1499AD]/10">
                 {t('appointments.viewWeekly') || 'Haftalik'}
               </TabsTrigger>
-              <TabsTrigger value="list" className="rounded-xl h-9 lg:h-7 px-6 lg:px-4 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm">
+              <TabsTrigger value="list" className="rounded-xl h-9 lg:h-7 px-6 lg:px-4 text-[10px] lg:text-[11px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm lg:data-[state=active]:bg-[#1499AD]/10">
                 {t('appointments.viewList') || 'Ro\'yxat'}
               </TabsTrigger>
             </TabsList>

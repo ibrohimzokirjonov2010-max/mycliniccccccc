@@ -10,7 +10,7 @@ import {
   Edit2, Clock, Lock,
   TrendingUp, Trash2, Table as TableIcon, LayoutGrid, FileSpreadsheet, X,
   ArrowUp, ArrowDown, ArrowUpDown, CheckCircle2, FileText, User,
-  Check, Layers, ExternalLink, Printer
+  Check, Layers, ExternalLink, Printer, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatDoctorName } from '@/lib/displayText';
@@ -35,6 +35,36 @@ import { useAuth } from '@/lib/AuthContext';
 /**
  * TreatmentPlans Page - Professional Excel Spreadsheet View with Interactive Detail Modal
  */
+const planInitials = (name) => String(name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+const AVATAR_TONES = ['bg-blue-50 text-blue-700', 'bg-emerald-50 text-emerald-700', 'bg-violet-50 text-violet-700', 'bg-teal-50 text-teal-700', 'bg-amber-50 text-amber-700', 'bg-sky-50 text-sky-700'];
+const avatarTone = (name) => AVATAR_TONES[[...String(name || '')].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_TONES.length];
+const ageFromBirth = (bd) => {
+  if (!bd) return null;
+  const b = new Date(bd);
+  if (Number.isNaN(b.getTime())) return null;
+  const n = new Date();
+  let a = n.getFullYear() - b.getFullYear();
+  if (n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) a -= 1;
+  return a >= 0 && a < 130 ? a : null;
+};
+const formatPlanPhone = (ph) => {
+  const d = String(ph || '').replace(/\D/g, '');
+  if (d.length === 12 && d.startsWith('998')) return `+998 ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10)}`;
+  if (d.length === 9) return `+998 ${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5, 7)} ${d.slice(7)}`;
+  return ph || '';
+};
+const pageNumbers = (cur, total) => {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const out = [1];
+  const from = Math.max(2, cur - 1);
+  const to = Math.min(total - 1, cur + 1);
+  if (from > 2) out.push('…');
+  for (let i = from; i <= to; i += 1) out.push(i);
+  if (to < total - 1) out.push('…');
+  out.push(total);
+  return out;
+};
+
 export default function TreatmentPlans() {
   const navigate = useNavigate();
   const { t, language } = useTranslation();
@@ -275,6 +305,11 @@ export default function TreatmentPlans() {
   }, [plans, isDoctor, user, activeStatusFilter, search]);
 
   // Sorted Treatment Plans
+  // Desktop table: pagination + row selection (selection is visual only, no bulk action yet).
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const patientsById = useMemo(() => Object.fromEntries((patients || []).map((pt) => [pt.id, pt])), [patients]);
   const sortedPlans = useMemo(() => {
     const list = [...filteredPlans];
     list.sort((a, b) => {
@@ -309,6 +344,11 @@ export default function TreatmentPlans() {
     });
     return list;
   }, [filteredPlans, sortField, sortOrder]);
+  const pageCount = Math.max(1, Math.ceil(sortedPlans.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const pageStart = (safePage - 1) * pageSize;
+  const pagedPlans = sortedPlans.slice(pageStart, pageStart + pageSize);
+  useEffect(() => { setPage(1); }, [search, activeStatusFilter, sortField, sortOrder, pageSize]);
 
   // Dynamic reference to selected plan in Detail Modal
   const activeDetailPlan = useMemo(() => {
@@ -644,14 +684,23 @@ export default function TreatmentPlans() {
               <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 text-[10.5px] font-black uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
                 
                 {/* № Col */}
-                <th className="w-12 px-2.5 py-2.5 text-center border-r border-slate-200 select-none font-mono">
-                  №
+                <th className="w-10 px-2 py-2.5 text-center border-r border-slate-200 select-none">
+                  <input
+                    type="checkbox"
+                    aria-label="Sahifadagi barcha rejalarni tanlash"
+                    checked={pagedPlans.length > 0 && pagedPlans.every((pl) => selectedIds.includes(pl.id))}
+                    onChange={(e) => setSelectedIds(e.target.checked ? [...new Set([...selectedIds, ...pagedPlans.map((pl) => pl.id)])] : selectedIds.filter((sid) => !pagedPlans.some((pl) => pl.id === sid)))}
+                    className="w-4 h-4 rounded border-slate-300 accent-[#1499AD] cursor-pointer"
+                  />
+                </th>
+                <th className="w-10 px-2 py-2.5 text-center border-r border-slate-200 select-none">
+                  #
                 </th>
 
                 {/* BEMOR (F.I.SH) */}
                 <th 
                   onClick={() => handleSort('patient')}
-                  className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
+                  className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[150px]"
                 >
                   <div className="flex items-center justify-between gap-1.5">
                     <span>{t('treatmentPlan.patientCol') || (language === 'ru' ? 'Пациент (Ф.И.О)' : 'Bemor (F.I.Sh)')}</span>
@@ -666,7 +715,7 @@ export default function TreatmentPlans() {
                 {/* REJA NOMI */}
                 <th 
                   onClick={() => handleSort('name')}
-                  className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[200px]"
+                  className="px-3.5 py-2.5 border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none min-w-[150px]"
                 >
                   <div className="flex items-center justify-between gap-1.5">
                     <span>{t('treatmentPlan.planNameCol') || (language === 'ru' ? 'Название плана / Описание' : 'Reja Nomi / Tavsif')}</span>
@@ -679,7 +728,7 @@ export default function TreatmentPlans() {
                 </th>
 
                 {/* TISHLAR */}
-                <th className="w-32 px-3 py-2.5 text-center border-r border-slate-200 select-none whitespace-nowrap">
+                <th className="w-[150px] px-2 py-2.5 text-center border-r border-slate-200 select-none whitespace-nowrap">
                   {t('treatmentPlan.teethCol') || (language === 'ru' ? 'Зубы' : 'Tishlar')}
                 </th>
 
@@ -702,7 +751,7 @@ export default function TreatmentPlans() {
                 {/* JAMI QIYMAT */}
                 <th 
                   onClick={() => handleSort('price')}
-                  className="w-44 px-3.5 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-emerald-50/40 select-none whitespace-nowrap"
+                  className="w-36 px-3 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-emerald-50/40 select-none whitespace-nowrap"
                   title="Jami qiymat bo'yicha saralash"
                 >
                   <div className="flex items-center justify-end gap-1.5 text-emerald-700 font-mono">
@@ -718,7 +767,7 @@ export default function TreatmentPlans() {
                 {/* STATUS */}
                 <th 
                   onClick={() => handleSort('status')}
-                  className="w-40 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  className="w-36 px-2 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                 >
                   <div className="flex items-center justify-center gap-1.5 text-slate-700">
                     <span>{t('treatmentPlan.statusCol') || (language === 'ru' ? 'Статус' : 'Holat')}</span>
@@ -731,7 +780,7 @@ export default function TreatmentPlans() {
                 </th>
 
                 {/* Actions */}
-                <th className="w-36 px-2 py-2.5 text-center text-slate-500 whitespace-nowrap select-none">
+                <th className="w-28 px-1 py-2.5 text-center text-slate-500 whitespace-nowrap select-none">
                   {t('common.actions') || "Amallar"}
                 </th>
 
@@ -741,7 +790,11 @@ export default function TreatmentPlans() {
             {/* ─── Excel Table Body ────────────────── */}
             <tbody className="divide-y divide-slate-200/70 text-xs">
               {sortedPlans.length > 0 ? (
-                sortedPlans.map((p, idx) => {
+                pagedPlans.map((p, pageIdx) => {
+                  const idx = pageStart + pageIdx;
+                  const pt = patientsById[p.patient_id];
+                  const ptAge = ageFromBirth(pt?.birth_date);
+                  const ptPhone = formatPlanPhone(pt?.phone);
                   const isCompact = density === 'compact';
                   const st = normalizeStatus(p.status);
                   const teethList = (p.tooth_number || '').split(',').map(t => t.trim()).filter(Boolean);
@@ -754,16 +807,25 @@ export default function TreatmentPlans() {
                       }`}
                       onClick={() => setSelectedDetailPlanId(p.id)}
                     >
+                      <td className="text-center border-r border-slate-200/70 px-2" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          aria-label="Rejani tanlash"
+                          checked={selectedIds.includes(p.id)}
+                          onChange={(e) => setSelectedIds(e.target.checked ? [...selectedIds, p.id] : selectedIds.filter((sid) => sid !== p.id))}
+                          className="w-4 h-4 rounded border-slate-300 accent-[#1499AD] cursor-pointer"
+                        />
+                      </td>
                       {/* № Cell */}
-                      <td className={`text-center font-mono font-bold text-slate-400 border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-2 px-2' : 'py-3 px-2.5'}`}>
+                      <td className={`text-center font-semibold text-slate-500 border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-2 px-2' : 'py-3 px-2'}`}>
                         {idx + 1}
                       </td>
 
                       {/* BEMOR (F.I.SH) Cell */}
                       <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-6.5 h-6.5 rounded-lg bg-blue-50 text-blue-700 font-black text-[10px] flex items-center justify-center border border-blue-100 shrink-0">
-                            <User className="w-3.5 h-3.5 text-blue-600" />
+                        <div className="flex items-center gap-2 min-w-0 max-w-[185px]">
+                          <div className={cn('w-9 h-9 rounded-full font-black text-[12px] flex items-center justify-center shrink-0', avatarTone(p.patient_name))}>
+                            {planInitials(p.patient_name) || <User className="w-4 h-4" />}
                           </div>
                           <div className="min-w-0">
                             <span 
@@ -777,13 +839,18 @@ export default function TreatmentPlans() {
                             >
                               {p.patient_name || 'Noma\'lum bemor'}
                             </span>
+                            {(ptAge != null || ptPhone) && (
+                              <span className="text-[11px] text-slate-500 block truncate">
+                                {[ptAge != null ? `${ptAge} yosh` : null, ptPhone].filter(Boolean).join('  •  ')}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </td>
 
                       {/* REJA NOMI Cell */}
                       <td className={`border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
-                        <div className="min-w-0">
+                        <div className="min-w-0 max-w-[180px]">
                           <span className="font-bold text-slate-800 group-hover:text-[#1499AD] transition-colors truncate flex items-center gap-1">
                             {isPlanLocked(p) && (
                               <span data-testid="plan-locked-icon" title={PLAN_LOCKED_TOOLTIP} aria-label={PLAN_LOCKED_BADGE} className="inline-flex shrink-0 text-amber-600">
@@ -801,14 +868,19 @@ export default function TreatmentPlans() {
                       </td>
 
                       {/* TISHLAR Cell */}
-                      <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2.5'}`}>
+                      <td className={`text-center border-r border-slate-200/70 ${isCompact ? 'py-1.5 px-2' : 'py-2.5 px-2'}`}>
                         {teethList.length > 0 ? (
-                          <div className="flex items-center justify-center gap-1 flex-wrap max-w-[140px] mx-auto">
-                            {teethList.map((tooth, tIdx) => (
-                              <span key={tIdx} className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                          <div className="flex flex-wrap justify-center gap-1 w-[136px] mx-auto" title={teethList.map((tooth) => `#${tooth}`).join(', ')}>
+                            {teethList.slice(0, teethList.length > 9 ? 8 : 9).map((tooth, tIdx) => (
+                              <span key={tIdx} className="min-w-[40px] max-w-[136px] truncate px-1 py-0.5 rounded-md text-[10px] font-mono font-bold bg-slate-100 text-slate-700 border border-slate-200 text-center whitespace-nowrap">
                                 #{tooth}
                               </span>
                             ))}
+                            {teethList.length > 9 && (
+                              <span className="min-w-[38px] px-1 py-0.5 rounded-md text-[10px] font-bold bg-[#1499AD]/10 text-[#1499AD] border border-[#1499AD]/20 text-center">
+                                +{teethList.length - 8}
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold text-slate-400 bg-slate-100/70 border border-slate-200/60">
@@ -857,11 +929,11 @@ export default function TreatmentPlans() {
                       </td>
 
                       {/* Actions Cell */}
-                      <td className={`text-center whitespace-nowrap ${isCompact ? 'py-1 px-1.5' : 'py-2 px-2'}`}>
-                        <div className="flex items-center justify-center gap-1" onClick={(ev) => ev.stopPropagation()}>
+                      <td className={`text-center whitespace-nowrap ${isCompact ? 'py-1 px-1' : 'py-2 px-1'}`}>
+                        <div className="flex items-center justify-center gap-0.5" onClick={(ev) => ev.stopPropagation()}>
                           <button 
                             onClick={() => { setEditPlan(p); setModalOpen(true); }}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-[#1499AD] hover:bg-[#1499AD]/10 transition-all cursor-pointer"
+                            className="p-1 rounded-lg text-blue-600 hover:bg-[#1499AD]/10 transition-all cursor-pointer"
                             title={isPlanLocked(p) ? PLAN_LOCKED_TOOLTIP : (language === 'ru' ? 'Редактировать план' : 'Rejani tahrirlash')}
                           >
                             {isPlanLocked(p) ? <Lock className="w-3.5 h-3.5 text-amber-600" /> : <Edit2 className="w-3.5 h-3.5" />}
@@ -869,7 +941,7 @@ export default function TreatmentPlans() {
 
                           <button 
                             onClick={() => { setSelectedPlanForInvoice(p); setInvoiceOpen(true); }}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all cursor-pointer"
+                            className="p-1 rounded-lg text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
                             title="Kvitansiya / Hisob-faktura"
                           >
                             <FileText className="w-3.5 h-3.5" />
@@ -877,7 +949,7 @@ export default function TreatmentPlans() {
 
                           <button 
                             onClick={() => generatePDF(p)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
+                            className="p-1 rounded-lg text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
                             title="PDF yuklab olish"
                           >
                             <FileDown className="w-3.5 h-3.5" />
@@ -885,7 +957,7 @@ export default function TreatmentPlans() {
 
                           <button 
                             onClick={() => setDeletePlanId(p.id)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                            className="p-1 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
                             title="O'chirish"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -898,7 +970,7 @@ export default function TreatmentPlans() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-20 text-center">
+                  <td colSpan={9} className="py-20 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300">
                         <ClipboardList className="w-6 h-6" />
@@ -921,6 +993,29 @@ export default function TreatmentPlans() {
             </tbody>
           </table>
         </div>
+        {sortedPlans.length > 0 && (
+          <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-t border-slate-200 bg-white" data-testid="plans-pagination">
+            <div className="flex items-center gap-3 text-xs text-slate-500">
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 cursor-pointer"
+                aria-label="Sahifadagi qatorlar soni"
+              >
+                {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+              <span>{pageStart + 1}–{pageStart + pagedPlans.length} / {sortedPlans.length} ta reja</span>
+              {selectedIds.length > 0 && <span className="font-semibold text-[#1499AD]">{selectedIds.length} ta tanlangan</span>}
+            </div>
+            <div className="flex items-center gap-1">
+              <button type="button" aria-label="Oldingi sahifa" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
+              {pageNumbers(safePage, pageCount).map((n, i) => (n === '…'
+                ? <span key={`gap-${i}`} className="w-8 text-center text-slate-400 text-xs">…</span>
+                : <button key={n} type="button" onClick={() => setPage(n)} className={cn('w-8 h-8 rounded-lg text-xs font-bold', n === safePage ? 'bg-[#1499AD] text-white' : 'text-slate-600 hover:bg-slate-100')}>{n}</button>))}
+              <button type="button" aria-label="Keyingi sahifa" disabled={safePage >= pageCount} onClick={() => setPage(safePage + 1)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
+            </div>
+          </div>
+        )}
       </motion.div>
 
       {/* ─── Interactive Treatment Plan Detail & Execution Modal ─────── */}
