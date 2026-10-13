@@ -82,6 +82,8 @@ export default function Register() {
   const buildClinicPayload = (clinicId, provider) => normalizeClinicBilling({
     id: clinicId,
     name: adminForm.clinicName,
+    // clinics.password ustuni NOT NULL (super-admin formasi bilan bir xil)
+    password: adminForm.password,
     plan: selectedPlan.id,
     subscription_status: 'trialing',
     signup_source: fromLanding ? 'landing' : 'manual',
