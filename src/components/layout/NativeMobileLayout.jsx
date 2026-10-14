@@ -293,6 +293,7 @@ export default function NativeMobileLayout({ children }) {
             <motion.button 
               whileTap={{ scale: 0.9 }}
               onClick={() => setShowMenu(true)}
+              aria-label="Menyu"
               className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-900 shadow-md shadow-slate-900/20 text-white"
             >
               <Menu className="w-[18px] h-[18px]" />

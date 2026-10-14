@@ -15,6 +15,7 @@ const isBlockingModalOpen = () => {
       '[role="dialog"][data-state="open"]',
       '[aria-modal="true"]',
       '[data-mobile-drawer="open"]',
+      '[data-testid="mobile-drawer"]',
       '[data-tooth-panel="sheet"]',
       '[vaul-drawer]',
     ].join(', '))
