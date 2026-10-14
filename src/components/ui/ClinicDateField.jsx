@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 function digitsOf(value) {
@@ -115,9 +115,17 @@ function blockedByMin(iso, min) {
 export function ClinicDateField({ value, onChange, className, disabled, id, name, min }) {
   const [text, setText] = useState(() => isoDateToDisplay(value));
   const [focused, setFocused] = useState(false);
+  const syncedValue = useRef(value);
+  const emitDate = (next) => {
+    syncedValue.current = next;
+    emitChange(onChange, next);
+  };
 
   useEffect(() => {
-    if (!focused) setText(isoDateToDisplay(value));
+    // Only follow outside value changes; leaving the field must not wipe an unreadable typed date.
+    if (focused || syncedValue.current === value) return;
+    syncedValue.current = value;
+    setText(isoDateToDisplay(value));
   }, [value, focused]);
 
   return (
@@ -136,12 +144,12 @@ export function ClinicDateField({ value, onChange, className, disabled, id, name
         const iso = displayDateToIso(text);
         if (iso && !blockedByMin(iso, min)) {
           setText(isoDateToDisplay(iso));
-          if (iso !== value) emitChange(onChange, iso);
+          if (iso !== value) emitDate(iso);
           return;
         }
         if (!digitsOf(text)) {
           setText('');
-          if (value) emitChange(onChange, '');
+          if (value) emitDate('');
           return;
         }
         // birth-date-invalid-visible-v1: an unreadable date used to be silently wiped here, so the
@@ -157,11 +165,11 @@ export function ClinicDateField({ value, onChange, className, disabled, id, name
           : formatDateDigits(digitsOf(rawInput));
         setText(next);
         if (!digitsOf(next)) {
-          emitChange(onChange, '');
+          emitDate('');
           return;
         }
         const iso = isCompleteTypedDate(next) ? displayDateToIso(next) : '';
-        if (iso && !blockedByMin(iso, min)) emitChange(onChange, iso);
+        if (iso && !blockedByMin(iso, min)) emitDate(iso);
       }}
       className={cn(
         'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring',
