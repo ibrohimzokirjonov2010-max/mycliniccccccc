@@ -766,16 +766,15 @@ export default function AppointmentModal({
                 onChange={(id, p) => {
                   // Do NOT overwrite doctor if user already selected a doctor or clicked on a doctor's slot
                   const currentDocId = form.doctor_id || prefillDoctorId;
-                  const assignedDocId = isDoctor && user?.id 
-                    ? user.id 
-                    : (currentDocId || p?.main_treatment_provider || '');
+                  // Tanlangan > bemorning shifokori > kirgan foydalanuvchi (faqat shifokor bo'lsa).
+                  const assignedDocId = currentDocId || p?.main_treatment_provider || (isDoctor && user?.id ? user.id : '');
                   const foundDoc = doctors.find(doc => String(doc.id) === String(assignedDocId));
                   setForm(prev => ({ 
                     ...prev, 
                     patient_id: id, 
                     patient_name: p?.full_name || p?.name || '',
                     doctor_id: assignedDocId || prev.doctor_id,
-                    doctor_name: isDoctor && user?.name ? user.name : (foundDoc?.name || prev.doctor_name)
+                    doctor_name: foundDoc?.name || (String(assignedDocId) === String(user?.id) ? user?.name : '') || prev.doctor_name
                   }));
                 }}
                 onAddPatient={() => setShowNewPatient(true)}

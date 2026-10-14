@@ -605,11 +605,8 @@ export default function ImplantForm({
         return { ...prev, doctor: assigned };
       }
       if (current) return prev;
-      const clinician = doctors.find((d) => isTreatingClinician(d));
-      const name = (userIsClinician && userName)
-        || clinicianDisplayName(clinician)
-        || userName
-        || firstListName;
+      // Ro'yxatdagi birinchi shifokor yoki admin taxmin qilinmaydi: faqat kirgan foydalanuvchi shifokor bo'lsa.
+      const name = userIsClinician ? userName : '';
       if (!name) return prev;
       return { ...prev, doctor: name };
     });

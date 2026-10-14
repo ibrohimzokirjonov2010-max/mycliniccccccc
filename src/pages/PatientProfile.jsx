@@ -19,6 +19,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Tooth, ImplantIcon, XrayIcon } from '@/components/ui/Icons';
 import { cn, resolveDoctorId } from '@/lib/utils';
+import { resolveTreatingDoctor } from '@/lib/treatingDoctor';
 import { computePatientBalances } from '@/lib/paymentDebt';
 import { isOncePricingDirty, withOncePricing } from '@/lib/toothPlanCharge';
 import { patientGenderLabel } from '@/lib/patientGender';
@@ -756,10 +757,9 @@ export default function PatientProfile() {
 
   // Update manual log default doctor when doctors are loaded
   useEffect(() => {
-    if (doctors && doctors.length > 0) {
-      setManualLog(prev => ({ ...prev, doctor: doctors[0].name }));
-    }
-  }, [doctors]);
+    const doc = resolveTreatingDoctor({ patient, plans, doctors, user });
+    if (doc?.name) setManualLog(prev => ({ ...prev, doctor: prev.doctor || doc.name }));
+  }, [doctors, patient, plans, user]);
 
   // Pre-fill passport data when patient is loaded
   useEffect(() => {
@@ -826,7 +826,7 @@ export default function PatientProfile() {
       
       // Auto sync/log entry for this status change
       const today = new Date().toLocaleDateString('uz-UZ');
-      const doctorName = doctors[0]?.name || 'Tibbiy shifokor';
+      const doctorName = resolveTreatingDoctor({ patient, plans, doctors, user })?.name || 'Tibbiy shifokor';
       let label = '';
       if (status === 'C') label = `Tashxis: ${fdi}-tish Karies (C)`;
       else if (status === 'P') label = `Tashxis: ${fdi}-tish Pulpit (P)`;
@@ -868,7 +868,7 @@ export default function PatientProfile() {
             id: Math.random().toString(36).substring(2, 9),
             date: today,
             content: manualLog.content.trim(),
-            doctor: manualLog.doctor || doctors[0]?.name || 'Navbatchi shifokor',
+            doctor: manualLog.doctor || resolveTreatingDoctor({ patient, plans, doctors, user })?.name || 'Navbatchi shifokor',
           },
           ...prev.historyLogs
         ]
@@ -996,7 +996,7 @@ export default function PatientProfile() {
 
   const syncSystemDataToLogs = () => {
     const today = new Date().toLocaleDateString('uz-UZ');
-    const doctorName = doctors[0]?.name || 'Tibbiy shifokor';
+    const doctorName = resolveTreatingDoctor({ patient, plans, doctors, user })?.name || 'Tibbiy shifokor';
     const newLogs = [];
 
     // 1. Tooth status logs
@@ -1946,7 +1946,7 @@ export default function PatientProfile() {
   }, [patient]);
 
   const openAdvanceModal = () => {
-    const assignedDocId = resolveDoctorId(patient, plans, doctors, user, isDoctor);
+    const assignedDocId = resolveTreatingDoctor({ patient, plans, doctors, user })?.id || '';
     setPayForm({ 
       type: 'Income', 
       amount: '', 
@@ -1954,7 +1954,7 @@ export default function PatientProfile() {
       category: "Avans to'lovi", 
       date: getLocalDateTimeValue(), 
       notes: "Bemor avans depoziti", 
-      doctor_id: assignedDocId || doctors[0]?.id || '', 
+      doctor_id: assignedDocId, 
       planId: '', 
       selectedServiceIds: [] 
     });

@@ -46,3 +46,31 @@ export function resolveDocumentDoctorName({ patient, doctors, user, explicitName
   if (user && isTreatingClinician(user) && userName) return userName;
   return explicitIsAdminStamp ? '' : explicit;
 }
+
+/**
+ * Doctor for new plans / plan items / tooth records / payments.
+ * Priority: picked > patient's assigned doctor > patient's existing plans' doctor > logged-in user (only if a doctor).
+ * Never falls back to "first doctor in list" or an admin. Returns { id, name } or null (caller must ask to choose).
+ */
+export function resolveTreatingDoctor({ pickedId, patient, plans = [], doctors = [], user } = {}) {
+  const list = Array.isArray(doctors) ? doctors : [];
+  const byRef = (ref) => {
+    const key = String(ref || '').trim();
+    if (!key) return null;
+    const lower = key.toLowerCase();
+    return list.find((d) => String(d?.id) === key)
+      || list.find((d) => clinicianDisplayName(d).toLowerCase() === lower)
+      || null;
+  };
+  const out = (d) => (d ? { ...d, id: d.id, name: clinicianDisplayName(d) } : null);
+  const picked = byRef(pickedId);
+  if (picked) return out(picked);
+  const assigned = byRef(patient?.main_treatment_provider) || byRef(patient?.doctor_id) || byRef(patient?.doctor_name);
+  if (assigned) return out(assigned);
+  for (const pl of (Array.isArray(plans) ? plans : [])) {
+    const d = byRef(pl?.doctor_id) || byRef(pl?.doctor_name);
+    if (d) return out(d);
+  }
+  if (user?.id && isTreatingClinician(user)) return out(byRef(user.id) || user);
+  return null;
+}

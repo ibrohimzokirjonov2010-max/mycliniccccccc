@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import { resolveTreatingDoctor } from '@/lib/treatingDoctor';
 import { tashkentToday, addDaysKey, formatClinicDate } from '@/lib/clinicTime';
 import { getPatientTelegramChatId, sendTelegramMessage } from '@/lib/telegramReminderService';
 import { createAppointmentSafely, scheduleAppointmentNotifications } from '@/components/appointments/AppointmentModal';
@@ -185,8 +186,11 @@ export default function MobileVisitFlow() {
   const doneRows = pending.filter((r) => checked.includes(r.key));
   const doctor = useMemo(() => {
     const d = doctors.find((x) => String(x.id) === String(appt?.doctor_id));
-    return d ? { ...d, name: d.name || d.full_name } : (appt?.doctor_id ? { id: appt.doctor_id, name: appt.doctor_name } : (user ? { id: user.id, name: user.full_name || user.name } : null));
-  }, [doctors, appt, user]);
+    if (d) return { ...d, name: d.name || d.full_name };
+    if (appt?.doctor_id) return { id: appt.doctor_id, name: appt.doctor_name };
+    // Qabulda shifokor yo'q: bemorning shifokori > rejalaridagi > kirgan foydalanuvchi (faqat shifokor bo'lsa).
+    return resolveTreatingDoctor({ patient, plans, doctors, user });
+  }, [doctors, appt, user, patient, plans]);
 
   const servicesTotal = doneRows.reduce((s, r) => s + svcPrice(r.svc), 0) + added.reduce((s, r) => s + svcPrice(r), 0);
   const discount = doneRows.reduce((s, r) => s + rowDiscount(r.plan, svcPrice(r.svc)), 0);

@@ -22,6 +22,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import PatientSelect from '@/components/patients/PatientSelect';
 import { useAuth } from '@/lib/AuthContext';
+import { resolveTreatingDoctor } from '@/lib/treatingDoctor';
 import JawChoice from '@/components/patients/JawChoice';
 import {
   buildJawPlanLines,
@@ -105,6 +106,7 @@ export default function MobileTreatmentPlansV2() {
   const { clinicName } = useClinic();
   const { user, isDoctor } = useAuth();
   const [plans, setPlans] = useState([]);
+  const [doctors, setDoctors] = useState([]);
   const [patients, setPatients] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -182,6 +184,7 @@ export default function MobileTreatmentPlansV2() {
         base44.entities.Service.list('name', 500)
       ]);
       setPlans(pl || []); setPatients(pa || []); setServices(se || []);
+      base44.entities.User.filter({ role: 'doctor' }, 'name').then((d) => setDoctors(d || [])).catch(() => setDoctors([]));
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [isDoctor, user]);
 
@@ -198,7 +201,8 @@ export default function MobileTreatmentPlansV2() {
     setSaving(true);
     try {
       const p = patients.find(x => x.id === formData.patient_id);
-      const targetDoctorId = isDoctor ? user.id : (p?.main_treatment_provider || formData.doctor_id || '');
+      const targetDoc = resolveTreatingDoctor({ pickedId: formData.doctor_id, patient: p, plans: plans.filter((pl) => pl.patient_id === p?.id), doctors, user });
+      const targetDoctorId = targetDoc?.id || '';
       const allSvcNames = Object.values(toothServices).flat().map(it => services.find(x => x.id === it.service_id)?.name).filter(Boolean);
       const MAX_SHOW = 2;
       const compactName = allSvcNames.length > MAX_SHOW
@@ -210,7 +214,7 @@ export default function MobileTreatmentPlansV2() {
           name: formData.name || compactName || (t ? t('patientProfile.treatmentPlanSingular') : 'Davolash rejasi'),
           patient_name: p?.full_name || '', 
           doctor_id: targetDoctorId,
-          doctor_name: isDoctor ? (user.name || '') : '',
+          doctor_name: targetDoc?.name || '',
           total_price: Number(formData.total_price) || 0,
           services: Object.entries(toothServices).map(([tId, svcs]) => ({
               tooth_id: isJawStorageKey(tId) ? (svcs[0]?.tooth_number || jawLabel(tId === '__jaw_lower' ? 'lower' : 'upper')) : tId,
