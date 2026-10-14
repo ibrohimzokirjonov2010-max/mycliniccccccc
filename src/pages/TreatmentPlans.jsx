@@ -684,16 +684,7 @@ export default function TreatmentPlans() {
               <tr className="bg-slate-100/90 border-b border-slate-200 text-slate-600 text-[10.5px] font-black uppercase tracking-wider sticky top-0 z-10 backdrop-blur-xs">
                 
                 {/* № Col */}
-                <th className="w-10 px-2 py-2.5 text-center border-r border-slate-200 select-none">
-                  <input
-                    type="checkbox"
-                    aria-label="Sahifadagi barcha rejalarni tanlash"
-                    checked={pagedPlans.length > 0 && pagedPlans.every((pl) => selectedIds.includes(pl.id))}
-                    onChange={(e) => setSelectedIds(e.target.checked ? [...new Set([...selectedIds, ...pagedPlans.map((pl) => pl.id)])] : selectedIds.filter((sid) => !pagedPlans.some((pl) => pl.id === sid)))}
-                    className="w-4 h-4 rounded border-slate-300 accent-[#1499AD] cursor-pointer"
-                  />
-                </th>
-                <th className="w-10 px-2 py-2.5 text-center border-r border-slate-200 select-none">
+                                <th className="w-10 px-2 py-2.5 text-center border-r border-slate-200 select-none">
                   #
                 </th>
 
@@ -764,14 +755,14 @@ export default function TreatmentPlans() {
                   </div>
                 </th>
 
-                {/* STATUS */}
+                {/* YARATILGAN SANA */}
                 <th 
-                  onClick={() => handleSort('status')}
-                  className="w-36 px-2 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
+                  onClick={() => handleSort('date')}
+                  className="w-32 px-2 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                 >
                   <div className="flex items-center justify-center gap-1.5 text-slate-700">
-                    <span>{t('treatmentPlan.statusCol') || (language === 'ru' ? 'Статус' : 'Holat')}</span>
-                    {sortField === 'status' ? (
+                    <span>{language === 'ru' ? 'Дата создания' : 'Yaratilgan sana'}</span>
+                    {sortField === 'date' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
                       <ArrowUpDown className="w-3 h-3 opacity-30" />
@@ -807,16 +798,7 @@ export default function TreatmentPlans() {
                       }`}
                       onClick={() => setSelectedDetailPlanId(p.id)}
                     >
-                      <td className="text-center border-r border-slate-200/70 px-2" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          aria-label="Rejani tanlash"
-                          checked={selectedIds.includes(p.id)}
-                          onChange={(e) => setSelectedIds(e.target.checked ? [...selectedIds, p.id] : selectedIds.filter((sid) => sid !== p.id))}
-                          className="w-4 h-4 rounded border-slate-300 accent-[#1499AD] cursor-pointer"
-                        />
-                      </td>
-                      {/* № Cell */}
+                                            {/* № Cell */}
                       <td className={`text-center font-semibold text-slate-500 border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-2 px-2' : 'py-3 px-2'}`}>
                         {idx + 1}
                       </td>
@@ -904,28 +886,9 @@ export default function TreatmentPlans() {
                         </span>
                       </td>
 
-                      {/* STATUS Cell */}
-                      <td className={`text-center border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1 px-2' : 'py-2 px-2.5'}`} onClick={(e) => e.stopPropagation()}>
-                        <Select 
-                          value={st} 
-                          onValueChange={(val) => handleRequestStatusChange(p, val)}
-                        >
-                          <SelectTrigger className={cn(
-                            "h-7 px-2 rounded-lg font-bold text-[10px] uppercase tracking-wider mx-auto border transition-colors focus:ring-0 cursor-pointer",
-                            st === 'completed'
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : st === 'in_progress'
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : "bg-blue-50 text-blue-700 border-blue-200"
-                          )}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl font-bold text-xs">
-                            <SelectItem value="planned">{language === 'ru' ? 'Запланировано' : 'Rejalashtirilgan'}</SelectItem>
-                            <SelectItem value="in_progress">{language === 'ru' ? 'В процессе' : 'Jarayonda'}</SelectItem>
-                            <SelectItem value="completed">{language === 'ru' ? 'Завершено' : 'Yakunlangan'}</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      {/* Yaratilgan sana Cell */}
+                      <td className={`text-center border-r border-slate-200/70 whitespace-nowrap tabular-nums text-[12px] font-semibold text-slate-600 ${isCompact ? 'py-1 px-2' : 'py-2 px-2.5'}`}>
+                        {(() => { const d = new Date(p.created_date || p.created_at || 0); return isNaN(d) || !(p.created_date || p.created_at) ? '—' : `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`; })()}
                       </td>
 
                       {/* Actions Cell */}
@@ -970,7 +933,7 @@ export default function TreatmentPlans() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={9} className="py-20 text-center">
+                  <td colSpan={8} className="py-20 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300">
                         <ClipboardList className="w-6 h-6" />
@@ -1005,7 +968,7 @@ export default function TreatmentPlans() {
                 {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
               <span>{pageStart + 1}–{pageStart + pagedPlans.length} / {sortedPlans.length} ta reja</span>
-              {selectedIds.length > 0 && <span className="font-semibold text-[#1499AD]">{selectedIds.length} ta tanlangan</span>}
+              
             </div>
             <div className="flex items-center gap-1">
               <button type="button" aria-label="Oldingi sahifa" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
