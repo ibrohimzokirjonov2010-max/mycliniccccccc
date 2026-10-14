@@ -904,9 +904,9 @@ export default function Debts() {
       {/* ─── Treatment Plan & Debt Detail Dialog ─────────────────────── */}
       <Dialog open={!!selectedDebtPatient} onOpenChange={(open) => !open && setSelectedDebtPatient(null)}>
         {selectedDebtPatient && (
-          <DialogContent className="w-[95vw] max-w-3xl p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl [&>button]:hidden">
+          <DialogContent className="w-[95vw] max-w-3xl p-0 overflow-hidden flex flex-col max-h-[90vh] gap-0 rounded-[2rem] border-none shadow-2xl [&>button]:hidden">
             {/* Header */}
-            <div className="bg-white border-b border-slate-200/90 px-6 py-5 relative rounded-t-3xl">
+            <div className="bg-white border-b border-slate-200/90 px-6 py-4 relative rounded-t-3xl shrink-0">
               <button 
                 onClick={() => setSelectedDebtPatient(null)} 
                 className="absolute right-5 top-5 w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center cursor-pointer"
@@ -942,7 +942,7 @@ export default function Debts() {
             </div>
 
             {/* Body */}
-            <div className="p-5 sm:p-6 bg-white space-y-4 max-h-[80vh] overflow-y-auto no-scrollbar">
+            <div className="p-4 sm:p-5 bg-white space-y-3 flex-1 min-h-0 overflow-y-auto">
               {loadingDetail ? (
                 <div className="py-16 text-center space-y-3">
                   <div className="w-8 h-8 border-3 border-[#1499AD] border-t-transparent rounded-full animate-spin mx-auto" />
@@ -1231,7 +1231,7 @@ export default function Debts() {
             </div>
 
             {/* Bottom Actions Footer */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+            <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => {
