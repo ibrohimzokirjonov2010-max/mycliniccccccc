@@ -1654,12 +1654,12 @@ function SidePanel(props) {
                   const [Icon, tone] = QUICK_ICON[item.id] || [ToothGlyph, 'bg-slate-100 text-slate-600'];
                   const price = quickPrice ? quickPrice(item) : 0;
                   return (
-                    <button key={item.id} type="button" disabled={busy} onClick={() => onQuick(item)} className={cn('flex min-h-[60px] min-w-0 items-center gap-2 rounded-2xl border px-2 py-2 text-left disabled:opacity-50', activeQuick === item.id ? 'border-violet-300 bg-violet-50' : 'border-slate-200 bg-white')}>
-                      <span className={cn('grid h-9 w-9 shrink-0 place-items-center rounded-xl', tone)}><Icon className="h-5 w-5" /></span>
+                    <button key={item.id} type="button" disabled={busy} onClick={() => onQuick(item)} className={cn('flex min-h-[60px] min-w-0 items-center gap-1.5 rounded-2xl border px-1.5 py-2 text-left disabled:opacity-50', activeQuick === item.id ? 'border-violet-300 bg-violet-50' : 'border-slate-200 bg-white')}>
+                      <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-xl', tone)}><Icon className="h-[18px] w-[18px]" /></span>
                       <span className="min-w-0">
-                        <b className="block truncate text-[13px] font-bold leading-tight text-slate-900">{item.label}</b>
+                        <b className="block text-[13px] font-bold leading-tight text-slate-900">{item.label}</b>
                         {quickPrice && (price > 0
-                          ? <span className="block truncate text-[13px] tabular-nums leading-tight text-slate-500">{formatMoneyAmount(price)} so‘m</span>
+                          ? <span className="block whitespace-nowrap text-[13px] tabular-nums leading-tight tracking-tight text-slate-500" title={`${formatMoneyAmount(price)} so‘m`}>{formatMoneyAmount(price)}</span>
                           : <span data-testid="price-missing" title="Katalogda narx yo‘q — qo‘shishda narxni kiritasiz" className="block text-[13px] font-semibold leading-tight text-orange-500">narx yo‘q</span>)}
                       </span>
                     </button>
