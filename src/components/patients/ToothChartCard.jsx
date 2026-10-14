@@ -4,7 +4,7 @@ import { BackClose } from '@/hooks/useBackClose';
 import { createPortal } from 'react-dom';
 import {
   Check, Layers, Plus, Printer, X,
-  ChevronRight,
+  ChevronRight, LayoutGrid, Clock, Image as ImageIcon, CloudUpload, FileText, Crown, Scissors, Grip, Smile, Bandage, Calendar,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
@@ -59,6 +59,32 @@ const QUICK = [
   { id: 'protez', label: 'Protez', service: 'Protez', jaw: 'protez' },
   { id: 'babochka', label: 'Babochka', service: 'Babochka protez', jaw: 'babochka' },
 ];
+
+function ToothGlyph({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M7 3c-2.5 0-4 2-4 4.5 0 2 .8 3.4 1.5 5 .7 1.7.9 3.6 1.3 5.6.3 1.6.9 2.9 2 2.9 1.4 0 1.6-2.2 2-4 .3-1.4.9-2.5 2.2-2.5s1.9 1.1 2.2 2.5c.4 1.8.6 4 2 4 1.1 0 1.7-1.3 2-2.9.4-2 .6-3.9 1.3-5.6.7-1.6 1.5-3 1.5-5C21 5 19.5 3 17 3c-2 0-3 1-5 1S9 3 7 3z" />
+    </svg>
+  );
+}
+function ImplantGlyph({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M7 4h10l-1 4H8z" /><path d="M8 11h8M8.5 14h7M9 17h6M10 20h4" /><path d="M9 8v13M15 8v13" />
+    </svg>
+  );
+}
+const QUICK_ICON = {
+  caries: [ToothGlyph, 'bg-rose-50 text-rose-500'],
+  plomba: [ToothGlyph, 'bg-blue-50 text-blue-500'],
+  endo: [ToothGlyph, 'bg-violet-50 text-violet-500'],
+  sirkon: [Crown, 'bg-amber-50 text-amber-500'],
+  implant: [ImplantGlyph, 'bg-emerald-50 text-emerald-600'],
+  missing: [Scissors, 'bg-slate-100 text-slate-600'],
+  breket: [Grip, 'bg-pink-50 text-pink-500'],
+  protez: [Smile, 'bg-teal-50 text-teal-600'],
+  babochka: [Bandage, 'bg-orange-50 text-orange-500'],
+};
 
 const GROUP_PRICE_LABEL = { bridge: 'Ko‘prik (protez)', same: 'Plomba', implant: 'Implant' };
 const GROUP_PRICE_KIND = { bridge: 'sirkon', same: 'plomba', implant: 'implant' };
@@ -510,6 +536,8 @@ export default function ToothChartCard({
       id: `${e.planId || 'rec'}-${i}`,
       color: KIND_COLOR[e.kind] || '#64748B',
       title: e.surfaces?.length ? `${e.name} (${e.surfaces.join(', ')})` : e.name,
+      kind: e.kind,
+      note: e.notes || e.note || '',
       price: e.price,
       open: !e.done,
       doctor: formatDoctorName(e.doctor || ''),
@@ -1355,7 +1383,7 @@ export default function ToothChartCard({
 
       <BackClose open={!!showSheet} onClose={() => { setActive(null); setSelected([]); }} />
       {showSheet && (
-        <div className="fixed inset-x-0 z-[60] mx-auto flex max-h-[70vh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_-12px_40px_rgba(15,23,42,0.25)]" style={{ bottom: sheetOffset }}>
+        <div data-testid="tooth-sheet" className="fixed inset-x-0 z-[60] mx-auto flex max-h-[88dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_-12px_40px_rgba(15,23,42,0.25)]" style={{ bottom: sheetOffset }}>
           <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-slate-200" />
           <SidePanel
             sheet
@@ -1563,8 +1591,188 @@ function SidePanel(props) {
   const statusLabel = activeEntry
     ? (LEGEND.find((k) => k.id === activeEntry.kind)?.label || activeEntry.name)
     : '';
+  if (sheet && active && !group) {
+    const statusText = activeEntry
+      ? (activeEntry.kind === 'implant' ? (activeEntry.statusLabel || 'Rejalashtirilgan') : `${statusLabel} · ${activeEntry.done ? 'bajarildi' : 'reja'}`)
+      : '';
+    const activeQuick = activeEntry ? (QUICK.find((q) => q.id === activeEntry.kind)?.id) : null;
+    const sectionTitle = 'flex items-center gap-2 text-[15px] font-extrabold text-slate-900';
+    return (
+      <aside data-tooth-panel="sheet" className="flex w-full min-h-0 max-h-[86dvh] min-w-0 flex-col overflow-hidden bg-white">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="flex items-start gap-3 px-4 pb-4 pt-2">
+            <div className={cn('grid h-[124px] w-[84px] shrink-0 place-items-center rounded-full', activeEntry && 'bg-sky-50')}>
+              <img
+                src={getToothIllustrationSrc(active, activeEntry?.illustration && activeEntry.illustration !== 'missing' ? activeEntry.illustration : (activeEntry?.kind === 'missing' ? 'missing' : (activeEntry?.kind || 'healthy')))}
+                alt=""
+                className="h-[120px] w-[76px] object-contain"
+                style={{ objectPosition: fdiCrownDown(active) ? 'center bottom' : 'center top' }}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="rounded-xl bg-emerald-50 px-3 py-1 text-xl font-extrabold text-slate-900">{active}-tish</h4>
+                <button type="button" onClick={onClose} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white" aria-label="Yopish">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <p className="mt-1.5 text-[13px] leading-snug text-slate-500">{toothTitle(active)}</p>
+              {activeEntry && (
+                <span data-testid="tooth-status-label" className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[13px] font-bold text-white" style={{ background: KIND_COLOR[activeEntry.kind] || '#64748B' }}>
+                  <ToothGlyph className="h-4 w-4" /> {statusText}
+                </span>
+              )}
+              <div className="mt-3 flex gap-1.5">
+                {['V', 'M', 'O', 'D', 'L'].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => toggleSurface(s)}
+                    className={cn('grid h-11 w-11 place-items-center rounded-xl border text-sm font-bold', surfaces.includes(s) ? 'border-emerald-400 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-700')}
+                    aria-pressed={surfaces.includes(s)}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-4 rounded-t-3xl border-t border-slate-100 px-4 pb-4 pt-4">
+            {jawPrompt && (
+              <JawChoice
+                title={jawPrompt.title}
+                preset={jawPrompt.preset} family={jawPrompt.family} services={jawPrompt.mode === 'plan' ? jawServices : undefined}
+                busy={busy}
+                onChoose={onJawChoose}
+                onClose={onJawClose}
+              />
+            )}
+            <section>
+              <div className={cn(sectionTitle, 'mb-2.5')}><LayoutGrid className="h-5 w-5 text-blue-600" /> Tezkor qo‘shish</div>
+              <div className="grid grid-cols-3 gap-2">
+                {QUICK.map((item) => {
+                  const [Icon, tone] = QUICK_ICON[item.id] || [ToothGlyph, 'bg-slate-100 text-slate-600'];
+                  const price = quickPrice ? quickPrice(item) : 0;
+                  return (
+                    <button key={item.id} type="button" disabled={busy} onClick={() => onQuick(item)} className={cn('flex min-h-[60px] min-w-0 items-center gap-2 rounded-2xl border px-2 py-2 text-left disabled:opacity-50', activeQuick === item.id ? 'border-violet-300 bg-violet-50' : 'border-slate-200 bg-white')}>
+                      <span className={cn('grid h-9 w-9 shrink-0 place-items-center rounded-xl', tone)}><Icon className="h-5 w-5" /></span>
+                      <span className="min-w-0">
+                        <b className="block truncate text-[13px] font-bold leading-tight text-slate-900">{item.label}</b>
+                        {quickPrice && (price > 0
+                          ? <span className="block truncate text-[13px] tabular-nums leading-tight text-slate-500">{formatMoneyAmount(price)} so‘m</span>
+                          : <span data-testid="price-missing" title="Katalogda narx yo‘q — qo‘shishda narxni kiritasiz" className="block text-[13px] font-semibold leading-tight text-orange-500">narx yo‘q</span>)}
+                      </span>
+                    </button>
+                  );
+                })}
+                <button type="button" onClick={() => setNoteOpen(true)} className="col-span-3 flex min-h-[60px] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-700"><FileText className="h-5 w-5" /></span>
+                  <span className="min-w-0">
+                    <b className="block text-[13px] font-bold text-slate-900">Izoh</b>
+                    <span className="block text-[13px] text-slate-500">Tish bo‘yicha eslatma qo‘shish</span>
+                  </span>
+                </button>
+              </div>
+              {noteOpen && (
+                <div className="mt-2 flex gap-2">
+                  <input value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="Izoh" className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 px-3 text-[14px]" />
+                  <button type="button" disabled={busy || !noteText.trim()} onClick={onNote} className="h-11 rounded-xl bg-slate-900 px-4 text-[13px] font-bold text-white disabled:opacity-50">Saqlash</button>
+                </div>
+              )}
+            </section>
+            <section className="border-t border-slate-100 pt-4">
+              <div className="mb-2.5 flex items-center justify-between gap-2">
+                <div className={sectionTitle}><Clock className="h-5 w-5 text-blue-600" /> Tish tarixi</div>
+                {history.length > 0 && (
+                  <button type="button" onClick={() => setShowAllHistory((v) => !v)} className="inline-flex min-h-11 items-center gap-1 text-[13px] font-bold text-blue-600">
+                    Hammasi ({history.length}) <ChevronRight className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              {history.length === 0 ? (
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 px-3 py-4">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-slate-400"><FileText className="h-5 w-5" /></span>
+                  <span className="min-w-0">
+                    <b className="block text-[13px] font-semibold text-slate-500">Bu tishda yozuv yo‘q</b>
+                    <span className="block text-[13px] text-slate-400">Muolajalar, izohlar va rentgenlar shu yerda ko‘rinadi.</span>
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {historyRows.map((row) => (
+                    <div key={row.id} className="rounded-2xl border border-slate-200 bg-white p-3">
+                      <div className="flex items-start gap-3">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl" style={{ background: `${row.color}14`, color: row.color }}><ToothGlyph className="h-5 w-5" /></span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <b className="min-w-0 text-[14px] font-bold text-slate-900">{row.title}</b>
+                            {money(row.price)
+                              ? <span className="shrink-0 text-[14px] font-bold tabular-nums text-slate-900">{money(row.price)}</span>
+                              : row.open && <span data-testid="price-missing" className="shrink-0 rounded bg-amber-50 px-1.5 text-[13px] font-bold text-amber-700" title="Katalogda narx yo‘q — narx belgilanmagan">{PRICE_MISSING_LABEL}</span>}
+                          </div>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[13px] text-slate-500">
+                            <span>{[row.dateLabel, row.doctor].filter(Boolean).join(' · ')}</span>
+                            {row.status && <span className="rounded-md px-2 py-0.5 text-[13px] font-bold text-white" style={{ background: row.color }}>{String(row.status).charAt(0).toUpperCase() + String(row.status).slice(1)}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      {row.note && (
+                        <div className="mt-2 flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2 text-[13px] text-slate-500">
+                          <FileText className="mt-0.5 h-4 w-4 shrink-0" /> <span>Izoh: {row.note}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+            <section className="border-t border-slate-100 pt-4">
+              <div className="mb-2.5 flex items-center justify-between">
+                <div className={sectionTitle}><ImageIcon className="h-5 w-5 text-blue-600" /> Rentgen / RVG</div>
+                <label className="inline-flex min-h-11 cursor-pointer items-center text-[13px] font-bold text-blue-600">
+                  + Yuklash
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ''; }} />
+                </label>
+              </div>
+              {toothXrays.length === 0 ? (
+                <label data-testid="xray-empty" className="flex min-h-[72px] cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-slate-300 px-3 py-3">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-blue-50 text-blue-600"><CloudUpload className="h-5 w-5" /></span>
+                  <span className="min-w-0 flex-1">
+                    <b className="block text-[14px] font-bold text-slate-900">Rasm yuklash</b>
+                    <span className="block text-[13px] text-slate-500">Rentgen yoki intraoral rasm qo‘shing</span>
+                  </span>
+                  <ChevronRight className="h-5 w-5 shrink-0 text-slate-500" />
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ''; }} />
+                </label>
+              ) : (
+                <div className="flex gap-2 overflow-x-auto">
+                  <label className="flex h-[72px] w-[104px] shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-slate-300 text-[13px] text-slate-700">
+                    <CloudUpload className="h-5 w-5 text-blue-600" /> Rasm yuklash
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ''; }} />
+                  </label>
+                  {toothXrays.map((x) => (
+                    <button key={x.id} type="button" onClick={() => onView(x.image_url)} className="h-[72px] w-[104px] shrink-0 overflow-hidden rounded-2xl bg-slate-900" aria-label={fmtDate(x.date)}>
+                      <img src={x.image_url} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
+        <div className="tooth-sheet-actions flex gap-3 border-t border-slate-100 bg-white px-4 py-3">
+          <button type="button" disabled={busy} onClick={onAddToPlan} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 text-[14px] font-bold text-white disabled:opacity-60">
+            <Calendar className="h-5 w-5" /> Rejaga qo‘shish
+          </button>
+          <button type="button" disabled={busy} onClick={onNewRecord} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-[14px] font-bold text-slate-900 disabled:opacity-60">
+            <Plus className="h-5 w-5" /> Yangi yozuv
+          </button>
+        </div>
+      </aside>
+    );
+  }
   return (
-    <aside data-tooth-panel={sheet ? 'sheet' : 'side'} className={cn('flex min-w-0 flex-col self-start bg-white', sheet ? 'max-h-[72vh] overflow-hidden rounded-none border-0' : embedded ? 'h-full min-h-0 max-h-full overflow-hidden rounded-2xl border border-slate-200' : 'max-h-[min(760px,calc(100dvh-8rem))] overflow-hidden rounded-2xl border border-slate-200')}>
+    <aside data-tooth-panel={sheet ? 'sheet' : 'side'} className={cn('flex min-w-0 flex-col self-start bg-white', sheet ? 'w-full min-h-0 max-h-[86dvh] overflow-hidden rounded-none border-0' : embedded ? 'h-full min-h-0 max-h-full overflow-hidden rounded-2xl border border-slate-200' : 'max-h-[min(760px,calc(100dvh-8rem))] overflow-hidden rounded-2xl border border-slate-200')}>
       <div className="flex items-start gap-2 border-b border-slate-100 p-3">
         {active && !group && (
           <img

@@ -10,7 +10,14 @@ const SESSION_KEY = 'implant-incomplete-toast-shown';
 const isBlockingModalOpen = () => {
   if (typeof document === 'undefined') return false;
   return Boolean(
-    document.querySelector('[data-radix-dialog-content], [role="dialog"][data-state="open"]')
+    document.querySelector([
+      '[data-radix-dialog-content]',
+      '[role="dialog"][data-state="open"]',
+      '[aria-modal="true"]',
+      '[data-mobile-drawer="open"]',
+      '[data-tooth-panel="sheet"]',
+      '[vaul-drawer]',
+    ].join(', '))
   );
 };
 
@@ -24,6 +31,8 @@ export default function ImplantAlerter() {
   const navigate = useNavigate();
   const location = useLocation();
   const initialTimerRef = useRef(null);
+  const retriesRef = useRef(0);
+  const watchRef = useRef(null);
 
   const checkIncompleteImplants = async () => {
     if (!isAuthenticated || !user) return;
@@ -40,7 +49,15 @@ export default function ImplantAlerter() {
 
       if (incompleteList.length > 0) {
         const path = typeof window !== 'undefined' ? window.location.pathname : '';
-        if (isBlockingModalOpen() || path.startsWith('/implants') || isAppointmentCalendarPath(path)) return;
+        if (path.startsWith('/implants') || isAppointmentCalendarPath(path)) return;
+        if (isBlockingModalOpen()) {
+          // Menyu yoki sheet ochiq: ustiga chiqmaydi, yopilgach qayta urinadi.
+          if (retriesRef.current < 40) {
+            retriesRef.current += 1;
+            initialTimerRef.current = setTimeout(checkIncompleteImplants, 3000);
+          }
+          return;
+        }
         try {
           if (sessionStorage.getItem(SESSION_KEY)) return;
           sessionStorage.setItem(SESSION_KEY, '1');
@@ -63,6 +80,16 @@ export default function ImplantAlerter() {
           },
           duration: 3200,
         });
+        // Toast ko'rinib turganda menyu/sheet ochilsa — darhol yopiladi.
+        if (watchRef.current) clearInterval(watchRef.current);
+        const started = Date.now();
+        watchRef.current = setInterval(() => {
+          if (isBlockingModalOpen()) toast.dismiss('implant-incomplete-notification');
+          if (isBlockingModalOpen() || Date.now() - started > 4000) {
+            clearInterval(watchRef.current);
+            watchRef.current = null;
+          }
+        }, 150);
       }
     } catch (err) {
       console.error('Failed to check incomplete implants:', err);
@@ -80,6 +107,7 @@ export default function ImplantAlerter() {
     initialTimerRef.current = setTimeout(checkIncompleteImplants, 2500);
     return () => {
       if (initialTimerRef.current) clearTimeout(initialTimerRef.current);
+      if (watchRef.current) clearInterval(watchRef.current);
     };
   }, [isAuthenticated, user]);
 

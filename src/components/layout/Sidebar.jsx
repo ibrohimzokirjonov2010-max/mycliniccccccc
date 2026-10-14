@@ -333,6 +333,7 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
 
       {/* Mobile Sidebar (Drawer) */}
       <aside 
+        data-mobile-drawer={mobileOpen ? 'open' : 'closed'}
         className={cn(
           'fixed inset-y-0 left-0 z-50 w-72 bg-white transform transition-transform duration-300 ease-in-out lg:hidden',
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
