@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { isPlanLocked, PLAN_LOCKED_BADGE, PLAN_LOCKED_TOOLTIP } from '../lib/planLock';
 import TreatmentPlanModal from '../components/treatments/TreatmentPlanModal';
 import TreatmentPlanInvoice from '../components/treatments/TreatmentPlanInvoice';
-import jsPDF from 'jspdf';
+import { downloadPlanPdf } from '@/lib/treatmentPlanPdf';
 import { motion } from 'framer-motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
@@ -416,37 +416,14 @@ export default function TreatmentPlans() {
   }, [sortedPlans]);
 
   // PDF Export
-  const generatePDF = (plan) => {
-    const doc = new jsPDF();
-    doc.setFontSize(20);
-    doc.text("DAVOLASH REJASI", 105, 20, { align: 'center' });
-    doc.setFontSize(11);
-    doc.text(`Bemor: ${plan.patient_name || '—'}`, 20, 40);
-    doc.text(`Reja nomi: ${plan.name || '—'}`, 20, 48);
-    doc.text(`Holati: ${normalizeStatus(plan.status) === 'completed' ? 'Yakunlangan' : normalizeStatus(plan.status) === 'in_progress' ? 'Jarayonda' : 'Rejalashtirilgan'}`, 20, 56);
-    doc.text(`Tishlar: ${plan.tooth_number || '—'}`, 20, 64);
-    doc.text(`Sana: ${new Date().toLocaleDateString('uz-UZ')}`, 20, 72);
-
-    let y = 88;
-    doc.setFontSize(13);
-    doc.text("BELGILANGAN XIZMATLAR:", 20, y);
-    y += 8;
-    doc.setFontSize(10);
-    (plan.services || []).forEach((s, i) => {
-      const isDone = s.completed ? '[BAJARILDI] ' : '';
-      doc.text(`${i + 1}. ${isDone}${s.service_name || s.name || 'Xizmat'}`, 25, y);
-      doc.text(`${Number(s.price || 0).toLocaleString()} UZS`, 150, y);
-      y += 7;
-    });
-
-    y += 8;
-    doc.line(20, y, 190, y);
-    y += 10;
-    doc.setFontSize(13);
-    doc.text(`JAMI SUMMA: ${Number(plan.total_price || 0).toLocaleString()} UZS`, 20, y);
-
-    doc.save(`Reja-${(plan.name || 'plan').replace(/\s+/g, '_')}.pdf`);
-    toast.success("PDF yuklab olindi!");
+  const generatePDF = async (plan) => {
+    try {
+      await downloadPlanPdf(plan, { patients });
+      toast.success("PDF yuklab olindi!");
+    } catch (err) {
+      console.error(err);
+      toast.error("PDF yaratishda xatolik");
+    }
   };
 
   /**
