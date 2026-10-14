@@ -29,6 +29,7 @@ import { normalizePatientGender, patientGenderForDb } from '@/lib/patientGender'
 import JawChoice from '@/components/patients/JawChoice';
 import { isLinkedPlanInternal } from '@/lib/paymentDebt';
 import { getToothIllustrationSrc } from '@/utils/toothIllustration';
+import { CrownTint, crownTintKind } from '@/components/patients/ToothSurfaceOverlay';
 import {
   applyJawChoice,
   collectJawRows,
@@ -2130,6 +2131,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
             };
             const availableCategories = ["terapiya", "ortopediya", "estetika", "xirurgiya", "ortodontiya", "implantatsiya"];
 
+            const wizardTintKind = (internalId) => {
+              const kinds = (toothData[internalId]?.services || []).map((sv) => crownTintKind(sv.name || sv.service_name));
+              return kinds.includes('caries') ? 'caries' : kinds.includes('plomba') ? 'plomba' : null;
+            };
             const ToothBtn = ({ fdi }) => {
               const internalId = fdiToInternal(String(fdi));
               const isSelected = planForm.tooth_numbers.includes(internalId);
@@ -2169,6 +2174,7 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                     draggable={false}
                     className="h-full w-full object-contain pointer-events-none"
                   />
+                  <CrownTint kind={wizardTintKind(internalId)} crownDown={[1, 2, 5, 6].includes(Math.floor(Number(fdi) / 10))} />
                   {mark && (
                     <span aria-hidden="true" className="absolute bottom-0.5 left-1 right-1 h-[3px] rounded-full" style={{ background: mark }} />
                   )}
@@ -2440,7 +2446,10 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
                         }}
                         className={cn('wizard-tooth-hit relative flex min-w-0 min-h-[72px] flex-col items-center justify-end rounded-lg border-2 px-px pt-0.5 pb-0.5 touch-manipulation',
                           isActive ? 'border-emerald-500 bg-emerald-50' : jawMarked ? 'border-pink-300 bg-pink-50/50' : isSelected ? 'border-emerald-300 bg-emerald-50/40' : 'border-transparent bg-transparent')}>
-                        <img src={getToothIllustrationSrc(fdi, 'healthy')} alt="" draggable={false} className={cn('h-[48px] w-full object-contain pointer-events-none', lower && 'rotate-180')} />
+                        <span className="relative block h-[48px] w-full">
+                          <img src={getToothIllustrationSrc(fdi, 'healthy')} alt="" draggable={false} className={cn('h-[48px] w-full object-contain pointer-events-none', lower && 'rotate-180')} />
+                          <CrownTint kind={wizardTintKind(internalId)} crownDown={!lower} />
+                        </span>
                         <span className={cn('text-[13px] font-semibold leading-none mt-1 tabular-nums', isActive || isSelected ? 'text-emerald-600 font-bold' : 'text-slate-700')}>{fdi}</span>
                       </button>
                     );

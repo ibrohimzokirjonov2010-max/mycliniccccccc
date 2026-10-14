@@ -7,6 +7,7 @@ import {
   ChevronRight, LayoutGrid, Clock, Image as ImageIcon, CloudUpload, FileText, Calendar,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SurfaceDiagram, CrownTint } from '@/components/patients/ToothSurfaceOverlay';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { cn, formatCurrency, formatMoneyAmount } from '@/lib/utils';
@@ -171,6 +172,11 @@ function isSurfaceOnlyRecord(rec) {
 
 // Yuzaga chiziladigan xizmatlar (qolganlari butun tish belgisi bilan ko'rsatiladi).
 const WHOLE_TOOTH_KINDS = new Set(['implant', 'sirkon', 'missing', 'endo', 'breket', 'protez', 'babochka']);
+function crownTintOf(entries) {
+  const list = [...(entries || [])].filter((e) => e.kind === 'plomba' || e.kind === 'caries')
+    .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+  return list.length ? list[list.length - 1].kind : null;
+}
 function surfaceColorMap(entries) {
   const map = {};
   [...(entries || [])]
@@ -183,58 +189,6 @@ function surfaceColorMap(entries) {
   return map;
 }
 
-// 5 yuzali sxema: markaz O; yuqori/past V va L(P); chap/o'ng M/D — kvadrantga qarab.
-function surfaceLayout(fdi) {
-  const q = Math.floor(Number(fdi) / 10);
-  const upper = [1, 2, 5, 6].includes(q);
-  const screenLeftHalf = [1, 4, 5, 8].includes(q);
-  return {
-    top: upper ? 'V' : 'L',
-    bottom: upper ? 'L' : 'V',
-    left: screenLeftHalf ? 'D' : 'M',
-    right: screenLeftHalf ? 'M' : 'D',
-    upper,
-  };
-}
-
-const SURFACE_POLY = {
-  top: '6,6 94,6 66,34 34,34',
-  bottom: '6,94 94,94 66,66 34,66',
-  left: '6,6 34,34 34,66 6,94',
-  right: '94,6 66,34 66,66 94,94',
-};
-const SURFACE_LABEL_POS = { top: [50, 22], bottom: [50, 82], left: [19, 53], right: [81, 53], center: [50, 53] };
-
-function SurfaceDiagram({ fdi, colors = {}, selected = [], onToggle, size = 64, labels = false, className, style }) {
-  const lay = surfaceLayout(fdi);
-  const parts = [['top', lay.top], ['bottom', lay.bottom], ['left', lay.left], ['right', lay.right], ['center', 'O']];
-  return (
-    <svg viewBox="0 0 100 100" width={size} height={size} className={className} style={style} data-testid={onToggle ? 'surface-diagram' : undefined} aria-hidden={onToggle ? undefined : 'true'}>
-      {parts.map(([pos, sf]) => {
-        const fill = colors[sf] || (selected.includes(sf) ? '#D1FAE5' : '#FFFFFF');
-        const sel = selected.includes(sf);
-        const common = {
-          key: pos,
-          fill,
-          stroke: sel ? '#059669' : '#94A3B8',
-          strokeWidth: sel ? 5 : (onToggle ? 2 : 4),
-          strokeLinejoin: 'round',
-          onClick: onToggle ? () => onToggle(sf) : undefined,
-          style: onToggle ? { cursor: 'pointer' } : undefined,
-          'data-surface': sf,
-        };
-        return pos === 'center'
-          ? <rect {...common} x="34" y="34" width="32" height="32" />
-          : <polygon {...common} points={SURFACE_POLY[pos]} />;
-      })}
-      {labels && parts.map(([pos, sf]) => (
-        <text key={`t-${pos}`} x={SURFACE_LABEL_POS[pos][0]} y={SURFACE_LABEL_POS[pos][1]} textAnchor="middle" dominantBaseline="middle" fontSize="14" fontWeight="700" fill={colors[sf] ? '#FFFFFF' : '#475569'} pointerEvents="none">
-          {sf === 'L' && lay.upper ? 'P' : sf}
-        </text>
-      ))}
-    </svg>
-  );
-}
 
 function fmtDate(value) {
   if (!value) return '';
@@ -1068,6 +1022,7 @@ export default function ToothChartCard({
             isUpper={isUpper}
             entry={entry}
             surfaceColors={surfaceColorMap(byTooth[String(n)])}
+            tintKind={crownTintOf(byTooth[String(n)])}
             active={active === n}
             picked={selected.includes(n)}
             dim={!toothMatches(n, entry)}
@@ -1549,7 +1504,7 @@ function Stat({ label, value, unit, accent }) {
   );
 }
 
-function ToothCell({ fdi, isUpper, entry, surfaceColors, active, picked, dim, onClick }) {
+function ToothCell({ fdi, isUpper, entry, surfaceColors, tintKind, active, picked, dim, onClick }) {
   const hasSurfaceMarks = surfaceColors && Object.keys(surfaceColors).length > 0;
   const color = entry ? KIND_COLOR[entry.kind] : null;
   const src = getToothIllustrationSrc(fdi, entry?.illustration && entry.illustration !== 'missing' ? entry.illustration : (entry?.kind === 'missing' ? 'missing' : 'healthy'));
@@ -1585,11 +1540,12 @@ function ToothCell({ fdi, isUpper, entry, surfaceColors, active, picked, dim, on
             style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
           />
         )}
+        {tintKind && <CrownTint kind={tintKind} crownDown={crownDown} />}
         {hasSurfaceMarks && (
           <SurfaceDiagram
             fdi={fdi}
             colors={surfaceColors}
-            size={18}
+            size={20}
             className="pointer-events-none absolute left-1/2 -translate-x-1/2 drop-shadow-sm"
             style={crownDown ? { bottom: 2 } : { top: 2 }}
           />
