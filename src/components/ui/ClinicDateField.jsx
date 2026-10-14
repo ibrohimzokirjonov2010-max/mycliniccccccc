@@ -144,8 +144,11 @@ export function ClinicDateField({ value, onChange, className, disabled, id, name
           if (value) emitChange(onChange, '');
           return;
         }
-        setText(isoDateToDisplay(value));
+        // birth-date-invalid-visible-v1: an unreadable date used to be silently wiped here, so the
+        // form saved without it. Keep the typed text and mark the field invalid instead.
+        if (iso && blockedByMin(iso, min)) setText(isoDateToDisplay(value));
       }}
+      aria-invalid={!focused && digitsOf(text) && !displayDateToIso(text) ? true : undefined}
       onChange={(event) => {
         const rawInput = String(event.target.value || '');
         // Separators the user typed (1.5.1990) are kept; bare digits get auto dots as before.
@@ -163,6 +166,7 @@ export function ClinicDateField({ value, onChange, className, disabled, id, name
       className={cn(
         'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring',
         className,
+        !focused && digitsOf(text) && !displayDateToIso(text) && '!border-rose-400',
       )}
     />
   );

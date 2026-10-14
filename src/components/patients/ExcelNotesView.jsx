@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 function ExcelNotesView({
-  patient: _patient,
+  patient,
   patientId,
 }) {
   const { t, language } = useTranslation();
@@ -97,8 +97,25 @@ function ExcelNotesView({
     }
   };
 
+  // registration-comment-note-v1: the "Eslatma/Izoh" typed in the new-patient form is stored on the
+  // patient (comment), not in the Note table, so this tab looked empty. Show it as a read-only note.
+  const registrationNote = useMemo(() => {
+    const text = String(patient?.comment || '').trim();
+    if (!text) return null;
+    return {
+      id: '__patient_comment__',
+      readOnly: true,
+      category: 'general',
+      text,
+      author: language === 'ru' ? 'При регистрации' : language === 'en' ? 'At registration' : "Ro'yxatga olishda",
+      date: patient?.created_date || patient?.created_at || '',
+    };
+  }, [patient?.comment, patient?.created_date, patient?.created_at, language]);
+
   const filteredNotes = useMemo(() => {
-    let list = [...notesList];
+    let list = registrationNote && !notesList.some((n) => n.text === registrationNote.text)
+      ? [...notesList, registrationNote]
+      : [...notesList];
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(n =>
@@ -112,7 +129,7 @@ function ExcelNotesView({
       return sortAsc ? valA - valB : valB - valA;
     });
     return list;
-  }, [notesList, search, sortAsc]);
+  }, [notesList, registrationNote, search, sortAsc]);
 
   const getCategoryInfo = (cat) => {
     if (cat === 'warning') return {
@@ -210,12 +227,12 @@ function ExcelNotesView({
                       {catInfo.icon}
                       {catInfo.label}
                     </span>
-                    <button
+                    {!note.readOnly && <button
                       onClick={() => handleDeleteNote(note.id)}
                       className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all active:scale-95"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    </button>}
                   </div>
                   <p className="text-[13px] font-semibold text-slate-900 leading-relaxed">{note.text}</p>
                 </div>

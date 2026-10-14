@@ -936,6 +936,11 @@ export default function NewPatientFlow({ open, onClose, onSaved, prefillData }) 
       return false;
     }
     setDoctorError('');
+    // birth-date-invalid-visible-v1: do not create the patient while a typed birth date cannot be read.
+    if (typeof document !== 'undefined' && document.querySelector('#new_patient_birth_date[aria-invalid="true"]')) {
+      toast.error("Tug'ilgan sana noto'g'ri. Masalan: 15.03.1985");
+      return false;
+    }
     if (patientForm.address && !validateAddress(patientForm.address)) {
       toast.error(t('patients.addressError'));
       return false;
