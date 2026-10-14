@@ -4,7 +4,7 @@ import { BackClose } from '@/hooks/useBackClose';
 import { createPortal } from 'react-dom';
 import {
   Check, Layers, Plus, Printer, X,
-  ChevronRight, LayoutGrid, Clock, Image as ImageIcon, CloudUpload, FileText, Crown, Scissors, Grip, Smile, Bandage, Calendar,
+  ChevronRight, LayoutGrid, Clock, Image as ImageIcon, CloudUpload, FileText, Calendar,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
@@ -67,24 +67,6 @@ function ToothGlyph({ className }) {
     </svg>
   );
 }
-function ImplantGlyph({ className }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <path d="M7 4h10l-1 4H8z" /><path d="M8 11h8M8.5 14h7M9 17h6M10 20h4" /><path d="M9 8v13M15 8v13" />
-    </svg>
-  );
-}
-const QUICK_ICON = {
-  caries: [ToothGlyph, 'bg-rose-50 text-rose-500'],
-  plomba: [ToothGlyph, 'bg-blue-50 text-blue-500'],
-  endo: [ToothGlyph, 'bg-violet-50 text-violet-500'],
-  sirkon: [Crown, 'bg-amber-50 text-amber-500'],
-  implant: [ImplantGlyph, 'bg-emerald-50 text-emerald-600'],
-  missing: [Scissors, 'bg-slate-100 text-slate-600'],
-  breket: [Grip, 'bg-pink-50 text-pink-500'],
-  protez: [Smile, 'bg-teal-50 text-teal-600'],
-  babochka: [Bandage, 'bg-orange-50 text-orange-500'],
-};
 
 const GROUP_PRICE_LABEL = { bridge: 'Ko‘prik (protez)', same: 'Plomba', implant: 'Implant' };
 const GROUP_PRICE_KIND = { bridge: 'sirkon', same: 'plomba', implant: 'implant' };
@@ -1651,11 +1633,9 @@ function SidePanel(props) {
               <div className={cn(sectionTitle, 'mb-2.5')}><LayoutGrid className="h-5 w-5 text-blue-600" /> Tezkor qo‘shish</div>
               <div className="grid grid-cols-3 gap-2">
                 {QUICK.map((item) => {
-                  const [Icon, tone] = QUICK_ICON[item.id] || [ToothGlyph, 'bg-slate-100 text-slate-600'];
                   const price = quickPrice ? quickPrice(item) : 0;
                   return (
-                    <button key={item.id} type="button" disabled={busy} onClick={() => onQuick(item)} className={cn('flex min-h-[60px] min-w-0 items-center gap-1.5 rounded-2xl border px-1.5 py-2 text-left disabled:opacity-50', activeQuick === item.id ? 'border-violet-300 bg-violet-50' : 'border-slate-200 bg-white')}>
-                      <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-xl', tone)}><Icon className="h-[18px] w-[18px]" /></span>
+                    <button key={item.id} type="button" disabled={busy} onClick={() => onQuick(item)} className={cn('flex min-h-[60px] min-w-0 items-center rounded-2xl border px-3 py-2 text-left disabled:opacity-50', activeQuick === item.id ? 'border-violet-300 bg-violet-50' : 'border-slate-200 bg-white')}>
                       <span className="min-w-0">
                         <b className="block text-[13px] font-bold leading-tight text-slate-900">{item.label}</b>
                         {quickPrice && (price > 0
@@ -1666,7 +1646,6 @@ function SidePanel(props) {
                   );
                 })}
                 <button type="button" onClick={() => setNoteOpen(true)} className="col-span-3 flex min-h-[60px] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-700"><FileText className="h-5 w-5" /></span>
                   <span className="min-w-0">
                     <b className="block text-[13px] font-bold text-slate-900">Izoh</b>
                     <span className="block text-[13px] text-slate-500">Tish bo‘yicha eslatma qo‘shish</span>
