@@ -3641,7 +3641,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
 
                 {/* ─── 2. Davolash Rejasi & Bemorning To'lovlar Tarixi (Batafsil ichida) ─── */}
                 {paymentDetailsOpen && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-stretch">
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] gap-3.5 items-stretch">
 
                   {/* payment-detail-plans-v2: "Davolash rejasi & hisob-kitob" o'rniga bemor rejalari (faqat o'qish) */}
                   <PaymentPatientPlans patientId={sp.patient_id} patient={pat} />

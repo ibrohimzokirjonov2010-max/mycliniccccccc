@@ -125,7 +125,7 @@ export default function PaymentPatientPlans({ patientId, patient }) {
                       <span className="font-bold text-slate-800 leading-tight break-words min-w-0">{r.title}</span>
                       <StatusBadge status={r.status} />
                     </div>
-                    {r.sub && r.sub !== r.title && <div className="text-[9.5px] text-slate-400 leading-tight truncate max-w-[200px]">{r.sub}</div>}
+                    {r.sub && r.sub !== r.title && <div className="text-[9.5px] text-slate-400 leading-tight truncate max-w-[320px]">{r.sub}</div>}
                   </td>
                   <td className="px-2 py-1.5 text-center font-mono text-[10px] text-slate-500 border-r border-slate-200 whitespace-nowrap">{fmtDate(r.date)}</td>
                   <td className="px-1.5 py-1.5 text-center border-r border-slate-200">
