@@ -158,7 +158,82 @@ function flattenPlanServices(plan) {
 function parseSurfaces(text) {
   const m = String(text || '').match(/yuza:\s*([vmodl,\s]+)/i);
   if (!m) return [];
-  return m[1].split(/[,\s]+/).map((s) => s.trim().toUpperCase()).filter((s) => ['V', 'M', 'O', 'D', 'L'].includes(s));
+  const out = m[1].split(/[,\s]+/).map((s) => s.trim().toUpperCase()).filter((s) => ['V', 'M', 'O', 'D', 'L'].includes(s));
+  return ['V', 'M', 'O', 'D', 'L'].filter((s) => out.includes(s));
+}
+
+// Faqat "Yuza: ..." dan iborat (xizmatsiz) eski yozuvlar — reja/tarix sifatida ko'rsatilmaydi.
+function isSurfaceOnlyRecord(rec) {
+  if (rec.condition || rec.treatment) return false;
+  const rest = String(rec.notes || '').replace(/yuza:\s*[vmodl,\s]*/ig, '').replace(/[.\s]+/g, '');
+  return rest === '';
+}
+
+// Yuzaga chiziladigan xizmatlar (qolganlari butun tish belgisi bilan ko'rsatiladi).
+const WHOLE_TOOTH_KINDS = new Set(['implant', 'sirkon', 'missing', 'endo', 'breket', 'protez', 'babochka']);
+function surfaceColorMap(entries) {
+  const map = {};
+  [...(entries || [])]
+    .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+    .forEach((e) => {
+      if (!e.surfaces?.length || WHOLE_TOOTH_KINDS.has(e.kind)) return;
+      const color = KIND_COLOR[e.kind] || '#64748B';
+      e.surfaces.forEach((sf) => { map[sf] = color; });
+    });
+  return map;
+}
+
+// 5 yuzali sxema: markaz O; yuqori/past V va L(P); chap/o'ng M/D — kvadrantga qarab.
+function surfaceLayout(fdi) {
+  const q = Math.floor(Number(fdi) / 10);
+  const upper = [1, 2, 5, 6].includes(q);
+  const screenLeftHalf = [1, 4, 5, 8].includes(q);
+  return {
+    top: upper ? 'V' : 'L',
+    bottom: upper ? 'L' : 'V',
+    left: screenLeftHalf ? 'D' : 'M',
+    right: screenLeftHalf ? 'M' : 'D',
+    upper,
+  };
+}
+
+const SURFACE_POLY = {
+  top: '6,6 94,6 66,34 34,34',
+  bottom: '6,94 94,94 66,66 34,66',
+  left: '6,6 34,34 34,66 6,94',
+  right: '94,6 66,34 66,66 94,94',
+};
+const SURFACE_LABEL_POS = { top: [50, 22], bottom: [50, 82], left: [19, 53], right: [81, 53], center: [50, 53] };
+
+function SurfaceDiagram({ fdi, colors = {}, selected = [], onToggle, size = 64, labels = false, className, style }) {
+  const lay = surfaceLayout(fdi);
+  const parts = [['top', lay.top], ['bottom', lay.bottom], ['left', lay.left], ['right', lay.right], ['center', 'O']];
+  return (
+    <svg viewBox="0 0 100 100" width={size} height={size} className={className} style={style} data-testid={onToggle ? 'surface-diagram' : undefined} aria-hidden={onToggle ? undefined : 'true'}>
+      {parts.map(([pos, sf]) => {
+        const fill = colors[sf] || (selected.includes(sf) ? '#D1FAE5' : '#FFFFFF');
+        const sel = selected.includes(sf);
+        const common = {
+          key: pos,
+          fill,
+          stroke: sel ? '#059669' : '#94A3B8',
+          strokeWidth: sel ? 5 : (onToggle ? 2 : 4),
+          strokeLinejoin: 'round',
+          onClick: onToggle ? () => onToggle(sf) : undefined,
+          style: onToggle ? { cursor: 'pointer' } : undefined,
+          'data-surface': sf,
+        };
+        return pos === 'center'
+          ? <rect {...common} x="34" y="34" width="32" height="32" />
+          : <polygon {...common} points={SURFACE_POLY[pos]} />;
+      })}
+      {labels && parts.map(([pos, sf]) => (
+        <text key={`t-${pos}`} x={SURFACE_LABEL_POS[pos][0]} y={SURFACE_LABEL_POS[pos][1]} textAnchor="middle" dominantBaseline="middle" fontSize="14" fontWeight="700" fill={colors[sf] ? '#FFFFFF' : '#475569'} pointerEvents="none">
+          {sf === 'L' && lay.upper ? 'P' : sf}
+        </text>
+      ))}
+    </svg>
+  );
 }
 
 function fmtDate(value) {
@@ -276,7 +351,7 @@ function collectEntries(plans, implants, toothRecords) {
         date: svc.completion_date || plan.updated_date || plan.updated_at || plan.created_date || plan.date,
         planId: plan.id,
         servicePath: svc.path,
-        surfaces: parseSurfaces(`${svc.notes || ''} ${plan.notes || ''}`),
+        surfaces: parseSurfaces(svc.notes || '').length ? parseSurfaces(svc.notes || '') : parseSurfaces(plan.notes || ''),
         notes: svc.notes || '',
       };
       if (jawScope && jawKind) {
@@ -312,6 +387,7 @@ function collectEntries(plans, implants, toothRecords) {
   });
 
   (toothRecords || []).forEach((rec) => {
+    if (isSurfaceOnlyRecord(rec)) return;
     const blob = `${rec.condition || ''} ${rec.treatment || ''} ${rec.notes || ''}`;
     const illustration = matchIllustrationKind(blob);
     const kind = legendOf(illustration);
@@ -519,7 +595,7 @@ export default function ToothChartCard({
       color: KIND_COLOR[e.kind] || '#64748B',
       title: e.surfaces?.length ? `${e.name} (${e.surfaces.join(', ')})` : e.name,
       kind: e.kind,
-      note: e.notes || e.note || '',
+      note: withSurfaceNote(String(e.notes || e.note || '').replace(/\[finding\]\s*/i, ''), []),
       price: e.price,
       open: !e.done,
       doctor: formatDoctorName(e.doctor || ''),
@@ -552,46 +628,12 @@ export default function ToothChartCard({
     xrays.filter((x) => String(x.tooth_number || '') === String(active))
   ), [xrays, active]);
 
-  const surfaceSave = useRef(Promise.resolve());
-
-  const writeSurfaces = async (fdi, next) => {
-    if (!patient?.id || !fdi) return;
-    const entry = primaryEntry(byTooth[String(fdi)], 'all');
-    const note = withSurfaceNote(entry?.notes || '', next);
-    if (entry?.planId && entry.servicePath) {
-      const plan = (plans || []).find((p) => p.id === entry.planId);
-      if (!plan) return;
-      await base44.entities.TreatmentPlan.update(plan.id, {
-        services: patchServiceNotes(plan.services, entry.servicePath, note),
-      });
-    } else {
-      const existing = (toothRecords || []).find((r) => String(r.tooth_number) === String(fdi));
-      const payload = {
-        patient_id: patient.id,
-        clinic_id: patient.clinic_id || user?.clinic_id || 'default_clinic',
-        tooth_number: String(fdi),
-        notes: note,
-        condition: existing?.condition || null,
-        treatment: existing?.treatment || null,
-        status: existing?.status || 'planned',
-      };
-      if (existing?.id) await base44.entities.ToothRecord.update(existing.id, payload);
-      else if (next.length) await base44.entities.ToothRecord.create(payload);
-    }
-    if (onReload) await onReload();
-  };
 
   const toggleSurface = (s) => {
     if (!active) return;
     const next = surfaces.includes(s) ? surfaces.filter((x) => x !== s) : [...surfaces, s];
-    setSurfaces(next);
-    const fdi = active;
-    surfaceSave.current = surfaceSave.current
-      .then(() => writeSurfaces(fdi, next))
-      .catch((err) => {
-        console.error(err);
-        toast.error('Yuza saqlanmadi');
-      });
+    // Faqat tanlov: saqlash xizmat/yozuv qo'shilganda shu yuzalar bilan bo'ladi.
+    setSurfaces(['V', 'M', 'O', 'D', 'L'].filter((x) => next.includes(x)));
   };
 
   const onTooth = (fdi) => {
@@ -601,8 +643,7 @@ export default function ToothChartCard({
       return;
     }
     setActive(fdi);
-    const e = primaryEntry(byTooth[String(fdi)], 'all');
-    setSurfaces(e?.surfaces || []);
+    setSurfaces([]);
     setNoteOpen(false);
   };
 
@@ -1026,6 +1067,7 @@ export default function ToothChartCard({
             fdi={n}
             isUpper={isUpper}
             entry={entry}
+            surfaceColors={surfaceColorMap(byTooth[String(n)])}
             active={active === n}
             picked={selected.includes(n)}
             dim={!toothMatches(n, entry)}
@@ -1369,6 +1411,7 @@ export default function ToothChartCard({
           <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-slate-200" />
           <SidePanel
             sheet
+            activeSurfaceColors={active ? surfaceColorMap(byTooth[String(active)]) : {}}
             active={active}
             activeEntry={activeEntry}
             multi={multi}
@@ -1506,7 +1549,8 @@ function Stat({ label, value, unit, accent }) {
   );
 }
 
-function ToothCell({ fdi, isUpper, entry, active, picked, dim, onClick }) {
+function ToothCell({ fdi, isUpper, entry, surfaceColors, active, picked, dim, onClick }) {
+  const hasSurfaceMarks = surfaceColors && Object.keys(surfaceColors).length > 0;
   const color = entry ? KIND_COLOR[entry.kind] : null;
   const src = getToothIllustrationSrc(fdi, entry?.illustration && entry.illustration !== 'missing' ? entry.illustration : (entry?.kind === 'missing' ? 'missing' : 'healthy'));
   const crownDown = fdiCrownDown(fdi);
@@ -1541,7 +1585,16 @@ function ToothCell({ fdi, isUpper, entry, active, picked, dim, onClick }) {
             style={{ objectPosition: crownDown ? 'center bottom' : 'center top' }}
           />
         )}
-        {color && (
+        {hasSurfaceMarks && (
+          <SurfaceDiagram
+            fdi={fdi}
+            colors={surfaceColors}
+            size={18}
+            className="pointer-events-none absolute left-1/2 -translate-x-1/2 drop-shadow-sm"
+            style={crownDown ? { bottom: 2 } : { top: 2 }}
+          />
+        )}
+        {color && !(hasSurfaceMarks && !WHOLE_TOOTH_KINDS.has(entry?.kind)) && (
           <span
             className={cn('tooth-status-dot', crownDown ? 'is-upper' : 'is-lower')}
             style={{ background: color }}
@@ -1563,7 +1616,7 @@ function SidePanel(props) {
     surfaces, toggleSurface, history, toothXrays, busy, noteOpen, noteText,
     setNoteText, setNoteOpen, onClose, onQuick, quickPrice, onNote, onGroup, onUpload, onView,
     doctorName, unitPrice, onAddToPlan, onNewRecord,
-    jawPrompt, onJawChoose, onJawClose, jawServices,
+    jawPrompt, onJawChoose, onJawClose, jawServices, activeSurfaceColors = {},
   } = props;
   const [showAllHistory, setShowAllHistory] = useState(false);
   useEffect(() => { setShowAllHistory(false); }, [active]);
@@ -1583,13 +1636,16 @@ function SidePanel(props) {
       <aside data-tooth-panel="sheet" className="flex w-full min-h-0 max-h-[86dvh] min-w-0 flex-col overflow-hidden bg-white">
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="flex items-start gap-3 px-4 pb-4 pt-2">
-            <div className={cn('grid h-[124px] w-[84px] shrink-0 place-items-center rounded-full', activeEntry && 'bg-sky-50')}>
-              <img
-                src={getToothIllustrationSrc(active, activeEntry?.illustration && activeEntry.illustration !== 'missing' ? activeEntry.illustration : (activeEntry?.kind === 'missing' ? 'missing' : (activeEntry?.kind || 'healthy')))}
-                alt=""
-                className="h-[120px] w-[76px] object-contain"
-                style={{ objectPosition: fdiCrownDown(active) ? 'center bottom' : 'center top' }}
-              />
+            <div className="flex shrink-0 flex-col items-center gap-2">
+              <div className={cn('grid h-[124px] w-[84px] place-items-center rounded-full', activeEntry && 'bg-sky-50')}>
+                <img
+                  src={getToothIllustrationSrc(active, activeEntry?.illustration && activeEntry.illustration !== 'missing' ? activeEntry.illustration : (activeEntry?.kind === 'missing' ? 'missing' : (activeEntry?.kind || 'healthy')))}
+                  alt=""
+                  className="h-[120px] w-[76px] object-contain"
+                  style={{ objectPosition: fdiCrownDown(active) ? 'center bottom' : 'center top' }}
+                />
+              </div>
+              <SurfaceDiagram fdi={active} colors={activeSurfaceColors} selected={surfaces} onToggle={toggleSurface} size={72} labels />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2">
