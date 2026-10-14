@@ -10,7 +10,8 @@ import { toast } from 'sonner';
 import { SurfaceDiagram, CrownTint } from '@/components/patients/ToothSurfaceOverlay';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { cn, formatCurrency, formatMoneyAmount } from '@/lib/utils';
+import { cn, formatCurrency, formatMoneyAmount, resolveDoctorId } from '@/lib/utils';
+import { clinicianDisplayName, isTreatingClinician } from '@/lib/treatingDoctor';
 import { fdiCrownDown, fdiGridTemplate, fdiLengthWeight, fdiWidthWeight, internalIdToFdi } from '@/lib/fdiNotation';
 import { getToothIllustrationSrc, matchIllustrationKind } from '@/utils/toothIllustration';
 import { displayServiceName, formatDoctorName } from '@/lib/displayText';
@@ -409,6 +410,7 @@ export default function ToothChartCard({
   const [selected, setSelected] = useState([]);
   const [active, setActive] = useState(null);
   const [surfaces, setSurfaces] = useState([]);
+  const [doctorOverride, setDoctorOverride] = useState('');
   const [groupAction, setGroupAction] = useState('breket');
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
@@ -608,11 +610,16 @@ export default function ToothChartCard({
   });
   const catalogPrice = (label, kindHint = '') => resolveCatalog(label, kindHint).price;
 
+  // Shifokor: qo'lda tanlangan -> bemorning biriktirilgan shifokori (yoki rejalaridagi) -> kirgan foydalanuvchi faqat shifokor bo'lsa.
   const doctorFields = () => {
-    const doc = (doctors || []).find((d) => String(d.id) === String(user?.id)) || (doctors || [])[0];
+    const list = doctors || [];
+    const pick = (id) => (id ? list.find((d) => String(d.id) === String(id)) : null);
+    let doc = pick(doctorOverride);
+    if (!doc) doc = pick(resolveDoctorId(patient, plans, list, null, false));
+    if (!doc && user?.id && isTreatingClinician(user)) doc = pick(user.id) || { id: user.id, full_name: clinicianDisplayName(user) };
     return {
-      doctor_id: doc?.id || user?.id || '',
-      doctor_name: doc?.name || doc?.full_name || user?.full_name || user?.name || '',
+      doctor_id: doc?.id || '',
+      doctor_name: clinicianDisplayName(doc),
     };
   };
 
@@ -1300,7 +1307,7 @@ export default function ToothChartCard({
               const [name, kind, billing] = map[groupAction];
               addToActivePlan(selected, name, kind, billing, { priceLabel: GROUP_PRICE_LABEL[groupAction] });
             }}
-            doctorName={doctorLabel}
+            doctorName={doctorLabel} doctorId={doctorFields().doctor_id} doctorOptions={doctors} onDoctor={setDoctorOverride}
             unitPrice={groupUnitPrice}
             jawPrompt={jawPrompt} jawServices={services}
             onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
@@ -1347,7 +1354,7 @@ export default function ToothChartCard({
             const [name, kind, billing] = map[groupAction];
             addToActivePlan(selected, name, kind, billing, { priceLabel: GROUP_PRICE_LABEL[groupAction] });
           }}
-          doctorName={doctorLabel}
+          doctorName={doctorLabel} doctorId={doctorFields().doctor_id} doctorOptions={doctors} onDoctor={setDoctorOverride}
           unitPrice={groupUnitPrice}
           jawPrompt={jawPrompt} jawServices={services}
           onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
@@ -1399,7 +1406,7 @@ export default function ToothChartCard({
               const [name, kind, billing] = map[groupAction];
               addToActivePlan(selected, name, kind, billing, { priceLabel: GROUP_PRICE_LABEL[groupAction] });
             }}
-            doctorName={doctorLabel}
+            doctorName={doctorLabel} doctorId={doctorFields().doctor_id} doctorOptions={doctors} onDoctor={setDoctorOverride}
             unitPrice={groupUnitPrice}
             jawPrompt={jawPrompt} jawServices={services}
             onJawChoose={(choice) => jawPrompt && applyJawChoice(jawPrompt.family, choice, jawPrompt.mode)}
@@ -1573,7 +1580,24 @@ function SidePanel(props) {
     setNoteText, setNoteOpen, onClose, onQuick, quickPrice, onNote, onGroup, onUpload, onView,
     doctorName, unitPrice, onAddToPlan, onNewRecord,
     jawPrompt, onJawChoose, onJawClose, jawServices, activeSurfaceColors = {},
+    doctorId = '', doctorOptions = [], onDoctor,
   } = props;
+  const doctorSelect = (cls) => (onDoctor && (doctorOptions || []).length > 0 ? (
+    <label className={cn('flex items-center gap-2', cls)}>
+      <span className="shrink-0 font-bold text-slate-500">Shifokor</span>
+      <select
+        data-testid="tooth-doctor-select"
+        value={doctorId || ''}
+        onChange={(e) => onDoctor(e.target.value)}
+        className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-2 font-semibold text-slate-900"
+      >
+        {!doctorId && <option value="">Shifokorni tanlang</option>}
+        {(doctorOptions || []).map((d) => (
+          <option key={d.id} value={d.id}>{clinicianDisplayName(d) || d.id}</option>
+        ))}
+      </select>
+    </label>
+  ) : null);
   const [showAllHistory, setShowAllHistory] = useState(false);
   useEffect(() => { setShowAllHistory(false); }, [active]);
   const group = multi && selected.length > 0 && !active;
@@ -1751,6 +1775,7 @@ function SidePanel(props) {
             </section>
           </div>
         </div>
+        {doctorSelect('border-t border-slate-100 px-4 pt-3 text-[13px] [&_select]:h-11 [&_select]:text-[14px]')}
         <div className="tooth-sheet-actions flex gap-3 border-t border-slate-100 bg-white px-4 py-3">
           <button type="button" disabled={busy} onClick={onAddToPlan} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 text-[14px] font-bold text-white disabled:opacity-60">
             <Calendar className="h-5 w-5" /> Rejaga qo‘shish
@@ -1953,6 +1978,7 @@ function SidePanel(props) {
           </button>
         </div>
       )}
+      {active && !group && doctorSelect('border-t border-slate-100 px-4 pt-2 text-[12px] [&_select]:h-8 [&_select]:text-xs')}
       {active && !group && (
         <div className="tooth-sheet-actions flex gap-2 border-t border-slate-100 bg-white px-4 py-3">
           <button type="button" disabled={busy} onClick={onAddToPlan} className="h-9 flex-1 rounded-xl bg-slate-900 text-xs font-bold text-white disabled:opacity-60">
