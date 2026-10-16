@@ -21,7 +21,6 @@ import { toast } from 'sonner';
 import { cn, formatCurrency, formatMoneyAmount, resolveDoctorId } from '@/lib/utils';
 import { patientGenderLabel } from '@/lib/patientGender';
 import { formatBirthDate, formatDoctorName } from '@/lib/displayText';
-import ChairsideClinicalTools from '../components/patients/ChairsideClinicalTools';
 import { countImplantTeeth, implantRecordFdis } from '@/lib/fdiNotation';
 import { formatPhone, capitalizeName } from '@/lib/utils';
 import { deleteTreatmentRow } from '@/lib/treatmentDelete';
@@ -1237,19 +1236,6 @@ export default function MobilePatientProfile() {
             document.getElementById('chairside-clinical-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }}
           onOpenPlan={() => setActiveTab('plan')}
-        />
-        <ChairsideClinicalTools
-          patient={patient}
-          doctors={doctors}
-          onPatientUpdated={(updated) => {
-            if (updated) setPatient((prev) => ({ ...(prev || {}), ...updated }));
-          }}
-          language={language}
-          compact
-          tabbed
-          design
-          activeTab={clinicalTab}
-          onTabChange={setClinicalTab}
         />
       </div>
       </>

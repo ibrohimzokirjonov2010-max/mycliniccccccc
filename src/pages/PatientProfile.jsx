@@ -49,7 +49,6 @@ import ExcelPaymentsView from '../components/patients/ExcelPaymentsView';
 import ExcelNotesView from '../components/patients/ExcelNotesView';
 import ExcelImplantsView from '../components/patients/ExcelImplantsView';
 import ExcelPhotosView from '../components/patients/ExcelPhotosView';
-import ChairsidePatientProfile from '../components/patients/ChairsidePatientProfile';
 import { exportPatientToExcel } from '@/lib/patientExcelExport';
 import AppointmentModal from '../components/appointments/AppointmentModal';
 import PatientModal from '../components/patients/PatientModal';
@@ -434,7 +433,7 @@ export default function PatientProfile() {
   const [subSection, setSubSection] = useRestorableState('subSection', 'dental');
   const [toothSearchQuery, setToothSearchQuery] = useState('');
   const [dentalViewMode, setDentalViewMode] = useRestorableState('dentalViewMode', 'both');
-  const [profileViewMode, setProfileViewMode] = useRestorableState('profileViewMode', 'chairside'); // chairside | reyestr
+  const [profileViewMode, setProfileViewMode] = useRestorableState('profileViewMode', 'reyestr'); // reyestr only (chairside removed)
   const [treatmentStatusFilter, setTreatmentStatusFilter] = useRestorableState('treatmentStatusFilter', 'all'); // 'all', 'completed', 'in_progress', 'planned'
   const [chartView, setChartView] = useState('teeth'); // 'teeth', 'maxilla', 'mandible', 'occlusion'
   const [showOcclusal, setShowOcclusal] = useState(true);
@@ -2788,58 +2787,7 @@ export default function PatientProfile() {
     <div className="min-h-screen bg-[#f4f6f8] pb-20">
       <div className="print:hidden">
 
-      {profileViewMode === 'chairside' && (
-        <ChairsidePatientProfile
-          patient={patient}
-          age={age}
-          totalDebt={totalDebt}
-          totalPrepayment={totalPrepayment}
-          medicalAlerts={medicalAlerts}
-          selectedTooth={selectedTooth}
-          onSelectTooth={setSelectedTooth}
-          onClearTooth={() => setSelectedTooth(null)}
-          toothStatuses={toothStatuses}
-          plans={plans}
-          payments={payments}
-          services={services}
-          onReload={load}
-          toothRecords={toothRecords}
-          implants={implants}
-          doctors={doctors}
-          appointments={appointments}
-          odontogramSelectedTeeth={odontogramSelectedTeeth}
-          onOdontogramChange={stableOnOdontogramChange}
-          handleInfoToothClick={handleInfoToothClick}
-          patientType={patientType}
-          setPatientType={setPatientType}
-          chartView={chartView}
-          showOcclusal={showOcclusal}
-          psrScores={psrScores}
-          occlusionNotes={occlusionNotes}
-          handleOcclusionNotesChange={handleOcclusionNotesChange}
-          occlusionClass={occlusionClass}
-          handleOcclusionClassChange={handleOcclusionClassChange}
-          onBack={handleBack}
-          backLabel={language === 'ru' ? 'Назад' : language === 'en' ? 'Back' : 'Orqaga'}
-          onPay={openPayModal}
-          onAppointment={() => setApptModalOpen(true)}
-          onNewPlan={() => setTreatmentModalOpen(true)}
-          onEditPatient={() => setPatientModalOpen(true)}
-          onAvatarUpload={handleAvatarUpload}
-          onQuickStatus={handleChairsideQuickStatus}
-          onSaveToothNote={handleChairsideSaveToothNote}
-          onOpenFullProfile={() => { setProfileViewMode('reyestr'); setActiveTab('info'); }}
-          profileViewMode={profileViewMode}
-          setProfileViewMode={setProfileViewMode}
-          locationState={location.state}
-          language={language}
-          onPatientUpdated={(updated) => {
-            if (updated) setPatient((prev) => ({ ...(prev || {}), ...updated }));
-          }}
-        />
-      )}
-
-      {profileViewMode === 'reyestr' && (
+      {(profileViewMode === 'reyestr' || profileViewMode === 'chairside') && (
       <>
       {/* ══ TOP NAVIGATION & HEADER ══ */}
       <div className="bg-white border-b border-[#e8eaed] sticky top-0 z-30 shadow-xs">
@@ -2889,10 +2837,6 @@ export default function PatientProfile() {
 
           {/* Right: Quick Action Buttons (Matching Reference Design) */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="inline-flex p-0.5 bg-slate-100 rounded-xl border border-slate-200/70">
-              <button type="button" onClick={() => setProfileViewMode('chairside')} className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide cursor-pointer text-slate-500 hover:text-slate-800">Chairside</button>
-              <button type="button" onClick={() => setProfileViewMode('reyestr')} className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide cursor-pointer bg-white text-slate-900 shadow-sm">Reyestr</button>
-            </div>
 
             <button
               onClick={openPayModal}
