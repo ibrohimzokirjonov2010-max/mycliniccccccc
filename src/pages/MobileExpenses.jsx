@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { matchStaff, isIncomePayment } from '@/utils/clinicMetrics';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -95,6 +96,7 @@ export default function MobileExpenses() {
   const { t } = useTranslation();
   const [expenses, setExpenses] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [staffUsers, setStaffUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useRestorableState('search', '');
   const [selectedMonth, setSelectedMonth] = useRestorableState('selectedMonth', 'all');
@@ -218,12 +220,14 @@ export default function MobileExpenses() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [exps, pays] = await Promise.all([
-        base44.entities.Expense?.list('-date', 100) || Promise.resolve([]),
-        base44.entities.Payment.filter({ type: 'income' }, '-date', 100)
+      const [exps, pays, users] = await Promise.all([
+        base44.entities.Expense?.list('-date', 5000) || Promise.resolve([]),
+        base44.entities.Payment.list('-date', 5000),
+        base44.entities.User.list('name', 200).catch(() => [])
       ]);
       setExpenses(exps);
-      setPayments(pays);
+      setPayments((pays || []).filter(isIncomePayment));
+      setStaffUsers(users || []);
     } catch (error) {
       console.error('Failed to load expenses:', error);
     } finally {
@@ -259,7 +263,13 @@ export default function MobileExpenses() {
     return payments.filter(item => String(item.date || '').slice(0, 7) === selectedMonth);
   }, [payments, selectedMonth]);
 
-  const totalExpense = monthlyExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  // Shifokor ulushi (komissiya) ham xarajat
+  const salaryCommission = Math.round(monthlyIncome.reduce((sum, p) => {
+    const staff = matchStaff(p, staffUsers);
+    const rate = Number(p.commission_rate) || Number(staff?.commission_rate ?? staff?.commission ?? 0) || 0;
+    return sum + (Number(p.amount) || 0) * (rate / 100);
+  }, 0));
+  const totalExpense = monthlyExpenses.reduce((sum, e) => sum + (e.amount || 0), 0) + salaryCommission;
   const totalIncome = monthlyIncome.reduce((sum, p) => sum + (p.amount || 0), 0);
   const rawProfit = totalIncome - totalExpense;
   const profit = rawProfit === 0 ? 0 : rawProfit;
@@ -383,7 +393,7 @@ export default function MobileExpenses() {
                    <p className="text-[8px] font-bold text-emerald-400 uppercase tracking-[0.25em] mb-1 truncate">Umumiy Balans</p>
                    <h2 className="text-xl font-black tracking-tight leading-none flex items-baseline truncate">
                       {formatCurrency(profit).replace("so'm", "").trim()}
-                      <span className="text-[10px] font-black text-emerald-400 ml-1.5 uppercase shrink-0">UZS</span>
+                      <span className="text-[10px] font-black text-emerald-400 ml-1.5 uppercase shrink-0">so'm</span>
                    </h2>
                 </div>
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ml-2 ${profit >= 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
@@ -662,7 +672,7 @@ export default function MobileExpenses() {
                           className="h-10 rounded-xl bg-slate-50 border-none font-black text-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/10"
                           placeholder="Masalan: 500,000"
                         />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400">UZS</span>
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400">so'm</span>
                      </div>
                   </div>
   

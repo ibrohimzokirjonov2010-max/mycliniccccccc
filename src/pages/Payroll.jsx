@@ -22,6 +22,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { toast } from 'sonner';
 import { ClinicDateField } from '@/components/ui/ClinicDateField';
+import { matchStaff, isIncomePayment } from '@/utils/clinicMetrics';
 
 // Standard Uzbek Months
 const UZ_MONTHS = [
@@ -274,7 +275,7 @@ export default function Payroll() {
       setLoading(true);
       const [users, pays] = await Promise.all([
         base44.entities.User.list('name', 100),
-        base44.entities.Payment.filter({ type: 'Income' }, '-date', 500)
+        base44.entities.Payment.list('-date', 5000)
       ]);
 
       const currentClinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
@@ -443,8 +444,9 @@ export default function Payroll() {
     
     // 1. All income payments for this doctor
     const allDoctorIncomePayments = payments.filter(p => {
-      const isDoctor = String(p.doctor_id) === String(doctorId);
-      const isIncome = (p.type || '').toLowerCase() === 'income';
+      const matched = matchStaff(p, doctors);
+      const isDoctor = matched ? String(matched.id) === String(doctorId) : String(p.doctor_id) === String(doctorId);
+      const isIncome = isIncomePayment(p);
       return isDoctor && isIncome;
     });
 
@@ -740,7 +742,7 @@ export default function Payroll() {
         "Komissiya (%)",
         "Bemorlar Soni",
         "Umumiy Daromad (UZS)",
-        "Doktorni Ulushi (UZS)"
+        "Shifokor ulushi (UZS)"
       ];
       const rows = sortedPayrollData.map((d, idx) => [
         idx + 1,
@@ -833,7 +835,7 @@ export default function Payroll() {
             </tr>
             <tr>
               <th>Maosh Toifasi:</th>
-              <td>${doc.salary_type === 'fixed' ? 'Oylikka (Qat\'iy)' : `Foizda (${doc.commission_rate || 30}%)`}</td>
+              <td>${doc.salary_type === 'fixed' ? 'Oylik maosh' : `Foiz bo'yicha (${doc.commission_rate || 30}%)`}</td>
             </tr>
             <tr>
               <th>Bemorlar soni:</th>
@@ -841,19 +843,19 @@ export default function Payroll() {
             </tr>
             <tr>
               <th>Umumiy daromad (Tushum):</th>
-              <td>${Number(doc.totalRevenue || 0).toLocaleString()} UZS</td>
+              <td>${Number(doc.totalRevenue || 0).toLocaleString('ru-RU')} so'm</td>
             </tr>
             <tr>
-              <th>Doktorni ulushi (Maosh):</th>
-              <td>${Number(doc.totalSalary || 0).toLocaleString()} UZS</td>
+              <th>Shifokor ulushi (Maosh):</th>
+              <td>${Number(doc.totalSalary || 0).toLocaleString('ru-RU')} so'm</td>
             </tr>
-            ${Number(payForm.bonus || 0) > 0 ? `<tr><th>Bonus / Mukofot:</th><td style="color:#059669">+${Number(payForm.bonus).toLocaleString()} UZS</td></tr>` : ''}
-            ${Number(payForm.deduction || 0) > 0 ? `<tr><th>Ushlab qolingan:</th><td style="color:#dc2626">-${Number(payForm.deduction).toLocaleString()} UZS</td></tr>` : ''}
+            ${Number(payForm.bonus || 0) > 0 ? `<tr><th>Bonus / Mukofot:</th><td style="color:#059669">+${Number(payForm.bonus).toLocaleString('ru-RU')} so'm</td></tr>` : ''}
+            ${Number(payForm.deduction || 0) > 0 ? `<tr><th>Ushlab qolingan:</th><td style="color:#dc2626">-${Number(payForm.deduction).toLocaleString('ru-RU')} so'm</td></tr>` : ''}
           </table>
 
           <div class="total-box">
             <div style="font-size:12px; font-weight:bold; text-transform:uppercase; color:#475569;">To'lanishi kerak bo'lgan yakuniy summa:</div>
-            <div class="total-amount">${finalSalary.toLocaleString()} UZS</div>
+            <div class="total-amount">${finalSalary.toLocaleString('ru-RU')} so'm</div>
           </div>
 
           <div class="footer">
@@ -879,7 +881,7 @@ export default function Payroll() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('payroll.title') || "Maoshlar"}</h1>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('payroll.title') || "Ish haqi"}</h1>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
               {language === 'ru' ? `• РАСЧЁТЫ ${doctors.length} ВРАЧЕЙ` : language === 'en' ? `• PAYROLL ${doctors.length} DOCTORS` : `• Hisob-kitoblar ${doctors.length} Shifokor`}
             </span>
@@ -906,8 +908,8 @@ export default function Payroll() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: t('payroll.totalRevenue') || (language === 'ru' ? "ОБЩИЙ ДОХОД" : "UMUMIY DAROMAD"), value: totals.totalRevenue, icon: DollarSign, color: "text-blue-600", bg: "bg-blue-50 border-blue-100", countText: t('payroll.clinicReceipts') || (language === 'ru' ? "Поступления клиники" : "Klinikaga tushum") },
-          { label: t('payroll.doctorsShare') || (language === 'ru' ? "ДОЛЯ ВРАЧЕЙ" : "DOKTORLAR ULUSHI"), value: totals.totalCommission, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", countText: t('payroll.commissionSum') || (language === 'ru' ? "Сумма комиссии" : "Komissiya summasi") },
-          { label: t('payroll.totalSalary') || (language === 'ru' ? "ОБЩАЯ ЗАРПЛАТА" : "JAMI MAOSH"), value: totals.totalSalary, icon: Users, color: "text-purple-600", bg: "bg-purple-50 border-purple-100", countText: t('payroll.expenseSheet') || (language === 'ru' ? "Ведомость расходов" : "Chiqim vedomosti") },
+          { label: t('payroll.doctorsShare') || (language === 'ru' ? "ДОЛЯ ВРАЧЕЙ" : "SHIFOKORLAR ULUSHI"), value: totals.totalCommission, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", countText: t('payroll.commissionSum') || (language === 'ru' ? "Сумма комиссии" : "Komissiya summasi") },
+          { label: t('payroll.totalSalary') || (language === 'ru' ? "ОБЩАЯ ЗАРПЛАТА" : "JAMI MAOSH"), value: totals.totalSalary, icon: Users, color: "text-purple-600", bg: "bg-purple-50 border-purple-100", countText: t('payroll.expenseSheet') || (language === 'ru' ? "Ведомость расходов" : "Chiqim ro'yxati") },
           { label: t('payroll.patientCount') || (language === 'ru' ? "КОЛИЧЕСТВО ПАЦИЕНТОВ" : "BEMORLAR SONI"), value: totals.totalPatients, icon: Calendar, color: "text-slate-800", bg: "bg-slate-50 border-slate-200", isNumber: true, countText: t('payroll.totalTreated') || (language === 'ru' ? "Всего принято" : "Jami qabul qilingan") },
         ].map((s, i) => (
           <motion.div 
@@ -925,7 +927,7 @@ export default function Payroll() {
                 {s.isNumber ? (
                   <span>{s.value} <span className="text-xs font-bold text-slate-400">{language === 'ru' ? '' : 'ta'}</span></span>
                 ) : (
-                  <span>{Number(s.value).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">UZS</span></span>
+                  <span>{Number(s.value).toLocaleString('ru-RU')} <span className="text-[10px] font-bold text-slate-400">so'm</span></span>
                 )}
               </div>
               <p className="text-[9.5px] font-medium text-slate-400 mt-0.5">{s.countText}</p>
@@ -966,8 +968,8 @@ export default function Payroll() {
           <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
               { id: 'all', label: t('payroll.all') || (language === 'ru' ? "Все" : "Barchasi"), count: doctors.length },
-              { id: 'percentage', label: t('payroll.percentage') || (language === 'ru' ? "На проценте" : "Foizda"), count: doctors.filter(d => d.salary_type !== 'fixed').length },
-              { id: 'fixed', label: t('payroll.fixed') || (language === 'ru' ? "На окладе" : "Oylikda"), count: doctors.filter(d => d.salary_type === 'fixed').length }
+              { id: 'percentage', label: t('payroll.percentage') || (language === 'ru' ? "На проценте" : "Foiz bo'yicha"), count: doctors.filter(d => d.salary_type !== 'fixed').length },
+              { id: 'fixed', label: t('payroll.fixed') || (language === 'ru' ? "На окладе" : "Oylik maosh"), count: doctors.filter(d => d.salary_type === 'fixed').length }
             ].map(tab => {
               const isActive = activeTypeFilter === tab.id;
               return (
@@ -1120,10 +1122,10 @@ export default function Payroll() {
                 <th 
                   onClick={() => handleSort('salary')}
                   className="w-48 px-3.5 py-2.5 text-right border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors bg-emerald-50/40 select-none whitespace-nowrap"
-                  title="Doktorni ulushi bo'yicha saralash"
+                  title="Shifokor ulushi bo'yicha saralash"
                 >
                   <div className="flex items-center justify-end gap-1.5 text-emerald-700 font-mono">
-                    <span>{t('payroll.doctorShareCol') || (language === 'ru' ? 'Доля врача' : 'Doktorni ulushi')}</span>
+                    <span>{t('payroll.doctorShareCol') || (language === 'ru' ? 'Доля врача' : 'Shifokor ulushi')}</span>
                     {sortField === 'salary' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-600" /> : <ArrowDown className="w-3 h-3 text-emerald-600" />
                     ) : (
@@ -1226,16 +1228,16 @@ export default function Payroll() {
                       {/* UMUMIY DAROMAD Cell */}
                       <td className={`text-right border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
                         <span className="font-mono font-bold text-slate-800 text-xs tabular-nums">
-                          {Number(doc.totalRevenue || 0).toLocaleString()}
-                          <span className="text-[9.5px] font-semibold text-slate-400 ml-1">UZS</span>
+                          {Number(doc.totalRevenue || 0).toLocaleString('ru-RU')}
+                          <span className="text-[9.5px] font-semibold text-slate-400 ml-1">so'm</span>
                         </span>
                       </td>
 
                       {/* DOKTORNI ULUSHI Cell */}
                       <td className={`text-right border-r border-slate-200/70 whitespace-nowrap bg-emerald-50/30 ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
                         <span className="font-mono font-black text-emerald-600 text-xs tabular-nums">
-                          {Number(doc.totalSalary || 0).toLocaleString()}
-                          <span className="text-[9.5px] font-semibold text-emerald-500 ml-1">UZS</span>
+                          {Number(doc.totalSalary || 0).toLocaleString('ru-RU')}
+                          <span className="text-[9.5px] font-semibold text-emerald-500 ml-1">so'm</span>
                         </span>
                       </td>
 
@@ -1330,7 +1332,7 @@ export default function Payroll() {
                         {activeDetailDoctor.name || activeDetailDoctor.full_name} — {language === 'ru' ? 'Детализация зарплаты и пациентов' : 'Maosh & Bemorlar Tafsiloti'}
                       </DialogTitle>
                       <p className="text-[11px] font-bold text-slate-400">
-                        {activeDetailDoctor.specialty || 'Stomatolog'} • {activeDetailDoctor.salary_type === 'fixed' ? `Oylik: ${Number(activeDetailDoctor.base_salary).toLocaleString()} UZS` : `${activeDetailDoctor.commission_rate || 30}% foizda`}
+                        {activeDetailDoctor.specialty || 'Stomatolog'} • {activeDetailDoctor.salary_type === 'fixed' ? `Oylik: ${Number(activeDetailDoctor.base_salary).toLocaleString('ru-RU')} so'm` : `${activeDetailDoctor.commission_rate || 30}% foizda`}
                       </p>
                     </div>
                   </div>
@@ -1389,7 +1391,7 @@ export default function Payroll() {
                     >
                       <p className="text-[9.5px] font-black uppercase tracking-wider opacity-75">{p.label}</p>
                       <p className="text-xs font-black font-mono mt-0.5">
-                        {p.value != null ? `${Number(p.value).toLocaleString()} UZS` : (language === 'ru' ? 'Выбрать' : 'Tanlash')}
+                        {p.value != null ? `${Number(p.value).toLocaleString('ru-RU')} so'm` : (language === 'ru' ? 'Выбрать' : 'Tanlash')}
                       </p>
                     </button>
                   );
@@ -1570,10 +1572,10 @@ export default function Payroll() {
                                   </div>
                                 </td>
                                 <td className="px-3 py-2 text-right border-r border-slate-200/70 font-bold text-slate-800">
-                                  {Number(p.amount || 0).toLocaleString()} UZS
+                                  {Number(p.amount || 0).toLocaleString('ru-RU')} so'm
                                 </td>
                                 <td className="px-3 py-2 text-right font-black text-emerald-600">
-                                  {Number(share || 0).toLocaleString()} UZS
+                                  {Number(share || 0).toLocaleString('ru-RU')} so'm
                                 </td>
                               </tr>
                             );
@@ -1602,7 +1604,7 @@ export default function Payroll() {
                           <th className="px-2 py-2 text-center border-r border-slate-200">Bemorlar soni</th>
                           <th className="px-3 py-2 text-right border-r border-slate-200">Umumiy Daromad</th>
                           <th className="px-2 py-2 text-center border-r border-slate-200">Foiz</th>
-                          <th className="px-3 py-2 text-right">Doktorni Ulushi</th>
+                          <th className="px-3 py-2 text-right">Shifokor ulushi</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200/70 font-mono">
@@ -1614,13 +1616,13 @@ export default function Payroll() {
                                 <span className="bg-slate-100 px-1.5 py-0.2 rounded text-[11px] font-bold">{earning.count} ta</span>
                               </td>
                               <td className="px-3 py-2 text-right border-r border-slate-200/70 text-slate-700 font-bold">
-                                {Number(earning.totalRevenue || 0).toLocaleString()} UZS
+                                {Number(earning.totalRevenue || 0).toLocaleString('ru-RU')} so'm
                               </td>
                               <td className="px-2 py-2 text-center border-r border-slate-200/70 font-sans">
                                 <span className="bg-emerald-50 text-emerald-700 font-bold px-1.5 py-0.2 rounded text-[10px]">{earning.commissionRate}%</span>
                               </td>
                               <td className="px-3 py-2 text-right font-black text-emerald-600">
-                                {Number(earning.totalCommission || 0).toLocaleString()} UZS
+                                {Number(earning.totalCommission || 0).toLocaleString('ru-RU')} so'm
                               </td>
                             </tr>
                           ))
@@ -1644,10 +1646,10 @@ export default function Payroll() {
                     Tanlangan davr bo'yicha hisoblangan maosh:
                   </span>
                   <div className="text-xl font-black font-mono text-emerald-700">
-                    {Number(activeDetailDoctor.totalSalary || 0).toLocaleString()} <span className="text-xs">UZS</span>
+                    {Number(activeDetailDoctor.totalSalary || 0).toLocaleString('ru-RU')} <span className="text-xs">so'm</span>
                   </div>
                   <p className="text-[11px] font-bold text-slate-500">
-                    Bemorlar: <strong className="text-blue-700 font-mono">{activeDetailDoctor.patientCount} ta</strong> • Klinikaga tushum: <strong className="text-slate-800 font-mono">{Number(activeDetailDoctor.totalRevenue || 0).toLocaleString()} UZS</strong>
+                    Bemorlar: <strong className="text-blue-700 font-mono">{activeDetailDoctor.patientCount} ta</strong> • Klinikaga tushum: <strong className="text-slate-800 font-mono">{Number(activeDetailDoctor.totalRevenue || 0).toLocaleString('ru-RU')} so'm</strong>
                   </p>
                 </div>
 
@@ -1675,7 +1677,7 @@ export default function Payroll() {
               <DialogHeader>
                 <DialogTitle className="text-base font-black text-slate-900 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-emerald-600" />
-                  <span>{language === 'ru' ? 'Ведомость выплаты зарплаты' : 'Maosh To\'lash Vedomosti'}</span>
+                  <span>{language === 'ru' ? 'Ведомость выплаты зарплаты' : 'Ish haqi to\'lash ro\'yxati'}</span>
                 </DialogTitle>
               </DialogHeader>
 
@@ -1690,11 +1692,11 @@ export default function Payroll() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500 font-bold">Umumiy Daromad:</span>
-                  <span className="font-mono font-bold text-slate-800">{Number(payModalDoctor.totalRevenue || 0).toLocaleString()} UZS</span>
+                  <span className="font-mono font-bold text-slate-800">{Number(payModalDoctor.totalRevenue || 0).toLocaleString('ru-RU')} so'm</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500 font-bold">Doktorni Ulushi (Maosh):</span>
-                  <span className="font-mono font-bold text-emerald-700">{Number(payModalDoctor.totalSalary || 0).toLocaleString()} UZS</span>
+                  <span className="text-slate-500 font-bold">Shifokor ulushi (Maosh):</span>
+                  <span className="font-mono font-bold text-emerald-700">{Number(payModalDoctor.totalSalary || 0).toLocaleString('ru-RU')} so'm</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500 font-bold">Davr:</span>
@@ -1759,7 +1761,7 @@ export default function Payroll() {
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
                 <span className="text-[10px] font-black uppercase text-emerald-800">Yakuniy to'lanadigan summa:</span>
                 <div className="text-xl font-black font-mono text-emerald-700 mt-0.5">
-                  {(Number(payModalDoctor.totalSalary || 0) + Number(payForm.bonus || 0) - Number(payForm.deduction || 0)).toLocaleString()} UZS
+                  {(Number(payModalDoctor.totalSalary || 0) + Number(payForm.bonus || 0) - Number(payForm.deduction || 0)).toLocaleString('ru-RU')} so'm
                 </div>
               </div>
 
@@ -1932,7 +1934,7 @@ export default function Payroll() {
                       className="rounded-xl h-10 pr-12 font-bold font-mono text-sm"
                       autoFocus
                     />
-                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">UZS</span>
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">so'm</span>
                   </div>
                 </div>
               )}

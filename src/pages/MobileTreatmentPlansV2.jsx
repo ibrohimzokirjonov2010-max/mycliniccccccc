@@ -179,7 +179,7 @@ export default function MobileTreatmentPlansV2() {
       setLoading(true);
       const planFilter = isDoctor && user?.id ? { doctor_id: user.id } : {};
       const [pl, pa, se] = await Promise.all([
-        isDoctor && user?.id ? base44.entities.TreatmentPlan.filter(planFilter, '-created_date', 100) : base44.entities.TreatmentPlan.list('-created_date', 100),
+        isDoctor && user?.id ? base44.entities.TreatmentPlan.filter(planFilter, '-created_date', 5000) : base44.entities.TreatmentPlan.list('-created_date', 5000),
         base44.entities.Patient.list('-created_date', 50),
         base44.entities.Service.list('name', 500)
       ]);

@@ -192,8 +192,8 @@ function ServiceCardContent({ service: s, isOverlay = false, onEdit, onDelete, o
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('services.price') || 'NARXI'}</p>
             <p className="text-xl font-bold text-slate-900 tracking-tight">
-              {(Number(s.price) || 0).toLocaleString()}
-              <span className="text-[10px] font-bold text-slate-300 ml-1">UZS</span>
+              {(Number(s.price) || 0).toLocaleString('ru-RU')}
+              <span className="text-[10px] font-bold text-slate-300 ml-1">so'm</span>
             </p>
           </div>
           <div className="flex flex-col items-end gap-1">
@@ -638,15 +638,14 @@ export default function Services() {
         <div className="space-y-1 min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="bg-[#1499AD]/10 text-[#1499AD] border-[#1499AD]/30 font-black px-2.5 py-0.5 uppercase tracking-widest text-[9.5px]">
-              CRM XIZMATLARI
+              XIZMATLAR VA NARXLAR
             </Badge>
-            <span className="text-[11px] font-bold text-slate-400 font-mono">v2.5 Excel Grid</span>
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             {t('services.title') || "Klinika Xizmatlari Katalogi"}
           </h1>
           <p className="text-xs font-medium text-slate-500 max-w-xl">
-            {t('services.subtitle') || "Barcha stomatologik muolajalar, narxlar va toifalarni professional boshqarish"}
+            {t('services.subtitle') || "Xizmatlar va narxlar ro'yxati"}
           </p>
         </div>
         <div className="flex items-center gap-2.5 shrink-0">
@@ -698,7 +697,7 @@ export default function Services() {
           },
           { 
             label: t('services.stats.avgPrice') || "O'rtacha Narx", 
-            value: `${(Math.round(stats.avgPrice / 1000) * 1000).toLocaleString()} UZS`, 
+            value: `${(Math.round(stats.avgPrice / 1000) * 1000).toLocaleString('ru-RU')} so'm`, 
             sub: "Har bir xizmat bo'yicha",
             icon: DollarSign, 
             color: 'text-amber-600', 
@@ -708,7 +707,7 @@ export default function Services() {
           },
           { 
             label: (!t('services.categories') || t('services.categories').toUpperCase().startsWith('SERVICES.')) ? 'Bo\'limlar' : t('services.categories'), 
-            value: `${categoryOrder.length} ta toifa`, 
+            value: `${categoryOrder.length} ta bo'lim`, 
             sub: "Stomatologiya yo'nalishlari",
             icon: BarChart3, 
             color: 'text-purple-600', 
@@ -752,7 +751,7 @@ export default function Services() {
                 </div>
                 <div>
                   <h3 className="font-black text-slate-900 uppercase tracking-wider text-[11px]">
-                    {t('services.sidebar.categories') || "Kategoriyalar"}
+                    {t('services.sidebar.categories') || "Bo'limlar"}
                   </h3>
                   <span className="text-[9.5px] font-medium text-slate-400">
                     {categoryOrder.length} ta bo'lim
@@ -1113,7 +1112,7 @@ export default function Services() {
                                     <span className="font-mono font-black text-slate-900 text-sm tabular-nums tracking-tight">
                                       {(Number(s.price) || 0).toLocaleString()}
                                     </span>
-                                    <span className="text-[10px] font-bold text-slate-400 ml-1">UZS</span>
+                                    <span className="text-[10px] font-bold text-slate-400 ml-1">so'm</span>
                                   </td>
 
                                   {/* Davomiyligi */}
@@ -1221,7 +1220,7 @@ export default function Services() {
                               <span className="font-mono font-black text-slate-900 text-sm tabular-nums tracking-tight">
                                 {(Number(s.price) || 0).toLocaleString()}
                               </span>
-                              <span className="text-[10px] font-bold text-slate-400 ml-1">UZS</span>
+                              <span className="text-[10px] font-bold text-slate-400 ml-1">so'm</span>
                             </td>
 
                             {/* Davomiyligi */}
@@ -1309,7 +1308,7 @@ export default function Services() {
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400 uppercase text-[10px] font-extrabold tracking-wider">O'RTACHA NARX:</span>
                   <strong className="text-slate-900 font-mono text-sm font-black bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
-                    {Number(Math.round((filtered.reduce((sum, s) => sum + (Number(s.price) || 0), 0) / (filtered.length || 1)) / 1000) * 1000).toLocaleString()} UZS
+                    {Number(Math.round((filtered.reduce((sum, s) => sum + (Number(s.price) || 0), 0) / (filtered.length || 1)) / 1000) * 1000).toLocaleString('ru-RU')} so'm
                   </strong>
                 </div>
               </div>
@@ -1432,7 +1431,7 @@ export default function Services() {
                     placeholder="150 000"
                     className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 font-black text-base tracking-tight px-3 outline-none focus:bg-white focus:ring-2 focus:ring-[#1499AD]/30"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">UZS</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">so'm</span>
                 </div>
               </div>
 
@@ -1473,7 +1472,7 @@ export default function Services() {
               <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-100">
                 <div>
                   <Label className="font-bold text-[11px] uppercase tracking-wider text-slate-800 block cursor-pointer">
-                    {t('services.modals.activeState') || 'AKTIV HOLAT'}
+                    {t('services.modals.activeState') || 'HOLATI (FAOL)'}
                   </Label>
                   <p className="text-[9px] text-slate-400 font-medium leading-none mt-0.5">Xizmat ro'yxatda faol bo'ladi</p>
                 </div>

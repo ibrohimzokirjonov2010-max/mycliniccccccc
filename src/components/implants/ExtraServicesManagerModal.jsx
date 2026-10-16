@@ -236,7 +236,7 @@ export default function ExtraServicesManagerModal({
               </div>
               <div>
                 <DialogTitle className="text-base font-black text-white uppercase tracking-tight flex items-center gap-2">
-                  <span>Qo'shimcha Xizmatlar & Prays-list</span>
+                  <span>Qo'shimcha xizmatlar va narxlar</span>
                   <span className="text-[10px] font-black bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 px-2 py-0.5 rounded-full">
                     {stats.total} ta xizmat
                   </span>

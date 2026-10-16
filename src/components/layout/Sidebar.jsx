@@ -8,7 +8,7 @@ import {
   Activity, Wallet, Settings, ChevronLeft, ChevronRight, Zap, TrendingDown,
   LogOut, Heart, Target, Camera, Lock
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, displayUserName } from '@/lib/utils';
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
@@ -170,7 +170,7 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
                   {showAdminDivider && (
                     <div className="px-3.5 py-2 bg-slate-100/80 lg:bg-slate-900/60">
                       <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 lg:text-slate-500">
-                        Boshqaruv / Admin
+                        Boshqaruv
                       </p>
                     </div>
                   )}
@@ -261,11 +261,11 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
                 {(user?.avatar_url || user?.photo || user?.avatar || user?.image) ? (
                   <img src={user.avatar_url || user.photo || user.avatar || user.image} alt={user.name} className="w-full h-full object-cover" />
                 ) : (
-                  user?.name?.[0]?.toUpperCase() || 'U'
+                  displayUserName(user)[0]?.toUpperCase() || 'U'
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-[13px] font-black text-slate-900 lg:text-white truncate tracking-tight leading-none uppercase">{user?.full_name || user?.name || 'Foydalanuvchi'}</p>
+                <p className="text-[13px] font-black text-slate-900 lg:text-white truncate tracking-tight leading-none uppercase">{displayUserName(user)}</p>
                 <div className="flex items-center gap-1.5 mt-1.5">
                   <span className="text-[10.5px] font-black text-[#1499AD] lg:text-emerald-300 tracking-wider uppercase bg-sky-100 lg:bg-emerald-500/20 px-2 py-0.5 rounded-md border border-sky-200 lg:border-emerald-500/30">
                     {user?.role === 'doctor' ? 'Shifokor' : 'Admin'}
@@ -283,11 +283,11 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-[#1499AD] flex items-center justify-center text-white font-black text-xs shadow-md overflow-hidden shrink-0" title={user?.full_name || user?.name || 'Foydalanuvchi'}>
+            <div className="w-10 h-10 rounded-xl bg-[#1499AD] flex items-center justify-center text-white font-black text-xs shadow-md overflow-hidden shrink-0" title={displayUserName(user)}>
               {(user?.avatar_url || user?.photo || user?.avatar || user?.image) ? (
                 <img src={user.avatar_url || user.photo || user.avatar || user.image} alt={user.name} className="w-full h-full object-cover" />
               ) : (
-                user?.name?.[0]?.toUpperCase() || 'U'
+                displayUserName(user)[0]?.toUpperCase() || 'U'
               )}
             </div>
             <button

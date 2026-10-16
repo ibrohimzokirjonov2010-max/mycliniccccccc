@@ -69,7 +69,7 @@ export default function Cases() {
         } catch (e) {
           console.warn("Cases fetch error:", e);
           setCases([]);
-          toast.error(e?.message || "Keyslar serverdan yuklanmadi");
+          toast.error(e?.message || "Natijalar serverdan yuklanmadi");
         }
 
         // Fetch Categories
@@ -97,7 +97,7 @@ export default function Cases() {
       await mediaStorage.deleteCaseMedia(caseId);
       setCases(prev => prev.filter(c => c.id !== caseId));
       setSelectedCase(null);
-      toast.success(language === 'ru' ? "Кейс успешно удален!" : "Keys muvaffaqiyatli o'chirildi!");
+      toast.success(language === 'ru' ? "Кейс успешно удален!" : "Natija o'chirildi!");
     } catch (err) {
       console.error("Delete error:", err);
       toast.error(err.message || (language === 'ru' ? "Ошибка при удалении" : "O'chirishda xatolik"));
@@ -178,7 +178,7 @@ export default function Cases() {
             <AlertCircle className="w-3.5 h-3.5" />
           </div>
           <p className="text-xs font-bold text-rose-600 tracking-tight">
-            Iltimos xotira to'lmasligi uchun sifatli rasmlarni yuklang
+            Rasm hajmi 2 MB dan oshmasin
           </p>
         </div>
 
@@ -276,7 +276,7 @@ export default function Cases() {
         patients={dbPatients}
         doctors={dbDoctors.map(d => d.name || d.full_name)}
         onSave={async (newCase) => {
-          const loadingToast = toast.loading("Keys saqlanmoqda...");
+          const loadingToast = toast.loading("Natija saqlanmoqda...");
           try {
              let finalImages = { ...newCase.images };
 
@@ -306,14 +306,14 @@ export default function Cases() {
                 await mediaStorage.saveCaseMedia(enriched.id, enriched.images);
 
                 setCases(prev => [enriched, ...prev.filter(c => c.id !== enriched.id)]);
-                toast.success("Keys professional darajada saqlandi!", { id: loadingToast });
+                toast.success("Natija saqlandi!", { id: loadingToast });
                 setIsModalOpen(false);
              } else {
-                toast.error("Keys serverga saqlanmadi", { id: loadingToast });
+                toast.error("Natija serverga saqlanmadi", { id: loadingToast });
              }
           } catch (e) {
              console.error("Save error:", e);
-             toast.error(e.message || "Keys serverga saqlanmadi", { id: loadingToast });
+             toast.error(e.message || "Natija serverga saqlanmadi", { id: loadingToast });
           }
         }} 
       />
@@ -934,7 +934,7 @@ function CaseUploadModal({ isOpen, onClose, onSave, existingTags = [], patients 
             <AlertCircle className="w-3 h-3" />
           </div>
           <p className="text-xs font-bold text-rose-600 tracking-tight">
-            Iltimos xotira to'lmasligi uchun sifatli rasmlarni yuklang
+            Rasm hajmi 2 MB dan oshmasin
           </p>
         </div>
 

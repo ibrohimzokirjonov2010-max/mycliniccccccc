@@ -26,6 +26,7 @@ import { Suspense, memo } from 'react';
 import { ImplantIcon } from '@/components/ui/Icons';
 import BackButton from '@/components/ui/BackButton';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import { displayUserName } from '@/lib/utils';
 
 // Specialized skeleton loader for premium page-to-page transitions
 const InlineLoader = memo(() => (
@@ -115,7 +116,7 @@ const MENU_ITEMS_GEN = (t) => [
 const DRAWER_GROUPS = [
   { id: 'main', label: 'Asosiy' },
   { id: 'finance', label: 'Moliya' },
-  { id: 'admin', label: 'Boshqaruv / Admin' },
+  { id: 'admin', label: 'Boshqaruv' },
 ];
 const DRAWER_FINANCE = ['/payments', '/debts', '/expenses', '/payroll'];
 const drawerGroupOf = (item) => (DRAWER_FINANCE.includes(item.path) ? 'finance' : item.section === 'admin' ? 'admin' : 'main');
@@ -522,11 +523,11 @@ export default function NativeMobileLayout({ children }) {
                     {(user?.avatar_url || user?.photo || user?.avatar || user?.image) ? (
                       <img src={user.avatar_url || user.photo || user.avatar || user.image} alt={user.name} className="w-full h-full object-cover" />
                     ) : (
-                      (user?.full_name || user?.name)?.[0]?.toUpperCase() || 'U'
+                      displayUserName(user, 'User')[0]?.toUpperCase() || 'U'
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[15px] font-extrabold text-[#0b1f44] truncate uppercase leading-tight">{user?.full_name || user?.name || 'User'}</p>
+                    <p className="text-[15px] font-extrabold text-[#0b1f44] truncate uppercase leading-tight">{displayUserName(user, 'User')}</p>
                     <p className="text-[12px] font-bold text-slate-400 uppercase tracking-[0.08em] leading-tight mt-0.5">{user?.role === 'doctor' ? 'Yakka doktor' : 'Administrator'}</p>
                     {drawerClinicName && <p className="text-[12px] font-semibold text-slate-600 truncate mt-1 leading-tight">{drawerClinicName}</p>}
                     <p className="text-[11px] text-slate-400 leading-tight mt-0.5">Stomatologiya tizimi</p>

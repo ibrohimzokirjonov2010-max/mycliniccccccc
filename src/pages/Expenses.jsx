@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { matchStaff, isIncomePayment } from '@/utils/clinicMetrics';
 import { BackClose } from '@/hooks/useBackClose';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { 
@@ -264,6 +265,7 @@ export default function Expenses() {
   // Data states
   const [expenses, setExpenses] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [staffUsers, setStaffUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Filter states
@@ -290,12 +292,14 @@ export default function Expenses() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [exps, pays] = await Promise.all([
-        base44.entities.Expense?.list('-date', 500) || Promise.resolve([]),
-        base44.entities.Payment.filter({ type: 'Income' }, '-date', 500)
+      const [exps, pays, users] = await Promise.all([
+        base44.entities.Expense?.list('-date', 5000) || Promise.resolve([]),
+        base44.entities.Payment.list('-date', 5000),
+        base44.entities.User.list('name', 200).catch(() => [])
       ]);
       setExpenses(exps);
-      setPayments(pays);
+      setPayments((pays || []).filter(isIncomePayment));
+      setStaffUsers(users || []);
     } catch (error) {
       console.error('Failed to load expenses:', error);
     } finally {
@@ -360,7 +364,13 @@ export default function Expenses() {
 
   // Calculate totals
   const totals = useMemo(() => {
-    const totalExpense = monthlyExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    // Shifokor ulushi (komissiya) ham xarajat hisoblanadi — Ish haqi sahifasi bilan bir xil
+    const salaryCommission = Math.round(monthlyIncome.reduce((sum, p) => {
+      const staff = matchStaff(p, staffUsers);
+      const rate = Number(p.commission_rate) || Number(staff?.commission_rate ?? staff?.commission ?? 0) || 0;
+      return sum + (Number(p.amount) || 0) * (rate / 100);
+    }, 0));
+    const totalExpense = monthlyExpenses.reduce((sum, e) => sum + (e.amount || 0), 0) + salaryCommission;
     const totalIncome = monthlyIncome.reduce((sum, p) => sum + (p.amount || 0), 0);
     const rawProfit = totalIncome - totalExpense;
     const profit = rawProfit === 0 ? 0 : rawProfit;
@@ -372,9 +382,10 @@ export default function Expenses() {
         .filter(e => e.category === cat.value)
         .reduce((sum, e) => sum + (e.amount || 0), 0);
     });
+    byCategory.salary = (byCategory.salary || 0) + salaryCommission;
     
-    return { totalExpense, totalIncome, profit, byCategory };
-  }, [monthlyExpenses, monthlyIncome, allResolvedCategories]);
+    return { totalExpense, totalIncome, profit, byCategory, salaryCommission };
+  }, [monthlyExpenses, monthlyIncome, allResolvedCategories, staffUsers]);
 
   // Table summary formula metrics
   const expenseSummary = useMemo(() => {
@@ -1029,8 +1040,8 @@ export default function Expenses() {
                       <td className={`text-right border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
                         <div className="flex items-center justify-end gap-1.5">
                           <span className="font-mono font-black text-rose-600 text-xs tabular-nums">
-                            -{Number(e.amount || 0).toLocaleString()}
-                            <span className="text-[9.5px] font-semibold text-rose-400 ml-1">UZS</span>
+                            -{Number(e.amount || 0).toLocaleString('ru-RU')}
+                            <span className="text-[9.5px] font-semibold text-rose-400 ml-1">so'm</span>
                           </span>
                           {e.receipt_url && (
                             <button

@@ -2516,7 +2516,7 @@ export default function PatientProfile() {
         tooth_number: String(fdi),
         condition: conditionMap[statusKey] || pendingToothEdits[String(fdi)]?.condition || null,
         treatment: pendingToothEdits[String(fdi)]?.treatment || null,
-        notes: note || pendingToothEdits[String(fdi)]?.notes || 'Chairside eslatma',
+        notes: note || pendingToothEdits[String(fdi)]?.notes || '',
       };
       if (existingRecord) {
         await base44.entities.ToothRecord.update(existingRecord.id, payload);
@@ -2866,7 +2866,7 @@ export default function PatientProfile() {
               title="Bemorga avans yoki depozit qabul qilish"
             >
               <Wallet className="w-3.5 h-3.5" />
-              <span>+ Avans</span>
+              <span>+ Oldindan to'lov</span>
             </button>
           </div>
         </div>
@@ -2884,7 +2884,7 @@ export default function PatientProfile() {
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black text-slate-900">Bemor ma'lumotlari</span>
                 <span className="px-1.5 py-0.5 bg-slate-100 text-slate-800 rounded text-[10px] font-mono font-black border border-slate-200/60">
-                  #{String(id || '').slice(-4).toUpperCase() || '9870'}
+                  Karta № {String(id || '').slice(-4).toUpperCase()}
                 </span>
               </div>
               <button
@@ -3046,7 +3046,7 @@ export default function PatientProfile() {
                   <User className="w-3.5 h-3.5 text-slate-700" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[9px] font-black uppercase text-slate-500 leading-none">HISOB</p>
+                  <p className="text-[9px] font-black uppercase text-slate-500 leading-none">BEMOR</p>
                   <div className="flex items-center justify-between gap-1 mt-0.5">
                     <p className="text-xs font-black text-slate-900 truncate">
                       {patient.account_number || patient.full_name || patient.id}
@@ -3118,9 +3118,9 @@ export default function PatientProfile() {
               { id: 'treatments',   label: "Davolash rejalari",  icon: ClipboardList,   iconColor: "text-indigo-600", count: (plans || []).length },
               { id: 'appointments', label: "Uchrashuvlar",       icon: Calendar,        iconColor: "text-blue-600", count: (appointments || []).length },
               { id: 'payments',     label: "To'lovlar",          icon: CreditCard,      iconColor: "text-emerald-600", count: (payments || []).filter(p => { const t = (p.type || 'Income').toLowerCase(); return t !== 'debt' && t !== 'discount' && !(p.notes || '').toLowerCase().includes('linked to plan'); }).length },
-              { id: 'notes',        label: "Eslatmalar",         icon: FileText,        iconColor: "text-amber-600" },
+              { id: 'notes',        label: "Izohlar",         icon: FileText,        iconColor: "text-amber-600" },
               ...(canImplants ? [{ id: 'implants', label: "Implantlar", icon: ImplantIcon, iconColor: "text-purple-600", count: countImplantTeeth(implants) }] : []),
-              { id: 'photos',       label: "Rentgen & Rasmlar",  icon: XrayIcon,        iconColor: "text-cyan-600", count: (xrays || []).length },
+              { id: 'photos',       label: "Rentgen va rasmlar",  icon: XrayIcon,        iconColor: "text-cyan-600", count: (xrays || []).length },
             ].map(tabItem => {
               const IconComponent = tabItem.icon;
               const isActive = activeTab === tabItem.id;
@@ -3721,7 +3721,7 @@ export default function PatientProfile() {
                                            size="sm" 
                                            className="h-9 px-4 rounded-xl bg-pink-500 hover:bg-pink-600 text-white font-black uppercase text-[10px] tracking-tight shadow-lg shadow-pink-500/20 border-none"
                                          >
-                                           To'lash
+                                           Qabul qilish
                                          </Button>
                                        )}
                                     </div>

@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { matchStaff, isIncomePayment } from '@/utils/clinicMetrics';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
@@ -200,7 +201,7 @@ export default function MobilePayroll() {
       setLoading(true);
       const [users, pays] = await Promise.all([
         base44.entities.User.list('name', 100),
-        base44.entities.Payment.filter({ type: 'Income' }, '-date', 500)
+        base44.entities.Payment.list('-date', 5000)
       ]);
 
       const currentClinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
@@ -376,8 +377,9 @@ export default function MobilePayroll() {
     const now = new Date();
 
     const allDoctorIncomePayments = payments.filter(p => {
-      const isDoc = String(p.doctor_id) === String(doctorId);
-      const isIncome = (p.type || '').toLowerCase() === 'income';
+      const matched = matchStaff(p, doctors);
+      const isDoc = matched ? String(matched.id) === String(doctorId) : String(p.doctor_id) === String(doctorId);
+      const isIncome = isIncomePayment(p);
       return isDoc && isIncome;
     });
 
@@ -664,14 +666,14 @@ export default function MobilePayroll() {
             <tr><th>Shifokor:</th><td><strong>${doc.name || doc.full_name}</strong></td></tr>
             <tr><th>Mutaxassislik:</th><td>${doc.specialty || 'Stomatolog'}</td></tr>
             <tr><th>Bemorlar soni:</th><td>${doc.patientCount || doc.treatments} ta bemor</td></tr>
-            <tr><th>Umumiy tushum:</th><td>${Number(doc.totalRevenue || 0).toLocaleString()} UZS</td></tr>
-            <tr><th>Hisoblangan ulush:</th><td>${Number(doc.totalSalary || 0).toLocaleString()} UZS</td></tr>
-            ${Number(payForm.bonus || 0) > 0 ? `<tr><th>Bonus:</th><td style="color:#059669">+${Number(payForm.bonus).toLocaleString()} UZS</td></tr>` : ''}
-            ${Number(payForm.deduction || 0) > 0 ? `<tr><th>Ushlab qolingan:</th><td style="color:#dc2626">-${Number(payForm.deduction).toLocaleString()} UZS</td></tr>` : ''}
+            <tr><th>Umumiy tushum:</th><td>${Number(doc.totalRevenue || 0).toLocaleString('ru-RU')} so'm</td></tr>
+            <tr><th>Hisoblangan ulush:</th><td>${Number(doc.totalSalary || 0).toLocaleString('ru-RU')} so'm</td></tr>
+            ${Number(payForm.bonus || 0) > 0 ? `<tr><th>Bonus:</th><td style="color:#059669">+${Number(payForm.bonus).toLocaleString('ru-RU')} so'm</td></tr>` : ''}
+            ${Number(payForm.deduction || 0) > 0 ? `<tr><th>Ushlab qolingan:</th><td style="color:#dc2626">-${Number(payForm.deduction).toLocaleString('ru-RU')} so'm</td></tr>` : ''}
           </table>
           <div class="total-box">
             <div style="font-size:11px;font-weight:bold;color:#475569;">YAKUNIY TO'LANADIGAN SUMMA:</div>
-            <div class="total-amount">${finalSalary.toLocaleString()} UZS</div>
+            <div class="total-amount">${finalSalary.toLocaleString('ru-RU')} so'm</div>
           </div>
           <div class="footer">
             <div>Hisobchi: ___________</div>
@@ -915,7 +917,7 @@ export default function MobilePayroll() {
                             <p className="text-xs font-black text-slate-800 font-mono mt-1">{formatCurrency(doctor.totalRevenue)}</p>
                           </div>
                           <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
-                            <p className="text-[8.5px] font-black text-slate-400 uppercase tracking-widest leading-none">Doktor Ulushi</p>
+                            <p className="text-[8.5px] font-black text-slate-400 uppercase tracking-widest leading-none">Shifokor ulushi</p>
                             <p className="text-xs font-black text-emerald-600 font-mono mt-1">{formatCurrency(doctor.totalSalary)}</p>
                           </div>
                         </div>
@@ -1168,7 +1170,7 @@ export default function MobilePayroll() {
                                 {p.patient_name || p.patient_full_name || 'Bemor'}
                               </span>
                               <span className="font-mono font-black text-emerald-600 text-xs shrink-0">
-                                +{Number(share || 0).toLocaleString()} UZS
+                                +{Number(share || 0).toLocaleString('ru-RU')} so'm
                               </span>
                             </div>
                             <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
@@ -1176,7 +1178,7 @@ export default function MobilePayroll() {
                               <span className="font-mono text-slate-400">{formatDateTime(paymentDate)}</span>
                             </div>
                             <div className="flex items-center justify-between text-[9px] text-slate-400 border-t border-slate-200/60 pt-1 mt-1">
-                              <span>Jami tushum: <strong>{Number(p.amount || 0).toLocaleString()} UZS</strong></span>
+                              <span>Jami tushum: <strong>{Number(p.amount || 0).toLocaleString('ru-RU')} so'm</strong></span>
                               <span>Stavka: <strong>{rate}%</strong></span>
                             </div>
                           </div>
@@ -1246,7 +1248,7 @@ export default function MobilePayroll() {
                 <DialogHeader>
                   <DialogTitle className="text-base font-black text-slate-900 flex items-center gap-1.5">
                     <TrendingUp className="w-4 h-4 text-emerald-600" />
-                    <span>Maosh To'lash Vedomosti</span>
+                    <span>Ish haqi to'lash ro'yxati</span>
                   </DialogTitle>
                 </DialogHeader>
 

@@ -1186,7 +1186,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
     const oldAmount = Number(sp.amount) || 0;
     const changes = [];
     // The edit form shows the absolute amount, so compare against it (an expense is stored negative).
-    if (newAmount !== Math.abs(oldAmount)) changes.push(`summa: ${Math.abs(oldAmount).toLocaleString()} → ${newAmount.toLocaleString()} UZS`);
+    if (newAmount !== Math.abs(oldAmount)) changes.push(`summa: ${Math.abs(oldAmount).toLocaleString('ru-RU')} → ${newAmount.toLocaleString('ru-RU')} so'm`);
     if ((values.method || '') !== (sp.method || '')) changes.push(`usul: ${getPaymentMethodLabel(sp.method, t)} → ${getPaymentMethodLabel(values.method, t)}`);
     if ((values.notes || '') !== (stripHiddenTags(sp.notes) || '')) changes.push('izoh');
     if (changes.length === 0) {
@@ -3018,7 +3018,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
                          className="w-full h-14 rounded-xl border-none bg-slate-50 px-5 pr-16 font-[900] text-2xl text-[#0d9488] placeholder:text-slate-300 focus:ring-0 outline-none text-center tracking-wider"
                          placeholder="Summa"
                        />
-                       <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-slate-300 text-sm uppercase">UZS</span>
+                       <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-slate-300 text-sm uppercase">so'm</span>
                      </div>
                      <div className="payment-add-chips" data-payment-quick-chips="true">
                        {PAYMENT_QUICK_AMOUNTS.map(val => (
@@ -3239,8 +3239,8 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
             <div className="payment-add-footer-sum">
               <span className="payment-add-footer-sum-label">{t('common.totalSum') || 'Jami Summa'}</span>
               <span className="payment-add-footer-sum-value">
-                {form.amount ? Number(form.amount).toLocaleString() : '—'}
-                <span className="text-xs font-bold text-teal-700"> UZS</span>
+                {form.amount ? Number(form.amount).toLocaleString('ru-RU') : '—'}
+                <span className="text-xs font-bold text-teal-700"> so'm</span>
               </span>
             </div>
             <button
@@ -3413,8 +3413,8 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
                     </div>
                     <div className="text-2xl font-mono font-black text-white tracking-tight flex items-baseline gap-1.5 mt-1">
                       <span className="text-emerald-400">{paymentAmount < 0 ? '-' : '+'}</span>
-                      {Math.abs(paymentAmount).toLocaleString()}
-                      <span className="text-xs font-sans font-bold text-slate-400">UZS</span>
+                      {Math.abs(paymentAmount).toLocaleString('ru-RU')}
+                      <span className="text-xs font-sans font-bold text-slate-400">so'm</span>
                     </div>
                   </div>
                 </div>
@@ -3516,14 +3516,14 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                     <span className="block text-[10px] font-black uppercase tracking-widest text-emerald-700">Ushbu to'lov</span>
                     <span className="block text-2xl font-black font-mono text-emerald-700 mt-0.5">
-                      {paymentAmount < 0 ? '-' : '+'}{Math.abs(paymentAmount).toLocaleString()} <small className="text-xs font-sans font-bold">UZS</small>
+                      {paymentAmount < 0 ? '-' : '+'}{Math.abs(paymentAmount).toLocaleString('ru-RU')} <small className="text-xs font-sans font-bold">so'm</small>
                     </span>
                     <span className="block text-[11px] font-semibold text-emerald-800/80 mt-0.5">{methodLabel} · {paidWhen}</span>
                   </div>
                   <div className={`rounded-xl border px-4 py-3 ${debtAtPaymentTime > 0 ? 'border-rose-200 bg-rose-50' : 'border-emerald-200 bg-emerald-50'}`}>
                     <span className={`block text-[10px] font-black uppercase tracking-widest ${debtAtPaymentTime > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>Qoldiq qarz</span>
                     <span className={`block text-2xl font-black font-mono mt-0.5 ${debtAtPaymentTime > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                      {debtAtPaymentTime > 0 ? debtAtPaymentTime.toLocaleString() : "0"} <small className="text-xs font-sans font-bold">UZS</small>
+                      {debtAtPaymentTime > 0 ? debtAtPaymentTime.toLocaleString('ru-RU') : "0"} <small className="text-xs font-sans font-bold">so'm</small>
                     </span>
                     <span className={`block text-[11px] font-semibold mt-0.5 ${debtAtPaymentTime > 0 ? 'text-rose-800/80' : 'text-emerald-800/80'}`}>
                       {debtAtPaymentTime > 0 ? "Hali to'lanishi kerak" : "✓ To'liq to'langan"}
@@ -3538,7 +3538,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
                         <Receipt className="w-3.5 h-3.5 text-emerald-600" />
                         {t('payments.paidForServices')}
                       </span>
-                      <span className="text-[9.5px] font-bold text-slate-500">UZS</span>
+                      <span className="text-[9.5px] font-bold text-slate-500">so'm</span>
                     </div>
                     <table className="w-full border-collapse text-xs">
                       <thead>

@@ -270,7 +270,7 @@ export default function MobileLayout({ children }) {
 
                 {/* Boshqaruv / Admin */}
                 <div>
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Boshqaruv / Admin</h4>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Boshqaruv</h4>
                   <div className="grid grid-cols-4 gap-2">
                     {MORE_NAV_ITEMS.filter(i => i.category === 'admin').map((item) => (
                       <button

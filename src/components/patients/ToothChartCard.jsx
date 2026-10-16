@@ -42,24 +42,24 @@ const LEGEND = [
   { id: 'caries', label: 'Karies', color: '#E11D48' },
   { id: 'plomba', label: 'Plomba', color: '#2563EB' },
   { id: 'endo', label: 'Endo (kanal)', color: '#7C3AED' },
-  { id: 'sirkon', label: 'Toj / sirkon', color: '#CA8A04' },
+  { id: 'sirkon', label: 'Toj / sirkoniy', color: '#CA8A04' },
   { id: 'implant', label: 'Implant', color: '#64748B' },
   { id: 'missing', label: 'Olib tashlangan', color: '#94A3B8' },
   { id: 'breket', label: 'Breket', color: '#DB2777' },
   { id: 'protez', label: 'Protez', color: '#0F766E' },
-  { id: 'babochka', label: 'Babochka', color: '#C2410C' },
+  { id: 'babochka', label: 'Kapalak protez', color: '#C2410C' },
 ];
 
 const QUICK = [
   { id: 'caries', label: 'Karies', service: 'Karies' },
   { id: 'plomba', label: 'Plomba', service: 'Plomba' },
   { id: 'endo', label: 'Endo', service: 'Kanal davolash' },
-  { id: 'sirkon', label: 'Toj / sirkon', service: 'Sirkon toj' },
+  { id: 'sirkon', label: 'Toj / sirkoniy', service: 'Sirkon toj' },
   { id: 'implant', label: 'Implant', service: 'Implant' },
   { id: 'missing', label: 'Olib tashlash', service: 'Tish olish' },
   { id: 'breket', label: 'Breket', service: 'Breket', jaw: 'breket' },
   { id: 'protez', label: 'Protez', service: 'Protez', jaw: 'protez' },
-  { id: 'babochka', label: 'Babochka', service: 'Babochka protez', jaw: 'babochka' },
+  { id: 'babochka', label: 'Kapalak protez', service: 'Babochka protez', jaw: 'babochka' },
 ];
 
 function ToothGlyph({ className }) {

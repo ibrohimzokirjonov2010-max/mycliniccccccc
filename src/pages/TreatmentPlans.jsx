@@ -112,10 +112,10 @@ export default function TreatmentPlans() {
     queryKey: ['treatmentPlans', isDoctor, user?.id],
     queryFn: async () => {
       if (isDoctor && user?.id) {
-        const docPlans = await base44.entities.TreatmentPlan.filter({ doctor_id: user.id }, '-created_date', 100).catch(() => []);
+        const docPlans = await base44.entities.TreatmentPlan.filter({ doctor_id: user.id }, '-created_date', 5000).catch(() => []);
         return docPlans || [];
       }
-      return await base44.entities.TreatmentPlan.list('-created_date', 100);
+      return await base44.entities.TreatmentPlan.list('-created_date', 5000);
     },
     staleTime: 3 * 60 * 1000,
   });
@@ -565,7 +565,7 @@ export default function TreatmentPlans() {
                 {s.isNumber ? (
                   <span>{s.value} <span className="text-xs font-bold text-slate-400">{language === 'ru' ? '' : 'ta'}</span></span>
                 ) : (
-                  <span>{Number(s.value).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">UZS</span></span>
+                  <span>{Number(s.value).toLocaleString('ru-RU')} <span className="text-[10px] font-bold text-slate-400">so'm</span></span>
                 )}
               </div>
               <p className="text-[9.5px] font-medium text-slate-400 mt-0.5">{s.countText}</p>
@@ -858,8 +858,8 @@ export default function TreatmentPlans() {
                       {/* JAMI QIYMAT Cell */}
                       <td className={`text-right border-r border-slate-200/70 whitespace-nowrap bg-emerald-50/30 ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
                         <span className="font-mono font-black text-emerald-600 text-xs tabular-nums">
-                          {Number(p.total_price || 0).toLocaleString()}
-                          <span className="text-[9.5px] font-semibold text-emerald-500 ml-1">UZS</span>
+                          {Number(p.total_price || 0).toLocaleString('ru-RU')}
+                          <span className="text-[9.5px] font-semibold text-emerald-500 ml-1">so'm</span>
                         </span>
                       </td>
 
@@ -1057,7 +1057,7 @@ export default function TreatmentPlans() {
                       {language === 'ru' ? 'ОБЩАЯ СТОИМОСТЬ:' : 'Jami Qiymati:'}
                     </span>
                     <span className="text-base font-black font-mono text-emerald-700">
-                      {Number(activeDetailPlan.total_price || 0).toLocaleString()} UZS
+                      {Number(activeDetailPlan.total_price || 0).toLocaleString('ru-RU')} so'm
                     </span>
                   </div>
                 </div>
@@ -1137,7 +1137,7 @@ export default function TreatmentPlans() {
                         <th className="w-10 px-2 py-2 text-center border-r border-slate-200">{language === 'ru' ? 'Статус' : 'Holat'}</th>
                         <th className="px-3 py-2 border-r border-slate-200">{language === 'ru' ? 'Название услуги' : 'Xizmat Nomi'}</th>
                         <th className="w-20 px-2 py-2 text-center border-r border-slate-200">{language === 'ru' ? 'Зуб' : 'Tish'}</th>
-                        <th className="px-3 py-2 text-right">{language === 'ru' ? 'Цена (UZS)' : 'Narxi (UZS)'}</th>
+                        <th className="px-3 py-2 text-right">{language === 'ru' ? 'Цена (UZS)' : 'Narxi (so\'m)'}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200/70 font-mono">
@@ -1201,7 +1201,7 @@ export default function TreatmentPlans() {
 
                               {/* Price */}
                               <td className="px-3 py-2 text-right font-bold text-slate-800">
-                                {Number(srv.price || 0).toLocaleString()} UZS
+                                {Number(srv.price || 0).toLocaleString('ru-RU')} so'm
                               </td>
                             </tr>
                           );

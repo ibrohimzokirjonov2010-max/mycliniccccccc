@@ -382,7 +382,7 @@ export default function Settings() {
                 className="rounded-lg px-3.5 py-2 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs font-bold text-xs flex items-center gap-1.5 transition-all text-slate-600"
               >
                 <Globe className="w-3.5 h-3.5 text-indigo-600" /> 
-                {t('settings.tabs.websiteIntegration') || "Vebsayt Integratsiyasi"}
+                {t('settings.tabs.websiteIntegration') || "Sayt bilan bog'lash"}
               </TabsTrigger>
 
               <TabsTrigger 
@@ -390,7 +390,7 @@ export default function Settings() {
                 className="rounded-lg px-3.5 py-2 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs font-bold text-xs flex items-center gap-1.5 transition-all text-slate-600"
               >
                 <LayoutIcon className="w-3.5 h-3.5 text-emerald-600" /> 
-                {t('settings.tabs.publicPage') || "Ommaviy sahifa"}
+                {t('settings.tabs.publicPage') || "Klinika sahifasi"}
               </TabsTrigger>
 
               <TabsTrigger 

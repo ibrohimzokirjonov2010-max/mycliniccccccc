@@ -75,7 +75,7 @@ export default function ReportsDashboard({
     { id: 'overview', label: tx(language, "Umumiy ko'rinish", 'Обзор', 'Overview'), icon: LayoutGrid },
     { id: 'doctors', label: tx(language, 'Shifokorlar reytingi', 'Рейтинг врачей', 'Doctor ranking'), icon: Award, count: doctorLeaderboard.length },
     { id: 'finance', label: tx(language, 'Oylik kirim & chiqim', 'Доходы и расходы', 'Income & expense'), icon: DollarSign, count: monthlyFinanceReport.length },
-    { id: 'services', label: tx(language, 'Top xizmatlar', 'Топ услуг', 'Top services'), icon: Layers, count: servicesReport.length },
+    { id: 'services', label: tx(language, 'Xizmatlar', 'Топ услуг', 'Top services'), icon: Layers, count: servicesReport.length },
     { id: 'appointments', label: tx(language, 'Qabullar taqsimoti', 'Приёмы', 'Visits'), icon: Receipt, count: appointmentsStatusReport.length },
   ];
 
@@ -164,7 +164,7 @@ export default function ReportsDashboard({
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 flex flex-wrap items-center gap-2">
             {tx(language, 'Hisobotlar', 'Отчёты', 'Reports')}
             <span className="text-[10px] font-extrabold tracking-widest uppercase text-teal-800 bg-teal-50 border border-teal-100 rounded-full px-2 py-0.5">
-              {tx(language, 'Analitika va boshqaruv', 'Аналитика и управление', 'Analytics')}
+              {tx(language, 'Hisobot va boshqaruv', 'Аналитика и управление', 'Analytics')}
             </span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
@@ -227,14 +227,14 @@ export default function ReportsDashboard({
           iconClass="bg-emerald-50 text-emerald-600"
           bar={incomeBar}
           barClass="bg-emerald-500"
-          foot={phone ? (stats.totalIncome ? `${fmtMoney(stats.totalIncome)}` : '—') : `${tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')}: ${stats.avgCheck ? fmtMoney(stats.avgCheck) : '—'}`}
+          foot={phone ? (stats.totalIncome ? `${fmtMoney(stats.totalIncome)}` : '—') : `${tx(language, "O'rtacha to'lov", 'Средний платёж', 'Avg. payment')}: ${stats.avgCheck ? fmtMoney(stats.avgCheck) : '—'}`}
           trend={trends?.income}
           period={period}
           trendNote={trends?.note}
         />
         <KpiCard
           compact={phone}
-          label={phone ? tx(language, 'Chiqimlar', 'Расходы', 'Expenses') : tx(language, 'Chiqimlar / xarajat', 'Расходы', 'Expenses')}
+          label={phone ? tx(language, 'Chiqimlar', 'Расходы', 'Expenses') : tx(language, 'Chiqimlar (ish haqi bilan)', 'Расходы (с зарплатой)', 'Expenses (incl. salaries)')}
           value={phone ? fmtMoney(stats.totalExpense).replace(/\s*so['ʻ‘’]m$/i, '') : <>{fmtMoney(stats.totalExpense)}</>}
           unit={phone ? "so'm" : undefined}
           tint="bg-rose-50/60 border-rose-100"
@@ -257,7 +257,7 @@ export default function ReportsDashboard({
           icon={<ArrowUpRight className="w-4 h-4" />}
           bar={profitBar}
           barClass="bg-emerald-400"
-          foot={phone ? (margin != null ? `${tx(language, 'Rentabellik', 'Рентабельность', 'Margin')} ${margin}%` : '—') : (margin != null ? `${tx(language, 'Rentabellik', 'Рентабельность', 'Margin')}: ${margin}%` : tx(language, 'Daromad yo\'q', 'Нет дохода', 'No income'))}
+          foot={phone ? (margin != null ? `${tx(language, 'Foyda ulushi', 'Рентабельность', 'Margin')} ${margin}%` : '—') : (margin != null ? `${tx(language, 'Foyda ulushi', 'Рентабельность', 'Margin')}: ${margin}%` : tx(language, 'Daromad yo\'q', 'Нет дохода', 'No income'))}
           trend={trends?.profit}
           period={period}
           trendNote={trends?.note}
@@ -268,7 +268,7 @@ export default function ReportsDashboard({
         <div className="mb-3 bg-white border border-slate-200/80 rounded-[18px] p-3 grid grid-cols-2 divide-x divide-slate-100">
           <div className="flex items-center gap-2.5 pr-2 min-w-0">
             <span className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 grid place-items-center shrink-0"><FileText className="w-5 h-5" /></span>
-            <div className="min-w-0"><p className="text-[13px] text-slate-500">{tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')}:</p><p className="text-[16px] font-extrabold text-slate-900 whitespace-nowrap">{stats.avgCheck ? fmtMoney(stats.avgCheck) : '—'}</p></div>
+            <div className="min-w-0"><p className="text-[13px] text-slate-500">{tx(language, "O'rtacha to'lov", 'Средний платёж', 'Avg. payment')}:</p><p className="text-[16px] font-extrabold text-slate-900 whitespace-nowrap">{stats.avgCheck ? fmtMoney(stats.avgCheck) : '—'}</p></div>
           </div>
           <div className="flex items-center gap-2.5 pl-3 min-w-0">
             <span className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 grid place-items-center shrink-0"><Users className="w-5 h-5" /></span>
@@ -409,7 +409,7 @@ export default function ReportsDashboard({
                   <option value="appointments">{tx(language, 'Qabullar', 'Приёмы', 'Visits')}</option>
                   <option value="completed">{tx(language, 'Bajarilgan', 'Выполнено', 'Completed')}</option>
                   <option value="patients">{tx(language, 'Bemorlar', 'Пациенты', 'Patients')}</option>
-                  <option value="avg_check">{tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')}</option>
+                  <option value="avg_check">{tx(language, "O'rtacha to'lov", 'Средний платёж', 'Avg. payment')}</option>
                   <option value="share">{tx(language, 'Ulush', 'Доля', 'Share')}</option>
                   <option value="name">{tx(language, 'Ism', 'Имя', 'Name')}</option>
                 </select>
@@ -422,7 +422,7 @@ export default function ReportsDashboard({
                 <option value="appointments">{tx(language, 'Qabullar', 'Приёмы', 'Visits')}</option>
                 <option value="completed">{tx(language, 'Bajarilgan', 'Выполнено', 'Completed')}</option>
                 <option value="patients">{tx(language, 'Bemorlar', 'Пациенты', 'Patients')}</option>
-                <option value="avg_check">{tx(language, "O'rtacha chek", 'Средний чек', 'Avg. check')}</option>
+                <option value="avg_check">{tx(language, "O'rtacha to'lov", 'Средний платёж', 'Avg. payment')}</option>
                 <option value="share">{tx(language, 'Ulush', 'Доля', 'Share')}</option>
                 <option value="name">{tx(language, 'Ism', 'Имя', 'Name')}</option>
               </select>
@@ -521,7 +521,7 @@ export default function ReportsDashboard({
             <section className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm min-w-0">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h3 className="text-sm font-bold">{tx(language, 'Top xizmatlar', 'Топ услуг', 'Top services')}</h3>
+                  <h3 className="text-sm font-bold">{tx(language, 'Eng ko\'p bajarilgan xizmatlar', 'Топ услуг', 'Top services')}</h3>
                   <p className="text-[11.5px] text-slate-400">{tx(language, 'Tushum bo\'yicha', 'По выручке', 'By revenue')}</p>
                 </div>
                 {activeTab === 'overview' && (
@@ -566,7 +566,7 @@ export default function ReportsDashboard({
 
       {activeTab === 'services' && (
         <section className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
-          <h3 className="text-sm font-bold mb-3">{tx(language, 'Top xizmatlar', 'Топ услуг', 'Top services')}</h3>
+          <h3 className="text-sm font-bold mb-3">{tx(language, 'Eng ko\'p bajarilgan xizmatlar', 'Топ услуг', 'Top services')}</h3>
           {servicesReport.length === 0 && <Empty text={tx(language, 'Xizmatlar topilmadi.', 'Услуги не найдены.', 'No services.')} />}
           <div className="space-y-3">
             {servicesReport.map((s, i) => (

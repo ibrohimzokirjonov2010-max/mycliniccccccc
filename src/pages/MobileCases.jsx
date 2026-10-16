@@ -156,8 +156,8 @@ export default function MobileCases() {
       {/* HEADER */}
       <div className="z-40 bg-white/90 backdrop-blur-xl px-4 pt-4 pb-3">
         <div className="mb-3">
-           <h1 className="text-[24px] font-extrabold tracking-tight text-slate-900">Mening keyslarim</h1>
-           <p className="text-[14px] font-medium text-[#1499AD]/80">Klinik keyslar va bemor ishlari</p>
+           <h1 className="text-[24px] font-extrabold tracking-tight text-slate-900">Davolash natijalari</h1>
+           <p className="text-[14px] font-medium text-[#1499AD]/80">Oldin/keyin rasmlari va bemor ishlari</p>
         </div>
 
         <div className="relative">
@@ -177,7 +177,7 @@ export default function MobileCases() {
           <AlertCircle className="w-4 h-4" />
         </div>
         <p className="text-[13px] font-bold text-rose-600 tracking-tight leading-snug">
-          Iltimos xotira to'lmasligi uchun sifatli rasmlarni yuklang
+          Rasm hajmi 2 MB dan oshmasin
         </p>
       </div>
 
@@ -727,7 +727,7 @@ function MobileUploadModal({ isOpen, onClose, onSave, existingTags = [], patient
         <div className="shrink-0 px-4 pt-4 pb-2 text-center relative">
           <button onClick={onClose} aria-label="Yopish" className="absolute right-3 top-3 w-11 h-11 rounded-full bg-slate-100 text-slate-600 grid place-items-center"><X className="w-5 h-5" /></button>
           <DialogTitle className="text-[22px] font-extrabold text-slate-900">Yangi klinik keys</DialogTitle>
-          <p className="text-[14px] font-medium text-slate-400">Klinik keysni qo'shish va bo'lishish</p>
+          <p className="text-[14px] font-medium text-slate-400">Natijani qo'shish va bo'lishish</p>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5 no-scrollbar">

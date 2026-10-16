@@ -26,7 +26,7 @@ import ImplantBrandsModal, { getOrSeedImplantBrands, calculateBrandStockStats } 
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
 import { IMPLANT_STATUS_ORDER, implantStatusClass, implantStatusLabel, normalizeImplantStatus } from '@/lib/implantStatus';
-import { cn } from '@/lib/utils';
+import { cn, formatPhone } from '@/lib/utils';
 import { implantRecordFdis } from '@/lib/fdiNotation';
 import { implantCasePrice } from '@/components/implants/linkedImplantServices';
 import { implantBrandNames } from '@/components/implants/implantFactura';
@@ -68,7 +68,7 @@ export const resolveService = (implant) => {
 // Service Visual Config
 const SERVICE_CONFIG = {
   'Implant':                       { label: 'Implant',              icon: ImplantIcon,        badge: 'bg-teal-50 text-teal-700 border-teal-200' },
-  'Formik':                        { label: 'Formik',               icon: FormerIcon,         badge: 'bg-amber-50 text-amber-800 border-amber-200' },
+  'Formik':                        { label: 'Formirovatel',         icon: FormerIcon,         badge: 'bg-amber-50 text-amber-800 border-amber-200' },
   'Karonka':                       { label: 'Karonka',              icon: CrownIcon,          badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
   'Zirkon Karonka':                { label: 'Zirkon Karonka',       icon: CrownIcon,          badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
   'Metallokeramika Karonka':       { label: 'Metallokeramika',      icon: CrownIcon,          badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
@@ -554,14 +554,14 @@ export default function Implants() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">{language === 'ru' ? 'Отделение имплантологии' : language === 'en' ? 'Implantology Department' : "Implantologiya Bo'limi"}</h1>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">{language === 'ru' ? 'Отделение имплантологии' : language === 'en' ? 'Implantology Department' : "Implantlar ro'yxati"}</h1>
             <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-teal-50 text-teal-700 border border-teal-200 flex items-center gap-1.5">
               <ImplantIcon className="w-3.5 h-3.5 text-teal-600" />
               {language === 'ru' ? `${implants.length} операций` : language === 'en' ? `${implants.length} procedures` : `${implants.length} ta amaliyot`}
             </span>
           </div>
           <p className="text-xs font-semibold text-slate-400 mt-0.5">
-            {language === 'ru' ? 'Реестр и мониторинг имплантов, формирователей, коронок и хирургических услуг' : 'Implant, Formik, Qo\'shimcha xizmatlar va jarrohlik amaliyotlari reyestri'}
+            {language === 'ru' ? 'Реестр и мониторинг имплантов, формирователей, коронок и хирургических услуг' : 'Implantlar, formirovatellar va qo\'shimcha xizmatlar ro\'yxati'}
           </p>
         </div>
 
@@ -573,7 +573,7 @@ export default function Implants() {
             className="gap-1.5 h-9.5 rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white cursor-pointer shadow-xs"
           >
             <BrandStockIcon className="w-4 h-4 text-indigo-600" />
-            <span>{language === 'ru' ? 'Бренды и склад' : language === 'en' ? 'Brands & Stock' : 'Brendlar & Zaxira'}</span>
+            <span>{language === 'ru' ? 'Бренды и склад' : language === 'en' ? 'Brands & Stock' : 'Firmalar va zaxira'}</span>
           </Button>
 
           <Button 
@@ -583,7 +583,7 @@ export default function Implants() {
             className="gap-1.5 h-9.5 rounded-xl border-indigo-200 text-xs font-black text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 hover:text-indigo-900 transition-all cursor-pointer shadow-xs"
           >
             <Sparkles className="w-4 h-4 text-indigo-600" />
-            <span>{language === 'ru' ? 'Доп. услуги & Прайс-лист' : language === 'en' ? 'Extra Services & Prices' : "Qo'shimcha xizmatlar & Prays-list"}</span>
+            <span>{language === 'ru' ? 'Доп. услуги & Прайс-лист' : language === 'en' ? 'Extra Services & Prices' : "Qo'shimcha xizmatlar va narxlar"}</span>
           </Button>
 
           <Button 
@@ -695,12 +695,12 @@ export default function Implants() {
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
               { id: 'all', label: language === 'ru' ? "Все" : language === 'en' ? "All" : "Barchasi", count: totalCount, icon: TableIcon, activeColor: "text-slate-200", defaultColor: "text-slate-500" },
-              { id: 'incomplete', label: language === 'ru' ? "Требует ввода" : language === 'en' ? "Needs Entry" : "Kiritish talab", count: incompleteList.length, alert: incompleteList.length > 0, icon: KiritishTalabIcon, activeColor: "text-amber-300", defaultColor: "text-amber-500" },
+              { id: 'incomplete', label: language === 'ru' ? "Требует ввода" : language === 'en' ? "Needs Entry" : "Ma'lumot to'ldirilmagan", count: incompleteList.length, alert: incompleteList.length > 0, icon: KiritishTalabIcon, activeColor: "text-amber-300", defaultColor: "text-amber-500" },
               { id: 'implant', label: language === 'ru' ? "Имплант" : "Implant", count: serviceStats.implantCount, icon: ImplantIcon, activeColor: "text-teal-300", defaultColor: "text-teal-600" },
-              { id: 'formik', label: language === 'ru' ? "Формирователь" : language === 'en' ? "Former" : "Formik", count: serviceStats.formikCount, icon: FormerIcon, activeColor: "text-amber-300", defaultColor: "text-amber-600" },
+              { id: 'formik', label: language === 'ru' ? "Формирователь" : language === 'en' ? "Former" : "Formirovatel", count: serviceStats.formikCount, icon: FormerIcon, activeColor: "text-amber-300", defaultColor: "text-amber-600" },
               { id: 'extra', label: language === 'ru' ? "Доп. услуги" : language === 'en' ? "Extra Services" : "Qo'shimcha xizmatlar", count: serviceStats.extraCount || 0, icon: Sparkles, activeColor: "text-indigo-300", defaultColor: "text-indigo-600" },
-              { id: 'control', label: language === 'ru' ? "Требует контроля" : language === 'en' ? "Needs Control" : "Nazorat talab", count: needsControl.length, alert: needsControl.length > 0, icon: ClinicalControlIcon, activeColor: "text-rose-300", defaultColor: "text-rose-500" },
-              { id: 'analytics', label: language === 'ru' ? "Бренды и склад" : language === 'en' ? "Brands & Stock" : "Brendlar & Zaxira", count: brands.length, icon: BrandStockIcon, activeColor: "text-purple-300", defaultColor: "text-purple-600" },
+              { id: 'control', label: language === 'ru' ? "Требует контроля" : language === 'en' ? "Needs Control" : "Nazorat kerak", count: needsControl.length, alert: needsControl.length > 0, icon: ClinicalControlIcon, activeColor: "text-rose-300", defaultColor: "text-rose-500" },
+              { id: 'analytics', label: language === 'ru' ? "Бренды и склад" : language === 'en' ? "Brands & Stock" : "Firmalar va zaxira", count: brands.length, icon: BrandStockIcon, activeColor: "text-purple-300", defaultColor: "text-purple-600" },
             ].map(tab => {
               const isActive = activeTab === tab.id;
               const TabIcon = tab.icon;
@@ -1031,7 +1031,7 @@ export default function Implants() {
                                 {safeRender(i.patient_name)}
                               </span>
                               <span className="text-[10px] font-mono text-slate-400 block truncate">
-                                {safeRender(i.patient_phone, language === 'ru' ? 'Нет телефона' : 'Telefon yo\'q')}
+                                {safeRender(i.patient_phone ? formatPhone(i.patient_phone) : i.patient_phone, language === 'ru' ? 'Нет телефона' : 'Telefon yo\'q')}
                               </span>
                             </div>
                           </div>

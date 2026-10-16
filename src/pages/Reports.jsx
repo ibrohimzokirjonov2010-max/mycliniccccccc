@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { dateKey, fmtMoney, isIncomePayment, roleLabel } from '@/utils/clinicMetrics';
+import { dateKey, fmtMoney, isIncomePayment, matchStaff, roleLabel } from '@/utils/clinicMetrics';
 import { displayDoctorName, getTreatmentTypeLabel } from '@/lib/utils';
 import ReportsDashboard from '@/pages/reports/ReportsDashboard';
 
@@ -61,10 +61,10 @@ export default function Reports() {
       try {
         setLoading(true);
         const [pays, pats, appts, exps, users] = await Promise.all([
-          base44.entities.Payment.list('-date', 500),
-          base44.entities.Patient.list('-created_date', 300),
-          base44.entities.Appointment.list('-date', 500),
-          base44.entities.Expense.list('-date', 300),
+          base44.entities.Payment.list('-date', 5000),
+          base44.entities.Patient.list('-created_date', 5000),
+          base44.entities.Appointment.list('-date', 5000),
+          base44.entities.Expense.list('-date', 5000),
           base44.entities.User.list('name', 100),
         ]);
         setPayments(pays || []);
@@ -135,15 +135,25 @@ export default function Reports() {
   const filteredAppointments = useMemo(() => appointments.filter(a => filterByPeriod(a.date)), [appointments, filterByPeriod]);
   const filteredExpenses = useMemo(() => expenses.filter(e => filterByPeriod(e.date)), [expenses, filterByPeriod]);
 
+  // Shifokor ulushi (komissiya) — Xodimlar / Ish haqi bilan bir xil qoida
+  const commissionOf = useCallback((list) => list.filter(isIncomePayment).reduce((sum, p) => {
+    const staff = matchStaff(p, doctors);
+    const rate = Number(p.commission_rate) || Number(staff?.commission_rate ?? staff?.commission ?? 0) || 0;
+    return sum + (Number(p.amount) || 0) * (rate / 100);
+  }, 0), [doctors]);
+
   // Overall Financial Stats
   const stats = useMemo(() => {
-    const totalIncome = filteredPayments.filter(isIncomePayment).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    const totalExpense = filteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const incomePayments = filteredPayments.filter(isIncomePayment);
+    const totalIncome = incomePayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const salaryTotal = Math.round(commissionOf(incomePayments));
+    const totalExpense = filteredExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) + salaryTotal;
     const netProfit = totalIncome - totalExpense;
     const completedAppts = filteredAppointments.filter(a => (a.status || '').toLowerCase() === 'completed').length;
-    const avgCheck = completedAppts > 0 ? Math.round(totalIncome / completedAppts) : (filteredPayments.length > 0 ? Math.round(totalIncome / filteredPayments.length) : 0);
-    return { totalIncome, totalExpense, netProfit, completedAppts, avgCheck };
-  }, [filteredPayments, filteredExpenses, filteredAppointments]);
+    // O'rtacha to'lov = tushum / to'lovlar soni
+    const avgCheck = incomePayments.length > 0 ? Math.round(totalIncome / incomePayments.length) : 0;
+    return { totalIncome, totalExpense, salaryTotal, netProfit, completedAppts, avgCheck };
+  }, [filteredPayments, filteredExpenses, filteredAppointments, commissionOf]);
 
   // ═════════════════════════════════════════════════════════════════════════
   // 1. DOCTORS LEADERBOARD DATA & EXCEL SORTING
@@ -325,6 +335,7 @@ export default function Reports() {
       if (month) {
         if (!map[month]) map[month] = { rawMonth: month, income: 0, expense: 0, appointments: 0 };
         map[month].income += (Number(p.amount) || 0);
+        map[month].expense += commissionOf([p]);
       }
     });
 
@@ -387,7 +398,7 @@ export default function Reports() {
     });
 
     return list;
-  }, [payments, expenses, appointments, formatMonthLabel, finSortField, finSortOrder]);
+  }, [payments, expenses, appointments, commissionOf, formatMonthLabel, finSortField, finSortOrder]);
 
   const visibleMonths = useMemo(() => {
     return monthlyFinanceReport.filter((m) => period === 'all' || filterByPeriod(`${m.rawMonth}-15`));
@@ -470,7 +481,7 @@ export default function Reports() {
       const rawStatus = a.status || '';
       const lower = rawStatus.toLowerCase();
       let status = language === 'ru' ? 'Запланировано' : language === 'en' ? 'Scheduled' : 'Rejalashtirilgan';
-      if (lower === 'completed' || lower === 'done' || lower === 'bajarilgan') status = language === 'ru' ? 'Выполнено' : language === 'en' ? 'Completed' : 'Bajarilgan';
+      if (lower === 'completed' || lower === 'done' || lower === 'bajarilgan') status = language === 'ru' ? 'Выполнено' : language === 'en' ? 'Completed' : 'Bajarildi';
       else if (lower === 'cancelled' || lower === 'canceled') status = language === 'ru' ? 'Отменено' : language === 'en' ? 'Cancelled' : 'Bekor qilingan';
       else if (lower.includes('no_show') || lower.includes('no-show') || lower.includes('noshow') || lower.includes('kelmagan')) status = language === 'ru' ? 'Неявка' : language === 'en' ? 'No-show' : 'Kelmagan';
       else if (lower.includes('progress')) status = language === 'ru' ? 'На приёме' : language === 'en' ? 'In progress' : 'Qabulda';
@@ -482,7 +493,7 @@ export default function Reports() {
 
     const total = filteredAppointments.length || 1;
     const colors = {
-      'Bajarilgan': '#059669',
+      'Bajarildi': '#059669',
       'Выполнено': '#059669',
       'Completed': '#059669',
       'Rejalashtirilgan': '#3B82F6',
@@ -596,7 +607,8 @@ export default function Reports() {
     };
     const pack = (from, to) => {
       const income = payments.filter((p) => isIncomePayment(p) && inRange(p.date, from, to)).reduce((s, p) => s + (Number(p.amount) || 0), 0);
-      const expense = expenses.filter((e) => inRange(e.date, from, to)).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+      const expense = expenses.filter((e) => inRange(e.date, from, to)).reduce((s, e) => s + (Number(e.amount) || 0), 0)
+        + commissionOf(payments.filter((p) => inRange(p.date, from, to)));
       const appts = appointments.filter((a) => inRange(a.date, from, to));
       return { income, expense, profit: income - expense, appointments: appts.length };
     };
@@ -662,7 +674,7 @@ export default function Reports() {
       expense: change(current.expense, previous.expense, 'money'),
       profit: change(current.profit, previous.profit, 'money'),
     };
-  }, [period, payments, expenses, appointments, stats, filteredAppointments.length, lastMonthStr, currentMonthStr, now, language, customFrom, customTo]);
+  }, [period, payments, expenses, commissionOf, appointments, stats, filteredAppointments.length, lastMonthStr, currentMonthStr, now, language, customFrom, customTo]);
 
   const insights = useMemo(() => {
     const items = [];

@@ -228,7 +228,7 @@ export function roleAccess(role) {
 
 export function roleLabel(role, language = 'uz') {
   const map = {
-    uz: { doctor: 'Shifokor', admin: 'Administrator', receptionist: 'Registratura' },
+    uz: { doctor: 'Shifokor', admin: 'Administrator', receptionist: 'Qabulxona' },
     ru: { doctor: 'Врач', admin: 'Администратор', receptionist: 'Регистратура' },
     en: { doctor: 'Doctor', admin: 'Administrator', receptionist: 'Reception' },
   };

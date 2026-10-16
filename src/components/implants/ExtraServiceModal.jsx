@@ -324,7 +324,7 @@ export default function ExtraServiceModal({
                     {serviceItem ? "Qo'shimcha xizmatni tahrirlash" : "Yangi qo'shimcha xizmat qo'shish"}
                   </DialogTitle>
                   <DialogDescription className="text-[10px] font-bold text-indigo-200 mt-0.5">
-                    Karonka, Abatment, Sinus-lifting, Suyak ekish va boshqa xizmatlar reyestri
+                    Karonka, Abatment, Sinus-lifting, Suyak ekish va boshqa xizmatlar ro'yxati
                   </DialogDescription>
                 </div>
               </div>

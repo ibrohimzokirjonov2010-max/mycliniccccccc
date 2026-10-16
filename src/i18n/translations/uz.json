@@ -1,6 +1,6 @@
 {
   "debts": {
-    "title": "Qarzdorliklar Paneli",
+    "title": "Qarzlar",
     "subtitle": "Barcha qarzdor bemorlar, to'lov ulushlari va moliyaviy balans nazorati",
     "monitoring": "Moliyaviy Monitoring",
     "totalDebt": "UMUMIY QARZDORLIK",
@@ -26,11 +26,11 @@
     "patientProfileTooltip": "Bemor profili",
     "pay": "To'lov",
     "payDebt": "To'lov qilish",
-    "payTooltip": "To'lov qabul qilish / To'lash",
+    "payTooltip": "To'lov qabul qilish",
     "table": {
       "patient": "Bemor",
       "debtAmount": "Qarz miqdori",
-      "paymentShare": "To'lov ulushi",
+      "paymentShare": "To'langan",
       "communicationStatus": "Aloqa holati",
       "actions": "Amallar",
       "paidLabel": "Yopilgan:",
@@ -44,7 +44,7 @@
     "paymentsSection": "To'lovlar Bo'limi",
     "totalDebtSub": "Klinikaga to'lanishi kerak",
     "debtorPatients": "QARZDOR BEMORLAR",
-    "debtorPatientsSub": "Faol debitorlar soni",
+    "debtorPatientsSub": "Qarzdor bemorlar soni",
     "largeDebtors": "YIRIK QARZDORLAR (>5M)",
     "largeDebtorsSub": "Diqqat talab qarzlar",
     "totalPaidShare": "JAMI TO'LANGAN ULUSH",
@@ -55,7 +55,7 @@
     "patientCol": "Bemor (F.I.Sh)",
     "debtCol": "Qarz Miqdori",
     "paidCol": "To'langan",
-    "shareCol": "To'lov Ulushi",
+    "shareCol": "To'langan",
     "contactCol": "Aloqa Holati"
   },
   "common": {
@@ -221,7 +221,7 @@
   },
   "navigation": {
     "subtitle": "Klinika Boshqaruvi",
-    "dashboard": "Boshqaruv paneli",
+    "dashboard": "Bosh sahifa",
     "patients": "Bemorlar",
     "appointments": "Uchrashuvlar",
     "payments": "To'lovlar",
@@ -231,8 +231,8 @@
     "reports": "Hisobotlar",
     "settings": "Sozlamalar",
     "treatmentPlans": "Davolash rejalari",
-    "recalls": "Eslatmalar",
-    "noShow": "Kelgan emas",
+    "recalls": "Qayta chaqirish",
+    "noShow": "Kelmaganlar",
     "debts": "Qarzlar",
     "implants": "Implantlar",
     "technicians": "Laboratoriya",
@@ -243,7 +243,7 @@
     "superAdmin": "Super Admin",
     "marketing": "Marketing",
     "systemName": "Stomatologiya tizimi",
-    "cases": "Mening Keyslarim",
+    "cases": "Davolash natijalari",
     "staff": "Xodimlar",
     "chairsideToday": "Bugungi navbat"
   },
@@ -267,14 +267,14 @@
       "insights": "Tahlil",
       "settings": "Sozlamalar",
       "leads": "Lidlar",
-      "targeting": "Auditoriya",
+      "targeting": "Bemorlar guruhi",
       "integration": "Integratsiya"
     },
     "stats": {
       "totalLeads": "Jami Lidlar",
       "averageCpl": "O'rtacha Narx (CPL)",
       "conversion": "Konversiya",
-      "roi": "ROI (Daromad)"
+      "roi": "Reklama qaytimi"
     },
     "funnel": {
       "title": "Konversiya Voronkasi",
@@ -294,7 +294,7 @@
       "implantCampaign": "Implantat Aksiya 2026",
       "veneerCampaign": "Vinirlar Instagram",
       "chartTitle": "O'sish Dinamikasi",
-      "chartSubtitle": "Lidlar oqimi va ROI monitoringi",
+      "chartSubtitle": "Lidlar oqimi va reklama qaytimi",
       "spendLegend": "Xarajat",
       "leadsLegend": "Lidlar",
       "activeCampaigns": "Faol Kampaniyalar"
@@ -303,9 +303,9 @@
       "inboxTitle": "Kiruvchi lidlar",
       "inboxSubtitle": "Reklamadan tushgan barcha arizalar",
       "totalLeadsCount": "{count} ta ariza",
-      "csvImport": "CSV Import",
+      "csvImport": "Fayldan yuklash",
       "noLeadsFound": "Marketing arizalari topilmadi",
-      "createTestLead": "Test Lid Yaratish",
+      "createTestLead": "Lid yaratish",
       "new": "Yangi"
     },
     "status": {
@@ -315,7 +315,7 @@
       "lost": "Yo'qotildi"
     },
     "targeting": {
-      "audienceSegment": "Auditoriya Segmenti",
+      "audienceSegment": "Bemorlar guruhlari",
       "topLocations": "Top Lokatsiyalar",
       "locationsSubtitle": "Mijozlarimiz qayerdan kelmoqda?",
       "aiRecommendation": "AI Tavsiya",
@@ -339,7 +339,7 @@
       "systemReadyText": "Webhooks to'g'ri sozlangan. Facebook arizalari real-vaqtda tushadi.",
       "instructions": "Yo'riqnoma",
       "instructionsList": {
-        "step1": "Facebook Lead Ads",
+        "step1": "Facebook reklama arizalari",
         "step1Desc": "Make.com'da birinchi trigger modulini qo'shing.",
         "step2": "HTTP POST Request",
         "step2Desc": "HTTP 'Make a request' modulini qo'shing.",
@@ -351,14 +351,14 @@
     }
   },
   "dashboard": {
-    "title": "Boshqaruv paneli",
+    "title": "Bosh sahifa",
     "todayAppointments": "Bugungi uchrashuvlar",
     "todayRevenue": "Bugungi daromad",
     "weekRevenue": "Haftalik daromad",
     "newPatients": "Yangi bemorlar",
     "pendingRecalls": "Kutilayotgan eslatmalar",
     "lowStock": "Kam qolgan mahsulotlar",
-    "recentActivity": "So'nggi faoliyat",
+    "recentActivity": "So'nggi harakatlar",
     "quickActions": "Tezkor amallar",
     "overview": "Umumiy ko'rinish",
     "statistics": "Statistika",
@@ -389,7 +389,7 @@
     "totalPaid": "Jami to'lov",
     "totalDebt": "Jami qarz",
     "status": "Holati",
-    "notes": "Eslatmalar",
+    "notes": "Izohlar",
     "new": "Yangi",
     "active": "Faol",
     "inactive": "Faol emas",
@@ -564,16 +564,16 @@
   "appointments": {
     "title": "Uchrashuvlar",
     "addNew": "Yangi uchrashuv",
-    "viewGrid": "Setka",
+    "viewGrid": "Jadval",
     "viewWeekly": "Haftalik",
     "viewList": "Ro'yxat",
     "allDoctors": "Barchasi",
-    "queueCount": "{count} ta navbat mavjud",
+    "queueCount": "{count} ta uchrashuv",
     "yesterday": "Kecha",
     "tomorrow": "Ertaga",
     "searchPlaceholder": "Bemor, xizmat yoki shifokor...",
     "infoTitle": "Uchrashuv ma'lumotlari",
-    "timeGrid": "Vaqt grafigi",
+    "timeGrid": "Bo'sh vaqtlar",
     "actionEdit": "Tahrirlash",
     "actionPayment": "To'lov",
     "actionQueue": "Navbatlar",
@@ -598,13 +598,13 @@
     "service": "Xizmat",
     "doctor": "Shifokor",
     "status": "Holati",
-    "notes": "Eslatmalar",
+    "notes": "Izohlar",
     "waiting": "Kutilmoqda",
-    "inProgress": "Jarayonda",
+    "inProgress": "Qabulda",
     "completed": "Bajarildi",
     "cancelled": "Bekor qilindi",
     "scheduled": "Rejalashtirilgan",
-    "noShow": "Kelgan emas",
+    "noShow": "Kelmagan",
     "upcoming": "Kelayotgan",
     "past": "O'tgan",
     "duration": "Davomiyligi",
@@ -632,7 +632,7 @@
       "InProgress": "Jarayonda",
       "Completed": "Bajarildi",
       "Cancelled": "Bekor qilindi",
-      "No-Show": "Kelgan emas"
+      "No-Show": "Kelmagan"
     },
     "errors": {
       "dateTimeRequired": "Sana va vaqtni tanlang",
@@ -722,9 +722,9 @@
   },
   "services": {
     "title": "Klinika Xizmatlari",
-    "subtitle": "Katalog, narxlar va kategoriyalarni professional boshqarish",
+    "subtitle": "Xizmatlar va narxlar ro'yxati",
     "badge": "Xizmatlar Boshqaruvi",
-    "loadTemplates": "Shablonlarni yuklash",
+    "loadTemplates": "Tayyor ro'yxatni yuklash",
     "loadingTemplates": "Yuklanmoqda...",
     "newService": "Yangi xizmat",
     "price": "Narxi",
@@ -741,10 +741,10 @@
       "total": "Jami Xizmatlar",
       "active": "Faol Xizmatlar",
       "avgPrice": "O'rtacha Narx",
-      "categories": "Kategoriyalar"
+      "categories": "Bo'limlar"
     },
     "sidebar": {
-      "categories": "Kategoriyalar",
+      "categories": "Bo'limlar",
       "search": "Xizmat qidirish...",
       "all": "Barchasi"
     },
@@ -768,7 +768,7 @@
       "durationMinutes": "Davomiyligi (min)",
       "projectDescription": "Loyiha tavsifi",
       "descriptionPlaceholder": "Qisqacha ma'lumot...",
-      "activeState": "Aktiv holat",
+      "activeState": "Holati (faol)",
       "toothSelection": "Tish tanlash",
       "selectTeeth": "Tegishli tishlarni belgilang"
     },
@@ -836,8 +836,8 @@
     "general": "Klinika va profil sozlamalarini boshqarish",
     "logout": "Chiqish",
     "tabs": {
-      "websiteIntegration": "Vebsayt Integratsiyasi",
-      "publicPage": "Ommaviy sahifa",
+      "websiteIntegration": "Sayt bilan bog'lash",
+      "publicPage": "Klinika sahifasi",
       "clinicSettings": "Klinika sozlamalari",
       "staff": "Xodimlar",
       "myProfile": "Mening profilim",
@@ -872,7 +872,7 @@
       "successAddDoctor": "Shifokor muvaffaqiyatli qo'shildi!"
     },
     "publicPage": {
-      "title": "Ommaviy sahifa sozlamalari",
+      "title": "Klinika sahifasi sozlamalari",
       "subtitle": "Bemorlar uchun klinika tashrif qog'ozi",
       "linkAddress": "Havola manzili (slug)",
       "description": "Klinika haqida tavsif",
@@ -1050,15 +1050,15 @@
     "planSuffix": "Davolash rejasi"
   },
   "recall": {
-    "title": "Eslatmalar va qayta chaqirish",
-    "subtitle": "Bemorlarni profilaktik ko'riklar, davolash bosqichlari va eslatmalari reyestri",
+    "title": "Qayta chaqirish",
+    "subtitle": "Bemorlarni profilaktik ko'riklar, davolash bosqichlari va eslatmalari ro'yxati",
     "newRecall": "Yangi qayta chaqirish",
     "addNew": "Yangi qayta chaqirish",
     "settings": "Sozlamalar",
     "month": "oy",
     "months": "oy",
     "year": "yil",
-    "priority": "Muhimlik",
+    "priority": "Muhimlik darajasi",
     "empty": "Qayta chaqirish yo'q",
     "emptyDesc": "Yangi qayta chaqirish qo'shish uchun tugmani bosing",
     "searchPlaceholder": "Bemor ismi, telefon raqami yoki muolaja turi bo'yicha qidiruv...",
@@ -1117,12 +1117,12 @@
     "msgHistory": "Xabarlar Tarixi",
     "patientCol": "Bemor (F.I.Sh)",
     "reminderDateCol": "Eslatma Sanasi",
-    "priorityCol": "Muhimlik",
+    "priorityCol": "Muhimlik darajasi",
     "treatmentReasonCol": "Davolash Turi / Izoh",
     "statusCol": "Holat"
   },
   "noShow": {
-    "title": "Kelmaganlar nazorati",
+    "title": "Kelmaganlar",
     "subtitle": "Kelmagan bemorlar va yo'qotilgan daromad tahlili",
     "stats": {
       "total": "Jami kelmaganlar",
@@ -1292,7 +1292,7 @@
       "Click": "Click",
       "Payme": "Payme"
     },
-    "submitPay": "To'lash",
+    "submitPay": "Qabul qilish",
     "patientDebt": "Bemor qarzi",
     "fillDebt": "Jami qarz",
     "formErrorFill": "Iltimos, bemor va to'lov summasini kiriting",
@@ -1571,7 +1571,7 @@
       "abutment": "Standart abutment",
       "standard_abutment": "Standart abutment",
       "zirkon_abutment": "Individual zirkon abutment",
-      "healing_abutment": "Formik",
+      "healing_abutment": "Formirovatel",
       "formik": "Formik",
       "cover_screw": "Zaglushka",
       "multi_unit": "Multi-unit abutment",
@@ -1705,13 +1705,13 @@
     }
   },
   "treatmentTracking": {
-    "title": "Davolash Kuzatuvi",
-    "subtitle": "Muolajalar ijrosi monitoringi, xizmatlar bajarilishi va klinik samaradorlik tahlili",
+    "title": "Davolash kuzatuvi",
+    "subtitle": "Muolajalar va xizmatlar bajarilishi",
     "total": "Jami",
     "completed": "YAKUNLANGAN",
     "inProgress": "JARAYONDA",
     "planned": "REJALASHTIRILGAN",
-    "efficiency": "SAMARADORLIK",
+    "efficiency": "YAKUNLANGAN REJALAR ULUSHI",
     "start": "Boshlanish",
     "towardsGoal": "Maqsad sari",
     "completion": "Yakun",
@@ -1735,7 +1735,7 @@
     "inProgressSub": "Ayni paytda qilinayotgan",
     "plannedSub": "Kutilayotgan navbatlar",
     "completedSub": "To'liq bajarilgan rejalar",
-    "efficiencySub": "Klinik muvaffaqiyat ko'rsatkichi",
+    "efficiencySub": "Yakunlangan rejalar ulushi",
     "searchPlaceholder": "Bemor ismi, reja nomi yoki shifokor bo'yicha qidiruv...",
     "all": "Barchasi",
     "patientCol": "Bemor (F.I.Sh)",
@@ -1744,7 +1744,7 @@
     "progressCol": "Ijro Holati (Progress)",
     "priceCol": "Qiymati",
     "statusCol": "Holat",
-    "executionControl": "Ijro Nazorati"
+    "executionControl": "Batafsil"
   },
   "newPatient": {
     "title": "Yangi bemor",
@@ -1781,7 +1781,7 @@
     "roles": {
       "doctor": "Shifokor",
       "admin": "Administrator",
-      "receptionist": "Registratura"
+      "receptionist": "Qabulxona"
     },
     "stats": {
       "total": "Jami Xodimlar",
@@ -1806,7 +1806,7 @@
     "passwordHint": "Bo'sh qoldirsangiz, parol o'zgarmaydi"
   },
   "payroll": {
-    "title": "Maoshlar",
+    "title": "Ish haqi",
     "subtitle": "Shifokorlar ulushi, bemorlar soni va umumiy daromad hisoboti",
     "addDoctor": "Shifokor qo'shish",
     "revenue": "Daromad",
@@ -1832,19 +1832,19 @@
     "exportExcel": "Eksport (Excel)",
     "totalRevenue": "UMUMIY DAROMAD",
     "clinicReceipts": "Klinikaga tushum",
-    "doctorsShare": "DOKTORLAR ULUSHI",
+    "doctorsShare": "SHIFOKORLAR ULUSHI",
     "commissionSum": "Komissiya summasi",
     "totalSalary": "JAMI MAOSH",
-    "expenseSheet": "Chiqim vedomosti",
+    "expenseSheet": "Chiqim ro'yxati",
     "patientCount": "BEMORLAR SONI",
     "totalTreated": "Jami qabul qilingan",
     "searchPlaceholder": "Shifokor ismi yoki mutaxassisligi bo'yicha qidiruv...",
     "all": "Barchasi",
-    "percentage": "Foizda",
-    "fixed": "Oylikda",
+    "percentage": "Foiz bo'yicha",
+    "fixed": "Oylik maosh",
     "patientCountCol": "Bemorlar soni",
     "totalRevenueCol": "Umumiy daromad",
-    "doctorShareCol": "Doktorni ulushi",
+    "doctorShareCol": "Shifokor ulushi",
     "payBtn": "To'lash",
     "detailsBtn": "Batafsil",
     "fixedBadge": "Oylik",
@@ -1852,15 +1852,15 @@
   },
   "leads": {
     "title": "Lidlar",
-    "subtitle": "Potentsial mijozlar, target arizalari va murojaatlar",
-    "csvImport": "CSV Import",
+    "subtitle": "Potentsial mijozlar va murojaatlar",
+    "csvImport": "Fayldan yuklash",
     "searchPlaceholder": "Ism yoki telefon raqami bo'yicha qidirish...",
     "created": "Yaratildi",
     "newLead": "Yangi lid",
     "newLeadModalTitle": "Yangi lid qo'shish",
     "editLead": "Lidni tahrirlash",
     "telegramNotification": "Telegram bildirishnoma",
-    "viewKanban": "Kanban",
+    "viewKanban": "Ustunlar",
     "viewTable": "Jadval",
     "visitDate": "Tashrif sanasi",
     "source": "Manba",
@@ -1891,8 +1891,8 @@
     "totalRows": "Jami qatorlar: {count}",
     "hintClickRow": "Qator ustiga bosib batafsil ko'rish yoki bemorga o'tkazish mumkin",
     "phoneCopied": "Raqam nusxalandi!",
-    "excelTable": "Excel Jadval",
-    "kanban": "Kanban",
+    "excelTable": "Jadval",
+    "kanban": "Ustunlar",
     "allTab": "Barchasi",
     "newTab": "Yangi",
     "contactedTab": "Bog'lanildi",
@@ -1908,7 +1908,7 @@
     "editBtn": "Tahrirlash",
     "deleteBtn": "O'chirish",
     "noLeadsFound": "Lidlar topilmadi",
-    "noLeadsDesc": "Yangi lid qo'shing yoki CSV yuklang",
+    "noLeadsDesc": "Yangi lid qo'shing yoki fayldan yuklang",
     "addFirstLead": "Birinchi lidni qo'shish",
     "deleteConfirmTitle": "Lidni o'chirish",
     "deleteConfirmDesc": "Haqiqatan ham bu lidni o'chirmoqchimisiz? Ushbu amalni qaytarib bo'lmaydi."
@@ -1917,13 +1917,13 @@
     "netProfit": "SOF FOYDA",
     "last6months": "So'nggi 6 oy",
     "doctorProductivity": "Shifokorlar unumdorligi (Top 5)",
-    "topServices": "Top Xizmatlar",
+    "topServices": "Eng ko'p bajarilgan xizmatlar",
     "incomeAndExpenses": "KIRIM VA CHIQIMLAR (SO'NGGI 6 OY)",
     "others": "Boshqa",
     "pieces": "ta",
     "title": "Hisobotlar",
     "subtitle": "Klinika umumiy moliyaviy hisoboti, shifokorlar reytingi va xizmatlar tahlili",
-    "badgeAnalytics": "• Analitika va Boshqaruv",
+    "badgeAnalytics": "• Hisobot va boshqaruv",
     "thisMonth": "Bu oy",
     "lastMonth": "O'tgan oy",
     "thisYear": "Yillik",
@@ -1941,20 +1941,20 @@
     "completedCol": "Bajarilgan",
     "patientsCol": "Bemorlar soni",
     "revenueCol": "Umumiy Tushum",
-    "avgCheckCol": "O'rtacha Chek",
+    "avgCheckCol": "O'rtacha to'lov",
     "clinicShareCol": "Klinika Ulushi"
   },
   "patientProfile": {
     "treatmentPlanSingular": "Davolash rejasi",
     "tabs": {
-      "notes": "Eslatmalar",
+      "notes": "Izohlar",
       "appointments": "Uchrashuvlar",
       "treatments": "Davolash Rejalari",
       "info": "Tish xaritasi",
       "payments": "To'lovlar & Qarz",
       "installments": "Rassrochka",
       "implants": "Implantlar",
-      "photos": "Rentgen & Rasmlar",
+      "photos": "Rentgen va rasmlar",
       "xrays": "Rentgen",
       "teeth": "Tishlar",
       "dentalChart": "Tish xaritasi",
@@ -1985,7 +1985,7 @@
       "emptyPlans": "Davolash rejalari yo'q",
       "emptyAppts": "Uchrashuvlar yo'q",
       "emptyPayments": "To'lovlar yo'q",
-      "emptyNotes": "Eslatmalar yo'q",
+      "emptyNotes": "Izohlar yo'q",
       "addPlan": "Reja qo'shish",
       "addAppt": "Uchrashuv qo'shish",
       "patientNotFound": "Bemor topilmadi",
@@ -2138,7 +2138,7 @@
       "closed": "Yopilgan",
       "partialPayHint": "Qolganini to'lashingiz mumkin",
       "pendingPayHint": "Summa kiriting va to'lang",
-      "pay": "To'lash",
+      "pay": "Qabul qilish",
       "installmentLabel": "{doctor} muddatli to'lov",
       "addModalTitle": "Muddatli to'lovni kiritish",
       "paymentAmount": "To'lov summasi",
@@ -2159,7 +2159,7 @@
       "saving": "Saqlanmoqda..."
     },
     "payments": {
-      "title": "Bemor to'lovlar reyestri"
+      "title": "Bemor to'lovlari"
     },
     "psr": {
       "title": "PSR (Periodontal Screening & Recording)",
@@ -2266,9 +2266,9 @@
     "statusNoShow": "Kelmadi",
     "searchPayments": "Kvitansiya #, shifokor qidirish...",
     "receivePaymentBtn": "To'lov Qabul Qilish",
-    "kassaLedgerTab": "Kassa Reyestri",
-    "invoicesAndDebtTab": "Hisob-Fakturalar & Qarzlar",
-    "installmentsTab": "Muddatli To'lovlar",
+    "kassaLedgerTab": "To'lovlar",
+    "invoicesAndDebtTab": "Hisoblar va qarzlar",
+    "installmentsTab": "Bo'lib to'lash",
     "paymentTypeCol": "To'lov Turi",
     "paidAmountCol": "To'langan Summa",
     "noPaymentsFound": "Hozircha kassaga to'lov qabul qilinmagan.",
@@ -2283,7 +2283,7 @@
     "placeholder": "Yangi eslatma yozing... (Ctrl+Enter bilan saqlash)",
     "charCount": "{count} belgi",
     "add": "Qo'shish",
-    "emptyTitle": "Eslatmalar yo'q",
+    "emptyTitle": "Izohlar yo'q",
     "emptyDesc": "Bu bemor uchun hali eslatmalar mavjud emas"
   },
   "patientAppointments": {
@@ -2563,14 +2563,14 @@
     "placeholder": "Ism yoki telefon orqali qidiring..."
   },
   "cases": {
-    "title": "Klinik Keyslar",
+    "title": "Davolash natijalari (oldin/keyin)",
     "subtitle": "Bemorlarning oldin va keyingi davolash natijalari",
-    "addNewCase": "Yangi Keys Qo'shish",
+    "addNewCase": "Yangi natija qo'shish",
     "all": "Barchasi",
     "newCategory": "Yangi Kategoriya",
-    "searchPlaceholder": "Keys qidirish...",
+    "searchPlaceholder": "Natija qidirish...",
     "loadingData": "Ma'lumotlar bazadan yuklanmoqda...",
-    "noCasesFound": "Hech qanday keys topilmadi",
+    "noCasesFound": "Hech qanday natija topilmadi",
     "noCasesFoundDesc": "Boshqa so'z bilan qidirib ko'ring yoki yangi qo'shing",
     "detail": {
       "before": "Oldin",
@@ -2584,7 +2584,7 @@
       "noDescription": "Izoh kiritilmagan."
     },
     "upload": {
-      "title": "Yangi Keys Qo'shish",
+      "title": "Yangi natija qo'shish",
       "subtitle": "Davolash natijalari portfoliosi",
       "beforePhoto": "\"Oldin\" holati",
       "afterPhoto": "\"Keyin\" holati",
@@ -2595,7 +2595,7 @@
       "categories": "Kategoriya / Teglar",
       "detailedNote": "Batafsil Izoh (ixtiyoriy)",
       "notePlaceholder": "Davolash jarayoni haqida qisqacha izoh...",
-      "saveCase": "Keys Saqlash",
+      "saveCase": "Natijani saqlash",
       "promptNewCategory": "Yangi kategoriya:",
       "errorSelectPatient": "Iltimos bemorni tanlang",
       "errorUploadAfterImage": "Kamida 'Keyin' rasmini yuklang"

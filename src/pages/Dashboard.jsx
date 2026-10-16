@@ -173,10 +173,10 @@ export default function Dashboard() {
       {/* Stats Grid - Enhanced */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { title: isDoctor ? t('dashboard.myTodayAppointments') : t('dashboard.todayAppointments'), value: stats.todayAppts, icon: CalendarDays, color: 'from-blue-500 to-indigo-600', trend: stats.todayApptsTrend || '0%' },
-          { title: isDoctor ? t('dashboard.myTodayRevenue') : t('dashboard.todayRevenue'), value: formatCurrency(stats.todayRevenue), icon: TrendingUp, color: 'from-emerald-500 to-teal-600', trend: stats.todayRevenueTrend || '0%' },
-          { title: isDoctor ? t('dashboard.myWeekRevenue') : t('dashboard.weekRevenue'), value: formatCurrency(stats.weekRevenue), icon: DollarSign, color: 'from-[#1499AD] to-[#0E7A8A]', trend: stats.weekRevenueTrend || '0%' },
-          { title: t('dashboard.newPatients'), value: stats.newPatients, icon: Users, color: 'from-slate-700 to-slate-900', trend: stats.newPatientsTrend || '0%' }
+          { title: isDoctor ? t('dashboard.myTodayAppointments') : t('dashboard.todayAppointments'), value: stats.todayAppts, icon: CalendarDays, color: 'from-blue-500 to-indigo-600', trend: stats.todayApptsTrend || '0%', vs: 'kechaga nisbatan' },
+          { title: isDoctor ? t('dashboard.myTodayRevenue') : t('dashboard.todayRevenue'), value: formatCurrency(stats.todayRevenue), icon: TrendingUp, color: 'from-emerald-500 to-teal-600', trend: stats.todayRevenueTrend || '0%', vs: 'kechaga nisbatan' },
+          { title: isDoctor ? t('dashboard.myWeekRevenue') : t('dashboard.weekRevenue'), value: formatCurrency(stats.weekRevenue), icon: DollarSign, color: 'from-[#1499AD] to-[#0E7A8A]', trend: stats.weekRevenueTrend || '0%', vs: "o'tgan haftaga nisbatan" },
+          { title: t('dashboard.newPatients'), value: stats.newPatients, icon: Users, color: 'from-slate-700 to-slate-900', trend: stats.newPatientsTrend || '0%', vs: "o'tgan haftaga nisbatan" }
         ].map((stat, i) => {
           const isNegative = stat.trend?.startsWith('-');
           const isNeutral = stat.trend === '0%' || stat.trend === '—';
@@ -198,8 +198,8 @@ export default function Dashboard() {
                   <div className={`p-2.5 rounded-xl bg-gradient-to-br ${stat.color} text-white shadow-lg shadow-black/5 group-hover:scale-110 transition-transform`}>
                       <stat.icon className="w-4 h-4" />
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-[10px] font-black ${trendClass}`}>
-                      {stat.trend}
+                  <div title={stat.vs} className={`px-3 py-1 rounded-full text-[10px] font-black ${trendClass}`}>
+                      {stat.trend} <span className="font-semibold opacity-80">{stat.vs}</span>
                   </div>
               </div>
               <div>
@@ -222,7 +222,7 @@ export default function Dashboard() {
         >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-lg font-[900] text-slate-900 uppercase tracking-tight">{t('dashboard.weekRevenue')}</h3>
+              <h3 className="text-lg font-[900] text-slate-900 uppercase tracking-tight">{(localStorage.getItem('app_language') || 'uz') === 'uz' ? "Shu haftaning kunlik tushumi" : t('dashboard.weekRevenue')}</h3>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1.5">{t('dashboard.revenueChart')}</p>
             </div>
             <div className="flex items-center gap-6">
@@ -354,7 +354,7 @@ export default function Dashboard() {
           <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{t('dashboard.recentActivity')}</h3>
-              <p className="text-[10px] font-black text-[#1499AD] uppercase tracking-[0.2em] mt-1.5">Oxirgi harakatlar — kim, nima, qachon</p>
+              <p className="text-[10px] font-black text-[#1499AD] uppercase tracking-[0.2em] mt-1.5">Kim, nima, qachon</p>
             </div>
             <div className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-[#1499AD]">
                 <Activity className="w-4 h-4" />

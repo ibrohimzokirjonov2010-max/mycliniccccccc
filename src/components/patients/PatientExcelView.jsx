@@ -347,7 +347,7 @@ export default function PatientExcelView({
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
           <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">Jami Muolajalar</span>
           <div className="text-lg font-black font-mono text-slate-900 tabular-nums">
-            {totalPlansPrice.toLocaleString()} <span className="text-[10px] text-slate-400 font-bold">UZS</span>
+            {totalPlansPrice.toLocaleString('ru-RU')} <span className="text-[10px] text-slate-400 font-bold">so'm</span>
           </div>
           <p className="text-[9.5px] font-bold text-slate-400 mt-1">{plans.length} ta rejalashtirilgan ishlar</p>
         </div>
@@ -355,7 +355,7 @@ export default function PatientExcelView({
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
           <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 block mb-0.5">To'langan Summa</span>
           <div className="text-lg font-black font-mono text-emerald-700 tabular-nums">
-            {totalPaid.toLocaleString()} <span className="text-[10px] text-emerald-500 font-bold">UZS</span>
+            {totalPaid.toLocaleString('ru-RU')} <span className="text-[10px] text-emerald-500 font-bold">so'm</span>
           </div>
           <div className="flex items-center gap-1.5 mt-1">
             <div className="flex-1 bg-emerald-100 rounded-full h-1.5 overflow-hidden">
@@ -373,7 +373,7 @@ export default function PatientExcelView({
             Qoldiq Qarzdorlik
           </span>
           <div className={cn("text-lg font-black font-mono tabular-nums", totalDebt > 0 ? "text-amber-950" : "text-slate-900")}>
-            {totalDebt.toLocaleString()} <span className="text-[10px] text-slate-400 font-bold">UZS</span>
+            {totalDebt.toLocaleString('ru-RU')} <span className="text-[10px] text-slate-400 font-bold">so'm</span>
           </div>
           <p className={cn("text-[9.5px] font-bold mt-1", totalDebt > 0 ? "text-amber-700 font-bold" : "text-slate-400")}>
             {totalDebt > 0 ? "⚠️ Qarzdorlik mavjud" : "✅ To'liq to'langan"}
@@ -450,7 +450,7 @@ export default function PatientExcelView({
               2. Davolash Rejalari & Xizmatlar Reyestri Jadvali ({filteredTreatments.length})
             </h3>
             <span className="text-[10px] font-black text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md uppercase">
-              Jami: {filteredTreatments.reduce((sum, p) => sum + (Number(p.total_price) || 0), 0).toLocaleString()} UZS
+              Jami: {filteredTreatments.reduce((sum, p) => sum + (Number(p.total_price) || 0), 0).toLocaleString('ru-RU')} so'm
             </span>
           </div>
 
@@ -541,7 +541,7 @@ export default function PatientExcelView({
                           <span className="text-slate-700 font-semibold">{docName}</span>
                         </td>
                         <td className={cn(tablePadding, "text-right font-mono font-bold text-slate-900 tabular-nums")}>
-                          {(Number(p.total_price) || 0).toLocaleString()} UZS
+                          {(Number(p.total_price) || 0).toLocaleString('ru-RU')} so'm
                         </td>
                         <td className={tablePadding}>
                           <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border", statusStyle)}>
@@ -582,7 +582,7 @@ export default function PatientExcelView({
             </h3>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md uppercase">
-                To'langan: {totalPaid.toLocaleString()} UZS
+                To'langan: {totalPaid.toLocaleString('ru-RU')} so'm
               </span>
               {onOpenPayModal && (
                 <button
@@ -685,7 +685,7 @@ export default function PatientExcelView({
                           <span className="font-semibold text-slate-600">{methodLabel}</span>
                         </td>
                         <td className={cn(tablePadding, "text-right font-mono font-bold tabular-nums", isIncome ? "text-emerald-700" : "text-rose-600")}>
-                          {isIncome ? '+' : '−'}{(Number(pm.amount) || 0).toLocaleString()} UZS
+                          {isIncome ? '+' : '−'}{(Number(pm.amount) || 0).toLocaleString('ru-RU')} so'm
                         </td>
                         <td className={cn(tablePadding, "text-slate-600 truncate max-w-xs")}>
                           {pm.categoryClean || pm.category || pm.notes || '—'}
@@ -913,7 +913,7 @@ export default function PatientExcelView({
           <span className="text-slate-600">•</span>
           <span>QABULLAR: <strong className="text-blue-400">{appointments.length}</strong></span>
           <span className="text-slate-600">•</span>
-          <span>BALANS: <strong className={totalDebt > 0 ? "text-rose-400" : "text-emerald-400"}>{totalDebt.toLocaleString()} UZS</strong></span>
+          <span>BALANS: <strong className={totalDebt > 0 ? "text-rose-400" : "text-emerald-400"}>{totalDebt.toLocaleString('ru-RU')} so'm</strong></span>
         </div>
       </div>
     </div>

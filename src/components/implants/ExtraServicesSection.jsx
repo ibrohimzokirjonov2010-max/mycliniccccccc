@@ -177,7 +177,7 @@ export default function ExtraServicesSection({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                Qo'shimcha Xizmatlar & Prays-list
+                Qo'shimcha xizmatlar va narxlar
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200">
                 {stats.total} ta xizmat
@@ -203,7 +203,7 @@ export default function ExtraServicesSection({
             >
               <span className="flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                Prays-list ({stats.total})
+                Narxlar ({stats.total})
               </span>
             </button>
 
@@ -365,7 +365,7 @@ export default function ExtraServicesSection({
                       <DollarSign className="w-3.5 h-3.5 text-emerald-600" /> Xizmat Narxi (so'm) *
                     </Label>
                     <span className="text-xs font-mono font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
-                      {(Number(formData.price) || 0).toLocaleString()} UZS
+                      {(Number(formData.price) || 0).toLocaleString('ru-RU')} so'm
                     </span>
                   </div>
 

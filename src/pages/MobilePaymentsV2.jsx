@@ -1273,7 +1273,7 @@ onClose={() => { setShowPlanInvoiceModal(false); setSelectedPlanForInvoice(null)
                     </div>
                     <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.25em] mb-0.5">To'lov summasi</p>
                     <h2 className="text-3xl font-[900] text-white tracking-tight">
-                      {rawAmt.toLocaleString()} <span className="text-lg font-bold text-white/70">UZS</span>
+                      {rawAmt.toLocaleString('ru-RU')} <span className="text-lg font-bold text-white/70">so'm</span>
                     </h2>
                     <div className="flex flex-wrap items-center gap-2 mt-2.5">
                       <span className="bg-white/20 text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full">
@@ -1332,20 +1332,20 @@ onClose={() => { setShowPlanInvoiceModal(false); setSelectedPlanForInvoice(null)
                         <div className="grid grid-cols-2 gap-2">
                           <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3">
                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Reja (asl narxi)</p>
-                            <p className="text-[12px] font-[900] text-slate-800">{origPrice.toLocaleString()} UZS</p>
+                            <p className="text-[12px] font-[900] text-slate-800">{origPrice.toLocaleString('ru-RU')} so'm</p>
                           </div>
                           <div className="rounded-2xl bg-purple-50/60 border border-purple-100 p-3">
                             <p className="text-[8px] font-black text-purple-500 uppercase tracking-widest mb-1">Qo'llanilgan chegirma</p>
-                            <p className="text-[12px] font-[900] text-purple-700">{discPct}% ({discAmt.toLocaleString()} UZS)</p>
+                            <p className="text-[12px] font-[900] text-purple-700">{discPct}% ({discAmt.toLocaleString('ru-RU')} UZS)</p>
                           </div>
                           <div className="rounded-2xl bg-blue-50/60 border border-blue-100 p-3">
                             <p className="text-[8px] font-black text-blue-500 uppercase tracking-widest mb-1">Chegirmali jami summa</p>
-                            <p className="text-[12px] font-[900] text-blue-700">{finTotal.toLocaleString()} UZS</p>
+                            <p className="text-[12px] font-[900] text-blue-700">{finTotal.toLocaleString('ru-RU')} so'm</p>
                           </div>
                           <div className={`rounded-2xl border p-3 ${qarzVal > 0 ? 'bg-rose-50 border-rose-100' : 'bg-emerald-50 border-emerald-100'}`}>
                             <p className={`text-[8px] font-black uppercase tracking-widest mb-1 ${qarzVal > 0 ? 'text-rose-400' : 'text-emerald-500'}`}>Qolgan qarz</p>
                             <p className={`text-[12px] font-[900] ${qarzVal > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
-                              {qarzVal > 0 ? `${qarzVal.toLocaleString()} UZS` : "✓ To'liq yopilgan"}
+                              {qarzVal > 0 ? `${qarzVal.toLocaleString('ru-RU')} so'm` : "✓ To'liq yopilgan"}
                             </p>
                           </div>
                         </div>
@@ -1363,7 +1363,7 @@ onClose={() => { setShowPlanInvoiceModal(false); setSelectedPlanForInvoice(null)
                         <div className="grid grid-cols-2 gap-2">
                           <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-3">
                             <p className="text-[8px] font-black text-emerald-500 uppercase tracking-widest mb-1">Jami to'langan</p>
-                            <p className="text-[12px] font-[900] text-emerald-700">{displayPaid.toLocaleString()} UZS</p>
+                            <p className="text-[12px] font-[900] text-emerald-700">{displayPaid.toLocaleString('ru-RU')} so'm</p>
                           </div>
                           <div className="rounded-2xl border p-3 bg-amber-50 border-amber-100">
                             <p className="text-[8px] font-black uppercase tracking-widest mb-1 text-amber-500">To'langan sana va vaqt</p>

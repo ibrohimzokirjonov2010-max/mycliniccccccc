@@ -24,7 +24,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from '@/components/ui/alert-dialog';
-import { formatDateTime, cn } from '@/lib/utils';
+import { formatDateTime, cn, formatPhone } from '@/lib/utils';
 import { tashkentToday } from '@/lib/clinicTime';
 import { formatClinicDate } from '@/lib/clinicTime';
 import { ClinicDateField } from '@/components/ui/ClinicDateField';
@@ -278,12 +278,14 @@ export default function RecallSystem() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    let sentRecalls = 0;
 
     recalls.forEach(r => {
       const st = normalizeRecallStatus(r.status);
       if (st === 'Pending') counts.pending += 1;
       else if (st === 'Contacted') counts.contacted += 1;
       else if (st === 'Completed') counts.completed += 1;
+      if (st === 'Sent') sentRecalls += 1;
 
       if (r.recall_date) {
         const rDate = new Date(r.recall_date);
@@ -292,6 +294,8 @@ export default function RecallSystem() {
         }
       }
     });
+    // Jadvalda "Yuborilgan" holatidagi eslatmalar ham hisobga olinadi
+    counts.history = Math.max(notificationHistory.length, sentRecalls);
 
     return counts;
   }, [recalls, notificationHistory]);
@@ -697,7 +701,7 @@ export default function RecallSystem() {
             </span>
           </div>
           <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
-            {t('recall.subtitle') || (language === 'ru' ? 'Реестр профилактических осмотров, этапов лечения и напоминаний пациентов' : 'Bemorlarni profilaktik ko\'riklar, davolash bosqichlari va eslatmalari reyestri')}
+            {t('recall.subtitle') || (language === 'ru' ? 'Реестр профилактических осмотров, этапов лечения и напоминаний пациентов' : 'Bemorlarni profilaktik ko\'riklar, davolash bosqichlari va eslatmalari ro\'yxati')}
           </p>
         </div>
 
@@ -710,7 +714,7 @@ export default function RecallSystem() {
             title={language === 'ru' ? 'Настройка правил авто-напоминаний (1, 3, 6 месяцев, Telegram/SMS)' : 'Avtomatik eslatma va qayta chaqirish qoidalari sozlamalari'}
           >
             <Settings className="w-3.5 h-3.5 text-[#1499AD]" />
-            <span>{language === 'ru' ? 'Авто-правила & Настройки' : language === 'en' ? 'Auto Rules & Settings' : "Avto-qoidalar & Sozlamalar"}</span>
+            <span>{language === 'ru' ? 'Авто-правила & Настройки' : language === 'en' ? 'Auto Rules & Settings' : "Avtomatik eslatma sozlamalari"}</span>
           </Button>
 
           <Button 
@@ -1027,7 +1031,7 @@ export default function RecallSystem() {
                     className="w-32 px-3 py-2.5 text-center border-r border-slate-200 cursor-pointer hover:bg-slate-200/60 transition-colors select-none whitespace-nowrap"
                   >
                     <div className="flex items-center justify-center gap-1.5">
-                      <span>{t('recall.priorityCol') || (language === 'ru' ? 'Приоритет' : 'Muhimlik')}</span>
+                      <span>{t('recall.priorityCol') || (language === 'ru' ? 'Приоритет' : 'Muhimlik darajasi')}</span>
                       {sortField === 'priority' ? (
                         sortOrder === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                       ) : (
@@ -1112,7 +1116,7 @@ export default function RecallSystem() {
                                 {recall.patient_name || 'Noma\'lum bemor'}
                               </span>
                               <span className="text-[10px] font-mono text-slate-400 block truncate">
-                                {recall.patient_phone || 'Telefon yo\'q'}
+                                {recall.patient_phone ? formatPhone(recall.patient_phone) : 'Telefon yo\'q'}
                               </span>
                             </div>
                           </div>

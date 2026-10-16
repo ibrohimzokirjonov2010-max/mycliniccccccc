@@ -7,6 +7,7 @@ import {
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import { formatCurrency, getTreatmentTypeLabel } from '@/lib/utils';
 import { formatClinicDate, formatClinicDateWithWeekday, paymentStamp, tashkentToday, displayDoctorName } from '@/lib/clinicTime';
+import { isDemoName } from '@/lib/utils';
 import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
 import { fetchDashboardStats } from '../utils/dashboardUtils';
@@ -82,7 +83,7 @@ export default function MobileDashboardV2() {
 
   const dayLabel = formatClinicDateWithWeekday(tashkentToday(), 'uz');
   const dayShort = formatClinicDate(tashkentToday());
-  const nm = user?.full_name || user?.name || '';
+  const nm = isDemoName(user?.full_name || user?.name) ? '' : (user?.full_name || user?.name || '');
   const greetName = nm ? (isDoctor ? `Dr. ${displayDoctorName(nm).split(' ')[0]}` : nm.split(' ')[0]) : '';
   const trend = data?.stats?.todayRevenueTrend;
   const openPatient = (a) => a?.patient_id ? navigate(`/patients/${a.patient_id}`) : navigate('/appointments');
@@ -225,7 +226,7 @@ export default function MobileDashboardV2() {
         {/* Recent activity */}
         <div className={`${card} p-3.5`}>
           <div className="flex items-center justify-between mb-2">
-            <h2 className="flex items-center gap-2 text-[16px] font-extrabold text-slate-900"><Activity className="w-5 h-5 text-slate-700" />So'nggi faoliyat</h2>
+            <h2 className="flex items-center gap-2 text-[16px] font-extrabold text-slate-900"><Activity className="w-5 h-5 text-slate-700" />So'nggi harakatlar</h2>
             <button onClick={() => navigate('/payments')} className="h-9 px-3.5 rounded-full bg-blue-50 text-blue-700 text-[13px] font-bold flex items-center gap-1">Barchasi <ArrowRight className="w-4 h-4" /></button>
           </div>
           {activity.length === 0 ? (

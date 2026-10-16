@@ -276,6 +276,7 @@ export default function Inventory() {
       lowStockCount: lowStock.length,
       totalQuantity: items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0),
       totalValue: items.reduce((sum, item) => sum + ((Number(item.quantity) || 0) * (Number(item.price_per_unit) || 0)), 0),
+      missingPrice: items.filter(item => !(Number(item.price_per_unit) > 0)).length,
       filteredTotalValue: sortedItems.reduce((sum, item) => sum + ((Number(item.quantity) || 0) * (Number(item.price_per_unit) || 0)), 0),
       totalCategories: allCategories.length
     };
@@ -419,7 +420,7 @@ export default function Inventory() {
           { label: "JAMI NOMLAR", value: stats.totalItems, icon: Layers, color: "text-blue-600", bg: "bg-blue-50 border-blue-100", isNumber: true, countText: "Material turlari" },
           { label: "KAMAYGAN ZAXIRA", value: stats.lowStockCount, icon: AlertOctagon, color: "text-rose-600", bg: "bg-rose-50 border-rose-100", isNumber: true, countText: "Zaxirasi oz qolgan", highlight: stats.lowStockCount > 0 },
           { label: "JAMI MIQDOR", value: stats.totalQuantity, icon: Package, color: "text-purple-600", bg: "bg-purple-50 border-purple-100", isNumber: true, countText: "Ombordagi birliklar" },
-          { label: "OMBOR QIYMATI", value: stats.totalValue, icon: CircleDollarSign, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", isNumber: false, countText: "Umumiy xarid qiymati" },
+          { label: "OMBOR QIYMATI", value: stats.totalValue, icon: CircleDollarSign, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-100", isNumber: false, countText: stats.missingPrice > 0 ? `Narx kiritilmagan: ${stats.missingPrice} ta mahsulot` : "Umumiy xarid qiymati" },
         ].map((s, i) => (
           <motion.div 
             key={s.label}
@@ -440,7 +441,7 @@ export default function Inventory() {
                     {s.value} <span className="text-xs font-bold text-slate-400">{language === 'ru' ? '' : 'ta'}</span>
                   </span>
                 ) : (
-                  <span>{Number(s.value).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">UZS</span></span>
+                  <span>{Number(s.value).toLocaleString('ru-RU')} <span className="text-[10px] font-bold text-slate-400">so'm</span></span>
                 )}
               </div>
               <p className="text-[9.5px] font-medium text-slate-400 mt-0.5">{s.countText}</p>
@@ -805,16 +806,16 @@ export default function Inventory() {
                       {/* XARID NARXI Cell */}
                       <td className={`text-right border-r border-slate-200/70 whitespace-nowrap ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
                         <span className="font-mono font-bold text-slate-800 text-xs tabular-nums">
-                          {price.toLocaleString()}
-                          <span className="text-[9.5px] font-semibold text-slate-400 ml-1">UZS</span>
+                          {price.toLocaleString('ru-RU')}
+                          <span className="text-[9.5px] font-semibold text-slate-400 ml-1">so'm</span>
                         </span>
                       </td>
 
                       {/* JAMI QIYMAT Cell */}
                       <td className={`text-right border-r border-slate-200/70 whitespace-nowrap bg-emerald-50/30 ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
                         <span className="font-mono font-black text-emerald-600 text-xs tabular-nums">
-                          {totalValue.toLocaleString()}
-                          <span className="text-[9.5px] font-semibold text-emerald-500 ml-1">UZS</span>
+                          {totalValue.toLocaleString('ru-RU')}
+                          <span className="text-[9.5px] font-semibold text-emerald-500 ml-1">so'm</span>
                         </span>
                       </td>
 
@@ -895,9 +896,9 @@ export default function Inventory() {
           <div className="bg-gradient-to-br from-slate-900 to-slate-800 px-8 py-6 text-white relative">
             <div className="relative z-10 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-[900] tracking-tight mb-0.5">
+                <DialogTitle className="text-xl font-[900] tracking-tight mb-0.5">
                   {editItem ? (t('inventory.modal.titleEdit') || 'Mahsulotni tahrirlash') : (t('inventory.modal.titleAddProduct') || 'Yangi mahsulot')}
-                </h2>
+                </DialogTitle>
                 <p className="text-[9px] font-black text-white/40 tracking-[0.2em] uppercase">{language === 'ru' ? 'Введите данные товара' : language === 'en' ? 'Enter product details' : 'Mahsulot tafsilotlarini kiriting'}</p>
               </div>
               <ShoppingBag className="w-8 h-8 text-blue-500/30" />
@@ -1041,7 +1042,7 @@ export default function Inventory() {
                 <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-center">
                   <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider block">{language === 'ru' ? 'Общая расчётная стоимость:' : 'Jami Hisoblangan Qiymat:'}</span>
                   <span className="font-mono font-black text-emerald-700 text-sm">
-                    {((Number(form.quantity) || 0) * (Number(form.price_per_unit) || 0)).toLocaleString()} UZS
+                    {((Number(form.quantity) || 0) * (Number(form.price_per_unit) || 0)).toLocaleString('ru-RU')} so'm
                   </span>
                 </div>
               </div>

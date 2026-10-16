@@ -181,7 +181,7 @@ function ExcelPaymentsView({
                     : "text-slate-600 hover:text-slate-900"
                 )}
               >
-                {t('patientProfile.kassaLedgerTab') || "Kassa Reyestri"} ({realIncomePayments.length})
+                {t('patientProfile.kassaLedgerTab') || "To'lovlar"} ({realIncomePayments.length})
               </button>
               <button
                 onClick={() => setSubTab('plans')}
@@ -192,7 +192,7 @@ function ExcelPaymentsView({
                     : "text-slate-600 hover:text-slate-900"
                 )}
               >
-                {t('patientProfile.invoicesAndDebtTab') || "Hisob-Fakturalar & Qarzlar"} ({enrichedPlans.length})
+                {t('patientProfile.invoicesAndDebtTab') || "Hisoblar va qarzlar"} ({enrichedPlans.length})
               </button>
               <button
                 onClick={() => setSubTab('installments')}
@@ -203,7 +203,7 @@ function ExcelPaymentsView({
                     : "text-slate-600 hover:text-slate-900"
                 )}
               >
-                {t('patientProfile.installmentsTab') || "Muddatli To'lovlar"} ({installmentPlans.length})
+                {t('patientProfile.installmentsTab') || "Bo'lib to'lash"} ({installmentPlans.length})
               </button>
             </div>
           </div>
@@ -573,7 +573,7 @@ function ExcelPaymentsView({
                               onClick={() => onPayInstallment(plan, i)}
                               className="w-full h-6 text-[9.5px] font-black uppercase bg-indigo-600 hover:bg-indigo-700 text-white rounded cursor-pointer"
                             >
-                              To'lash
+                              Qabul qilish
                             </Button>
                           )}
                         </div>

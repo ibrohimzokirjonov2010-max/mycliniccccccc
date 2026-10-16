@@ -685,6 +685,9 @@ class HybridEntityLoader {
       // implant_brands may be absent on older Supabase schemas — local fallback is expected
       if (this.entityName === 'ImplantBrand') {
         console.warn(`[ImplantBrand] using local store (${error?.message || error})`);
+      } else if (error?.name === 'AbortError' || /Failed to fetch|aborted/i.test(String(error?.message || error))) {
+        // Sahifa almashganda bekor qilingan so'rov — xato emas
+        console.warn(`[${this.entityName}] request cancelled`);
       } else {
         console.error(`Error fetching ${this.entityName}:`, error);
       }

@@ -343,7 +343,7 @@ export default function Appointments() {
                 {t('appointments.title')}
             </h1>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 lg:mt-0.5">
-                {t('appointments.queueCount', { count: listedAppointments.length }) || `${listedAppointments.length} ta navbat mavjud`}
+                {t('appointments.queueCount', { count: listedAppointments.length }) || `${listedAppointments.length} ta uchrashuv`}
             </p>
           </div>
         </motion.div>
@@ -429,7 +429,7 @@ export default function Appointments() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
             <TabsList className="bg-slate-50 p-1 lg:p-1 rounded-2xl lg:rounded-xl h-11 lg:h-9 border border-slate-100 gap-1 lg:gap-0.5">
               <TabsTrigger value="grid" className="rounded-xl h-9 lg:h-7 px-6 lg:px-4 text-[10px] lg:text-[11px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm lg:data-[state=active]:bg-[#1499AD]/10">
-                {t('appointments.viewGrid') || 'Setka'}
+                {t('appointments.viewGrid') || 'Jadval'}
               </TabsTrigger>
               <TabsTrigger value="calendar" className="rounded-xl h-9 lg:h-7 px-6 lg:px-4 text-[10px] lg:text-[11px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-[#1499AD] data-[state=active]:shadow-sm lg:data-[state=active]:bg-[#1499AD]/10">
                 {t('appointments.viewWeekly') || 'Haftalik'}

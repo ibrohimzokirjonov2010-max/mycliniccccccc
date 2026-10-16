@@ -601,7 +601,7 @@ export default function Marketing() {
             </span>
           </div>
           <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
-            {language === 'ru' ? 'Поток лидов, анализ рекламных кампаний, CPL/ROI и мониторинг конверсии' : 'Lidlar oqimi, reklama kampaniyalari tahlili, CPL/ROI va konversiya monitoringi'}
+            {language === 'ru' ? 'Поток лидов, анализ рекламных кампаний, CPL/ROI и мониторинг конверсии' : 'Lidlar oqimi, reklama tahlili, bir lid narxi va bemorga aylanganlar ulushi'}
           </p>
         </div>
 
@@ -614,16 +614,7 @@ export default function Marketing() {
             className="h-9.5 px-3.5 rounded-xl border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-bold text-xs shadow-xs"
           >
             <Upload className="w-3.5 h-3.5 mr-1.5 text-indigo-600" /> 
-            {isImporting ? (language === 'ru' ? 'Загрузка...' : 'Yuklanmoqda...') : (language === 'ru' ? 'Импорт CSV' : 'CSV Import')}
-          </Button>
-
-          <Button 
-            onClick={createTestLead}
-            disabled={syncing}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 border-none rounded-xl h-9.5 px-3.5 font-bold text-xs shadow-sm active:scale-95"
-          >
-            <Zap className="w-3.5 h-3.5 text-amber-300" />
-            <span>{language === 'ru' ? '+ Тестовый лид' : language === 'en' ? '+ Test Lead' : '+ Test Lid'}</span>
+            {isImporting ? (language === 'ru' ? 'Загрузка...' : 'Yuklanmoqda...') : (language === 'ru' ? 'Импорт CSV' : 'Fayldan yuklash')}
           </Button>
 
           <Button
@@ -649,7 +640,7 @@ export default function Marketing() {
             countText: language === 'ru' ? "Все поступившие заявки" : "Barcha tushgan arizalar" 
           },
           { 
-            label: language === 'ru' ? "СРЕДНИЙ CPL" : language === 'en' ? "AVERAGE CPL" : "O'RTACHA CPL", 
+            label: language === 'ru' ? "СРЕДНИЙ CPL" : language === 'en' ? "AVERAGE CPL" : "BIR LID NARXI", 
             value: stats.avgCpl, 
             icon: DollarSign, 
             color: "text-blue-600", 
@@ -658,7 +649,7 @@ export default function Marketing() {
             countText: language === 'ru' ? "Стоимость одного лида" : "Har bir lid tannarxi" 
           },
           { 
-            label: language === 'ru' ? "КОНВЕРСИЯ" : language === 'en' ? "CONVERSION" : "KONVERSIYA", 
+            label: language === 'ru' ? "КОНВЕРСИЯ" : language === 'en' ? "CONVERSION" : "BEMORGA AYLANGANLAR", 
             value: stats.conversionRate, 
             icon: TrendingUp, 
             color: "text-emerald-600", 
@@ -667,7 +658,7 @@ export default function Marketing() {
             countText: language === 'ru' ? `${stats.convertedLeads} конвертировано в пациентов` : `${stats.convertedLeads} ta bemorga aylandi` 
           },
           { 
-            label: language === 'ru' ? "ROI (ОКУПАЕМОСТЬ)" : language === 'en' ? "ROI (RETURN)" : "ROI (DAROMAD)", 
+            label: language === 'ru' ? "ROI (ОКУПАЕМОСТЬ)" : language === 'en' ? "ROI (RETURN)" : "REKLAMA QAYTIMI", 
             value: `${stats.roi}x`, 
             icon: PieChartIcon, 
             color: "text-amber-600", 
@@ -697,7 +688,7 @@ export default function Marketing() {
               </span>
               <div className="text-lg sm:text-xl font-black font-mono tracking-tight text-slate-900 tabular-nums">
                 {s.isCurrency ? (
-                  <span>{Number(s.value).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">UZS</span></span>
+                  <span>{Number(s.value).toLocaleString('ru-RU')} <span className="text-[10px] font-bold text-slate-400">so'm</span></span>
                 ) : s.isPercent ? (
                   <span>{s.value}%</span>
                 ) : (
@@ -743,9 +734,9 @@ export default function Marketing() {
             {[
               { id: 'leads', label: language === 'ru' ? "Все Лиды" : language === 'en' ? "All Leads" : "Barcha Lidlar", count: leads.length, icon: Users },
               { id: 'campaigns', label: language === 'ru' ? "Кампании" : language === 'en' ? "Campaigns" : "Kampaniyalar", count: campaignPerformance.length, icon: BarChart3 },
-              { id: 'analytics', label: language === 'ru' ? "Динамика и воронка" : language === 'en' ? "Dynamics & Funnel" : "Dinamika & Voronka", icon: TrendingUp },
+              { id: 'analytics', label: language === 'ru' ? "Динамика и воронка" : language === 'en' ? "Dynamics & Funnel" : "Bosqichlar", icon: TrendingUp },
               { id: 'targeting', label: t('marketing.tabs.targeting'), icon: Target },
-              { id: 'automation', label: "Make / Webhook", icon: Workflow },
+              { id: 'automation', label: "Avtomatlashtirish", icon: Workflow },
             ].map(tab => {
               const isActive = activeTab === tab.id;
               return (
@@ -1116,13 +1107,13 @@ export default function Marketing() {
                       </span>
                     </td>
                     <td className="text-right border-r border-slate-200/70 py-2.5 px-3.5 font-mono font-bold text-slate-900">
-                      {Number(c.spend).toLocaleString()} <span className="text-[10px] text-slate-400">UZS</span>
+                      {Number(c.spend).toLocaleString('ru-RU')} <span className="text-[10px] text-slate-400">so'm</span>
                     </td>
                     <td className="text-center border-r border-slate-200/70 py-2.5 px-3 font-mono font-black text-indigo-600">
                       {c.leads} ta
                     </td>
                     <td className="text-right border-r border-slate-200/70 py-2.5 px-3.5 font-mono font-bold text-blue-600">
-                      {Number(c.cpl).toLocaleString()} <span className="text-[10px] text-slate-400">UZS</span>
+                      {Number(c.cpl).toLocaleString('ru-RU')} <span className="text-[10px] text-slate-400">so'm</span>
                     </td>
                     <td className="text-center border-r border-slate-200/70 py-2.5 px-3">
                       <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -1140,7 +1131,7 @@ export default function Marketing() {
 
           <div className="bg-slate-100/90 border-t border-slate-200/90 px-4 py-2.5 flex items-center justify-between text-xs">
             <span className="font-bold text-slate-600">{language === 'ru' ? 'Всего активных кампаний: ' : 'Jami faol kampaniyalar: '}<strong className="text-slate-900 font-mono">{campaignPerformance.length}</strong> {language === 'ru' ? '' : 'ta'}</span>
-            <span className="font-mono font-black text-indigo-700">{language === 'ru' ? 'Σ ОБЩИЙ БЮДЖЕТ:' : 'Σ Umumiy Byudjet:'} {stats.totalSpend.toLocaleString()} UZS</span>
+            <span className="font-mono font-black text-indigo-700">{language === 'ru' ? 'Σ ОБЩИЙ БЮДЖЕТ:' : 'Σ Umumiy Byudjet:'} {stats.totalSpend.toLocaleString('ru-RU')} so'm</span>
           </div>
         </motion.div>
       )}
@@ -1153,7 +1144,7 @@ export default function Marketing() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">{language === 'ru' ? 'Динамика Роста' : 'O\'sish Dinamikasi'}</h3>
-                <p className="text-[10px] font-semibold text-slate-400 mt-0.5">{language === 'ru' ? 'Поток лидов и мониторинг расходов' : 'Lidlar oqimi va xarajat monitoringi'}</p>
+                <p className="text-[10px] font-semibold text-slate-400 mt-0.5">{language === 'ru' ? 'Поток лидов и мониторинг расходов' : 'Lidlar oqimi va reklama xarajatlari'}</p>
               </div>
               <div className="flex gap-3">
                 <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-indigo-500" /><span className="text-[10px] font-bold text-slate-600">{language === 'ru' ? 'Расход' : 'Xarajat'}</span></div>
@@ -1186,7 +1177,7 @@ export default function Marketing() {
 
           {/* Conversion Funnel */}
           <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-4">{language === 'ru' ? 'Воронка Конверсии' : 'Konversiya Voronkasi'}</h3>
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-4">{language === 'ru' ? 'Воронка Конверсии' : 'Bosqichlar'}</h3>
             <div className="space-y-2.5">
               {funnelSteps.map((step, idx) => (
                 <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
@@ -1212,7 +1203,7 @@ export default function Marketing() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-4 flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#1499AD]" /> Auditoriya Segmenti
+              <Users className="w-4 h-4 text-[#1499AD]" /> Bemorlar guruhlari
             </h3>
             <div className="h-[200px] w-full flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">

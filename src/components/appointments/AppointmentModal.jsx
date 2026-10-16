@@ -884,7 +884,7 @@ export default function AppointmentModal({
               <div className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100 shadow-inner">
                 <div className="flex items-center justify-between mb-2 px-1">
                   <Label className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                    {t('appointments.timeGrid') || 'Vaqt grafigi'}
+                    {t('appointments.timeGrid') || 'Bo\'sh vaqtlar'}
                   </Label>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-[#1499AD]" /><span className="text-[10px] font-bold text-slate-400 uppercase">{t('appointments.legendSelected') || 'Tanlangan'}</span></div>
@@ -963,7 +963,7 @@ export default function AppointmentModal({
                 </div>
                 {APPOINTMENT_TIME_SLOTS.filter((slotTime) => (appointment?.id && form.time === slotTime) || !isSlotPastForDate(slotTime, form.date)).length === 0 && (
                   <p className="mt-2 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-2">
-                    {language === 'ru' ? 'На сегодня свободных слотов не осталось — выберите другую дату' : language === 'en' ? 'No future slots left today — pick another date' : "Bugun uchun bo'sh slot qolmadi — boshqa sanani tanlang"}
+                    {language === 'ru' ? 'На сегодня свободных слотов не осталось — выберите другую дату' : language === 'en' ? 'No future slots left today — pick another date' : "Bugun bo'sh vaqt qolmadi — boshqa sanani tanlang"}
                   </p>
                 )}
               </div>

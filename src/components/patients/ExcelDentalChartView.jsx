@@ -396,7 +396,7 @@ function ExcelDentalChartView({
 
                       {/* 4. Narxi */}
                       <td className="border-r border-slate-200 text-right font-mono font-bold text-slate-900 py-2 px-3">
-                        {item.price > 0 ? `${item.price.toLocaleString()} UZS` : '—'}
+                        {item.price > 0 ? `${item.price.toLocaleString('ru-RU')} so'm` : '—'}
                       </td>
 
                       {/* 5. Izoh */}

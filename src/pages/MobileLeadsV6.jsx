@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/api/supabaseClient';
 import LeadQuickView from '@/components/marketing/LeadQuickView';
 import LeadSourceIcon from '@/components/ui/LeadSourceIcon';
+import { formatPhone } from '@/lib/utils';
 
 // Relative time formatting helper (Uzbek language)
 const formatRelativeTime = (dateStr) => {
@@ -302,7 +303,7 @@ export default function MobileLeadsV6() {
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-bold text-slate-900 text-[16px] leading-snug truncate">{lead.name || lead.full_name || 'Ismsiz'}</h3>
-            <button type="button" onClick={(e) => copyPhoneNumber(e, lead.phone)} className="block text-[14px] text-slate-700 tabular-nums">{lead.phone}</button>
+            <button type="button" onClick={(e) => copyPhoneNumber(e, lead.phone)} className="block text-[14px] text-slate-700 tabular-nums">{formatPhone(lead.phone)}</button>
             {(lead.created_date || lead.created_at) && (
               <p className="text-[13px] text-slate-400 inline-flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{new Date(lead.created_date || lead.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '')}</p>
             )}
@@ -347,7 +348,7 @@ export default function MobileLeadsV6() {
         <div className="bg-white px-4 pt-4 pb-3 z-20 border-b border-slate-100/60 shadow-sm shadow-slate-100/5">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h1 className="text-[24px] font-extrabold text-slate-900 tracking-tight">Leadlar</h1>
+              <h1 className="text-[24px] font-extrabold text-slate-900 tracking-tight">Lidlar</h1>
               <p className="text-[13px] font-semibold text-slate-400 uppercase tracking-[0.15em] mt-0.5">Potensial Bemorlar</p>
             </div>
             <div className="flex items-center gap-2">
@@ -470,7 +471,7 @@ export default function MobileLeadsV6() {
                    </div>
                    <div>
                       <h2 className="text-[15px] font-black text-white uppercase leading-none tracking-tight">
-                         {editingLead ? 'Leadni tahrirlash' : 'Yangi Lead'}
+                         {editingLead ? 'Lidni tahrirlash' : 'Yangi lid'}
                       </h2>
                       <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-0.5">{t('navigation.systemName')}</p>
                    </div>

@@ -394,7 +394,7 @@ export default function MobileVisitFlow() {
             <div><p className="text-[14px] font-bold text-blue-800">Qolgani qarzga yoziladi: {fmt(Math.max(0, total - parseNum(amount)))}</p><p className="text-[13px] text-slate-500">To'langan summa jami summadan kam bo'lsa, qolgan qismi bemor qarzi sifatida saqlanadi.</p></div>
           </div>
           {bottomBar(
-            <button type="button" data-testid="visit-pay" disabled={busy} onClick={pay} className={btnMain}>{busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}To'lash</button>,
+            <button type="button" data-testid="visit-pay" disabled={busy} onClick={pay} className={btnMain}>{busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}Qabul qilish</button>,
             <button type="button" disabled={busy} onClick={() => { setPaidResult({ paid: 0 }); setStep('next'); }} className={`${btnGhost} bg-white border border-slate-200`}>To'lovsiz yakunlash</button>,
           )}
         </>

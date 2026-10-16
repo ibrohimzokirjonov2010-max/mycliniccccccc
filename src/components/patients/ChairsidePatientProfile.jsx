@@ -221,7 +221,7 @@ export default function ChairsidePatientProfile({
                 type="button"
                 onClick={() => setProfileViewMode(profileViewMode === 'chairside' ? 'reyestr' : 'chairside')}
                 className="hidden sm:inline-flex px-2 py-1.5 text-[10px] font-bold text-slate-400 hover:text-slate-600 cursor-pointer transition-colors mr-0.5"
-                title="Reyestr / Chairside"
+                title="Bemor kartasi"
               >
                 Reyestr
               </button>

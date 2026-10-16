@@ -198,9 +198,9 @@ export default function Staff() {
       setLoading(true);
       const [allUsers, pays, appts, planList] = await Promise.all([
         base44.entities.User.list('name', 100),
-        base44.entities.Payment.list('-date', 500),
+        base44.entities.Payment.list('-date', 5000),
         base44.entities.Appointment.list('-date', 500),
-        base44.entities.TreatmentPlan.list('-created_date', 500).catch(() => []),
+        base44.entities.TreatmentPlan.list('-created_date', 5000).catch(() => []),
       ]);
       setUsers(allUsers || []);
       setPayments(pays || []);
@@ -689,7 +689,7 @@ export default function Staff() {
     { id: 'all', label: tx(language, 'Hammasi', 'Все', 'All'), count: counts.all },
     { id: 'doctor', label: tx(language, 'Shifokorlar', 'Врачи', 'Doctors'), count: counts.doctor },
     { id: 'admin', label: tx(language, 'Adminlar', 'Админы', 'Admins'), count: counts.admin },
-    { id: 'receptionist', label: tx(language, 'Registratura', 'Регистратура', 'Reception'), count: counts.receptionist },
+    { id: 'receptionist', label: tx(language, 'Qabulxona', 'Регистратура', 'Reception'), count: counts.receptionist },
   ];
 
   const splitTotal = Math.max(1, doctorCount + adminCount + receptionCount);

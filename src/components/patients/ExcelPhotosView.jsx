@@ -99,7 +99,7 @@ function ExcelPhotosView({
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-[10px]">
           <ScanLine className="w-3 h-3 text-indigo-600 shrink-0" />
-          <span>{language === 'ru' ? 'Панорамный ОПТГ' : language === 'en' ? 'Panoramic OPTG' : 'Panoramik OPTG'}</span>
+          <span>{language === 'ru' ? 'Панорамный ОПТГ' : language === 'en' ? 'Panoramic OPTG' : 'Panoramik rentgen (OPTG)'}</span>
         </span>
       );
     }
@@ -150,8 +150,8 @@ function ExcelPhotosView({
             <option value="all">{language === 'ru' ? "Все типы" : language === 'en' ? "All types" : "Barcha turlar"}</option>
             <option value="photo">{language === 'ru' ? "Клинические фото" : "Klinik Rasmlar"}</option>
             <option value="xray">{language === 'ru' ? "Рентген снимки" : "Rentgen Tasvirlar"}</option>
-            <option value="ct">{language === 'ru' ? "3D КТ томография" : "3D KT Tomografiya"}</option>
-            <option value="panoramic">{language === 'ru' ? "Панорамный" : "Panoramik OPTG"}</option>
+            <option value="ct">{language === 'ru' ? "3D КТ томография" : "KT (3D)"}</option>
+            <option value="panoramic">{language === 'ru' ? "Панорамный" : "Panoramik rentgen (OPTG)"}</option>
           </select>
           {/* Upload Button */}
           <input

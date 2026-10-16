@@ -25,7 +25,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 
-const formatMoney = (val) => Number(val || 0).toLocaleString('uz-UZ') + " UZS";
+const formatMoney = (val) => Number(val || 0).toLocaleString('ru-RU') + " so'm";
 
 /**
  * Debts Page - Professional Excel Spreadsheet View
@@ -458,7 +458,7 @@ export default function Debts() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('debts.title') || "Qarzdorliklar Paneli"}</h1>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('debts.title') || "Qarzlar"}</h1>
             <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200">
               {language === 'ru' ? `• КОНТРОЛЬ ДЕБИТОРОВ: ${patients.length} ПАЦИЕНТОВ` : language === 'en' ? `• DEBTOR CONTROL: ${patients.length} PATIENTS` : `• Debitorlar Nazorati ${patients.length} Bemorlar`}
             </span>
@@ -500,7 +500,7 @@ export default function Debts() {
             color: "text-blue-600", 
             bg: "bg-blue-50 border-blue-100", 
             isCurrency: false, 
-            countText: language === 'ru' ? "Количество активных дебиторов" : language === 'en' ? "Active debtors count" : "Faol debitorlar soni" 
+            countText: language === 'ru' ? "Количество активных дебиторов" : language === 'en' ? "Active debtors count" : "Qarzdor bemorlar soni" 
           },
           { 
             label: language === 'ru' ? "КРУПНЫЕ ДОЛЖНИКИ (>5M)" : language === 'en' ? "LARGE DEBTORS (>5M)" : "YIRIK QARZDORLAR (>5M)", 
@@ -534,7 +534,7 @@ export default function Debts() {
               </span>
               <div className="text-lg sm:text-xl font-black font-mono tracking-tight text-slate-900 tabular-nums">
                 {s.isCurrency ? (
-                  <span>{Number(s.value).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">UZS</span></span>
+                  <span>{Number(s.value).toLocaleString('ru-RU')} <span className="text-[10px] font-bold text-slate-400">so'm</span></span>
                 ) : (
                   <span>{s.value} <span className="text-xs font-bold text-slate-400">{language === 'ru' ? '' : 'nafar'}</span></span>
                 )}
@@ -577,9 +577,9 @@ export default function Debts() {
           <div className="flex items-center gap-1 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
               { id: 'all', label: language === 'ru' ? "Все" : language === 'en' ? "All" : "Barchasi", count: patients.length },
-              { id: 'large', label: language === 'ru' ? "> 5 млн UZS" : "> 5M UZS", count: largeDebtsCount },
-              { id: 'medium', label: language === 'ru' ? "1 - 5 млн UZS" : "1M - 5M UZS", count: mediumDebtsCount },
-              { id: 'small', label: language === 'ru' ? "< 1 млн UZS" : "< 1M UZS", count: smallDebtsCount },
+              { id: 'large', label: language === 'ru' ? "> 5 млн UZS" : "5 mln so'mdan ortiq", count: largeDebtsCount },
+              { id: 'medium', label: language === 'ru' ? "1 - 5 млн UZS" : "1–5 mln so'm", count: mediumDebtsCount },
+              { id: 'small', label: language === 'ru' ? "< 1 млн UZS" : "1 mln so'mdan kam", count: smallDebtsCount },
               { id: 'telegram', label: language === 'ru' ? "Есть Telegram" : language === 'en' ? "Has Telegram" : "Telegram bor", count: telegramConnectedCount },
             ].map(tab => {
               const isActive = activeFilterTab === tab.id;
@@ -774,16 +774,16 @@ export default function Debts() {
                           "font-mono font-black text-xs tabular-nums",
                           isLargeDebt ? "text-amber-950 font-extrabold" : "text-slate-900"
                         )}>
-                          {Number(p.real_debt || 0).toLocaleString()}
-                          <span className="text-[9.5px] font-semibold text-amber-700 ml-1">UZS</span>
+                          {Number(p.real_debt || 0).toLocaleString('ru-RU')}
+                          <span className="text-[9.5px] font-semibold text-amber-700 ml-1">so'm</span>
                         </span>
                       </td>
 
                       {/* TO'LANGAN SUMMA Cell */}
                       <td className={`text-right border-r border-slate-200/70 whitespace-nowrap bg-emerald-50/20 ${isCompact ? 'py-1.5 px-3' : 'py-2.5 px-3.5'}`}>
                         <span className="font-mono font-bold text-emerald-600 text-xs tabular-nums">
-                          {Number(p.real_paid || 0).toLocaleString()}
-                          <span className="text-[9.5px] font-semibold text-emerald-500 ml-1">UZS</span>
+                          {Number(p.real_paid || 0).toLocaleString('ru-RU')}
+                          <span className="text-[9.5px] font-semibold text-emerald-500 ml-1">so'm</span>
                         </span>
                       </td>
 
@@ -1123,7 +1123,7 @@ export default function Debts() {
                                             </span>
                                           </td>
                                           <td className="px-3.5 py-2 text-right font-mono font-black text-slate-900 text-xs">
-                                            {Number(srv.price || 0).toLocaleString()} <span className="text-[10px] font-sans font-bold text-slate-400">{language === 'ru' ? 'UZS' : "so'm"}</span>
+                                            {Number(srv.price || 0).toLocaleString('ru-RU')} <span className="text-[10px] font-sans font-bold text-slate-400">{language === 'ru' ? 'UZS' : "so'm"}</span>
                                           </td>
                                         </tr>
                                       );
@@ -1148,7 +1148,7 @@ export default function Debts() {
                                                 {language === 'ru' ? 'Сумма без скидки:' : language === 'en' ? 'Original total:' : 'Chegirmasiz summa:'}
                                               </td>
                                               <td className="px-3.5 py-1.5 text-right font-mono line-through text-[11px] text-slate-400">
-                                                {servicesTotal.toLocaleString()} <span className="text-[9px] font-sans font-bold text-slate-400">{language === 'ru' ? 'UZS' : "so'm"}</span>
+                                                {servicesTotal.toLocaleString('ru-RU')} <span className="text-[9px] font-sans font-bold text-slate-400">{language === 'ru' ? 'UZS' : "so'm"}</span>
                                               </td>
                                             </tr>
                                           )}
@@ -1158,7 +1158,7 @@ export default function Debts() {
                                                 {language === 'ru' ? 'Скидка:' : language === 'en' ? 'Discount:' : 'Chegirma:'} {effectiveDiscountPct > 0 ? `(${effectiveDiscountPct}%)` : ''}
                                               </td>
                                               <td className="px-3.5 py-1.5 text-right font-mono text-[11px]">
-                                                -{effectiveDiscountAmt.toLocaleString()} <span className="text-[9px] font-sans font-bold text-rose-500">{language === 'ru' ? 'UZS' : "so'm"}</span>
+                                                -{effectiveDiscountAmt.toLocaleString('ru-RU')} <span className="text-[9px] font-sans font-bold text-rose-500">{language === 'ru' ? 'UZS' : "so'm"}</span>
                                               </td>
                                             </tr>
                                           )}
@@ -1170,7 +1170,7 @@ export default function Debts() {
                                               }
                                             </td>
                                             <td className="px-3.5 py-2 text-right font-mono text-emerald-700 text-xs">
-                                              {discountedPrice.toLocaleString()} <span className="text-[10px] font-sans font-bold text-slate-500">{language === 'ru' ? 'UZS' : "so'm"}</span>
+                                              {discountedPrice.toLocaleString('ru-RU')} <span className="text-[10px] font-sans font-bold text-slate-500">{language === 'ru' ? 'UZS' : "so'm"}</span>
                                             </td>
                                           </tr>
                                         </>
@@ -1216,7 +1216,7 @@ export default function Debts() {
                                 </span>
                               </div>
                               <span className="font-black text-emerald-600 text-sm">
-                                +{Number(h.amount || 0).toLocaleString()} UZS
+                                +{Number(h.amount || 0).toLocaleString('ru-RU')} so'm
                               </span>
                             </div>
                           ))

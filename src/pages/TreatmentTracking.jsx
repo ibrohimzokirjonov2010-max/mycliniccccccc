@@ -63,15 +63,15 @@ export default function TreatmentTracking() {
     try {
       let data;
       if (isDoctor && user?.id) {
-        data = await base44.entities.TreatmentPlan.filter({ doctor_id: user.id }, '-created_date', 200).catch(async () => {
-          const allPlans = await base44.entities.TreatmentPlan.list('-created_date', 200);
+        data = await base44.entities.TreatmentPlan.filter({ doctor_id: user.id }, '-created_date', 5000).catch(async () => {
+          const allPlans = await base44.entities.TreatmentPlan.list('-created_date', 5000);
           return (allPlans || []).filter(p =>
             String(p.doctor_id) === String(user.id) ||
             String(p.doctor_name || '').toLowerCase() === String(user.name || '').toLowerCase()
           );
         });
       } else {
-        data = await base44.entities.TreatmentPlan.list('-created_date', 200);
+        data = await base44.entities.TreatmentPlan.list('-created_date', 5000);
       }
       setPlans(data || []);
     } catch (err) {
@@ -338,7 +338,7 @@ export default function TreatmentTracking() {
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-lg max-md:text-[21px] md:text-xl font-black text-slate-900 tracking-tight">
-                {t('treatmentTracking.title') || "Davolash Kuzatuvi"}
+                {t('treatmentTracking.title') || "Davolash kuzatuvi"}
               </h1>
               <span className="px-2 py-0.5 max-md:px-2.5 max-md:py-1 rounded-full text-[10px] max-md:text-[12px] font-black tabular-nums bg-slate-100 text-slate-600 border border-slate-200/80">
                 {language === 'ru' ? `Всего ${plans.length}` : language === 'en' ? `Total ${plans.length}` : `Jami ${plans.length}`}
@@ -347,7 +347,7 @@ export default function TreatmentTracking() {
             <p className="text-[11px] max-md:text-[12px] font-semibold text-slate-400 mt-0.5 line-clamp-1 md:line-clamp-none">
               {t('treatmentTracking.subtitle') || (language === 'ru'
                 ? 'Мониторинг исполнения процедур и клинической эффективности'
-                : 'Muolajalar ijrosi va klinik samaradorlik monitoringi')}
+                : 'Muolajalar bajarilishi va yakunlangan rejalar')}
             </p>
           </div>
         </div>
@@ -381,7 +381,7 @@ export default function TreatmentTracking() {
             isPercent: false,
           },
           {
-            label: language === 'ru' ? "ЭФФЕКТИВНОСТЬ" : language === 'en' ? "EFFICIENCY" : "SAMARADORLIK",
+            label: language === 'ru' ? "ЭФФЕКТИВНОСТЬ" : language === 'en' ? "EFFICIENCY" : "YAKUNLANGAN REJALAR ULUSHI",
             value: overallEfficiency,
             icon: TrendingUp,
             color: "text-indigo-600",
@@ -451,12 +451,12 @@ export default function TreatmentTracking() {
             isPercent: false
           },
           { 
-            label: language === 'ru' ? "ЭФФЕКТИВНОСТЬ" : language === 'en' ? "EFFICIENCY" : "SAMARADORLIK", 
+            label: language === 'ru' ? "ЭФФЕКТИВНОСТЬ" : language === 'en' ? "EFFICIENCY" : "YAKUNLANGAN REJALAR ULUSHI", 
             value: overallEfficiency, 
             icon: TrendingUp, 
             color: "text-indigo-600", 
             bg: "bg-indigo-50 border-indigo-100", 
-            countText: language === 'ru' ? "Показатель успешности клиники" : language === 'en' ? "Clinic success rate" : "Klinik muvaffaqiyat ko'rsatkichi", 
+            countText: language === 'ru' ? "Показатель успешности клиники" : language === 'en' ? "Clinic success rate" : "Yakunlangan rejalar ulushi", 
             isPercent: true 
           },
         ].map((s, i) => (
@@ -873,8 +873,8 @@ export default function TreatmentTracking() {
                       {/* JAMI QIYMAT Cell */}
                       <td className={`text-right border-r border-slate-200/70 whitespace-nowrap bg-emerald-50/30 ${isCompact ? 'py-1.5 px-2.5' : 'py-2.5 px-3'}`}>
                         <span className="font-mono font-black text-emerald-600 text-xs tabular-nums">
-                          {Number(p.total_price || 0).toLocaleString()}
-                          <span className="text-[9.5px] font-semibold text-emerald-500 ml-1">UZS</span>
+                          {Number(p.total_price || 0).toLocaleString('ru-RU')}
+                          <span className="text-[9.5px] font-semibold text-emerald-500 ml-1">so'm</span>
                         </span>
                       </td>
 
@@ -912,7 +912,7 @@ export default function TreatmentTracking() {
                             className="h-7 px-2.5 rounded-lg border-slate-200 text-slate-700 hover:text-[#1499AD] hover:bg-[#1499AD]/10 text-[10.5px] font-bold gap-1"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                            <span>{language === 'ru' ? 'Контроль исполнения' : language === 'en' ? 'Execution Control' : 'Ijro Nazorati'}</span>
+                            <span>{language === 'ru' ? 'Контроль исполнения' : language === 'en' ? 'Execution Control' : 'Batafsil'}</span>
                           </Button>
 
                           {p.patient_id && (
@@ -994,7 +994,7 @@ export default function TreatmentTracking() {
                   <div className="text-right">
                     <span className="text-[10px] font-black uppercase text-slate-400 block">{language === 'ru' ? 'ОБЩАЯ СТОИМОСТЬ:' : 'Jami Qiymati:'}</span>
                     <span className="text-sm font-black font-mono text-emerald-700">
-                      {Number(activeDetailPlan.total_price || 0).toLocaleString()} UZS
+                      {Number(activeDetailPlan.total_price || 0).toLocaleString('ru-RU')} so'm
                     </span>
                   </div>
                 </div>
@@ -1074,7 +1074,7 @@ export default function TreatmentTracking() {
                         <th className="w-10 px-2 py-2 text-center border-r border-slate-200">{language === 'ru' ? 'Статус' : 'Holat'}</th>
                         <th className="px-3 py-2 border-r border-slate-200">{language === 'ru' ? 'Название услуги' : 'Xizmat Nomi'}</th>
                         <th className="w-20 px-2 py-2 text-center border-r border-slate-200">{language === 'ru' ? 'Зуб' : 'Tish'}</th>
-                        <th className="px-3 py-2 text-right">{language === 'ru' ? 'Цена (UZS)' : 'Narxi (UZS)'}</th>
+                        <th className="px-3 py-2 text-right">{language === 'ru' ? 'Цена (UZS)' : 'Narxi (so\'m)'}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200/70 font-mono">
@@ -1138,7 +1138,7 @@ export default function TreatmentTracking() {
 
                               {/* Price */}
                               <td className="px-3 py-2 text-right font-bold text-slate-800">
-                                {Number(srv.price || 0).toLocaleString()} UZS
+                                {Number(srv.price || 0).toLocaleString('ru-RU')} so'm
                               </td>
                             </tr>
                           );

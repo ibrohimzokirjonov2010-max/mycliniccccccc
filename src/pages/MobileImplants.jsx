@@ -640,7 +640,7 @@ export default function MobileImplants() {
                 title="Qo'shimcha xizmatlar prays-listi"
               >
                 <Sparkles className="w-4 h-4 text-indigo-600" />
-                <span>Prays-list</span>
+                <span>Narxlar</span>
               </motion.button>
 
               <motion.button
@@ -847,7 +847,7 @@ export default function MobileImplants() {
                   <div className="w-7 h-7 rounded-xl bg-indigo-50 flex items-center justify-center">
                     <Target className="w-3.5 h-3.5 text-indigo-600" />
                   </div>
-                  <h3 className="text-xs font-[900] text-slate-900 uppercase tracking-tight">Brendlar & Zaxira</h3>
+                  <h3 className="text-xs font-[900] text-slate-900 uppercase tracking-tight">Firmalar va zaxira</h3>
                 </div>
                 <button
                   type="button"

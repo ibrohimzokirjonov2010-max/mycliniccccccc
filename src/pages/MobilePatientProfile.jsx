@@ -441,7 +441,7 @@ export default function MobilePatientProfile() {
         return !isNaN(d.getTime()) && d >= today;
       })
       .sort((a, b) => new Date(a.date || a.appointment_date) - new Date(b.date || b.appointment_date));
-    return upcoming[0] || appointments[0] || null;
+    return upcoming[0] || null;
   }, [appointments]);
 
   const selectedHistory = useMemo(() => {
@@ -974,7 +974,7 @@ export default function MobilePatientProfile() {
   );
   const notesJsx = (
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-4 space-y-3">
-                  <p className="text-xs font-bold text-slate-500">{t('patientProfile.tabs.notes', 'Eslatmalar')}</p>
+                  <p className="text-xs font-bold text-slate-500">{t('patientProfile.tabs.notes', 'Izohlar')}</p>
                   <textarea
                     value={noteText}
                     onChange={e => setNoteText(e.target.value)}
@@ -1126,9 +1126,11 @@ export default function MobilePatientProfile() {
           })}
         </div>
       </div>
-      {nextAppointment && (
+      {(nextAppointment || appointments?.length > 0) && (
         <p className="px-4 mt-2 text-[13px] font-semibold text-slate-500">
-          Keyingi uchrashuv: <b className="text-blue-700">{formatStandardDate(nextAppointment.date || nextAppointment.appointment_date)}{formatAppointmentTime(nextAppointment) ? ` · ${formatAppointmentTime(nextAppointment)}` : ''}</b>
+          Keyingi uchrashuv: {nextAppointment
+            ? <b className="text-blue-700">{formatStandardDate(nextAppointment.date || nextAppointment.appointment_date)}{formatAppointmentTime(nextAppointment) ? ` · ${formatAppointmentTime(nextAppointment)}` : ''}</b>
+            : <b className="text-slate-600">Rejalashtirilmagan</b>}
         </p>
       )}
 
@@ -1663,7 +1665,7 @@ export default function MobilePatientProfile() {
                           </div>
                         </div>
                         <div className="mt-3 grid grid-cols-3 gap-1.5" data-testid="implant-subtabs">
-                          {[['xray', 'Rentgenlar', imgs.length, ImageIcon], ['docs', 'Hujjatlar', docs.length, FileText], ['notes', 'Eslatmalar', noteList.length, ClipboardList]].map(([k, label, n, Icon]) => (
+                          {[['xray', 'Rentgenlar', imgs.length, ImageIcon], ['docs', 'Hujjatlar', docs.length, FileText], ['notes', 'Izohlar', noteList.length, ClipboardList]].map(([k, label, n, Icon]) => (
                             <button key={k} type="button" onClick={() => setImplantSubTab((prev) => ({ ...prev, [subKey]: k }))}
                               className={cn('h-9 rounded-xl border text-[11.5px] font-semibold inline-flex items-center justify-center gap-1', sub === k ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-600')}>
                               <Icon className="w-3.5 h-3.5" />{label} ({n})

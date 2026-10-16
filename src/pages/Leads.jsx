@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { ClinicDateField } from '@/components/ui/ClinicDateField';
+import { formatPhone } from '@/lib/utils';
 
 export default function Leads() {
   const { t, language } = useTranslation();
@@ -292,7 +293,7 @@ export default function Leads() {
     }
     if (s.includes('import') || s.includes('csv') || s.includes('excel')) {
       return {
-        label: 'Excel Import',
+        label: 'Fayldan',
         icon: FileSpreadsheet,
         bg: 'bg-teal-50 text-teal-700 border-teal-200/80',
         iconBg: 'bg-[#107C41] text-white',
@@ -492,7 +493,7 @@ export default function Leads() {
               {t('leads.title') || 'Lidlar Boshqaruvi'}
             </h1>
             <p className="text-[11px] font-medium text-slate-500">
-              {t('leads.subtitle') || 'Potentsial mijozlar, target arizalari va murojaatlar'}
+              {t('leads.subtitle') || 'Potentsial mijozlar va murojaatlar'}
             </p>
           </div>
         </div>
@@ -656,7 +657,7 @@ export default function Leads() {
             }`}
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-            <span>{t('leads.excelTable') || (language === 'ru' ? 'Excel таблица' : 'Excel Jadval')}</span>
+            <span>{t('leads.excelTable') || (language === 'ru' ? 'Excel таблица' : 'Jadval')}</span>
           </button>
           <button 
             onClick={() => setView('kanban')}
@@ -665,7 +666,7 @@ export default function Leads() {
             }`}
           >
             <LayoutGrid className="w-3.5 h-3.5 text-purple-500" />
-            <span>{t('leads.kanban') || (language === 'ru' ? 'Канбан' : 'Kanban')}</span>
+            <span>{t('leads.kanban') || (language === 'ru' ? 'Канбан' : 'Ustunlar')}</span>
           </button>
         </div>
       </motion.div>
@@ -693,7 +694,7 @@ export default function Leads() {
 
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mr-1">
-                {language === 'ru' ? 'РЕЖИМ: EXCEL ТАБЛИЦА' : language === 'en' ? 'GRID: EXCEL MODE' : 'GRID: EXCEL REJIM'}
+                {language === 'ru' ? 'РЕЖИМ: EXCEL ТАБЛИЦА' : language === 'en' ? 'GRID: EXCEL MODE' : 'JADVAL KO\'RINISHI'}
               </span>
             </div>
           </div>
@@ -730,7 +731,7 @@ export default function Leads() {
                     <th className="py-1.5 px-2.5 min-w-[240px] border-r border-slate-200/80">
                       <div className="flex items-center gap-1.5">
                         <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>{language === 'ru' ? 'Статус и Изox (Заметки)' : 'Status & Izoh (Qaydlar)'}</span>
+                        <span>{language === 'ru' ? 'Статус и Изox (Заметки)' : 'Holat va izoh'}</span>
                       </div>
                     </th>
                     <th className="py-1.5 px-2.5 text-center min-w-[140px]">{t('leads.actions') || (language === 'ru' ? 'Действия' : 'Amallar')}</th>
@@ -776,7 +777,7 @@ export default function Leads() {
                         <td className="py-1.5 px-2.5 whitespace-nowrap border-r border-slate-200/60">
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-[13px] font-bold text-slate-800 tracking-tight whitespace-nowrap">
-                              {l.phone || '—'}
+                              {l.phone ? formatPhone(l.phone) : '—'}
                             </span>
                             {l.phone && (
                               <button 
@@ -797,8 +798,9 @@ export default function Leads() {
 
                         {/* Source with compact icon badge */}
                         <td className="py-1.5 px-2.5 text-center border-r border-slate-200/60">
-                          <div className="flex items-center justify-center">
+                          <div className="flex flex-col items-center justify-center gap-0.5">
                             {renderSourceBadge(l.source)}
+                            <span className="text-[9px] font-bold text-slate-500 leading-none whitespace-nowrap">{getSourceMeta(l.source).label}</span>
                           </div>
                         </td>
 
@@ -1022,7 +1024,7 @@ export default function Leads() {
                                           {l.name}
                                         </p>
                                         <p className="text-[11px] font-mono font-bold text-slate-600 flex items-center gap-1 mt-0.5 whitespace-nowrap">
-                                          <Phone className="w-2.5 h-2.5 text-emerald-500 shrink-0" /> {l.phone}
+                                          <Phone className="w-2.5 h-2.5 text-emerald-500 shrink-0" /> {formatPhone(l.phone)}
                                         </p>
                                       </div>
                                     </div>
@@ -1149,7 +1151,7 @@ export default function Leads() {
                       { value: 'Facebook', label: 'Facebook', icon: Facebook, color: 'text-blue-500' },
                       { value: 'Call', label: 'Telefon (Call)', icon: Phone, color: 'text-emerald-500' },
                       { value: 'Website', label: 'Veb-sayt', icon: Globe, color: 'text-indigo-500' },
-                      { value: 'Import', label: 'Excel Import', icon: FileSpreadsheet, color: 'text-teal-600' },
+                      { value: 'Import', label: 'Fayldan', icon: FileSpreadsheet, color: 'text-teal-600' },
                       { value: 'Other', label: 'Boshqa', icon: Target, color: 'text-slate-500' }
                     ].map(item => {
                       const Icon = item.icon;

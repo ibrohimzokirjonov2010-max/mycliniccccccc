@@ -405,3 +405,16 @@ export function resolveDoctorId(patient, plans = [], doctorsList = [], currentUs
 
 export default cn;
 
+
+/** Foydalanuvchi ismi: "Demo ..." qoldiq nomlar o'rniga rol nomi (ism o'ylab topilmaydi). */
+export function isDemoName(name) {
+  return /^demo(\s|$)/i.test(String(name || '').trim());
+}
+export function displayUserName(user, fallback = 'Foydalanuvchi') {
+  const n = String(user?.full_name || user?.name || '').trim();
+  if (n && !isDemoName(n)) return n;
+  const role = String(user?.role || '').toLowerCase();
+  if (role === 'admin' || role === 'owner') return 'Administrator';
+  if (role === 'doctor') return 'Shifokor';
+  return fallback;
+}

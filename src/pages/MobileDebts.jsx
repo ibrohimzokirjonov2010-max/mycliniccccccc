@@ -589,7 +589,7 @@ export default function MobileDebts() {
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black ${planRemaining > 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                    {planRemaining > 0 ? `${planRemaining.toLocaleString()} UZS` : 'Yopilgan'}
+                                    {planRemaining > 0 ? `${planRemaining.toLocaleString('ru-RU')} so'm` : 'Yopilgan'}
                                   </span>
                                   <button
                                     type="button"

@@ -369,7 +369,7 @@ export default function PublicPageSettings() {
                 <Table className="w-4 h-4" />
               </div>
               <h3 className="font-bold text-slate-900 text-sm">
-                {t('settings.publicPage.title') || "Ommaviy sahifa sozlamalari"}
+                {t('settings.publicPage.title') || "Klinika sahifasi sozlamalari"}
               </h3>
             </div>
 

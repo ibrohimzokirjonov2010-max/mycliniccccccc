@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
 
-const formatCurrency = (val) => `${Number(val || 0).toLocaleString('uz-UZ')} UZS`;
+const formatCurrency = (val) => `${Number(val || 0).toLocaleString('ru-RU')} so'm`;
 
 export default function NoShow() {
   const { t } = useTranslation();
