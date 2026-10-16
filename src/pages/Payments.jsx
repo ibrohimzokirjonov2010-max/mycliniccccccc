@@ -3031,7 +3031,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
                            }}
                            className="payment-add-chip compact-hit"
                          >
-                           +{val.toLocaleString()}
+                           +{val.toLocaleString('ru-RU')}
                          </button>
                        ))}
                        <button

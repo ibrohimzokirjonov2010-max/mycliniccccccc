@@ -453,7 +453,7 @@ export default function ReportsDashboard({
                   <Th field="completed" current={docSortField} onSort={onDocSort}>{tx(language, 'Bajarilgan', 'Выполнено', 'Done')}</Th>
                   <Th field="patients" current={docSortField} onSort={onDocSort}>{tx(language, 'Bemorlar soni', 'Пациенты', 'Patients')}</Th>
                   <Th field="revenue" current={docSortField} onSort={onDocSort} className="text-emerald-700">{tx(language, 'Umumiy tushum', 'Выручка', 'Revenue')}</Th>
-                  <Th field="avg_check" current={docSortField} onSort={onDocSort}>{tx(language, "O'rtacha chek", 'Средний чек', 'Avg')}</Th>
+                  <Th field="avg_check" current={docSortField} onSort={onDocSort}>{tx(language, "O'rtacha to'lov", 'Средний чек', 'Avg')}</Th>
                   <Th field="share" current={docSortField} onSort={onDocSort}>{tx(language, 'Klinika ulushi', 'Доля', 'Share')}</Th>
                 </tr>
               </thead>

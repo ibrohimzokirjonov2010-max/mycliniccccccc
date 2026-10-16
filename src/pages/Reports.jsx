@@ -212,6 +212,7 @@ export default function Reports() {
         };
       }
       docMap[key].revenue += (Number(p.amount) || 0);
+      docMap[key].paymentCount = (docMap[key].paymentCount || 0) + 1;
       if (p.patient_id) docMap[key].patientIds.add(p.patient_id);
     });
 
@@ -249,9 +250,8 @@ export default function Reports() {
     });
 
     const list = Object.values(docMap).map(doc => {
-      const avgCheck = doc.completedCount > 0 
-        ? Math.round(doc.revenue / doc.completedCount) 
-        : (doc.appointmentCount > 0 ? Math.round(doc.revenue / doc.appointmentCount) : 0);
+      // O'rtacha to'lov = tushum / to'lovlar soni
+      const avgCheck = doc.paymentCount > 0 ? Math.round(doc.revenue / doc.paymentCount) : 0;
       const completionRate = doc.appointmentCount > 0 
         ? Math.round((doc.completedCount / doc.appointmentCount) * 100) 
         : 0;
@@ -708,7 +708,7 @@ export default function Reports() {
         title: `${weak.name}: ${weak.appointmentCount} ${language === 'ru' ? 'приёмов' : 'qabul'}, ${weak.completionRate}%`,
         body: language === 'ru'
           ? `Завершено ${completedCount}. Средний чек ${fmtMoney(weak.avgCheck)}.`
-          : `Bajarilgani ${completedCount} ta. O'rtacha chek ${fmtMoney(weak.avgCheck)}.`,
+          : `Bajarilgani ${completedCount} ta. O'rtacha to'lov ${fmtMoney(weak.avgCheck)}.`,
       });
     }
     const noShow = appointmentsStatusReport.find((s) => /kelmagan|неявк|no-show/i.test(s.status));

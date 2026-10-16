@@ -281,6 +281,7 @@ export default function Staff() {
       const row = bump(p);
       if (!row) return;
       row.revenue += Number(p.amount) || 0;
+      row.paymentCount = (row.paymentCount || 0) + 1;
       if (p.patient_id) row.patientIds.add(p.patient_id);
     });
 
@@ -306,9 +307,7 @@ export default function Staff() {
       row.patients = row.patientIds.size;
       row.completion = row.appointments ? Math.round((row.completed / row.appointments) * 100) : 0;
       row.share = Math.round(row.revenue * (row.commission / 100));
-      row.avgCheck = row.completed > 0
-        ? Math.round(row.revenue / row.completed)
-        : (row.appointments > 0 ? Math.round(row.revenue / row.appointments) : 0);
+      row.avgCheck = row.paymentCount > 0 ? Math.round(row.revenue / row.paymentCount) : 0;
 
       const busy = row.todayAppts.some((a) => {
         if (isCompletedStatus(a.status) || isCancelledStatus(a.status)) return false;
