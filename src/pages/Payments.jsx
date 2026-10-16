@@ -3663,7 +3663,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
                       </span>
                     </div>
 
-                    <div className="overflow-x-auto max-h-[min(280px,32vh)] overflow-y-auto scrollbar-thin flex-1">
+                    <div className="overflow-x-auto max-h-[min(280px,32vh)] overflow-y-auto pay-modal-scroll flex-1">
                       {loadingHistory ? (
                         <div className="py-12 text-center text-xs text-slate-400">Yuklanmoqda...</div>
                       ) : patientPaymentsHistory.length === 0 ? (

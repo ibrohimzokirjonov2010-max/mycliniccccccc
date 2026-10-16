@@ -98,7 +98,7 @@ export default function PaymentPatientPlans({ patientId, patient }) {
       ) : rows.length === 0 ? (
         <div className="py-5 text-center text-[11px] text-slate-400 italic">Davolash rejalari yo'q</div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto pay-modal-scroll">
           <table className="w-full border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[9px]">
