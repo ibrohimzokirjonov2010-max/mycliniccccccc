@@ -1208,7 +1208,10 @@ body:has([role="dialog"][data-state="open"]) [data-sonner-toaster] {
 .new-patient-dialog [data-wizard-mobile="step2"] .wizard-phone-arch .wizard-tooth-hit { height: auto !important; min-height: 0 !important; aspect-ratio: auto !important; padding: 2px 0 !important; }
 
 /* Payment detail modal: clearly visible scrollbars (REJALAR + history) */
-.pay-modal-scroll { scrollbar-width: auto; scrollbar-color: #0f766e #e5e7eb; }
+/* Firefox only: in Chromium, scrollbar-color would disable the ::-webkit-scrollbar styles below */
+@supports not selector(::-webkit-scrollbar) {
+  .pay-modal-scroll { scrollbar-width: auto; scrollbar-color: #0f766e #e5e7eb; }
+}
 .pay-modal-scroll::-webkit-scrollbar { height: 10px; width: 10px; }
 .pay-modal-scroll::-webkit-scrollbar-track { background: #e5e7eb; border-radius: 9999px; }
 .pay-modal-scroll::-webkit-scrollbar-thumb { background: #0f766e; border-radius: 9999px; border: 2px solid #e5e7eb; }
