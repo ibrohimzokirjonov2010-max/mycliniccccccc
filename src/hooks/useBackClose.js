@@ -13,19 +13,31 @@ const openStack = []; // {id, close}
 let listening = false;
 // Modal yopilganda chaqirilgan history.back() asinxron. Shu oraliqda foydalanuvchi menyudan
 // boshqa sahifaga o'tsa (pushState), kechikkan back() yangi sahifani bekor qilardi va menyuni
-// ikki marta bosish kerak bo'lardi. Shuni kuzatamiz va kerak bo'lsa forward() bilan qaytaramiz.
+// ikki marta bosish kerak bo'lardi. Shu holatda tanlangan sahifani qayta tiklaymiz.
 const pendingBacks = []; // tokenlar
-let pushedWhilePending = false;
+let pushedWhilePending = null; // { state, url } — back() kutilayotganda qilingan oxirgi pushState
+let origPushState = null;
+let replaying = false;
 
 function onPop() {
+  if (replaying) return;
   const cur = window.history.state && window.history.state[MARK];
 
   if (pendingBacks.length > 0) {
     pendingBacks.shift();
-    if (pushedWhilePending) {
-      if (pendingBacks.length === 0) pushedWhilePending = false;
-      // back() navigatsiyadan keyin bajarildi — foydalanuvchi tanlagan sahifaga qaytamiz.
-      window.history.forward();
+    if (pushedWhilePending && origPushState) {
+      const target = pushedWhilePending;
+      pushedWhilePending = null;
+      // back() navigatsiyadan keyin bajarildi — foydalanuvchi tanlagan sahifaga qaytamiz
+      // va routerga popstate orqali xabar beramiz.
+      replaying = true;
+      try {
+        origPushState(target.state, '', target.url);
+        // Yangi modal markeri bo'lsa routerga xabar shart emas (URL o'zgarmaydi).
+        if (!target.isModalMarker) window.dispatchEvent(new PopStateEvent('popstate', { state: target.state }));
+      } finally {
+        replaying = false;
+      }
       return;
     }
   }
@@ -51,10 +63,13 @@ function ensureListener() {
   listening = true;
   window.addEventListener('popstate', onPop);
   try {
-    const origPush = window.history.pushState.bind(window.history);
+    origPushState = window.history.pushState.bind(window.history);
     window.history.pushState = function patchedPushState(...args) {
-      if (pendingBacks.length > 0) pushedWhilePending = true;
-      return origPush(...args);
+      if (pendingBacks.length > 0) {
+        const isModalMarker = !!(args[0] && typeof args[0] === 'object' && args[0][MARK] != null);
+        pushedWhilePending = { state: args[0], url: args[2], isModalMarker };
+      }
+      return origPushState(...args);
     };
   } catch { /* ignore */ }
 }
@@ -91,7 +106,7 @@ export function useBackClose(isOpen, onClose) {
         window.setTimeout(() => {
           const i = pendingBacks.indexOf(token);
           if (i >= 0) pendingBacks.splice(i, 1);
-          if (pendingBacks.length === 0) pushedWhilePending = false;
+          if (pendingBacks.length === 0) pushedWhilePending = null;
         }, 1500);
       }
     };
