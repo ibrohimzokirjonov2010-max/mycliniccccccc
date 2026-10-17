@@ -14,6 +14,7 @@ import verifyHandler from '../api/card/verify.js';
 import attachHandler from '../api/card/attach.js';
 import statusHandler from '../api/card/status.js';
 import cronHandler from '../api/cron/charge-trials.js';
+import { signRegistrationToken } from '../api/_lib/regToken.js';
 
 for (const k of ['CLICK_SERVICE_ID', 'CLICK_MERCHANT_USER_ID', 'CLICK_SECRET_KEY', 'CRON_SECRET']) delete process.env[k];
 
@@ -27,7 +28,7 @@ assert.equal(auth, `77:${crypto.createHash('sha1').update('1519051543S3CRET').di
 
 // 3) Click so'rov shakllari (hujjat bo'yicha): request — Auth'siz; verify/payment — Auth bilan
 const calls = [];
-const fake = async (url, init) => { calls.push({ url, init }); return { status: 200, json: async () => ({ error_code: 0, card_token: 'T', card_number: '8600 55** **** 3244', payment_id: 1, payment_status: 1 }) }; };
+const fake = async (url, init) => { calls.push({ url, init }); return { status: 200, json: async () => ({ error_code: 0, card_token: 'T', card_number: '8600 55** **** 3244', payment_id: 1, payment_status: 2 }) }; };
 const cfg = { serviceId: 12345, merchantUserId: '77', secretKey: 'S3CRET' };
 await requestCardToken({ cardNumber: '8600123412341234', expireDate: '0526' }, cfg, { fetchImpl: fake });
 await verifyCardToken({ cardToken: 'T', smsCode: '123456' }, cfg, { fetchImpl: fake });
@@ -69,7 +70,7 @@ function mock(method, body, headers = {}) {
   return { req: { method, body, headers: { host: 'x.test', ...headers }, url: '/t', socket: { remoteAddress: '1.1.1.1' } }, res };
 }
 {
-  const { req, res } = mock('GET'); statusHandler(req, res);
+  const { req, res } = mock('GET'); await statusHandler(req, res);
   assert.equal(res.body.mode, 'mock'); assert.equal(res.headers['Cache-Control'], 'no-store');
 }
 let token;
@@ -90,7 +91,9 @@ let issued;
 }
 { const { req, res } = mock('POST', { clinic_id: 'c1', proof: issued, consent: false, consent_version: 'v1' }); await attachHandler(req, res); assert.equal(res.body.error, 'consent_required'); }
 { const { req, res } = mock('POST', { clinic_id: 'c1', proof: 'bad.proof', consent: true, consent_version: 'v1' }); await attachHandler(req, res); assert.equal(res.body.error, 'invalid_or_expired_proof'); }
-{ const { req, res } = mock('POST', { clinic_id: 'c1', proof: issued, consent: true, consent_version: 'v1' }); await attachHandler(req, res); assert.equal(res.code, 200); assert.equal(res.body.stored, false); }
+{ const { req, res } = mock('POST', { clinic_id: 'c1', proof: issued, consent: true, consent_version: 'v1' }); await attachHandler(req, res); assert.equal(res.code, 401); assert.equal(res.body.error, 'invalid_registration_token'); }
+{ const { req, res } = mock('POST', { clinic_id: 'c1', proof: issued, registration_token: signRegistrationToken('other'), consent: true, consent_version: 'v1' }); await attachHandler(req, res); assert.equal(res.code, 401); }
+{ const { req, res } = mock('POST', { clinic_id: 'c1', proof: issued, registration_token: signRegistrationToken('c1'), consent: true, consent_version: 'v1' }); await attachHandler(req, res); assert.equal(res.code, 200); assert.equal(res.body.stored, false); }
 { const { req, res } = mock('POST', { card_number: '8600123412341234', expire_date: '0526' }, { origin: 'https://evil.test' }); await requestHandler(req, res); assert.equal(res.code, 403); }
 { const { req, res } = mock('GET', null); await cronHandler(req, res); assert.equal(res.code, 401); }
 

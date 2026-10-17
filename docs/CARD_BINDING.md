@@ -22,7 +22,7 @@ Xulosa kartasi: tarif nomi, narx, birinchi yechilish sanasi (bugun + 14 kun).
 | `api/_lib/*` | Click klienti, imzo (proof), [EXT] kodlash, sana, narxlar |
 | `supabase/migrations/20261004_clinic_payment_methods.sql` | Yangi jadvallar (qo'lda ishga tushiriladi) |
 | `vercel.json` | cron (`0 3 * * *` UTC = 08:00 Toshkent) va `/api` rewrite'dan chiqarildi |
-| `scripts/assert-card-binding.mjs`, `scripts/assert-card-charge-cron.mjs` | Tekshiruvlar |
+| `scripts/assert-card-binding.mjs`, `tests/*.test.mjs` (`npm test`) | Tekshiruvlar |
 
 ## Muhit o'zgaruvchilari
 Vercel → Project → Settings → Environment Variables (Production):

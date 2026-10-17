@@ -3,18 +3,20 @@ import { decodeExt } from '../_lib/clinicExt.js';
 import { bodyOf, guard, send } from '../_lib/http.js';
 import { planPrice } from '../_lib/plans.js';
 import { verifyProof } from '../_lib/proof.js';
+import { consumeRegistrationToken, verifyRegistrationToken } from '../_lib/regToken.js';
 import { supabaseAdmin } from '../_lib/supabaseAdmin.js';
 
 const FRESH_CLINIC_MS = 60 * 60 * 1000;
 
 /**
- * POST /api/card/attach { clinic_id, proof, consent: true, consent_version }
+ * POST /api/card/attach { clinic_id, proof, registration_token, consent: true, consent_version }
+ * registration_token — /api/register/token bergan bir martalik token (shu clinic_id uchun, klinika yaratilishidan oldin).
  * Klinika yaratilgach chaqiriladi: tasdiqlangan karta tokenini clinic_payment_methods'ga yozadi.
  * Saqlanadi: card_token, maskalangan raqam, amal qilish muddati, rozilik vaqti (server vaqti) va versiyasi.
  * Karta raqami/CVV bu yerga umuman kelmaydi.
  */
 export default async function handler(req, res) {
-  if (!guard(req, res, { limit: 10 })) return;
+  if (!(await guard(req, res, { limit: 10 }))) return;
   const body = bodyOf(req);
   const clinicId = String(body.clinic_id || '').trim().toLowerCase();
   const consentVersion = String(body.consent_version || '').trim();
@@ -24,6 +26,9 @@ export default async function handler(req, res) {
 
   const proof = verifyProof(body.proof);
   if (!proof) return send(res, 400, { ok: false, error: 'invalid_or_expired_proof' });
+
+  const regTok = verifyRegistrationToken(body.registration_token, clinicId);
+  if (!regTok) return send(res, 401, { ok: false, error: 'invalid_registration_token' });
 
   const cfg = clickConfig();
   if (!cfg.configured) {
@@ -41,9 +46,13 @@ export default async function handler(req, res) {
     const { ext } = decodeExt(clinic.logo);
     const fresh = Date.now() - new Date(clinic.created_at).getTime() < FRESH_CLINIC_MS;
     if (!fresh || ext.subscription_status !== 'trialing') return send(res, 409, { ok: false, error: 'clinic_not_eligible' });
+    // Klinika token berilgandan KEYIN yaratilgan bo'lishi kerak (60 s soat farqi uchun zaxira).
+    if (new Date(clinic.created_at).getTime() < (regTok.iat - 60) * 1000) return send(res, 401, { ok: false, error: 'invalid_registration_token' });
 
     const { data: existing } = await sb.from('clinic_payment_methods').select('id').eq('clinic_id', clinicId).eq('status', 'active').limit(1);
     if (existing && existing.length > 0) return send(res, 409, { ok: false, error: 'already_attached' });
+
+    if (!(await consumeRegistrationToken(sb, regTok))) return send(res, 401, { ok: false, error: 'registration_token_used' });
 
     const { error: iErr } = await sb.from('clinic_payment_methods').insert({
       clinic_id: clinicId,
