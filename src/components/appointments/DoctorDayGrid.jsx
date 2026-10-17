@@ -893,14 +893,14 @@ export default function DoctorDayGrid({
                               <div
                                 data-testid="grid-card-allergy"
                                 title={`Allergiya: ${appointment.patient_allergy}`}
-                                className="mt-0.5 lg:mt-0 px-1.5 py-px rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-[9px] lg:text-[10px] font-black truncate min-w-0"
+                                className="mt-0.5 lg:mt-0 px-1.5 py-px rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-[9px] lg:text-[10px] font-black leading-tight line-clamp-2 break-words min-w-0"
                               >
                                 ⚠ Allergiya: {appointment.patient_allergy}
                               </div>
                             )}
 
                             {onStatusChange && (
-                              <div className="flex items-center gap-1 mt-0.5 lg:mt-0" data-testid="grid-card-quick-status">
+                              <div className="flex flex-wrap items-center gap-0.5 mt-0.5 lg:mt-0" data-testid="grid-card-quick-status">
                                 {QUICK_STATUS_ACTIONS.map((qa) => {
                                   const active = normalizeAppointmentStatus(appointment.status) === qa.status;
                                   return (
@@ -910,7 +910,7 @@ export default function DoctorDayGrid({
                                       aria-pressed={active}
                                       onClick={(e) => { e.stopPropagation(); if (!active) onStatusChange(appointment, qa.status); }}
                                       className={cn(
-                                        "flex-1 min-w-0 h-5 rounded-md text-[9px] lg:text-[10px] font-black truncate border transition-colors",
+                                        "flex-auto h-5 px-[3px] rounded-md text-[9px] font-black tracking-tight whitespace-nowrap border transition-colors",
                                         active ? "bg-slate-900 border-slate-900 text-white" : "bg-white/90 border-black/10 text-slate-700 hover:bg-white"
                                       )}
                                     >
