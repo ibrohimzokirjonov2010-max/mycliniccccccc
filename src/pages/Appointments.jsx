@@ -21,6 +21,8 @@ import { QUERY_KEYS } from '@/lib/queryKeys';
 import { useAuth } from '@/lib/AuthContext';
 import { appointmentMatchesDoctor } from '@/utils/doctorMatch';
 import { isCancelledStatus } from '@/utils/clinicMetrics';
+import { appointmentStatusLabel, normalizeAppointmentStatus } from '@/lib/appointmentStatus';
+import { toast } from 'sonner';
 
 // ── Appointment date/time normalizer (shared helper) ─────────────────────────
 const normalizeAppt = (a) => {
@@ -39,7 +41,7 @@ const normalizeAppt = (a) => {
 };
 
 export default function Appointments() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { user, isDoctor } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -236,6 +238,26 @@ export default function Appointments() {
     setPrefillDoctorId(null);
   };
 
+  // Kalendar kartasidagi tezkor holat tugmalari (Keldi / Qabulda / Kelmadi)
+  const handleQuickStatus = async (appointment, status) => {
+    if (!appointment?.id || !status) return;
+    const prev = appointment.status;
+    queryClient.setQueriesData({ queryKey: QUERY_KEYS.appointments }, (old) => (
+      Array.isArray(old) ? old.map((x) => (String(x.id) === String(appointment.id) ? { ...x, status } : x)) : old
+    ));
+    try {
+      await base44.entities.Appointment.update(appointment.id, { status });
+      toast.success(`${appointment.patient_name || 'Bemor'}: ${appointmentStatusLabel(status, language)}`);
+    } catch (err) {
+      queryClient.setQueriesData({ queryKey: QUERY_KEYS.appointments }, (old) => (
+        Array.isArray(old) ? old.map((x) => (String(x.id) === String(appointment.id) ? { ...x, status: prev } : x)) : old
+      ));
+      toast.error("Holatni saqlab bo'lmadi");
+    } finally {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.appointments });
+    }
+  };
+
   // onSaved: modal saqlangandan keyin keshni yangilash
   const handleSaved = () => {
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.appointments });
@@ -301,7 +323,8 @@ export default function Appointments() {
         ...a,
         patient_name: a.patient_name || patientObj?.full_name || patientObj?.name || 'Noma\'lum',
         patient_photo: photo,
-        patient_phone: a.patient_phone || patientObj?.phone || ''
+        patient_phone: a.patient_phone || patientObj?.phone || '',
+        patient_allergy: String(patientObj?.important_info || a.patient_allergy || '').trim()
       };
     });
   }, [filteredAppointments, patients]);
@@ -521,6 +544,7 @@ export default function Appointments() {
                     doctors={doctors}
                     onSlotClick={openNewAppt}
                     onEditClick={openEditAppt}
+                    onStatusChange={handleQuickStatus}
                     searchQuery={debouncedSearch}
                   />
                 )}
@@ -682,7 +706,7 @@ export default function Appointments() {
                                     {/* Right: Badges & Arrow */}
                                     <div className="flex items-center gap-1.5 shrink-0">
                                       <div className="flex flex-col items-end gap-1">
-                                        <StatusBadge status={a.status} size="sm" />
+                                        <StatusBadge status={normalizeAppointmentStatus(a.status)} label={appointmentStatusLabel(a.status, language)} size="sm" />
                                         <AppointmentConfirmationBadge appointment={a} size="sm" className="!text-[8px] !px-1.5 !py-0.2" />
                                       </div>
                                       <ChevronLeft className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#1499AD] group-hover:translate-x-0.5 transition-all rotate-180" />

@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, CalendarDays, CalendarClock, UserPlus, CreditCard,
   Stethoscope, Package, BarChart3, ClipboardList, Bell, AlertTriangle,
   Activity, Wallet, Settings, ChevronLeft, ChevronRight, Zap, TrendingDown,
-  LogOut, Heart, Target, Camera, Lock
+  LogOut, Heart, Target, Camera, Lock, Wrench
 } from 'lucide-react';
 import { cn, displayUserName } from '@/lib/utils';
 import { base44 } from '@/api/base44Client';
@@ -40,6 +40,7 @@ const getMenuItems = (t) => [
   { path: '/payroll', label: t('navigation.payroll'), icon: Wallet, section: 'admin' },
   { path: '/services', label: t('navigation.services'), icon: Stethoscope, section: 'admin' },
   { path: '/inventory', label: t('navigation.inventory'), icon: Package, section: 'admin' },
+  { path: '/technicians', label: t('navigation.technicians') || 'Laboratoriya', icon: Wrench, section: 'admin' },
   { path: '/reports', label: t('navigation.reports'), icon: BarChart3, section: 'admin' },
   { path: '/recall', label: t('navigation.recalls'), icon: Bell, section: 'admin' },
   { path: '/no-show', label: t('navigation.noShow'), icon: AlertTriangle, section: 'admin' },

@@ -4,6 +4,7 @@ import EmptyState from '../ui/EmptyState';
 import AppointmentConfirmationBadge from '../appointments/AppointmentConfirmationBadge';
 import { CalendarDays } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
+import { appointmentStatusLabel, normalizeAppointmentStatus } from '@/lib/appointmentStatus';
 
 /**
  * PatientAppointments Component
@@ -19,7 +20,7 @@ import { useTranslation } from '@/i18n/LanguageContext';
  * @param {string} props.appointments[].status - Appointment status
  */
 function PatientAppointments({ appointments = [] }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   
   // Sort appointments by date (newest first)
   const sortedAppointments = useMemo(() => {
@@ -87,7 +88,7 @@ function PatientAppointments({ appointments = [] }) {
                     {appointment.tooth_number ? `${t('patientAppointments.tooth', { number: appointment.tooth_number })}: ` : ''}{appointment.service_name || '—'}
                   </td>
                   <td className="px-5 py-4 text-sm">
-                    <StatusBadge status={appointment.status} />
+                    <StatusBadge status={normalizeAppointmentStatus(appointment.status)} label={appointmentStatusLabel(appointment.status, language)} />
                   </td>
                   <td className="px-5 py-4 text-sm">
                     <AppointmentConfirmationBadge appointment={appointment} size="sm" />

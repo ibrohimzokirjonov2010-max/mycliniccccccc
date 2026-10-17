@@ -1,3 +1,4 @@
+import { appointmentStatusLabel } from '@/lib/appointmentStatus';
 /**
  * patientExcelExport.js
  * Utility to export complete patient EHR data to Excel (.csv with UTF-8 BOM).
@@ -181,11 +182,7 @@ export function exportPatientToExcel({
       const timeStr = ap.time || ap.start_time || '09:00';
       const serviceStr = ap.service_name || ap.service || ap.title || 'Qabul';
       const docName = doctors.find(d => d.id === ap.doctor_id || d.id === ap.doctor)?.name || ap.doctor || 'Shifokor';
-      const statusLabel = 
-        ap.status === 'Completed' || ap.status === 'completed' ? "Tugallandi" :
-        ap.status === 'Confirmed' || ap.status === 'confirmed' ? "Tasdiqlangan" :
-        ap.status === 'Cancelled' || ap.status === 'cancelled' ? "Bekor qilindi" :
-        ap.status === 'No Show' ? "Kelmadi" : (ap.status || "Rejalashtirilgan");
+      const statusLabel = appointmentStatusLabel(ap.status);
 
       lines.push(`"${idx + 1}","${sanitize(dateStr)}","${sanitize(timeStr)}","${sanitize(serviceStr)}","${sanitize(docName)}","${sanitize(statusLabel)}"`);
     });

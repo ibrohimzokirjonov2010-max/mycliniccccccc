@@ -20,6 +20,8 @@ import { notificationStore } from '@/lib/notificationStore';
 import { useAuth } from '@/lib/AuthContext';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 import TariffCard from '@/components/settings/TariffCard';
+import { useClinic } from '@/lib/ClinicContext';
+import { normalizeWorkHours } from '@/lib/clinicHours';
 
 const defaultSchedule = {
   monday: { active: true, start: '09:00', end: '18:00' },
@@ -35,6 +37,7 @@ export default function MobileSettings() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user: authUser, isDoctor, isAdmin, setAuthData, logout } = useAuth();
+  const { refresh: refreshClinic } = useClinic();
   
   const [currentUser, setCurrentUser] = useState(authUser || null);
   const [users, setUsers] = useState([]);
@@ -104,6 +107,10 @@ export default function MobileSettings() {
           setClinicData({
             name: currentClinic.name || 'My Clinic',
             phone: currentClinic.phone || '',
+            address: currentClinic.address || '',
+            calendar_start_hour: currentClinic.calendar_start_hour,
+            calendar_end_hour: currentClinic.calendar_end_hour,
+            chairs_count: currentClinic.chairs_count ?? '',
             working_hours: currentClinic.working_hours || defaultSchedule
           });
         }
@@ -190,7 +197,15 @@ export default function MobileSettings() {
   const saveClinicSettings = async () => {
     try {
       const clinicId = localStorage.getItem('current_clinic_id') || 'default_clinic';
-      await base44.clinic.updateClinic(clinicId, clinicData);
+      const hours = normalizeWorkHours(clinicData.calendar_start_hour, clinicData.calendar_end_hour);
+      const chairs = Number.parseInt(clinicData.chairs_count, 10);
+      await base44.clinic.updateClinic(clinicId, {
+        ...clinicData,
+        calendar_start_hour: hours.start,
+        calendar_end_hour: hours.end,
+        chairs_count: Number.isFinite(chairs) && chairs > 0 ? chairs : 1,
+      });
+      if (refreshClinic) await refreshClinic();
       toast.success('Klinika sozlamalari saqlandi');
     } catch (error) {
       toast.error('Saqlashda xato yuz berdi');
@@ -691,6 +706,26 @@ export default function MobileSettings() {
                     <div className="space-y-1">
                       <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Telefon</Label>
                       <Input value={clinicData.phone} onChange={e => setClinicData({...clinicData, phone: e.target.value})} placeholder="+998..." className="h-11 rounded-xl bg-slate-50 border-none font-bold text-slate-900" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Manzil</Label>
+                      <Input value={clinicData.address || ''} onChange={e => setClinicData({...clinicData, address: e.target.value})} placeholder="Klinika manzili..." className="h-11 rounded-xl bg-slate-50 border-none font-bold text-slate-900" />
+                    </div>
+                    <div className="space-y-1" data-testid="mobile-settings-work-hours">
+                      <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Ish vaqti (kalendar)</Label>
+                      <div className="flex items-center gap-2">
+                        <select aria-label="Ish boshlanishi" value={normalizeWorkHours(clinicData.calendar_start_hour, clinicData.calendar_end_hour).start} onChange={e => setClinicData({...clinicData, calendar_start_hour: Number(e.target.value)})} className="flex-1 h-11 rounded-xl bg-slate-50 border-none font-bold text-slate-900 px-3">
+                          {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
+                        </select>
+                        <span className="text-slate-400 font-bold">—</span>
+                        <select aria-label="Ish tugashi" value={normalizeWorkHours(clinicData.calendar_start_hour, clinicData.calendar_end_hour).end} onChange={e => setClinicData({...clinicData, calendar_end_hour: Number(e.target.value)})} className="flex-1 h-11 rounded-xl bg-slate-50 border-none font-bold text-slate-900 px-3">
+                          {Array.from({ length: 24 }, (_, i) => i + 1).map(h => <option key={h} value={h}>{h === 24 ? '00:00' : `${String(h).padStart(2, '0')}:00`}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Kreslolar / kabinetlar soni</Label>
+                      <Input type="number" min={1} max={50} value={clinicData.chairs_count ?? ''} onChange={e => setClinicData({...clinicData, chairs_count: e.target.value === '' ? '' : Math.max(1, Math.min(50, Number.parseInt(e.target.value, 10) || 1))})} placeholder="1" className="h-11 rounded-xl bg-slate-50 border-none font-bold text-slate-900" />
                     </div>
                   </div>
                 )}

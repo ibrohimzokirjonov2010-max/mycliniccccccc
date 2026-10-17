@@ -3,16 +3,18 @@ import { useTranslation } from '@/i18n/LanguageContext';
 import { 
   Calendar, Plus, Search,
   ArrowUpDown, User, CheckCircle2,
-  XCircle, AlertTriangle, Clock
+  XCircle, AlertTriangle, Clock, Pencil
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import EmptyState from '../ui/EmptyState';
+import { APPOINTMENT_STATUS_BADGE_CLASS, appointmentStatusLabel, normalizeAppointmentStatus } from '@/lib/appointmentStatus';
 
 function ExcelAppointmentsView({
   patient,
   appointments = [],
   doctors = [],
   onOpenApptModal,
+  onEditAppt,
 }) {
   const { t, language } = useTranslation();
   const [search, setSearch] = useState('');
@@ -47,35 +49,12 @@ function ExcelAppointmentsView({
   }, [appointments, search, sortField, sortAsc]);
 
   const getStatusBadge = (status) => {
-    const s = (status || '').toLowerCase();
-    if (s.includes('complete') || s.includes('tugallandi') || s.includes('завершено')) {
-      return (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[8.5px] uppercase tracking-wide whitespace-nowrap">
-          <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
-          {t('patientProfile.statusCompleted') || 'Tugallandi'}
-        </span>
-      );
-    }
-    if (s.includes('cancel') || s.includes('bekor') || s.includes('отменено')) {
-      return (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[8.5px] uppercase tracking-wide whitespace-nowrap">
-          <XCircle className="w-2.5 h-2.5 shrink-0" />
-          {t('patientProfile.statusCancelled') || 'Bekor'}
-        </span>
-      );
-    }
-    if (s.includes('noshow') || s.includes('kelmadi') || s.includes('не явился')) {
-      return (
-        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[8.5px] uppercase tracking-wide whitespace-nowrap">
-          <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
-          Kelmadi
-        </span>
-      );
-    }
+    const key = normalizeAppointmentStatus(status);
+    const Icon = key === 'Completed' ? CheckCircle2 : key === 'Cancelled' ? XCircle : key === 'No-Show' ? AlertTriangle : (key === 'Waiting' || key === 'In Progress') ? Clock : Calendar;
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[8.5px] uppercase tracking-wide whitespace-nowrap">
-        <Calendar className="w-2.5 h-2.5 shrink-0" />
-        {t('patientProfile.statusConfirmed') || 'Tasdiqlangan'}
+      <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border font-bold text-[8.5px] uppercase tracking-wide whitespace-nowrap", APPOINTMENT_STATUS_BADGE_CLASS[key])}>
+        <Icon className="w-2.5 h-2.5 shrink-0" />
+        {appointmentStatusLabel(key, language)}
       </span>
     );
   };
@@ -168,6 +147,16 @@ function ExcelAppointmentsView({
                     <p className="text-[10px] font-semibold text-amber-800 italic leading-relaxed line-clamp-2">💬 {appt.notes}</p>
                   </div>
                 )}
+                {onEditAppt && (
+                  <button
+                    type="button"
+                    data-testid="patient-appt-edit"
+                    onClick={() => onEditAppt(appt)}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 border-t border-slate-100 text-[11px] font-black text-[#1499AD] hover:bg-sky-50 transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Tahrirlash / holat
+                  </button>
+                )}
               </div>
             );
           })
@@ -197,12 +186,13 @@ function ExcelAppointmentsView({
                 <th className="py-2.5 px-1 border-r border-slate-100 text-center w-16 min-w-[52px]">{t('common.duration') || 'Davom.'}</th>
                 <th className="py-2.5 px-1.5 border-r border-slate-100 text-center w-24 min-w-[80px]">{t('common.status') || 'Holati'}</th>
                 <th className="py-2.5 px-2 min-w-[70px] max-w-[120px]">{t('patientProfile.notesCol') || 'Eslatma'}</th>
+                {onEditAppt && <th className="py-2.5 px-1.5 border-l border-slate-100 text-center w-12">Amal</th>}
               </tr>
             </thead>
             <tbody>
               {filteredAppointments.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-14 text-center">
+                  <td colSpan={onEditAppt ? 10 : 9} className="py-14 text-center">
                     <Calendar className="w-8 h-8 mx-auto mb-2 text-slate-200" />
                     <p className="text-slate-400 text-sm font-semibold">
                       {t('patientProfile.noApptsFound') || "Uchrashuvlar topilmadi"}
@@ -270,6 +260,20 @@ function ExcelAppointmentsView({
                         {appt.notes || '—'}
                       </p>
                     </td>
+                    {onEditAppt && (
+                      <td className="py-2 px-1 text-center border-l border-slate-100">
+                        <button
+                          type="button"
+                          data-testid="patient-appt-edit"
+                          title="Uchrashuvni tahrirlash / holatini o'zgartirish"
+                          aria-label="Tahrirlash"
+                          onClick={() => onEditAppt(appt)}
+                          className="w-7 h-7 inline-flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-[#1499AD] hover:text-white hover:border-[#1499AD] transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}

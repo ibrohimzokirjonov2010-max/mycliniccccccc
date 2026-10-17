@@ -386,6 +386,7 @@
     "address": "Manzili",
     "lastVisit": "Oxirgi tashrif",
     "totalVisits": "Jami tashriflar",
+    "totalPatients": "Jami bemorlar",
     "totalPaid": "Jami to'lov",
     "totalDebt": "Jami qarz",
     "status": "Holati",
@@ -628,11 +629,11 @@
     },
     "statusLabels": {
       "Scheduled": "Rejalashtirilgan",
-      "Waiting": "Kutilmoqda",
-      "InProgress": "Jarayonda",
-      "Completed": "Bajarildi",
-      "Cancelled": "Bekor qilindi",
-      "No-Show": "Kelmagan"
+      "Waiting": "Keldi",
+      "InProgress": "Qabulda",
+      "Completed": "Tugallangan",
+      "Cancelled": "Bekor qilingan",
+      "No-Show": "Kelmadi"
     },
     "errors": {
       "dateTimeRequired": "Sana va vaqtni tanlang",

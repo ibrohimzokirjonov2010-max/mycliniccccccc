@@ -8,7 +8,7 @@ import {
   Settings as SettingsIcon, User, Plus, Trash2, 
   Globe, ImagePlus, Layout as LayoutIcon, ShieldCheck,
   Users, Languages, Clock, KeyRound, Phone, CheckCircle2,
-  Camera, Table, Lock, Check, Sparkles, LogOut
+  Camera, Table, Lock, Check, Sparkles, LogOut, Armchair
 } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -21,6 +21,7 @@ import { useClinic } from '@/lib/ClinicContext';
 import { compressImage, validateImage } from '@/utils/imageUpload';
 import { applyPhoneMask, formatPhone } from '@/lib/utils';
 import TariffCard from '@/components/settings/TariffCard';
+import { normalizeWorkHours } from '@/lib/clinicHours';
 
 const defaultSchedule = {
   1: { active: true, start: '09:00', end: '18:00' }, // Dushanba
@@ -109,7 +110,16 @@ export default function Settings() {
   const handleSaveClinic = async () => {
     setSaving(true);
     try {
-      await base44.clinic.updateClinic(clinic.id, clinic);
+      const hours = normalizeWorkHours(clinic.calendar_start_hour, clinic.calendar_end_hour);
+      const chairs = Number.parseInt(clinic.chairs_count, 10);
+      const payload = {
+        ...clinic,
+        calendar_start_hour: hours.start,
+        calendar_end_hour: hours.end,
+        chairs_count: Number.isFinite(chairs) && chairs > 0 ? chairs : 1,
+      };
+      await base44.clinic.updateClinic(clinic.id, payload);
+      setClinic(payload);
       if (refreshClinic) await refreshClinic();
       toast.success("Klinika ma'lumotlari saqlandi!");
     } catch (err) {
@@ -579,6 +589,65 @@ export default function Settings() {
                         onChange={e => setClinic({...clinic, address: e.target.value})}
                         placeholder="Klinika manzili..." 
                         className="h-9 text-xs border-slate-200 rounded-lg focus:border-indigo-500" 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 6: Working hours (calendar slot range) */}
+                  <div className="grid grid-cols-12 hover:bg-slate-50/50 transition-colors" data-testid="settings-work-hours">
+                    <div className="col-span-1 bg-slate-50 border-r border-slate-200 font-mono text-[11px] text-slate-400 flex items-center justify-center font-bold">
+                      6
+                    </div>
+                    <div className="col-span-4 p-3 border-r border-slate-200 bg-slate-50/40 flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-sky-600 shrink-0" />
+                      <div>
+                        <span className="font-bold text-slate-800 block">Ish vaqti</span>
+                        <span className="text-[10px] text-slate-400 font-normal">Kalendar shu oraliqda ko'rsatiladi</span>
+                      </div>
+                    </div>
+                    <div className="col-span-7 p-2 flex items-center gap-2">
+                      <select
+                        aria-label="Ish boshlanishi"
+                        value={normalizeWorkHours(clinic?.calendar_start_hour, clinic?.calendar_end_hour).start}
+                        onChange={e => setClinic({ ...clinic, calendar_start_hour: Number(e.target.value) })}
+                        className="h-9 px-2 text-xs font-bold border border-slate-200 rounded-lg bg-white focus:border-indigo-500 font-mono"
+                      >
+                        {Array.from({ length: 24 }, (_, h) => (
+                          <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                        ))}
+                      </select>
+                      <span className="text-slate-400 font-bold">—</span>
+                      <select
+                        aria-label="Ish tugashi"
+                        value={normalizeWorkHours(clinic?.calendar_start_hour, clinic?.calendar_end_hour).end}
+                        onChange={e => setClinic({ ...clinic, calendar_end_hour: Number(e.target.value) })}
+                        className="h-9 px-2 text-xs font-bold border border-slate-200 rounded-lg bg-white focus:border-indigo-500 font-mono"
+                      >
+                        {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
+                          <option key={h} value={h}>{h === 24 ? '00:00' : `${String(h).padStart(2, '0')}:00`}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Row 7: Chairs / cabinets count */}
+                  <div className="grid grid-cols-12 hover:bg-slate-50/50 transition-colors" data-testid="settings-chairs">
+                    <div className="col-span-1 bg-slate-50 border-r border-slate-200 font-mono text-[11px] text-slate-400 flex items-center justify-center font-bold">
+                      7
+                    </div>
+                    <div className="col-span-4 p-3 border-r border-slate-200 bg-slate-50/40 flex items-center gap-2">
+                      <Armchair className="w-4 h-4 text-teal-600 shrink-0" />
+                      <span className="font-bold text-slate-800">Kreslolar / kabinetlar soni</span>
+                    </div>
+                    <div className="col-span-7 p-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={clinic?.chairs_count ?? ''}
+                        onChange={e => setClinic({ ...clinic, chairs_count: e.target.value === '' ? '' : Math.max(1, Math.min(50, Number.parseInt(e.target.value, 10) || 1)) })}
+                        placeholder="1"
+                        className="h-9 w-28 text-xs font-bold border-slate-200 rounded-lg focus:border-indigo-500 font-mono"
                       />
                     </div>
                   </div>

@@ -281,6 +281,7 @@
     "address": "Address",
     "lastVisit": "Last Visit",
     "totalVisits": "Total Visits",
+    "totalPatients": "Total patients",
     "totalPaid": "Total Paid",
     "totalDebt": "Total Debt",
     "status": "Status",

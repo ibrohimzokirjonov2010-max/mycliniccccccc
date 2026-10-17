@@ -11,9 +11,24 @@ const MARK = '__shifoModal';
 let uid = 0;
 const openStack = []; // {id, close}
 let listening = false;
+// Modal yopilganda chaqirilgan history.back() asinxron. Shu oraliqda foydalanuvchi menyudan
+// boshqa sahifaga o'tsa (pushState), kechikkan back() yangi sahifani bekor qilardi va menyuni
+// ikki marta bosish kerak bo'lardi. Shuni kuzatamiz va kerak bo'lsa forward() bilan qaytaramiz.
+const pendingBacks = []; // tokenlar
+let pushedWhilePending = false;
 
 function onPop() {
   const cur = window.history.state && window.history.state[MARK];
+
+  if (pendingBacks.length > 0) {
+    pendingBacks.shift();
+    if (pushedWhilePending) {
+      if (pendingBacks.length === 0) pushedWhilePending = false;
+      // back() navigatsiyadan keyin bajarildi — foydalanuvchi tanlagan sahifaga qaytamiz.
+      window.history.forward();
+      return;
+    }
+  }
 
   // Qolib ketgan (egasi yo'q) marker yozuviga tushib qolsak — yana bir qadam orqaga
   if (cur != null && !openStack.some((m) => m.id === cur)) {
@@ -35,6 +50,13 @@ function ensureListener() {
   if (listening || typeof window === 'undefined') return;
   listening = true;
   window.addEventListener('popstate', onPop);
+  try {
+    const origPush = window.history.pushState.bind(window.history);
+    window.history.pushState = function patchedPushState(...args) {
+      if (pendingBacks.length > 0) pushedWhilePending = true;
+      return origPush(...args);
+    };
+  } catch { /* ignore */ }
 }
 
 export function useBackClose(isOpen, onClose) {
@@ -62,7 +84,15 @@ export function useBackClose(isOpen, onClose) {
       if (at >= 0) openStack.splice(at, 1);
       // Marker hali eng tepada bo'lsa (modal tugma bilan yopildi) — tozalaymiz
       if (entry.pushed && window.history.state && window.history.state[MARK] === entry.id) {
+        const token = {};
+        pendingBacks.push(token);
         window.history.back();
+        // Xavfsizlik: popstate kelmasa ham navbat qotib qolmasin.
+        window.setTimeout(() => {
+          const i = pendingBacks.indexOf(token);
+          if (i >= 0) pendingBacks.splice(i, 1);
+          if (pendingBacks.length === 0) pushedWhilePending = false;
+        }, 1500);
       }
     };
   }, [isOpen]);

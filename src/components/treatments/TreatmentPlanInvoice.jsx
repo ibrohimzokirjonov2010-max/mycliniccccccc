@@ -4,7 +4,7 @@ import { Printer, X } from 'lucide-react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useClinic } from '@/lib/ClinicContext';
 import { base44 } from '@/api/base44Client';
-import { formatCurrency, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
+import { formatCurrency, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel, formatPhone } from '@/lib/utils';
 import { displayServiceName, formatDoctorName, formatTableDate } from '@/lib/displayText';
 
 export default function TreatmentPlanInvoice({ open, onClose, plan }) {
@@ -72,9 +72,8 @@ export default function TreatmentPlanInvoice({ open, onClose, plan }) {
 
   // Clinic contact string (derived from context)
   const resolvedSubtitle = clinicSubtitle || (language === 'ru' ? 'Профессиональная стоматологическая клиника' : language === 'en' ? 'Professional Dental Clinic' : 'Professional stomatologiya klinikasi');
-  const resolvedPhone = clinicPhone || '+998 71 123 45 67';
-  const resolvedAddress = clinicAddress || (language === 'ru' ? 'г. Ташкент' : language === 'en' ? 'Tashkent city' : 'Toshkent sh.');
-  const clinicContact = `Tel: ${resolvedPhone} | ${resolvedAddress}`;
+  // Sozlamalardagi telefon/manzil; bo'sh bo'lsa soxta qiymat ko'rsatilmaydi.
+  const clinicContact = [clinicPhone ? `Tel: ${formatPhone(clinicPhone)}` : '', clinicAddress || ''].filter(Boolean).join(' | ');
 
   // Patient & Doctor metadata
   const patientName = plan.patient_name || plan.patient?.full_name || plan.patient?.name || (typeof plan.patient === 'string' ? plan.patient : 'Abdullayev Jasur');

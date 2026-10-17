@@ -178,7 +178,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isDoctor } = useAuth();
-  const { clinicName } = useClinic();
+  const { clinicName, clinicPhone, clinicAddress } = useClinic();
   const queryClient = useQueryClient();
 
   // ── States ───────────────────────────────────────────────────────────
@@ -1864,7 +1864,7 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
             <div>
               <h1 class="clinic-title">${clinicName}</h1>
               <p class="clinic-sub">Professional stomatologiya klinikasi</p>
-              <p class="clinic-contact">Tel: +998 71 123 45 67 | Toshkent sh.</p>
+              ${(clinicPhone || clinicAddress) ? `<p class="clinic-contact">${[clinicPhone ? `Tel: ${formatPhone(clinicPhone)}` : '', clinicAddress || ''].filter(Boolean).join(' | ')}</p>` : ''}
             </div>
           </div>
           <div class="invoice-meta">
@@ -3861,6 +3861,9 @@ export default function Payments({ embeddedPay = null, embeddedDetail = null, on
                 <div className="flex items-start justify-between mb-4 pb-4 border-b border-slate-100">
                   <div>
                     <h3 className="text-base font-[900] text-slate-900">{clinicName}</h3>
+                    {(clinicPhone || clinicAddress) && (
+                      <p className="text-[10px] text-slate-500 font-bold">{[clinicPhone ? formatPhone(clinicPhone) : '', clinicAddress || ''].filter(Boolean).join(' · ')}</p>
+                    )}
                     <p className="text-[10px] text-slate-400 font-bold">Sana: {invoiceData.date}</p>
                   </div>
                   <div className="text-right">

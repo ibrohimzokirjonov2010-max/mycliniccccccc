@@ -152,7 +152,7 @@ function derivedRegistryStatus(patient, plans, appointments) {
 export default function PatientProfile() {
   const { t, language } = useTranslation();
   const { user, isDoctor } = useAuth();
-  const { clinicName } = useClinic();
+  const { clinicName, clinicPhone, clinicAddress } = useClinic();
   const canImplants = useFeature('implants');
   const navigate = useNavigate();
   const location = useLocation();
@@ -404,6 +404,7 @@ export default function PatientProfile() {
 
   // Modals
   const [apptModalOpen, setApptModalOpen] = useState(false);
+  const [editingAppt, setEditingAppt] = useState(null);
   const [payModalOpen, setPayModalOpen] = useState(false); // legacy modal: only "+ Avans" uses it now
   const [sharedPay, setSharedPay] = useState(null); // { patient, planId, amount, key } -> Payments add modal
   const [sharedDetail, setSharedDetail] = useState(null); // { payment, patient, key } -> Payments detail modal
@@ -2739,6 +2740,12 @@ export default function PatientProfile() {
     doc.setFontSize(22);
     doc.setTextColor(45, 212, 191);
     doc.text(clinicName, 20, 20);
+    const clinicContactLine = [clinicPhone ? `Tel: ${formatPhone(clinicPhone)}` : '', clinicAddress || ''].filter(Boolean).join(' | ');
+    if (clinicContactLine) {
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text(clinicContactLine, 190, 20, { align: 'right' });
+    }
     doc.setTextColor(31, 41, 55);
     doc.setFontSize(16);
     doc.text('Bemor kartasi', 20, 32);
@@ -3218,7 +3225,8 @@ export default function PatientProfile() {
               patient={patient}
               appointments={appointments}
               doctors={doctors}
-              onOpenApptModal={() => setApptModalOpen(true)}
+              onOpenApptModal={() => { setEditingAppt(null); setApptModalOpen(true); }}
+              onEditAppt={(appt) => { setEditingAppt(appt); setApptModalOpen(true); }}
             />
           )}
         </TabsContent>
@@ -3272,8 +3280,8 @@ export default function PatientProfile() {
       {/* Appointment quick modal */}
       <AppointmentModal
         open={apptModalOpen}
-        onClose={() => setApptModalOpen(false)}
-        appointment={null}
+        onClose={() => { setApptModalOpen(false); setEditingAppt(null); }}
+        appointment={editingAppt}
         patients={allPatients}
         services={services}
         allAppointments={appointments}
@@ -3282,7 +3290,7 @@ export default function PatientProfile() {
         prefillDoctorId={patient?.main_treatment_provider || ''}
         prefillDate=""
         prefillTime=""
-        onSaved={load}
+        onSaved={() => { setEditingAppt(null); load(); setRefreshTrigger((n) => n + 1); }}
       />
 
       {/* Patient edit modal */}

@@ -30,7 +30,7 @@ const STATUS_CONFIG = {
   'High': 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
-export default function StatusBadge({ status, className = '', size = 'md' }) {
+export default function StatusBadge({ status, label: labelOverride, className = '', size = 'md' }) {
   const { t } = useTranslation();
   
   const normalizedStatus = String(status || '').trim();
@@ -43,7 +43,7 @@ export default function StatusBadge({ status, className = '', size = 'md' }) {
   // Translation lookup: try lowercase first, then exact
   const transKey = `status.${lowerStatus}`;
   const translated = t(transKey);
-  const label = translated !== transKey ? translated : (t(`status.${normalizedStatus}`) !== `status.${normalizedStatus}` ? t(`status.${normalizedStatus}`) : normalizedStatus);
+  const label = labelOverride || (translated !== transKey ? translated : (t(`status.${normalizedStatus}`) !== `status.${normalizedStatus}` ? t(`status.${normalizedStatus}`) : normalizedStatus));
   
   const sizeClasses = {
     'xs': 'px-2 py-0.5 text-[9px] font-black uppercase tracking-wider',

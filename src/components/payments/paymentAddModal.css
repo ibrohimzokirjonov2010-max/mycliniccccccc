@@ -20,7 +20,10 @@
   border: 1px solid #e5e7eb;
   width: min(44rem, calc(100vw - 16px));
   max-width: 44rem;
-  height: auto;
+  /* Fixed height (not auto): warning / receipt-upload blocks appearing inside the
+     body must not resize + re-center the card, otherwise the footer buttons jump
+     under the cursor. The body scrolls instead; footer stays put. */
+  height: min(94dvh, 760px);
   max-height: min(94dvh, 900px) !important;
   min-height: 0 !important;
   left: 50%;
@@ -304,7 +307,7 @@
   [data-radix-dialog-content].payment-add-dialog,
   .payment-add-dialog {
     width: min(44rem, 95vw);
-    height: auto !important;
+    height: min(94dvh, 760px) !important;
     max-height: min(94dvh, 900px) !important;
     left: 50% !important;
     top: 50% !important;
@@ -377,7 +380,7 @@
     bottom: auto !important;
     width: min(32rem, calc(100vw - 2rem)) !important;
     max-width: calc(100vw - 2rem) !important;
-    height: auto !important;
+    height: min(86dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 8rem)) !important;
     max-height: min(86dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 8rem)) !important;
     min-height: 0 !important;
     margin: 0 !important;

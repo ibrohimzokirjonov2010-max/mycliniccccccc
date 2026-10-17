@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { appointmentStatusLabel, normalizeAppointmentStatus } from '@/lib/appointmentStatus';
 import { BackClose } from '@/hooks/useBackClose';
 import { useProfileBack } from '@/hooks/useBack';
 import { useUrlState } from '@/hooks/useRestorableState';
@@ -138,13 +139,15 @@ const inferStatus = (text) => {
 
 const ApptBadge = ({ status }) => {
   const map = {
-    Completed:  { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Tugallangan' },
-    Scheduled:  { bg: 'bg-blue-100',    text: 'text-blue-700',    label: 'Rejalashtirilgan' },
-    Waiting:    { bg: 'bg-amber-100',   text: 'text-amber-700',   label: 'Kutilmoqda' },
-    'No-Show':  { bg: 'bg-rose-100',    text: 'text-rose-700',    label: 'Kelmagan' },
-    Cancelled:  { bg: 'bg-slate-100',   text: 'text-slate-600',   label: 'Bekor qilindi' },
+    Completed:  { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+    Scheduled:  { bg: 'bg-blue-100',    text: 'text-blue-700' },
+    Waiting:    { bg: 'bg-amber-100',   text: 'text-amber-700' },
+    'In Progress': { bg: 'bg-cyan-100', text: 'text-cyan-700' },
+    'No-Show':  { bg: 'bg-rose-100',    text: 'text-rose-700' },
+    Cancelled:  { bg: 'bg-slate-100',   text: 'text-slate-600' },
   };
-  const s = map[status] || map['Scheduled'];
+  const key = normalizeAppointmentStatus(status);
+  const s = { ...(map[key] || map.Scheduled), label: appointmentStatusLabel(key) };
   return (
     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.bg} ${s.text}`}>
       {s.label}

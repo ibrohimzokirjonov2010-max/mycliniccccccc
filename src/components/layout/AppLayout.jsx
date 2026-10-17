@@ -100,6 +100,25 @@ export default function AppLayout() {
     setHold(true);
   }
 
+  // Modal yopilgandan keyin Radix qoldirgan `body { pointer-events: none }` bo'lsa tozalaymiz —
+  // aks holda menyudagi birinchi bosish "yutilib" ketadi.
+  useEffect(() => {
+    if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return undefined;
+    const OPEN_LAYER = '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [data-radix-popper-content-wrapper]';
+    let timer = 0;
+    const check = () => {
+      timer = 0;
+      const body = document.body;
+      if (body && body.style.pointerEvents === 'none' && !document.querySelector(OPEN_LAYER)) {
+        body.style.pointerEvents = '';
+      }
+    };
+    const schedule = () => { if (!timer) timer = window.setTimeout(check, 350); };
+    const observer = new MutationObserver(schedule);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['style'], childList: true });
+    return () => { observer.disconnect(); if (timer) window.clearTimeout(timer); };
+  }, []);
+
   // After the shell is up, quietly warm the heaviest lazy routes (Bemorlar first-click chunk crash).
   useEffect(() => {
     const warm = () => {

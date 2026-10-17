@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { APPOINTMENT_STATUS_BADGE_CLASS, appointmentStatusLabel, normalizeAppointmentStatus } from '@/lib/appointmentStatus';
 import { 
   FileSpreadsheet, Search, Printer, 
   ArrowUpDown, ArrowUp, ArrowDown, CreditCard, 
@@ -757,17 +758,9 @@ export default function PatientExcelView({
                     const doc = doctors.find(d => d.id === ap.doctor_id || d.id === ap.doctor);
                     const docName = doc?.name || ap.doctor || 'Shifokor';
 
-                    const statusStyle = 
-                      ap.status === 'Completed' || ap.status === 'completed' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                      ap.status === 'Confirmed' || ap.status === 'confirmed' ? "bg-blue-50 text-blue-700 border-blue-200" :
-                      ap.status === 'Cancelled' || ap.status === 'cancelled' ? "bg-rose-50 text-rose-700 border-rose-200" :
-                      "bg-amber-50 text-amber-700 border-amber-200";
+                    const statusStyle = APPOINTMENT_STATUS_BADGE_CLASS[normalizeAppointmentStatus(ap.status)];
 
-                    const statusLabel = 
-                      ap.status === 'Completed' || ap.status === 'completed' ? "Tugallandi" :
-                      ap.status === 'Confirmed' || ap.status === 'confirmed' ? "Tasdiqlangan" :
-                      ap.status === 'Cancelled' || ap.status === 'cancelled' ? "Bekor qilindi" :
-                      "Kutilmoqda";
+                    const statusLabel = appointmentStatusLabel(ap.status);
 
                     return (
                       <tr key={ap.id || idx} className="hover:bg-slate-50/80 transition-colors font-medium text-slate-700">

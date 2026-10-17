@@ -524,7 +524,7 @@ export default function Patients() {
       {/* ─── Compact KPI Summary Cards ─────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
         {[
-          { label: t('patients.totalVisits') || 'Jami Bemorlar', value: stats?.total || allPatients.length, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100', icon: Users },
+          { label: t('patients.totalPatients') || 'Jami bemorlar', value: stats?.total || allPatients.length, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100', icon: Users },
           { label: t('patients.newPatients') || 'Yangi Bemorlar', value: stats?.new || 0, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100', icon: UserPlus },
           { label: t('patients.activeTreatment') || 'Faol Bemorlar', value: stats?.active || 0, color: 'text-[#1499AD]', bg: 'bg-cyan-50 border-cyan-100', icon: Clock },
           { label: t('patients.totalDebt') || 'Jami Qarz', value: formatCurrency(stats?.debt || 0), color: 'text-rose-600', bg: 'bg-rose-50 border-rose-100', icon: TrendingUp }

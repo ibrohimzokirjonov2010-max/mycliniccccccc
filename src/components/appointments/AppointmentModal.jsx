@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -13,6 +13,9 @@ import PatientSelect from '../patients/PatientSelect';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 import { isScheduledOn } from '@/utils/clinicMetrics';
+import { useClinic } from '@/lib/ClinicContext';
+import { buildClinicTimeSlots } from '@/lib/clinicHours';
+import { appointmentStatusLabel } from '@/lib/appointmentStatus';
 
 const durations = [15, 30, 45, 60, 90, 120];
 const appointmentStatuses = ['Scheduled', 'Waiting', 'In Progress', 'Completed', 'Cancelled', 'No-Show'];
@@ -96,13 +99,13 @@ const isSlotPastForDate = (slotTime, dateStr, now = new Date()) => {
 };
 
 /** Next usable grid slot for a date (today: first slot still in the future). */
-const getNextReasonableSlot = (dateStr, now = new Date()) => {
+const getNextReasonableSlot = (dateStr, now = new Date(), slots = APPOINTMENT_TIME_SLOTS) => {
   const todayStr = tashkentToday(now);
   const selected = normalizeToDateOnly(dateStr) || todayStr;
   if (selected < todayStr) return null;
-  if (selected > todayStr) return APPOINTMENT_TIME_SLOTS[0];
+  if (selected > todayStr) return slots[0];
   const nowMins = tashkentNowMinutes(now);
-  const next = APPOINTMENT_TIME_SLOTS.find((sl) => getEffectiveMinutes(sl) > nowMins);
+  const next = slots.find((sl) => getEffectiveMinutes(sl) > nowMins);
   return next || null;
 };
 
@@ -249,6 +252,8 @@ export default function AppointmentModal({
   onSaved 
 }) {
   const { t, language } = useTranslation();
+  const { workStartHour, workEndHour } = useClinic();
+  const timeSlots = useMemo(() => buildClinicTimeSlots(workStartHour, workEndHour), [workStartHour, workEndHour]);
   const { user, isDoctor } = useAuth();
   const [doctors, setDoctors] = useState([]);
   const [form, setForm] = useState({
@@ -342,7 +347,7 @@ export default function AppointmentModal({
       const chosenDate = prefillDate || tashkentToday(now);
       let chosenTime = prefillTime || '';
       if (!chosenTime || (normalizeToDateOnly(chosenDate) === tashkentToday(now) && isSlotPastForDate(chosenTime, chosenDate, now))) {
-        chosenTime = getNextReasonableSlot(chosenDate, now) || '';
+        chosenTime = getNextReasonableSlot(chosenDate, now, timeSlots) || '';
       }
 
       setForm({
@@ -855,7 +860,7 @@ export default function AppointmentModal({
                       if (form.date && nextTime && isSlotPastForDate(nextTime, form.date)) {
                         const msg = language === 'ru' ? 'Время уже прошло' : language === 'en' ? 'Time has passed' : "Ushbu vaqt o'tib ketgan";
                         toast.warning(msg);
-                        const bumped = getNextReasonableSlot(form.date) || '';
+                        const bumped = getNextReasonableSlot(form.date, new Date(), timeSlots) || '';
                         setForm(prev => ({ ...prev, time: bumped }));
                         setBusyInfo({ time: nextTime, isPast: true, message: msg });
                         return;
@@ -900,7 +905,7 @@ export default function AppointmentModal({
                 )}
 
                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
-                  {APPOINTMENT_TIME_SLOTS.filter((slotTime) => {
+                  {timeSlots.filter((slotTime) => {
                     // New bookings: hide past slots for today. Editing: keep current time visible.
                     if (appointment?.id && form.time === slotTime) return true;
                     return !isSlotPastForDate(slotTime, form.date);
@@ -908,13 +913,14 @@ export default function AppointmentModal({
                     const slotStart = getEffectiveMinutes(slotTime);
                     const isSelected = form.time === slotTime;
 
-                    const busyAppt = appointmentsToUse?.find(a => {
+                    // Band slotlar faqat tanlangan shifokor uchun hisoblanadi (shifokor tanlanmasa — hammasi bo'sh).
+                    const busyAppt = form.doctor_id && appointmentsToUse?.find(a => {
                       if (a.id === appointment?.id) return false;
                       if (a.status === 'Cancelled') return false;
                       const aDateOnly = normalizeToDateOnly(a.date);
                       const fDateOnly = normalizeToDateOnly(form.date);
                       if (aDateOnly !== fDateOnly) return false;
-                      if (form.doctor_id && a.doctor_id && String(form.doctor_id) !== String(a.doctor_id)) return false;
+                      if (!a.doctor_id || String(form.doctor_id) !== String(a.doctor_id)) return false;
                       const aStart = getEffectiveMinutes(a.time || '00:00');
                       const aEnd = aStart + (parseInt(a.duration) || 30);
                       return slotStart < aEnd && (slotStart + 30) > aStart;
@@ -961,7 +967,7 @@ export default function AppointmentModal({
                       );
                     })}
                 </div>
-                {APPOINTMENT_TIME_SLOTS.filter((slotTime) => (appointment?.id && form.time === slotTime) || !isSlotPastForDate(slotTime, form.date)).length === 0 && (
+                {timeSlots.filter((slotTime) => (appointment?.id && form.time === slotTime) || !isSlotPastForDate(slotTime, form.date)).length === 0 && (
                   <p className="mt-2 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-2">
                     {language === 'ru' ? 'На сегодня свободных слотов не осталось — выберите другую дату' : language === 'en' ? 'No future slots left today — pick another date' : "Bugun bo'sh vaqt qolmadi — boshqa sanani tanlang"}
                   </p>
@@ -1055,7 +1061,7 @@ export default function AppointmentModal({
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-100">
                     {appointmentStatuses.map(s => (
-                      <SelectItem key={s} value={s} className="rounded-lg font-bold">{t(`appointments.statusLabels.${s.replace(/\s+/g, '')}`)}</SelectItem>
+                      <SelectItem key={s} value={s} className="rounded-lg font-bold">{appointmentStatusLabel(s, language)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

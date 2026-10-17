@@ -9,6 +9,9 @@ import { base44 } from '@/api/base44Client';
 import { compressImage } from '@/utils/imageUpload';
 import { toast } from 'sonner';
 import AppointmentConfirmationBadge from './AppointmentConfirmationBadge';
+import { APPOINTMENT_STATUS_CARD_CLASS, QUICK_STATUS_ACTIONS, appointmentStatusLabel, normalizeAppointmentStatus } from '@/lib/appointmentStatus';
+import { buildClinicTimeSlots } from '@/lib/clinicHours';
+import { useClinic } from '@/lib/ClinicContext';
 
 
 /**
@@ -62,11 +65,6 @@ const doctorInitials = (name) => {
   return (words.slice(0, 2).map((w) => w[0]).join('') || String(name || '?').charAt(0)).toUpperCase();
 };
 
-const BASE_TIME_SLOTS = [
-  ...Array.from({ length: 16 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`),
-  '23:30',
-  '00:00'
-];
 
 export const getClinicTimeWeight = (timeStr) => {
   const [h, m] = (timeStr || '00:00').split(':').map(Number);
@@ -75,24 +73,7 @@ export const getClinicTimeWeight = (timeStr) => {
   return effH * 60 + m;
 };
 
-const statusColors = {
-  Scheduled: 'bg-[#E3F2FD] border-[#BBDEFB] text-[#1976D2]',
-  Waiting: 'bg-[#FFF3E0] border-[#FFE0B2] text-[#E65100]',
-  'In Progress': 'bg-[#E1F5FE] border-[#B3E5FC] text-[#01579B]',
-  Completed: 'bg-[#E8F5E9] border-[#C8E6C9] text-[#2E7D32]',
-  Cancelled: 'bg-rose-50 border-rose-100 text-rose-600',
-  'No-Show': 'bg-slate-50 border-slate-200 text-slate-400'
-};
-
-const statusUz = {
-  Scheduled: 'Rejalashtirilgan',
-  Waiting: 'Kutmoqda',
-  'In Progress': 'Jarayonda',
-  Completed: 'Tugallangan',
-  Cancelled: 'Bekor qilingan',
-  'No-Show': 'Kelmadi',
-  Planned: 'Rejalashtirilgan',
-};
+const statusColors = APPOINTMENT_STATUS_CARD_CLASS;
 
 const statusBadgeColors = {
   Scheduled: 'bg-blue-100 text-blue-700',
@@ -101,7 +82,6 @@ const statusBadgeColors = {
   Completed: 'bg-emerald-100 text-emerald-700',
   Cancelled: 'bg-rose-100 text-rose-700',
   'No-Show': 'bg-slate-100 text-slate-500',
-  Planned: 'bg-teal-100 text-teal-700',
 };
 
 const DOCTOR_PALETTES = [
@@ -311,7 +291,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
     left: `${left}px`,
   };
 
-  const statusKey = a.status || 'Scheduled';
+  const statusKey = normalizeAppointmentStatus(a.status);
 
   return createPortal(
     <div style={style} ref={popupRef}>
@@ -386,7 +366,7 @@ export function AppointmentQuickView({ appointment, onClose, onEdit, rect }) {
             )}
             {/* Status badge */}
             <span className={cn('text-[10px] font-black px-2 py-0.5 rounded-full', statusBadgeColors[statusKey] || 'bg-teal-100 text-teal-700')}>
-              {t(`appointments.statusLabels.${statusKey.replace(/\s+/g, '')}`) || statusUz[statusKey] || statusKey}
+              {appointmentStatusLabel(statusKey, language)}
             </span>
           </div>
 
@@ -513,11 +493,13 @@ export default function DoctorDayGrid({
   doctors = [], 
   onSlotClick, 
   onEditClick,
+  onStatusChange,
   viewDate,
   onViewDateChange,
   searchQuery = ''
 }) {
   const { t } = useTranslation();
+  const { workStartHour, workEndHour } = useClinic();
   const gridRef = useRef(null);
   const { sendTest, loadingId } = useTestReminder();
 
@@ -630,7 +612,7 @@ export default function DoctorDayGrid({
 
   const displayTimeSlots = useMemo(() => {
     // 1. Standard base slots from 08:00 to 23:00, 23:30, 00:00
-    const slotSet = new Set(BASE_TIME_SLOTS);
+    const slotSet = new Set(buildClinicTimeSlots(workStartHour, workEndHour));
 
     // 2. Dynamic slots for any appointment scheduled on this day
     appointments.forEach(a => {
@@ -642,7 +624,7 @@ export default function DoctorDayGrid({
 
     // 3. Chronological clinic sort: 08:00 -> 23:00 -> 23:30 -> 00:00
     return Array.from(slotSet).sort((a, b) => getClinicTimeWeight(a) - getClinicTimeWeight(b));
-  }, [appointments, selectedDate]);
+  }, [appointments, selectedDate, workStartHour, workEndHour]);
 
   const isTodayView = selectedDate === tashkentDateKey();
   // Slot that contains "now" and the fraction of an hour inside it.
@@ -705,7 +687,7 @@ export default function DoctorDayGrid({
       )}
       <div ref={gridRef} data-testid="doctor-day-grid-scroll" className="flex-1 overflow-auto doc-grid-scroll scroll-smooth bg-white" style={gridMaxH ? { maxHeight: gridMaxH } : undefined}>
         <div 
-          className="grid w-full min-w-max [grid-template-columns:56px_repeat(var(--doc-n),minmax(210px,1fr))] lg:[grid-template-columns:56px_repeat(var(--doc-n),minmax(200px,1fr))]"
+          className="grid w-full min-w-[calc(56px_+_var(--doc-n)_*_210px)] lg:min-w-[calc(56px_+_var(--doc-n)_*_150px)] [grid-template-columns:56px_repeat(var(--doc-n),minmax(210px,1fr))] lg:[grid-template-columns:56px_repeat(var(--doc-n),minmax(150px,1fr))]"
           style={{ '--doc-n': Math.max(doctors.length, 1) }}
         >
           {/* ══════════════════════════════════════════════
@@ -752,10 +734,10 @@ export default function DoctorDayGrid({
                     </div>
 
                     <div className="min-w-0 text-left lg:flex lg:items-baseline lg:gap-1">
-                      <h4 className="text-xs lg:text-[11px] font-black text-slate-900 tracking-tight leading-tight uppercase truncate max-w-[130px] lg:max-w-none lg:min-w-0 lg:shrink">
+                      <h4 className="text-xs lg:text-[11px] font-black text-slate-900 tracking-tight leading-tight uppercase truncate max-w-[130px] lg:max-w-full lg:min-w-0 lg:shrink-0">
                         {doc.name}
                       </h4>
-                      <p className="text-[9px] lg:text-[8px] font-bold uppercase tracking-wider truncate max-w-[130px] lg:max-w-none lg:min-w-0 lg:shrink-0" style={{ color: palette.primary }}>
+                      <p className="text-[9px] lg:text-[8px] font-bold uppercase tracking-wider truncate max-w-[130px] lg:max-w-none lg:min-w-0 lg:shrink" style={{ color: palette.primary }}>
                         {doc.specialty || t('staff.roles.doctor') || 'Stomatolog'}
                       </p>
                     </div>
@@ -844,7 +826,7 @@ export default function DoctorDayGrid({
                             onClick={(e) => handleAppointmentClick(e, appointment)}
                             className={cn(
                               "flex-1 min-w-0 rounded-xl lg:rounded-lg border-l-[4px] lg:border-l-[3px] p-1.5 lg:px-2.5 lg:py-1.5 lg:min-h-[44px] flex flex-col justify-between lg:justify-center lg:gap-1 lg:shadow-sm transition-all hover:brightness-95 active:scale-[0.98] cursor-pointer group/card relative overflow-hidden",
-                              statusColors[appointment.status] || statusColors.Scheduled,
+                              statusColors[normalizeAppointmentStatus(appointment.status)] || statusColors.Scheduled,
                               isMatch && "ring-2 ring-[#1499AD] ring-offset-1 animate-pulse scale-[1.02] z-10 shadow-lg shadow-[#1499AD]/20"
                             )}
                             style={{ borderLeftColor: palette.primary }}
@@ -906,6 +888,38 @@ export default function DoctorDayGrid({
                                 </button>
                               </div>
                             </div>
+
+                            {appointment.patient_allergy && (
+                              <div
+                                data-testid="grid-card-allergy"
+                                title={`Allergiya: ${appointment.patient_allergy}`}
+                                className="mt-0.5 lg:mt-0 px-1.5 py-px rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-[9px] lg:text-[10px] font-black truncate min-w-0"
+                              >
+                                ⚠ Allergiya: {appointment.patient_allergy}
+                              </div>
+                            )}
+
+                            {onStatusChange && (
+                              <div className="flex items-center gap-1 mt-0.5 lg:mt-0" data-testid="grid-card-quick-status">
+                                {QUICK_STATUS_ACTIONS.map((qa) => {
+                                  const active = normalizeAppointmentStatus(appointment.status) === qa.status;
+                                  return (
+                                    <button
+                                      key={qa.status}
+                                      type="button"
+                                      aria-pressed={active}
+                                      onClick={(e) => { e.stopPropagation(); if (!active) onStatusChange(appointment, qa.status); }}
+                                      className={cn(
+                                        "flex-1 min-w-0 h-5 rounded-md text-[9px] lg:text-[10px] font-black truncate border transition-colors",
+                                        active ? "bg-slate-900 border-slate-900 text-white" : "bg-white/90 border-black/10 text-slate-700 hover:bg-white"
+                                      )}
+                                    >
+                                      {qa.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         );
                       })()}

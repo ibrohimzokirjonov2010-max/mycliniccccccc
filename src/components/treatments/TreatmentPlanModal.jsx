@@ -16,7 +16,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import ProfessionalOdontogram from '../patients/ProfessionalOdontogram';
 import PatientSelect from '../patients/PatientSelect';
-import { cn, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel } from '@/lib/utils';
+import { cn, getServiceStatusLabel, getTreatmentTypeLabel, getServiceCategoryLabel, formatPhone } from '@/lib/utils';
 import { getToothIllustrationSrc, pickIllustrationKindFromServices } from '@/utils/toothIllustration';
 import { paymentsForPlan } from '@/lib/treatmentDelete';
 import { isPlanLocked, PLAN_LOCKED_TOAST, PLAN_LOCKED_TOOLTIP } from '@/lib/planLock';
@@ -270,7 +270,7 @@ function PlanDiscountChips({ discount, onChange, disabled = false, className = '
 
 export default function TreatmentPlanModal({ open, onClose, plan, patients, services, onSaved, initialPatientId, onPay }) {
   const { t, language } = useTranslation();
-  const { clinicName } = useClinic();
+  const { clinicName, clinicPhone, clinicAddress } = useClinic();
   const [step, setStep] = useState(1);
   const [patientId, setPatientId] = useState('');
   const [patientName, setPatientName] = useState('');
@@ -1818,7 +1818,7 @@ export default function TreatmentPlanModal({ open, onClose, plan, patients, serv
                                         <div>
                                             <h1 className="text-xl font-black text-[#0284c7] tracking-tight leading-none">{clinicName}</h1>
                                             <p className="text-[11px] text-slate-500 font-medium mt-1">Professional stomatologiya klinikasi</p>
-                                            <p className="text-[11px] text-slate-600 font-semibold mt-0.5">Tel: +998 71 123 45 67 | Toshkent sh.</p>
+                                            {(clinicPhone || clinicAddress) && <p className="text-[11px] text-slate-600 font-semibold mt-0.5">{[clinicPhone ? `Tel: ${formatPhone(clinicPhone)}` : '', clinicAddress || ''].filter(Boolean).join(' | ')}</p>}
                                         </div>
                                     </div>
                                     <div className="text-right">

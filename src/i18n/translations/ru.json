@@ -383,6 +383,7 @@
     "address": "Адрес",
     "lastVisit": "Последний визит",
     "totalVisits": "Всего визитов",
+    "totalPatients": "Всего пациентов",
     "totalPaid": "Всего оплачено",
     "totalDebt": "Общий долг",
     "status": "Статус",

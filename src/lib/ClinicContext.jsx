@@ -10,6 +10,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { CLINIC_SESSION_EVENT } from '@/lib/clinicPlan';
+import { normalizeWorkHours } from '@/lib/clinicHours';
 
 const ClinicContext = createContext({
   clinicName: 'ShifoCRM',
@@ -17,8 +18,17 @@ const ClinicContext = createContext({
   clinicAddress: '',
   clinicLogo: null,
   clinicSubtitle: '',
+  workStartHour: 8,
+  workEndHour: 24,
+  chairsCount: 1,
   isLoading: true,
   refresh: () => {},
+});
+
+const pickExtras = (clinic) => ({
+  workStartHour: normalizeWorkHours(clinic?.calendar_start_hour, clinic?.calendar_end_hour).start,
+  workEndHour: normalizeWorkHours(clinic?.calendar_start_hour, clinic?.calendar_end_hour).end,
+  chairsCount: Math.max(1, Number.parseInt(clinic?.chairs_count, 10) || 1),
 });
 
 /**
@@ -61,6 +71,9 @@ export function ClinicProvider({ children }) {
             address: clinic.address || '',
             logo: clinic.logo || null,
             subtitle: clinic.subtitle || '',
+            calendar_start_hour: clinic.calendar_start_hour ?? null,
+            calendar_end_hour: clinic.calendar_end_hour ?? null,
+            chairs_count: clinic.chairs_count ?? null,
           }));
         } catch { /* localStorage unavailable */ }
 
@@ -70,6 +83,7 @@ export function ClinicProvider({ children }) {
           clinicAddress: clinic.address || '',
           clinicLogo: clinic.logo || null,
           clinicSubtitle: clinic.subtitle || '',
+          ...pickExtras(clinic),
           isLoading: false,
         });
       } else {
@@ -87,6 +101,7 @@ export function ClinicProvider({ children }) {
             clinicAddress: cached.address || '',
             clinicLogo: cached.logo || null,
             clinicSubtitle: cached.subtitle || '',
+            ...pickExtras(cached),
             isLoading: false,
           });
           return;
@@ -107,6 +122,7 @@ export function ClinicProvider({ children }) {
           clinicAddress: clinic.address || '',
           clinicLogo: clinic.logo || null,
           clinicSubtitle: clinic.subtitle || '',
+          ...pickExtras(clinic),
           isLoading: false,
         });
         return;
