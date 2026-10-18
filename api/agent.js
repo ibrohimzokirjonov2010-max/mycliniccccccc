@@ -365,7 +365,7 @@ export default async function handler(req, res) {
   try {
     if (action === 'telegram-send' || action === 'telegram-updates') {
       if (!sameOrigin(req)) return err(res, 403, 'forbidden_origin');
-      if (!botToken()) return send(res, 200, { ok: false, error: 'not_configured', telegram_status: 404 });
+      if (!botToken()) return send(res, 200, { ok: false, error: 'not_configured', telegram_status: 409 });
       return action === 'telegram-send' ? await tgSend(req, res) : await tgUpdates(req, res);
     }
 
