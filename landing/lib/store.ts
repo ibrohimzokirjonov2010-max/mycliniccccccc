@@ -162,6 +162,11 @@ function supabaseEnabled() {
   return Boolean(process.env.SUPABASE_URL?.trim() && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
 }
 
+/** true = buyurtmalar Supabase `landing_store` jadvalida (bardoshli). false = fayl/xotira zaxirasi (faqat dev/mock). */
+export function storeIsDurable() {
+  return supabaseEnabled();
+}
+
 let queue: Promise<unknown> = Promise.resolve();
 let memory: Database | null = null;
 let memoryOnly = false;

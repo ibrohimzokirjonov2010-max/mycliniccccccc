@@ -9,7 +9,8 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/ && node scripts/assert-card-binding.mjs && node scripts/assert-superadmin-billing.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.23",

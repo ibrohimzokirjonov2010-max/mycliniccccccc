@@ -1,8 +1,9 @@
 /**
  * telegramReminderService.js
  * 
- * To'g'ridan-to'g'ri brauzerdan Telegram Bot API ga xabar yuboradi.
- * Backend kerak emas — Supabase + Telegram API orqali ishlaydi.
+ * Telegram xabarlari SERVER orqali yuboriladi (/api/telegram/send, /api/telegram/poll).
+ * Bot tokeni va service-role kaliti brauzerda YO'Q: faqat Vercel env (TELEGRAM_BOT_TOKEN, SUPABASE_SERVICE_ROLE_KEY).
+ * Supabase'ga o'qish/yozish faqat public anon kalit bilan.
  * 
  * Xususiyatlar:
  *  - 2 soat oldin tasdiqlash xabari (inline tugmali)
@@ -12,23 +13,16 @@
 
 import { assertClinicNotExpired } from '@/lib/clinicExpiry';
 
-const BOT_TOKEN = '8878208387:AAEdKJKfUkevXREmWGi41B-0IBYzL6sB1Zk';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zvyggjldzkxwufpnaatr.supabase.co';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Service role key — eslatma flaglarini yozish uchun
-// Bu frontend'da ishlatish uchun — faqat RLS disable bo'lganda ishlaydi
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2eWdnamxkemt4d3VmcG5hYXRyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzQxODc1MCwiZXhwIjoyMTAyOTk0NzUwfQ.t73j6MB8IvYmksHNzGziM_WSDTxILQ1tslP0pDuiw1Q';
 
 const TASHKENT_OFFSET = 5; // UTC+5
-
-// /start polling uchun oxirgi update ID ni xotirda saqlaymiz
-let _lastUpdateId = 0;
 
 // Token yo'q yoki Telegram uni rad etganda (401/403/404) polling butunlay to'xtaydi.
 // Holat localStorage'da token oxiriga bog'lab saqlanadi — sahifa yangilanganda ham qayta so'rov
 // yuborilmaydi; token almashtirilsa (yangi deploy) flag avtomatik yangilanadi.
-const POLL_DISABLED_KEY = `telegram_poll_disabled_${String(BOT_TOKEN || '').slice(-8)}`;
+const POLL_DISABLED_KEY = 'telegram_poll_disabled_server_v1';
 let _pollingDisabled = false;
 
 function readPollingDisabledFlag() {
@@ -53,7 +47,6 @@ function disableBotPolling(persist = true) {
  * getUpdates polling hozir ishlashi mumkinmi? (token bor va Telegram rad etmagan)
  */
 export function isBotPollingEnabled() {
-  if (!String(BOT_TOKEN || '').trim()) return false;
   if (_pollingDisabled) return false;
   if (readPollingDisabledFlag()) {
     _pollingDisabled = true;
@@ -63,106 +56,25 @@ export function isBotPollingEnabled() {
 }
 
 /**
- * Supabase'dan klinika ma'lumotlarini olish
- */
-async function fetchClinicInfo(clinicId) {
-  const key = SERVICE_KEY || SUPABASE_KEY;
-  if (!key || !clinicId) return null;
-  try {
-    const url = `${SUPABASE_URL}/rest/v1/clinics?select=*&id=eq.${encodeURIComponent(clinicId)}&limit=1`;
-    const res = await fetch(url, {
-      headers: { apikey: key, Authorization: `Bearer ${key}` },
-    });
-    if (!res.ok) return null;
-    const rows = await res.json();
-    return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
-  } catch (e) {
-    return null;
-  }
-}
-
-/**
- * /start bosganida klinikaga tegishli chiroyli xabar
- */
-function buildStartWelcomeMessage(firstName, clinicInfo) {
-  const name = firstName ? ` <b>${firstName}</b>` : '';
-  const clinicName = clinicInfo?.name || clinicInfo?.clinic_name || 'My Clinic';
-  const phone = clinicInfo?.phone || clinicInfo?.contact_phone || '';
-  const address = clinicInfo?.address || clinicInfo?.location || '';
-  const workHours = clinicInfo?.work_hours || 'Du–Sha: 09:00–18:00';
-  const website = clinicInfo?.website || '';
-
-  let msg = `🦷 <b>Assalomu alaykum${name}!</b>\n\n`;
-  msg += `Siz <b>${clinicName}</b> klinikasining Telegram botiga ulangansiz.\n\n`;
-  msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `🏥 <b>Klinika haqida:</b>\n`;
-  if (address) msg += `📍 Manzil: ${address}\n`;
-  if (phone) msg += `📞 Telefon: ${phone}\n`;
-  if (workHours) msg += `🕐 Ish vaqti: ${workHours}\n`;
-  if (website) msg += `🌐 Sayt: ${website}\n`;
-  msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-  msg += `📲 <b>Bu bot orqali siz quyidagilarni olasiz:</b>\n\n`;
-  msg += `⏰ <b>2 soat oldin eslatma</b> — qabul vaqtidan 2 soat oldin avtomatik xabar keladi\n\n`;
-  msg += `🌅 <b>Ertalabki eslatma</b> — bugungi qabulingiz haqida 07:00 da xabar\n\n`;
-  msg += `✅ <b>Tasdiqlash</b> — qabul vaqtini tasdiqlash yoki o'zgartirish imkoniyati\n\n`;
-  msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `✨ Sizning ma'lumotlaringiz <b>klinika tizimiga bog'liq</b> — shifokoringiz sizni tizimga qo'shganida eslatmalar avtomatik yoqiladi.\n\n`;
-  msg += `Sog'lig'ingiz mustahkam bo'lsin! 🙏`;
-
-  return msg;
-}
-
-/**
  * Bot'ga kelgan yangi xabarlarni tekshirish (getUpdates polling)
  * /start xabarini tutib, klinika ma'lumotlari bilan javob beradi
  */
 export async function pollBotUpdates(clinicId) {
-  // Token yo'q yoki avval 401 qaytgan bo'lsa — so'rov umuman yuborilmaydi
-  if (!isBotPollingEnabled()) return;
+  // Token yo'q yoki server polling'ni o'chirgan bo'lsa — so'rov umuman yuborilmaydi
+  if (!isBotPollingEnabled() || !clinicId) return;
   try {
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=${_lastUpdateId + 1}&timeout=0&limit=20&allowed_updates=["message","callback_query"]`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      // 401/403/404 — token yaroqsiz/bekor qilingan: polling'ni to'xtatamiz (foydalanuvchiga xato ko'rsatilmaydi)
-      if (res.status === 401 || res.status === 403 || res.status === 404) {
-        disableBotPolling(true);
-      } else if (res.status === 409) {
-        // Webhook o'rnatilgan — getUpdates ishlamaydi; shu sessiya davomida qayta urinmaymiz
-        disableBotPolling(false);
-      }
-      return;
-    }
+    const res = await fetch('/api/telegram/poll', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ clinic_id: clinicId }),
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+    const type = res.headers.get('content-type') || '';
+    if (res.status === 404 || !type.includes('json')) { disableBotPolling(false); return; } // /api yo'q (dev)
     const data = await res.json();
-    if (!data.ok || !Array.isArray(data.result) || data.result.length === 0) return;
-
-    // Klinika ma'lumotlarini olish
-    const clinicInfo = await fetchClinicInfo(clinicId);
-
-    for (const update of data.result) {
-      // Oxirgi update ID ni yangilaymiz
-      if (update.update_id > _lastUpdateId) {
-        _lastUpdateId = update.update_id;
-      }
-
-      // Faqat /start yoki /start?<patient_id> xabarlarini qayta ishlaymiz
-      const msg = update.message;
-      if (!msg || !msg.text) continue;
-
-      const text = String(msg.text).trim();
-      const chatId = msg.chat?.id;
-      const firstName = msg.from?.first_name || msg.chat?.first_name || '';
-
-      if (!chatId) continue;
-
-      // /start ni ushlaymiz (prefixlar bilan ham: /start XXXX)
-      if (text.startsWith('/start')) {
-        // Klinikaga tegishli xush kelibsiz xabar
-        const welcomeText = buildStartWelcomeMessage(firstName, clinicInfo);
-        await sendTelegramMessage(String(chatId), welcomeText);
-
-        console.log(`[ReminderService] 👋 /start handled for chatId=${chatId}, name=${firstName}`);
-      }
-    }
+    if (data?.disabled) disableBotPolling(data.reason === 'token_rejected');
+    else if (res.status === 402 || res.status === 503) disableBotPolling(false);
   } catch (e) {
     console.warn('[ReminderService] pollBotUpdates error:', e);
   }
@@ -225,7 +137,7 @@ export async function fetchUpcomingAppointments() {
     throw error;
   }
   const today = getTashkentDate();
-  const key = SERVICE_KEY || SUPABASE_KEY;
+  const key = SUPABASE_KEY;
   if (!key) return [];
 
   try {
@@ -256,7 +168,7 @@ export async function fetchPatientById(patientId) {
     if (error?.code === 402) return null;
     throw error;
   }
-  const key = SERVICE_KEY || SUPABASE_KEY;
+  const key = SUPABASE_KEY;
   if (!key) return null;
 
   try {
@@ -280,7 +192,7 @@ export async function fetchPatientById(patientId) {
  * Appointment'ni yangilash (eslatma flag'larini qo'yish uchun)
  */
 export async function updateAppointmentField(appointmentId, fields) {
-  const key = SERVICE_KEY || SUPABASE_KEY;
+  const key = SUPABASE_KEY;
   if (!key || !appointmentId) return false;
 
   try {
@@ -305,28 +217,33 @@ export async function updateAppointmentField(appointmentId, fields) {
 /**
  * Telegram'ga xabar yuborish
  */
-export async function sendTelegramMessage(chatId, text, replyMarkup = null) {
+function currentClinicId() {
+  try {
+    return (typeof localStorage !== 'undefined' && (localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id'))) || '';
+  } catch {
+    return '';
+  }
+}
+
+export async function sendTelegramMessage(chatId, text, replyMarkup = null, clinicId = null) {
   if (!chatId || !text) return null;
+  const cid = String(clinicId || currentClinicId() || '').toLowerCase();
+  if (!cid) return null;
 
   try {
-    const body = {
-      chat_id: chatId,
-      text,
-      parse_mode: 'HTML',
-    };
-    if (replyMarkup) {
-      body.reply_markup = replyMarkup;
-    }
-
-    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    const body = { clinic_id: cid, chat_id: String(chatId), text };
+    if (replyMarkup) body.reply_markup = replyMarkup;
+    const res = await fetch('/api/telegram/send', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify(body),
+      credentials: 'same-origin',
+      cache: 'no-store',
     });
-    const data = await res.json();
-    if (data.ok) return data.result?.message_id ?? true;
-    if (res.status === 401) disableBotPolling(true);
-    console.warn('[ReminderService] Telegram sendMessage failed:', data);
+    let data = null;
+    try { data = await res.json(); } catch { /* JSON emas */ }
+    if (data?.ok) return data.message_id ?? true;
+    console.warn('[ReminderService] Telegram send failed:', data?.error || res.status);
     return null;
   } catch (e) {
     console.error('[ReminderService] sendTelegramMessage error:', e);
@@ -454,7 +371,7 @@ export async function check2HourReminders(clinicId) {
   const target2H = new Date(now.getTime() + 2 * 3600 * 1000);
   const target2HStr = `${String(target2H.getHours()).padStart(2, '0')}:${String(target2H.getMinutes()).padStart(2, '0')}`;
 
-  const key = SERVICE_KEY || SUPABASE_KEY;
+  const key = SUPABASE_KEY;
   if (!key) return;
 
   try {
@@ -493,7 +410,7 @@ export async function check2HourReminders(clinicId) {
         ],
       };
 
-      const msgId = await sendTelegramMessage(chatId, text, replyMarkup);
+      const msgId = await sendTelegramMessage(chatId, text, replyMarkup, app.clinic_id || clinicId);
       if (msgId) {
         await updateAppointmentField(app.id, {
           pre_reminder_sent: true,
@@ -521,7 +438,7 @@ export async function checkMorningReminders(clinicId) {
   if (h !== 7 || m > 1) return;
 
   const todayDate = getTashkentDate();
-  const key = SERVICE_KEY || SUPABASE_KEY;
+  const key = SUPABASE_KEY;
   if (!key) return;
 
   try {
@@ -547,7 +464,7 @@ export async function checkMorningReminders(clinicId) {
 
       const clinicName = patient?.clinic_name || app.clinic_name || 'Dental Klinika';
       const text = buildMorningReminderText(app, clinicName);
-      const sent = await sendTelegramMessage(chatId, text);
+      const sent = await sendTelegramMessage(chatId, text, null, app.clinic_id || clinicId);
 
       if (sent) {
         await updateAppointmentField(app.id, { morning_reminder_sent: true });
@@ -578,7 +495,7 @@ export async function sendTestReminderForPatient(patientId) {
   }
 
   const todayDate = getTashkentDate();
-  const key = SERVICE_KEY || SUPABASE_KEY;
+  const key = SUPABASE_KEY;
 
   // Kelajakdagi qabulini topish
   let app = null;
@@ -625,7 +542,7 @@ export async function sendTestReminderForPatient(patientId) {
     ],
   };
 
-  const msgId = await sendTelegramMessage(chatId, text, replyMarkup);
+  const msgId = await sendTelegramMessage(chatId, text, replyMarkup, patient.clinic_id);
   if (msgId) {
     return {
       success: true,
