@@ -12,13 +12,12 @@
 
 import { assertClinicNotExpired } from '@/lib/clinicExpiry';
 
-const BOT_TOKEN = '8878208387:AAEdKJKfUkevXREmWGi41B-0IBYzL6sB1Zk';
+// Telegram bot token endi FAQAT serverda (api/agent.js ?action=telegram-*). Brauzerda token yo'q.
+const TG_PROXY = '/api/agent';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://zvyggjldzkxwufpnaatr.supabase.co';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Service role key — eslatma flaglarini yozish uchun
-// Bu frontend'da ishlatish uchun — faqat RLS disable bo'lganda ishlaydi
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2eWdnamxkemt4d3VmcG5hYXRyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzQxODc1MCwiZXhwIjoyMTAyOTk0NzUwfQ.t73j6MB8IvYmksHNzGziM_WSDTxILQ1tslP0pDuiw1Q';
+// Service-role kalit frontend'dan olib tashlandi (xavfsizlik). Brauzer faqat anon kalitdan foydalanadi.
 
 const TASHKENT_OFFSET = 5; // UTC+5
 
@@ -28,7 +27,7 @@ let _lastUpdateId = 0;
 // Token yo'q yoki Telegram uni rad etganda (401/403/404) polling butunlay to'xtaydi.
 // Holat localStorage'da token oxiriga bog'lab saqlanadi — sahifa yangilanganda ham qayta so'rov
 // yuborilmaydi; token almashtirilsa (yangi deploy) flag avtomatik yangilanadi.
-const POLL_DISABLED_KEY = `telegram_poll_disabled_${String(BOT_TOKEN || '').slice(-8)}`;
+const POLL_DISABLED_KEY = 'telegram_poll_disabled_proxy_v1';
 let _pollingDisabled = false;
 
 function readPollingDisabledFlag() {
@@ -53,7 +52,6 @@ function disableBotPolling(persist = true) {
  * getUpdates polling hozir ishlashi mumkinmi? (token bor va Telegram rad etmagan)
  */
 export function isBotPollingEnabled() {
-  if (!String(BOT_TOKEN || '').trim()) return false;
   if (_pollingDisabled) return false;
   if (readPollingDisabledFlag()) {
     _pollingDisabled = true;
@@ -66,7 +64,7 @@ export function isBotPollingEnabled() {
  * Supabase'dan klinika ma'lumotlarini olish
  */
 async function fetchClinicInfo(clinicId) {
-  const key = SERVICE_KEY || SUPABASE_KEY;
+  const key = SUPABASE_KEY;
   if (!key || !clinicId) return null;
   try {
     const url = `${SUPABASE_URL}/rest/v1/clinics?select=*&id=eq.${encodeURIComponent(clinicId)}&limit=1`;
@@ -120,19 +118,24 @@ export async function pollBotUpdates(clinicId) {
   // Token yo'q yoki avval 401 qaytgan bo'lsa — so'rov umuman yuborilmaydi
   if (!isBotPollingEnabled()) return;
   try {
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=${_lastUpdateId + 1}&timeout=0&limit=20&allowed_updates=["message","callback_query"]`;
-    const res = await fetch(url);
+    const res = await fetch(`${TG_PROXY}?action=telegram-updates&offset=${_lastUpdateId + 1}`, { credentials: 'same-origin' });
     if (!res.ok) {
-      // 401/403/404 — token yaroqsiz/bekor qilingan: polling'ni to'xtatamiz (foydalanuvchiga xato ko'rsatilmaydi)
-      if (res.status === 401 || res.status === 403 || res.status === 404) {
-        disableBotPolling(true);
-      } else if (res.status === 409) {
-        // Webhook o'rnatilgan — getUpdates ishlamaydi; shu sessiya davomida qayta urinmaymiz
-        disableBotPolling(false);
-      }
+      if (res.status === 403 || res.status === 404) disableBotPolling(false);
       return;
     }
-    const data = await res.json();
+    const proxied = await res.json();
+    if (proxied && proxied.ok === false) {
+      const st = proxied.telegram_status;
+      if (st === 401 || st === 403 || st === 404) disableBotPolling(true);
+      else if (st === 409) disableBotPolling(false);
+      return;
+    }
+    const data = {
+      ok: true,
+      result: (proxied?.updates || []).map((u) => (u.chat_id != null
+        ? { update_id: u.update_id, message: { text: u.text, chat: { id: u.chat_id, first_name: u.first_name }, from: { first_name: u.first_name } } }
+        : { update_id: u.update_id })),
+    };
     if (!data.ok || !Array.isArray(data.result) || data.result.length === 0) return;
 
     // Klinika ma'lumotlarini olish
@@ -225,7 +228,7 @@ export async function fetchUpcomingAppointments() {
     throw error;
   }
   const today = getTashkentDate();
-  const key = SERVICE_KEY || SUPABASE_KEY;
+  const key = SUPABASE_KEY;
   if (!key) return [];
 
   try {
@@ -256,7 +259,7 @@ export async function fetchPatientById(patientId) {
     if (error?.code === 402) return null;
     throw error;
   }
-  const key = SERVICE_KEY || SUPABASE_KEY;
+  const key = SUPABASE_KEY;
   if (!key) return null;
 
   try {
@@ -280,7 +283,7 @@ export async function fetchPatientById(patientId) {
  * Appointment'ni yangilash (eslatma flag'larini qo'yish uchun)
  */
 export async function updateAppointmentField(appointmentId, fields) {
-  const key = SERVICE_KEY || SUPABASE_KEY;
+  const key = SUPABASE_KEY;
   if (!key || !appointmentId) return false;
 
   try {
@@ -318,13 +321,14 @@ export async function sendTelegramMessage(chatId, text, replyMarkup = null) {
       body.reply_markup = replyMarkup;
     }
 
-    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    const res = await fetch(`${TG_PROXY}?action=telegram-send`, {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    const data = await res.json();
-    if (data.ok) return data.result?.message_id ?? true;
+    const data = await res.json().catch(() => ({}));
+    if (data.ok) return data.message_id ?? true;
     if (res.status === 401) disableBotPolling(true);
     console.warn('[ReminderService] Telegram sendMessage failed:', data);
     return null;
@@ -454,7 +458,7 @@ export async function check2HourReminders(clinicId) {
   const target2H = new Date(now.getTime() + 2 * 3600 * 1000);
   const target2HStr = `${String(target2H.getHours()).padStart(2, '0')}:${String(target2H.getMinutes()).padStart(2, '0')}`;
 
-  const key = SERVICE_KEY || SUPABASE_KEY;
+  const key = SUPABASE_KEY;
   if (!key) return;
 
   try {
@@ -521,7 +525,7 @@ export async function checkMorningReminders(clinicId) {
   if (h !== 7 || m > 1) return;
 
   const todayDate = getTashkentDate();
-  const key = SERVICE_KEY || SUPABASE_KEY;
+  const key = SUPABASE_KEY;
   if (!key) return;
 
   try {
@@ -578,7 +582,7 @@ export async function sendTestReminderForPatient(patientId) {
   }
 
   const todayDate = getTashkentDate();
-  const key = SERVICE_KEY || SUPABASE_KEY;
+  const key = SUPABASE_KEY;
 
   // Kelajakdagi qabulini topish
   let app = null;
