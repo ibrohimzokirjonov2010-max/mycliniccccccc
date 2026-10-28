@@ -596,7 +596,7 @@ export default function Login() {
             <MyClinicLogoImage variant="light" className="h-16 w-auto" />
           </motion.div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Kirish</h1>
-          <p className="text-slate-400 font-bold mt-1.5 uppercase text-[9px] tracking-[0.2em]">{loginRole === 'admin' ? 'Klinika Ma\'muri' : 'Shifokor / Xodim'}</p>
+          <p className="text-slate-400 font-bold mt-1.5 uppercase text-[9px] tracking-[0.2em]">{loginRole === 'admin' ? 'Klinika egasi' : 'Shifokor / Xodim'}</p>
         </div>
 
         <div className="bg-white rounded-[2rem] p-6 sm:p-8 shadow-2xl shadow-slate-200/60 border border-white relative overflow-hidden">
@@ -606,7 +606,7 @@ export default function Login() {
               onClick={() => setLoginRole('admin')}
               className={`flex-1 py-2 px-3 rounded-lg text-[10.5px] font-bold uppercase tracking-wider transition-all duration-200 ${loginRole === 'admin' ? 'bg-white shadow-md text-teal-600' : 'text-slate-400 hover:text-slate-600'}`}
             >
-              Ma'mur
+              Klinika egasi
             </button>
             <button 
               onClick={() => setLoginRole('doctor')}
