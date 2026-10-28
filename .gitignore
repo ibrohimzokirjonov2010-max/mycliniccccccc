@@ -31,3 +31,4 @@ dist-ssr
 .vite
 
 .vercel
+dist-mobile

@@ -1,0 +1,10 @@
+{
+  "appId": "uz.myclinic.app",
+  "appName": "My Clinic",
+  "webDir": "dist-mobile",
+  "server": { "androidScheme": "https" },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 1200, "backgroundColor": "#ffffff", "showSpinner": false },
+    "StatusBar": { "style": "DARK", "backgroundColor": "#1499AD", "overlaysWebView": false }
+  }
+}

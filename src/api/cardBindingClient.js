@@ -46,7 +46,7 @@ export function errorText(code) {
 
 export async function getBindingStatus() {
   try {
-    const res = await fetch('/api/card/status', { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    const res = await fetch(`${import.meta.env.VITE_API_ORIGIN || ''}/api/card/status`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
     const type = res.headers.get('content-type') || '';
     if (res.status === 404 || !type.includes('json')) return { mode: 'local-mock' };
     if (!res.ok) return { mode: 'unavailable' };

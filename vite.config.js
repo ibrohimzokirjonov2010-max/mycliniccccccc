@@ -104,7 +104,7 @@ export default defineConfig({
       // Babel o'rniga esbuild ishlatish — 20x tez
       babel: false,
     }),
-    VitePWA({
+    process.env.CAPACITOR_BUILD === 'true' ? null : VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192x192.svg', 'icon-512x512.svg', 'icon-192x192.png', 'icon-512x512.png', 'favicon.png', 'logo-full.png', 'logo-full-dark.png', 'logo-icon.png', 'logo-icon-dark.png', 'logo.png'],
       manifest: false, // manifest.json allaqachon public/ da bor
