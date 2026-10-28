@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
+import { crmAuthApi, applyServerSession } from '@/api/supabaseClient';
 import { applyClinicSession, resolveClinicPlan } from '@/lib/clinicPlan';
 import { clinicAccessClosed } from '@/lib/clinicExpiry';
 import { useAuth } from '@/lib/AuthContext';
@@ -76,13 +77,28 @@ export default function Login() {
     setLoading(true);
     (async () => {
       try {
-        const response = await fetch(`${configured}/api/auth/handoff`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
-        });
-        const data = await response.json();
-        if (!response.ok || !data?.user) {
+        // Avval server: landing tokenini serverda tekshiradi va Supabase sessiyasini beradi (RLS uchun).
+        const viaServer = await crmAuthApi('handoff', { method: 'POST', body: { token } });
+        let data;
+        let okResp;
+        if (viaServer.status === 200 && viaServer.data?.user) {
+          await applyServerSession(viaServer.data.session);
+          localStorage.setItem('crm_auth_mode', 'server');
+          data = viaServer.data;
+          okResp = true;
+        } else if (viaServer.status && viaServer.status !== 404 && viaServer.status !== 503 && viaServer.data?.error) {
+          data = { error: 'Sessiya ochilmadi. Klinika ID va login bilan kiring.' };
+          okResp = false;
+        } else {
+          const response = await fetch(`${configured}/api/auth/handoff`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+          });
+          data = await response.json();
+          okResp = response.ok;
+        }
+        if (!okResp || !data?.user) {
           if (!cancelled) setError(data?.error || 'Sessiya ochilmadi. Klinika ID va login bilan kiring.');
           return;
         }

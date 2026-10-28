@@ -206,6 +206,35 @@ export default function Register() {
 
     setLoading(true);
     try {
+      // Server: klinika mavjud/faol, login band emas, rol majburan 'doctor'. Server yo'q bo'lsa eski yo'l.
+      const { status, data } = await crmAuthApi('doctor-register', {
+        method: 'POST',
+        body: {
+          clinic_id: doctorForm.clinicId.toLowerCase(),
+          name: doctorForm.fullName,
+          username: doctorForm.username,
+          password: doctorForm.password,
+          phone: doctorForm.phone,
+          specialty: doctorForm.specialty,
+          commission_rate: doctorForm.commission,
+        },
+      });
+      if (status === 200 && data?.ok) {
+        toast.success('Ro\'yxatdan o\'tdingiz! Endi kirishingiz mumkin.');
+        navigate('/login');
+        return;
+      }
+      const known = {
+        username_taken: 'Bu login ushbu klinikada band',
+        clinic_not_found: 'Klinika topilmadi. Klinika ID ni tekshiring',
+        clinic_inactive: 'Klinika faol emas',
+        subscription_expired: 'Klinika obunasi muddati tugagan',
+        bad_username: 'Login faqat lotin harflari, raqam va . _ - belgilaridan iborat bo\'lsin (kamida 3 ta)',
+        weak_password: 'Parol kamida 4 ta belgidan iborat bo\'lishi kerak',
+        missing_fields: 'Iltimos, barcha maydonlarni to\'ldiring',
+        too_many_requests: 'Juda ko\'p urinish. Birozdan keyin qayta urinib ko\'ring',
+      };
+      if (data?.error && known[data.error]) throw new Error(known[data.error]);
       await base44.auth.addUser({
         clinic_id: doctorForm.clinicId.toLowerCase(),
         name: doctorForm.fullName,
