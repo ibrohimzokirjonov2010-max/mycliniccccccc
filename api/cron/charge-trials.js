@@ -4,6 +4,7 @@ import { addMonths, tashkentToday } from '../_lib/dates.js';
 import { send } from '../_lib/http.js';
 import { planPrice } from '../_lib/plans.js';
 import { supabaseAdmin } from '../_lib/supabaseAdmin.js';
+import { PAY_TABLE } from '../_lib/payments.js';
 
 const MAX_ATTEMPTS = 3;
 
@@ -14,9 +15,10 @@ const MAX_ATTEMPTS = 3;
  * Mantiq:
  *  - Faol karta tokeni (clinic_payment_methods.status='active', provider='click') bor klinikalar;
  *  - subscription_status='trialing' va trial_ends_at <= bugun (Asia/Tashkent) -> birinchi yechish;
- *    subscription_status='past_due' (oxirgi urinish aniq muvaffaqiyatsiz, < MAX_ATTEMPTS) -> qayta urinish;
+ *  - faol (to'langan) klinika va expires_at <= bugun -> har oylik yechish;
+ *  - muvaffaqiyatsiz bo'lsa ertasi kuni qayta urinish; ketma-ket MAX_ATTEMPTS (3) xatodan keyin 'past_due' va to'xtatiladi;
  *  - muvaffaqiyat: subscription_status='active', expires_at = bugun + 1 oy, last_payment_date, monthly_fee;
- *  - muvaffaqiyatsiz: 'past_due' (muddat o'tgach mavjud blok mexanizmi yopadi);
+ *  - har bir urinish subscription_payments jadvaliga ham yoziladi (SuperAdmin hisobotlari uchun);
  *  - natija noaniq (tarmoq xatosi): 'unknown' — qayta YECHILMAYDI (ikki marta yechish xavfi), qo'lda tekshiriladi.
  * Bir kunda bir klinika uchun bitta urinish (clinic_payment_charges: unique(clinic_id, attempt_date)).
  */
@@ -51,12 +53,16 @@ export async function runCharges({ sb, cfg, pay, today }) {
         .select('status,attempt_no,attempt_date').eq('clinic_id', clinic.id).order('created_at', { ascending: false }).limit(10);
       const charges = prior || [];
       const hasUnknown = charges.some((c) => c.status === 'unknown' || c.status === 'pending');
-      const failedCount = charges.filter((c) => c.status === 'failed').length;
+      // Ketma-ket xatolar: oxirgi muvaffaqiyatdan keyingilari (charges yangidan eskiga tartiblangan).
+      let failedCount = 0;
+      for (const c of charges) { if (c.status === 'success') break; if (c.status === 'failed') failedCount += 1; }
       const alreadyToday = charges.some((c) => c.attempt_date === today);
 
-      const trialDue = ext.subscription_status === 'trialing' && ext.trial_ends_at && ext.trial_ends_at <= today;
-      const retryDue = ext.subscription_status === 'past_due' && failedCount > 0 && failedCount < MAX_ATTEMPTS;
-      if (!(trialDue || retryDue) || hasUnknown || alreadyToday) { summary.skipped += 1; continue; }
+      const status = ext.subscription_status || 'active';
+      const expiry = String(clinic.expires_at || '').slice(0, 10);
+      const trialDue = status === 'trialing' && ext.trial_ends_at && ext.trial_ends_at <= today;
+      const renewDue = status !== 'trialing' && status !== 'past_due' && status !== 'expired' && Boolean(expiry) && expiry <= today;
+      if (!(trialDue || renewDue) || failedCount >= MAX_ATTEMPTS || hasUnknown || alreadyToday) { summary.skipped += 1; continue; }
 
       const amount = planPrice(ext.tariff || clinic.plan);
       const attemptNo = failedCount + 1;
@@ -73,6 +79,7 @@ export async function runCharges({ sb, cfg, pay, today }) {
         result = await pay({ cardToken: pm.card_token, amount, transactionParameter: txParam }, cfg);
       } catch {
         await sb.from('clinic_payment_charges').update({ status: 'unknown', click_error_note: 'no_response', updated_at: new Date().toISOString() }).eq('id', row.id);
+        await sb.from(PAY_TABLE).insert({ clinic_id: clinic.id, amount, months: 1, provider: 'click_card', status: 'unknown', provider_txn_id: txParam, note: 'Click javob bermadi' });
         summary.unknown += 1;
         continue;
       }
@@ -86,23 +93,33 @@ export async function runCharges({ sb, cfg, pay, today }) {
         updated_at: new Date().toISOString(),
       }).eq('id', row.id);
 
+      await sb.from(PAY_TABLE).insert({
+        clinic_id: clinic.id, amount, months: 1, provider: 'click_card', status: ok ? 'paid' : 'failed', provider_txn_id: txParam,
+        paid_at: ok ? new Date().toISOString() : null,
+        note: ok ? `Avto-yechish (payment_id=${result.payment_id ?? ''})` : `Xato ${result.error_code}: ${String(result.error_note || '').slice(0, 120)}`,
+      });
+
       const ledger = Array.isArray(ext.payment_ledger) ? [...ext.payment_ledger] : [];
       ledger.push({
         id: `pay_${Date.now().toString(36)}_${attemptNo}`,
         clinic_id: clinic.id, clinic_name: clinic.name, date: today, paidAt: today,
         amount, amountUzs: amount, method: 'click', status: ok ? 'paid' : 'failed',
         subscriptionStatus: ok ? 'active' : 'past_due', orderId: txParam,
-        note: ok ? 'Sinov tugadi: avtomatik yechish (Click)' : `Avtomatik yechish muvaffaqiyatsiz (${result.error_code})`,
+        note: ok ? (trialDue ? 'Sinov tugadi: avtomatik yechish (Click)' : 'Oylik avtomatik yechish (Click)') : `Avtomatik yechish muvaffaqiyatsiz (${result.error_code})`,
         created_at: new Date().toISOString(),
       });
 
       if (ok) {
         const newExpiry = addMonths(today, 1);
-        const nextExt = { ...ext, subscription_status: 'active', billing_status: 'paid', payment_provider: 'click', period_ends_at: newExpiry, payment_ledger: ledger.slice(-50) };
+        const nextExt = { ...ext, subscription_status: 'active', billing_status: 'paid', charge_failures: 0, payment_provider: 'click', period_ends_at: newExpiry, payment_ledger: ledger.slice(-50) };
         await sb.from('clinics').update({ logo: encodeExt(nextExt, rawLogo), expires_at: newExpiry, last_payment_date: today, monthly_fee: amount }).eq('id', clinic.id);
         summary.charged += 1;
       } else {
-        const nextExt = { ...ext, subscription_status: 'past_due', billing_status: 'failed', payment_ledger: ledger.slice(-50) };
+        const failures = failedCount + 1;
+        const nextExt = {
+          ...ext, billing_status: 'failed', charge_failures: failures, payment_ledger: ledger.slice(-50),
+          ...(failures >= MAX_ATTEMPTS ? { subscription_status: 'past_due' } : {}),
+        };
         await sb.from('clinics').update({ logo: encodeExt(nextExt, rawLogo) }).eq('id', clinic.id);
         summary.failed += 1;
       }

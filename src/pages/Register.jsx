@@ -16,7 +16,7 @@ import { MyClinicLogoImage } from '@/components/ui/ShifoCrmLogo';
 import { normalizeClinicBilling } from '@/utils/superAdminBilling';
 import { LANDING_PLANS, TRIAL_DAYS } from '@/config/landingPricing';
 import { CARD_BINDING_REQUIRED } from '@/config/cardBinding';
-import { attachCard, getBindingStatus } from '@/api/cardBindingClient';
+import { attachCard, getBindingStatus, precheckCard } from '@/api/cardBindingClient';
 import CardBindingStep from '@/components/register/CardBindingStep';
 
 const CYR = { а:'a',б:'b',в:'v',г:'g',ғ:'g',д:'d',е:'e',ё:'yo',ж:'j',з:'z',и:'i',й:'y',к:'k',қ:'q',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ў:'o',ф:'f',х:'x',ҳ:'h',ц:'ts',ч:'ch',ш:'sh',щ:'sh',ъ:'',ы:'i',ь:'',э:'e',ю:'yu',я:'ya' };
@@ -176,6 +176,8 @@ export default function Register() {
     const clinicId = adminForm.clinicId.toLowerCase();
     try {
       if (!createdClinicRef.current) {
+        // Klinika faqat karta isboti server tomonda tasdiqlangandan KEYIN yaratiladi.
+        await precheckCard(bindMode, { clinicId, proof });
         await base44.clinic.createClinic(
           buildClinicPayload(clinicId, bindMode === 'live' ? 'click' : 'mock'),
           { name: 'Admin', username: adminForm.username, password: adminForm.password }

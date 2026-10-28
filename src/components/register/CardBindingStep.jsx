@@ -4,7 +4,7 @@ import { CalendarClock, CheckCircle2, CreditCard, Loader2, Lock, ShieldCheck, Ar
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CONSENT_TEXT, CONSENT_VERSION, LEGAL_LINKS, MOCK_SMS_CODE } from '@/config/cardBinding';
+import { consentText, CONSENT_VERSION, LEGAL_LINKS, MOCK_SMS_CODE } from '@/config/cardBinding';
 import { requestCard, verifyCard, luhnValid } from '@/api/cardBindingClient';
 import { formatSoom } from '@/config/landingPricing';
 
@@ -197,7 +197,7 @@ export default function CardBindingStep({ plan, mode, trialDays, submitting, sub
           className="mt-0.5 h-4 w-4 shrink-0 accent-teal-600" data-testid="consent-checkbox"
         />
         <span className="text-[12px] font-semibold leading-snug text-slate-700">
-          {CONSENT_TEXT}.{' '}
+          {consentText({ amountText: formatSoom(plan.priceUzs), dateText: formatDate(firstCharge), trialDays })}.{' '}
           <Link to={LEGAL_LINKS.offer} target="_blank" className="font-bold text-teal-700 underline">Oferta</Link>
           {' · '}
           <Link to={LEGAL_LINKS.privacy} target="_blank" className="font-bold text-teal-700 underline">Maxfiylik siyosati</Link>

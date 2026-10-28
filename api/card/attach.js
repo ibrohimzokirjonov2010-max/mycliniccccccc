@@ -26,6 +26,11 @@ export default async function handler(req, res) {
   if (!proof) return send(res, 400, { ok: false, error: 'invalid_or_expired_proof' });
 
   const cfg = clickConfig();
+  if (body.precheck === true) {
+    // Klinika yaratilishidan oldingi tekshiruv: isbot haqiqiy va (live'da) mock emas. Hech narsa yozilmaydi.
+    if (cfg.configured && proof.mock) return send(res, 400, { ok: false, error: 'invalid_or_expired_proof' });
+    return send(res, 200, { ok: true, precheck: true, masked_pan: proof.mp });
+  }
   if (!cfg.configured) {
     // TEST REJIM: hech narsa saqlanmaydi.
     return send(res, 200, { ok: true, mode: 'mock', masked_pan: proof.mp, expiry: proof.ex, stored: false });

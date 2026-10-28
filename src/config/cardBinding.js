@@ -9,10 +9,15 @@
 export const CARD_BINDING_REQUIRED = ['1', 'true', 'yes'].includes(String(import.meta.env.VITE_CARD_BINDING_REQUIRED || '').toLowerCase());
 
 /** Rozilik matni versiyasi: matn o'zgarsa versiyani ham oshiring (DB'da consent_version sifatida saqlanadi). */
-export const CONSENT_VERSION = 'v1-2026-10';
+export const CONSENT_VERSION = 'v2-2026-10';
 
 export const CONSENT_TEXT =
   "14 kunlik sinov tugagach tanlangan tarif bo'yicha kartamdan avtomatik pul yechilishiga roziman";
+
+/** Rozilik matni summa va sana bilan: "... DD.MM.YYYY dan har oy 99 000 so'm ...". */
+export function consentText({ amountText, dateText, trialDays = 14 }) {
+  return `${trialDays} kunlik sinov tugagach (${dateText}) kartamdan har oy ${amountText} avtomatik yechilishiga roziman`;
+}
 
 export const LEGAL_LINKS = { privacy: '/maxfiylik', offer: '/oferta' };
 

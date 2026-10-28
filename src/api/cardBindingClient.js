@@ -76,6 +76,12 @@ export async function verifyCard(mode, { cardToken, smsCode, expiry }) {
   return post('/api/card/verify', { card_token: cardToken, sms_code: smsCode, expire_date: expiry });
 }
 
+/** Klinika yaratishdan OLDIN: karta isboti haqiqiyligini serverda tekshirish (hech narsa saqlanmaydi). */
+export async function precheckCard(mode, { clinicId, proof }) {
+  if (mode === 'local-mock') return { ok: true };
+  return post('/api/card/attach', { clinic_id: clinicId, proof, consent: true, consent_version: 'precheck', precheck: true });
+}
+
 export async function attachCard(mode, { clinicId, proof, consentVersion }) {
   if (mode === 'local-mock') return { ok: true, stored: false };
   return post('/api/card/attach', { clinic_id: clinicId, proof, consent: true, consent_version: consentVersion });

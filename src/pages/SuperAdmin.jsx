@@ -59,7 +59,11 @@ import {
   webhookStatusFor,
 } from '@/utils/superAdminBilling';
 
-const SUPER_ADMIN = { username: 'admin', password: 'admin123' };
+// SuperAdmin login server tomonida (/api/admin). Parol bundle'da saqlanmaydi.
+const adminToken = () => { try { return JSON.parse(localStorage.getItem('admin_auth') || '{}').token || ''; } catch { return ''; } };
+const adminApi = (action, init = {}) => fetch(`/api/admin?action=${action}`, {
+  ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken()}`, ...(init.headers || {}) },
+});
 const FIELD = 'h-10 bg-white/[0.04] border-white/10 rounded-xl text-white text-xs placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-teal-400/50';
 const SELECT = 'w-full h-10 bg-[#0c1218] border border-white/10 rounded-xl px-3 text-white text-xs focus:border-teal-400/50 focus:outline-none';
 
@@ -165,6 +169,7 @@ export default function SuperAdmin() {
   const { t } = useTranslation();
   const [clinics, setClinics] = useState([]);
   const [users, setUsers] = useState([]);
+  const [subPayments, setSubPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -284,48 +289,48 @@ export default function SuperAdmin() {
   }, [renewMonths, renewingClinic, payAmountTouched]);
 
   useEffect(() => {
-    const auth = localStorage.getItem('admin_auth');
-    if (auth) {
-      try {
-        const adminData = JSON.parse(auth);
-        if (adminData.isAdmin) { 
-          setIsLoggedIn(true); 
-          loadClinics(); 
-        } else { 
-          setLoading(false); 
-        }
-      } catch (e) {
-        localStorage.removeItem('admin_auth');
-        setLoading(false);
-      }
-    } else { 
-      setLoading(false); 
-    }
+    if (!adminToken()) { localStorage.removeItem('admin_auth'); setLoading(false); return; }
+    adminApi('me').then((r) => {
+      if (r.ok) { setIsLoggedIn(true); loadClinics(); loadSubPayments(); }
+      else { localStorage.removeItem('admin_auth'); setLoading(false); }
+    }).catch(() => setLoading(false));
   }, []);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoginLoading(true);
-    setTimeout(() => {
-      if (loginForm.username === SUPER_ADMIN.username && loginForm.password === SUPER_ADMIN.password) {
-        const adminUser = {
-          id: 'admin-1',
-          username: SUPER_ADMIN.username,
-          name: 'Super Administrator',
-          role: 'admin'
-        };
+    try {
+      const r = await fetch('/api/admin?action=login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: loginForm.username, password: loginForm.password }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.ok && data.token) {
         localStorage.setItem('admin_auth', JSON.stringify({
-          isAdmin: true,
-          user: adminUser
+          isAdmin: true, token: data.token,
+          user: { id: 'admin-1', username: loginForm.username, name: 'Super Administrator', role: 'admin' },
         }));
         setIsLoggedIn(true);
         toast.success(t('superAdmin.welcome'));
         loadClinics();
-      } else { 
-        toast.error(t('login.invalidCredentials')); 
+        loadSubPayments();
+      } else if (data.error === 'not_configured') {
+        toast.error("SuperAdmin login serverda sozlanmagan (SUPERADMIN_USERNAME / SUPERADMIN_PASSWORD)");
+      } else {
+        toast.error(t('login.invalidCredentials'));
       }
-      setLoginLoading(false);
-    }, 600);
+    } catch {
+      toast.error(t('login.invalidCredentials'));
+    }
+    setLoginLoading(false);
+  };
+
+  const loadSubPayments = async () => {
+    try {
+      const r = await adminApi('payments');
+      const data = await r.json().catch(() => ({}));
+      if (r.ok && Array.isArray(data.payments)) setSubPayments(data.payments);
+    } catch { /* hisobot ledger bilan ishlayveradi */ }
   };
 
   const handleLogout = () => {
@@ -660,24 +665,34 @@ export default function SuperAdmin() {
     const adminUsersCount = users.filter(u => u.role === 'admin').length;
     const receptionistCount = users.filter(u => u.role === 'receptionist').length;
 
-    // Trend simulation
-    const revenueData = [
-      { name: 'Mar', value: Math.round(totalRevenue * 0.75) },
-      { name: 'Apr', value: Math.round(totalRevenue * 0.82) },
-      { name: 'May', value: Math.round(totalRevenue * 0.9) },
-      { name: 'Iyun', value: Math.round(totalRevenue * 0.95) },
-      { name: 'Iyul', value: Math.round(totalRevenue * 0.98) },
-      { name: 'Avg', value: totalRevenue },
-    ];
+    // Real hisobot: subscription_payments (server) + klinika ledger'i (takrorlanmasdan), klinika created_at
+    const MONTHS_UZ = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun', 'Iyul', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
+    const now = new Date();
+    const buckets = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+      return { key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, name: MONTHS_UZ[d.getMonth()] };
+    });
+    const monthKey = (v) => String(v || '').slice(0, 7);
+    const paidByMonth = {};
+    const seenTxn = new Set();
+    subPayments.filter((p) => p.status === 'paid').forEach((p) => {
+      if (p.provider_txn_id) seenTxn.add(String(p.provider_txn_id));
+      const k = monthKey(p.paid_at || p.created_at);
+      paidByMonth[k] = (paidByMonth[k] || 0) + Number(p.amount || 0);
+    });
+    (ledger || []).forEach((e) => {
+      if (e.status !== 'paid' || (e.orderId && seenTxn.has(String(e.orderId)))) return;
+      const k = monthKey(e.date || e.paidAt || e.created_at);
+      paidByMonth[k] = (paidByMonth[k] || 0) + Number(e.amountUzs ?? e.amount ?? 0);
+    });
+    const revenueData = buckets.map((m) => ({ name: m.name, value: paidByMonth[m.key] || 0 }));
+    const cur = revenueData[5].value;
+    const prev = revenueData[4].value;
+    const revenueGrowth = prev > 0 ? Math.round(((cur - prev) / prev) * 1000) / 10 : null;
 
-    const clinicGrowth = [
-      { name: 'Mar', clinics: Math.max(1, clinics.length - 2), users: Math.max(2, users.length - 4) },
-      { name: 'Apr', clinics: Math.max(1, clinics.length - 1), users: Math.max(3, users.length - 3) },
-      { name: 'May', clinics: Math.max(1, clinics.length - 1), users: Math.max(4, users.length - 2) },
-      { name: 'Iyun', clinics: clinics.length, users: Math.max(5, users.length - 1) },
-      { name: 'Iyul', clinics: clinics.length, users: users.length },
-      { name: 'Avg', clinics: clinics.length, users: users.length },
-    ];
+    const upTo = (rows, key) => rows.filter((r) => r.created_at && monthKey(r.created_at) <= key).length;
+    const clinicGrowth = buckets.map((m) => ({ name: m.name, clinics: upTo(clinics, m.key), users: upTo(users, m.key) }));
+    const newClinicsThisMonth = clinics.filter((c) => monthKey(c.created_at) === buckets[5].key).length;
 
     return { 
       total: clinics.length, 
@@ -699,9 +714,11 @@ export default function SuperAdmin() {
       adminUsersCount,
       receptionistCount,
       revenueData,
-      clinicGrowth
+      revenueGrowth,
+      clinicGrowth,
+      newClinicsThisMonth
     };
-  }, [clinics, users]);
+  }, [clinics, users, subPayments, ledger]);
 
   // Filtered Clinics
   const filteredClinics = useMemo(() => {
@@ -1269,7 +1286,7 @@ export default function SuperAdmin() {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[11px] font-bold text-slate-300">Oylik Daromad Dinamikasi (UZS)</span>
                   <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3" /> +15.4%
+                    <TrendingUp className="w-3 h-3" /> {stats.revenueGrowth === null ? "—" : `${stats.revenueGrowth > 0 ? '+' : ''}${stats.revenueGrowth}%`}
                   </span>
                 </div>
                 <div className="h-[140px] w-full">
@@ -1286,7 +1303,7 @@ export default function SuperAdmin() {
                       <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 9 }} />
                       <Tooltip 
                         contentStyle={{ backgroundColor: '#0f111a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }} 
-                        formatter={(val) => [`${Number(val).toLocaleString()} UZS`, 'MRR']}
+                        formatter={(val) => [`${Number(val).toLocaleString()} UZS`, "To'langan"]}
                       />
                       <Area type="monotone" dataKey="value" stroke="#2dd4bf" strokeWidth={2.5} fillOpacity={1} fill="url(#revenueGrad)" />
                     </AreaChart>
@@ -1299,7 +1316,7 @@ export default function SuperAdmin() {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[11px] font-bold text-slate-300">Klinikalar va Foydalanuvchilar O'sishi</span>
                   <span className="text-[10px] text-teal-300 font-semibold flex items-center gap-1">
-                    <Activity className="w-3 h-3" /> Faol o'sish
+                    <Activity className="w-3 h-3" /> Bu oy: +{stats.newClinicsThisMonth} klinika
                   </span>
                 </div>
                 <div className="h-[140px] w-full">

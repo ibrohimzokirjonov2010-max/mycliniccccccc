@@ -235,8 +235,9 @@ export function resolveLifecycle(clinic, now = new Date()) {
 
   const neverPaidTerm = !clinic?.last_payment_date && days !== null && days >= 0;
   const stale = explicit !== 'active' && explicit !== 'trialing' && (isPaymentStale(clinic?.last_payment_date, now) || neverPaidTerm);
+  // Muddat kelajakda (expires_at > bugun) bo'lsa klinika to'langan — Qarzdor emas.
   if (explicit === 'past_due' || stale) {
-    if (days === null || days >= 0) {
+    if (days === null || days === 0) {
       return { ...LIFECYCLE_META.past_due, days };
     }
   }

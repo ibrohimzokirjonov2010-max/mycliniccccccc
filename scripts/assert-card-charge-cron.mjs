@@ -53,6 +53,7 @@ const seed = () => ({
     clinic('nocard', trial('2026-10-10')),
   ],
   clinic_payment_charges: [],
+  subscription_payments: [],
 });
 const cfg = { serviceId: 1 };
 const ok = async () => ({ error_code: 0, error_note: 'Success', payment_id: 555, payment_status: 1 });
@@ -74,16 +75,29 @@ const ok = async () => ({ error_code: 0, error_note: 'Success', payment_id: 555,
   const again = await runCharges({ sb, cfg, today: '2026-10-18', pay: async (a) => { calls.push(a); return ok(); } });
   assert.equal(again.body.charged, 0); assert.equal(calls.length, 2);
 }
-// Muvaffaqiyatsiz -> past_due, keyingi kunlarda 3 martagacha qayta urinish
+// Har oylik yechish: faol klinika muddati kelganda yana yechiladi va +1 oy
+{
+  const { sb, tables } = fakeDb(seed());
+  await runCharges({ sb, cfg, today: '2026-10-18', pay: ok });
+  let out = await runCharges({ sb, cfg, today: '2026-11-17', pay: ok });
+  assert.equal(tables.clinics.find((c) => c.id === 'due').expires_at, '2026-11-18'); // 'due' hali yechilmagan
+  out = await runCharges({ sb, cfg, today: '2026-11-18', pay: ok });
+  assert.ok(out.body.charged >= 1);
+  assert.equal(tables.clinics.find((c) => c.id === 'due').expires_at, '2026-12-18');
+  assert.ok(tables.subscription_payments.filter((p) => p.clinic_id === 'due' && p.status === 'paid').length === 2);
+}
+// Muvaffaqiyatsiz -> 3 ta ketma-ket xatodan keyin past_due, keyingi kunlarda 3 martagacha qayta urinish
 {
   const { sb, tables } = fakeDb(seed());
   const fail = async () => ({ error_code: -5017, error_note: 'Not enough funds' });
   let out = await runCharges({ sb, cfg, today: '2026-10-18', pay: fail });
   assert.equal(out.body.failed, 2);
-  assert.equal(decodeExt(tables.clinics.find((c) => c.id === 'due').logo).ext.subscription_status, 'past_due');
+  assert.equal(decodeExt(tables.clinics.find((c) => c.id === 'due').logo).ext.subscription_status, 'trialing');
   assert.equal(tables.clinics.find((c) => c.id === 'due').expires_at, '2026-10-18'); // muddat o'zgarmaydi -> mavjud blok ishlaydi
   out = await runCharges({ sb, cfg, today: '2026-10-19', pay: fail }); assert.equal(out.body.failed, 2);
   out = await runCharges({ sb, cfg, today: '2026-10-20', pay: fail }); assert.equal(out.body.failed, 2);
+  assert.equal(decodeExt(tables.clinics.find((c) => c.id === 'due').logo).ext.subscription_status, 'past_due');
+  assert.equal(tables.subscription_payments.filter((p) => p.clinic_id === 'due' && p.status === 'failed').length, 3);
   out = await runCharges({ sb, cfg, today: '2026-10-21', pay: fail }); assert.equal(out.body.failed + out.body.charged, 0); // MAX 3
   // 2-urinishda muvaffaqiyat bo'lsa ham ishlaydi
   const s2 = fakeDb(seed());

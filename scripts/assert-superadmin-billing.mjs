@@ -60,7 +60,10 @@ const pastDue = resolveLifecycle({
   expires_at: '2026-12-31',
   last_payment_date: '2025-10-01',
 }, now);
-assert(pastDue.key === 'past_due', `past due ${pastDue.key}`);
+// expires_at kelajakda -> to'langan (Ibrohim Dent holati), Qarzdor EMAS
+assert(pastDue.key === 'active', `future expiry must be active, got ${pastDue.key}`);
+const pastDueToday = resolveLifecycle({ status: 'Active', subscription_status: 'past_due', expires_at: now.toISOString().slice(0, 10) }, now);
+assert(pastDueToday.key === 'past_due', `past due today ${pastDueToday.key}`);
 
 const expired = resolveLifecycle({
   status: 'Active',

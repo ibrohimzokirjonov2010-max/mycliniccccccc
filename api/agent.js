@@ -380,7 +380,7 @@ export default async function handler(req, res) {
     const clinic = await loadClinic(db, cid);
     if (!clinic) return err(res, 503, 'not_configured', 'Klinika topilmadi');
     if (String(clinic.status || 'Active') !== 'Active' || (clinic.expires_at && dayOf(clinic.expires_at) < tashkentNow().date)) {
-      return err(res, 403, 'clinic_inactive', 'Klinika faol emas');
+      return err(res, 402, 'subscription_expired', 'Obuna muddati tugagan yoki klinika faol emas');
     }
 
     const isGet = req.method === 'GET';
