@@ -22,6 +22,7 @@ import { compressImage, validateImage } from '@/utils/imageUpload';
 import TariffCard from '@/components/settings/TariffCard';
 import { useClinic } from '@/lib/ClinicContext';
 import { normalizeWorkHours } from '@/lib/clinicHours';
+import { submitDeletionRequest, DELETION_RETENTION_DAYS } from '@/lib/accountDeletion';
 
 const defaultSchedule = {
   monday: { active: true, start: '09:00', end: '18:00' },
@@ -355,6 +356,38 @@ export default function MobileSettings() {
       position: 'top-center',
       style: { background: '#0f172a', color: '#fff', borderRadius: '1rem', padding: '1rem', fontWeight: 'bold' }
     });
+  };
+
+  // Hisobni o'chirish (do'kon talabi): so'rov yoziladi, so'ng sessiya yopiladi
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [deleteScope, setDeleteScope] = useState('user');
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirm.trim().toUpperCase() !== "O'CHIRISH" && deleteConfirm.trim().toUpperCase() !== 'OCHIRISH') {
+      toast.error("Tasdiqlash uchun O'CHIRISH deb yozing");
+      return;
+    }
+    setDeletingAccount(true);
+    const res = await submitDeletionRequest({
+      clinicId: localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id'),
+      userId: currentUser?.id,
+      username: currentUser?.username,
+      contact: currentUser?.phone,
+      scope: isAdmin ? deleteScope : 'user',
+      reason: deleteReason,
+      source: 'app',
+    });
+    setDeletingAccount(false);
+    if (res.ok) {
+      toast.success(`So'rov qabul qilindi. Hisob ${DELETION_RETENTION_DAYS} kun ichida o'chiriladi.`);
+      setTimeout(handleLogout, 1500);
+    } else {
+      toast.message("So'rovni yakunlash uchun qo'llab-quvvatlashga yuboring");
+      window.open(res.url, '_blank');
+    }
   };
 
   const handleLogout = () => {
@@ -870,6 +903,64 @@ export default function MobileSettings() {
             </motion.div>
           </>
         )}
+        {/* Hisobni o'chirish */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-3xl p-4 shadow-sm border border-slate-100"
+        >
+          <button
+            type="button"
+            onClick={() => setShowDeleteAccount(v => !v)}
+            className="w-full flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-rose-500" />
+              </div>
+              <div className="text-left">
+                <p className="font-bold text-sm text-slate-900">Hisobni o'chirish</p>
+                <p className="text-xs text-slate-500">Hisob va ma'lumotlarni o'chirish so'rovi</p>
+              </div>
+            </div>
+            {showDeleteAccount ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </button>
+
+          {showDeleteAccount && (
+            <div className="mt-4 space-y-3">
+              <p className="text-xs text-slate-500 leading-relaxed">
+                So'rov yuborilgach, hisobingiz darhol bloklanadi va {DELETION_RETENTION_DAYS} kun ichida serverdan butunlay o'chiriladi.
+                Qonun talab qiladigan moliyaviy yozuvlar bundan mustasno bo'lishi mumkin.
+              </p>
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <Button type="button" variant={deleteScope === 'user' ? 'default' : 'outline'} onClick={() => setDeleteScope('user')} className="flex-1 h-10 rounded-xl font-bold text-xs">
+                    Faqat mening hisobim
+                  </Button>
+                  <Button type="button" variant={deleteScope === 'clinic' ? 'default' : 'outline'} onClick={() => setDeleteScope('clinic')} className="flex-1 h-10 rounded-xl font-bold text-xs">
+                    Butun klinika
+                  </Button>
+                </div>
+              )}
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-600">Sabab (ixtiyoriy)</Label>
+                <Input value={deleteReason} onChange={e => setDeleteReason(e.target.value)} className="h-11 rounded-xl" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-600">Tasdiqlash uchun O'CHIRISH deb yozing</Label>
+                <Input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} className="h-11 rounded-xl" />
+              </div>
+              <Button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deletingAccount}
+                className="w-full h-11 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs"
+              >
+                <Trash2 className="w-4 h-4 mr-1" /> {deletingAccount ? 'Yuborilmoqda...' : "Hisobni o'chirish"}
+              </Button>
+            </div>
+          )}
+        </motion.div>
       </div>
 
 

@@ -45,5 +45,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Bemor tish rasmlari va rentgen suratlarini olish uchun kamera kerak.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Bemor kartasiga rasm va rentgen suratlarini yuklash uchun galereyaga ruxsat kerak.</string>
 </dict>
 </plist>

@@ -24,6 +24,13 @@ const DOCS = {
   privacy: {
     title: 'Maxfiylik siyosati',
     sections: () => [
+      ['Kim uchun', 'My Clinic — stomatologik klinika xodimlari (administrator, shifokor, qabulxona) uchun ish vositasi. Bemorlar ilovadan foydalanmaydi; ularning ma\'lumotlarini klinika kiritadi va klinika ushbu ma\'lumotlar egasi (operatori) hisoblanadi, My Clinic esa ularni klinika topshirig\'i bilan qayta ishlaydi.'],
+      ['Bemor ma\'lumotlari (sog\'liq)', 'Klinika kiritadigan: F.I.Sh., telefon, tug\'ilgan sana, jins, manzil, tish formulasi, tashxis va davolash yozuvlari, davolash rejalari, implant pasportlari, rentgen/foto rasmlar, qabullar, to\'lovlar va qarzdorlik. Bu ma\'lumotlar faqat klinika ichida xizmat ko\'rsatish uchun ishlatiladi; reklama uchun ishlatilmaydi, sotilmaydi va uchinchi shaxslarga berilmaydi.'],
+      ['Xodim ma\'lumotlari', 'Ism, login, parol (xeshlangan holda), telefon, rol, ish jadvali, profil rasmi.'],
+      ['Saqlash va himoya', 'Ma\'lumotlar Supabase (PostgreSQL) bulut bazasida saqlanadi va faqat HTTPS (TLS) orqali uzatiladi. Har bir klinika ma\'lumotlari clinic_id bo\'yicha ajratilgan. Sayt Vercel orqali joylashtirilgan.'],
+      ['Uchinchi tomon xizmatlar', 'Supabase (ma\'lumotlar bazasi va fayllar), Vercel (hosting), Click (obuna to\'lovi), Telegram (klinika yoqsa — bemorga eslatma xabarlari). Reklama yoki kuzatuv (tracking) SDK lari ishlatilmaydi.'],
+      ['Saqlash muddati va o\'chirish', 'Ma\'lumotlar klinika hisobi faol bo\'lguncha saqlanadi. Ilovada Sozlamalar → "Hisobni o\'chirish" yoki /hisobni-ochirish sahifasi orqali so\'rov yuborilsa, hisob bloklanadi va 30 kun ichida ma\'lumotlar butunlay o\'chiriladi (qonun bo\'yicha saqlanishi shart moliyaviy yozuvlardan tashqari). Bemor o\'z ma\'lumotini o\'chirish uchun o\'z klinikasiga murojaat qiladi.'],
+      ['Bolalar', 'Ilova 18 yoshdan katta mutaxassislar uchun mo\'ljallangan.'],
       ['Karta ma\'lumotlari', 'Karta raqami va amal qilish muddati faqat to\'lov provayderi Click ga uzatiladi. My Clinic karta raqamini va CVV ni saqlamaydi va jurnalga yozmaydi.'],
       ['Nimalar saqlanadi', 'Click bergan karta tokeni (faqat server tomonda, yopiq jadvalda), maskalangan karta raqami (oxirgi 4 raqam), amal qilish muddati, rozilik vaqti va rozilik matni versiyasi.'],
       ['Foydalanish maqsadi', 'Saqlangan token faqat tanlangan tarif uchun obuna to\'lovini yechishda ishlatiladi.'],

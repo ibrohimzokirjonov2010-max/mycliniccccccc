@@ -46,6 +46,7 @@ const SuperAdmin          = lazy(() => import('./pages/SuperAdmin'));
 const Register            = lazy(() => import('./pages/Register'));
 const Landing             = lazy(() => import('./pages/Landing'), 'chunk_landing');
 const LegalDocs           = lazy(() => import('./pages/LegalDocs'));
+const AccountDeletion     = lazy(() => import('./pages/AccountDeletion'));
 
 // Clinical pages
 const MobilePatientsV2    = lazy(() => import('./pages/MobilePatientsV2'), 'chunk_mobile_patients');
@@ -210,6 +211,8 @@ const AuthenticatedApp = memo(() => {
           <Route path="/landing"  element={<Landing />} />
           <Route path="/oferta"     element={<LegalDocs doc="offer" />} />
           <Route path="/maxfiylik"  element={<LegalDocs doc="privacy" />} />
+          <Route path="/hisobni-ochirish" element={<AccountDeletion />} />
+          <Route path="/delete-account"   element={<AccountDeletion />} />
           <Route path="/p/:slug"  element={<PublicClinicPage />} />
           <Route path="/super-admin"        element={<SuperAdmin />} />
           <Route path="/super-admin-portal" element={<SuperAdmin />} />
