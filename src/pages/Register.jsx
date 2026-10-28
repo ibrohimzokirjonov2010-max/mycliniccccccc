@@ -111,8 +111,12 @@ export default function Register() {
   const handleAdminRegister = async (e) => {
     e.preventDefault();
     setError('');
+    if (!adminForm.clinicId || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(adminForm.clinicId)) {
+      const auto = slugifyClinic(adminForm.clinicName) || ('clinic-' + Math.random().toString(36).slice(2, 7));
+      adminForm.clinicId = auto;
+    }
     
-    if (!adminForm.clinicName || !adminForm.clinicId || !adminForm.username || !adminForm.password) {
+    if (!adminForm.clinicName || !adminForm.username || !adminForm.password) {
       setError('Iltimos, barcha maydonlarni to\'ldiring');
       return;
     }
@@ -340,17 +344,6 @@ export default function Register() {
                     onChange={e => { const v = e.target.value; setAdminForm(f => ({ ...f, clinicName: v, clinicId: slugEdited ? f.clinicId : slugifyClinic(v) })); }}
                     className="h-10 sm:h-12 border-none bg-slate-50 rounded-xl font-semibold text-sm"
                   />
-                </div>
-                <div className="space-y-1">
-                  <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Klinika manzili (havola uchun)</Label>
-                  <Input 
-                    placeholder="grand-dental" 
-                    value={adminForm.clinicId}
-                    data-testid="register-clinic-slug"
-                    onChange={e => { setSlugEdited(true); setAdminForm({...adminForm, clinicId: cleanSlugInput(e.target.value)}); }}
-                    className="h-10 sm:h-12 border-none bg-slate-50 rounded-xl font-semibold text-sm"
-                  />
-                  <p className="ml-1 text-[11px] font-medium text-slate-400">Masalan: grand-dental. Faqat lotin harflari</p>
                 </div>
                 <div className="space-y-1">
                   <Label className="uppercase text-[9px] font-black tracking-widest text-slate-400 ml-1">Telefon raqamingiz (yordam uchun)</Label>
