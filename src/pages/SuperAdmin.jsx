@@ -9,6 +9,7 @@ import {
   AlertTriangle, KeyRound, DollarSign, CalendarCheck
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { applyServerSession, clearServerSession } from '@/api/supabaseClient';
 import { applyClinicSession, resolveClinicPlan } from '@/lib/clinicPlan';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -290,8 +291,12 @@ export default function SuperAdmin() {
 
   useEffect(() => {
     if (!adminToken()) { localStorage.removeItem('admin_auth'); setLoading(false); return; }
-    adminApi('me').then((r) => {
-      if (r.ok) { setIsLoggedIn(true); loadClinics(); loadSubPayments(); }
+    adminApi('session').then(async (r) => {
+      if (r.ok) {
+        const d = await r.json().catch(() => ({}));
+        if (d?.session) await applyServerSession(d.session);
+        setIsLoggedIn(true); loadClinics(); loadSubPayments();
+      }
       else { localStorage.removeItem('admin_auth'); setLoading(false); }
     }).catch(() => setLoading(false));
   }, []);
@@ -306,6 +311,7 @@ export default function SuperAdmin() {
       });
       const data = await r.json().catch(() => ({}));
       if (r.ok && data.token) {
+        if (data.session) await applyServerSession(data.session);
         localStorage.setItem('admin_auth', JSON.stringify({
           isAdmin: true, token: data.token,
           user: { id: 'admin-1', username: loginForm.username, name: 'Super Administrator', role: 'admin' },
@@ -335,6 +341,7 @@ export default function SuperAdmin() {
 
   const handleLogout = () => {
     localStorage.removeItem('admin_auth');
+    clearServerSession();
     setIsLoggedIn(false);
     setLoginForm({ username: '', password: '' });
     toast.info(t('common.logout'));

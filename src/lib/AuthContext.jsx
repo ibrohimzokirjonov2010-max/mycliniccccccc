@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
+import { clearServerSession } from '@/api/supabaseClient';
 import { safeLocalStorage as localStorage } from '@/utils/safeStorage';
 import { sanitizeUser } from '@/utils/password';
 import { applyClinicSession, clearClinicSessionCache } from '@/lib/clinicPlan';
@@ -47,6 +48,8 @@ export const AuthProvider = ({ children }) => {
       'user_data'
     ].forEach((key) => localStorage.removeItem(key));
     clearClinicSessionCache();
+    clearServerSession();
+    localStorage.removeItem('crm_auth_mode');
 
     window.location.href = '/login';
   }, []);

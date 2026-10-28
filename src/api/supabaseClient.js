@@ -4,14 +4,50 @@ import { preparePasswordForWrite, sanitizeUser, sanitizeUsers } from '@/utils/pa
 
 // Supabase configuration
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://zvyggjldzkxwufpnaatr.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2eWdnamxkemt4d3VmcG5hYXRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0MTg3NTAsImV4cCI6MjEwMjk5NDc1MH0.v4IyrtyJR8a9bQ7tAapDQxe2VHZHiH_IVuHfeC6MeN4';
+// Kalit FAQAT env'dan (Vercel: VITE_SUPABASE_ANON_KEY). Kodda hardcoded kalit yo'q.
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ Supabase credentials not found. Using localStorage fallback.');
+  console.warn('⚠️ Supabase credentials not found (VITE_SUPABASE_ANON_KEY). Using localStorage fallback.');
 }
 
 // Create Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey || 'missing-anon-key', {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'myclinic-crm-auth' },
+});
+
+// ============================================================
+// Server auth (/api/auth): klinika foydalanuvchisi uchun Supabase sessiyasi.
+// RLS yoqilganda barcha so'rovlar shu sessiya JWT'si (app_metadata.clinic_id) bilan ketadi.
+// ============================================================
+export async function crmAuthApi(action, { method = 'POST', body, query } = {}) {
+  const qs = new URLSearchParams({ action, ...(query || {}) }).toString();
+  let res;
+  try {
+    res = await fetch(`/api/auth?${qs}`, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    return { status: 0, data: null };
+  }
+  const data = await res.json().catch(() => null);
+  return { status: res.status, data };
+}
+
+/** Server bergan sessiyani supabase klientiga o'rnatadi. */
+export async function applyServerSession(session) {
+  if (!session?.access_token || !session?.refresh_token) return false;
+  const { error } = await supabase.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token });
+  if (error) { console.warn('[auth] setSession failed:', error.message); return false; }
+  return true;
+}
+
+export async function clearServerSession() {
+  try { if (typeof window !== 'undefined') window.localStorage.removeItem('myclinic-crm-auth'); } catch { /* ignore */ }
+  try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* ignore */ }
+}
 
 // ============================================================
 // RLS Context: Har so'rovdan OLDIN chaqirilishi SHART

@@ -9,7 +9,7 @@ import {
   ShieldCheck, AlertCircle, Sparkles, ExternalLink
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { supabase } from '@/api/supabaseClient';
+import { supabase, crmAuthApi } from '@/api/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -84,6 +84,17 @@ export default function PublicClinicPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Server (RLS yoqilganda ham ishlaydi): faqat ochiq maydonlar, parolsiz.
+        const srv = await crmAuthApi('public-clinic', { method: 'GET', query: { slug: slug || '' } });
+        if (srv.status === 200 && srv.data?.clinic) {
+          setClinic(srv.data.clinic);
+          setDoctors((srv.data.doctors || []).filter(u =>
+            u.role?.toLowerCase().includes('doctor') ||
+            u.role?.toLowerCase() === 'admin'
+          ));
+          return;
+        }
+        if (srv.status === 404 && srv.data?.error === 'clinic_not_found') return;
         const clinics = await base44.clinic.getAll();
         const found = clinics.find(c => 
           c.slug === slug || 
@@ -145,7 +156,10 @@ export default function PublicClinicPage() {
     try {
       // 1. Get FRESH appointments directly from Supabase (bypasses 3-min in-memory RequestCache)
       let appointments = [];
-      if (import.meta.env.VITE_SUPABASE_URL) {
+      const srvSlots = await crmAuthApi('public-slots', { method: 'GET', query: { clinic_id: String(clinic.id) } });
+      if (srvSlots.status === 200 && Array.isArray(srvSlots.data?.appointments)) {
+        appointments = srvSlots.data.appointments;
+      } else if (import.meta.env.VITE_SUPABASE_URL) {
         const { data, error } = await supabase
           .from('appointments')
           .select('*')
@@ -156,7 +170,7 @@ export default function PublicClinicPage() {
       }
       
       // Fallback to entities loader if Supabase direct query returned empty or failed
-      if (!appointments || appointments.length === 0) {
+      if ((!appointments || appointments.length === 0) && srvSlots.status !== 200) {
         appointments = await base44.entities.Appointment.filter({ 
           clinic_id: clinic.id 
         });
@@ -251,6 +265,27 @@ export default function PublicClinicPage() {
     console.log('🚀 Submitting booking...', { clinic_id: clinic.id, doctor_id: selectedDoctor.id });
 
     try {
+      const srvBook = await crmAuthApi('public-book', {
+        body: {
+          clinic_id: String(clinic.id),
+          doctor_id: String(selectedDoctor.id),
+          name: patientInfo.name,
+          phone: patientInfo.phone,
+          notes: patientInfo.notes,
+          date: selectedDate.trim(),
+          time: selectedTime.trim(),
+        },
+      });
+      if (srvBook.status === 200 && srvBook.data?.ok) {
+        setStep(4);
+        toast.success('Arizangiz muvaffaqiyatli qabul qilindi!');
+        return;
+      }
+      if (srvBook.status >= 400 && srvBook.status < 500 && srvBook.status !== 404) {
+        throw new Error(srvBook.data?.error || 'Saqlashda xato yuz berdi');
+      }
+
+      // Fallback (server yo'q): eski brauzer oqimi — faqat RLS o'chiq paytda ishlaydi.
       // 1. Create/Find a Patient record to ensure visibility in CRM
       // For public bookings, we create a patient record first
       const patientData = {

@@ -1,4 +1,4 @@
-import { supabase, db } from './supabaseClient';
+import { supabase, db, crmAuthApi, applyServerSession, clearServerSession } from './supabaseClient';
 import { applyStaffOverride } from '@/lib/staffOverrides';
 import { createCaseOnServer, deleteCaseOnServer, isClinicCaseRow, listServerCases } from './caseServerStore';
 import { missingColumnFromError, omitMissingColumn } from './missingColumn';
@@ -2113,6 +2113,33 @@ export const base44 = {
     },
 
     createClinic: async (clinicData, adminData) => {
+      // 0. Server orqali (RLS yoqilganda anon yozolmaydi): klinika + admin, parol bcrypt bilan.
+      if (import.meta.env.VITE_SUPABASE_URL) {
+        const draft = {
+          ...clinicData,
+          status: clinicData.status || 'Active',
+          created_at: new Date().toISOString(),
+          plan: clinicData.plan || 'basic',
+        };
+        const srv = await crmAuthApi('register', {
+          body: {
+            clinic: base44.clinic._encodeClinicNotes(draft),
+            admin: { id: adminData.id, username: adminData.username, password: adminData.password, name: adminData.name, full_name: adminData.full_name },
+          },
+        });
+        if (srv.status === 409) throw new Error('Ushbu Klinika ID band!');
+        if (srv.status === 200 && srv.data?.ok) {
+          const { password: _pw, ...safeDraft } = draft;
+          try {
+            const localClinics = JSON.parse(localStorage.getItem('system_clinics') || '[]');
+            localClinics.push(safeDraft);
+            localStorage.setItem('system_clinics', JSON.stringify(localClinics));
+          } catch { /* ignore */ }
+          return safeDraft;
+        }
+        // 503/tarmoq xatosi: eski (brauzer) oqimiga tushadi — faqat RLS o'chiq paytda ishlaydi.
+      }
+
       // 1. Check if clinic ID already taken
       const existingClinics = await base44.clinic.getAll();
       if (existingClinics.find(c => c.id.toLowerCase() === clinicData.id.toLowerCase())) {
@@ -2332,6 +2359,7 @@ export const base44 = {
     },
 
     logout: () => {
+      clearServerSession();
       localStorage.removeItem('current_clinic_id');
       localStorage.removeItem('is_authenticated');
       localStorage.removeItem('user_id');
@@ -2620,6 +2648,33 @@ export const base44 = {
       const normalizeId = (id) => (id || '').toLowerCase().trim().replace(/-/g, '_');
       const wantedUsername = (username || '').toLowerCase().trim();
       
+      let user = null;
+      let clinic = null;
+
+      // 0. Server login (/api/auth): parolni serverda tekshiradi va Supabase sessiyasini beradi (RLS uchun).
+      const srv = await crmAuthApi('login', { body: { clinic_id: clinicId, username, password } });
+      if (srv.status === 200 && srv.data?.ok && srv.data.user) {
+        const sessionOk = await applyServerSession(srv.data.session);
+        localStorage.setItem('crm_auth_mode', sessionOk ? 'server' : 'legacy');
+        user = srv.data.user;
+        if (typeof user.notes === 'string' && user.notes.startsWith('[TECH_DATA]')) {
+          user = new HybridEntityLoader('User')._decodeNotes(user);
+        }
+        clinic = base44.clinic._decodeClinicNotes(srv.data.clinic);
+      } else if (srv.status === 401 || srv.status === 400) {
+        return { success: false, error: 'Klinika ID, login yoki parol noto\'g\'ri' };
+      } else if (srv.status === 404 && srv.data?.error === 'clinic_not_found') {
+        return { success: false, error: 'Klinika topilmadi' };
+      } else if (srv.status === 403 && srv.data?.error === 'clinic_inactive') {
+        return { success: false, error: 'Klinika faol emas. Admin bilan bog\'laning!' };
+      } else if (srv.status === 402) {
+        return { success: false, error: 'Klinika uchun to\'lov muddati tugagan. Iltimos, to\'lovni amalga oshiring!' };
+      }
+
+      if (!user) {
+      // Legacy (server mavjud bo'lmasa): faqat RLS o'chiq paytda ishlaydi.
+      localStorage.setItem('crm_auth_mode', 'legacy');
+      await clearServerSession();
       let allUsers = [];
 
       // Source 1: Supabase — username bo'yicha qidirish (barcha parollarni yuklamaslik)
@@ -2670,7 +2725,6 @@ export const base44 = {
 
       console.log('🔍 Total users in all sources:', allUsers.length);
       
-      let user = null;
       for (const u of allUsers) {
         if (!u || !u.clinic_id || !u.username) continue;
         const clinicMatch = normalizeId(u.clinic_id) === normalizeId(clinicId);
@@ -2698,7 +2752,8 @@ export const base44 = {
       
       // Check if clinic exists and is active
       const clinics = await base44.clinic.getAll();
-      const clinic = clinics.find(c => c.id.toLowerCase() === user.clinic_id.toLowerCase());
+      clinic = clinics.find(c => c.id.toLowerCase() === user.clinic_id.toLowerCase());
+      }
       
       if (!clinic) {
         return { success: false, error: 'Klinika topilmadi' };

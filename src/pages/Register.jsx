@@ -11,6 +11,7 @@ import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
+import { crmAuthApi } from '@/api/supabaseClient';
 import { useAuth } from '@/lib/AuthContext';
 import { MyClinicLogoImage } from '@/components/ui/ShifoCrmLogo';
 import { normalizeClinicBilling } from '@/utils/superAdminBilling';
@@ -143,8 +144,9 @@ export default function Register() {
         // ?card_demo=1 (flag o'chiq) faqat TEST REJIMda ko'rsatiladi: Click haqiqiy ulangan bo'lsa — eski oqim.
         const demoOnly = cardDemo && !CARD_BINDING_REQUIRED;
         if (!(demoOnly && status.mode === 'live')) {
-          const existing = await base44.clinic.getAll();
-          if (existing.find((c) => String(c.id).toLowerCase() === clinicId)) {
+          const avail = await crmAuthApi('clinic-available', { method: 'GET', query: { id: clinicId } });
+          const existing = avail.status === 200 ? [] : await base44.clinic.getAll();
+          if ((avail.status === 200 && avail.data?.available === false) || existing.find((c) => String(c.id).toLowerCase() === clinicId)) {
             setError('Ushbu Klinika ID band!');
             return;
           }

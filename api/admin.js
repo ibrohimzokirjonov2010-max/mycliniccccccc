@@ -2,11 +2,20 @@ import crypto from 'node:crypto';
 import { bodyOf, guard, send } from './_lib/http.js';
 import { clinicExpired, loadClinic, PAY_TABLE } from './_lib/payments.js';
 import { supabaseAdmin } from './_lib/supabaseAdmin.js';
+import { mintSession } from './_lib/crmSession.js';
+
+/** SuperAdmin uchun Supabase sessiyasi (app_metadata.crm_role = 'superadmin'); xato bo'lsa null. */
+async function superSession() {
+  const sb = supabaseAdmin();
+  if (!sb) return null;
+  try { return await mintSession(sb, { key: 'superadmin', clinicId: null, role: 'superadmin', userId: 'superadmin' }); } catch { return null; }
+}
 
 /**
  * SuperAdmin (platforma egasi) server endpointi.
  *   POST /api/admin?action=login     { username, password } -> { token, expires_at }
  *   GET  /api/admin?action=me        (Authorization: Bearer <token>)
+ *   GET  /api/admin?action=session   (Bearer) -> { session } Supabase sessiyasi (RLS uchun)
  *   GET  /api/admin?action=payments  (Bearer) -> subscription_payments ro'yxati
  * Env: SUPERADMIN_USERNAME, SUPERADMIN_PASSWORD (majburiy), SUPERADMIN_SESSION_SECRET (tavsiya).
  * Env bo'lmasa login RAD etiladi (503). Parol bundle'da yo'q.
@@ -64,12 +73,13 @@ export default async function handler(req, res) {
     const passOk = eq(String(body.password || ''), c.password);
     if (!(userOk && passOk)) return send(res, 401, { ok: false, error: 'invalid_credentials' });
     const s = signSession(c);
-    return send(res, 200, { ok: true, token: s.token, expires_at: s.exp });
+    return send(res, 200, { ok: true, token: s.token, expires_at: s.exp, session: await superSession() });
   }
   if (!guard(req, res, { method: 'GET' })) return;
   if (!c) return send(res, 503, { ok: false, error: 'not_configured' });
   if (!verifySession(req.headers.authorization, c)) return send(res, 401, { ok: false, error: 'unauthorized' });
   if (action === 'me') return send(res, 200, { ok: true });
+  if (action === 'session') return send(res, 200, { ok: true, session: await superSession() });
   if (action === 'payments') {
     const sb = supabaseAdmin();
     if (!sb) return send(res, 503, { ok: false, error: 'server_not_configured' });
