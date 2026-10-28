@@ -1,0 +1,41 @@
+name: iOS unsigned build
+on:
+  push:
+    branches: [mobile-capacitor]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build web
+        run: CAPACITOR_BUILD=true VITE_API_ORIGIN=https://app-shahobidin-4.vercel.app npx vite build --outDir dist-mobile
+      - run: npx cap sync ios
+      - name: Pod install
+        working-directory: ios/App
+        run: if [ -f Podfile ]; then pod install --repo-update; fi
+      - name: Archive (device, unsigned)
+        working-directory: ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath $RUNNER_TEMP/App.xcarchive archive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+          mkdir -p $RUNNER_TEMP/ipa/Payload
+          cp -R $RUNNER_TEMP/App.xcarchive/Products/Applications/App.app $RUNNER_TEMP/ipa/Payload/
+          cd $RUNNER_TEMP/ipa && zip -qry $GITHUB_WORKSPACE/MyClinic-unsigned.ipa Payload
+      - name: Build simulator
+        working-directory: ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath $RUNNER_TEMP/sim build CODE_SIGNING_ALLOWED=NO
+          cd $RUNNER_TEMP/sim/Build/Products/Debug-iphonesimulator && zip -qry $GITHUB_WORKSPACE/MyClinic-simulator.app.zip App.app
+      - uses: actions/upload-artifact@v4
+        with: {name: MyClinic-unsigned-ipa, path: MyClinic-unsigned.ipa}
+      - uses: actions/upload-artifact@v4
+        with: {name: MyClinic-simulator-app, path: MyClinic-simulator.app.zip}
