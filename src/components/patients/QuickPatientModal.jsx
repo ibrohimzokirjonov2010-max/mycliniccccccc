@@ -313,10 +313,13 @@ export default function QuickPatientModal() {
               {visibleServices.map(s => {
                 const on = selectedServiceIds.includes(s.id);
                 const count = teeth.filter(fdi => serviceAllowsTooth(s, fdi)).length;
+                const blocked = teeth.length > 0 && count === 0;
                 return (
-                  <button key={s.id} type="button" data-testid="tezkor-service" onClick={() => toggleService(s.id)}
-                    className={cn('w-full flex items-center justify-between gap-3 px-3.5 h-10 rounded-xl border text-[13px] font-bold transition',
-                      on ? 'border-[#1499AD]/50 bg-cyan-50 text-slate-900' : 'border-slate-200 bg-white text-slate-700 hover:border-[#1499AD]/40')}>
+                  <button key={s.id} type="button" data-testid="tezkor-service" data-blocked={blocked ? '1' : '0'}
+                    disabled={blocked && !on} title={blocked ? 'Tanlangan tish uchun mos emas' : undefined}
+                    onClick={() => toggleService(s.id)}
+                    className={cn('w-full flex items-center justify-between gap-3 px-3.5 h-10 rounded-xl border text-[13px] font-bold transition disabled:opacity-40 disabled:cursor-not-allowed',
+                      on ? (blocked ? 'border-rose-200 bg-rose-50 text-slate-500 line-through' : 'border-[#1499AD]/50 bg-cyan-50 text-slate-900') : 'border-slate-200 bg-white text-slate-700 hover:border-[#1499AD]/40')}>
                     <span className="flex items-center gap-2 min-w-0">
                       {on ? <Check className="w-4 h-4 text-[#1499AD] shrink-0" /> : <Plus className="w-4 h-4 text-slate-400 shrink-0" />}
                       <span className="truncate">{s.name}{on && count > 0 ? ` × ${count}` : ''}</span>
