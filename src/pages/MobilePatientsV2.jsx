@@ -14,6 +14,7 @@ import { formatCurrency, capitalizeName, formatDate, formatPhone } from '@/lib/u
 import { patientMatchesDoctorFilter } from '@/utils/doctorMatch';
 import { buildVisitIndex, isActiveTreatmentPatient, isNewPatient, lastVisitKey } from '@/lib/patientVisits';
 import NewPatientFlow from '@/components/patients/NewPatientFlow';
+import { openQuickPatient } from '@/components/patients/QuickPatientModal';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
@@ -195,6 +196,15 @@ export default function MobilePatientsV2() {
                   </p>
                 </div>
               </div>
+              <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={openQuickPatient}
+                data-testid="mobile-patients-tezkor"
+                aria-label="Tezkor"
+                className="shrink-0 h-12 px-3.5 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white text-[15px] font-bold flex items-center gap-1 shadow-lg shadow-orange-500/25 active:scale-[0.98]"
+              >
+                ⚡
+              </button>
               <button
                 onClick={() => setShowFlow(true)}
                 className="shrink-0 h-12 px-4 rounded-2xl bg-gradient-to-r from-[#1FB59A] to-[#13917C] text-white text-[15px] font-bold flex items-center gap-1.5 shadow-lg shadow-emerald-600/25 active:scale-[0.98]"
@@ -202,6 +212,7 @@ export default function MobilePatientsV2() {
                 <Plus className="w-5 h-5" />
                 Bemor qo'shish
               </button>
+              </div>
             </div>
 
             {doctorFilter && (

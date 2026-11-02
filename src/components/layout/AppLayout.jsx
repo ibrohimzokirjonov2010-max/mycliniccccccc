@@ -3,6 +3,7 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { isPageBlocked, firstAllowedPath } from '@/lib/pageAccess';
 import Sidebar from './Sidebar';
+import QuickPatientModal from '@/components/patients/QuickPatientModal';
 import Topbar from './Topbar';
 import NativeMobileLayout from './NativeMobileLayout';
 import AdBanner from './AdBanner';
@@ -234,6 +235,7 @@ export default function AppLayout() {
       <NativeMobileLayout>
         <TariffReminder clinic={clinic} />
         {hold ? null : <GuardedOutlet />}
+        <QuickPatientModal />
       </NativeMobileLayout>
     );
   }
@@ -271,6 +273,7 @@ export default function AppLayout() {
         {/* Advertisement Banner */}
         <AdBanner />
       </div>
+      <QuickPatientModal />
     </div>
   );
 }

@@ -288,7 +288,9 @@ export function capitalizeAsYouType(val) {
   const cleaned = String(val).replace(/[ \t]{2,}/g, ' ');
   if (!cleaned.trim()) return cleaned;
   const leading = cleaned.match(/^\s*/)?.[0] || '';
-  return leading + preserveTypedCase(cleaned);
+  // Keep the space the user just typed ("Test " -> "Test 2910"); onBlur/save still trims.
+  const trailing = /[ \t]$/.test(cleaned) ? ' ' : '';
+  return leading + preserveTypedCase(cleaned) + trailing;
 }
 
 export function validateAddress(address) {

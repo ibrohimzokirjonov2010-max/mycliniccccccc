@@ -18,6 +18,7 @@ import { isPathLocked } from '@/lib/clinicPlan';
 import { prefetchModuleData } from '@/utils/prefetcher';
 import { ImplantIcon } from '@/components/ui/Icons';
 import ShifoCrmLogo from '@/components/ui/ShifoCrmLogo';
+import { openQuickPatient } from '@/components/patients/QuickPatientModal';
 
 /**
  * Navigation menu items configuration
@@ -159,6 +160,18 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
       <nav ref={navRef} onScroll={updateNavScroll} className="flex-1 overflow-y-auto px-2.5 py-2">
         {!collapsed ? (
           <div className="border border-slate-200 lg:border-slate-700/80 rounded-xl overflow-hidden bg-slate-50 lg:bg-[#091122]/90 shadow-sm divide-y divide-slate-200 lg:divide-slate-700/70">
+            <button
+              type="button"
+              data-testid="sidebar-tezkor"
+              onClick={() => { onMobileClose(); openQuickPatient(); }}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 text-[11.5px] font-bold transition-all duration-150 relative group uppercase tracking-wider select-none text-slate-800 lg:text-slate-100 hover:bg-sky-100/70 lg:hover:bg-cyan-950/40 hover:text-slate-950 lg:hover:text-white"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <Zap className="w-4 h-4 flex-shrink-0 text-amber-500 lg:text-amber-300 transition-transform duration-200 group-hover:scale-110" />
+                <span className="truncate">Tezkor</span>
+              </div>
+              <span className="text-[9px] font-black normal-case tracking-normal px-1.5 py-0.5 rounded-md bg-[#1499AD] text-white shrink-0">Yangi</span>
+            </button>
             {filteredMenuItems.map((item, index) => {
               const Icon = item.icon;
               const active = isActive(item.path);
@@ -209,6 +222,14 @@ export default memo(function Sidebar({ collapsed, onToggle, mobileOpen, onMobile
         ) : (
           /* Collapsed Mode - Grid Cells */
           <div className="space-y-1.5">
+            <button
+              type="button"
+              title="Tezkor"
+              onClick={() => { onMobileClose(); openQuickPatient(); }}
+              className="w-full flex items-center justify-center p-2.5 rounded-lg border transition-all duration-150 relative group bg-slate-100 lg:bg-slate-800/90 border-slate-300 lg:border-slate-700 text-amber-500 lg:text-amber-300 hover:border-[#1499AD] hover:bg-[#1499AD]/20"
+            >
+              <Zap className="w-4 h-4 transition-transform group-hover:scale-110" />
+            </button>
             {filteredMenuItems.map((item, index) => {
               const Icon = item.icon;
               const active = isActive(item.path);

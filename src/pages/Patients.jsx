@@ -12,6 +12,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import { useTranslation } from '@/i18n/LanguageContext';
 import EmptyState from '../components/ui/EmptyState';
+import { openQuickPatient } from '../components/patients/QuickPatientModal';
 const PatientModal = lazyWithRetry(() => import('../components/patients/PatientModal'), 'chunk_patient_modal');
 const NewPatientFlow = lazyWithRetry(() => import('../components/patients/NewPatientFlow'), 'chunk_new_patient_flow');
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -508,6 +509,17 @@ export default function Patients() {
         </motion.div>
 
         <div className="flex items-center gap-2">
+          {/* Tezkor (quick add) Button */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={openQuickPatient}
+            data-testid="patients-tezkor"
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 hover:brightness-105 text-white rounded-xl text-[11px] font-black uppercase tracking-wider shadow-md shadow-orange-500/20 transition-all border-none"
+          >
+            <span aria-hidden>⚡</span>
+            Tezkor
+          </motion.button>
           {/* Add Patient Button */}
           <motion.button
             whileHover={{ scale: 1.02 }}

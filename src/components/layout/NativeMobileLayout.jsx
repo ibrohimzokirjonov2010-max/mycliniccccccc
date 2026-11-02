@@ -17,6 +17,7 @@ import { useClinicPlan } from '@/hooks/useFeature';
 import { useClinic } from '@/lib/ClinicContext';
 import { toast } from 'sonner';
 import AdBanner from './AdBanner';
+import { openQuickPatient } from '@/components/patients/QuickPatientModal';
 import NotificationPanel from '../notifications/NotificationPanel';
 import { notificationStore } from '@/lib/notificationStore';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
@@ -543,6 +544,18 @@ export default function NativeMobileLayout({ children }) {
               </div>
 
               <nav className="flex-1 overflow-y-auto px-4 pt-3 pb-3 no-scrollbar bg-white" data-testid="mobile-drawer-nav">
+                <button
+                  type="button"
+                  data-testid="mobile-drawer-tezkor"
+                  onClick={() => { setShowMenu(false); openQuickPatient(); }}
+                  className="w-full mb-3 flex items-center gap-3 pl-1.5 pr-3 h-12 rounded-2xl transition-all active:scale-[0.98] bg-amber-50/80 hover:bg-amber-100"
+                >
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-br from-amber-400 to-orange-500">
+                    <Zap className="w-[18px] h-[18px] text-white" />
+                  </div>
+                  <span className="flex-1 text-left text-[14px] font-bold tracking-tight truncate text-[#1e2a44]">Tezkor</span>
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-[#1499AD] text-white shrink-0">Yangi</span>
+                </button>
                 {DRAWER_GROUPS.map((group, gi) => {
                   const items = filteredMenuItems.filter((it) => drawerGroupOf(it) === group.id);
                   if (!items.length) return null;
