@@ -57,6 +57,8 @@ export default function Appointments() {
   const [prefillDate, setPrefillDate] = useState('');
   const [prefillTime, setPrefillTime] = useState('');
   const [prefillDoctorId, setPrefillDoctorId] = useState(null);
+  const [prefillPatientId, setPrefillPatientId] = useState('');
+  const [prefillPatientName, setPrefillPatientName] = useState('');
   // Orqaga qaytganda tanlangan sana/shifokor/tab/qidiruv tiklanadi
   const [selectedDoctorId, setSelectedDoctorId] = useRestorableState('selectedDoctorId', null);
   const [isMobile, setIsMobile] = useState(false);
