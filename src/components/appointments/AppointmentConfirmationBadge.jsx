@@ -37,6 +37,9 @@ export default function AppointmentConfirmationBadge({ appointment, size = 'md',
     unknown: '—',
   };
 
+  // Bo'sh "—" badge katakni shishiradi — noma'lum holatda umuman ko'rsatmaymiz
+  if (state === 'unknown') return null;
+
   return (
     <span
       className={`inline-flex items-center rounded-xl border ${styles} ${sizeClasses[size] || sizeClasses.md} ${className}`}

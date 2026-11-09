@@ -768,7 +768,7 @@ export default function DoctorDayGrid({
             const isHour = time.endsWith(':00');
             // Bo'sh soat qatori past, uchrashuv bor qator kontentga qarab
             const rowFilled = doctors.some((d) => !!gridData[d.id]?.[time]);
-            const rowH = rowFilled ? "min-h-[80px] lg:min-h-[48px]" : "h-20 lg:h-auto lg:min-h-[40px]";
+            const rowH = rowFilled ? "min-h-[56px] lg:min-h-[44px]" : "h-14 lg:h-auto lg:min-h-[36px]";
             const nowHere = nowSlot && nowSlot.key === time;
             return (
               <div key={time} className="contents">
@@ -822,96 +822,98 @@ export default function DoctorDayGrid({
                           (appointment.patient_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (appointment.service_name || '').toLowerCase().includes(searchQuery.toLowerCase())
                         );
-                        
+                        const endTimeLabel = (() => {
+                          const [h, m] = (appointment.time || '00:00').split(':').map(Number);
+                          const dur = Number(appointment.duration) || 30;
+                          const endMin = h * 60 + m + dur;
+                          return `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
+                        })();
+                        const serviceLabel = `${appointment.tooth_number ? `${appointment.tooth_number}-tish: ` : ''}${appointment.service_name || t('appointments.defaultService') || 'Maslahat'}`;
+
                         return (
                           <div
                             onClick={(e) => handleAppointmentClick(e, appointment)}
                             className={cn(
-                              "flex-1 min-w-0 rounded-xl lg:rounded-lg border-l-[4px] lg:border-l-[3px] p-1.5 lg:px-2.5 lg:py-1.5 lg:min-h-[44px] flex flex-col justify-between lg:justify-center lg:gap-1 lg:shadow-sm transition-all hover:brightness-95 active:scale-[0.98] cursor-pointer group/card relative overflow-hidden",
+                              "flex-1 min-w-0 rounded-lg border-l-[3px] px-1.5 py-1 lg:px-2 lg:py-1 flex flex-col gap-0.5 justify-center transition-all hover:brightness-95 active:scale-[0.98] cursor-pointer group/card relative overflow-hidden lg:shadow-sm",
                               statusColors[normalizeAppointmentStatus(appointment.status)] || statusColors.Scheduled,
                               isMatch && "ring-2 ring-[#1499AD] ring-offset-1 animate-pulse scale-[1.02] z-10 shadow-lg shadow-[#1499AD]/20"
                             )}
                             style={{ borderLeftColor: palette.primary }}
                           >
-                            <div className="flex items-center justify-between gap-1">
-                              <div className="flex items-center gap-1.5 min-w-0 max-w-[85%] lg:max-w-full lg:flex-1">
-                                {(appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url) && (
-                                  <img 
-                                    src={appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url} 
-                                    alt={appointment.patient_name} 
-                                    className="w-4 h-4 rounded-full object-cover shrink-0 border border-white/80 shadow-xs" 
-                                  />
-                                )}
-                                <span title={appointment.patient_name} className="text-[11px] lg:text-[12px] font-black truncate leading-none lg:leading-tight uppercase tracking-tight text-slate-900">
-                                  {appointment.patient_name}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-0.5 opacity-40 group-hover/card:opacity-100 transition-opacity shrink-0">
-                                {appointment.is_paid ? <Wallet className="w-2.5 h-2.5 text-emerald-600" /> : <Clock className="w-2.5 h-2.5" />}
-                              </div>
+                            {/* 1-qator: ism + vaqt */}
+                            <div className="flex items-center gap-1 min-w-0">
+                              {(appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url) && (
+                                <img
+                                  src={appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url}
+                                  alt={appointment.patient_name}
+                                  className="w-3.5 h-3.5 rounded-full object-cover shrink-0 border border-white/80"
+                                />
+                              )}
+                              <span title={appointment.patient_name} className="text-[11px] lg:text-[12px] font-black truncate leading-tight uppercase tracking-tight text-slate-900 min-w-0">
+                                {appointment.patient_name}
+                              </span>
+                              <span className="ml-auto shrink-0 text-[9px] lg:text-[10px] font-bold text-slate-500 tabular-nums whitespace-nowrap">
+                                {appointment.time}–{endTimeLabel}
+                              </span>
+                              {appointment.is_paid ? <Wallet className="w-2.5 h-2.5 text-emerald-600 shrink-0" /> : null}
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 lg:mt-0 min-w-0">
-                              <span className="text-[9px] lg:text-[11px] font-bold text-slate-600 whitespace-nowrap">
-                                {appointment.time} — {(() => {
-                                    const [h, m] = appointment.time.split(':').map(Number);
-                                    const dur = appointment.duration || 30;
-                                    const endMin = h * 60 + m + Number(dur);
-                                    return `${String(Math.floor(endMin/60)).padStart(2,'0')}:${String(endMin%60).padStart(2,'0')}`;
-                                })()}
-                              </span>
-                              <div className="px-2 py-0.5 lg:px-2 lg:py-px bg-white/80 rounded-md text-[8px] lg:text-[10px] font-black uppercase tracking-wide truncate max-w-full border border-black/5 min-w-0">
-                                  {appointment.tooth_number ? `${appointment.tooth_number}-tish: ` : ''}{appointment.service_name || t('appointments.defaultService') || 'Maslahat'}
+                            {/* 2-qator: xizmat (1 qator truncate) */}
+                            <div className="flex items-center gap-1 min-w-0">
+                              <div title={serviceLabel} className="px-1.5 py-px bg-white/80 rounded text-[8px] lg:text-[9px] font-black uppercase tracking-wide truncate border border-black/5 min-w-0 max-w-full">
+                                {serviceLabel}
                               </div>
-                              <AppointmentConfirmationBadge appointment={appointment} size="sm" className="!text-[8px] !px-1.5 !py-0.5 lg:!py-px" />
+                              <AppointmentConfirmationBadge appointment={appointment} size="sm" className="!text-[8px] !px-1 !py-px shrink-0" />
                             </div>
 
                             {appointment.patient_allergy && (
                               <div
                                 data-testid="grid-card-allergy"
                                 title={`Allergiya: ${appointment.patient_allergy}`}
-                                className="mt-0.5 lg:mt-0 px-1.5 py-px rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-[9px] lg:text-[10px] font-black leading-tight line-clamp-2 break-words min-w-0"
+                                className="px-1 py-px rounded bg-rose-50 border border-rose-200 text-rose-700 text-[8px] lg:text-[9px] font-black leading-tight truncate min-w-0"
                               >
-                                ⚠ Allergiya: {appointment.patient_allergy}
+                                ⚠ {appointment.patient_allergy}
                               </div>
                             )}
 
-                            {onStatusChange && (
-                              <div className="flex flex-wrap items-center gap-0.5 mt-1" data-testid="grid-card-quick-status">
-                                {QUICK_STATUS_ACTIONS.map((qa) => {
-                                  const active = normalizeAppointmentStatus(appointment.status) === qa.status;
-                                  return (
-                                    <button
-                                      key={qa.status}
-                                      type="button"
-                                      aria-pressed={active}
-                                      onClick={(e) => { e.stopPropagation(); if (!active) onStatusChange(appointment, qa.status); }}
-                                      className={cn(
-                                        "flex-auto h-6 px-1 rounded-md text-[9px] lg:text-[10px] font-black tracking-tight whitespace-nowrap border transition-colors",
-                                        active ? "bg-slate-900 border-slate-900 text-white" : "bg-white/90 border-black/10 text-slate-700 hover:bg-white"
-                                      )}
-                                    >
-                                      {qa.label}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-
-                            <div className="flex flex-wrap items-center gap-0.5 mt-1" data-testid="grid-card-actions">
+                            {/* 3-qator: holat + to'lov/yana (ixcham) */}
+                            <div className="flex items-center gap-0.5 min-w-0" data-testid="grid-card-quick-status">
+                              {onStatusChange && QUICK_STATUS_ACTIONS.map((qa) => {
+                                const active = normalizeAppointmentStatus(appointment.status) === qa.status;
+                                return (
+                                  <button
+                                    key={qa.status}
+                                    type="button"
+                                    aria-pressed={active}
+                                    onClick={(e) => { e.stopPropagation(); if (!active) onStatusChange(appointment, qa.status); }}
+                                    className={cn(
+                                      "flex-1 min-w-0 h-[18px] lg:h-5 px-0.5 rounded text-[8px] lg:text-[9px] font-black tracking-tight whitespace-nowrap border transition-colors",
+                                      active ? "bg-slate-900 border-slate-900 text-white" : "bg-white/90 border-black/10 text-slate-700 hover:bg-white"
+                                    )}
+                                  >
+                                    {qa.label}
+                                  </button>
+                                );
+                              })}
                               <button
                                 type="button"
+                                title="To'lov qo'shish"
+                                aria-label="To'lov qo'shish"
+                                data-testid="grid-card-pay"
                                 onClick={(e) => { e.stopPropagation(); onPayClick?.(appointment); }}
-                                className="flex-auto h-6 px-1 rounded-md text-[9px] lg:text-[10px] font-black tracking-tight whitespace-nowrap border bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                                className="shrink-0 h-[18px] lg:h-5 w-[18px] lg:w-5 justify-center rounded border bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 inline-flex items-center"
                               >
-                                To&apos;lov qo&apos;shish
+                                <CreditCard className="w-2.5 h-2.5" />
                               </button>
                               <button
                                 type="button"
+                                title="Yana qabulga yozish"
+                                aria-label="Yana qabulga yozish"
+                                data-testid="grid-card-rebook"
                                 onClick={(e) => { e.stopPropagation(); onRebookClick?.(appointment); }}
-                                className="flex-auto h-6 px-1 rounded-md text-[9px] lg:text-[10px] font-black tracking-tight whitespace-nowrap border bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100"
+                                className="shrink-0 h-[18px] lg:h-5 w-[18px] lg:w-5 justify-center rounded border bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100 inline-flex items-center"
                               >
-                                Yana qabulga yozish
+                                <Calendar className="w-2.5 h-2.5" />
                               </button>
                             </div>
                           </div>
