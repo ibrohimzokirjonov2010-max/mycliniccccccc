@@ -884,6 +884,8 @@ export default function DoctorDayGrid({
                                   <button
                                     key={qa.status}
                                     type="button"
+                                    title={qa.label}
+                                    aria-label={qa.label}
                                     aria-pressed={active}
                                     onClick={(e) => { e.stopPropagation(); if (!active) onStatusChange(appointment, qa.status); }}
                                     className={cn(
