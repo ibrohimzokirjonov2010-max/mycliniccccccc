@@ -59,6 +59,10 @@ export function computePatientBalances(payments, treatmentPlans = []) {
     if (!plan?.patient_id) continue;
     const st = String(plan?.status || '').trim().toLowerCase();
     if (['cancelled', 'canceled', 'otkaz'].includes(st)) continue;
+    // Uchrashuv rejasi: qarz faqat Keldi (In Progress) dan keyin
+    const apptPending = String(plan?.notes || '').includes('Uchrashuv orqali yaratilgan')
+      && !['in progress', 'completed', 'done', 'bajarildi'].includes(st);
+    if (apptPending) continue;
     plansByPatient[plan.patient_id] = (plansByPatient[plan.patient_id] || 0) + (Number(plan.total_price) || 0);
   }
 

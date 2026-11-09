@@ -1888,10 +1888,27 @@ export default function PatientProfile() {
     let calculatedPrepayment = 0;
 
     if (plansList.length > 0) {
-      const totalPlansPrice = plansList.reduce((sum, plan) => sum + (Number(plan.total_price) || 0), 0);
-      const net = totalIncomes - totalPlansPrice - totalRefunds;
-      calculatedDebt = net < 0 ? Math.abs(net) : 0;
-      calculatedPrepayment = net > 0 ? net : 0;
+      const billablePlansPrice = plansList.reduce((sum, plan) => {
+        const st = String(plan?.status || '').trim().toLowerCase();
+        if (['cancelled', 'canceled', 'otkaz'].includes(st)) return sum;
+        const apptPending = String(plan?.notes || '').includes('Uchrashuv orqali yaratilgan')
+          && !['in progress', 'completed', 'done', 'bajarildi'].includes(st);
+        if (apptPending) return sum;
+        return sum + (Number(plan.total_price) || 0);
+      }, 0);
+      if (billablePlansPrice > 0) {
+        const net = totalIncomes - billablePlansPrice - totalRefunds;
+        calculatedDebt = net < 0 ? Math.abs(net) : 0;
+        calculatedPrepayment = net > 0 ? net : 0;
+      } else if (totalDebts > 0) {
+        const net = totalIncomes + totalDiscounts - totalDebts - totalRefunds;
+        calculatedDebt = net < 0 ? Math.abs(net) : 0;
+        calculatedPrepayment = net > 0 ? net : 0;
+      } else {
+        const net = totalIncomes - totalRefunds;
+        calculatedDebt = net < 0 ? Math.abs(net) : 0;
+        calculatedPrepayment = net > 0 ? net : 0;
+      }
     } else if (totalDebts > 0) {
       const net = totalIncomes + totalDiscounts - totalDebts - totalRefunds;
       calculatedDebt = net < 0 ? Math.abs(net) : 0;
@@ -2079,11 +2096,18 @@ export default function PatientProfile() {
       base44.entities.TreatmentPlan.filter({ patient_id: patientId }, '-created_date', 100).catch(() => []),
     ]);
     const { totals } = computePatientBalances(allPays || [], allPlans || []);
-    const planTotal = (allPlans || []).reduce((sum, plan) => sum + (Number(plan.total_price) || 0), 0);
+    const billablePlanTotal = (allPlans || []).reduce((sum, plan) => {
+      const st = String(plan?.status || '').trim().toLowerCase();
+      if (['cancelled', 'canceled', 'otkaz'].includes(st)) return sum;
+      const apptPending = String(plan?.notes || '').includes('Uchrashuv orqali yaratilgan')
+        && !['in progress', 'completed', 'done', 'bajarildi'].includes(st);
+      if (apptPending) return sum;
+      return sum + (Number(plan.total_price) || 0);
+    }, 0);
     const row = totals[patientId];
     await base44.entities.Patient.update(patientId, {
       total_paid: row ? row.totalPaid : 0,
-      total_debt: row ? row.currentDebt : Math.max(0, planTotal),
+      total_debt: row ? row.currentDebt : Math.max(0, billablePlanTotal),
     });
   };
 
