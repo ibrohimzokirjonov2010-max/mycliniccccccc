@@ -840,7 +840,7 @@ export default function DoctorDayGrid({
                             )}
                             style={{ borderLeftColor: palette.primary }}
                           >
-                            {/* 1-qator: ism + vaqt + to'lov/yana ikonkalari */}
+                            {/* 1-qator: ism + to'lov/yana (vaqt xizmat qatorida — ism o'qiladi) */}
                             <div className="flex items-center gap-0.5 min-w-0">
                               {(appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url) && (
                                 <img
@@ -849,11 +849,8 @@ export default function DoctorDayGrid({
                                   className="w-3.5 h-3.5 rounded-full object-cover shrink-0 border border-white/80"
                                 />
                               )}
-                              <span title={appointment.patient_name} className="text-[11px] lg:text-[12px] font-black truncate leading-tight uppercase tracking-tight text-slate-900 min-w-0">
+                              <span title={appointment.patient_name} className="text-[11px] lg:text-[12px] font-black truncate leading-tight uppercase tracking-tight text-slate-900 min-w-0 flex-1">
                                 {appointment.patient_name}
-                              </span>
-                              <span className="ml-auto shrink-0 text-[9px] lg:text-[10px] font-bold text-slate-500 tabular-nums whitespace-nowrap">
-                                {appointment.time}–{endTimeLabel}
                               </span>
                               {appointment.is_paid ? <Wallet className="w-2.5 h-2.5 text-emerald-600 shrink-0" /> : null}
                               <button
@@ -878,9 +875,12 @@ export default function DoctorDayGrid({
                               </button>
                             </div>
 
-                            {/* 2-qator: xizmat (1 qator truncate) */}
+                            {/* 2-qator: vaqt + xizmat */}
                             <div className="flex items-center gap-1 min-w-0">
-                              <div title={serviceLabel} className="px-1.5 py-px bg-white/80 rounded text-[8px] lg:text-[9px] font-black uppercase tracking-wide truncate border border-black/5 min-w-0 max-w-full">
+                              <span className="shrink-0 text-[9px] lg:text-[10px] font-bold text-slate-500 tabular-nums whitespace-nowrap">
+                                {appointment.time}–{endTimeLabel}
+                              </span>
+                              <div title={serviceLabel} className="px-1.5 py-px bg-white/80 rounded text-[8px] lg:text-[9px] font-black uppercase tracking-wide truncate border border-black/5 min-w-0 flex-1">
                                 {serviceLabel}
                               </div>
                               <AppointmentConfirmationBadge appointment={appointment} size="sm" className="!text-[8px] !px-1 !py-px shrink-0" />
