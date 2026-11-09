@@ -83,20 +83,8 @@ export async function createPlanFromAppointmentServices({
   });
   if (!plan?.id || plan?.error) throw new Error(plan?.error || 'Reja yaratilmadi');
 
-  if (planTotal > 0) {
-    await base44.entities.Payment.create({
-      patient_id: patientId,
-      patient_name: patientName || '',
-      doctor_id: doctorId || '',
-      type: 'Debt',
-      category: displayCategory,
-      amount: planTotal,
-      method: '—',
-      date: String(today).slice(0, 10),
-      notes: `Linked to Plan: ${plan.id}`,
-    });
-  }
-
+  // Qarz faqat Keldi (Waiting → In Progress) da yoziladi.
+  // Aks holda Planned reja ham qarzdorlikka tushib, Kelmadi dan keyin chalkashib qolardi.
   try {
     await syncPatientBalance(patientId);
   } catch (err) {
@@ -111,6 +99,64 @@ export async function createPlanFromAppointmentServices({
  * Kelmadi -> plan Cancelled (otkaz), debt excluded via cancelled status
  * Qabulda -> appointment only (no plan change)
  */
+async function paymentsLinkedToPlanId(patientId, planId) {
+  if (!patientId || !planId) return [];
+  const payments = await base44.entities.Payment.filter({ patient_id: patientId }, '-date', 5000);
+  return (payments || []).filter((p) => {
+    const notes = String(p.notes || '');
+    return (
+      String(p.plan_id || '') === String(planId)
+      || notes.includes(`Linked to Plan: ${planId}`)
+      || notes.includes(String(planId))
+    );
+  });
+}
+
+async function ensureDebtForPlan(appointment, planId) {
+  const patientId = appointment?.patient_id;
+  if (!patientId || !planId) return;
+  const linked = await paymentsLinkedToPlanId(patientId, planId);
+  const hasDebt = linked.some((p) => String(p.type || '').toLowerCase() === 'debt');
+  if (hasDebt) return;
+
+  let plan = null;
+  try {
+    plan = await base44.entities.TreatmentPlan.filter({ id: planId }, '-created_date', 1).then((rows) => rows?.[0] || null);
+  } catch {
+    plan = null;
+  }
+  if (!plan) {
+    const all = await base44.entities.TreatmentPlan.filter({ patient_id: patientId }, '-created_date', 50);
+    plan = (all || []).find((p) => String(p.id) === String(planId)) || null;
+  }
+  const amount = Number(plan?.total_price) || 0;
+  if (amount <= 0) return;
+
+  await base44.entities.Payment.create({
+    patient_id: patientId,
+    patient_name: appointment.patient_name || plan?.patient_name || '',
+    doctor_id: appointment.doctor_id || plan?.doctor_id || '',
+    type: 'Debt',
+    category: plan?.name || plan?.title || 'Uchrashuv rejasi',
+    amount,
+    method: '—',
+    date: new Date().toISOString().slice(0, 10),
+    notes: `Linked to Plan: ${planId}`,
+  });
+}
+
+async function removeDebtForPlan(patientId, planId) {
+  const linked = await paymentsLinkedToPlanId(patientId, planId);
+  for (const p of linked) {
+    if (String(p.type || '').toLowerCase() !== 'debt') continue;
+    try {
+      await base44.entities.Payment.delete(p.id);
+    } catch (err) {
+      console.warn('Debt delete failed for cancelled appointment plan:', p.id, err);
+    }
+  }
+}
+
 export async function syncLinkedPlanForAppointmentStatus(appointment, appointmentStatus) {
   const planId = getAppointmentPlanId(appointment);
   if (!planId) return null;
@@ -129,6 +175,11 @@ export async function syncLinkedPlanForAppointmentStatus(appointment, appointmen
 
   if (appointment?.patient_id) {
     try {
+      if (nextPlanStatus === 'Cancelled') {
+        await removeDebtForPlan(appointment.patient_id, planId);
+      } else if (nextPlanStatus === 'In Progress') {
+        await ensureDebtForPlan(appointment, planId);
+      }
       await syncPatientBalance(appointment.patient_id);
     } catch (err) {
       console.warn('syncPatientBalance after plan status failed:', err);

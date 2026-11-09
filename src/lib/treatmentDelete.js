@@ -79,9 +79,16 @@ export async function syncPatientBalance(patientId) {
     .filter((p) => String(p.type || '').toLowerCase() === 'discount' && !isLinkedPlanInternal(p, 'discount'))
     .reduce((total, p) => total + Math.abs(Number(p.amount) || 0), 0);
   const isCancelledPlan = (plan) => ['cancelled', 'canceled', 'otkaz'].includes(String(plan?.status || '').trim().toLowerCase());
+  // Uchrashuvdan yaratilgan Planned reja — qarz faqat Keldi (In Progress) dan keyin.
+  const isAppointmentPendingPlan = (plan) => {
+    if (isCancelledPlan(plan)) return false;
+    const st = String(plan?.status || '').trim().toLowerCase();
+    if (st === 'in progress' || st === 'completed' || st === 'done' || st === 'bajarildi') return false;
+    return String(plan?.notes || '').includes('Uchrashuv orqali yaratilgan');
+  };
   const cancelledPlanIds = new Set((plans || []).filter(isCancelledPlan).map((p) => String(p.id)));
   const plansPrice = (plans || [])
-    .filter((plan) => !isCancelledPlan(plan))
+    .filter((plan) => !isCancelledPlan(plan) && !isAppointmentPendingPlan(plan))
     .reduce((total, plan) => total + (Number(plan.total_price) || 0), 0);
   // Debt rows linked to cancelled (otkaz) plans must not keep the patient in debt.
   const activeDebts = (payments || [])
