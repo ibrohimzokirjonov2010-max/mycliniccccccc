@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { profileState } from '@/hooks/useBack';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useRestorableState, useRestorableDate } from '@/hooks/useRestorableState';
@@ -14,6 +14,9 @@ import AppointmentModal from '@/components/appointments/AppointmentModal';
 import AppointmentTreatmentModal from '@/components/appointments/AppointmentTreatmentModal';
 import AppointmentConfirmationBadge from '@/components/appointments/AppointmentConfirmationBadge';
 import { toast } from 'sonner';
+import { syncLinkedPlanForAppointmentStatus, getAppointmentPlanId } from '@/lib/appointmentPlan';
+import { QUICK_STATUS_ACTIONS, appointmentStatusLabel, normalizeAppointmentStatus } from '@/lib/appointmentStatus';
+const PaymentsAddModal = lazy(() => import('./Payments'));
 import { useTranslation } from '@/i18n/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
 import { appointmentMatchesDoctor } from '@/utils/doctorMatch';
@@ -41,6 +44,7 @@ export default function MobileAppointmentsV2() {
   // Orqaga qaytganda tanlangan sana/shifokor/qidiruv tiklanadi
   const [selectedDate, setSelectedDate] = useRestorableDate('selectedDate', () => new Date());
   const [showAddModal, setShowAddModal] = useState(false);
+  const [sharedPay, setSharedPay] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showTreatmentModal, setShowTreatmentModal] = useState(false);
   const [treatmentAppointment, setTreatmentAppointment] = useState(null);
@@ -419,6 +423,38 @@ export default function MobileAppointmentsV2() {
     }
   };
 
+  const handleQuickStatus = async (app, status) => {
+    if (!app?.id || !status) return;
+    try {
+      await base44.entities.Appointment.update(app.id, { status });
+      try {
+        await syncLinkedPlanForAppointmentStatus(app, status);
+        if (status === 'No-Show') toast.success(`${app.patient_name || 'Bemor'}: Kelmadi — reja otkaz`);
+        else if (status === 'Waiting') toast.success(`${app.patient_name || 'Bemor'}: Keldi — reja aktiv`);
+        else toast.success(`${app.patient_name || 'Bemor'}: ${appointmentStatusLabel(status)}`);
+      } catch {
+        toast.success(`${app.patient_name || 'Bemor'}: ${appointmentStatusLabel(status)}`);
+      }
+      loadData();
+    } catch {
+      toast.error("Holatni saqlab bo'lmadi");
+    }
+  };
+
+  const handlePay = (app) => {
+    if (!app?.patient_id) { toast.error("Bemorni topib bo'lmadi"); return; }
+    const patient = (patients || []).find((p) => String(p.id) === String(app.patient_id))
+      || { id: app.patient_id, full_name: app.patient_name || '' };
+    setSharedPay({ patient, planId: getAppointmentPlanId(app), amount: '', key: Date.now() });
+  };
+
+  const handleRebook = (app) => {
+    setPrefillPat({ id: app.patient_id, name: app.patient_name });
+    setFormData((prev) => ({ ...prev, date: toLocalDateStr(selectedDate), time: '' }));
+    setEditingAppointment(null);
+    setShowAddModal(true);
+  };
+
   const AppointmentCard = ({ app, index, isContinuing, displayTime, onCardClick, isSearchMode }) => {
     const style = getStatusStyle(app.status);
     const StatusIcon = style.icon;
@@ -460,25 +496,27 @@ export default function MobileAppointmentsV2() {
                 <StatusIcon className={`w-3.5 h-3.5 ${style.text}`} />
                 <span className={`text-[12px] font-bold uppercase ${style.text}`}>{style.label}</span>
               </span>
-              <button type="button" aria-label="Amallar" onClick={(e) => { e.stopPropagation(); setMenuFor(isOpen ? null : `${app.id}-${displayTime || ''}`); }} className="w-9 h-11 -mr-1.5 flex items-center justify-center text-slate-500">
-                <MoreVertical className="w-5 h-5" />
-              </button>
             </div>
           </div>
-          {isOpen && (
-            <div onClick={(e) => e.stopPropagation()} className="mt-2 pt-2 border-t border-slate-200/70 grid grid-cols-2 gap-1.5">
-              <button onClick={call} className="h-11 rounded-xl bg-emerald-50 text-emerald-700 text-[13px] font-bold flex items-center justify-center gap-1"><Phone className="w-4 h-4" />Qo'ng'iroq</button>
-              <button onClick={tg} className="h-11 rounded-xl bg-sky-50 text-sky-700 text-[13px] font-bold flex items-center justify-center gap-1"><Send className="w-4 h-4" />Telegram</button>
-              <button onClick={() => { setMenuFor(null); openEditModal(app); }} className="h-11 rounded-xl bg-white border border-slate-200 text-slate-700 text-[13px] font-bold flex items-center justify-center gap-1"><Pencil className="w-4 h-4" />Tahrir</button>
-              {app.status === 'Scheduled' || app.status === 'Waiting' ? (
-                <button onClick={() => handleStartAppointment(app)} className="h-11 rounded-xl bg-slate-900 text-white text-[13px] font-bold flex items-center justify-center gap-1"><Play className="w-4 h-4" />{t('common.start')}</button>
-              ) : app.status === 'In Progress' ? (
-                <button onClick={() => handleCompleteAppointment(app.id)} className="h-11 rounded-xl bg-emerald-500 text-white text-[13px] font-bold flex items-center justify-center">{t('common.finish')}</button>
-              ) : (
-                <span className="h-11 rounded-xl bg-slate-50 text-slate-800 text-[13px] font-bold flex items-center justify-center">{app.price ? formatCurrency(app.price) : '0'}</span>
-              )}
-            </div>
-          )}
+          <div className="mt-2 flex flex-wrap gap-1.5" data-testid="mobile-card-quick-status" onClick={(e) => e.stopPropagation()}>
+            {QUICK_STATUS_ACTIONS.map((qa) => {
+              const active = normalizeAppointmentStatus(app.status) === qa.status;
+              return (
+                <button
+                  key={qa.status}
+                  type="button"
+                  onClick={() => handleQuickStatus(app, qa.status)}
+                  className={`flex-1 min-w-[30%] h-10 rounded-xl text-[12px] font-black border ${active ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200'}`}
+                >
+                  {qa.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-1.5 grid grid-cols-2 gap-1.5" data-testid="mobile-card-actions" onClick={(e) => e.stopPropagation()}>
+            <button type="button" onClick={() => handlePay(app)} className="h-10 rounded-xl bg-emerald-50 text-emerald-700 text-[12px] font-black border border-emerald-200">To&apos;lov qo&apos;shish</button>
+            <button type="button" onClick={() => handleRebook(app)} className="h-10 rounded-xl bg-sky-50 text-sky-700 text-[12px] font-black border border-sky-200">Yana qabulga yozish</button>
+          </div>
         </div>
       </motion.div>
     );
@@ -718,6 +756,17 @@ export default function MobileAppointmentsV2() {
           prefillPatientName={prefillPat?.name}
           onSaved={loadData}
         />
+
+        {sharedPay && (
+          <Suspense fallback={null}>
+            <PaymentsAddModal
+              key={sharedPay.key}
+              embeddedPay={sharedPay}
+              onEmbeddedClose={() => setSharedPay(null)}
+              onEmbeddedSaved={() => { setSharedPay(null); loadData(); toast.success("To'lov qo'shildi"); }}
+            />
+          </Suspense>
+        )}
 
         <AppointmentTreatmentModal
           open={showTreatmentModal}

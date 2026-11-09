@@ -84,6 +84,11 @@
       "title": "Notes",
       "description": "Additional notes or comments about the appointment",
       "maxLength": 2000
+    },
+    "plan_id": {
+      "type": "string",
+      "title": "Treatment Plan ID",
+      "description": "Linked treatment plan created from selected appointment services"
     }
   },
   "required": [

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatusBadge from '@/components/ui/StatusBadge';
 import AppointmentModal from '@/components/appointments/AppointmentModal';
+const PaymentsAddModal = lazy(() => import('./Payments'));
 import CalendarView from '@/components/appointments/CalendarView';
 import DoctorDayGrid from '@/components/appointments/DoctorDayGrid';
 import AppointmentConfirmationBadge from '@/components/appointments/AppointmentConfirmationBadge';
@@ -24,6 +25,7 @@ import { appointmentMatchesDoctor } from '@/utils/doctorMatch';
 import { isCancelledStatus } from '@/utils/clinicMetrics';
 import { appointmentStatusLabel, normalizeAppointmentStatus } from '@/lib/appointmentStatus';
 import { toast } from 'sonner';
+import { syncLinkedPlanForAppointmentStatus, getAppointmentPlanId } from '@/lib/appointmentPlan';
 
 // ── Appointment date/time normalizer (shared helper) ─────────────────────────
 const normalizeAppt = (a) => {
@@ -51,6 +53,7 @@ export default function Appointments() {
   // ── UI state ────────────────────────────────────────────────────────────────
   const [modalOpen, setModalOpen] = useState(false);
   const [editAppt, setEditAppt] = useState(null);
+  const [sharedPay, setSharedPay] = useState(null);
   const [prefillDate, setPrefillDate] = useState('');
   const [prefillTime, setPrefillTime] = useState('');
   const [prefillDoctorId, setPrefillDoctorId] = useState(null);
@@ -218,17 +221,21 @@ export default function Appointments() {
     return () => supabase.removeChannel(channel);
   }, [queryClient]);
 
-  const openNewAppt = (date, time, doctorId) => {
+  const openNewAppt = (date, time, doctorId, patientPrefill = null) => {
     setEditAppt(null);
     setPrefillDate(date || '');
     setPrefillTime(time || '');
     setPrefillDoctorId(isDoctor ? user?.id : (doctorId || null));
+    setPrefillPatientId(patientPrefill?.id || '');
+    setPrefillPatientName(patientPrefill?.name || patientPrefill?.full_name || '');
     setModalOpen(true);
   };
 
   const openEditAppt = (appointment) => {
     setEditAppt(appointment);
     setPrefillDoctorId(null);
+    setPrefillPatientId('');
+    setPrefillPatientName('');
     setModalOpen(true);
   };
 
@@ -238,6 +245,29 @@ export default function Appointments() {
     setPrefillDate('');
     setPrefillTime('');
     setPrefillDoctorId(null);
+    setPrefillPatientId('');
+    setPrefillPatientName('');
+  };
+
+  const handleRebook = (appointment) => {
+    if (!appointment) return;
+    openNewAppt(
+      '',
+      '',
+      appointment.doctor_id || null,
+      { id: appointment.patient_id, name: appointment.patient_name, full_name: appointment.patient_name },
+    );
+  };
+
+  const handlePay = (appointment) => {
+    if (!appointment?.patient_id) {
+      toast.error("Bemorni topib bo'lmadi");
+      return;
+    }
+    const patient = (patients || []).find((p) => String(p.id) === String(appointment.patient_id))
+      || { id: appointment.patient_id, full_name: appointment.patient_name || '' };
+    const planId = getAppointmentPlanId(appointment);
+    setSharedPay({ patient, planId, amount: '', key: Date.now() });
   };
 
   // Kalendar kartasidagi tezkor holat tugmalari (Keldi / Qabulda / Kelmadi)
@@ -249,7 +279,23 @@ export default function Appointments() {
     ));
     try {
       await base44.entities.Appointment.update(appointment.id, { status });
-      toast.success(`${appointment.patient_name || 'Bemor'}: ${appointmentStatusLabel(status, language)}`);
+      try {
+        await syncLinkedPlanForAppointmentStatus(appointment, status);
+        if (status === 'No-Show') {
+          toast.success(`${appointment.patient_name || 'Bemor'}: Kelmadi — reja otkaz`);
+        } else if (status === 'Waiting') {
+          toast.success(`${appointment.patient_name || 'Bemor'}: Keldi — reja aktiv`);
+        } else {
+          toast.success(`${appointment.patient_name || 'Bemor'}: ${appointmentStatusLabel(status, language)}`);
+        }
+      } catch (planErr) {
+        console.error(planErr);
+        toast.success(`${appointment.patient_name || 'Bemor'}: ${appointmentStatusLabel(status, language)}`);
+        toast.warning("Uchrashuv holati saqlandi, lekin rejani yangilab bo'lmadi");
+      }
+      queryClient.invalidateQueries({ queryKey: ['treatment-plans'] });
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments });
     } catch (err) {
       queryClient.setQueriesData({ queryKey: QUERY_KEYS.appointments }, (old) => (
         Array.isArray(old) ? old.map((x) => (String(x.id) === String(appointment.id) ? { ...x, status: prev } : x)) : old
@@ -577,6 +623,8 @@ export default function Appointments() {
                     onSlotClick={openNewAppt}
                     onEditClick={openEditAppt}
                     onStatusChange={handleQuickStatus}
+                    onPayClick={handlePay}
+                    onRebookClick={handleRebook}
                     searchQuery={debouncedSearch}
                   />
                 )}
@@ -772,8 +820,27 @@ export default function Appointments() {
         prefillDate={prefillDate || viewDate}
         prefillTime={prefillTime}
         prefillDoctorId={prefillDoctorId || selectedDoctorId}
+        prefillPatientId={prefillPatientId}
+        prefillPatientName={prefillPatientName}
         onSaved={handleSaved}
       />
+
+      {sharedPay && (
+        <Suspense fallback={null}>
+          <PaymentsAddModal
+            key={sharedPay.key}
+            embeddedPay={sharedPay}
+            onEmbeddedClose={() => setSharedPay(null)}
+            onEmbeddedSaved={() => {
+              setSharedPay(null);
+              queryClient.invalidateQueries({ queryKey: QUERY_KEYS.payments });
+              queryClient.invalidateQueries({ queryKey: ['patients'] });
+              queryClient.invalidateQueries({ queryKey: ['treatment-plans'] });
+              toast.success("To'lov qo'shildi");
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

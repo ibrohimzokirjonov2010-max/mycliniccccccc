@@ -78,10 +78,26 @@ export async function syncPatientBalance(patientId) {
     // Plan-linked discount rows (wizard "Avtomatik chegirma") are already inside that plan's Debt row.
     .filter((p) => String(p.type || '').toLowerCase() === 'discount' && !isLinkedPlanInternal(p, 'discount'))
     .reduce((total, p) => total + Math.abs(Number(p.amount) || 0), 0);
-  const plansPrice = (plans || []).reduce((total, plan) => total + (Number(plan.total_price) || 0), 0);
+  const isCancelledPlan = (plan) => ['cancelled', 'canceled', 'otkaz'].includes(String(plan?.status || '').trim().toLowerCase());
+  const cancelledPlanIds = new Set((plans || []).filter(isCancelledPlan).map((p) => String(p.id)));
+  const plansPrice = (plans || [])
+    .filter((plan) => !isCancelledPlan(plan))
+    .reduce((total, plan) => total + (Number(plan.total_price) || 0), 0);
+  // Debt rows linked to cancelled (otkaz) plans must not keep the patient in debt.
+  const activeDebts = (payments || [])
+    .filter((p) => {
+      if (String(p.type || '').toLowerCase() !== 'debt') return false;
+      const notes = String(p.notes || '');
+      const linked = p.plan_id != null && p.plan_id !== ''
+        ? String(p.plan_id)
+        : (notes.match(/Linked to Plan:\s*([^\s|]+)/i)?.[1] || notes.match(/\[\[plan_id:([^\]]+)\]\]/)?.[1] || '');
+      if (linked && cancelledPlanIds.has(String(linked))) return false;
+      return true;
+    })
+    .reduce((total, p) => total + (Number(p.amount) || 0), 0);
   let debt = 0;
-  if (debts > 0) {
-    const net = incomes + discounts - debts - refunds;
+  if (activeDebts > 0) {
+    const net = incomes + discounts - activeDebts - refunds;
     debt = net < 0 ? Math.abs(net) : 0;
   } else if (plansPrice > 0) {
     const net = incomes + discounts - plansPrice;

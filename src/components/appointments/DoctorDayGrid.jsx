@@ -496,7 +496,9 @@ export default function DoctorDayGrid({
   onStatusChange,
   viewDate,
   onViewDateChange,
-  searchQuery = ''
+  searchQuery = '',
+  onPayClick,
+  onRebookClick,
 }) {
   const { t } = useTranslation();
   const { workStartHour, workEndHour } = useClinic();
@@ -862,31 +864,6 @@ export default function DoctorDayGrid({
                                   {appointment.tooth_number ? `${appointment.tooth_number}-tish: ` : ''}{appointment.service_name || t('appointments.defaultService') || 'Maslahat'}
                               </div>
                               <AppointmentConfirmationBadge appointment={appointment} size="sm" className="!text-[8px] !px-1.5 !py-0.5 lg:!py-px" />
-                              <div className="flex items-center gap-0.5 shrink-0 ml-auto">
-                                {/* Test eslatma tugmasi */}
-                                <button
-                                  title="Test Telegram eslatma yuborish"
-                                  onClick={(e) => sendTest(appointment, e)}
-                                  disabled={loadingId === String(appointment._id || appointment.id || '')}
-                                  className={cn(
-                                    "w-5 h-5 lg:w-4 lg:h-4 rounded-md flex items-center justify-center transition-all",
-                                    "opacity-0 group-hover/card:opacity-100",
-                                    "bg-violet-100 hover:bg-violet-500 hover:text-white text-violet-500",
-                                    "border border-violet-200 hover:border-violet-500",
-                                    loadingId === String(appointment._id || appointment.id || '') && "animate-pulse opacity-100"
-                                  )}
-                                >
-                                  <FlaskConical className="w-2.5 h-2.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  aria-label="Batafsil"
-                                  onClick={(e) => handleAppointmentClick(e, appointment)}
-                                  className="w-6 h-5 rounded-md bg-white/90 border border-black/5 flex items-center justify-center text-slate-600 hover:bg-white"
-                                >
-                                  <MoreHorizontal className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
                             </div>
 
                             {appointment.patient_allergy && (
@@ -900,7 +877,7 @@ export default function DoctorDayGrid({
                             )}
 
                             {onStatusChange && (
-                              <div className="flex flex-wrap items-center gap-0.5 mt-0.5 lg:mt-0" data-testid="grid-card-quick-status">
+                              <div className="flex flex-wrap items-center gap-0.5 mt-1" data-testid="grid-card-quick-status">
                                 {QUICK_STATUS_ACTIONS.map((qa) => {
                                   const active = normalizeAppointmentStatus(appointment.status) === qa.status;
                                   return (
@@ -910,7 +887,7 @@ export default function DoctorDayGrid({
                                       aria-pressed={active}
                                       onClick={(e) => { e.stopPropagation(); if (!active) onStatusChange(appointment, qa.status); }}
                                       className={cn(
-                                        "flex-auto h-5 px-[3px] rounded-md text-[9px] font-black tracking-tight whitespace-nowrap border transition-colors",
+                                        "flex-auto h-6 px-1 rounded-md text-[9px] lg:text-[10px] font-black tracking-tight whitespace-nowrap border transition-colors",
                                         active ? "bg-slate-900 border-slate-900 text-white" : "bg-white/90 border-black/10 text-slate-700 hover:bg-white"
                                       )}
                                     >
@@ -920,6 +897,23 @@ export default function DoctorDayGrid({
                                 })}
                               </div>
                             )}
+
+                            <div className="flex flex-wrap items-center gap-0.5 mt-1" data-testid="grid-card-actions">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onPayClick?.(appointment); }}
+                                className="flex-auto h-6 px-1 rounded-md text-[9px] lg:text-[10px] font-black tracking-tight whitespace-nowrap border bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                              >
+                                To&apos;lov qo&apos;shish
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onRebookClick?.(appointment); }}
+                                className="flex-auto h-6 px-1 rounded-md text-[9px] lg:text-[10px] font-black tracking-tight whitespace-nowrap border bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100"
+                              >
+                                Yana qabulga yozish
+                              </button>
+                            </div>
                           </div>
                         );
                       })()}

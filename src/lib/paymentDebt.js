@@ -57,6 +57,8 @@ export function computePatientBalances(payments, treatmentPlans = []) {
   const plansByPatient = {};
   for (const plan of withOncePricing(treatmentPlans || [])) {
     if (!plan?.patient_id) continue;
+    const st = String(plan?.status || '').trim().toLowerCase();
+    if (['cancelled', 'canceled', 'otkaz'].includes(st)) continue;
     plansByPatient[plan.patient_id] = (plansByPatient[plan.patient_id] || 0) + (Number(plan.total_price) || 0);
   }
 

@@ -11,6 +11,7 @@ import { Calendar, X, Loader2 } from 'lucide-react';
 import PatientModal from '../patients/PatientModal';
 import PatientSelect from '../patients/PatientSelect';
 import { toast } from 'sonner';
+import { createPlanFromAppointmentServices, withPlanIdInNotes } from '@/lib/appointmentPlan';
 import { useAuth } from '@/lib/AuthContext';
 import { isScheduledOn } from '@/utils/clinicMetrics';
 import { useClinic } from '@/lib/ClinicContext';
@@ -139,10 +140,11 @@ export const createAppointmentSafely = async (form) => {
     return await base44.entities.Appointment.create(payload);
   } catch (firstError) {
     console.warn('Appointment.create failed, retrying with core columns only:', firstError);
-    const { tooth_number, service_id, price, duration, ...core } = payload;
+    const { tooth_number, service_id, price, duration, plan_id, ...core } = payload;
     const extra = [
       tooth_number ? `Tish: ${tooth_number}` : '',
       service_id ? `Xizmat ID: ${service_id}` : '',
+      plan_id ? `[[plan_id:${plan_id}]]` : '',
     ].filter(Boolean).join(' | ');
     const retryPayload = {
       ...core,
@@ -269,8 +271,11 @@ export default function AppointmentModal({
     price: 0, 
     status: 'Scheduled', 
     notes: '',
-    tooth_number: ''
+    tooth_number: '',
+    plan_id: '',
   });
+  /** Multi-select services for plan creation (same list as NewPatientFlow / Tezkor). */
+  const [selectedServices, setSelectedServices] = useState([]);
   const [saving, setSaving] = useState(false);
   const [showNewPatient, setShowNewPatient] = useState(false);
   const [error, setError] = useState('');
@@ -293,6 +298,37 @@ export default function AppointmentModal({
   }, [open]);
 
   const appointmentsToUse = localAppointments.length > 0 ? localAppointments : (allAppointments || []);
+
+  useEffect(() => {
+    if (!open) return;
+    if (appointment?.id) {
+      // Edit mode: seed multi-select from stored service if present
+      if (appointment.service_id || appointment.service_name) {
+        setSelectedServices([{
+          id: appointment.service_id || appointment.service_name,
+          service_id: appointment.service_id || '',
+          name: appointment.service_name || '',
+          service_name: appointment.service_name || '',
+          price: Number(appointment.price) || 0,
+        }]);
+      } else {
+        setSelectedServices([]);
+      }
+      return;
+    }
+    if (prefillServiceId || prefillServiceName) {
+      setSelectedServices([{
+        id: prefillServiceId || prefillServiceName,
+        service_id: prefillServiceId || '',
+        name: prefillServiceName || '',
+        service_name: prefillServiceName || '',
+        price: Number(prefillPrice) || 0,
+      }]);
+    } else {
+      setSelectedServices([]);
+    }
+  }, [open, appointment?.id, prefillServiceId, prefillServiceName, prefillPrice]);
+
 
   // Initialize form when modal opens or appointment changes
   useEffect(() => {
@@ -424,6 +460,34 @@ export default function AppointmentModal({
       duration: selectedService?.duration || prev.duration
     }));
   }, [services]);
+
+  const toggleSelectedService = useCallback((service) => {
+    if (!service?.id) return;
+    setSelectedServices((prev) => {
+      const exists = prev.some((s) => String(s.id) === String(service.id));
+      const next = exists
+        ? prev.filter((s) => String(s.id) !== String(service.id))
+        : [...prev, {
+            id: service.id,
+            service_id: service.id,
+            name: service.name,
+            service_name: service.name,
+            price: Number(service.price) || 0,
+            duration: Number(service.duration) || 30,
+          }];
+      const total = next.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+      const primary = next[0];
+      const duration = next.reduce((max, s) => Math.max(max, Number(s.duration) || 0), 0) || 30;
+      setForm((f) => ({
+        ...f,
+        service_id: primary?.id || '',
+        service_name: next.map((s) => s.name).filter(Boolean).join(', '),
+        price: total,
+        duration: duration || f.duration,
+      }));
+      return next;
+    });
+  }, []);
 
   /**
    * Check for scheduling conflicts
@@ -582,14 +646,49 @@ export default function AppointmentModal({
           await updatePatientFinancials(form.patient_id, form.date);
         }
       } else {
+        // Create treatment plan from selected services (same logic as Tezkor / NewPatientFlow).
+        let planId = form.plan_id || '';
+        const planServices = selectedServices.length > 0
+          ? selectedServices
+          : (form.service_id || form.service_name
+              ? [{
+                  id: form.service_id,
+                  service_id: form.service_id,
+                  name: form.service_name,
+                  service_name: form.service_name,
+                  price: form.price,
+                }]
+              : []);
+        if (planServices.length > 0) {
+          const plan = await createPlanFromAppointmentServices({
+            patientId: form.patient_id,
+            patientName: form.patient_name,
+            doctorId: form.doctor_id,
+            doctorName: form.doctor_name,
+            services: planServices,
+            toothNumber: form.tooth_number || '',
+            dateIso: form.date ? `${String(form.date).slice(0, 10)}T00:00:00.000Z` : undefined,
+          });
+          planId = plan?.id || planId;
+        }
+
+        const payloadForm = {
+          ...form,
+          plan_id: planId || undefined,
+          notes: withPlanIdInNotes(form.notes, planId),
+          service_name: form.service_name || planServices.map((s) => s.service_name || s.name).filter(Boolean).join(', '),
+          price: Number(form.price) || planServices.reduce((s, x) => s + (Number(x.price) || 0), 0),
+        };
+
         // Create new appointment
-        const res = await createAppointmentSafely(form);
+        const res = await createAppointmentSafely(payloadForm);
 
         // Eslatma xabarlarini rejalashtirish: hech qachon saqlashni to'smasligi kerak.
-        await scheduleAppointmentNotifications(res, form);
+        await scheduleAppointmentNotifications(res, payloadForm);
 
         // Handle case where new appointment is created as Completed
-        if (form.status === 'Completed') {
+        // (plan debt already created above — skip duplicate debt when plan exists)
+        if (form.status === 'Completed' && !planId) {
           await createDebtRecord(res.id);
           await updatePatientFinancials(form.patient_id, form.date);
         }
@@ -975,59 +1074,80 @@ export default function AppointmentModal({
               </div>
             )}
 
-            {/* Service Selection and Price */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2 space-y-1">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('appointments.service')}</Label>
-                <Select value={form.service_id} onValueChange={handleServiceChange}>
-                  <SelectTrigger className="h-10 rounded-xl border-slate-100 bg-slate-50 font-bold text-xs">
-                    <SelectValue placeholder={t('appointments.service')} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[250px] rounded-xl border-slate-100">
-                    {(() => {
-                      const groups = {};
-                      const seen = new Set();
-                      services.forEach(s => {
-                        if (!s.name) return;
-                        const uniqueKey = `${s.name.toLowerCase().trim()}_${s.price}`;
-                        if (seen.has(uniqueKey)) return;
-                        seen.add(uniqueKey);
-
-                        const cat = s.category || autoCategorize(s.name);
-                        if (!groups[cat]) groups[cat] = [];
-                        groups[cat].push(s);
-                      });
-                      return Object.entries(groups).map(([cat, items]) => (
-                        <div key={cat}>
-                          <div className="px-2 py-1 text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50/50">{cat}</div>
-                          {items.map(s => (
-                            <SelectItem key={s.id} value={s.id} className="rounded-lg font-bold">
-                              {s.name} — {s.price?.toLocaleString()} {t('common.currency')}
-                            </SelectItem>
-                          ))}
-                        </div>
-                      ));
-                    })()}
-                  </SelectContent>
-                </Select>
+            {/* Service Selection (multi) and Price */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between ml-1">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('appointments.service')} (bir nechta)</Label>
+                <span className="text-[10px] font-black text-slate-400">{selectedServices.length} ta · {(Number(form.price)||0).toLocaleString('uz-UZ')} {t('common.currency')}</span>
               </div>
-              <div className="col-span-1 space-y-1">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('appointments.price')}</Label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={form.price === '' || form.price === 0 ? '' : Number(form.price).toLocaleString('uz-UZ')}
-                    onChange={e => {
-                      const raw = e.target.value.replace(/\s/g, '').replace(/,/g, '').replace(/\./g, '').replace(/'/g, '');
-                      if (raw === '') setForm(prev => ({ ...prev, price: 0 }));
-                      else if (/^\d+$/.test(raw)) setForm(prev => ({ ...prev, price: Number(raw) }));
-                    }}
-                    onKeyDown={e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                    onWheel={e => e.target.blur()}
-                    placeholder="0"
-                    className="w-full h-10 rounded-xl border border-slate-100 bg-slate-50 px-3 text-xs font-bold outline-none"
-                  />
+              {selectedServices.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedServices.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => toggleSelectedService(s)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#1499AD]/10 text-[#0f766e] text-[10px] font-black border border-[#1499AD]/20"
+                    >
+                      {s.name}
+                      <span className="opacity-60">×</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="max-h-[180px] overflow-y-auto rounded-xl border border-slate-100 bg-slate-50/80 p-2 space-y-1" data-testid="appointment-services-multi">
+                {(() => {
+                  const groups = {};
+                  const seen = new Set();
+                  services.forEach(s => {
+                    if (!s.name) return;
+                    const uniqueKey = `${s.name.toLowerCase().trim()}_${s.price}`;
+                    if (seen.has(uniqueKey)) return;
+                    seen.add(uniqueKey);
+                    const cat = s.category || autoCategorize(s.name);
+                    if (!groups[cat]) groups[cat] = [];
+                    groups[cat].push(s);
+                  });
+                  return Object.entries(groups).map(([cat, items]) => (
+                    <div key={cat}>
+                      <div className="px-2 py-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">{cat}</div>
+                      {items.map((s) => {
+                        const on = selectedServices.some((x) => String(x.id) === String(s.id));
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => toggleSelectedService(s)}
+                            className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-left text-xs font-bold transition-colors ${on ? 'bg-[#1499AD] text-white' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-100'}`}
+                          >
+                            <span className="truncate">{s.name}</span>
+                            <span className={`shrink-0 tabular-nums ${on ? 'text-white/90' : 'text-slate-400'}`}>{(Number(s.price)||0).toLocaleString('uz-UZ')}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ));
+                })()}
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-1 space-y-1">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">{t('appointments.price')}</Label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={form.price === '' || form.price === 0 ? '' : Number(form.price).toLocaleString('uz-UZ')}
+                      onChange={e => {
+                        const raw = e.target.value.replace(/\s/g, '').replace(/,/g, '').replace(/\./g, '').replace(/'/g, '');
+                        if (raw === '') setForm(prev => ({ ...prev, price: 0 }));
+                        else if (/^\d+$/.test(raw)) setForm(prev => ({ ...prev, price: Number(raw) }));
+                      }}
+                      onKeyDown={e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                      onWheel={e => e.target.blur()}
+                      placeholder="0"
+                      className="w-full h-10 rounded-xl border border-slate-100 bg-slate-50 px-3 text-xs font-bold outline-none"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
