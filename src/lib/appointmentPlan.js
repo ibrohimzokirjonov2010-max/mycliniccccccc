@@ -93,7 +93,6 @@ export async function createPlanFromAppointmentServices({
       amount: planTotal,
       method: '—',
       date: String(today).slice(0, 10),
-      plan_id: plan.id,
       notes: `Linked to Plan: ${plan.id}`,
     });
   }

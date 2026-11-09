@@ -123,6 +123,8 @@ const buildAppointmentPayload = (form) => {
     price: Number(form.price) || 0,
     status: form.status || 'Scheduled',
   };
+  // appointments table has no plan_id column — link lives in notes [[plan_id:...]]
+  delete payload.plan_id;
   Object.keys(payload).forEach((key) => {
     if (payload[key] === '' || payload[key] === undefined) delete payload[key];
   });
