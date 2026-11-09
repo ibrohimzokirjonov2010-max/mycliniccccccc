@@ -79,16 +79,15 @@ export async function syncPatientBalance(patientId) {
     .filter((p) => String(p.type || '').toLowerCase() === 'discount' && !isLinkedPlanInternal(p, 'discount'))
     .reduce((total, p) => total + Math.abs(Number(p.amount) || 0), 0);
   const isCancelledPlan = (plan) => ['cancelled', 'canceled', 'otkaz'].includes(String(plan?.status || '').trim().toLowerCase());
-  // Uchrashuvdan yaratilgan Planned reja — qarz faqat Keldi (In Progress) dan keyin.
-  const isAppointmentPendingPlan = (plan) => {
-    if (isCancelledPlan(plan)) return false;
+  const isActiveBillablePlan = (plan) => {
     const st = String(plan?.status || '').trim().toLowerCase();
-    if (st === 'in progress' || st === 'completed' || st === 'done' || st === 'bajarildi') return false;
-    return String(plan?.notes || '').includes('Uchrashuv orqali yaratilgan');
+    return st === 'in progress' || st === 'completed' || st === 'done' || st === 'bajarildi';
   };
   const cancelledPlanIds = new Set((plans || []).filter(isCancelledPlan).map((p) => String(p.id)));
+  // Fallback faqat aktiv/tugagan rejalar — Planned/Cancelled hech qachon plansPrice ga kirmasin.
+  // (Tezkor Planned + Debt qatorlari activeDebts yo'li orqali hisoblanadi.)
   const plansPrice = (plans || [])
-    .filter((plan) => !isCancelledPlan(plan) && !isAppointmentPendingPlan(plan))
+    .filter((plan) => isActiveBillablePlan(plan))
     .reduce((total, plan) => total + (Number(plan.total_price) || 0), 0);
   // Debt rows linked to cancelled (otkaz) plans must not keep the patient in debt.
   const activeDebts = (payments || [])
@@ -107,8 +106,10 @@ export async function syncPatientBalance(patientId) {
       return true;
     })
     .reduce((total, p) => total + (Number(p.amount) || 0), 0);
+  const debtRows = (payments || []).filter((p) => String(p.type || '').toLowerCase() === 'debt');
   let debt = 0;
-  if (activeDebts > 0) {
+  if (debtRows.length > 0 || activeDebts > 0) {
+    // Debt qatorlari bo'lsa faqat shu yo'l — cancelled exclusion bilan.
     const net = incomes + discounts - activeDebts - refunds;
     debt = net < 0 ? Math.abs(net) : 0;
   } else if (plansPrice > 0) {
