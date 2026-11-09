@@ -834,14 +834,14 @@ export default function DoctorDayGrid({
                           <div
                             onClick={(e) => handleAppointmentClick(e, appointment)}
                             className={cn(
-                              "flex-1 min-w-0 rounded-lg border-l-[3px] px-1.5 py-1 lg:px-2 lg:py-1 flex flex-col gap-0.5 justify-center transition-all hover:brightness-95 active:scale-[0.98] cursor-pointer group/card relative overflow-hidden lg:shadow-sm",
+                              "flex-1 min-w-0 rounded-lg border-l-[3px] px-1.5 py-1 lg:px-2 lg:py-1 flex flex-col gap-0.5 justify-center transition-all hover:brightness-95 active:scale-[0.98] cursor-pointer group/card relative overflow-visible lg:shadow-sm",
                               statusColors[normalizeAppointmentStatus(appointment.status)] || statusColors.Scheduled,
                               isMatch && "ring-2 ring-[#1499AD] ring-offset-1 animate-pulse scale-[1.02] z-10 shadow-lg shadow-[#1499AD]/20"
                             )}
                             style={{ borderLeftColor: palette.primary }}
                           >
-                            {/* 1-qator: ism + vaqt */}
-                            <div className="flex items-center gap-1 min-w-0">
+                            {/* 1-qator: ism + vaqt + to'lov/yana ikonkalari */}
+                            <div className="flex items-center gap-0.5 min-w-0">
                               {(appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url) && (
                                 <img
                                   src={appointment.patient_photo || appointment.photo_url || appointment.photo || appointment.avatar_url}
@@ -856,6 +856,26 @@ export default function DoctorDayGrid({
                                 {appointment.time}–{endTimeLabel}
                               </span>
                               {appointment.is_paid ? <Wallet className="w-2.5 h-2.5 text-emerald-600 shrink-0" /> : null}
+                              <button
+                                type="button"
+                                title="To'lov qo'shish"
+                                aria-label="To'lov qo'shish"
+                                data-testid="grid-card-pay"
+                                onClick={(e) => { e.stopPropagation(); onPayClick?.(appointment); }}
+                                className="shrink-0 h-4 w-4 lg:h-[18px] lg:w-[18px] justify-center rounded border bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 inline-flex items-center"
+                              >
+                                <CreditCard className="w-2.5 h-2.5" />
+                              </button>
+                              <button
+                                type="button"
+                                title="Yana qabulga yozish"
+                                aria-label="Yana qabulga yozish"
+                                data-testid="grid-card-rebook"
+                                onClick={(e) => { e.stopPropagation(); onRebookClick?.(appointment); }}
+                                className="shrink-0 h-4 w-4 lg:h-[18px] lg:w-[18px] justify-center rounded border bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100 inline-flex items-center"
+                              >
+                                <Calendar className="w-2.5 h-2.5" />
+                              </button>
                             </div>
 
                             {/* 2-qator: xizmat (1 qator truncate) */}
@@ -876,48 +896,30 @@ export default function DoctorDayGrid({
                               </div>
                             )}
 
-                            {/* 3-qator: holat + to'lov/yana (ixcham) */}
-                            <div className="flex items-center gap-0.5 min-w-0" data-testid="grid-card-quick-status">
-                              {onStatusChange && QUICK_STATUS_ACTIONS.map((qa) => {
-                                const active = normalizeAppointmentStatus(appointment.status) === qa.status;
-                                return (
-                                  <button
-                                    key={qa.status}
-                                    type="button"
-                                    title={qa.label}
-                                    aria-label={qa.label}
-                                    aria-pressed={active}
-                                    onClick={(e) => { e.stopPropagation(); if (!active) onStatusChange(appointment, qa.status); }}
-                                    className={cn(
-                                      "flex-1 min-w-0 h-[18px] lg:h-5 px-0.5 rounded text-[8px] lg:text-[9px] font-black tracking-tight whitespace-nowrap border transition-colors",
-                                      active ? "bg-slate-900 border-slate-900 text-white" : "bg-white/90 border-black/10 text-slate-700 hover:bg-white"
-                                    )}
-                                  >
-                                    {qa.label}
-                                  </button>
-                                );
-                              })}
-                              <button
-                                type="button"
-                                title="To'lov qo'shish"
-                                aria-label="To'lov qo'shish"
-                                data-testid="grid-card-pay"
-                                onClick={(e) => { e.stopPropagation(); onPayClick?.(appointment); }}
-                                className="shrink-0 h-[18px] lg:h-5 w-[18px] lg:w-5 justify-center rounded border bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 inline-flex items-center"
-                              >
-                                <CreditCard className="w-2.5 h-2.5" />
-                              </button>
-                              <button
-                                type="button"
-                                title="Yana qabulga yozish"
-                                aria-label="Yana qabulga yozish"
-                                data-testid="grid-card-rebook"
-                                onClick={(e) => { e.stopPropagation(); onRebookClick?.(appointment); }}
-                                className="shrink-0 h-[18px] lg:h-5 w-[18px] lg:w-5 justify-center rounded border bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100 inline-flex items-center"
-                              >
-                                <Calendar className="w-2.5 h-2.5" />
-                              </button>
-                            </div>
+                            {/* 3-qator: faqat holat — to'liq yorliq, butun kenglik */}
+                            {onStatusChange && (
+                              <div className="flex items-stretch gap-0.5 w-full" data-testid="grid-card-quick-status">
+                                {QUICK_STATUS_ACTIONS.map((qa) => {
+                                  const active = normalizeAppointmentStatus(appointment.status) === qa.status;
+                                  return (
+                                    <button
+                                      key={qa.status}
+                                      type="button"
+                                      title={qa.label}
+                                      aria-label={qa.label}
+                                      aria-pressed={active}
+                                      onClick={(e) => { e.stopPropagation(); if (!active) onStatusChange(appointment, qa.status); }}
+                                      className={cn(
+                                        "flex-1 h-[18px] lg:h-5 px-0.5 rounded text-[9px] lg:text-[10px] font-black tracking-tight whitespace-nowrap border transition-colors overflow-visible",
+                                        active ? "bg-slate-900 border-slate-900 text-white" : "bg-white/90 border-black/10 text-slate-700 hover:bg-white"
+                                      )}
+                                    >
+                                      {qa.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         );
                       })()}
