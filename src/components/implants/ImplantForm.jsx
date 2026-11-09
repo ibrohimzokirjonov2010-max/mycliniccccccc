@@ -1032,6 +1032,7 @@ export default function ImplantForm({
     }
     if (!form.doctor || !form.doctor.trim()) {
       setFormError(tw('needDoctor', "Iltimos, mas'ul shifokorni tanlang! Shifokor bo'limi to'ldirilmagan."));
+      setStep(1);
       return;
     }
     if (!form.tooth_numbers || form.tooth_numbers.length === 0) {
@@ -1500,6 +1501,10 @@ export default function ImplantForm({
       setFormError(tw('needPatient', 'Iltimos, avval bemorni tanlang!'));
       return;
     }
+    if (!form.doctor || !String(form.doctor).trim()) {
+      setFormError(tw('needDoctor', "Iltimos, mas'ul shifokorni tanlang! Shifokor bo'limi to'ldirilmagan."));
+      return;
+    }
     if (!selectedFdis.length) {
       setFormError(tw('needTeeth', "Iltimos, implant o'rnatiladigan tishni tanlang!"));
       return;
@@ -1688,9 +1693,35 @@ export default function ImplantForm({
 
       <div className="flex-1 min-w-0 flex flex-col gap-4">
         <section className={cardClass}>
-          <h3 className="implant-wizard-date-label text-[15px] font-bold text-[#111827] mb-3 flex items-center gap-2"><span className="md:hidden w-10 h-10 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center"><CalendarDays className="w-5 h-5" /></span>{tw('placementDate', "O'rnatilgan sana")}<span className="md:hidden text-rose-500">*</span></h3>
-          <div className="max-w-[240px] max-md:max-w-none">
-            <DateField value={form.placement_date} onChange={handleDateChange} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="min-w-0">
+              <h3 className="implant-wizard-date-label text-[15px] font-bold text-[#111827] mb-3 flex items-center gap-2"><span className="md:hidden w-10 h-10 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center"><CalendarDays className="w-5 h-5" /></span>{tw('placementDate', "O'rnatilgan sana")}<span className="md:hidden text-rose-500">*</span></h3>
+              <div className="max-w-[240px] max-md:max-w-none">
+                <DateField value={form.placement_date} onChange={handleDateChange} />
+              </div>
+            </div>
+            <div className="min-w-0" data-testid="implant-wizard-doctor">
+              <h3 className="implant-wizard-date-label text-[15px] font-bold text-[#111827] mb-3 flex items-center gap-2"><span className="md:hidden w-10 h-10 rounded-xl bg-teal-50 text-[#0d9488] inline-flex items-center justify-center"><UserRound className="w-5 h-5" /></span>{tw('responsibleDoctor', "Mas'ul shifokor")}<span className="md:hidden text-rose-500">*</span></h3>
+              <Select
+                value={form.doctor || undefined}
+                onValueChange={(v) => { setField('doctor', v); setFormError(''); }}
+              >
+                <SelectTrigger className={cn(fieldInput, 'max-w-[240px] max-md:max-w-none w-full')}>
+                  <SelectValue placeholder={tw('selectDoctor', 'Shifokorni tanlang...')} />
+                </SelectTrigger>
+                <SelectContent className="z-[220] rounded-xl">
+                  {doctors.map((d) => {
+                    const docName = clinicianDisplayName(d);
+                    if (!docName) return null;
+                    return (
+                      <SelectItem key={d.id || docName} value={docName}>
+                        {docName}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </section>
 

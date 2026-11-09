@@ -1593,7 +1593,9 @@
         "notice": "Note!",
         "notice1": "Stage 1 quoted amounts are valid for 3 months.",
         "notice2": "Stage 2 price is finalized with you 2–3 months after implant placement, when that work begins."
-      }
+      },
+      "responsibleDoctor": "Responsible doctor",
+      "selectDoctor": "Select doctor..."
     }
   },
   "treatmentTracking": {

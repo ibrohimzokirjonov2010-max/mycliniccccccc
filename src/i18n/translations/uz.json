@@ -1702,7 +1702,9 @@
         "notice": "Eslatma!",
         "notice1": "1-bosqichda hisoblab berilgan harajatlar miqdori 3 oy amal qiladi.",
         "notice2": "2-bosqich narxi implantatsiyadan so'ng 2–3 oy o'tib ish boshlanayotganda siz bilan maslahatlashgan holda aniq hisoblab beriladi."
-      }
+      },
+      "responsibleDoctor": "Mas'ul shifokor",
+      "selectDoctor": "Shifokorni tanlang..."
     }
   },
   "treatmentTracking": {
