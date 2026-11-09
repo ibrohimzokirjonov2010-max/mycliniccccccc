@@ -87,11 +87,16 @@ export async function syncPatientBalance(patientId) {
   const activeDebts = (payments || [])
     .filter((p) => {
       if (String(p.type || '').toLowerCase() !== 'debt') return false;
+      if (cancelledPlanIds.size === 0) return true;
       const notes = String(p.notes || '');
       const linked = p.plan_id != null && p.plan_id !== ''
         ? String(p.plan_id)
         : (notes.match(/Linked to Plan:\s*([^\s|]+)/i)?.[1] || notes.match(/\[\[plan_id:([^\]]+)\]\]/)?.[1] || '');
       if (linked && cancelledPlanIds.has(String(linked))) return false;
+      // Fallback: notes may wrap / decode oddly — any cancelled plan id mentioned is enough.
+      for (const id of cancelledPlanIds) {
+        if (id && (notes.includes(id) || String(p.plan_id || '') === id || String(p.category || '').includes(id))) return false;
+      }
       return true;
     })
     .reduce((total, p) => total + (Number(p.amount) || 0), 0);
