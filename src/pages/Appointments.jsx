@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useRestorableState } from '@/hooks/useRestorableState';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, CalendarDays, Search, ChevronLeft } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -16,7 +18,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { cn } from '@/lib/utils';
 import { addDaysKey, dateKeyOf, formatClinicDate, formatClinicDateWithWeekday, tashkentToday, weekdayName } from '@/lib/clinicTime';
-import { ClinicDateField } from '@/components/ui/ClinicDateField';
 import { QUERY_KEYS } from '@/lib/queryKeys';
 import { useAuth } from '@/lib/AuthContext';
 import { appointmentMatchesDoctor } from '@/utils/doctorMatch';
@@ -59,6 +60,7 @@ export default function Appointments() {
   const [searchQuery, setSearchQuery] = useRestorableState('searchQuery', '');
   const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
   const [viewDate, setViewDate] = useRestorableState('viewDate', () => tashkentToday());
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [activeTab, setActiveTab] = useRestorableState('activeTab', 'grid');
   const [listPeriod, setListPeriod] = useRestorableState('listPeriod', 'all');
   // Xodimlar sahifasidan kelgan shifokor nomi va "bekor qilinganlarsiz" belgisi
@@ -425,12 +427,42 @@ export default function Appointments() {
             </div>
             
             <div className="flex items-center gap-2">
-              <ClinicDateField
-                value={viewDate}
-                onChange={(e) => e.target.value && setViewDate(e.target.value)}
-                className="h-10 lg:h-9 w-[9.5rem] lg:w-[9.5rem] px-4 lg:px-3 rounded-2xl lg:rounded-xl border border-slate-200 text-[11px] lg:text-[12px] font-black text-slate-700 shadow-sm bg-white"
-              />
-              <span className="text-[11px] lg:text-[12px] font-black text-slate-700 whitespace-nowrap">{weekdayName(viewDate, 'uz')}</span>
+              <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    data-testid="appointments-date-picker"
+                    className="h-10 lg:h-9 w-[9.5rem] lg:w-[9.5rem] px-4 lg:px-3 rounded-2xl lg:rounded-xl border border-slate-200 text-[11px] lg:text-[12px] font-black text-slate-700 shadow-sm bg-white hover:border-[#1499AD]/40 hover:text-[#1499AD] transition-colors text-left"
+                  >
+                    {formatClinicDate(viewDate)}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  sideOffset={8}
+                  className="w-auto p-0 rounded-2xl border border-slate-200 shadow-xl z-[80]"
+                >
+                  <Calendar
+                    mode="single"
+                    captionLayout="label"
+                    selected={(() => {
+                      const m = String(viewDate || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+                      if (!m) return undefined;
+                      return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+                    })()}
+                    onSelect={(day) => {
+                      if (!day) return;
+                      const y = day.getFullYear();
+                      const mo = String(day.getMonth() + 1).padStart(2, '0');
+                      const da = String(day.getDate()).padStart(2, '0');
+                      setViewDate(`${y}-${mo}-${da}`);
+                      setDatePickerOpen(false);
+                    }}
+                    className="rounded-2xl"
+                  />
+                </PopoverContent>
+              </Popover>
+              <span className="text-[11px] lg:text-[12px] font-black text-slate-700 whitespace-nowrap">{weekdayName(viewDate, language === 'ru' ? 'ru' : 'uz')}</span>
             </div>
           </div>
 
