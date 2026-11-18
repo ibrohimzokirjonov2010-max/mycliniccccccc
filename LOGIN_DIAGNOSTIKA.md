@@ -205,16 +205,7 @@ Maydonlar:
 
 ## 🎯 Tezkor Test
 
-Demo ma'lumotlar bilan test qiling:
-
-```
-Klinika ID: default_clinic
-Login: admin
-Parol: admin
-
-Agar bu ishlasa, tizim to'g'ri ishlayapti!
-Keyin o'z ma'lumotlaringizni kiriting.
-```
+`default_clinic` ommaviy demo emas va ichida haqiqiy bemorlar bor. Test uchun alohida bo'sh klinika oching. Shu hujjatga login yoki parol yozmang.
 
 ---
 

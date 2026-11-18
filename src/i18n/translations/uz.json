@@ -869,7 +869,7 @@
       "shareLabel": "{rate}% ulush",
       "passwordLabel": "Parol: {pass}",
       "noDoctorsYet": "Hali shifokorlar qo'shilmagan",
-      "errorMinPassword": "Parol kamida 4 ta belgidan iborat bo'lishi kerak!",
+      "errorMinPassword": "Parol kamida 8 ta belgidan iborat bo'lishi kerak!",
       "successAddDoctor": "Shifokor muvaffaqiyatli qo'shildi!"
     },
     "publicPage": {

@@ -865,7 +865,7 @@
       "shareLabel": "доля {rate}%",
       "passwordLabel": "Пароль: {pass}",
       "noDoctorsYet": "Врачи еще не добавлены",
-      "errorMinPassword": "Пароль должен состоять минимум из 4 символов!",
+      "errorMinPassword": "Пароль должен состоять минимум из 8 символов!",
       "successAddDoctor": "Врач успешно добавлен!"
     },
     "publicPage": {

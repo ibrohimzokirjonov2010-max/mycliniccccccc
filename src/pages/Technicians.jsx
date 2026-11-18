@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Tooth } from '@/components/ui/Icons';
 import { base44 } from '@/api/base44Client';
+import { serverAccessToken } from '@/api/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -152,7 +153,7 @@ export default function Technicians() {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+            'Authorization': `Bearer ${await serverAccessToken()}`
           },
           body: JSON.stringify({
             chatId: patient.telegram_chat_id,
@@ -625,7 +626,7 @@ Sizni kutib qolamiz! 🏥`;
                           method: 'POST',
                           headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                            'Authorization': `Bearer ${await serverAccessToken()}`
                           },
                           body: JSON.stringify({
                             chatId: patient.telegram_chat_id,

@@ -1,3 +1,5 @@
+-- DO NOT RUN. This disables RLS. Historical script only.
+-- Phase 1 policies: supabase/migrations/20261118_phase1_security.sql
 -- ============================================================
 -- RLS TO'LIQ O'CHIRISH - BU SKRIPTNI SQL EDITOR'DA ISHLA
 -- ============================================================

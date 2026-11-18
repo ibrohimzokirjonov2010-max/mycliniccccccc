@@ -98,9 +98,6 @@ export function resolveClinicPlan(clinic) {
   const column = normalizePlan(decoded?.plan);
   if (tariff) return tariff;
   if (column) return column;
-  const id = String(decoded?.id || clinic?.id || '').trim().toLowerCase();
-  if (id === 'default_clinic') return 'premium';
-  if (id === 'ava-dent') return 'pro';
   return 'basic';
 }
 
@@ -175,10 +172,7 @@ export async function fetchServerPlan(clinicId) {
   if (hit && Date.now() - hit.at < 15000) return hit.plan;
 
   const { data, error } = await supabase.from('clinics').select('id,plan,logo').eq('id', id).maybeSingle();
-  let plan = 'basic';
-  if (!error && data) plan = resolveClinicPlan(data);
-  else if (key === 'default_clinic') plan = 'premium';
-  else if (key === 'ava-dent') plan = 'pro';
+  const plan = !error && data ? resolveClinicPlan(data) : 'basic';
   SERVER_PLAN_CACHE.set(key, { plan, at: Date.now() });
 
   const current = localStorage.getItem('clinic_plan');

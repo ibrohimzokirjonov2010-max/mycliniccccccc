@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { clearServerSession } from '@/api/supabaseClient';
+import { clearServerSession, supabase } from '@/api/supabaseClient';
 import { safeLocalStorage as localStorage } from '@/utils/safeStorage';
 import { sanitizeUser } from '@/utils/password';
 import { applyClinicSession, clearClinicSessionCache } from '@/lib/clinicPlan';
@@ -13,18 +13,16 @@ export const AuthProvider = ({ children }) => {
   const [isAdmin, setIsAdmin]             = useState(false);
   const [isDoctor, setIsDoctor]           = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [token, setToken]                 = useState(() => localStorage.getItem('auth_token'));
+  const [token, setToken]                 = useState(null);
 
-  const setAuthData = useCallback((userData, authToken) => {
+  const setAuthData = useCallback((userData) => {
     const safeUser = sanitizeUser(userData);
     setUser(safeUser);
     setIsAuthenticated(true);
     setIsAdmin(safeUser.role === 'admin');
     setIsDoctor(safeUser.role === 'doctor');
-    if (authToken) {
-      setToken(authToken);
-      localStorage.setItem('auth_token', authToken);
-    }
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('token');
   }, []);
 
   const logout = useCallback(() => {
@@ -56,56 +54,41 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const initAuth = async () => {
-      const authToken = localStorage.getItem('auth_token');
-      const userId    = localStorage.getItem('user_id');
-      const cachedUser = localStorage.getItem('user_data');
-
-      if (authToken && userId && cachedUser) {
-        try {
-          const parsed = JSON.parse(cachedUser);
-          if (parsed && parsed.id === userId) {
-            const safeParsed = sanitizeUser(parsed);
-            setUser(safeParsed);
-            setIsAuthenticated(true);
-            setIsAdmin(safeParsed.role === 'admin');
-            setIsDoctor(safeParsed.role === 'doctor');
-            if (parsed.password) {
-              localStorage.setItem('user_data', JSON.stringify(safeParsed));
-            }
-          }
-        } catch (e) {
-          console.warn('Error parsing cached user data:', e);
-        }
-      }
-
-      if (authToken && userId) {
-        try {
-          // getUserById → faqat 1 qatorli DB so'rov (getAllUsers o'rniga — juda tez!)
-          const foundUser = await base44.auth.getUserById(userId);
-          if (foundUser) {
-            const safeUser = sanitizeUser(foundUser);
-            setUser(safeUser);
-            localStorage.setItem('user_data', JSON.stringify(safeUser));
-            setIsAuthenticated(true);
-            setIsAdmin(safeUser.role === 'admin');
-            setIsDoctor(safeUser.role === 'doctor');
-            const clinic = await base44.clinic.getById(foundUser.clinic_id);
-            if (clinic) applyClinicSession(clinic);
-          } else {
-            logout();
-          }
-        } catch {
-          logout();
-        } finally {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('token');
+      try {
+        const { data: userResult, error } = await supabase.auth.getUser();
+        const meta = userResult?.user?.app_metadata || {};
+        const userId = meta.crm_user_id || localStorage.getItem('user_id');
+        if (error || !userResult?.user || !userId) {
           setIsLoadingAuth(false);
+          return;
         }
-      } else {
+        const { data: sessionData } = await supabase.auth.getSession();
+        setToken(sessionData?.session?.access_token || null);
+        const foundUser = await base44.auth.getUserById(userId);
+        if (!foundUser) {
+          setIsLoadingAuth(false);
+          return;
+        }
+        const safeUser = sanitizeUser(foundUser);
+        setUser(safeUser);
+        localStorage.setItem('user_data', JSON.stringify(safeUser));
+        localStorage.setItem('user_id', safeUser.id);
+        setIsAuthenticated(true);
+        setIsAdmin(safeUser.role === 'admin');
+        setIsDoctor(safeUser.role === 'doctor');
+        const clinic = await base44.clinic.getById(foundUser.clinic_id);
+        if (clinic) applyClinicSession(clinic);
+      } catch {
+        setIsAuthenticated(false);
+      } finally {
         setIsLoadingAuth(false);
       }
     };
 
     initAuth();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Memoized context value ───────────────────────────────────────────────
   // Critical fix: without useMemo, every AuthProvider render creates a new

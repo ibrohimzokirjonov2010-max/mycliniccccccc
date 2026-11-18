@@ -217,8 +217,8 @@ export default function MobileSettings() {
       toast.error('Ism kiriting!');
       return;
     }
-    if (!newStaff.password || newStaff.password.length < 4) {
-      toast.error('Parol kamida 4 ta belgidan iborat bo\'lishi kerak!');
+    if (!newStaff.password || newStaff.password.length < 8) {
+      toast.error('Parol kamida 8 ta belgidan iborat bo\'lishi kerak!');
       return;
     }
     try {
@@ -265,8 +265,8 @@ export default function MobileSettings() {
       toast.error('Ism kiriting!');
       return;
     }
-    if (myProfileForm.password && myProfileForm.password.length < 4) {
-      toast.error('Parol kamida 4 ta belgidan iborat bo\'lishi kerak!');
+    if (myProfileForm.password && myProfileForm.password.length < 8) {
+      toast.error('Parol kamida 8 ta belgidan iborat bo\'lishi kerak!');
       return;
     }
     if (myProfileForm.password && myProfileForm.password !== myProfileForm.confirmPassword) {

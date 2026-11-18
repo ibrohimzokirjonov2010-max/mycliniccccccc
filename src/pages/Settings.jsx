@@ -205,8 +205,8 @@ export default function Settings() {
       toast.error(t('settings.staff.errorEnterName') || 'Ism kiriting!');
       return;
     }
-    if (!newStaff.password || newStaff.password.length < 4) {
-      toast.error(t('settings.staff.errorMinPassword') || 'Parol kamida 4 ta belgidan iborat bo\'lishi kerak!');
+    if (!newStaff.password || newStaff.password.length < 8) {
+      toast.error(t('settings.staff.errorMinPassword') || 'Parol kamida 8 ta belgidan iborat bo\'lishi kerak!');
       return;
     }
 
@@ -274,8 +274,8 @@ export default function Settings() {
       toast.error(t('settings.staff.errorEnterName') || 'Ism kiriting!');
       return;
     }
-    if (myProfileForm.password && myProfileForm.password.length < 4) {
-      toast.error(t('settings.staff.errorMinPassword') || 'Parol kamida 4 ta belgidan iborat bo\'lishi kerak!');
+    if (myProfileForm.password && myProfileForm.password.length < 8) {
+      toast.error(t('settings.staff.errorMinPassword') || 'Parol kamida 8 ta belgidan iborat bo\'lishi kerak!');
       return;
     }
     if (myProfileForm.password && myProfileForm.password !== myProfileForm.confirmPassword) {
@@ -487,7 +487,7 @@ export default function Settings() {
                     </div>
                     <div className="col-span-7 p-2 flex items-center justify-between">
                       <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-                        {localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id') || 'default_clinic'}
+                        {localStorage.getItem('current_clinic_id') || localStorage.getItem('clinic_id') || '—'}
                       </span>
                       <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded border border-slate-200">
                         {t('settings.clinic.immutable') || "O'zgarmas ID"}
@@ -1111,7 +1111,7 @@ export default function Settings() {
                   </div>
                   <div className="col-span-7 p-2">
                     <PasswordInput
-                      placeholder="Kamida 4 ta belgi" 
+                      placeholder="Kamida 8 ta belgi" 
                       value={myProfileForm.password}
                       onChange={e => setMyProfileForm({ ...myProfileForm, password: e.target.value })}
                       className="h-9 text-xs font-mono border-slate-200 rounded-lg focus:border-indigo-500" 

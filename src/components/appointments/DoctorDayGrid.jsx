@@ -6,6 +6,7 @@ import { Clock, Wallet, FlaskConical, X, ChevronRight, MoreHorizontal, Phone, Ca
 import { cn, formatDateWithWeekday } from '@/lib/utils';
 import { useTranslation } from '@/i18n/LanguageContext';
 import { base44 } from '@/api/base44Client';
+import { serverAccessToken } from '@/api/supabaseClient';
 import { compressImage } from '@/utils/imageUpload';
 import { toast } from 'sonner';
 import AppointmentConfirmationBadge from './AppointmentConfirmationBadge';
@@ -28,7 +29,7 @@ function useTestReminder() {
     setLoadingId(id);
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
-      const token = localStorage.getItem('auth_token') || localStorage.getItem('token') || '';
+      const token = await serverAccessToken();
       const res = await fetch(`${backendUrl}/notifications/test-send-now`, {
         method: 'POST',
         headers: {

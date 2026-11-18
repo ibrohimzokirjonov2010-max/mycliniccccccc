@@ -121,6 +121,10 @@ export default function Register() {
       setError('Iltimos, barcha maydonlarni to\'ldiring');
       return;
     }
+    if (String(adminForm.password).length < 8) {
+      setError("Parol kamida 8 ta belgidan iborat bo'lishi kerak");
+      return;
+    }
     if (uzPhoneDigits(adminForm.phone).length !== 9) {
       setError("Telefon raqamini to'liq kiriting: +998 XX XXX XX XX");
       return;
@@ -203,6 +207,10 @@ export default function Register() {
       setError('Iltimos, barcha maydonlarni to\'ldiring');
       return;
     }
+    if (String(doctorForm.password).length < 8) {
+      setError("Parol kamida 8 ta belgidan iborat bo'lishi kerak");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -230,23 +238,13 @@ export default function Register() {
         clinic_inactive: 'Klinika faol emas',
         subscription_expired: 'Klinika obunasi muddati tugagan',
         bad_username: 'Login faqat lotin harflari, raqam va . _ - belgilaridan iborat bo\'lsin (kamida 3 ta)',
-        weak_password: 'Parol kamida 4 ta belgidan iborat bo\'lishi kerak',
+        weak_password: 'Parol kamida 8 ta belgidan iborat bo\'lishi kerak',
+        plan_required: 'Shifokor hisobi uchun PRO tarif kerak',
         missing_fields: 'Iltimos, barcha maydonlarni to\'ldiring',
         too_many_requests: 'Juda ko\'p urinish. Birozdan keyin qayta urinib ko\'ring',
       };
       if (data?.error && known[data.error]) throw new Error(known[data.error]);
-      await base44.auth.addUser({
-        clinic_id: doctorForm.clinicId.toLowerCase(),
-        name: doctorForm.fullName,
-        username: doctorForm.username,
-        password: doctorForm.password,
-        phone: doctorForm.phone,
-        specialty: doctorForm.specialty,
-        role: 'doctor',
-        commission_rate: doctorForm.commission
-      });
-      toast.success('Ro\'yxatdan o\'tdingiz! Endi kirishingiz mumkin.');
-      navigate('/login');
+      throw new Error('Ro\'yxatdan o\'tish serverda yakunlanmadi. Qayta urinib ko\'ring.');
     } catch (err) {
       setError(err.message || 'Xatolik yuz berdi');
     } finally {

@@ -1,6 +1,8 @@
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import { passwordError } from '../src/lib/passwordPolicy.js';
 import { decodeExt, encodeExt } from './_lib/clinicExt.js';
-import { normalizePlan, planPrice } from './_lib/plans.js';
+import { accessPlan, normalizePlan, planAllows, planPrice } from './_lib/plans.js';
 import { botToken } from './_lib/telegram.js';
 import { bodyOf, guard, send } from './_lib/http.js';
 import { clinicExpired } from './_lib/payments.js';
@@ -124,8 +126,8 @@ async function login(sb, body) {
   }
   if (!user) return [401, { ok: false, error: 'invalid_credentials' }];
 
-  if (user.password && !BCRYPT_RE.test(user.password)) {
-    // (RLS SQL'dan keyin users.password bo'sh; trigger hashni crm_private'ga ko'chiradi)
+  const stored = await storedHash(sb, user);
+  if (stored && !BCRYPT_RE.test(stored)) {
     try { await sb.from('users').update({ password: await bcrypt.hash(password, 10) }).eq('id', user.id); } catch { /* keyingi safar */ }
   }
 
@@ -145,6 +147,7 @@ async function register(sb, body) {
   if (!c || !a || !/^[a-z0-9]+([_-][a-z0-9]+)*$/.test(id) || !str(c.name) || !str(a.username, 80) || !a.password) {
     return [400, { ok: false, error: 'invalid_payload' }];
   }
+  if (passwordError(a.password)) return [400, { ok: false, error: 'weak_password' }];
   const { data: taken } = await sb.from('clinics').select('id').ilike('id', likeId(id)).limit(1);
   if (taken && taken.length) return [409, { ok: false, error: 'clinic_taken' }];
 
@@ -171,7 +174,8 @@ async function register(sb, body) {
     logo: encodeExt(ext, rawLogo),
   };
   const passHash = await bcrypt.hash(String(a.password), 10);
-  row.password = passHash; // clinics.password NOT NULL; ochiq parol saqlanmaydi
+  // clinics.password is NOT NULL for landing upserts. It is not a login secret.
+  row.password = `sealed-${crypto.randomBytes(9).toString('hex')}`;
   const ins = await sb.from('clinics').insert(row);
   if (ins.error) return [ins.error.code === '23505' ? 409 : 500, { ok: false, error: ins.error.code === '23505' ? 'clinic_taken' : 'db_error' }];
 
@@ -248,11 +252,12 @@ async function doctorRegister(sb, b) {
   const password = String(b.password || '');
   if (!clinicId || !name || !username || !password) return [400, { ok: false, error: 'missing_fields' }];
   if (!/^[A-Za-z0-9._@-]{3,60}$/.test(username)) return [400, { ok: false, error: 'bad_username' }];
-  if (password.length < 4 || password.length > 128) return [400, { ok: false, error: 'weak_password' }];
-  const { data: clinic } = await sb.from('clinics').select('id,name,status,expires_at').ilike('id', likeId(clinicId)).limit(1).maybeSingle();
+  if (passwordError(password)) return [400, { ok: false, error: 'weak_password' }];
+  const { data: clinic } = await sb.from('clinics').select('id,name,status,expires_at,plan,logo').ilike('id', likeId(clinicId)).limit(1).maybeSingle();
   if (!clinic) return [404, { ok: false, error: 'clinic_not_found' }];
   if (clinic.status !== 'Active') return [403, { ok: false, error: 'clinic_inactive' }];
   if (clinicExpired(clinic)) return [402, { ok: false, error: 'subscription_expired' }];
+  if (!planAllows(accessPlan(clinic), 'doctor_accounts')) return [403, { ok: false, error: 'plan_required' }];
   const { data: staff, error: se } = await sb.from('users').select('id,username').eq('clinic_id', clinic.id).limit(2000);
   if (se) return [500, { ok: false, error: 'db_error' }];
   if ((staff || []).some((u) => String(u.username || '').toLowerCase().trim() === username.toLowerCase())) return [409, { ok: false, error: 'username_taken' }];
@@ -301,10 +306,153 @@ async function handoff(sb, b) {
   return [200, { ok: true, user: sanitizeUser(user), clinic: safeClinic(clinic, { full: true }), session }];
 }
 
+function pageGranted(notes, key) {
+  const raw = typeof notes === 'string' ? notes : '';
+  if (!raw.startsWith('[TECH_DATA]')) return false;
+  const end = raw.indexOf('[END_TECH]');
+  if (end < 12) return false;
+  try {
+    return JSON.parse(raw.slice(11, end))?.page_access?.[key] === true;
+  } catch {
+    return false;
+  }
+}
+
+function missingColumn(error) {
+  const message = String(error?.message || '');
+  const code = String(error?.code || '');
+  if (code !== '42703' && code !== 'PGRST204' && !/column/i.test(message)) return '';
+  const match = message.match(/column "([A-Za-z_][A-Za-z0-9_]*)"/)
+    || message.match(/the '([A-Za-z_][A-Za-z0-9_]*)' column/)
+    || message.match(/column (?:[\w"]+\.)+([A-Za-z_][A-Za-z0-9_]*) does not exist/i);
+  return match ? match[1] : '';
+}
+
+const STAFF_PROTECTED = new Set(['id', 'password', 'clinic_id', 'role', 'username']);
+
+async function actorFrom(req, sb) {
+  const match = /^Bearer\s+(\S+)/.exec(String(req.headers.authorization || ''));
+  if (!match) return null;
+  const { data, error } = await sb.auth.getUser(match[1]);
+  if (error || !data?.user) return null;
+  const meta = data.user.app_metadata || {};
+  const jwtRole = String(meta.crm_role || '').toLowerCase();
+  const userId = String(meta.crm_user_id || '');
+  if (jwtRole === 'superadmin') {
+    return { userId: userId || 'superadmin', clinicId: meta.clinic_id ? String(meta.clinic_id) : '', role: 'superadmin', admin: true, platform: true, notes: '' };
+  }
+  if (!userId) return null;
+  const { data: row } = await sb.from('users').select('id,clinic_id,role,notes').eq('id', userId).maybeSingle();
+  if (!row) return null;
+  const role = String(row.role || '').toLowerCase();
+  return {
+    userId: row.id,
+    clinicId: String(row.clinic_id || ''),
+    role,
+    admin: role === 'admin' || role === 'owner',
+    platform: false,
+    notes: row.notes || '',
+  };
+}
+
+function canManageStaff(actor) {
+  return !!(actor && (actor.platform || actor.admin || pageGranted(actor.notes, 'staff')));
+}
+
+async function writeUserRow(sb, record, existingId) {
+  let payload = { ...record };
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const result = existingId
+      ? await sb.from('users').update(payload).eq('id', existingId)
+      : await sb.from('users').insert(payload);
+    if (!result.error) return null;
+    const column = missingColumn(result.error);
+    if (!column || STAFF_PROTECTED.has(column) || !Object.prototype.hasOwnProperty.call(payload, column)) {
+      return result.error;
+    }
+    delete payload[column];
+  }
+  return { code: 'db_error' };
+}
+
+async function changePassword(sb, req, body) {
+  const actor = await actorFrom(req, sb);
+  if (!actor) return [401, { ok: false, error: 'unauthorized' }];
+  const password = String(body.password || '');
+  if (passwordError(password)) return [400, { ok: false, error: 'weak_password' }];
+  const userId = str(body.user_id || actor.userId, 80);
+  if (!userId) return [400, { ok: false, error: 'missing_fields' }];
+  if (userId !== actor.userId && !canManageStaff(actor)) return [403, { ok: false, error: 'forbidden' }];
+  let query = sb.from('users').select('id,clinic_id').eq('id', userId);
+  if (!actor.platform) query = query.eq('clinic_id', actor.clinicId);
+  const { data: target } = await query.maybeSingle();
+  if (!target) return [404, { ok: false, error: 'user_not_found' }];
+  const updated = await sb.from('users').update({ password: await bcrypt.hash(password, 10) }).eq('id', target.id);
+  if (updated.error) return [500, { ok: false, error: 'db_error' }];
+  return [200, { ok: true, user_id: target.id }];
+}
+
+async function saveStaff(sb, req, body) {
+  const actor = await actorFrom(req, sb);
+  if (!actor) return [401, { ok: false, error: 'unauthorized' }];
+  if (!canManageStaff(actor)) return [403, { ok: false, error: 'forbidden' }];
+  const input = body.user && typeof body.user === 'object' ? body.user : body;
+  const clinicId = actor.platform ? str(input.clinic_id || actor.clinicId, 80) : actor.clinicId;
+  const username = str(input.username, 80);
+  const name = str(input.name || input.full_name || username, 120);
+  const role = str(input.role || 'doctor', 40).toLowerCase();
+  if (!clinicId || !username || !name) return [400, { ok: false, error: 'missing_fields' }];
+  if (!['admin', 'owner', 'doctor', 'receptionist'].includes(role)) return [400, { ok: false, error: 'bad_role' }];
+  if ((role === 'admin' || role === 'owner') && !actor.admin && !actor.platform) return [403, { ok: false, error: 'forbidden' }];
+  const password = input.password ? String(input.password) : '';
+  if (password && passwordError(password)) return [400, { ok: false, error: 'weak_password' }];
+  if (role === 'doctor') {
+    const { data: clinic } = await sb.from('clinics').select('id,plan,logo').eq('id', clinicId).maybeSingle();
+    if (clinic && !planAllows(accessPlan(clinic), 'doctor_accounts')) return [403, { ok: false, error: 'plan_required' }];
+  }
+  const requestedId = str(input.id, 80);
+  let existing = null;
+  if (requestedId) {
+    const { data } = await sb.from('users').select('id,clinic_id,username').eq('id', requestedId).maybeSingle();
+    existing = data;
+    if (existing && !actor.platform && norm(existing.clinic_id) !== norm(clinicId)) return [403, { ok: false, error: 'forbidden' }];
+  }
+  const { data: staff } = await sb.from('users').select('id,username').eq('clinic_id', clinicId).limit(2000);
+  const taken = (staff || []).find((u) => String(u.username || '').toLowerCase() === username.toLowerCase() && u.id !== existing?.id);
+  if (taken) return [409, { ok: false, error: 'username_taken' }];
+
+  const record = {
+    clinic_id: clinicId,
+    username,
+    role,
+    name,
+    full_name: str(input.full_name || name, 120),
+    phone: str(input.phone, 40) || null,
+    specialty: str(input.specialty, 80) || null,
+    commission_rate: Math.min(100, Math.max(0, Number(input.commission_rate) || 0)),
+  };
+  if (typeof input.notes === 'string') record.notes = input.notes;
+  if (input.base_salary != null && input.base_salary !== '') record.base_salary = Number(input.base_salary) || 0;
+  if (password) record.password = await bcrypt.hash(password, 10);
+
+  if (!existing) {
+    record.id = requestedId || `user-${crypto.randomBytes(6).toString('hex')}`;
+    record.created_at = new Date().toISOString();
+    if (!password) return [400, { ok: false, error: 'weak_password' }];
+    const error = await writeUserRow(sb, record, null);
+    if (error) return [error.code === '23505' ? 409 : 500, { ok: false, error: error.code === '23505' ? 'username_taken' : 'db_error' }];
+    return [200, { ok: true, user: sanitizeUser({ ...record, password: undefined }) }];
+  }
+
+  const error = await writeUserRow(sb, record, existing.id);
+  if (error) return [500, { ok: false, error: 'db_error' }];
+  return [200, { ok: true, user: sanitizeUser({ ...record, id: existing.id, password: undefined }) }];
+}
+
 export default async function handler(req, res) {
   const action = String(req.query?.action || '');
   const isGet = ['clinic-available', 'public-clinic', 'public-slots'].includes(action);
-  const limits = { login: 20, register: 5, 'public-book': 10, 'doctor-register': 5, handoff: 20 };
+  const limits = { login: 20, register: 5, 'public-book': 10, 'doctor-register': 5, handoff: 20, 'save-staff': 30, 'change-password': 10 };
   if (!guard(req, res, { method: isGet ? 'GET' : 'POST', limit: limits[action] || 0 })) return;
   const sb = supabaseAdmin();
   if (!sb) return send(res, 503, { ok: false, error: 'server_not_configured' });
@@ -317,6 +465,8 @@ export default async function handler(req, res) {
     else if (action === 'public-book') out = await publicBook(sb, bodyOf(req));
     else if (action === 'doctor-register') out = await doctorRegister(sb, bodyOf(req));
     else if (action === 'handoff') out = await handoff(sb, bodyOf(req));
+    else if (action === 'change-password') out = await changePassword(sb, req, bodyOf(req));
+    else if (action === 'save-staff') out = await saveStaff(sb, req, bodyOf(req));
     else if (action === 'clinic-available') {
       const id = str(req.query?.id, 60);
       const { data } = await sb.from('clinics').select('id').ilike('id', likeId(id)).limit(1);

@@ -1,3 +1,6 @@
+-- DO NOT RUN. This disables RLS, grants anon every table, and inserts
+-- demo passwords (admin/admin). Historical script only.
+-- Phase 1: supabase/migrations/20261118_phase1_security.sql
 -- ============================================================
 -- FAQAT GRANT VA RLS TUZATISH
 -- Bu skriptni Supabase SQL Editor'da ishga tushiring

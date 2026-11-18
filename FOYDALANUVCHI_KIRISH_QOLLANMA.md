@@ -222,20 +222,7 @@ Ctrl + Shift + Delete
 
 ## 📞 Tezkor Yordam
 
-**Demo ma'lumotlar:**
-
-```
-Klinika ID: default_clinic
-Login: admin
-Parol: admin
-```
-
-**Admin Login:**
-```
-URL: http://localhost:5175/super-admin-portal
-Username: admin
-Password: admin123
-```
+**Ommaviy demo klinika yo'q.** `default_clinic` haqiqiy bemorlar klinikasi. Kirish uchun o'z klinika ID, login va parolingizni ishlating. Parolni shu hujjatga yozmang.
 
 ---
 

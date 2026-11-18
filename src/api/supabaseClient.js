@@ -1,6 +1,43 @@
 import { createClient } from '@supabase/supabase-js';
 import { safeLocalStorage as localStorage } from '@/utils/safeStorage';
-import { preparePasswordForWrite, sanitizeUser, sanitizeUsers } from '@/utils/password';
+import { sanitizeUser, sanitizeUsers } from '@/utils/password';
+import { missingColumnFromError } from './missingColumn';
+
+export const USER_PUBLIC_COLUMNS = [
+  'id', 'clinic_id', 'username', 'name', 'full_name', 'phone', 'specialty',
+  'role', 'commission_rate', 'base_salary', 'notes', 'created_at', 'updated_date',
+];
+export const CLINIC_PUBLIC_COLUMNS = [
+  'id', 'name', 'logo', 'expires_at', 'status', 'created_at',
+  'monthly_fee', 'last_payment_date', 'plan',
+];
+const USER_AUTH_COLUMNS = new Set(['id', 'password', 'clinic_id', 'role', 'username']);
+
+async function selectPublic(table, columns, build) {
+  let fields = [...columns];
+  let lastError = null;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    let query = supabase.from(table).select(fields.join(','));
+    if (build) query = build(query);
+    const result = await query;
+    if (!result.error) return result;
+    lastError = result.error;
+    const missing = missingColumnFromError(result.error);
+    if (!missing || missing === 'password' || !fields.includes(missing)) break;
+    fields = fields.filter((field) => field !== missing);
+  }
+  return { data: null, error: lastError };
+}
+
+function rejectProtectedColumn(error) {
+  const missing = missingColumnFromError(error);
+  if (missing && USER_AUTH_COLUMNS.has(missing)) {
+    const err = new Error(`Majburiy ustun yo'q: ${missing}`);
+    err.code = error.code;
+    throw err;
+  }
+  return missing;
+}
 
 // Supabase configuration
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://zvyggjldzkxwufpnaatr.supabase.co';
@@ -12,21 +49,58 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Create Supabase client
+const authStorage = {
+  getItem(key) {
+    if (typeof window === 'undefined') return null;
+    const remember = window.localStorage.getItem('crm_remember') === '1';
+    return (remember ? window.localStorage : window.sessionStorage).getItem(key);
+  },
+  setItem(key, value) {
+    if (typeof window === 'undefined') return;
+    const remember = window.localStorage.getItem('crm_remember') === '1';
+    (remember ? window.localStorage : window.sessionStorage).setItem(key, value);
+  },
+  removeItem(key) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.removeItem(key);
+    window.sessionStorage.removeItem(key);
+  },
+};
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey || 'missing-anon-key', {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'myclinic-crm-auth' },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+    storageKey: 'myclinic-crm-auth',
+    storage: authStorage,
+  },
 });
+
+export async function serverAccessToken() {
+  const { data } = await supabase.auth.getSession();
+  return data?.session?.access_token || '';
+}
 
 // ============================================================
 // Server auth (/api/auth): klinika foydalanuvchisi uchun Supabase sessiyasi.
 // RLS yoqilganda barcha so'rovlar shu sessiya JWT'si (app_metadata.clinic_id) bilan ketadi.
 // ============================================================
-export async function crmAuthApi(action, { method = 'POST', body, query } = {}) {
+export async function crmAuthApi(action, { method = 'POST', body, query, auth = false } = {}) {
   const qs = new URLSearchParams({ action, ...(query || {}) }).toString();
+  const headers = {};
+  if (body) headers['Content-Type'] = 'application/json';
+  if (auth) {
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) return { status: 401, data: { ok: false, error: 'unauthorized' } };
+    headers.Authorization = `Bearer ${token}`;
+  }
   let res;
   try {
     res = await fetch(`/api/auth?${qs}`, {
       method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
@@ -39,13 +113,21 @@ export async function crmAuthApi(action, { method = 'POST', body, query } = {}) 
 /** Server bergan sessiyani supabase klientiga o'rnatadi. */
 export async function applyServerSession(session) {
   if (!session?.access_token || !session?.refresh_token) return false;
+  authStorage.removeItem('myclinic-crm-auth');
   const { error } = await supabase.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token });
   if (error) { console.warn('[auth] setSession failed:', error.message); return false; }
   return true;
 }
 
 export async function clearServerSession() {
-  try { if (typeof window !== 'undefined') window.localStorage.removeItem('myclinic-crm-auth'); } catch { /* ignore */ }
+  try {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('myclinic-crm-auth');
+      window.sessionStorage.removeItem('myclinic-crm-auth');
+      window.localStorage.removeItem('auth_token');
+      window.localStorage.removeItem('token');
+    }
+  } catch { /* ignore */ }
   try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* ignore */ }
 }
 
@@ -236,14 +318,13 @@ export const db = {
   // Clinics
   clinics: {
     getAll: async () => {
-      const { data, error } = await supabase
-        .from('clinics').select('*').order('created_at', { ascending: false });
+      const { data, error } = await selectPublic('clinics', CLINIC_PUBLIC_COLUMNS, (query) => query.order('id', { ascending: true }));
       if (error) { console.error('Error fetching clinics:', error); return []; }
       return data || [];
     },
 
     getById: async (id) => {
-      const { data, error } = await supabase.from('clinics').select('*').eq('id', id).single();
+      const { data, error } = await selectPublic('clinics', CLINIC_PUBLIC_COLUMNS, (query) => query.eq('id', id).maybeSingle());
       if (error) return null;
       return data;
     },
@@ -256,7 +337,7 @@ export const db = {
       const MAX_RETRIES = 3;
       let record = { ...payload };
       for (let i = 0; i < MAX_RETRIES; i++) {
-        const { data, error } = await supabase.from('clinics').insert([record]).select().single();
+        const { data, error } = await supabase.from('clinics').insert([record]).select(CLINIC_PUBLIC_COLUMNS.join(',')).single();
         if (error) {
           if ((error.code === '42703' || error.code === 'PGRST204') && error.message) {
             const colMatch = error.message.match(/column "(\w+)"/) || error.message.match(/the '(\w+)' column/);
@@ -282,7 +363,7 @@ export const db = {
       let removedCols = [];
       
       for (let i = 0; i < MAX_RETRIES; i++) {
-        const { data, error } = await supabase.from('clinics').update(record).eq('id', id).select().single();
+        const { data, error } = await supabase.from('clinics').update(record).eq('id', id).select(CLINIC_PUBLIC_COLUMNS.join(',')).single();
         
         if (error) {
           if ((error.code === '42703' || error.code === 'PGRST204') && error.message) {
@@ -319,39 +400,35 @@ export const db = {
   // Users
   users: {
     getAll: async () => {
-      const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
+      const { data, error } = await selectPublic('users', USER_PUBLIC_COLUMNS, (query) => query.order('id', { ascending: true }));
       if (error) { console.error('Error fetching users:', error); return []; }
       return sanitizeUsers(data || []);
     },
 
     getByClinic: async (clinicId) => {
-      const { data, error } = await supabase.from('users').select('*').eq('clinic_id', clinicId);
+      const { data, error } = await selectPublic('users', USER_PUBLIC_COLUMNS, (query) => query.eq('clinic_id', clinicId));
       if (error) { console.error('Error fetching users:', error); return []; }
       return sanitizeUsers(data || []);
     },
 
     create: async (user) => {
+      if (user?.password) throw new Error('Parol faqat serverda saqlanadi');
       const MAX_RETRIES = 3;
-      const hashed = await preparePasswordForWrite(user.password);
-      let record = { 
+      let record = {
         ...user,
         created_at: user.created_at || new Date().toISOString()
       };
-      if (hashed) record.password = hashed;
-      else delete record.password;
-      
+      delete record.password;
+
       for (let i = 0; i < MAX_RETRIES; i++) {
-        const { data, error } = await supabase.from('users').insert([record]).select().single();
+        const { data, error } = await supabase.from('users').insert([record]).select('id,clinic_id,username,role,name').single();
         if (error) {
-          if ((error.code === '42703' || error.code === 'PGRST204') && error.message) {
-            const colMatch = error.message.match(/column "(\w+)"/) || error.message.match(/the '(\w+)' column/);
-            if (colMatch) {
-              const badCol = colMatch[1];
-              console.warn(`⚠️ users: Column '${badCol}' missing, removing and retrying... (${i + 1}/${MAX_RETRIES})`);
-              delete record[badCol];
-              await new Promise(res => setTimeout(res, 300));
-              continue;
-            }
+          const badCol = rejectProtectedColumn(error);
+          if (badCol) {
+            console.warn(`⚠️ users: Column '${badCol}' missing, removing and retrying... (${i + 1}/${MAX_RETRIES})`);
+            delete record[badCol];
+            await new Promise(res => setTimeout(res, 300));
+            continue;
           }
           throw error;
         }
@@ -361,23 +438,19 @@ export const db = {
     },
 
     update: async (id, updates) => {
+      if (updates?.password) throw new Error('Parol faqat serverda saqlanadi');
       const MAX_RETRIES = 3;
-      const hashed = await preparePasswordForWrite(updates.password);
       let record = { ...updates };
-      if (hashed) record.password = hashed;
-      else delete record.password;
+      delete record.password;
       for (let i = 0; i < MAX_RETRIES; i++) {
-        const { data, error } = await supabase.from('users').update(record).eq('id', id).select().single();
+        const { data, error } = await supabase.from('users').update(record).eq('id', id).select('id,clinic_id,username,role,name').single();
         if (error) {
-          if ((error.code === '42703' || error.code === 'PGRST204') && error.message) {
-            const colMatch = error.message.match(/column "(\w+)"/) || error.message.match(/the '(\w+)' column/);
-            if (colMatch) {
-              const badCol = colMatch[1];
-              console.warn(`⚠️ users: Column '${badCol}' missing on update, removing and retrying... (${i + 1}/${MAX_RETRIES})`);
-              delete record[badCol];
-              await new Promise(res => setTimeout(res, 300));
-              continue;
-            }
+          const badCol = rejectProtectedColumn(error);
+          if (badCol) {
+            console.warn(`⚠️ users: Column '${badCol}' missing on update, removing and retrying... (${i + 1}/${MAX_RETRIES})`);
+            delete record[badCol];
+            await new Promise(res => setTimeout(res, 300));
+            continue;
           }
           throw error;
         }

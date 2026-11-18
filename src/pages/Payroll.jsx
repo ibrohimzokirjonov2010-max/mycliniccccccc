@@ -327,7 +327,7 @@ export default function Payroll() {
       const baseName = firstName.toLowerCase().replace(/[^a-z0-9]/gi, '');
       const randomSuffix = Math.floor(Math.random() * 9000 + 1000).toString();
       const cleanUsername = `${baseName}_${randomSuffix}`;
-      const generatedPassword = Math.floor(100000 + Math.random() * 900000).toString();
+      const generatedPassword = Math.floor(10000000 + Math.random() * 90000000).toString();
 
       const savedName = newDoctorForm.full_name.trim();
       const isPercentage = newDoctorForm.salary_type === 'percentage';
