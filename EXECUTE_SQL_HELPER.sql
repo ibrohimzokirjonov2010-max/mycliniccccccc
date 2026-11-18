@@ -1,3 +1,6 @@
+-- DO NOT RUN.
+-- execute_query / execute_ddl run arbitrary SQL as the function owner.
+-- They are removed by supabase/migrations/20261118_phase1_security.sql.
 -- ============================================================
 -- 1. OPEN A NEW TAB IN SUPABASE SQL EDITOR
 -- 2. Paste ONLY this code

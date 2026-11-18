@@ -1,3 +1,5 @@
+-- DO NOT RUN. This disables RLS and grants anon full table access.
+-- Phase 1 policies live in supabase/migrations/20261118_phase1_security.sql.
 -- ============================================================
 -- 🔓 DENTAL CRM - BARCHA JADVALLARDAGI RLS TO'LIQ O'CHIRISH
 -- Supabase Dashboard > SQL Editor ga kirip, bu faylni to'liq

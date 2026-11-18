@@ -764,7 +764,7 @@
       "shareLabel": "{rate}% share",
       "passwordLabel": "Password: {pass}",
       "noDoctorsYet": "No doctors added yet",
-      "errorMinPassword": "Password must be at least 4 characters long!",
+      "errorMinPassword": "Password must be at least 8 characters long!",
       "successAddDoctor": "Doctor successfully added!"
     },
     "publicPage": {

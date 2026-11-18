@@ -228,7 +228,7 @@ Natija:
 2. Klinikangizni toping
 3. "Foydalanuvchilar" tugmasini bosing
 4. "Foydalanuvchi Qo'shish"
-5. admin/admin/parol qo'shing
+5. Kamida 8 belgili yangi parol qo'ying. Demo parolni hujjatga yozmang.
 
 ### Muammo 2: "Parol noto'g'ri"
 

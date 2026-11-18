@@ -602,8 +602,8 @@ export default function Staff() {
         commission_rate: Number(editStaffForm.commission || 0),
       };
       if (editStaffForm.password && editStaffForm.password.trim()) {
-        if (editStaffForm.password.trim().length < 4) {
-          toast.error(t('settings.staff.errorMinPassword') || "Parol kamida 4 ta belgidan iborat bo'lishi kerak!");
+        if (editStaffForm.password.trim().length < 8) {
+          toast.error(t('settings.staff.errorMinPassword') || "Parol kamida 8 ta belgidan iborat bo'lishi kerak!");
           return;
         }
         updatedData.password = editStaffForm.password.trim();

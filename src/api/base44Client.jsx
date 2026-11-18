@@ -1,15 +1,9 @@
-import { supabase, db, crmAuthApi, applyServerSession, clearServerSession } from './supabaseClient';
+import { supabase, db, crmAuthApi, applyServerSession, clearServerSession, USER_PUBLIC_COLUMNS } from './supabaseClient';
 import { applyStaffOverride } from '@/lib/staffOverrides';
 import { createCaseOnServer, deleteCaseOnServer, isClinicCaseRow, listServerCases } from './caseServerStore';
 import { missingColumnFromError, omitMissingColumn } from './missingColumn';
 import { sendTelegramMessage, formatLeadMessage } from './telegramBot';
-import {
-  verifyPassword,
-  isPasswordHash,
-  sanitizeUser,
-  sanitizeUsers,
-  preparePasswordForWrite,
-} from '@/utils/password';
+import { sanitizeUser, sanitizeUsers } from '@/utils/password';
 import { patientGenderForDb } from '@/lib/patientGender';
 import { markOncePricingDirty, normalizeOncePricedPlan, oncePricingChanged, staleEncodedOnceTotal } from '@/lib/toothPlanCharge';
 import {
@@ -168,6 +162,15 @@ class HybridEntityLoader {
     this.useSupabase = !!import.meta.env.VITE_SUPABASE_URL;
     // Memory cache for record enrichment results to avoid repeated JSON.parse/merge in same render cycle
     this._enrichmentCache = new Map();
+  }
+
+  _projection() {
+    if (this.entityName !== 'User') return '*';
+    return USER_PUBLIC_COLUMNS.join(',');
+  }
+
+  _userProtectedColumn(column) {
+    return this.entityName === 'User' && ['password', 'role', 'username', 'clinic_id', 'id'].includes(column);
   }
 
   _getClinicId() {
@@ -552,7 +555,7 @@ class HybridEntityLoader {
         if (isMultiplexed) {
           return supabase.from('notes').select('*').eq('clinic_id', clinicId);
         }
-        let q = supabase.from(tableName).select('*');
+        let q = supabase.from(tableName).select(this._projection());
         // BotConfig: ko‘p klinika uchun bitta bot ishlatilishi mumkin.
         if (this.entityName !== 'BotConfig') {
           q = q.eq('clinic_id', clinicId);
@@ -722,7 +725,7 @@ class HybridEntityLoader {
 
       let query = supabase
         .from(tableName)
-        .select('*')
+        .select(this._projection())
         .eq('clinic_id', clinicId)
         .or(orFilter)
         .order('id', { ascending: false })
@@ -767,7 +770,7 @@ class HybridEntityLoader {
       
       let query = supabase
         .from(this._getTableName())
-        .select('*');
+        .select(this._projection());
       
       // BotConfig: default holatda klinika bo‘yicha filter qilmaymiz (global bot support)
       // Agar caller aniq clinic_id bersa, shu holatda filter qiladi.
@@ -796,7 +799,7 @@ class HybridEntityLoader {
       if (error && (error.code === '42703' || error.code === 'PGRST204' || error.message?.includes('column') || error.message?.includes('does not exist'))) {
         const missing = rememberAbsentColumn(tableName, error);
         if (missing) localConditions[missing] = conditions[missing];
-        let retry = supabase.from(tableName).select('*');
+        let retry = supabase.from(tableName).select(this._projection());
         if (this.entityName !== 'BotConfig' || conditions.clinic_id) {
           retry = retry.eq('clinic_id', clinicId);
         }
@@ -883,6 +886,21 @@ class HybridEntityLoader {
 
   async create(payload) {
     await this._checkAccess();
+    if (this.entityName === 'User' && payload?.password) {
+      const encoded = this._encodeNotes({ ...payload, clinic_id: payload.clinic_id || this._getClinicId() });
+      const { status, data } = await crmAuthApi('save-staff', { auth: true, body: { user: encoded } });
+      if (status !== 200 || !data?.ok) {
+        const known = {
+          weak_password: "Parol kamida 8 ta belgidan iborat bo'lishi kerak",
+          username_taken: 'Bu login band',
+          forbidden: "Xodim qo'shish uchun ruxsat yo'q",
+          unauthorized: 'Sessiya tugagan. Qayta kiring',
+          plan_required: "Shifokor hisobi uchun PRO tarif kerak",
+        };
+        throw new Error(known[data?.error] || 'Xodim saqlanmadi');
+      }
+      return sanitizeUser(this._decodeNotes(data.user || encoded));
+    }
     if (this.entityName === 'ImplantBrand') {
       const row = { id: payload?.id || `brand_${Date.now()}`, ...payload, clinic_id: this._getClinicId(), is_active: true };
       const data = this._getData();
@@ -892,11 +910,7 @@ class HybridEntityLoader {
     }
     RequestCache.invalidate(this.entityName);
     let incoming = { ...payload };
-    if (this.entityName === 'User') {
-      const hashed = await preparePasswordForWrite(incoming.password);
-      if (hashed) incoming.password = hashed;
-      else delete incoming.password;
-    }
+    if (this.entityName === 'User') delete incoming.password;
     if (this.entityName === 'Case') {
       if (!this.useSupabase) {
         throw new Error('Keys serverga saqlanmadi. Server ulanmagan.');
@@ -1013,7 +1027,7 @@ class HybridEntityLoader {
         const { data, error } = await supabase
           .from(this._getTableName())
           .insert([record])
-          .select()
+          .select(this._projection())
           .single();
         
         if (error) {
@@ -1021,8 +1035,8 @@ class HybridEntityLoader {
           // Live Postgres reports `column implants.factura does not exist`, which the old quoted-name regex missed.
           const badCol = missingColumnFromError(error);
           if (badCol && !removedCols.includes(badCol)) {
-            const protectedCols = ['notes', 'clinic_id', 'id', 'recall_date', 'patient_id'];
-            if (protectedCols.includes(badCol)) {
+            const protectedCols = ['notes', 'clinic_id', 'id', 'recall_date', 'patient_id', 'password', 'role', 'username'];
+            if (protectedCols.includes(badCol) || this._userProtectedColumn(badCol)) {
               console.warn(`⚠️ [${this.entityName}] Protected column '${badCol}' missing or invalid in DB!`);
               throw error;
             }
@@ -1066,8 +1080,8 @@ class HybridEntityLoader {
 
         const badCol = missingColumnFromError(error);
         if (badCol && !removedCols.includes(badCol)) {
-          const protectedCols = ['notes', 'clinic_id', 'id', 'recall_date', 'patient_id'];
-          if (!protectedCols.includes(badCol)) {
+          const protectedCols = ['notes', 'clinic_id', 'id', 'recall_date', 'patient_id', 'password', 'role', 'username'];
+          if (!protectedCols.includes(badCol) && !this._userProtectedColumn(badCol)) {
             console.warn(`⚠️ [${this.entityName}] Column '${badCol}' not in DB, removing and retry...`);
             removedCols.push(badCol);
             record = omitMissingColumn(record, badCol);
@@ -1107,13 +1121,23 @@ class HybridEntityLoader {
 
   async update(id, payload) {
     await this._checkAccess();
+    if (this.entityName === 'User' && payload?.password) {
+      const { status, data } = await crmAuthApi('change-password', {
+        auth: true,
+        body: { user_id: id, password: payload.password },
+      });
+      if (status !== 200 || !data?.ok) {
+        const known = {
+          weak_password: "Parol kamida 8 ta belgidan iborat bo'lishi kerak",
+          forbidden: "Bu parolni o'zgartirish uchun ruxsat yo'q",
+          unauthorized: 'Sessiya tugagan. Qayta kiring',
+        };
+        throw new Error(known[data?.error] || 'Parol saqlanmadi');
+      }
+    }
     RequestCache.invalidate(this.entityName);
     let incoming = { ...payload };
-    if (this.entityName === 'User') {
-      const hashed = await preparePasswordForWrite(incoming.password);
-      if (hashed) incoming.password = hashed;
-      else delete incoming.password;
-    }
+    if (this.entityName === 'User') delete incoming.password;
     if (!this.useSupabase) {
       const updated = this._localStorageUpdate(id, incoming);
       return this.entityName === 'User' ? sanitizeUser(updated) : updated;
@@ -1159,7 +1183,7 @@ class HybridEntityLoader {
         try {
           const { data: existingRecord } = await supabase
             .from(tableName)
-            .select('*')
+            .select(this._projection())
             .eq('id', id)
             .single();
 
@@ -1225,15 +1249,17 @@ class HybridEntityLoader {
             .from(tableName)
             .update(recordToUpdate)
             .eq('id', id)
-            .select()
+            .select(this._projection())
             .single();
           
           if (error) {
             // PGRST204 or 42703: Column not found — remove it and retry
             const badCol = missingColumnFromError(error);
             if (badCol && !removedCols.includes(badCol)) {
-              const protectedCols = ['notes', 'tooth_data'];
-              if (protectedCols.includes(badCol)) {
+              const protectedCols = ['notes', 'tooth_data', 'password', 'role', 'username', 'clinic_id', 'id'];
+              if (this._userProtectedColumn(badCol)) throw error;
+              if (protectedCols.includes(badCol) && this.entityName === 'User') throw error;
+              if (protectedCols.includes(badCol) && badCol !== 'password' && badCol !== 'role' && badCol !== 'username' && badCol !== 'clinic_id' && badCol !== 'id') {
                 console.warn(`⚠️ [${this.entityName}] Protected column '${badCol}' NOT in DB. Using notes fallback.`);
                 removedCols.push(badCol);
                 recordToUpdate = omitMissingColumn(recordToUpdate, badCol);
@@ -1563,10 +1589,10 @@ class HybridEntityLoader {
 
 // Default users for each clinic (initial demo users only)
 const DEFAULT_USERS = [
-  { id: 'user-1', clinic_id: 'ava-dent', username: 'admin', email: 'admin@avadent.uz', password: 'ava7', name: 'Administrator', role: 'admin', commission_rate: 0 },
-  { id: 'user-2', clinic_id: 'ava-dent', username: 'doctor', email: 'doctor@avadent.uz', password: 'doctor123', name: 'Shifokor', role: 'doctor', commission_rate: 30 },
-  { id: 'user-3', clinic_id: 'default_clinic', username: 'admin', email: 'admin@demo.uz', password: 'admin', name: 'Demo Admin', role: 'admin', commission_rate: 0 },
-  { id: 'user-4', clinic_id: 'default_clinic', username: 'demo', email: 'doctor@demo.uz', password: 'demo', name: 'Demo User', role: 'doctor', commission_rate: 30 }
+  { id: 'user-1', clinic_id: 'ava-dent', username: 'admin', email: 'admin@avadent.uz', name: 'Administrator', role: 'admin', commission_rate: 0 },
+  { id: 'user-2', clinic_id: 'ava-dent', username: 'doctor', email: 'doctor@avadent.uz', name: 'Shifokor', role: 'doctor', commission_rate: 30 },
+  { id: 'user-3', clinic_id: 'default_clinic', username: 'admin', email: 'admin@demo.uz', name: 'Demo Admin', role: 'admin', commission_rate: 0 },
+  { id: 'user-4', clinic_id: 'default_clinic', username: 'demo', email: 'doctor@demo.uz', name: 'Demo User', role: 'doctor', commission_rate: 30 }
 ];
 
 export const DEFAULT_SERVICES_DATA = [
@@ -1625,7 +1651,27 @@ export const DEFAULT_SERVICES_DATA = [
 ];
 
 // Initialize system if empty
+function scrubStoredSecrets() {
+  for (const key of ['system_users', 'system_clinics']) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const rows = JSON.parse(raw);
+      if (!Array.isArray(rows)) continue;
+      let changed = false;
+      const next = rows.map((row) => {
+        if (!row || !Object.prototype.hasOwnProperty.call(row, 'password')) return row;
+        changed = true;
+        const { password, ...rest } = row;
+        return rest;
+      });
+      if (changed) localStorage.setItem(key, JSON.stringify(next));
+    } catch { /* ignore */ }
+  }
+}
+
 const initializeSystem = () => {
+  scrubStoredSecrets();
   const stored = localStorage.getItem('system_users');
   if (!stored) {
     localStorage.setItem('system_users', JSON.stringify(DEFAULT_USERS));
@@ -1910,7 +1956,6 @@ const DEFAULT_CLINICS = [
   { 
     id: 'ava-dent', 
     name: 'Ava Dent Clinic', 
-    password: 'ava7', 
     logo: '/logo.png', 
     expires_at: '2026-12-31', 
     status: 'Active',
@@ -1922,7 +1967,6 @@ const DEFAULT_CLINICS = [
   { 
     id: 'default_clinic', 
     name: 'Demo Clinic', 
-    password: 'admin', 
     logo: null, 
     expires_at: '2030-01-01', 
     status: 'Active',
@@ -2028,7 +2072,7 @@ export const base44 = {
       // Faqat DB ustunlari payloadda bo'ladi.
       // expires_at shart: obuna uzaytirish keyingi yuklashda yo'qolmasin.
       const payload = {};
-      ['id','name','password','status','created_at','expires_at','monthly_fee','last_payment_date','plan'].forEach(f => {
+      ['id','name','status','created_at','expires_at','monthly_fee','last_payment_date','plan'].forEach(f => {
         if (clinic[f] === undefined || clinic[f] === null || clinic[f] === '') return;
         payload[f] = clinic[f];
       });
@@ -2068,13 +2112,7 @@ export const base44 = {
       
       try {
         const clinics = await db.clinics.getAll();
-        if (clinics.length === 0) {
-          // Insert default clinics
-          for (const clinic of DEFAULT_CLINICS) {
-            await db.clinics.create(this._encodeClinicNotes(clinic));
-          }
-          return DEFAULT_CLINICS;
-        }
+        if (clinics.length === 0) return [];
         // Decode notes to restore extra fields
         const decoded = clinics.map(c => this._decodeClinicNotes(c));
         // Also keep localStorage in sync
@@ -2137,89 +2175,14 @@ export const base44 = {
           } catch { /* ignore */ }
           return safeDraft;
         }
-        // 503/tarmoq xatosi: eski (brauzer) oqimiga tushadi — faqat RLS o'chiq paytda ishlaydi.
+        const known = {
+          weak_password: "Parol kamida 8 ta belgidan iborat bo'lishi kerak",
+          invalid_payload: "Klinika ma'lumotlari to'liq emas",
+        };
+        throw new Error(known[srv.data?.error] || 'Klinika serverda yaratilmadi. Qayta urinib ko\'ring.');
       }
 
-      // 1. Check if clinic ID already taken
-      const existingClinics = await base44.clinic.getAll();
-      if (existingClinics.find(c => c.id.toLowerCase() === clinicData.id.toLowerCase())) {
-        throw new Error('Ushbu Klinika ID band!');
-      }
-
-      const newClinic = {
-        ...clinicData,
-        status: clinicData.status || 'Active',
-        created_at: new Date().toISOString(),
-        plan: clinicData.plan || 'basic'
-      };
-
-      // 2. ALWAYS save clinic to localStorage FIRST (instant availability)
-      try {
-        const localClinics = JSON.parse(localStorage.getItem('system_clinics') || '[]');
-        localClinics.push(newClinic);
-        localStorage.setItem('system_clinics', JSON.stringify(localClinics));
-        console.log('✅ Clinic saved to localStorage:', newClinic.id);
-      } catch (e) {
-        console.error('localStorage clinic save failed:', e);
-      }
-
-      // 3. Save admin user ALWAYS to localStorage FIRST  
-      const fullAdminData = {
-        ...adminData,
-        id: adminData.id || 'user-' + Math.random().toString(36).substring(2, 11),
-        clinic_id: newClinic.id,
-        role: 'admin',
-        commission_rate: 0,
-        name: adminData.name || adminData.username,
-        full_name: adminData.full_name || adminData.name || adminData.username,
-        created_at: new Date().toISOString()
-      };
-
-      try {
-        const sysUsers = JSON.parse(localStorage.getItem('system_users') || '[]');
-        const alreadyExists = sysUsers.find(u => u.username === fullAdminData.username && u.clinic_id === fullAdminData.clinic_id);
-        if (!alreadyExists) {
-          sysUsers.push(fullAdminData);
-          localStorage.setItem('system_users', JSON.stringify(sysUsers));
-          console.log('✅ Admin user saved to localStorage:', fullAdminData.username, '| Clinic:', fullAdminData.clinic_id);
-        }
-      } catch (e) {
-        console.error('localStorage admin user save failed:', e);
-      }
-
-      // 4. Also try Supabase (non-blocking — failures are OK)
-      if (import.meta.env.VITE_SUPABASE_URL) {
-        // Save clinic to Supabase
-        try {
-          await db.clinics.create(base44.clinic._encodeClinicNotes(newClinic));
-          console.log('✅ Clinic saved to Supabase:', newClinic.id);
-        } catch (e) {
-          console.warn('Supabase clinic save failed (localStorage fallback active):', e.message);
-        }
-
-        // Save admin user to Supabase
-        try {
-          let record = { ...fullAdminData };
-          for (let attempt = 0; attempt < 20; attempt++) {
-            const { data, error } = await supabase.from('users').insert([record]).select().single();
-            if (error) {
-              if ((error.code === '42703' || error.code === 'PGRST204') && error.message) {
-                const colMatch = error.message.match(/column "(\w+)"/) || error.message.match(/the '(\w+)' column/);
-                if (colMatch) { delete record[colMatch[1]]; continue; }
-              }
-              if (error.code === '23505') { console.warn('Admin user already in Supabase'); break; }
-              console.warn('Supabase admin user save failed:', error.message);
-              break;
-            }
-            console.log('✅ Admin user saved to Supabase:', fullAdminData.username);
-            break;
-          }
-        } catch (e) {
-          console.warn('Supabase admin user save failed (localStorage fallback active):', e.message);
-        }
-      }
-
-      return newClinic;
+      throw new Error('Server ulanmagan. Klinika yaratilmadi.');
     },
 
 
@@ -2267,7 +2230,7 @@ export const base44 = {
         if (!user?.id) continue;
         const removed = await supabase.from('users').delete().eq('id', user.id).select('id');
         if (removed.error || !removed.data?.length) {
-          await supabase.from('users').update({ password: `disabled-${Date.now()}` }).eq('id', user.id);
+          console.warn('User delete failed:', removed.error?.message || user.id);
         }
       }
 
@@ -2379,7 +2342,7 @@ export const base44 = {
         // 1. Fetch from all sources
         let supabaseUsers = [];
         if (import.meta.env.VITE_SUPABASE_URL) {
-          const { data, error } = await supabase.from('users').select('*');
+          const { data, error } = await supabase.from('users').select(USER_PUBLIC_COLUMNS.join(','));
           if (!error && data) {
              supabaseUsers = data.filter(u => u.clinic_id?.toLowerCase().replace(/-/g, '') === normId);
           }
@@ -2432,9 +2395,6 @@ export const base44 = {
       
       try {
         const users = await db.users.getAll();
-        if (users.length === 0) {
-          return sanitizeUsers(DEFAULT_USERS);
-        }
         return sanitizeUsers(users);
       } catch (error) {
         console.error('Error fetching users from Supabase:', error);
@@ -2448,7 +2408,7 @@ export const base44 = {
       if (!userId || !import.meta.env.VITE_SUPABASE_URL) return null;
       RequestCache.invalidate('User');
       try {
-        const { data, error } = await supabase.from('users').select('*').eq('id', userId).single();
+        const { data, error } = await supabase.from('users').select(USER_PUBLIC_COLUMNS.join(',')).eq('id', userId).maybeSingle();
         if (error || !data) return null;
         return sanitizeUser(new HybridEntityLoader('User')._decodeNotes(data));
       } catch {
@@ -2478,9 +2438,9 @@ export const base44 = {
         try {
           const { data, error } = await supabase
             .from('users')
-            .select('*')
+            .select(USER_PUBLIC_COLUMNS.join(','))
             .eq('id', userId)
-            .single();
+            .maybeSingle();
 
           if (error || !data) {
             // Fallback: localStorage'dan qidirish
@@ -2513,11 +2473,13 @@ export const base44 = {
       try {
         // Update or insert each user
         for (const user of users) {
-          const existing = await supabase.from('users').select('id').eq('id', user.id).single();
+          const safe = { ...user };
+          delete safe.password;
+          const existing = await supabase.from('users').select('id').eq('id', safe.id).single();
           if (existing.data) {
-            await db.users.update(user.id, user);
+            await db.users.update(safe.id, safe);
           } else {
-            await db.users.create(user);
+            await db.users.create(safe);
           }
         }
         console.log('✅ Users saved to Supabase:', users.length, 'users');
@@ -2529,7 +2491,6 @@ export const base44 = {
 
     // Add new user - saves to BOTH Supabase AND localStorage for reliable login
     addUser: async (userData) => {
-      const hashedPassword = await preparePasswordForWrite(userData.password);
       const newUser = {
         ...userData,
         id: userData.id || 'user-' + Math.random().toString(36).substring(2, 11),
@@ -2537,8 +2498,8 @@ export const base44 = {
         full_name: userData.full_name || userData.name || userData.username,
         created_at: new Date().toISOString()
       };
-      if (hashedPassword) newUser.password = hashedPassword;
-      else delete newUser.password;
+      const plainPassword = newUser.password;
+      delete newUser.password;
 
       // ALWAYS save to localStorage first (guaranteed fallback for login)
       try {
@@ -2553,32 +2514,9 @@ export const base44 = {
         console.error('localStorage save failed:', e);
       }
 
-      // Also save to Supabase if connected
       if (import.meta.env.VITE_SUPABASE_URL) {
-        try {
-          const userLoader = new HybridEntityLoader('User');
-          let record = userLoader._encodeNotes({ ...newUser });
-          
-          for (let attempt = 0; attempt < 20; attempt++) {
-            const { data, error } = await supabase.from('users').insert([record]).select().single();
-            if (error) {
-              if ((error.code === '42703' || error.code === 'PGRST204') && error.message) {
-                const colMatch = error.message.match(/column "(\w+)"/) || error.message.match(/the '(\w+)' column/);
-                if (colMatch) { delete record[colMatch[1]]; continue; }
-              }
-              if (error.code === '23505') {
-                console.warn('User already exists in Supabase:', newUser.username);
-                break;
-              }
-              console.error('Supabase user save error:', error);
-              break;
-            }
-            console.log('✅ User saved to Supabase:', newUser.username);
-            return sanitizeUser(data || newUser);
-          }
-        } catch (e) {
-          console.error('Supabase addUser error (localStorage fallback active):', e);
-        }
+        const saved = await base44.entities.User.create({ ...newUser, password: plainPassword });
+        return sanitizeUser(saved || newUser);
       }
 
       return sanitizeUser(newUser);
@@ -2586,10 +2524,9 @@ export const base44 = {
 
     // Update user
     updateUser: async (id, data) => {
-      const hashedPassword = await preparePasswordForWrite(data?.password);
       const writeData = { ...data };
-      if (hashedPassword) writeData.password = hashedPassword;
-      else delete writeData.password;
+      const plainPassword = writeData.password;
+      delete writeData.password;
 
       // 1. Update in localStorage system_users
       try {
@@ -2599,6 +2536,7 @@ export const base44 = {
           const index = users.findIndex(u => u.id === id);
           if (index >= 0) {
             users[index] = { ...users[index], ...writeData };
+            delete users[index].password;
             localStorage.setItem('system_users', JSON.stringify(users));
           }
         }
@@ -2608,7 +2546,7 @@ export const base44 = {
 
       // 2. Update via User entity loader (Supabase + local cache)
       try {
-        const updatedUser = await base44.entities.User.update(id, writeData);
+        const updatedUser = await base44.entities.User.update(id, plainPassword ? { ...writeData, password: plainPassword } : writeData);
         console.log('✅ User updated:', id);
         return sanitizeUser(updatedUser || writeData);
       } catch (error) {
@@ -2643,19 +2581,17 @@ export const base44 = {
 
     // Login validation (Clinic ID + Username + Password)
     login: async (clinicId, username, password) => {
-      console.log('🔐 Login attempt:', { clinicId, username });
-      
-      const normalizeId = (id) => (id || '').toLowerCase().trim().replace(/-/g, '_');
-      const wantedUsername = (username || '').toLowerCase().trim();
-      
       let user = null;
       let clinic = null;
 
-      // 0. Server login (/api/auth): parolni serverda tekshiradi va Supabase sessiyasini beradi (RLS uchun).
       const srv = await crmAuthApi('login', { body: { clinic_id: clinicId, username, password } });
       if (srv.status === 200 && srv.data?.ok && srv.data.user) {
         const sessionOk = await applyServerSession(srv.data.session);
-        localStorage.setItem('crm_auth_mode', sessionOk ? 'server' : 'legacy');
+        if (!sessionOk) {
+          await clearServerSession();
+          return { success: false, error: 'Sessiya ochilmadi. Qayta urinib ko\'ring.' };
+        }
+        localStorage.setItem('crm_auth_mode', 'server');
         user = srv.data.user;
         if (typeof user.notes === 'string' && user.notes.startsWith('[TECH_DATA]')) {
           user = new HybridEntityLoader('User')._decodeNotes(user);
@@ -2669,90 +2605,8 @@ export const base44 = {
         return { success: false, error: 'Klinika faol emas. Admin bilan bog\'laning!' };
       } else if (srv.status === 402) {
         return { success: false, error: 'Klinika uchun to\'lov muddati tugagan. Iltimos, to\'lovni amalga oshiring!' };
-      }
-
-      if (!user) {
-      // Legacy (server mavjud bo'lmasa): faqat RLS o'chiq paytda ishlaydi.
-      localStorage.setItem('crm_auth_mode', 'legacy');
-      await clearServerSession();
-      let allUsers = [];
-
-      // Source 1: Supabase — username bo'yicha qidirish (barcha parollarni yuklamaslik)
-      if (import.meta.env.VITE_SUPABASE_URL) {
-        try {
-          let { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .ilike('username', wantedUsername);
-          if (error || !data || data.length === 0) {
-            const fallback = await supabase.from('users').select('*');
-            data = fallback.data;
-            error = fallback.error;
-          }
-          if (data && !error) {
-            allUsers.push(...data);
-            console.log('✅ Supabase users loaded:', data.length);
-          } else if (error) {
-            console.warn('⚠️ Supabase users fetch error:', error.message);
-          }
-        } catch (e) { console.warn('Supabase users fetch failed:', e); }
-      }
-
-      // Source 2: localStorage system_users
-      try {
-        const sysUsers = JSON.parse(localStorage.getItem('system_users') || '[]');
-        sysUsers.forEach(u => {
-          if (!allUsers.find(au => au.id === u.id)) allUsers.push(u);
-        });
-      } catch (e) {}
-
-      // Source 3: mock_db localStorage
-      try {
-        const keys = Object.keys(localStorage).filter(k => k.includes('_User'));
-        keys.forEach(key => {
-          const arr = JSON.parse(localStorage.getItem(key) || '[]');
-          arr.forEach(u => { if (!allUsers.find(au => au.id === u.id)) allUsers.push(u); });
-        });
-      } catch (e) {}
-
-      const userLoaderForLogin = new HybridEntityLoader('User');
-      allUsers = allUsers.map(u => {
-        if (u.notes && typeof u.notes === 'string' && u.notes.startsWith('[TECH_DATA]')) {
-          return userLoaderForLogin._decodeNotes(u);
-        }
-        return u;
-      });
-
-      console.log('🔍 Total users in all sources:', allUsers.length);
-      
-      for (const u of allUsers) {
-        if (!u || !u.clinic_id || !u.username) continue;
-        const clinicMatch = normalizeId(u.clinic_id) === normalizeId(clinicId);
-        const usernameMatch = u.username.toLowerCase().trim() === wantedUsername;
-        if (!clinicMatch || !usernameMatch) continue;
-        if (await verifyPassword(password, u.password)) {
-          user = u;
-          break;
-        }
-      }
-      
-      if (!user) {
-        console.warn('❌ Login failed. Users checked:', allUsers.map(u => `[${u.clinic_id}] ${u.username}`));
-        return { success: false, error: 'Klinika ID, login yoki parol noto\'g\'ri' };
-      }
-
-      // Legacy plaintext parolni birinchi muvaffaqiyatli kirishda hash qilish
-      if (user.password && !isPasswordHash(user.password)) {
-        try {
-          await base44.auth.updateUser(user.id, { password });
-        } catch (rehashErr) {
-          console.warn('Password rehash skipped:', rehashErr?.message || rehashErr);
-        }
-      }
-      
-      // Check if clinic exists and is active
-      const clinics = await base44.clinic.getAll();
-      clinic = clinics.find(c => c.id.toLowerCase() === user.clinic_id.toLowerCase());
+      } else {
+        return { success: false, error: 'Server bilan aloqa uzildi. Qayta urinib ko\'ring.' };
       }
       
       if (!clinic) {
@@ -2767,21 +2621,13 @@ export const base44 = {
         return { success: false, error: 'Klinika uchun to\'lov muddati tugagan. Iltimos, to\'lovni amalga oshiring!' };
       }
       
-      console.log('✅ Login successful:', user.name, '| Role:', user.role);
-      
-      const mockToken = btoa(JSON.stringify({ 
-        sub: user.id, 
-        role: user.role, 
-        exp: Date.now() + 86400000 
-      }));
-
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('token');
       localStorage.removeItem('clinic_settings');
       const clinicPlan = applyClinicSession(clinic);
-      console.log('📋 Clinic plan:', clinicPlan, '| Clinic:', clinic.id);
 
       const safeUser = sanitizeUser(user);
-      
-      localStorage.setItem('auth_token', mockToken);
+
       localStorage.setItem('is_authenticated', 'true');
       localStorage.setItem('user_id', user.id);
       localStorage.setItem('user_name', user.name);
@@ -2793,7 +2639,6 @@ export const base44 = {
       
       return { 
         success: true, 
-        token: mockToken,
         user: { 
           id: user.id, 
           username: user.username,

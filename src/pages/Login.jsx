@@ -49,7 +49,7 @@ export default function Login() {
     clinicId: '',
     username: '',
     password: '',
-    rememberMe: true
+    rememberMe: false
   });
 
   useEffect(() => {
@@ -79,32 +79,20 @@ export default function Login() {
       try {
         // Avval server: landing tokenini serverda tekshiradi va Supabase sessiyasini beradi (RLS uchun).
         const viaServer = await crmAuthApi('handoff', { method: 'POST', body: { token } });
-        let data;
-        let okResp;
-        if (viaServer.status === 200 && viaServer.data?.user) {
-          await applyServerSession(viaServer.data.session);
-          localStorage.setItem('crm_auth_mode', 'server');
-          data = viaServer.data;
-          okResp = true;
-        } else if (viaServer.status && viaServer.status !== 404 && viaServer.status !== 503 && viaServer.data?.error) {
-          data = { error: 'Sessiya ochilmadi. Klinika ID va login bilan kiring.' };
-          okResp = false;
-        } else {
-          const response = await fetch(`${configured}/api/auth/handoff`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token }),
-          });
-          data = await response.json();
-          okResp = response.ok;
-        }
-        if (!okResp || !data?.user) {
-          if (!cancelled) setError(data?.error || 'Sessiya ochilmadi. Klinika ID va login bilan kiring.');
+        if (!(viaServer.status === 200 && viaServer.data?.user && viaServer.data?.session)) {
+          if (!cancelled) setError('Sessiya ochilmadi. Klinika ID va login bilan kiring.');
           return;
         }
+        localStorage.setItem('crm_remember', '0');
+        const sessionOk = await applyServerSession(viaServer.data.session);
+        if (!sessionOk) {
+          if (!cancelled) setError('Sessiya ochilmadi. Klinika ID va login bilan kiring.');
+          return;
+        }
+        localStorage.setItem('crm_auth_mode', 'server');
+        const data = viaServer.data;
         const user = data.user;
-        const authToken = data.token || btoa(JSON.stringify({ sub: user.id, role: user.role, exp: Date.now() + 86400000 }));
-        localStorage.setItem('auth_token', authToken);
+        localStorage.removeItem('auth_token');
         localStorage.setItem('is_authenticated', 'true');
         localStorage.setItem('user_id', user.id);
         localStorage.setItem('user_name', user.name || '');
@@ -130,7 +118,7 @@ export default function Login() {
           clinic_id: user.clinic_id,
         }));
         localStorage.setItem('has_completed_onboarding', 'true');
-        if (setAuthData) setAuthData(user, authToken);
+        if (setAuthData) setAuthData(user);
         toast.success('Xush kelibsiz!');
         navigate(user.role === 'doctor' ? '/doctor/dashboard' : '/admin/dashboard');
       } catch {
@@ -157,6 +145,7 @@ export default function Login() {
     setLoading(true);
 
     try {
+      localStorage.setItem('crm_remember', form.rememberMe ? '1' : '0');
       const result = await base44.auth.login(form.clinicId, form.username, form.password);
 
       if (result.success) {

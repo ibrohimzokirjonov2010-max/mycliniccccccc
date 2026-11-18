@@ -13,6 +13,20 @@ Ushbu fayl loyihada yuz bergan va muvaffaqiyatli tuzatilgan har qanday xatolik (
 
 <!-- Yangi xatoliklarni ro'yxatning tepasiga (quyidagi qismga) qo'shing -->
 
+### 🔐 Phase 1 — parol va demo ma'lumot serverda
+- **Sana:** 2026-11-18
+- **Tuzatilgan Fayllar:**
+  - [`supabase/ROLLOUT.md`](supabase/ROLLOUT.md)
+  - [`supabase/migrations/20261118120000_p0_1_drop_execute_sql.sql`](supabase/migrations/20261118120000_p0_1_drop_execute_sql.sql)
+  - [`supabase/migrations/20261118120100_p0_2_drop_crm_backup_passwords.sql`](supabase/migrations/20261118120100_p0_2_drop_crm_backup_passwords.sql)
+  - [`supabase/migrations/20261118120200_p0_3_demo_lock_and_anonymize.sql`](supabase/migrations/20261118120200_p0_3_demo_lock_and_anonymize.sql)
+  - [`src/api/base44Client.jsx`](src/api/base44Client.jsx)
+  - [`src/lib/AuthContext.jsx`](src/lib/AuthContext.jsx)
+- **Muammo Tavsifi:** Brauzer parolni o'zi tekshirardi va imzosiz Base64 sessiya yozardi. `execute_query` / `execute_ddl` ochiq edi. Demo `default_clinic` kartalari haqiqiy odamga o'xshardi.
+- **Sababi:** Login zaxira yo'li `users` ni brauzerga berardi. Tarif `localStorage` va klinika id dan olinardi.
+- **Qanday tuzatildi:** Kirish faqat `/api/auth` va Supabase sessiyasi. Qaytarib bo'lmaydigan SQL alohida fayllarda, productionga yozilmagan.
+- **Qaytalamaslik choralari:** `btoa` sessiya qaytarmang. `execute_query` ni qayta yaratmang. `clinics` qatorini parolsiz upsert qilmang. `default_clinic` dan boshqa klinikani P0-3 skriptiga qo'shmang. `patient-y2ii8ynf2` ga yozmang.
+
 ### 💰 Implant narxi — katalogdagi tojlar yig'ilmasin
 - **Sana:** 2026-10-05
 - **Tuzatilgan Fayllar:**

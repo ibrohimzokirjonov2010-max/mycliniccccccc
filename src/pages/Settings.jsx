@@ -205,8 +205,8 @@ export default function Settings() {
       toast.error(t('settings.staff.errorEnterName') || 'Ism kiriting!');
       return;
     }
-    if (!newStaff.password || newStaff.password.length < 4) {
-      toast.error(t('settings.staff.errorMinPassword') || 'Parol kamida 4 ta belgidan iborat bo\'lishi kerak!');
+    if (!newStaff.password || newStaff.password.length < 8) {
+      toast.error(t('settings.staff.errorMinPassword') || 'Parol kamida 8 ta belgidan iborat bo\'lishi kerak!');
       return;
     }
 
@@ -274,8 +274,8 @@ export default function Settings() {
       toast.error(t('settings.staff.errorEnterName') || 'Ism kiriting!');
       return;
     }
-    if (myProfileForm.password && myProfileForm.password.length < 4) {
-      toast.error(t('settings.staff.errorMinPassword') || 'Parol kamida 4 ta belgidan iborat bo\'lishi kerak!');
+    if (myProfileForm.password && myProfileForm.password.length < 8) {
+      toast.error(t('settings.staff.errorMinPassword') || 'Parol kamida 8 ta belgidan iborat bo\'lishi kerak!');
       return;
     }
     if (myProfileForm.password && myProfileForm.password !== myProfileForm.confirmPassword) {
@@ -1111,7 +1111,7 @@ export default function Settings() {
                   </div>
                   <div className="col-span-7 p-2">
                     <PasswordInput
-                      placeholder="Kamida 4 ta belgi" 
+                      placeholder="Kamida 8 ta belgi" 
                       value={myProfileForm.password}
                       onChange={e => setMyProfileForm({ ...myProfileForm, password: e.target.value })}
                       className="h-9 text-xs font-mono border-slate-200 rounded-lg focus:border-indigo-500" 
